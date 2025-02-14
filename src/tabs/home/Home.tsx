@@ -659,6 +659,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [timeMetricsCollapsed, setTimeMetricsCollapsed] = useState(false);
   const [conversionMetricsCollapsed, setConversionMetricsCollapsed] = useState(false);
 
+  const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
+
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
   useEffect(() => {
@@ -1663,19 +1665,21 @@ const officeAttendanceButtonText = currentUserConfirmed
         className={quickLinksStyle(isDarkMode)}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {immediateActionsList.map((action, index) => (
-            <QuickActionsCard
-              key={action.title}
-              title={action.title}
-              icon={action.icon || ''}
-              isDarkMode={isDarkMode}
-              onClick={action.onClick}
-              iconColor={colours.highlight}
-              style={{ '--card-index': index } as React.CSSProperties}
-            />
-          ))}
-        </div>
+        {immediateActionsReady && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {immediateActionsList.map((action, index) => (
+              <QuickActionsCard
+                key={action.title}
+                title={action.title}
+                icon={action.icon || ''}
+                isDarkMode={isDarkMode}
+                onClick={action.onClick}
+                iconColor={colours.highlight}
+                style={{ '--card-index': index } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '10px' }}>
           {normalQuickActions.map((action, index) => (
             <QuickActionsCard
