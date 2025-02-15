@@ -7,8 +7,9 @@ import {
   MessageBarType,
   Spinner,
   SpinnerSize,
-  Modal,
   IconButton,
+  Pivot,
+  PivotItem,
   Link as FluentLink,
 } from '@fluentui/react';
 import {
@@ -266,16 +267,14 @@ const Matters: React.FC<MattersProps> = ({
 
   // ---------- Filter States ----------
   const [activeGroupedArea, setActiveGroupedArea] = useState<string | null>(null);
-  // Replace the single activePracticeArea state with multiple selection:
   const [activePracticeAreas, setActivePracticeAreas] = useState<string[]>([]);
-  const [activeState, setActiveState] = useState<string>(''); // Default: none selected.
+  const [activeState, setActiveState] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
-  // NEW: Fee Earner Filter State and Fee Earner Type (null means none selected)
   const [activeFeeEarner, setActiveFeeEarner] = useState<string | null>(null);
   const [feeEarnerType, setFeeEarnerType] = useState<"Originating" | "Responsible" | null>(null);
 
-  // ---------- Modal State ----------
+  // ---------- Detail View State ----------
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
 
   // ---------- Infinite Scroll ----------
@@ -331,7 +330,6 @@ const Matters: React.FC<MattersProps> = ({
           activeGroupedArea.toLowerCase()
       );
     }
-    // Use multiple selection for practice areas:
     if (activePracticeAreas.length > 0) {
       final = final.filter((m) => activePracticeAreas.includes(m.PracticeArea));
     }
@@ -339,7 +337,6 @@ const Matters: React.FC<MattersProps> = ({
       const fullName = `${userData[0].First} ${userData[0].Last}`.trim();
       final = final.filter((m) => m.OriginatingSolicitor === fullName);
     }
-    // NEW: Filter by Fee Earner if one is selected
     if (activeFeeEarner) {
       if (feeEarnerType === "Originating") {
         final = final.filter(
@@ -376,7 +373,7 @@ const Matters: React.FC<MattersProps> = ({
     userData,
   ]);  
 
-  // Display matters as most recent first (reverse the filtered order) without affecting slider/chart.
+  // Display matters as most recent first
   const displayedMatters = useMemo(
     () => [...filteredMatters].reverse().slice(0, itemsToShow),
     [filteredMatters, itemsToShow]
@@ -473,6 +470,72 @@ const Matters: React.FC<MattersProps> = ({
     return [...nonLeft, ...leftOrdered].filter((item) => !excludeInitials.includes(item.initials));
   }, [filteredMatters, teamData]);
 
+  // ***** Detail View: Render Pivot if a Matter is Selected *****
+  if (selectedMatter) {
+    return (
+      <div className={containerStyle(isDarkMode)}>
+        <IconButton
+          iconProps={{ iconName: 'Back' }}
+          title="Back to Matters"
+          ariaLabel="Back to Matters"
+          onClick={() => setSelectedMatter(null)}
+          styles={{ root: { marginBottom: '20px' } }}
+        />
+        <Pivot
+          aria-label="Matter Detail Tabs"
+          styles={{
+            root: { marginTop: '20px' },
+            link: { fontSize: '16px', fontWeight: 600 },
+          }}
+        >
+          <PivotItem headerText="Overview" itemKey="Overview">
+            <MatterOverview matter={selectedMatter!} onEdit={() => {}} />
+          </PivotItem>
+          <PivotItem headerText="Details" itemKey="Details">
+            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '20px' } }}>
+              <Text variant="xLarge" styles={{ root: { fontWeight: 'bold', color: isDarkMode ? colours.dark.text : colours.light.text } }}>
+                Matter Details
+              </Text>
+              <Stack tokens={{ childrenGap: 10 }}>
+                <Text variant="medium">
+                  <strong>Display Number:</strong> {selectedMatter.DisplayNumber}
+                </Text>
+                <Text variant="medium">
+                  <strong>Client Name:</strong> {selectedMatter.ClientName}
+                </Text>
+                <Text variant="medium">
+                  <strong>Open Date:</strong> {new Date(selectedMatter.OpenDate).toLocaleDateString()}
+                </Text>
+                <Text variant="medium">
+                  <strong>Description:</strong> {selectedMatter.Description}
+                </Text>
+                <Text variant="medium">
+                  <strong>Practice Area:</strong> {selectedMatter.PracticeArea}
+                </Text>
+                <Text variant="medium">
+                  <strong>Approximate Value:</strong> {selectedMatter.ApproxValue}
+                </Text>
+                <Text variant="medium">
+                  <strong>Status:</strong> {selectedMatter.Status}
+                </Text>
+                <Text variant="medium">
+                  <strong>Originating Solicitor:</strong> {selectedMatter.OriginatingSolicitor}
+                </Text>
+                <Text variant="medium">
+                  <strong>Responsible Solicitor:</strong> {selectedMatter.ResponsibleSolicitor}
+                </Text>
+                <Text variant="medium">
+                  <strong>Supervising Partner:</strong> {selectedMatter.SupervisingPartner}
+                </Text>
+              </Stack>
+            </Stack>
+          </PivotItem>
+        </Pivot>
+      </div>
+    );
+  }
+
+  // ***** Grid View *****
   return (
     <div className={containerStyle(isDarkMode)}>
       <MattersCombinedMenu
@@ -692,48 +755,6 @@ const Matters: React.FC<MattersProps> = ({
             </main>
           )}
         </>
-      )}
-
-      {selectedMatter && (
-        <Modal
-          isOpen={!!selectedMatter}
-          onDismiss={() => setSelectedMatter(null)}
-          isBlocking={false}
-          containerClassName={mergeStyles({
-            maxWidth: 800,
-            padding: '30px',
-            borderRadius: '12px',
-            backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-            fontFamily: 'Raleway, sans-serif',
-          })}
-          styles={{ main: { maxWidth: '800px', margin: 'auto' } }}
-          aria-labelledby="matter-modal"
-        >
-          <Stack tokens={{ childrenGap: 20 }}>
-            <IconButton
-              iconProps={{ iconName: 'Back' }}
-              title="Back to Matters"
-              ariaLabel="Back to Matters"
-              onClick={() => setSelectedMatter(null)}
-              styles={{
-                root: {
-                  backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                  color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-                  borderRadius: '50%',
-                  width: '40px',
-                  height: '40px',
-                  selectors: {
-                    ':hover': {
-                      backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                    },
-                  },
-                },
-              }}
-            />
-            <MatterOverview matter={selectedMatter} onEdit={() => setSelectedMatter(null)} />
-          </Stack>
-        </Modal>
       )}
     </div>
   );

@@ -229,7 +229,7 @@ const Attendance: React.FC<AttendanceProps> = ({
         <Persona
           text=""
           imageUrl={imageUrl}
-          size={PersonaSize.size40}
+          size={PersonaSize.size32}
           hidePersonaDetails
           styles={{ root: { margin: '0 auto' } }}
         />
