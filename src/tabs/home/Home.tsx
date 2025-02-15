@@ -139,6 +139,10 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
+//////////////////////
+// Collapsible Section
+//////////////////////
+
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children }) => {
   // Start expanded by default
   const [collapsed, setCollapsed] = useState(false);
@@ -161,13 +165,14 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       <div 
         onClick={toggleCollapse} 
         style={{
-          backgroundColor: colours.darkBlue,
-          color: '#ffffff',
-          padding: '10px 15px',
+          background: colours.grey,
+          color: '#333333',
+          padding: '8px 12px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          fontSize: '16px',
         }}
       >
         <span style={{ fontWeight: 600 }}>
@@ -178,7 +183,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
             </span>
           )}
         </span>
-        <span>{collapsed ? '▼' : '▲'}</span>
+        <Icon
+          iconName={collapsed ? 'DoubleChevronDown' : 'DoubleChevronUp'}
+          styles={{ root: { fontSize: '12px' } }}
+        />
       </div>
       {/* Content */}
       {!collapsed && (
@@ -472,7 +480,7 @@ const PersonBubble: React.FC<PersonBubbleProps> = ({
         <Persona
           text=""
           imageUrl={avatarUrlOverride || imageUrl}
-          size={PersonaSize.size40}
+          size={PersonaSize.size24}
           presence={presence}
           hidePersonaDetails
           styles={{
@@ -1485,6 +1493,18 @@ const officeAttendanceButtonText = currentUserConfirmed
   );
 
   // Consolidated Attendance Table – helper functions and components
+
+  // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
+  const getShortDayLabel = (date: Date): string =>
+    date.toLocaleDateString('en-GB', { weekday: 'narrow' });
+
+  // Optionally, if you want to include the date as well (e.g. "M 10")
+  const getShortDayAndDateLabel = (date: Date): string => {
+    const shortDay = getShortDayLabel(date);
+    const dayOfMonth = date.getDate();
+    return `${shortDay} ${dayOfMonth}`;
+  };
+
   const getMondayOfCurrentWeek = (): Date => {
     const now = new Date();
     const day = now.getDay();
@@ -1567,65 +1587,58 @@ const officeAttendanceButtonText = currentUserConfirmed
     } else if (status === 'out') {
       iconName = 'Airplane';
     }
+    // Use the grey colour from the colours file; if not highlighted, use colours.dark.grey (or colours.light.grey)
+    const iconColor = highlight ? '#fff' : (isDarkMode ? colours.dark.grey : colours.light.grey);
     return (
       <Icon
         iconName={iconName}
-        styles={{ root: { fontSize: '24px', color: highlight ? '#fff' : '#666' } }}
+        styles={{ root: { fontSize: '24px', color: iconColor } }}
       />
     );
   };
 
-  const AttendancePersonaHeader: React.FC<{
-    person: { name: string; initials: string; nickname: string; attendance: string };
-  }> = ({ person }) => {
+  const AttendancePersonaHeader: React.FC<{ person: { name: string; initials: string; nickname: string; attendance: string } }> = ({ person }) => {
+    // Determine today's weekday (default to Monday if out of range)
     const todayDate = new Date();
-    let diffDays = Math.floor(
-      (todayDate.getTime() - currentWeekMonday.getTime()) / (1000 * 3600 * 24)
-    );
-    let todayWeekday = 'Monday';
-    if (diffDays >= 0 && diffDays < 5) {
-      todayWeekday = weekDays[diffDays];
-    }
+    const diffDays = Math.floor((todayDate.getTime() - currentWeekMonday.getTime()) / (1000 * 3600 * 24));
+    const todayWeekday = diffDays >= 0 && diffDays < weekDays.length ? weekDays[diffDays] : 'Monday';
+  
+    // Determine status
     const currentStatus = getCellStatus(person.attendance, person.initials, todayWeekday, todayStr);
-    let imageUrl = WfhImg;
+  
+    // Define gradient based on status
+    let gradient = '';
     if (currentStatus === 'in') {
-      imageUrl = InAttendanceImg;
-    } else if (currentStatus === 'out') {
-      imageUrl = OutImg;
+      gradient = `linear-gradient(135deg, ${colours.blue}, ${colours.darkBlue})`;
+    } else if (currentStatus === 'wfh') {
+      gradient = `linear-gradient(135deg, ${colours.highlight}, ${colours.darkBlue})`;
+    } else {
+      // For away/out
+      gradient = `linear-gradient(135deg, ${colours.grey}, ${colours.darkBlue})`;
     }
+  
+    // Custom avatar styles with smaller font size
+    const avatarStyle: React.CSSProperties = {
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      background: gradient,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#ffffff',
+      fontWeight: 600,
+      fontSize: '12px',
+    };
+  
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: isDarkMode ? colours.dark.grey || '#3a3a3a' : colours.light.grey || '#F4F4F6',
-            padding: '4px 8px',
-            borderRadius: '8px',
-          }}
-        >
-          <Text
-            variant="small"
-            styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-          >
-            {person.nickname || person.name}
-          </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        <div style={avatarStyle}>
+          {person.initials.toUpperCase()}
         </div>
-        <Persona
-          text=""
-          imageUrl={imageUrl}
-          size={PersonaSize.size40}
-          hidePersonaDetails
-          styles={{ root: { margin: '0 auto' } }}
-        />
       </div>
     );
-  };
+  };  
 
   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
@@ -1878,6 +1891,7 @@ const officeAttendanceButtonText = currentUserConfirmed
             <table
               style={{
                 width: '100%',
+                tableLayout: 'fixed', // Ensures all columns have equal width
                 borderCollapse: 'separate',
                 borderSpacing: '0',
                 border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
@@ -1888,7 +1902,7 @@ const officeAttendanceButtonText = currentUserConfirmed
             >
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid transparent', padding: '8px' }}></th>
+                  <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
                   {attendancePersons.map((person) => (
                     <th
                       key={person.initials}
@@ -1897,6 +1911,7 @@ const officeAttendanceButtonText = currentUserConfirmed
                         padding: '8px',
                         textAlign: 'center',
                         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+                        width: '100px', // fixed width for each column
                       }}
                     >
                       <AttendancePersonaHeader person={person} />
@@ -1918,9 +1933,10 @@ const officeAttendanceButtonText = currentUserConfirmed
                           padding: '8px',
                           fontWeight: 'bold',
                           backgroundColor: colours.reporting.tableHeaderBackground,
+                          width: '100px', // fixed width for first column as well
                         }}
                       >
-                        {day}
+                        {getShortDayLabel(dayDate)}
                       </td>
                       {attendancePersons.map((person) => {
                         const status = getCellStatus(person.attendance, person.initials, day, cellDateStr);
@@ -1941,6 +1957,7 @@ const officeAttendanceButtonText = currentUserConfirmed
                               padding: '8px',
                               textAlign: 'center',
                               backgroundColor: cellBg,
+                              width: '100px', // fixed width for each column
                             }}
                           >
                             <AttendanceCell status={status} highlight={isCurrentDay} />
