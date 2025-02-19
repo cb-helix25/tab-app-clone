@@ -88,6 +88,7 @@ interface HomeProps {
   userData: any;
   enquiries: any[] | null;
   onAllMattersFetched?: (matters: Matter[]) => void;
+  onOutstandingBalancesFetched?: (data: any) => void; // NEW
 }
 
 interface QuickLink {
@@ -556,7 +557,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched }) => {
   const { isDarkMode } = useTheme();
 
   const renderContextsPanelContent = () => (
@@ -1051,6 +1052,50 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       fetchAllMattersData();
     }
   }, [onAllMattersFetched]);
+
+  useEffect(() => {
+    async function fetchOutstandingBalances() {
+      const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
+      const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
+      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      if (!code || !path || !baseUrl) {
+        console.error("Missing env variables for outstanding client balances");
+        return null;
+      }
+      const url = `${baseUrl}/${path}?code=${code}`;
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Error fetching outstanding client balances:", errorText);
+          return null;
+        }
+        return await response.json();
+      } catch (err) {
+        console.error("Error fetching outstanding client balances:", err);
+        return null;
+      }
+    }
+  
+    async function loadOutstandingBalances() {
+      try {
+        const data = await fetchOutstandingBalances();
+        console.log("Outstanding Balances:", data);
+        // Optionally, pass the fetched data to the parent App via the callback:
+        if (onOutstandingBalancesFetched) {
+          onOutstandingBalancesFetched(data);
+        }
+      } catch (error) {
+        console.error("Error in loadOutstandingBalances:", error);
+      }
+    }
+  
+    // Run only once when the component mounts
+    loadOutstandingBalances();
+  }, []); // empty dependency array prevents repeated calls  
 
   const columns = useMemo(() => createColumnsFunction(isDarkMode), [isDarkMode]);
 

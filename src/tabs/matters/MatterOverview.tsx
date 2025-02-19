@@ -9,6 +9,8 @@ import {
   Separator,
   TooltipHost,
   Link,
+  MessageBar,
+  MessageBarType,
 } from '@fluentui/react';
 import { Matter } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -55,22 +57,41 @@ const mapRatingToStyle = (rating: string | undefined) => {
 };
 
 interface MatterOverviewProps {
-  matter: Matter;
-  onEdit?: () => void; // Optional edit action for rating
+  matter: Matter;            // The base SQL matter
+  overviewData?: any;        // Extra data from the getMatterOverview call
+  outstandingData?: any;     // Optional outstanding data from Clio
+  onEdit?: () => void;       // Optional edit action for rating
 }
 
-const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
+// Define a fixed style for labels to ensure alignment
+const labelStyle = mergeStyles({
+  fontWeight: 700,
+  color: colours.highlight,
+  minWidth: '120px',
+});
+
+const MatterOverview: React.FC<MatterOverviewProps> = ({
+  matter,
+  overviewData,
+  outstandingData,
+  onEdit,
+}) => {
   const { isDarkMode } = useTheme();
   const ratingStyle = mapRatingToStyle(matter.Rating);
 
-  // Handle rating click
+  // Extract the extra "client" data from overviewData (not from Matter)
+  const client = overviewData?.client;
+
+  // Handler for rating click
   const handleRatingClick = () => {
     if (onEdit) onEdit();
   };
 
   // Hyperlink URLs
   const matterLink = `https://eu.app.clio.com/nc/#/matters/${matter.UniqueID || '-'}`;
-  const clientLink = `https://eu.app.clio.com/nc/#/contacts/${matter.ClientID || '-'}`;
+  const clientLink = client
+    ? `https://eu.app.clio.com/nc/#/contacts/${client.id}`
+    : '#';
 
   // Build a map of solicitor names to roles
   const solicitorMap: { [name: string]: string[] } = {};
@@ -88,40 +109,30 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
   }
 
   /* ------------------------------------------
-   *  S T Y L E  B L O C K
+   * S T Y L E S
    * ------------------------------------------
    */
-
-  // Main container (no hover effect here)
   const containerStyle = mergeStyles({
-    padding: '24px',
+    padding: '20px',
     borderRadius: '8px',
     marginBottom: '20px',
-    position: 'relative',
-    background: isDarkMode
-      ? 'linear-gradient(135deg, #333 0%, #444 100%)'
-      : 'linear-gradient(135deg, #f3f3f3 0%, #ffffff 100%)',
-    boxShadow: isDarkMode
-      ? '0 4px 16px rgba(0,0,0,0.6)'
-      : '0 4px 16px rgba(0,0,0,0.1)',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     fontFamily: 'Raleway, sans-serif',
   });
 
-  // Top section: Matter reference & rating
   const topSectionStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
   });
 
-  // Matter reference styling
   const matterReferenceStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
   });
 
-  // Matter reference text
   const referenceTextStyle = mergeStyles({
     fontSize: '1.5rem',
     fontWeight: 700,
@@ -129,7 +140,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     textDecoration: 'none',
   });
 
-  // Rating bubble (with border logic)
   const ratingBubbleStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
@@ -155,7 +165,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     },
   });
 
-  // Wrapper for the two-column info section (Matter Details & Client)
   const infoSectionWrapper = mergeStyles({
     marginTop: '20px',
     display: 'flex',
@@ -163,15 +172,12 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     gap: '20px',
   });
 
-  // Info card style for Matter Details and Client with hover effect
   const infoCardStyle = mergeStyles({
     flex: '1 1 320px',
     minWidth: '280px',
     backgroundColor: isDarkMode ? '#262626' : '#fff',
     borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? '0 2px 8px rgba(0,0,0,0.5)'
-      : '0 2px 8px rgba(0,0,0,0.1)',
+    boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.1)',
     padding: '16px',
     transition: 'transform 0.2s, box-shadow 0.2s',
     selectors: {
@@ -184,15 +190,14 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     },
   });
 
-  // Base text style for content
   const baseTextStyle = {
     root: {
       color: isDarkMode ? colours.dark.text : colours.light.text,
       fontSize: 'small',
+      lineHeight: '1.5',
     },
   };
 
-  // Persona bubble for solicitors
   const personaStyle = mergeStyles({
     width: 32,
     height: 32,
@@ -208,7 +213,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     cursor: 'default',
   });
 
-  // Icon button style for phone/email bubbles
   const iconButtonStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
@@ -230,19 +234,69 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
     },
   });
 
-  // Tag (pill) style (rendered inline without a dedicated section)
   const tagStyle = mergeStyles({
-    display: 'inline-block',
-    padding: '4px 10px',
-    borderRadius: '16px',
-    backgroundColor: isDarkMode ? '#3d3d3d' : '#e0e0e0',
-    color: isDarkMode ? '#fff' : '#333',
-    fontSize: '12px',
-    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: colours.tagBackground,
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    borderRadius: '4px',
+    padding: '4px 8px',
+    fontSize: 'small',
     marginRight: '8px',
     marginBottom: '8px',
   });
 
+  // ---------------------------------
+  // Render the Overview/Client Balances data MessageBar
+  // ---------------------------------
+  const renderOverviewMessageBar = () => {
+    if (!overviewData) {
+      return (
+        <MessageBar
+          messageBarType={MessageBarType.info}
+          styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
+        >
+          No overview data available.
+        </MessageBar>
+      );
+    }
+    return (
+      <MessageBar
+        messageBarType={MessageBarType.info}
+        styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
+      >
+        {JSON.stringify(overviewData, null, 2)}
+      </MessageBar>
+    );
+  };
+
+  // ---------------------------------
+  // Render the Outstanding data MessageBar
+  // ---------------------------------
+  const renderOutstandingSection = () => {
+    if (!outstandingData) {
+      return (
+        <MessageBar
+          messageBarType={MessageBarType.info}
+          styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
+        >
+          No outstanding data found in Clio for this matter.
+        </MessageBar>
+      );
+    }
+    return (
+      <MessageBar
+        messageBarType={MessageBarType.info}
+        styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
+      >
+        {JSON.stringify(outstandingData, null, 2)}
+      </MessageBar>
+    );
+  };
+
+  // ---------------------------------
+  // R E T U R N  M A I N  J S X
+  // ---------------------------------
   return (
     <div className={containerStyle}>
       {/* TOP SECTION: Matter reference & rating */}
@@ -270,7 +324,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
         )}
       </div>
 
-      {/* INFO SECTION WRAPPER (Two cards: Matter Details & Client) */}
+      {/* INFO SECTION WRAPPER (Matter Details & Client) */}
       <div className={infoSectionWrapper}>
         {/* MATTER DETAILS CARD */}
         <div className={infoCardStyle}>
@@ -278,31 +332,71 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
             Matter Details
           </Text>
           <Separator />
-          {/* First Section: Practice Area, Description (and Opponent if exists) */}
+          {/* First Section: Practice Area, Description, Opponent */}
           <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
-            <Text variant="small" styles={baseTextStyle}>
-              <strong>Practice Area:</strong> {matter.PracticeArea?.trim() || '-'}
-            </Text>
-            <Text variant="small" styles={baseTextStyle}>
-              <strong>Description:</strong> {matter.Description?.trim() || '-'}
-            </Text>
-            {matter.Opponent?.trim() && (
-              <Text variant="small" styles={baseTextStyle}>
-                <strong>Opponent:</strong> {matter.Opponent.trim()}
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+              <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                Practice Area:
               </Text>
+              <Text
+                variant="medium"
+                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
+              >
+                {matter.PracticeArea?.trim() || '-'}
+              </Text>
+            </Stack>
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+              <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                Description:
+              </Text>
+              <Text
+                variant="medium"
+                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
+              >
+                {matter.Description?.trim() || '-'}
+              </Text>
+            </Stack>
+            {matter.Opponent?.trim() && (
+              <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                  Opponent:
+                </Text>
+                <Text
+                  variant="medium"
+                  styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
+                >
+                  {matter.Opponent.trim()}
+                </Text>
+              </Stack>
             )}
           </Stack>
 
           <Separator styles={{ root: { marginTop: '12px', marginBottom: '12px' } }} />
 
-          {/* Second Section: Open Date and CCL Date */}
+          {/* Second Section: Open Date, CCL Date */}
           <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
-            <Text variant="small" styles={baseTextStyle}>
-              <strong>Open Date:</strong> {formatDate(matter.OpenDate)}
-            </Text>
-            <Text variant="small" styles={baseTextStyle}>
-              <strong>CCL Date:</strong> {formatDate(matter.CCL_date)}
-            </Text>
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+              <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                Open Date:
+              </Text>
+              <Text
+                variant="medium"
+                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
+              >
+                {formatDate(matter.OpenDate)}
+              </Text>
+            </Stack>
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+              <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                CCL Date:
+              </Text>
+              <Text
+                variant="medium"
+                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
+              >
+                {formatDate(matter.CCL_date)}
+              </Text>
+            </Stack>
           </Stack>
 
           <Separator styles={{ root: { marginTop: '12px', marginBottom: '12px' } }} />
@@ -326,7 +420,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
           <Stack tokens={{ childrenGap: 12 }} styles={{ root: { marginTop: '12px' } }}>
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
               <Icon
-                iconName="Contact"
+                iconName={client?.type === 'Company' ? 'CityNext' : 'Contact'}
                 styles={{ root: { fontSize: 24, color: colours.highlight } }}
               />
               <Link
@@ -341,8 +435,11 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
                   },
                 }}
               >
-                {matter.ClientName?.trim() || '-'}
+                {client?.name || '-'}
               </Link>
+              <Text variant="small" styles={{ root: { marginLeft: '8px', color: colours.greyText } }}>
+                {client?.type || '-'}
+              </Text>
             </Stack>
             <Separator />
             <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="center">
@@ -351,8 +448,8 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
                   className={iconButtonStyle}
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.location.href = matter.ClientPhone?.trim()
-                      ? `tel:${matter.ClientPhone}`
+                    window.location.href = client?.primary_phone_number
+                      ? `tel:${client.primary_phone_number}`
                       : '#';
                   }}
                   title="Call Client"
@@ -366,8 +463,8 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
                   className={iconButtonStyle}
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.location.href = matter.ClientEmail?.trim()
-                      ? `mailto:${matter.ClientEmail}`
+                    window.location.href = client?.primary_email_address
+                      ? `mailto:${client.primary_email_address}`
                       : '#';
                   }}
                   title="Email Client"
@@ -378,10 +475,10 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
               </TooltipHost>
               <Stack tokens={{ childrenGap: 4 }}>
                 <Text variant="small" styles={baseTextStyle}>
-                  {matter.ClientPhone?.trim() || '-'}
+                  {client?.primary_phone_number || '-'}
                 </Text>
                 <Text variant="small" styles={baseTextStyle}>
-                  {matter.ClientEmail?.trim() || '-'}
+                  {client?.primary_email_address || '-'}
                 </Text>
               </Stack>
             </Stack>
@@ -389,7 +486,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
         </div>
       </div>
 
-      {/* INLINE TAGS (rendered after the info cards) */}
+      {/* INLINE TAGS */}
       <Stack horizontal wrap tokens={{ childrenGap: 8, padding: '12px 0' }}>
         <span className={tagStyle}>Matter ID: {matter.UniqueID || '-'}</span>
         <span className={tagStyle}>Client ID: {matter.ClientID || '-'}</span>
@@ -400,6 +497,16 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({ matter, onEdit }) => {
         {matter.Referrer && matter.Referrer.trim() && (
           <span className={tagStyle}>Referrer: {matter.Referrer.trim()}</span>
         )}
+      </Stack>
+
+      {/* Side-by-side MessageBars: Overview/Client Balances on the left and Outstanding data on the right */}
+      <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { marginTop: '16px' } }}>
+        <Stack.Item styles={{ root: { flex: 1 } }}>
+          {renderOverviewMessageBar()}
+        </Stack.Item>
+        <Stack.Item styles={{ root: { flex: 1 } }}>
+          {renderOutstandingSection()}
+        </Stack.Item>
       </Stack>
     </div>
   );

@@ -1,5 +1,4 @@
 // src/app/App.tsx
-
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
@@ -44,9 +43,17 @@ const App: React.FC<AppProps> = ({
   // NEW: Store the "all matters" that Home fetches
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
 
-  // Callback that Home can call to pass us the new "all matters"
+  // NEW: State to hold outstanding client balances
+  const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
+
+  // Callback that Home can call to pass us the new "all matters" data
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
+  };
+
+  // NEW: Callback to accept outstanding balances from Home
+  const handleOutstandingBalancesFetched = (data: any) => {
+    setOutstandingBalances(data);
   };
 
   useEffect(() => {
@@ -85,6 +92,8 @@ const App: React.FC<AppProps> = ({
             enquiries={enquiries}
             // Pass the callback so Home can forward the "all matters" data here
             onAllMattersFetched={handleAllMattersFetched}
+            // NEW: Pass the outstanding balances callback
+            onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
           />
         );
       case 'forms':
@@ -113,6 +122,8 @@ const App: React.FC<AppProps> = ({
             error={error}
             userData={userData}
             teamData={teamData}
+            // NEW: Pass outstandingBalances so that the Matters component can also access it
+            outstandingBalances={outstandingBalances}
           />
         );
       case 'roadmap':
@@ -126,6 +137,7 @@ const App: React.FC<AppProps> = ({
             userData={userData}
             enquiries={enquiries}
             onAllMattersFetched={handleAllMattersFetched}
+            onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
           />
         );
     }

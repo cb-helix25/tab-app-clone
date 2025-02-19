@@ -1,3 +1,5 @@
+// src/tabs/matters/Matters.tsx
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Stack,
@@ -35,11 +37,39 @@ import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import ScoreCard from '../enquiries/ScoreCard';
 
-interface MonthlyData {
-  month: string;
-  [key: string]: string | number;
+// ----------------------------------------------
+// callGetMatterOverview helper function
+// ----------------------------------------------
+async function callGetMatterOverview(matterId: number) {
+  const code = process.env.REACT_APP_GET_MATTER_OVERVIEW_CODE;
+  const path = process.env.REACT_APP_GET_MATTER_OVERVIEW_PATH;
+  const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+  if (!code || !path || !baseUrl) {
+    console.error('Missing required environment variables for getMatterOverview');
+    return null;
+  }
+  const url = `${baseUrl}/${path}?code=${code}`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matterId: matterId }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error calling getMatterOverview:', errorText);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error calling getMatterOverview:', err);
+    return null;
+  }
 }
 
+// ----------------------------------------------
+// Helper function(s)
+// ----------------------------------------------
 function groupPracticeArea(practiceArea: string): string {
   const p = practiceArea.trim().toLowerCase();
   const commercialGroup = [
@@ -149,11 +179,7 @@ const nameCorrections: { [fullName: string]: string } = {
   'Luke Zemanek': 'Lukasz Zemanek',
 };
 
-const leftTeam: string[] = [
-  'Candice Quarcoo',
-  'Luara Locateli',
-  'Tristan Makin',
-];
+const leftTeam: string[] = ['Candice Quarcoo', 'Luara Locateli', 'Tristan Makin'];
 
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
@@ -198,7 +224,10 @@ const renderCustomLegend = (props: any) => {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', fontFamily: 'Raleway, sans-serif' }}>
       {payload.map((entry: any, index: number) => (
-        <div key={`legend-item-${index}`} style={{ display: 'flex', alignItems: 'center', marginRight: 20 }}>
+        <div
+          key={`legend-item-${index}`}
+          style={{ display: 'flex', alignItems: 'center', marginRight: 20 }}
+        >
           <div
             style={{
               width: 12,
@@ -225,7 +254,15 @@ interface CustomLabelProps {
   dataKey: string;
   isDarkMode: boolean;
 }
-const CustomLabel: React.FC<CustomLabelProps> = ({ x, y, width, height, value, dataKey, isDarkMode }) => {
+const CustomLabel: React.FC<CustomLabelProps> = ({
+  x,
+  y,
+  width,
+  height,
+  value,
+  dataKey,
+  isDarkMode,
+}) => {
   const numX = typeof x === 'number' ? x : Number(x);
   const numY = typeof y === 'number' ? y : Number(y);
   const numWidth = typeof width === 'number' ? width : Number(width);
@@ -246,15 +283,27 @@ const CustomLabel: React.FC<CustomLabelProps> = ({ x, y, width, height, value, d
   );
 };
 
-interface MattersProps {
-  matters: Matter[];
-  isLoading: boolean;
-  error: string | null;
-  userData: UserData[] | null;
-  fetchMatters: (fullName: string) => Promise<Matter[]>;
-  teamData?: TeamData[] | null;
+// ---------------------------------------------------
+// (A) Types
+// ---------------------------------------------------
+interface MonthlyData {
+  month: string;
+  [key: string]: string | number;
 }
 
+interface MattersProps {
+  matters: Matter[];
+  fetchMatters: (fullName: string) => Promise<Matter[]>;
+  isLoading: boolean;
+  error: string | null;
+  userData: any;
+  teamData?: TeamData[] | null;
+  outstandingBalances?: any; // NEW: Optional outstanding data
+}
+
+// ---------------------------------------------------
+// Matters component
+// ---------------------------------------------------
 const Matters: React.FC<MattersProps> = ({
   matters,
   isLoading,
@@ -262,6 +311,7 @@ const Matters: React.FC<MattersProps> = ({
   userData,
   fetchMatters,
   teamData,
+  outstandingBalances, // NEW
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -272,10 +322,16 @@ const Matters: React.FC<MattersProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
   const [activeFeeEarner, setActiveFeeEarner] = useState<string | null>(null);
-  const [feeEarnerType, setFeeEarnerType] = useState<"Originating" | "Responsible" | null>(null);
+  const [feeEarnerType, setFeeEarnerType] = useState<'Originating' | 'Responsible' | null>(null);
 
-  // ---------- Detail View State ----------
+  // (A) The base matter from SQL
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
+
+  // (B) The structured extra data from getMatterOverview
+  const [matterOverview, setMatterOverview] = useState<any>(null);
+
+  // (C) The raw JSON string (for debugging display in a MessageBar)
+  const [overviewResponse, setOverviewResponse] = useState<string>('');
 
   // ---------- Infinite Scroll ----------
   const [itemsToShow, setItemsToShow] = useState<number>(20);
@@ -322,12 +378,10 @@ const Matters: React.FC<MattersProps> = ({
   // ---------- Filtering (applied on top of the date range) ----------
   const filteredMatters = useMemo(() => {
     let final = mattersInDateRange;
-    
     if (activeGroupedArea) {
       final = final.filter(
         (m) =>
-          groupPracticeArea(m.PracticeArea).toLowerCase() ===
-          activeGroupedArea.toLowerCase()
+          groupPracticeArea(m.PracticeArea).toLowerCase() === activeGroupedArea.toLowerCase()
       );
     }
     if (activePracticeAreas.length > 0) {
@@ -338,13 +392,11 @@ const Matters: React.FC<MattersProps> = ({
       final = final.filter((m) => m.OriginatingSolicitor === fullName);
     }
     if (activeFeeEarner) {
-      if (feeEarnerType === "Originating") {
+      if (feeEarnerType === 'Originating') {
         final = final.filter(
-          (m) =>
-            m.OriginatingSolicitor.toLowerCase() ===
-            activeFeeEarner.toLowerCase()
+          (m) => m.OriginatingSolicitor.toLowerCase() === activeFeeEarner.toLowerCase()
         );
-      } else if (feeEarnerType === "Responsible") {
+      } else if (feeEarnerType === 'Responsible') {
         final = final.filter(
           (m) =>
             m.ResponsibleSolicitor &&
@@ -371,7 +423,7 @@ const Matters: React.FC<MattersProps> = ({
     feeEarnerType,
     searchTerm,
     userData,
-  ]);  
+  ]);
 
   // Display matters as most recent first
   const displayedMatters = useMemo(
@@ -396,7 +448,8 @@ const Matters: React.FC<MattersProps> = ({
     return () => observer.disconnect();
   }, [handleLoadMore]);
 
-  const showOverview = !activeGroupedArea && activePracticeAreas.length === 0 && !activeState && !searchTerm;
+  const showOverview =
+    !activeGroupedArea && activePracticeAreas.length === 0 && !activeState && !searchTerm;
 
   const groupedCounts = useMemo(() => {
     const counts: { [group: string]: number } = {};
@@ -449,7 +502,10 @@ const Matters: React.FC<MattersProps> = ({
         displayName = fullName;
       }
       const isLeft = leftTeam.some((n) => n.toLowerCase() === fullName.toLowerCase());
-      const initials = displayName.split(' ').map((part) => part.charAt(0)).join('');
+      const initials = displayName
+        .split(' ')
+        .map((part) => part.charAt(0))
+        .join('');
       return { initials, count, isLeft, fullName };
     });
     const combined = transformed.reduce((acc, curr) => {
@@ -460,7 +516,9 @@ const Matters: React.FC<MattersProps> = ({
         acc[curr.initials] = { ...curr };
       }
       return acc;
-    }, {} as { [initials: string]: { initials: string; count: number; isLeft: boolean; fullName: string } });
+    }, {} as {
+      [initials: string]: { initials: string; count: number; isLeft: boolean; fullName: string };
+    });
     const combinedArray = Object.values(combined);
     const nonLeft = combinedArray.filter((item) => !item.isLeft);
     const left = combinedArray.filter((item) => item.isLeft);
@@ -470,7 +528,43 @@ const Matters: React.FC<MattersProps> = ({
     return [...nonLeft, ...leftOrdered].filter((item) => !excludeInitials.includes(item.initials));
   }, [filteredMatters, teamData]);
 
-  // ***** Detail View: Render Pivot if a Matter is Selected *****
+  // --------------------------------------
+  // NEW: find outstanding data for the selected matter
+  // --------------------------------------
+  const matterOutstandingData = useMemo(() => {
+    if (!outstandingBalances || !Array.isArray(outstandingBalances.data) || !selectedMatter) {
+      return null;
+    }
+    const matterIdNum = Number(selectedMatter.UniqueID);
+    const found = outstandingBalances.data.find(
+      (entry: any) =>
+        Array.isArray(entry.associated_matter_ids) &&
+        entry.associated_matter_ids.includes(matterIdNum)
+    );
+    return found || null;
+  }, [outstandingBalances, selectedMatter]);
+
+  // ------------------------------------------------
+  // Fetch getMatterOverview whenever selectedMatter changes
+  // ------------------------------------------------
+  useEffect(() => {
+    if (!selectedMatter) {
+      setMatterOverview(null);
+      setOverviewResponse('');
+      return;
+    }
+    (async () => {
+      const response = await callGetMatterOverview(Number(selectedMatter.UniqueID));
+      if (response?.data) {
+        setMatterOverview(response.data);
+        setOverviewResponse(JSON.stringify(response.data, null, 2));
+      }
+    })();
+  }, [selectedMatter]);
+
+  // ------------------------------------------------
+  // If a matter is selected, render the detail pivot
+  // ------------------------------------------------
   if (selectedMatter) {
     return (
       <div className={containerStyle(isDarkMode)}>
@@ -481,19 +575,36 @@ const Matters: React.FC<MattersProps> = ({
           onClick={() => setSelectedMatter(null)}
           styles={{ root: { marginBottom: '20px' } }}
         />
-        <Pivot
-          aria-label="Matter Detail Tabs"
-          styles={{
-            root: { marginTop: '20px' },
-            link: { fontSize: '16px', fontWeight: 600 },
-          }}
-        >
+        <Pivot aria-label="Matter Detail Tabs" styles={{ root: { marginTop: '20px', marginBottom: '20px' }, link: { fontSize: '16px', fontWeight: 600 } }}>
           <PivotItem headerText="Overview" itemKey="Overview">
-            <MatterOverview matter={selectedMatter!} onEdit={() => {}} />
+            <MatterOverview
+              matter={selectedMatter}
+              overviewData={matterOverview}
+              outstandingData={matterOutstandingData} // NEW: pass the found data
+              onEdit={() => {}}
+            />
+            {overviewResponse && (
+              <MessageBar
+                messageBarType={MessageBarType.success}
+                styles={{
+                  root: {
+                    marginTop: '20px',
+                    whiteSpace: 'pre-wrap',
+                    fontFamily: 'monospace',
+                  },
+                }}
+              >
+                {overviewResponse}
+              </MessageBar>
+            )}
           </PivotItem>
+
           <PivotItem headerText="Details" itemKey="Details">
             <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '20px' } }}>
-              <Text variant="xLarge" styles={{ root: { fontWeight: 'bold', color: isDarkMode ? colours.dark.text : colours.light.text } }}>
+              <Text
+                variant="xLarge"
+                styles={{ root: { fontWeight: 'bold', color: isDarkMode ? colours.dark.text : colours.light.text } }}
+              >
                 Matter Details
               </Text>
               <Stack tokens={{ childrenGap: 10 }}>
@@ -535,7 +646,9 @@ const Matters: React.FC<MattersProps> = ({
     );
   }
 
-  // ***** Grid View *****
+  // ------------------------------------------------
+  // Otherwise, render the grid (overview or matter list)
+  // ------------------------------------------------
   return (
     <div className={containerStyle(isDarkMode)}>
       <MattersCombinedMenu
@@ -569,8 +682,12 @@ const Matters: React.FC<MattersProps> = ({
                 <div className={dateSliderContainerStyle}>
                   {validDates.length > 0 && (
                     <>
-                      <Text variant="mediumPlus" styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}>
-                        {format(validDates[currentSliderStart], 'dd MMM yyyy')} - {format(validDates[currentSliderEnd], 'dd MMM yyyy')}
+                      <Text
+                        variant="mediumPlus"
+                        styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
+                      >
+                        {format(validDates[currentSliderStart], 'dd MMM yyyy')} -{' '}
+                        {format(validDates[currentSliderEnd], 'dd MMM yyyy')}
                       </Text>
                       <Slider
                         range
@@ -601,7 +718,9 @@ const Matters: React.FC<MattersProps> = ({
                           },
                         ]}
                         railStyle={{
-                          backgroundColor: isDarkMode ? colours.dark.border : colours.inactiveTrackLight,
+                          backgroundColor: isDarkMode
+                            ? colours.dark.border
+                            : colours.inactiveTrackLight,
                           height: 8,
                         }}
                         style={{ width: 500, margin: '0 auto' }}
@@ -611,30 +730,27 @@ const Matters: React.FC<MattersProps> = ({
                 </div>
 
                 <Stack tokens={{ childrenGap: 20 }}>
-                  <Stack
-                    horizontal
-                    wrap
-                    tokens={{ childrenGap: 20 }}
-                    style={{ marginBottom: '20px' }}
-                  >
-                    {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map((group) => {
-                      const count = groupedCounts[group] || 0;
-                      const monthlyArr = monthlyGroupedCounts.map((mm) => ({
-                        month: mm.month,
-                        count: (mm[group] as number) || 0,
-                      }));
-                      return (
-                        <AreaCountCard
-                          key={group}
-                          area={group}
-                          count={count}
-                          monthlyCounts={monthlyArr}
-                          icon={getGroupIcon(group)}
-                          color={getGroupColor(group)}
-                          animationDelay={0.2}
-                        />
-                      );
-                    })}
+                  <Stack horizontal wrap tokens={{ childrenGap: 20 }} style={{ marginBottom: '20px' }}>
+                    {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
+                      (group) => {
+                        const count = groupedCounts[group] || 0;
+                        const monthlyArr = monthlyGroupedCounts.map((mm) => ({
+                          month: mm.month,
+                          count: (mm[group] as number) || 0,
+                        }));
+                        return (
+                          <AreaCountCard
+                            key={group}
+                            area={group}
+                            count={count}
+                            monthlyCounts={monthlyArr}
+                            icon={getGroupIcon(group)}
+                            color={getGroupColor(group)}
+                            animationDelay={0.2}
+                          />
+                        );
+                      }
+                    )}
                   </Stack>
 
                   <Stack
@@ -647,7 +763,10 @@ const Matters: React.FC<MattersProps> = ({
                   >
                     {originatingArray.map((item, idx, arr) => (
                       <React.Fragment key={item.fullName}>
-                        <Stack horizontalAlign="center" styles={{ root: { minWidth: '80px', textAlign: 'center' } }}>
+                        <Stack
+                          horizontalAlign="center"
+                          styles={{ root: { minWidth: '80px', textAlign: 'center' } }}
+                        >
                           <Text
                             variant="xLarge"
                             styles={{
@@ -666,7 +785,11 @@ const Matters: React.FC<MattersProps> = ({
                               root: {
                                 fontWeight: 400,
                                 marginTop: '4px',
-                                color: item.isLeft ? '#888888' : (isDarkMode ? colours.dark.text : colours.light.text),
+                                color: item.isLeft
+                                  ? '#888888'
+                                  : isDarkMode
+                                  ? colours.dark.text
+                                  : colours.light.text,
                                 fontFamily: 'Raleway, sans-serif',
                                 fontStyle: item.isLeft ? 'italic' : 'normal',
                               },
@@ -696,28 +819,35 @@ const Matters: React.FC<MattersProps> = ({
               {monthlyGroupedCounts.length > 0 && (
                 <div className={chartContainerStyle}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyGroupedCounts} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#555' : '#ccc'} />
+                    <BarChart
+                      data={monthlyGroupedCounts}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDarkMode ? '#555' : '#ccc'}
+                      />
                       <XAxis dataKey="month" stroke={isDarkMode ? '#fff' : '#333'} />
                       <YAxis stroke={isDarkMode ? '#fff' : '#333'} />
-                      <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#333' : '#fff' }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDarkMode ? '#333' : '#fff',
+                        }}
+                      />
                       <Legend content={renderCustomLegend} />
-                      {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map((group) => (
-                        <Bar
-                          key={group}
-                          dataKey={group}
-                          fill={colours.grey}
-                          animationDuration={1500}
-                        >
-                          <LabelList
-                            dataKey={group}
-                            position="top"
-                            content={(props) => (
-                              <CustomLabel {...props} isDarkMode={isDarkMode} dataKey={group} />
-                            )}
-                          />
-                        </Bar>
-                      ))}
+                      {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
+                        (group) => (
+                          <Bar key={group} dataKey={group} fill={colours.grey} animationDuration={1500}>
+                            <LabelList
+                              dataKey={group}
+                              position="top"
+                              content={(props) => (
+                                <CustomLabel {...props} isDarkMode={isDarkMode} dataKey={group} />
+                              )}
+                            />
+                          </Bar>
+                        )
+                      )}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

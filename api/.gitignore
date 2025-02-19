@@ -10,6 +10,7 @@ bin
 obj
 appsettings.json
 local.settings.json
+.env
 
 # misc
 .DS_Store
