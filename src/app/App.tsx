@@ -38,15 +38,17 @@ const App: React.FC<AppProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
+  
+  // POID state (this will be updated via Home)
   const [poidData, setPoidData] = useState<any[] | null>(null);
-
+  
   // NEW: Store the "all matters" that Home fetches
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
 
   // NEW: State to hold outstanding client balances
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
 
-  // Callback that Home can call to pass us the new "all matters" data
+  // Callback that Home can call to pass us the new "all matters" data here
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
   };
@@ -54,6 +56,11 @@ const App: React.FC<AppProps> = ({
   // NEW: Callback to accept outstanding balances from Home
   const handleOutstandingBalancesFetched = (data: any) => {
     setOutstandingBalances(data);
+  };
+
+  // NEW: Callback to accept POID6Years data from Home
+  const handlePOID6YearsFetched = (data: any[]) => {
+    setPoidData(data);
   };
 
   useEffect(() => {
@@ -90,14 +97,12 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
-            // Pass the callback so Home can forward the "all matters" data here
             onAllMattersFetched={handleAllMattersFetched}
-            // NEW: Pass the outstanding balances callback
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
+            onPOID6YearsFetched={handlePOID6YearsFetched}
           />
         );
       case 'forms':
-        // Here we pass matters from allMattersFromHome (or an empty array if not yet available)
         return <Forms userData={userData} matters={allMattersFromHome || []} />;
       case 'resources':
         return <Resources />;
@@ -107,13 +112,12 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
-            poidData={poidData}
-            setPoidData={setPoidData}
+            poidData={poidData}      // POID data now available globally
+            setPoidData={setPoidData} // in case Enquiries needs to update it
             teamData={teamData}
           />
         );
       case 'matters':
-        // Use the allMattersFromHome here instead of user-specific matters
         return (
           <Matters
             matters={allMattersFromHome || []}
@@ -122,7 +126,6 @@ const App: React.FC<AppProps> = ({
             error={error}
             userData={userData}
             teamData={teamData}
-            // NEW: Pass outstandingBalances so that the Matters component can also access it
             outstandingBalances={outstandingBalances}
           />
         );
@@ -138,6 +141,7 @@ const App: React.FC<AppProps> = ({
             enquiries={enquiries}
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
+            onPOID6YearsFetched={handlePOID6YearsFetched}
           />
         );
     }

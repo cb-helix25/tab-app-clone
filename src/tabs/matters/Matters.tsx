@@ -34,6 +34,7 @@ import Slider from 'rc-slider';
 import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import ScoreCard from '../enquiries/ScoreCard';
+import NewMatters from './NewMatters';
 
 // ----------------------------------------------
 // callGetMatterOverview helper function
@@ -382,6 +383,14 @@ const Matters: React.FC<MattersProps> = ({
   const [activeFeeEarner, setActiveFeeEarner] = useState<string | null>(null);
   const [feeEarnerType, setFeeEarnerType] = useState<'Originating' | 'Responsible' | null>(null);
 
+  // Inside your Matters component
+  const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+
+  const handleNewMatter = () => {
+    // Instead of logging to console, switch to the NewMatters component
+    setShowNewMatterPage(true);
+  };
+
   // (A) The base matter from SQL
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
 
@@ -714,233 +723,241 @@ const Matters: React.FC<MattersProps> = ({
   // ------------------------------------------------
   return (
     <div className={containerStyle(isDarkMode)}>
-      <MattersCombinedMenu
-        activeGroupedArea={activeGroupedArea}
-        setActiveGroupedArea={setActiveGroupedArea}
-        practiceAreas={Array.from(new Set(matters.map((m) => m.PracticeArea as string))).sort()}
-        activePracticeAreas={activePracticeAreas}
-        setActivePracticeAreas={setActivePracticeAreas}
-        activeState={activeState}
-        setActiveState={setActiveState}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        isSearchActive={isSearchActive}
-        setSearchActive={setSearchActive}
-        activeFeeEarner={activeFeeEarner}
-        setActiveFeeEarner={setActiveFeeEarner}
-        feeEarnerType={feeEarnerType}
-        setFeeEarnerType={setFeeEarnerType}
-        teamData={teamData}
-      />
-
-      {isLoading ? (
-        <Spinner label="Loading matters..." size={SpinnerSize.medium} />
-      ) : error ? (
-        <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
+      {showNewMatterPage ? (
+        <NewMatters />
       ) : (
         <>
-          {showOverview ? (
+          <MattersCombinedMenu
+            activeGroupedArea={activeGroupedArea}
+            setActiveGroupedArea={setActiveGroupedArea}
+            practiceAreas={Array.from(new Set(matters.map((m) => m.PracticeArea as string))).sort()}
+            activePracticeAreas={activePracticeAreas}
+            setActivePracticeAreas={setActivePracticeAreas}
+            activeState={activeState}
+            setActiveState={setActiveState}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            isSearchActive={isSearchActive}
+            setSearchActive={setSearchActive}
+            activeFeeEarner={activeFeeEarner}
+            setActiveFeeEarner={setActiveFeeEarner}
+            feeEarnerType={feeEarnerType}
+            setFeeEarnerType={setFeeEarnerType}
+            teamData={teamData}
+            onNewMatter={handleNewMatter} // Pass the new matter handler
+          />
+  
+          {isLoading ? (
+            <Spinner label="Loading matters..." size={SpinnerSize.medium} />
+          ) : error ? (
+            <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
+          ) : (
             <>
-              <Stack tokens={{ childrenGap: 20 }} className={overviewCardStyle}>
-                <div className={dateSliderContainerStyle}>
-                  {validDates.length > 0 && (
-                    <>
-                      <Text
-                        variant="mediumPlus"
-                        styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
-                      >
-                        {format(validDates[currentSliderStart], 'dd MMM yyyy')} -{' '}
-                        {format(validDates[currentSliderEnd], 'dd MMM yyyy')}
-                      </Text>
-                      <Slider
-                        range
-                        min={0}
-                        max={validDates.length - 1}
-                        value={[currentSliderStart, currentSliderEnd]}
-                        onChange={(value) => {
-                          if (Array.isArray(value)) {
-                            setCurrentSliderStart(value[0]);
-                            setCurrentSliderEnd(value[1]);
+              {showOverview ? (
+                <>
+                  <Stack tokens={{ childrenGap: 20 }} className={overviewCardStyle}>
+                    <div className={dateSliderContainerStyle}>
+                      {validDates.length > 0 && (
+                        <>
+                          <Text
+                            variant="mediumPlus"
+                            styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
+                          >
+                            {format(validDates[currentSliderStart], 'dd MMM yyyy')} -{' '}
+                            {format(validDates[currentSliderEnd], 'dd MMM yyyy')}
+                          </Text>
+                          <Slider
+                            range
+                            min={0}
+                            max={validDates.length - 1}
+                            value={[currentSliderStart, currentSliderEnd]}
+                            onChange={(value) => {
+                              if (Array.isArray(value)) {
+                                setCurrentSliderStart(value[0]);
+                                setCurrentSliderEnd(value[1]);
+                              }
+                            }}
+                            trackStyle={[{ backgroundColor: colours.highlight, height: 8 }]}
+                            handleStyle={[
+                              {
+                                backgroundColor: colours.highlight,
+                                borderColor: colours.highlight,
+                                height: 20,
+                                width: 20,
+                                transform: 'translateX(-50%)',
+                              },
+                              {
+                                backgroundColor: colours.highlight,
+                                borderColor: colours.highlight,
+                                height: 20,
+                                width: 20,
+                                transform: 'translateX(-50%)',
+                              },
+                            ]}
+                            railStyle={{
+                              backgroundColor: isDarkMode
+                                ? colours.dark.border
+                                : colours.inactiveTrackLight,
+                              height: 8,
+                            }}
+                            style={{ width: 500, margin: '0 auto' }}
+                          />
+                        </>
+                      )}
+                    </div>
+  
+                    <Stack tokens={{ childrenGap: 20 }}>
+                      <Stack horizontal wrap tokens={{ childrenGap: 20 }} style={{ marginBottom: '20px' }}>
+                        {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
+                          (group) => {
+                            const count = groupedCounts[group] || 0;
+                            const monthlyArr = monthlyGroupedCounts.map((mm) => ({
+                              month: mm.month,
+                              count: (mm[group] as number) || 0,
+                            }));
+                            return (
+                              <AreaCountCard
+                                key={group}
+                                area={group}
+                                count={count}
+                                monthlyCounts={monthlyArr}
+                                icon={getGroupIcon(group)}
+                                color={getGroupColor(group)}
+                                animationDelay={0.2}
+                              />
+                            );
                           }
-                        }}
-                        trackStyle={[{ backgroundColor: colours.highlight, height: 8 }]}
-                        handleStyle={[
-                          {
-                            backgroundColor: colours.highlight,
-                            borderColor: colours.highlight,
-                            height: 20,
-                            width: 20,
-                            transform: 'translateX(-50%)',
-                          },
-                          {
-                            backgroundColor: colours.highlight,
-                            borderColor: colours.highlight,
-                            height: 20,
-                            width: 20,
-                            transform: 'translateX(-50%)',
-                          },
-                        ]}
-                        railStyle={{
-                          backgroundColor: isDarkMode
-                            ? colours.dark.border
-                            : colours.inactiveTrackLight,
-                          height: 8,
-                        }}
-                        style={{ width: 500, margin: '0 auto' }}
-                      />
-                    </>
+                        )}
+                      </Stack>
+  
+                      <Stack
+                        horizontal
+                        horizontalAlign="center"
+                        wrap
+                        verticalAlign="center"
+                        styles={{ root: { width: '100%' } }}
+                        tokens={{ childrenGap: 10 }}
+                      >
+                        {originatingArray.map((item, idx, arr) => (
+                          <React.Fragment key={item.fullName}>
+                            <Stack horizontalAlign="center" styles={{ root: { minWidth: '80px', textAlign: 'center' } }}>
+                              <Text
+                                variant="xLarge"
+                                styles={{
+                                  root: {
+                                    fontWeight: 600,
+                                    color: item.isLeft ? '#888888' : colours.highlight,
+                                    fontFamily: 'Raleway, sans-serif',
+                                  },
+                                }}
+                              >
+                                {item.count}
+                              </Text>
+                              <Text
+                                variant="small"
+                                styles={{
+                                  root: {
+                                    fontWeight: 400,
+                                    marginTop: '4px',
+                                    color: item.isLeft
+                                      ? '#888888'
+                                      : isDarkMode
+                                      ? colours.dark.text
+                                      : colours.light.text,
+                                    fontFamily: 'Raleway, sans-serif',
+                                    fontStyle: item.isLeft ? 'italic' : 'normal',
+                                  },
+                                }}
+                              >
+                                {item.initials}
+                              </Text>
+                            </Stack>
+                            {idx < arr.length - 1 && (
+                              <Text
+                                styles={{
+                                  root: {
+                                    margin: '0 10px',
+                                    color: isDarkMode ? '#fff' : '#333',
+                                  },
+                                }}
+                              >
+                                |
+                              </Text>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </Stack>
+                    </Stack>
+                  </Stack>
+  
+                  {monthlyGroupedCounts.length > 0 && (
+                    <div className={chartContainerStyle}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={monthlyGroupedCounts}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#555' : '#ccc'} />
+                          <XAxis dataKey="month" stroke={isDarkMode ? '#fff' : '#333'} />
+                          <YAxis stroke={isDarkMode ? '#fff' : '#333'} />
+                          <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#333' : '#fff' }} />
+                          <Legend content={renderCustomLegend} />
+                          {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
+                            (group) => (
+                              <Bar key={group} dataKey={group} fill={colours.grey} animationDuration={1500}>
+                                <LabelList
+                                  dataKey={group}
+                                  position="top"
+                                  content={(props) => (
+                                    <CustomLabel {...props} isDarkMode={isDarkMode} dataKey={group} />
+                                  )}
+                                />
+                              </Bar>
+                            )
+                          )}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   )}
-                </div>
-
-                <Stack tokens={{ childrenGap: 20 }}>
-                  <Stack horizontal wrap tokens={{ childrenGap: 20 }} style={{ marginBottom: '20px' }}>
-                    {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
-                      (group) => {
-                        const count = groupedCounts[group] || 0;
-                        const monthlyArr = monthlyGroupedCounts.map((mm) => ({
-                          month: mm.month,
-                          count: (mm[group] as number) || 0,
-                        }));
+                </>
+              ) : (
+                <main className={mainContentStyle(isDarkMode)}>
+                  {filteredMatters.length === 0 ? (
+                    <Text>No matters found matching your criteria.</Text>
+                  ) : (
+                    <div
+                      className={mergeStyles({
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: '20px',
+                        marginTop: '20px',
+                      })}
+                    >
+                      {displayedMatters.map((matter, idx) => {
+                        const row = Math.floor(idx / 4);
+                        const col = idx % 4;
+                        const animationDelay = row * 0.2 + col * 0.1;
                         return (
-                          <AreaCountCard
-                            key={group}
-                            area={group}
-                            count={count}
-                            monthlyCounts={monthlyArr}
-                            icon={getGroupIcon(group)}
-                            color={getGroupColor(group)}
-                            animationDelay={0.2}
+                          <MatterCard
+                            key={matter.UniqueID}
+                            matter={matter}
+                            onSelect={() => setSelectedMatter(matter)}
+                            animationDelay={animationDelay}
                           />
                         );
-                      }
-                    )}
-                  </Stack>
-
-                  <Stack
-                    horizontal
-                    horizontalAlign="center"
-                    wrap
-                    verticalAlign="center"
-                    styles={{ root: { width: '100%' } }}
-                    tokens={{ childrenGap: 10 }}
-                  >
-                    {originatingArray.map((item, idx, arr) => (
-                      <React.Fragment key={item.fullName}>
-                        <Stack horizontalAlign="center" styles={{ root: { minWidth: '80px', textAlign: 'center' } }}>
-                          <Text
-                            variant="xLarge"
-                            styles={{
-                              root: {
-                                fontWeight: 600,
-                                color: item.isLeft ? '#888888' : colours.highlight,
-                                fontFamily: 'Raleway, sans-serif',
-                              },
-                            }}
-                          >
-                            {item.count}
-                          </Text>
-                          <Text
-                            variant="small"
-                            styles={{
-                              root: {
-                                fontWeight: 400,
-                                marginTop: '4px',
-                                color: item.isLeft
-                                  ? '#888888'
-                                  : isDarkMode
-                                  ? colours.dark.text
-                                  : colours.light.text,
-                                fontFamily: 'Raleway, sans-serif',
-                                fontStyle: item.isLeft ? 'italic' : 'normal',
-                              },
-                            }}
-                          >
-                            {item.initials}
-                          </Text>
-                        </Stack>
-                        {idx < arr.length - 1 && (
-                          <Text
-                            styles={{
-                              root: {
-                                margin: '0 10px',
-                                color: isDarkMode ? '#fff' : '#333',
-                              },
-                            }}
-                          >
-                            |
-                          </Text>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </Stack>
-                </Stack>
-              </Stack>
-
-              {monthlyGroupedCounts.length > 0 && (
-                <div className={chartContainerStyle}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={monthlyGroupedCounts}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#555' : '#ccc'} />
-                      <XAxis dataKey="month" stroke={isDarkMode ? '#fff' : '#333'} />
-                      <YAxis stroke={isDarkMode ? '#fff' : '#333'} />
-                      <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#333' : '#fff' }} />
-                      <Legend content={renderCustomLegend} />
-                      {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
-                        (group) => (
-                          <Bar key={group} dataKey={group} fill={colours.grey} animationDuration={1500}>
-                            <LabelList
-                              dataKey={group}
-                              position="top"
-                              content={(props) => (
-                                <CustomLabel {...props} isDarkMode={isDarkMode} dataKey={group} />
-                              )}
-                            />
-                          </Bar>
-                        )
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                      })}
+                      <div ref={loader} />
+                    </div>
+                  )}
+                </main>
               )}
             </>
-          ) : (
-            <main className={mainContentStyle(isDarkMode)}>
-              {filteredMatters.length === 0 ? (
-                <Text>No matters found matching your criteria.</Text>
-              ) : (
-                <div
-                  className={mergeStyles({
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '20px',
-                    marginTop: '20px',
-                  })}
-                >
-                  {displayedMatters.map((matter, idx) => {
-                    const row = Math.floor(idx / 4);
-                    const col = idx % 4;
-                    const animationDelay = row * 0.2 + col * 0.1;
-                    return (
-                      <MatterCard
-                        key={matter.UniqueID}
-                        matter={matter}
-                        onSelect={() => setSelectedMatter(matter)}
-                        animationDelay={animationDelay}
-                      />
-                    );
-                  })}
-                  <div ref={loader} />
-                </div>
-              )}
-            </main>
           )}
         </>
       )}
     </div>
   );
-};
-
-export default Matters;
+  
+  };
+  
+  export default Matters;

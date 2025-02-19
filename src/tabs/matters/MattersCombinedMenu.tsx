@@ -90,6 +90,8 @@ const getGroupColor = (group: string): string => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Extend the props to include an onNewMatter callback
 interface MattersCombinedMenuProps {
   activeGroupedArea: string | null;
   setActiveGroupedArea: React.Dispatch<React.SetStateAction<string | null>>;
@@ -107,6 +109,7 @@ interface MattersCombinedMenuProps {
   feeEarnerType: "Originating" | "Responsible" | null;
   setFeeEarnerType: React.Dispatch<React.SetStateAction<"Originating" | "Responsible" | null>>;
   teamData?: TeamData[] | null;
+  onNewMatter: () => void; // <-- NEW prop for handling "New Matter" actions
 }
 
 const containerStyle = (isDarkMode: boolean) =>
@@ -165,7 +168,6 @@ const groupTabStyle = (isSelected: boolean, isDarkMode: boolean, groupKey: strin
     }),
   });
 
-// The text style remains neutral.
 const groupTabTextStyle = (isSelected: boolean, isDarkMode: boolean): IStyle => ({
   fontWeight: isSelected ? '600' : '400',
   color: isDarkMode ? '#cccccc' : '#333333',
@@ -205,7 +207,6 @@ const searchBoxStyles = (isSearchActive: boolean) =>
     overflow: 'hidden',
   });
 
-// Practice area container as a normal block with horizontal scroll.
 const practiceAreaContainerStyle = (isDarkMode: boolean): string =>
   mergeStyles({
     marginTop: '12px',
@@ -215,7 +216,6 @@ const practiceAreaContainerStyle = (isDarkMode: boolean): string =>
     borderTop: `1px solid ${isDarkMode ? '#555' : '#ccc'}`,
   });
 
-// Practice area buttons: when selected, adopt the area-of-work colour.
 const practiceAreaButtonStyle = (isSelected: boolean, isDarkMode: boolean, groupColor: string): string =>
   mergeStyles({
     padding: '4px 8px',
@@ -243,8 +243,6 @@ const practiceAreaTextStyle = (isSelected: boolean, isDarkMode: boolean): IStyle
 
 // ---------------------------------------------------------------------------
 // Custom Fee Earner Toggle Bubble Component
-// This control shows both "Originating" and "Responsible" values within a single bubble.
-// Only the selected half is highlighted, and clicking the selected option again clears the selection.
 interface FeeEarnerToggleProps {
   feeEarnerType: "Originating" | "Responsible" | null;
   setFeeEarnerType: React.Dispatch<React.SetStateAction<"Originating" | "Responsible" | null>>;
@@ -292,7 +290,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
   activeGroupedArea,
   setActiveGroupedArea,
   practiceAreas,
-  activePracticeAreas, // multiple selection array
+  activePracticeAreas,
   setActivePracticeAreas,
   activeState,
   setActiveState,
@@ -305,6 +303,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
   feeEarnerType,
   setFeeEarnerType,
   teamData,
+  onNewMatter, // <-- Destructure the new prop
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -322,7 +321,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
     { key: 'Mine', text: 'Mine' },
   ];
 
-  // UPDATED: Use only Full Name for fee earner options.
   const feeEarnerOptions: IDropdownOption[] = [
     { key: '', text: 'All Fee Earners' },
     ...(teamData
@@ -333,14 +331,12 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
       : []),
   ];
 
-  // Determine the practice areas for the selected grouped area.
   const groupKey = activeGroupedArea
     ? activeGroupedArea.charAt(0).toUpperCase() + activeGroupedArea.slice(1)
     : '';
   const practiceAreasForGroup: string[] = practiceAreaMappings[groupKey] || [];
   const groupColor = groupKey ? getGroupColor(groupKey) : colours.highlight;
 
-  // New: function to clear all filters.
   const clearFilters = () => {
     setActiveGroupedArea(null);
     setActivePracticeAreas([]);
@@ -351,7 +347,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
     setFeeEarnerType(null);
   };
 
-  // New: determine if any filter is active.
   const anyFiltersActive =
     activeGroupedArea ||
     activePracticeAreas.length > 0 ||
@@ -364,7 +359,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
     <div className={containerStyle(isDarkMode)}>
       {/* Row 1: Main menu with two columns */}
       <div className={rowStyle} style={{ justifyContent: 'space-between' }}>
-        {/* Left column: Grouped Area Tabs */}
+        {/* Left column: Grouped Area Tabs plus New Matter button */}
         <div className={leftColumnStyle}>
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
             {groupedAreaTabs.map((g) => {
@@ -398,6 +393,54 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                 </div>
               );
             })}
+
+            {/* NEW: "New Matter" Button after the Miscellaneous tab */}
+            <div
+              key="new-matter"
+              className={mergeStyles({
+                display: 'flex',
+                alignItems: 'center',
+                padding: '8px 12px',
+                marginRight: '12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s, border 0.3s',
+                border: '2px solid transparent',
+                fontFamily: 'Raleway, sans-serif',
+                selectors: {
+                  ':hover': {
+                    backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
+                  },
+                },
+              })}
+              onClick={onNewMatter}
+              aria-label="New Matter"
+            >
+              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
+                <Icon
+                  iconName="Add"
+                  styles={{
+                    root: {
+                      fontSize: '20px',
+                      color: colours.highlight,
+                      marginRight: '8px',
+                    },
+                  }}
+                />
+                <Text
+                  variant="mediumPlus"
+                  styles={{
+                    root: {
+                      fontWeight: 600,
+                      color: isDarkMode ? '#cccccc' : '#333333',
+                      fontFamily: 'Raleway, sans-serif',
+                    },
+                  }}
+                >
+                  New Matter
+                </Text>
+              </Stack>
+            </div>
           </Stack>
         </div>
 
@@ -427,7 +470,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
               );
             })}
 
-            {/* Fee Earner Toggle Bubble and Dropdown (shown only when "Mine" is not selected) */}
             {activeState !== 'Mine' && (
               <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
                 <FeeEarnerToggle
@@ -449,7 +491,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
               </Stack>
             )}
 
-            {/* Search container with search icon, search box, and new Clear (X) icon */}
             <div className={searchContainerStyle}>
               <div className={searchIconStyle} onClick={() => setSearchActive(!isSearchActive)}>
                 <Icon
@@ -471,7 +512,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                   styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
                 />
               </div>
-              {/* New: Clear icon to the right of the search bar; only show if any filter is active */}
               {anyFiltersActive && (
                 <div
                   className={mergeStyles({ cursor: 'pointer', padding: '8px' })}
@@ -505,7 +545,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                   key={pa}
                   className={mergeStyles(practiceAreaButtonStyle(isSelected, isDarkMode, groupColor))}
                   onClick={() => {
-                    // Toggle the practice area: add if not present, remove if already selected.
                     if (activePracticeAreas.includes(pa)) {
                       setActivePracticeAreas((prev) => prev.filter((item) => item !== pa));
                     } else {

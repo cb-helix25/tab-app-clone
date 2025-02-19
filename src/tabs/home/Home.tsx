@@ -88,7 +88,8 @@ interface HomeProps {
   userData: any;
   enquiries: any[] | null;
   onAllMattersFetched?: (matters: Matter[]) => void;
-  onOutstandingBalancesFetched?: (data: any) => void; // NEW
+  onOutstandingBalancesFetched?: (data: any) => void;
+  onPOID6YearsFetched?: (data: any[]) => void; // This line allows App to pass a callback
 }
 
 interface QuickLink {
@@ -507,11 +508,11 @@ const PersonBubble: React.FC<PersonBubbleProps> = ({
 let cachedAttendance: any[] | null = null;
 let cachedAttendanceError: string | null = null;
 let cachedTeamData: any[] | null = null;
+let cachedPOID6Years: any[] | null = null;
 
 let cachedAnnualLeave: AnnualLeaveRecord[] | null = null;
 let cachedAnnualLeaveError: string | null = null;
 
-// ADDED: store future leave in module-level cache so we can restore on remount
 let cachedFutureLeaveRecords: AnnualLeaveRecord[] | null = null; // ADDED
 
 let cachedWipClio: any | null = null;
@@ -521,6 +522,8 @@ let cachedRecoveredError: string | null = null;
 
 let cachedAllMatters: Matter[] | null = null;
 let cachedAllMattersError: string | null = null;
+
+let cachedOutstandingBalances: any | null = null;
 
 //////////////////////
 // Helper: Ensure "LZ" is in Approvers
@@ -557,7 +560,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched }) => {
   const { isDarkMode } = useTheme();
 
   const renderContextsPanelContent = () => (
@@ -667,6 +670,10 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const [timeMetricsCollapsed, setTimeMetricsCollapsed] = useState(false);
   const [conversionMetricsCollapsed, setConversionMetricsCollapsed] = useState(false);
+
+  const [poid6Years, setPoid6Years] = useState<any[] | null>(null);
+  const [isLoadingPOID6Years, setIsLoadingPOID6Years] = useState<boolean>(false);
+  const [poid6YearsError, setPoid6YearsError] = useState<string | null>(null);
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
@@ -1053,6 +1060,44 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     }
   }, [onAllMattersFetched]);
 
+  // NEW: useEffect for fetching POID6Years data
+  useEffect(() => {
+    if (cachedPOID6Years) {
+      setPoid6Years(cachedPOID6Years);
+      setIsLoadingPOID6Years(false);
+      // Call the callback to pass data back to App
+      if (onPOID6YearsFetched) {
+        onPOID6YearsFetched(cachedPOID6Years);
+      }
+    } else {
+      const fetchPOID6Years = async () => {
+        try {
+          setIsLoadingPOID6Years(true);
+          const response = await fetch(
+            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_POID_6YEARS_PATH}?code=${process.env.REACT_APP_GET_POID_6YEARS_CODE}`,
+            { method: 'GET' }
+          );
+          if (!response.ok) {
+            throw new Error(`Failed to fetch POID6Years: ${response.status}`);
+          }
+          const data = await response.json();
+          cachedPOID6Years = data;
+          setPoid6Years(data);
+          // Here we call the callback to pass the data back to App
+          if (onPOID6YearsFetched) {
+            onPOID6YearsFetched(data);
+          }
+        } catch (error: any) {
+          console.error('Error fetching POID6Years:', error);
+          setPoid6YearsError(error.message || 'Unknown error occurred.');
+        } finally {
+          setIsLoadingPOID6Years(false);
+        }
+      };
+      fetchPOID6Years();
+    }
+  }, []);  
+
   useEffect(() => {
     async function fetchOutstandingBalances() {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
@@ -1081,12 +1126,23 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     }
   
     async function loadOutstandingBalances() {
+      // If we have cached data, use it instead of fetching again
+      if (cachedOutstandingBalances) {
+        console.log("Using cached outstanding balances:", cachedOutstandingBalances);
+        if (onOutstandingBalancesFetched) {
+          onOutstandingBalancesFetched(cachedOutstandingBalances);
+        }
+        return;
+      }
+  
       try {
         const data = await fetchOutstandingBalances();
-        console.log("Outstanding Balances:", data);
-        // Optionally, pass the fetched data to the parent App via the callback:
-        if (onOutstandingBalancesFetched) {
-          onOutstandingBalancesFetched(data);
+        if (data) {
+          cachedOutstandingBalances = data; // Cache it for future use
+          console.log("Fetched outstanding balances:", data);
+          if (onOutstandingBalancesFetched) {
+            onOutstandingBalancesFetched(data);
+          }
         }
       } catch (error) {
         console.error("Error in loadOutstandingBalances:", error);
