@@ -1,6 +1,6 @@
-// src/tabs/matters/MatterOverview.tsx
+// MatterOverview.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Stack,
   Text,
@@ -9,8 +9,7 @@ import {
   Separator,
   TooltipHost,
   Link,
-  MessageBar,
-  MessageBarType,
+  DefaultButton,
 } from '@fluentui/react';
 import { Matter } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -57,10 +56,12 @@ const mapRatingToStyle = (rating: string | undefined) => {
 };
 
 interface MatterOverviewProps {
-  matter: Matter;            // The base SQL matter
-  overviewData?: any;        // Extra data from the getMatterOverview call
-  outstandingData?: any;     // Optional outstanding data from Clio
-  onEdit?: () => void;       // Optional edit action for rating
+  matter: Matter;                     // The base SQL matter
+  overviewData?: any;                 // Extra data from the getMatterOverview call
+  outstandingData?: any;              // Optional outstanding data from Clio
+  complianceData?: any;               // Compliance data from getComplianceData
+  matterSpecificActivitiesData?: any; // Matter-specific activities data
+  onEdit?: () => void;                // Optional edit action for rating
 }
 
 // Define a fixed style for labels to ensure alignment
@@ -74,6 +75,8 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   matter,
   overviewData,
   outstandingData,
+  complianceData,
+  matterSpecificActivitiesData,
   onEdit,
 }) => {
   const { isDarkMode } = useTheme();
@@ -246,57 +249,33 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
     marginBottom: '8px',
   });
 
-  // ---------------------------------
-  // Render the Overview/Client Balances data MessageBar
-  // ---------------------------------
-  const renderOverviewMessageBar = () => {
-    if (!overviewData) {
-      return (
-        <MessageBar
-          messageBarType={MessageBarType.info}
-          styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
-        >
-          No overview data available.
-        </MessageBar>
-      );
-    }
-    return (
-      <MessageBar
-        messageBarType={MessageBarType.info}
-        styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
-      >
-        {JSON.stringify(overviewData, null, 2)}
-      </MessageBar>
-    );
-  };
+  /* ------------------------------------------
+   * State for Revealable Datasets
+   * ------------------------------------------
+   */
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [outstandingOpen, setOutstandingOpen] = useState(false);
+  const [complianceOpen, setComplianceOpen] = useState(false);
+  const [activitiesOpen, setActivitiesOpen] = useState(false);
 
-  // ---------------------------------
-  // Render the Outstanding data MessageBar
-  // ---------------------------------
-  const renderOutstandingSection = () => {
-    if (!outstandingData) {
-      return (
-        <MessageBar
-          messageBarType={MessageBarType.info}
-          styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
-        >
-          No outstanding data found in Clio for this matter.
-        </MessageBar>
-      );
-    }
-    return (
-      <MessageBar
-        messageBarType={MessageBarType.info}
-        styles={{ root: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }}
-      >
-        {JSON.stringify(outstandingData, null, 2)}
-      </MessageBar>
-    );
-  };
+  /* ------------------------------------------
+   * Bottom Revealable Panels Styling
+   * ------------------------------------------
+   */
+  const panelStyle = mergeStyles({
+    flex: 1,
+    border: `1px solid ${colours.grey}`,
+    padding: '10px',
+    borderRadius: '4px',
+    backgroundColor: isDarkMode ? '#333' : '#f9f9f9',
+    overflow: 'auto',
+    maxHeight: '300px',
+  });
 
-  // ---------------------------------
-  // R E T U R N  M A I N  J S X
-  // ---------------------------------
+  /* ------------------------------------------
+   * R E T U R N  M A I N  J S X
+   * ------------------------------------------
+   */
   return (
     <div className={containerStyle}>
       {/* TOP SECTION: Matter reference & rating */}
@@ -338,10 +317,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               <Text variant="mediumPlus" styles={{ root: labelStyle }}>
                 Practice Area:
               </Text>
-              <Text
-                variant="medium"
-                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-              >
+              <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                 {matter.PracticeArea?.trim() || '-'}
               </Text>
             </Stack>
@@ -349,10 +325,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               <Text variant="mediumPlus" styles={{ root: labelStyle }}>
                 Description:
               </Text>
-              <Text
-                variant="medium"
-                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-              >
+              <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                 {matter.Description?.trim() || '-'}
               </Text>
             </Stack>
@@ -361,10 +334,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                 <Text variant="mediumPlus" styles={{ root: labelStyle }}>
                   Opponent:
                 </Text>
-                <Text
-                  variant="medium"
-                  styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-                >
+                <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                   {matter.Opponent.trim()}
                 </Text>
               </Stack>
@@ -379,10 +349,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               <Text variant="mediumPlus" styles={{ root: labelStyle }}>
                 Open Date:
               </Text>
-              <Text
-                variant="medium"
-                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-              >
+              <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                 {formatDate(matter.OpenDate)}
               </Text>
             </Stack>
@@ -390,10 +357,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               <Text variant="mediumPlus" styles={{ root: labelStyle }}>
                 CCL Date:
               </Text>
-              <Text
-                variant="medium"
-                styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}
-              >
+              <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                 {formatDate(matter.CCL_date)}
               </Text>
             </Stack>
@@ -499,14 +463,45 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
         )}
       </Stack>
 
-      {/* Side-by-side MessageBars: Overview/Client Balances on the left and Outstanding data on the right */}
-      <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { marginTop: '16px' } }}>
-        <Stack.Item styles={{ root: { flex: 1 } }}>
-          {renderOverviewMessageBar()}
-        </Stack.Item>
-        <Stack.Item styles={{ root: { flex: 1 } }}>
-          {renderOutstandingSection()}
-        </Stack.Item>
+      {/* BOTTOM SECTION: Revealable Buttons */}
+      <Stack tokens={{ childrenGap: 10, padding: '20px 0' }}>
+        {/* Buttons Row */}
+        <Stack horizontal tokens={{ childrenGap: 10 }}>
+          <DefaultButton text="Overview" onClick={() => setOverviewOpen(!overviewOpen)} />
+          <DefaultButton text="Outstanding" onClick={() => setOutstandingOpen(!outstandingOpen)} />
+          <DefaultButton text="Compliance" onClick={() => setComplianceOpen(!complianceOpen)} />
+          <DefaultButton text="Activities" onClick={() => setActivitiesOpen(!activitiesOpen)} />
+        </Stack>
+
+        {/* Conditionally render dataset panels side by side */}
+        <Stack horizontal tokens={{ childrenGap: 10 }}>
+          {overviewOpen && (
+            <div className={panelStyle}>
+              <pre>{JSON.stringify(overviewData || { info: 'No overview data available.' }, null, 2)}</pre>
+            </div>
+          )}
+          {outstandingOpen && (
+            <div className={panelStyle}>
+              <pre>{JSON.stringify(outstandingData || { info: 'No outstanding data found.' }, null, 2)}</pre>
+            </div>
+          )}
+          {complianceOpen && (
+            <div className={panelStyle}>
+              <pre>{JSON.stringify(complianceData || { info: 'No compliance data available.' }, null, 2)}</pre>
+            </div>
+          )}
+          {activitiesOpen && (
+            <div className={panelStyle}>
+              <pre>
+                {JSON.stringify(
+                  matterSpecificActivitiesData || { info: 'No matter-specific activities data available.' },
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          )}
+        </Stack>
       </Stack>
     </div>
   );

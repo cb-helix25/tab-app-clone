@@ -1,5 +1,3 @@
-// src/tabs/matters/Matters.tsx
-
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Stack,
@@ -63,6 +61,66 @@ async function callGetMatterOverview(matterId: number) {
     return await response.json();
   } catch (err) {
     console.error('Error calling getMatterOverview:', err);
+    return null;
+  }
+}
+
+// ----------------------------------------------
+// callGetComplianceData helper function (new)
+// ----------------------------------------------
+async function callGetComplianceData(matterId: string, clientId: string): Promise<any> {
+  const code = process.env.REACT_APP_GET_COMPLIANCE_DATA_CODE;
+  const path = process.env.REACT_APP_GET_COMPLIANCE_DATA_PATH;
+  const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+  if (!code || !path || !baseUrl) {
+    console.error('Missing required environment variables for getComplianceData');
+    return null;
+  }
+  const url = `${baseUrl}/${path}?code=${code}`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matterId, clientId }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error calling getComplianceData:', errorText);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error calling getComplianceData:', err);
+    return null;
+  }
+}
+
+// ----------------------------------------------
+// callGetMatterSpecificActivities helper function (new)
+// ----------------------------------------------
+async function callGetMatterSpecificActivities(matterId: string): Promise<any> {
+  const code = process.env.REACT_APP_GET_MATTER_SPECIFIC_ACTIVITIES_CODE;
+  const path = process.env.REACT_APP_GET_MATTER_SPECIFIC_ACTIVITIES_PATH;
+  const baseUrl = process.env.REACT_APP_PROXY_BASE_URL; // Ensure this is set in your env
+  if (!code || !path || !baseUrl) {
+    console.error('Missing required environment variables for getMatterSpecificActivities');
+    return null;
+  }
+  const url = `${baseUrl}/${path}?code=${code}`;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matterId }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error calling getMatterSpecificActivities:', errorText);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error calling getMatterSpecificActivities:', err);
     return null;
   }
 }
@@ -333,6 +391,12 @@ const Matters: React.FC<MattersProps> = ({
   // (C) The raw JSON string (for debugging display in a MessageBar)
   const [overviewResponse, setOverviewResponse] = useState<string>('');
 
+  // NEW: State to hold compliance data
+  const [complianceData, setComplianceData] = useState<any>(null);
+
+  // NEW: State to hold matter-specific activities data
+  const [matterSpecificActivities, setMatterSpecificActivities] = useState<any>(null);
+
   // ---------- Infinite Scroll ----------
   const [itemsToShow, setItemsToShow] = useState<number>(20);
   const loader = useRef<HTMLDivElement | null>(null);
@@ -545,20 +609,31 @@ const Matters: React.FC<MattersProps> = ({
   }, [outstandingBalances, selectedMatter]);
 
   // ------------------------------------------------
-  // Fetch getMatterOverview whenever selectedMatter changes
+  // Fetch getMatterOverview, getComplianceData, and getMatterSpecificActivities whenever selectedMatter changes
   // ------------------------------------------------
   useEffect(() => {
     if (!selectedMatter) {
       setMatterOverview(null);
       setOverviewResponse('');
+      setComplianceData(null);
+      setMatterSpecificActivities(null);
       return;
     }
     (async () => {
-      const response = await callGetMatterOverview(Number(selectedMatter.UniqueID));
-      if (response?.data) {
-        setMatterOverview(response.data);
-        setOverviewResponse(JSON.stringify(response.data, null, 2));
+      const overviewResponse = await callGetMatterOverview(Number(selectedMatter.UniqueID));
+      if (overviewResponse?.data) {
+        setMatterOverview(overviewResponse.data);
+        setOverviewResponse(JSON.stringify(overviewResponse.data, null, 2));
       }
+      // Call getComplianceData using the matter's UniqueID and ClientID
+      const complianceResponse = await callGetComplianceData(
+        selectedMatter.UniqueID,
+        selectedMatter.ClientID
+      );
+      setComplianceData(complianceResponse);
+      // NEW: Call getMatterSpecificActivities using the matter's UniqueID
+      const activitiesResponse = await callGetMatterSpecificActivities(selectedMatter.UniqueID);
+      setMatterSpecificActivities(activitiesResponse);
     })();
   }, [selectedMatter]);
 
@@ -580,23 +655,11 @@ const Matters: React.FC<MattersProps> = ({
             <MatterOverview
               matter={selectedMatter}
               overviewData={matterOverview}
-              outstandingData={matterOutstandingData} // NEW: pass the found data
+              outstandingData={matterOutstandingData} // pass the found data
+              complianceData={complianceData} // NEW: pass compliance data
+              matterSpecificActivitiesData={matterSpecificActivities} // NEW: pass matter-specific activities data
               onEdit={() => {}}
             />
-            {overviewResponse && (
-              <MessageBar
-                messageBarType={MessageBarType.success}
-                styles={{
-                  root: {
-                    marginTop: '20px',
-                    whiteSpace: 'pre-wrap',
-                    fontFamily: 'monospace',
-                  },
-                }}
-              >
-                {overviewResponse}
-              </MessageBar>
-            )}
           </PivotItem>
 
           <PivotItem headerText="Details" itemKey="Details">
@@ -763,10 +826,7 @@ const Matters: React.FC<MattersProps> = ({
                   >
                     {originatingArray.map((item, idx, arr) => (
                       <React.Fragment key={item.fullName}>
-                        <Stack
-                          horizontalAlign="center"
-                          styles={{ root: { minWidth: '80px', textAlign: 'center' } }}
-                        >
+                        <Stack horizontalAlign="center" styles={{ root: { minWidth: '80px', textAlign: 'center' } }}>
                           <Text
                             variant="xLarge"
                             styles={{
@@ -823,17 +883,10 @@ const Matters: React.FC<MattersProps> = ({
                       data={monthlyGroupedCounts}
                       margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
                     >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke={isDarkMode ? '#555' : '#ccc'}
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#555' : '#ccc'} />
                       <XAxis dataKey="month" stroke={isDarkMode ? '#fff' : '#333'} />
                       <YAxis stroke={isDarkMode ? '#fff' : '#333'} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: isDarkMode ? '#333' : '#fff',
-                        }}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#333' : '#fff' }} />
                       <Legend content={renderCustomLegend} />
                       {['Commercial', 'Property', 'Construction', 'Employment', 'Miscellaneous'].map(
                         (group) => (
