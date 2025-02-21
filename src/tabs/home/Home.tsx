@@ -1215,19 +1215,46 @@ const officeAttendanceButtonText = currentUserConfirmed
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
+  
+    // Define user details only once
+    const userFirstName = userData?.[0]?.First?.trim().toLowerCase() || '';
+    const userLastName = userData?.[0]?.Last?.trim().toLowerCase() || '';
     const userFullName =
-      userData?.[0]?.FullName ||
-      `${userData?.[0]?.First || ''} ${userData?.[0]?.Last || ''}`.trim();
+      userData?.[0]?.FullName?.trim().toLowerCase() || `${userFirstName} ${userLastName}`;
+    const userInitials = userData?.[0]?.Initials?.trim().toLowerCase() || '';
+  
+    // Helper function to normalize names
+    const normalizeName = (name: string): string => {
+      let normalized = name.trim().toLowerCase();
+      if (normalized === "bianca odonnell") {
+        normalized = "bianca o'donnell";
+      }
+      if (normalized === "samuel packwood") {
+        normalized = "sam packwood";
+      }
+      return normalized;
+    };
+  
+    // Calculate matters opened count with updated name matching logic
     const mattersOpenedCount = allMatters
       ? allMatters.filter((m) => {
           const openDate = new Date(m.OpenDate);
+          let solicitorName = m.OriginatingSolicitor || '';
+          solicitorName = normalizeName(solicitorName);
+  
           return (
             openDate.getMonth() === currentMonth &&
             openDate.getFullYear() === currentYear &&
-            m.OriginatingSolicitor.toLowerCase() === userFullName.toLowerCase()
+            (
+              solicitorName === userFullName || // Exact full name match
+              solicitorName === `${userFirstName} ${userLastName}` || // First + Last match
+              solicitorName.includes(userFirstName) || // Contains first name
+              solicitorName.includes(userLastName) || // Contains last name
+              solicitorName === userInitials // Match on initials
+            )
           );
         }).length
-      : 0;
+      : 0;  
 
     if (!wipClioData) {
       return [

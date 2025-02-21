@@ -5,7 +5,7 @@ import { ThemeProvider } from './functionality/ThemeContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
-import { Matter, UserData, Enquiry, Tab, TeamData } from './functionality/types';
+import { Matter, UserData, Enquiry, Tab, TeamData, POID } from './functionality/types';
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -40,7 +40,7 @@ const App: React.FC<AppProps> = ({
   const isDarkMode = teamsContext?.theme === 'dark';
   
   // POID state (this will be updated via Home)
-  const [poidData, setPoidData] = useState<any[] | null>(null);
+  const [poidData, setPoidData] = useState<POID[]>([]);
   
   // NEW: Store the "all matters" that Home fetches
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
@@ -127,6 +127,8 @@ const App: React.FC<AppProps> = ({
             userData={userData}
             teamData={teamData}
             outstandingBalances={outstandingBalances}
+            poidData={poidData || []}
+            setPoidData={setPoidData}
           />
         );
       case 'roadmap':

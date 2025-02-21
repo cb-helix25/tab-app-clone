@@ -384,8 +384,8 @@ interface EnquiriesProps {
   context: TeamsContextType | null;
   enquiries: Enquiry[] | null;
   userData: UserData[] | null;
-  poidData: POID[] | null;
-  setPoidData: React.Dispatch<React.SetStateAction<POID[] | null>>;
+  poidData: POID[];
+  setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
 }
 
@@ -523,7 +523,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         poidData.some((poid) => String(poid.acid) === enq.ID)
       );
       setConvertedEnquiriesList(converted);
-
+  
       const convertedPoid = poidData.filter((poid) =>
         localEnquiries.some((enq) => enq.ID === String(poid.acid))
       );
@@ -591,32 +591,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       closeRateModal();
     }
   }, [ratingEnquiryId, currentRating, handleEditRating, closeRateModal]);
-
-  useEffect(() => {
-    (async () => {
-      if (!poidData) {
-        try {
-          const response = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_POID_PATH}?code=${process.env.REACT_APP_GET_POID_CODE}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ dateFrom: '2024-11-01', dateTo: '2024-12-15' }),
-            }
-          );
-          if (response.ok) {
-            const data: POID[] = await response.json();
-            setPoidData(data);
-          } else {
-            const errorText = await response.text();
-            console.error('Failed to fetch POID data:', errorText);
-          }
-        } catch (error) {
-          console.error('Error fetching POID data:', error);
-        }
-      }
-    })();
-  }, [poidData, setPoidData]);
 
   const triagedPointOfContactEmails = useMemo(
     () =>

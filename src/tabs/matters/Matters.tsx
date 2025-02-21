@@ -24,7 +24,7 @@ import {
   LabelList,
 } from 'recharts';
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
-import { Matter, UserData, TeamData } from '../../app/functionality/types';
+import { Matter, UserData, TeamData, POID } from '../../app/functionality/types';
 import MatterCard from './MatterCard';
 import MatterOverview from './MatterOverview';
 import { colours } from '../../app/styles/colours';
@@ -357,7 +357,9 @@ interface MattersProps {
   error: string | null;
   userData: any;
   teamData?: TeamData[] | null;
-  outstandingBalances?: any; // NEW: Optional outstanding data
+  outstandingBalances?: any;
+  poidData: POID[];
+  setPoidData: React.Dispatch<React.SetStateAction<POID[]>>
 }
 
 // ---------------------------------------------------
@@ -370,7 +372,9 @@ const Matters: React.FC<MattersProps> = ({
   userData,
   fetchMatters,
   teamData,
-  outstandingBalances, // NEW
+  outstandingBalances,
+  poidData,
+  setPoidData,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -724,7 +728,7 @@ const Matters: React.FC<MattersProps> = ({
   return (
     <div className={containerStyle(isDarkMode)}>
       {showNewMatterPage ? (
-        <NewMatters />
+        <NewMatters poidData={poidData} setPoidData={setPoidData} />
       ) : (
         <>
           <MattersCombinedMenu
