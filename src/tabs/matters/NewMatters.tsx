@@ -17,6 +17,7 @@ import { POID, TeamData } from '../../app/functionality/types';
 import PoidCard from './PoidCard';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
+import POIDPreview from './POIDPreview';
 
 // Export (or define) TagButtonProps at the top so it’s available.
 export interface TagButtonProps {
@@ -207,7 +208,7 @@ const collapsedCardStyle = mergeStyles({
 });
 const gridStyle = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', // Changed from minmax(200px, 1fr)
   gap: 20,
 });
 const sidePanelStyle = mergeStyles({
@@ -282,174 +283,6 @@ const TagButton: React.FC<TagButtonProps> = ({
       onClick={onClick}
       styles={{ root: buttonStyle }}
     />
-  );
-};
-
-// ----- POIDPreview Component -----
-interface POIDPreviewProps {
-  poid: POID;
-}
-const fieldTagStyle = mergeStyles({
-  backgroundColor: '#f3f2f1',
-  border: '1px solid #e1dfdd',
-  borderRadius: '12px',
-  padding: '4px 8px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  marginRight: '6px',
-  marginBottom: '6px',
-});
-const fieldLabelStyle = mergeStyles({ fontWeight: 600, marginRight: '4px' });
-const fieldValueStyle = mergeStyles({
-  color: '#333',
-  wordBreak: 'break-word',
-  maxWidth: '100%',
-});
-const linkStyle = mergeStyles({
-  color: colours.highlight,
-  textDecoration: 'underline',
-});
-
-const formatDateTime = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
-  return date.toLocaleString();
-};
-
-const POIDPreview: React.FC<{ poid: POID }> = ({ poid }) => {
-  const sections = [
-    {
-      title: 'Identity Info',
-      fields: [
-        { key: 'poid_id', label: 'POID ID' },
-        { key: 'type', label: 'Type' },
-        { key: 'terms_acceptance', label: 'Terms' },
-        { key: 'check_result', label: 'Result' },
-        { key: 'check_id', label: 'Check ID' },
-        { key: 'stage', label: 'Stage' },
-      ],
-    },
-    {
-      title: 'Personal Info',
-      fields: [
-        { key: 'prefix', label: 'Prefix' },
-        { key: 'first', label: 'First Name' },
-        { key: 'last', label: 'Last Name' },
-        { key: 'gender', label: 'Gender' },
-        { key: 'date_of_birth', label: 'DOB' },
-        { key: 'nationality', label: 'Nationality' },
-        { key: 'nationality_iso', label: 'ISO' },
-      ],
-    },
-    {
-      title: 'Contact Info',
-      fields: [
-        { key: 'best_number', label: 'Phone' },
-        { key: 'email', label: 'Email' },
-        { key: 'poc', label: 'POC' },
-      ],
-    },
-    {
-      title: 'Document Info',
-      fields: [
-        { key: 'submission_url', label: 'Submission URL' },
-        { key: 'submission_date', label: 'Submission Date' },
-        { key: 'id_docs_folder', label: 'Docs Folder' },
-        { key: 'additional_id_submission_id', label: 'Addl ID' },
-        { key: 'additional_id_submission_url', label: 'Addl URL' },
-        { key: 'additional_id_submission_date', label: 'Addl Date' },
-      ],
-    },
-    {
-      title: 'Address',
-      fields: [
-        { key: 'house_building_number', label: 'House/Building' },
-        { key: 'street', label: 'Street' },
-        { key: 'city', label: 'City' },
-        { key: 'county', label: 'County' },
-        { key: 'post_code', label: 'Post Code' },
-        { key: 'country', label: 'Country' },
-        { key: 'country_code', label: 'Country Code' },
-      ],
-    },
-    {
-      title: 'Company Info',
-      fields: [
-        { key: 'company_name', label: 'Company Name' },
-        { key: 'company_number', label: 'Company Number' },
-        { key: 'company_house_building_number', label: 'Building' },
-        { key: 'company_street', label: 'Street' },
-        { key: 'company_city', label: 'City' },
-        { key: 'company_county', label: 'County' },
-        { key: 'company_post_code', label: 'Post Code' },
-        { key: 'company_country', label: 'Country' },
-        { key: 'company_country_code', label: 'Code' },
-      ],
-    },
-    {
-      title: 'Other Info',
-      fields: [
-        { key: 'client_id', label: 'Client ID' },
-        { key: 'related_client_id', label: 'Related Client' },
-        { key: 'matter_id', label: 'Matter ID' },
-        { key: 'risk_assessor', label: 'Risk Assessor' },
-        { key: 'risk_assessment_date', label: 'Risk Date' },
-      ],
-    },
-  ];
-
-  // Define keys that represent dates.
-  const dateKeys = new Set([
-    'submission_date',
-    'additional_id_submission_date',
-    'date_of_birth',
-    'risk_assessment_date',
-  ]);
-
-  // Define keys that should be rendered as clickable links.
-  const linkKeys = new Set([
-    'submission_url',
-    'id_docs_folder',
-    'additional_id_submission_url',
-  ]);
-
-  return (
-    <Stack tokens={{ childrenGap: 16 }}>
-      <Text variant="xLarge" styles={{ root: { marginBottom: 10 } }}>Preview</Text>
-      {sections.map((section) => (
-        <Stack key={section.title} tokens={{ childrenGap: 8 }}>
-          <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, borderBottom: '1px solid #e1dfdd', paddingBottom: 4 } }}>
-            {section.title}
-          </Text>
-          <Stack tokens={{ childrenGap: 4 }} horizontal wrap>
-            {section.fields.map(({ key, label }) => {
-              const rawValue = poid[key as keyof POID];
-              if (!rawValue) return null;
-
-              // Format date fields
-              const displayValue = dateKeys.has(key) ? formatDateTime(String(rawValue)) : String(rawValue);
-
-              if (linkKeys.has(key)) {
-                return (
-                  <div key={key} className={fieldTagStyle}>
-                    <span className={fieldLabelStyle}>{label}:</span>
-                    <a href={String(rawValue)} target="_blank" rel="noopener noreferrer" className={linkStyle}>
-                      {displayValue}
-                    </a>
-                  </div>
-                );
-              }
-              return (
-                <div key={key} className={fieldTagStyle}>
-                  <span className={fieldLabelStyle}>{label}:</span>
-                  <span className={fieldValueStyle}>{displayValue}</span>
-                </div>
-              );
-            })}
-          </Stack>
-        </Stack>
-      ))}
-    </Stack>
   );
 };
 

@@ -24,22 +24,27 @@ interface PoidCardProps {
   teamData?: TeamData[] | null;
 }
 
+// Updated card dimensions for 5 per row and 20% taller
 const baseCardStyle = mergeStyles({
   position: 'relative',
   padding: '15px',
   borderRadius: '10px',
-  width: '220px',
-  height: '160px',
+  width: '250px',
+  height: '192px',
   cursor: 'pointer',
   background: 'linear-gradient(135deg, #ffffff, #f9f9f9)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  boxSizing: 'border-box',
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   fontFamily: 'Raleway, sans-serif',
-  boxSizing: 'border-box',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
   selectors: {
-    ':hover': {
+    ':hover': { 
       transform: 'translateY(-4px)',
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    },
+    // Show profile links container on hover
+    ':hover .profileLink': {
+      opacity: 1,
     },
   },
 });
@@ -56,7 +61,6 @@ const selectedCardStyle = mergeStyles({
   fontFamily: 'Raleway, sans-serif',
 });
 
-// Adjusted iconStyle for the Accept icon when selected.
 const iconStyle = mergeStyles({
   position: 'absolute',
   top: 10,
@@ -65,7 +69,6 @@ const iconStyle = mergeStyles({
   color: colours.highlight,
 });
 
-// Bottom container for POID id and team badge (using same horizontal padding as top)
 const bottomContainerStyle = mergeStyles({
   position: 'absolute',
   bottom: 4,
@@ -92,12 +95,11 @@ const badgeStyle = mergeStyles({
   fontFamily: 'Raleway, sans-serif',
 });
 
-// Updated background icon style with added padding and 20% smaller font size.
 const backgroundIconStyle = mergeStyles({
   position: 'absolute',
-  top: 10, // added padding from the top
-  right: 10, // added padding from the right
-  fontSize: '52px', // 20% smaller than the original 64px
+  top: 10,
+  right: 10,
+  fontSize: '52px', // 20% smaller than original 64px
   transformOrigin: 'top right',
   opacity: 1,
   pointerEvents: 'none',
@@ -114,6 +116,37 @@ const contentStyle = mergeStyles({
   justifyContent: 'space-between',
 });
 
+// New style for the profile link container (aligned left)
+const profileLinkContainer = mergeStyles({
+  opacity: 0,
+  transition: 'opacity 0.3s ease',
+  marginTop: 4,
+  display: 'flex',
+  gap: 10,
+  justifyContent: 'flex-start',
+});
+
+// New style for profile link buttons
+const profileButtonStyle = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  textDecoration: 'none',
+  color: colours.highlight,
+  border: '1px solid #ccc',
+  borderRadius: '4px',
+  padding: '4px 6px',
+  transition: 'background-color 0.2s, transform 0.1s',
+  selectors: {
+    ':hover': {
+      backgroundColor: '#e1dfdd',
+    },
+    ':active': {
+      backgroundColor: '#d0d0d0',
+      transform: 'scale(0.98)',
+    },
+  },
+});
+
 const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }) => {
   const { isDarkMode } = useTheme();
 
@@ -123,11 +156,9 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     selected && selectedCardStyle
   );
 
-  // Determine which icon to show based on the poid.type value.
-  // If type is "Yes" show "CityNext", otherwise (or if "No") show "Contact".
+  // Choose icon based on POID type.
   const backgroundIconName = poid.type === "Yes" ? "CityNext" : "Contact";
 
-  // Find team member matching the POID's poc field.
   const teamMember = teamData?.find(
     (member) => member.Email?.toLowerCase() === poid.poc?.toLowerCase()
   );
@@ -144,7 +175,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
 
       <div className={contentStyle}>
         <Stack tokens={{ childrenGap: 6 }}>
-          {/* Name in mediumPlus with prefix */}
+          {/* Client's Name */}
           <Text
             variant="mediumPlus"
             styles={{
@@ -158,25 +189,56 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
             {poid.prefix ? `${poid.prefix} ` : ''}
             {poid.first} {poid.last}
           </Text>
-
+          {/* Company Name if applicable */}
+          {poid.type === "Yes" && poid.company_name && (
+            <Text
+              variant="small"
+              styles={{ root: { fontFamily: 'Raleway, sans-serif', color: '#555' } }}
+            >
+              {poid.company_name}
+            </Text>
+          )}
           {/* DOB with age */}
           {dobDisplay && (
             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}>
               {dobDisplay}
             </Text>
           )}
-
-          {/* Nationality: only the ISO value */}
+          {/* Nationality (ISO) */}
           {poid.nationality_iso && (
             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}>
               {poid.nationality_iso}
             </Text>
           )}
+          {/* Profile links: Client and Matter (appear on hover) */}
+          <div className={`${profileLinkContainer} profileLink`}>
+            {poid.client_id && (
+              <a
+                href={`https://eu.app.clio.com/nc/#/contacts/${poid.client_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={profileButtonStyle}
+              >
+                <Icon iconName="Contact" styles={{ root: { marginRight: 4 } }} />
+                <Text variant="small">{poid.client_id}</Text>
+              </a>
+            )}
+            {poid.matter_id && (
+              <a
+                href={`https://eu.app.clio.com/nc/#/matters/${poid.matter_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={profileButtonStyle}
+              >
+                <Icon iconName="Folder" styles={{ root: { marginRight: 4 } }} />
+                <Text variant="small">{poid.matter_id}</Text>
+              </a>
+            )}
+          </div>
         </Stack>
 
         {selected && <Icon iconName="Accept" className={iconStyle} />}
 
-        {/* Bottom container with POID id and team badge */}
         <div className={bottomContainerStyle}>
           <Text variant="small" styles={{ root: idTextStyle }}>
             {poid.poid_id}
