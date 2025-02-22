@@ -42,7 +42,7 @@ import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction } from '../../app/functionality/types';
 import { Resource } from '../resources/Resources';
 
 import FormDetails from '../forms/FormDetails';
@@ -89,7 +89,8 @@ interface HomeProps {
   enquiries: any[] | null;
   onAllMattersFetched?: (matters: Matter[]) => void;
   onOutstandingBalancesFetched?: (data: any) => void;
-  onPOID6YearsFetched?: (data: any[]) => void; // This line allows App to pass a callback
+  onPOID6YearsFetched?: (data: any[]) => void;
+  onTransactionsFetched?: (transactions: Transaction[]) => void; // NEW!
 }
 
 interface QuickLink {
@@ -525,6 +526,9 @@ let cachedAllMattersError: string | null = null;
 
 let cachedOutstandingBalances: any | null = null;
 
+// At the top of Home.tsx, along with your other caching variables:
+let cachedTransactions: Transaction[] | null = null;
+
 //////////////////////
 // Helper: Ensure "LZ" is in Approvers
 //////////////////////
@@ -560,7 +564,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched }) => {
   const { isDarkMode } = useTheme();
 
   const renderContextsPanelContent = () => (
@@ -1097,6 +1101,37 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       fetchPOID6Years();
     }
   }, []);  
+
+  useEffect(() => {
+    async function fetchTransactions() {
+      // Use cached data if available
+      if (cachedTransactions) {
+        console.log("Using cached transactions:", cachedTransactions);
+        if (onTransactionsFetched) {
+          onTransactionsFetched(cachedTransactions);
+        }
+        return;
+      }
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_GET_TRANSACTIONS_CODE}`
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch transactions: ${response.status}`);
+        }
+        const data = await response.json();
+        // Cache the data for future use
+        cachedTransactions = data;
+        if (onTransactionsFetched) {
+          onTransactionsFetched(data);
+        }
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+      }
+    }
+    fetchTransactions();
+  }, []); // Runs only once on component mount
+  
 
   useEffect(() => {
     async function fetchOutstandingBalances() {

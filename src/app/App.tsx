@@ -5,7 +5,7 @@ import { ThemeProvider } from './functionality/ThemeContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
-import { Matter, UserData, Enquiry, Tab, TeamData, POID } from './functionality/types';
+import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction } from './functionality/types';
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -48,6 +48,9 @@ const App: React.FC<AppProps> = ({
   // NEW: State to hold outstanding client balances
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
 
+  // NEW: State to hold transactions data
+  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+
   // Callback that Home can call to pass us the new "all matters" data here
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
@@ -61,6 +64,11 @@ const App: React.FC<AppProps> = ({
   // NEW: Callback to accept POID6Years data from Home
   const handlePOID6YearsFetched = (data: any[]) => {
     setPoidData(data);
+  };
+
+  // NEW: Callback to accept transactions data from Home
+  const handleTransactionsFetched = (fetchedTransactions: Transaction[]) => {
+    setTransactions(fetchedTransactions);
   };
 
   useEffect(() => {
@@ -100,6 +108,7 @@ const App: React.FC<AppProps> = ({
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
+            onTransactionsFetched={handleTransactionsFetched}  // NEW callback
           />
         );
       case 'forms':
@@ -144,6 +153,7 @@ const App: React.FC<AppProps> = ({
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
+            onTransactionsFetched={handleTransactionsFetched}  // NEW callback
           />
         );
     }
@@ -168,7 +178,9 @@ const App: React.FC<AppProps> = ({
           tabs={tabs}
           ariaLabel="Main Navigation Tabs"
         />
-        <Suspense fallback={<div>Loading...</div>}>{renderContent()}</Suspense>
+        <Suspense fallback={<div>Loading...</div>}>
+          {renderContent()}
+        </Suspense>
       </div>
     </ThemeProvider>
   );

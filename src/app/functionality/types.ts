@@ -311,3 +311,16 @@ export interface OutstandingClientBalancesResponse {
   data: OutstandingClientBalance[];
 }
 
+export interface Transaction {
+  intake_id: number;
+  intake_date: string; // ISO date string
+  transaction_id: string;
+  matter_ref: string;
+  matter_description: string;
+  fe: string;
+  amount: number;
+  transaction_date: string; // ISO date string
+  from_client: boolean;
+  money_sender: string;
+  type: string;
+}

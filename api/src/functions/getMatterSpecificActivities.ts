@@ -1,9 +1,7 @@
-// getMatterSpecificActivities.ts
-
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
-import fetch from "node-fetch";
+import fetch, { Response as NodeFetchResponse } from "node-fetch";
 import { URLSearchParams } from "url";
 
 /**
@@ -22,6 +20,116 @@ async function streamToString(stream: ReadableStream<any>): Promise<string> {
   return result;
 }
 
+/**
+ * Helper: Refresh the Clio access token.
+ */
+async function refreshAccessToken(context: InvocationContext): Promise<string> {
+  // Key Vault URI and secret names
+  const kvUri = "https://helix-keys.vault.azure.net/";
+  const clioRefreshTokenSecretName = "clio-teamhubv1-refreshtoken";
+  const clioSecretName = "clio-teamhubv1-secret";
+  const clioClientIdSecretName = "clio-teamhubv1-clientid";
+
+  // Clio endpoints and API details
+  const clioTokenUrl = "https://eu.app.clio.com/oauth/token";
+
+  context.log("Refreshing Clio access token...");
+
+  const credential = new DefaultAzureCredential();
+  const secretClient = new SecretClient(kvUri, credential);
+
+  const [refreshTokenSecret, clientSecret, clientIdSecret] = await Promise.all([
+    secretClient.getSecret(clioRefreshTokenSecretName),
+    secretClient.getSecret(clioSecretName),
+    secretClient.getSecret(clioClientIdSecretName),
+  ]);
+
+  const refreshToken = refreshTokenSecret.value;
+  const clientSecretValue = clientSecret.value;
+  const clientId = clientIdSecret.value;
+
+  if (!refreshToken || !clientSecretValue || !clientId) {
+    throw new Error("One or more Clio OAuth credentials are missing.");
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecretValue,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+
+  const tokenResponse = await fetch(`${clioTokenUrl}?${params.toString()}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`Failed to obtain Clio access token: ${errorText}`);
+  }
+  const tokenData = await tokenResponse.json();
+  const newAccessToken = tokenData.access_token;
+  context.log(`Refreshed access token; new token length: ${newAccessToken.length} characters.`);
+  return newAccessToken;
+}
+
+/**
+ * Helper: Fetch all pages by following the "next" paging URL.
+ * A delay is added between requests to avoid overwhelming the API.
+ * If an authentication error occurs, the token is refreshed and the request retried.
+ */
+async function fetchAllPages(initialUrl: string, initialAccessToken: string, context: InvocationContext): Promise<any[]> {
+  let allData: any[] = [];
+  let nextUrl: string | null = initialUrl;
+  let accessToken = initialAccessToken;
+
+  while (nextUrl) {
+    context.log(`Fetching page: ${nextUrl}`);
+    let response: NodeFetchResponse;
+    try {
+      response = await fetch(nextUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        }
+      }) as unknown as NodeFetchResponse;
+    } catch (err) {
+      context.error("Error during fetch:", err);
+      throw err;
+    }
+    
+    // If unauthorized, refresh the token and retry the current page
+    if (response.status === 401) {
+      context.log("Received 401 Unauthorized. Refreshing token and retrying current page.");
+      accessToken = await refreshAccessToken(context);
+      // Retry the current page with the new token
+      continue;
+    }
+    
+    if (!response.ok) {
+      const errorText: string = await response.text();
+      context.error(`Failed to fetch activities: ${errorText}`);
+      throw new Error(`Failed to fetch activities: ${errorText}`);
+    }
+    
+    const pageData: any = await response.json();
+    if (Array.isArray(pageData.data)) {
+      allData = allData.concat(pageData.data);
+    } else {
+      context.warn("Unexpected data format on page:", pageData);
+    }
+    
+    nextUrl = pageData.meta?.paging?.next || null;
+    
+    if (nextUrl) {
+      // Delay for 2 seconds before fetching the next page
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  return allData;
+}
+
 export async function getMatterSpecificActivitiesHandler(
   req: HttpRequest,
   context: InvocationContext
@@ -37,20 +145,15 @@ export async function getMatterSpecificActivitiesHandler(
   let parsedBody: any = {};
 
   try {
-    // Check if req.body is a stream, a string, or already parsed as an object.
     if (req.body && typeof req.body === "object" && "getReader" in req.body) {
-      // It's a ReadableStream
       rawBody = await streamToString(req.body as unknown as ReadableStream<any>);
     } else if (typeof req.body === "string") {
       rawBody = req.body;
     } else if (req.body) {
-      // Already parsed as an object
       rawBody = JSON.stringify(req.body);
     }
     
     context.log("Received raw request body: " + rawBody);
-
-    // Attempt to parse the raw body as JSON.
     parsedBody = rawBody ? JSON.parse(rawBody) : {};
     context.log("Parsed request body: " + JSON.stringify(parsedBody));
   } catch (error) {
@@ -64,7 +167,6 @@ export async function getMatterSpecificActivitiesHandler(
     return { status: 400, body: "Missing matterId in request body." };
   }
 
-  // Log the matterId received.
   context.log(`Received matterId: ${matterId}`);
 
   // Key Vault URI and secret names
@@ -84,7 +186,6 @@ export async function getMatterSpecificActivitiesHandler(
   context.log(`Constructed Clio activities URL: ${activitiesUrl}`);
 
   try {
-    // Retrieve Clio OAuth credentials from Key Vault
     context.log("Connecting to Key Vault for Clio credentials...");
     const credential = new DefaultAzureCredential();
     const secretClient = new SecretClient(kvUri, credential);
@@ -106,7 +207,6 @@ export async function getMatterSpecificActivitiesHandler(
 
     context.log("Successfully retrieved Clio OAuth credentials from Key Vault.");
 
-    // Refresh the access token using the refresh token
     const params = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecretValue,
@@ -130,26 +230,12 @@ export async function getMatterSpecificActivitiesHandler(
     const accessToken = tokenData.access_token;
     context.log(`Obtained Clio access token. Token length: ${accessToken.length} characters.`);
 
-    // Call Clio API to get activities for the specified matter
-    context.log("Calling Clio API for activities...");
-    const activitiesResponse = await fetch(activitiesUrl, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+    // Instead of fetching a single page, fetch all pages with pagination.
+    context.log("Fetching all pages of activities...");
+    const allActivities = await fetchAllPages(activitiesUrl, accessToken, context);
+    context.log(`Fetched total activities count: ${allActivities.length}`);
 
-    if (!activitiesResponse.ok) {
-      const errorText = await activitiesResponse.text();
-      context.error("Failed to fetch activities:", errorText);
-      return { status: 500, body: `Failed to fetch activities: ${errorText}` };
-    }
-
-    const activitiesData = await activitiesResponse.json();
-    context.log("Successfully retrieved activities from Clio API.");
-
-    return { status: 200, body: JSON.stringify(activitiesData) };
+    return { status: 200, body: JSON.stringify({ data: allActivities }) };
   } catch (error) {
     context.error("Error in getMatterSpecificActivities:", error);
     return { status: 500, body: "Error retrieving activities." };
