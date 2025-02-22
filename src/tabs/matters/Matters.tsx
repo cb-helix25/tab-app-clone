@@ -728,7 +728,7 @@ const Matters: React.FC<MattersProps> = ({
   return (
     <div className={containerStyle(isDarkMode)}>
       {showNewMatterPage ? (
-        <NewMatters poidData={poidData} setPoidData={setPoidData} />
+        <NewMatters poidData={poidData} setPoidData={setPoidData} teamData={teamData} />
       ) : (
         <>
           <MattersCombinedMenu
