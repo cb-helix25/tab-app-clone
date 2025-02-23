@@ -11,7 +11,7 @@ import {
   Link,
   DefaultButton,
 } from '@fluentui/react';
-import { Matter } from '../../app/functionality/types';
+import { Matter, Transaction } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 
@@ -468,12 +468,13 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
 // -----------------------------------------------------------------
 
 interface MatterOverviewProps {
-  matter: Matter;                     // The base SQL matter
-  overviewData?: any;                 // Extra data from the getMatterOverview call
-  outstandingData?: any;              // Optional outstanding data from Clio
-  complianceData?: any;               // Compliance data from getComplianceData
-  matterSpecificActivitiesData?: any; // Matter-specific activities data
-  onEdit?: () => void;                // Optional edit action for rating
+  matter: Matter;                     
+  overviewData?: any;                 
+  outstandingData?: any;              
+  complianceData?: any;               
+  matterSpecificActivitiesData?: any; 
+  onEdit?: () => void;                
+  transactions?: Transaction[];       // NEW: add transactions
 }
 
 // Define a fixed style for labels to ensure alignment
@@ -490,6 +491,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   complianceData,
   matterSpecificActivitiesData,
   onEdit,
+  transactions, // NEW: include transactions here
 }) => {
   const { isDarkMode } = useTheme();
   const ratingStyle = mapRatingToStyle(matter.Rating);
@@ -503,6 +505,11 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   const clientLink = client
     ? `https://eu.app.clio.com/nc/#/contacts/${client.id}`
     : '#';
+
+  // NEW: Filter transactions for the current matter
+  const matterTransactions = transactions?.filter(
+    (t) => t.matter_ref === matter.DisplayNumber
+  ) || [];
 
   // Build a map of solicitor names to roles
   const solicitorMap: { [name: string]: string[] } = {};
@@ -661,6 +668,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   const [outstandingOpen, setOutstandingOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [activitiesOpen, setActivitiesOpen] = useState(false);
+  const [transactionsOpen, setTransactionsOpen] = useState(false);  // NEW
 
   /* ------------------------------------------
    * Bottom Revealable Panels Styling
@@ -905,6 +913,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
           <DefaultButton text="Outstanding" onClick={() => setOutstandingOpen(!outstandingOpen)} />
           <DefaultButton text="Compliance" onClick={() => setComplianceOpen(!complianceOpen)} />
           <DefaultButton text="Activities" onClick={() => setActivitiesOpen(!activitiesOpen)} />
+          <DefaultButton text="Transactions" onClick={() => setTransactionsOpen(!transactionsOpen)} />  {/* NEW */}
         </Stack>
 
         {/* Conditionally render dataset panels side by side */}
@@ -933,6 +942,11 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   2
                 )}
               </pre>
+            </div>
+          )}
+          {transactionsOpen && (
+            <div className={panelStyle}>
+              <pre>{JSON.stringify(matterTransactions || { info: 'No transactions available.' }, null, 2)}</pre>
             </div>
           )}
         </Stack>

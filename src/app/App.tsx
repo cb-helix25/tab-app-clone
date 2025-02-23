@@ -39,34 +39,34 @@ const App: React.FC<AppProps> = ({
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
   
-  // POID state (this will be updated via Home)
+  // POID state (updated via Home)
   const [poidData, setPoidData] = useState<POID[]>([]);
   
-  // NEW: Store the "all matters" that Home fetches
+  // State to hold "all matters" fetched from Home
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
 
-  // NEW: State to hold outstanding client balances
+  // State to hold outstanding client balances
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
 
-  // NEW: State to hold transactions data
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
+  // NEW: State to hold transactions data; change initial value/type to undefined
+  const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
 
-  // Callback that Home can call to pass us the new "all matters" data here
+  // Callback for Home to pass fetched matters
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
   };
 
-  // NEW: Callback to accept outstanding balances from Home
+  // Callback for Home to pass outstanding balances
   const handleOutstandingBalancesFetched = (data: any) => {
     setOutstandingBalances(data);
   };
 
-  // NEW: Callback to accept POID6Years data from Home
+  // Callback for Home to pass POID6Years data
   const handlePOID6YearsFetched = (data: any[]) => {
     setPoidData(data);
   };
 
-  // NEW: Callback to accept transactions data from Home
+  // NEW: Callback for Home to pass transactions data
   const handleTransactionsFetched = (fetchedTransactions: Transaction[]) => {
     setTransactions(fetchedTransactions);
   };
@@ -81,7 +81,7 @@ const App: React.FC<AppProps> = ({
       }
     };
 
-    // Once we have the main pieces of data, hide the custom loading screen
+    // Once all primary data is loaded, hide the custom loading screen
     if (teamsContext && userData && enquiries && matters) {
       closeLoadingScreen();
     }
@@ -121,8 +121,8 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
-            poidData={poidData}      // POID data now available globally
-            setPoidData={setPoidData} // in case Enquiries needs to update it
+            poidData={poidData}      
+            setPoidData={setPoidData}
             teamData={teamData}
           />
         );
@@ -130,6 +130,7 @@ const App: React.FC<AppProps> = ({
         return (
           <Matters
             matters={allMattersFromHome || []}
+            transactions={transactions}  // Pass transactions data to Matters
             fetchMatters={fetchMatters}
             isLoading={isLoading}
             error={error}

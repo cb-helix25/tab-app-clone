@@ -24,7 +24,7 @@ import {
   LabelList,
 } from 'recharts';
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
-import { Matter, UserData, TeamData, POID } from '../../app/functionality/types';
+import { Matter, UserData, TeamData, POID, Transaction } from '../../app/functionality/types';
 import MatterCard from './MatterCard';
 import MatterOverview from './MatterOverview';
 import { colours } from '../../app/styles/colours';
@@ -360,6 +360,7 @@ interface MattersProps {
   outstandingBalances?: any;
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>
+  transactions?: Transaction[]; // NEW: allow transactions to be passed
 }
 
 // ---------------------------------------------------
@@ -375,6 +376,7 @@ const Matters: React.FC<MattersProps> = ({
   outstandingBalances,
   poidData,
   setPoidData,
+  transactions, // NEW: include transactions here
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -668,10 +670,11 @@ const Matters: React.FC<MattersProps> = ({
             <MatterOverview
               matter={selectedMatter}
               overviewData={matterOverview}
-              outstandingData={matterOutstandingData} // pass the found data
-              complianceData={complianceData} // NEW: pass compliance data
-              matterSpecificActivitiesData={matterSpecificActivities} // NEW: pass matter-specific activities data
+              outstandingData={matterOutstandingData}
+              complianceData={complianceData}
+              matterSpecificActivitiesData={matterSpecificActivities}
               onEdit={() => {}}
+              transactions={transactions}  // Pass transactions here
             />
           </PivotItem>
 
