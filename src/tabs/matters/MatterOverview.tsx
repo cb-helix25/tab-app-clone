@@ -1,4 +1,4 @@
-// MatterOverview.tsx
+// src/tabs/matters/MatterOverview.tsx
 
 import React, { useState } from 'react';
 import {
@@ -29,12 +29,12 @@ const getInitials = (name: string): string => {
     .join('');
 };
 
-// Format date string or return '-'
+// Format date string using UK locale or return '-'
 const formatDate = (dateStr: string | null): string => {
   if (!dateStr || !dateStr.trim()) return '-';
   try {
     const date = new Date(dateStr);
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-GB');
   } catch (err) {
     return '-';
   }
@@ -59,8 +59,9 @@ const mapRatingToStyle = (rating: string | undefined) => {
   }
 };
 
-// Format a number as currency (e.g. "£1,234.56")
-const formatCurrency = (num: number): string => `£${num.toFixed(2)}`;
+// Format a number as currency using UK locale (e.g. "£1,234.56")
+const formatCurrency = (num: number): string =>
+  num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 
 // Format hours (e.g. "12.34h")
 const formatHours = (num: number): string => `${num.toFixed(2)}h`;
@@ -468,17 +469,17 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
 // -----------------------------------------------------------------
 
 interface MatterOverviewProps {
-  matter: Matter;                     
-  overviewData?: any;                 
-  outstandingData?: any;              
-  complianceData?: any;               
-  matterSpecificActivitiesData?: any; 
-  onEdit?: () => void;                
-  transactions?: Transaction[];       // NEW: add transactions
+  matter: Matter;
+  overviewData?: any;
+  outstandingData?: any;
+  complianceData?: any;
+  matterSpecificActivitiesData?: any;
+  onEdit?: () => void;
+  transactions?: Transaction[]; // NEW: add transactions
 }
 
 // Define a fixed style for labels to ensure alignment
-const labelStyle = mergeStyles({
+const labelStyleFixed = mergeStyles({
   fontWeight: 700,
   color: colours.highlight,
   minWidth: '120px',
@@ -502,9 +503,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   };
 
   const matterLink = `https://eu.app.clio.com/nc/#/matters/${matter.UniqueID || '-'}`;
-  const clientLink = client
-    ? `https://eu.app.clio.com/nc/#/contacts/${client.id}`
-    : '#';
+  const clientLink = client ? `https://eu.app.clio.com/nc/#/contacts/${client.id}` : '#';
 
   // NEW: Filter transactions for the current matter
   const matterTransactions = transactions?.filter(
@@ -529,7 +528,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   // -----------------------------------------------------------------
   // Styles for various sections
   // -----------------------------------------------------------------
-  const containerStyle = mergeStyles({
+  const containerStyleFixed = mergeStyles({
     padding: '20px',
     borderRadius: '8px',
     marginBottom: '20px',
@@ -668,7 +667,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   const [outstandingOpen, setOutstandingOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [activitiesOpen, setActivitiesOpen] = useState(false);
-  const [transactionsOpen, setTransactionsOpen] = useState(false);  // NEW
+  const [transactionsOpen, setTransactionsOpen] = useState(false); // NEW
 
   /* ------------------------------------------
    * Bottom Revealable Panels Styling
@@ -689,7 +688,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
    * ------------------------------------------
    */
   return (
-    <div className={containerStyle}>
+    <div className={containerStyleFixed}>
       {/* TOP SECTION: Matter reference & rating */}
       <div className={topSectionStyle}>
         <div className={matterReferenceStyle}>
@@ -735,7 +734,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               {/* First Section: Practice Area, Description, Opponent */}
               <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                  <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                  <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
                     Practice Area:
                   </Text>
                   <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
@@ -743,7 +742,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   </Text>
                 </Stack>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                  <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                  <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
                     Description:
                   </Text>
                   <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
@@ -752,7 +751,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                 </Stack>
                 {matter.Opponent?.trim() && (
                   <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                    <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                    <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
                       Opponent:
                     </Text>
                     <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
@@ -767,7 +766,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
               {/* Second Section: Open Date, CCL Date */}
               <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                  <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                  <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
                     Open Date:
                   </Text>
                   <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
@@ -775,7 +774,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   </Text>
                 </Stack>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                  <Text variant="mediumPlus" styles={{ root: labelStyle }}>
+                  <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
                     CCL Date:
                   </Text>
                   <Text variant="medium" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
@@ -879,8 +878,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   {([...complianceData] as ComplianceRecord[])
                     .sort(
                       (a, b) =>
-                        new Date(b["Compliance Date"]).getTime() -
-                        new Date(a["Compliance Date"]).getTime()
+                        new Date(b["Compliance Date"]).getTime() - new Date(a["Compliance Date"]).getTime()
                     )
                     .map((record, idx) => (
                       <ComplianceDetails key={idx} record={record} />
@@ -913,7 +911,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
           <DefaultButton text="Outstanding" onClick={() => setOutstandingOpen(!outstandingOpen)} />
           <DefaultButton text="Compliance" onClick={() => setComplianceOpen(!complianceOpen)} />
           <DefaultButton text="Activities" onClick={() => setActivitiesOpen(!activitiesOpen)} />
-          <DefaultButton text="Transactions" onClick={() => setTransactionsOpen(!transactionsOpen)} />  {/* NEW */}
+          <DefaultButton text="Transactions" onClick={() => setTransactionsOpen(!transactionsOpen)} />
         </Stack>
 
         {/* Conditionally render dataset panels side by side */}

@@ -35,6 +35,8 @@ import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import ScoreCard from '../enquiries/ScoreCard';
 import NewMatters from './NewMatters';
+import MatterTransactions from './MatterTransactions';
+
 
 // ----------------------------------------------
 // callGetMatterOverview helper function
@@ -665,7 +667,10 @@ const Matters: React.FC<MattersProps> = ({
           onClick={() => setSelectedMatter(null)}
           styles={{ root: { marginBottom: '20px' } }}
         />
-        <Pivot aria-label="Matter Detail Tabs" styles={{ root: { marginTop: '20px', marginBottom: '20px' }, link: { fontSize: '16px', fontWeight: 600 } }}>
+        <Pivot
+          aria-label="Matter Detail Tabs"
+          styles={{ root: { marginTop: '20px', marginBottom: '20px' }, link: { fontSize: '16px', fontWeight: 600 } }}
+        >
           <PivotItem headerText="Overview" itemKey="Overview">
             <MatterOverview
               matter={selectedMatter}
@@ -677,53 +682,14 @@ const Matters: React.FC<MattersProps> = ({
               transactions={transactions}  // Pass transactions here
             />
           </PivotItem>
-
-          <PivotItem headerText="Details" itemKey="Details">
-            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '20px' } }}>
-              <Text
-                variant="xLarge"
-                styles={{ root: { fontWeight: 'bold', color: isDarkMode ? colours.dark.text : colours.light.text } }}
-              >
-                Matter Details
-              </Text>
-              <Stack tokens={{ childrenGap: 10 }}>
-                <Text variant="medium">
-                  <strong>Display Number:</strong> {selectedMatter.DisplayNumber}
-                </Text>
-                <Text variant="medium">
-                  <strong>Client Name:</strong> {selectedMatter.ClientName}
-                </Text>
-                <Text variant="medium">
-                  <strong>Open Date:</strong> {new Date(selectedMatter.OpenDate).toLocaleDateString()}
-                </Text>
-                <Text variant="medium">
-                  <strong>Description:</strong> {selectedMatter.Description}
-                </Text>
-                <Text variant="medium">
-                  <strong>Practice Area:</strong> {selectedMatter.PracticeArea}
-                </Text>
-                <Text variant="medium">
-                  <strong>Approximate Value:</strong> {selectedMatter.ApproxValue}
-                </Text>
-                <Text variant="medium">
-                  <strong>Status:</strong> {selectedMatter.Status}
-                </Text>
-                <Text variant="medium">
-                  <strong>Originating Solicitor:</strong> {selectedMatter.OriginatingSolicitor}
-                </Text>
-                <Text variant="medium">
-                  <strong>Responsible Solicitor:</strong> {selectedMatter.ResponsibleSolicitor}
-                </Text>
-                <Text variant="medium">
-                  <strong>Supervising Partner:</strong> {selectedMatter.SupervisingPartner}
-                </Text>
-              </Stack>
-            </Stack>
+  
+          <PivotItem headerText="Transactions" itemKey="Transactions">
+            <MatterTransactions matter={selectedMatter} transactions={transactions} />
           </PivotItem>
         </Pivot>
       </div>
     );
-  }
+  }  
 
   // ------------------------------------------------
   // Otherwise, render the grid (overview or matter list)

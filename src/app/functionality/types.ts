@@ -313,14 +313,15 @@ export interface OutstandingClientBalancesResponse {
 
 export interface Transaction {
   intake_id: number;
-  intake_date: string; // ISO date string
+  intake_date: string;
   transaction_id: string;
   matter_ref: string;
   matter_description: string;
   fe: string;
   amount: number;
-  transaction_date: string; // ISO date string
+  transaction_date: string;
   from_client: boolean;
-  money_sender: string;
+  money_sender: string | null;
   type: string;
+  status?: string | null; // new field added
 }
