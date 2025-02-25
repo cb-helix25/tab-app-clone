@@ -94,7 +94,7 @@ function getRequestDays(entry: ApprovalEntry): number {
   const dt = entry.days_taken ?? 0;
   if (dt > 0) return dt;
 
-  // fallback if truly 0 or undefined
+  // fallback if truly 0 or undefined: count weekdays in the interval
   const start = new Date(entry.start_date);
   const end = new Date(entry.end_date);
   const days = eachDayOfInterval({ start, end }).filter(d => !isWeekend(d)).length;
@@ -193,13 +193,14 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   }
 
   function getEntitlement(initials: string): number {
-    console.log('Looking up entitlement for initials:', initials);
+    console.log('getEntitlement called with initials:', initials);
     console.log('Team data:', team);
-    const member = team.find(m => m.Initials.trim().toLowerCase() === initials.trim().toLowerCase());
+    const normalizedInitials = initials.trim().toLowerCase();
+    const member = team.find(m => m.Initials && m.Initials.trim().toLowerCase() === normalizedInitials);
     if (!member) {
       console.warn(`No team member found for initials: ${initials}`);
     } else {
-      console.log(`Found team member:`, member);
+      console.log('Found team member:', member);
     }
     return member?.holiday_entitlement ?? 20;
   }
@@ -233,18 +234,17 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     // 1) figure out the FY
     const fyStart = getFiscalYearStart(new Date(entry.start_date));
 
-    // 2) sum "booked + requested" for RC in that FY
+    // 2) sum "booked + requested" for this person in that FY
     const sumSoFar = sumBookedAndRequestedDaysInFY(
       allLeaveEntries,
       entry.person,
       fyStart
     );
 
-    // 3) That sum *already* includes this request if it's "requested" or "booked."
-    // So no need to add or remove it again
+    // 3) That sum already includes this request if it's "requested" or "booked."
     const daysSoFar = sumSoFar;
 
-    // 4) days remaining
+    // 4) days remaining = entitlement - daysSoFar
     const entitlement = getEntitlement(entry.person);
     const daysRemaining = entitlement - daysSoFar;
 

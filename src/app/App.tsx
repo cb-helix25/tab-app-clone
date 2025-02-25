@@ -109,6 +109,7 @@ const App: React.FC<AppProps> = ({
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
             onTransactionsFetched={handleTransactionsFetched}  // NEW callback
+            teamData={teamData}
           />
         );
       case 'forms':
@@ -155,6 +156,7 @@ const App: React.FC<AppProps> = ({
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
             onTransactionsFetched={handleTransactionsFetched}  // NEW callback
+            teamData={teamData}
           />
         );
     }

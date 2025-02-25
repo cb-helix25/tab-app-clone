@@ -42,7 +42,8 @@ import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData } from '../../app/functionality/types';
+
 import { Resource } from '../resources/Resources';
 
 import FormDetails from '../forms/FormDetails';
@@ -90,7 +91,8 @@ interface HomeProps {
   onAllMattersFetched?: (matters: Matter[]) => void;
   onOutstandingBalancesFetched?: (data: any) => void;
   onPOID6YearsFetched?: (data: any[]) => void;
-  onTransactionsFetched?: (transactions: Transaction[]) => void; // NEW!
+  onTransactionsFetched?: (transactions: Transaction[]) => void;
+  teamData?: TeamData[] | null;
 }
 
 interface QuickLink {
@@ -156,6 +158,13 @@ interface MetricItem {
   dialTarget?: number;
   dialValue?: number;
   dialSuffix?: string;
+}
+
+export interface TeamMember {
+  First: string;
+  Initials: string;
+  "Entra ID": string;
+  Nickname: string;
 }
 
 
@@ -532,7 +541,6 @@ const PersonBubble: React.FC<PersonBubbleProps> = ({
 
 let cachedAttendance: any[] | null = null;
 let cachedAttendanceError: string | null = null;
-let cachedTeamData: any[] | null = null;
 let cachedPOID6Years: any[] | null = null;
 
 let cachedAnnualLeave: AnnualLeaveRecord[] | null = null;
@@ -588,8 +596,19 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData }) => {
   const { isDarkMode } = useTheme();
+
+  // Transform teamData into our lite TeamMember type
+  const transformedTeamData = useMemo<TeamMember[]>(() => {
+    const data: TeamData[] = teamData ?? [];
+    return data.map((member: TeamData) => ({
+      First: member.First ?? '',
+      Initials: member.Initials ?? '',
+      "Entra ID": member["Entra ID"] ?? '',
+      Nickname: member.Nickname ?? member.First ?? '',
+    }));
+  }, [teamData]);
 
   const renderContextsPanelContent = () => (
     <Stack tokens={{ childrenGap: 30 }} style={{ padding: 20 }}>
@@ -676,7 +695,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [currentUserName, setCurrentUserName] = useState<string>('');
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
-  const [teamData, setTeamData] = useState<any[]>([]);
   const [attendanceError, setAttendanceError] = useState<string | null>(null);
   const [annualLeaveRecords, setAnnualLeaveRecords] = useState<AnnualLeaveRecord[]>([]);
   const [annualLeaveError, setAnnualLeaveError] = useState<string | null>(null);
@@ -706,6 +724,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
   const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
+
+  const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
 
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
@@ -847,7 +867,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     if (cachedAttendance || cachedAttendanceError || cachedAnnualLeave || cachedAnnualLeaveError) {
       // If data is cached, restore it straight away
       setAttendanceRecords(cachedAttendance || []);
-      setTeamData(cachedTeamData || []);
+      setAttendanceTeam([]);
       setAttendanceError(cachedAttendanceError);
 
       setAnnualLeaveRecords(cachedAnnualLeave || []);
@@ -871,15 +891,15 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
             throw new Error(`Failed to fetch attendance: ${attendanceResponse.status}`);
           const attendanceData = await attendanceResponse.json();
           cachedAttendance = attendanceData.attendance;
-          cachedTeamData = attendanceData.team;
+          
           setAttendanceRecords(attendanceData.attendance);
-          setTeamData(attendanceData.team);
+          setAttendanceTeam(attendanceData.team); // store the "lite" team separately
         } catch (error: any) {
           console.error('Error fetching attendance:', error);
           cachedAttendanceError = error.message || 'Unknown error occurred.';
           setAttendanceError(error.message || 'Unknown error occurred.');
           setAttendanceRecords([]);
-          setTeamData([]);
+          setAttendanceTeam([]);
         } finally {
           setIsLoadingAttendance(false);
         }
@@ -1223,7 +1243,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 // --- Updated Confirm Attendance snippet ---
 
 // 1. Grab user’s initials from userData (Now done via rawUserInitials + storedUserInitials above)
-const matchingTeamMember = teamData.find(
+const matchingTeamMember = attendanceTeam.find(
   (member: any) => (member.Initials || '').toLowerCase() === userInitials.toLowerCase()
 );
 
@@ -1258,14 +1278,16 @@ const officeAttendanceButtonText = currentUserConfirmed
   };
 
   const allPeople = useMemo(() => {
-    if (!teamData || teamData.length === 0) return [];
-    return teamData
+    if (!attendanceTeam || attendanceTeam.length === 0) return [];
+  
+    return attendanceTeam
       .sort((a: any, b: any) => a.First.localeCompare(b.First))
       .map((t: any) => {
         const att = attendanceRecords.find(
-          (a: any) => a.name.toLowerCase() === t.First.toLowerCase()
+          (record: any) => record.name.toLowerCase() === t.First.toLowerCase()
         );
         const attending = att ? att.attendingToday : false;
+  
         return {
           id: t.Initials,
           name: t.First,
@@ -1274,7 +1296,7 @@ const officeAttendanceButtonText = currentUserConfirmed
           nickname: t.Nickname || t.First,
         };
       });
-  }, [teamData, attendanceRecords]);
+  }, [attendanceTeam, attendanceRecords]);
 
   const metricsData = useMemo(() => {
     const currentDate = new Date();
@@ -1548,7 +1570,7 @@ const officeAttendanceButtonText = currentUserConfirmed
             status: item.status,
           }))}
           onClose={() => setIsBespokePanelOpen(false)}
-          team={teamData}
+          team={(teamData ?? []) as any} 
           totals={annualLeaveTotals}
           allLeaveEntries={annualLeaveAllData} // <-- Pass the full data here
         />
@@ -1572,7 +1594,7 @@ const officeAttendanceButtonText = currentUserConfirmed
             rejection_notes: item.rejection_notes,
           }))}
           onClose={() => setIsBespokePanelOpen(false)}
-          team={teamData}
+          team={transformedTeamData}
         />
       );
       setBespokePanelTitle('Book Requested Leave');
@@ -1648,7 +1670,7 @@ const officeAttendanceButtonText = currentUserConfirmed
         content = (
           <AnnualLeaveForm
             futureLeave={futureLeaveRecords}
-            team={teamData}
+            team={transformedTeamData}
             userData={userData}
             totals={annualLeaveTotals}
             bankHolidays={bankHolidays}
@@ -1730,22 +1752,25 @@ const officeAttendanceButtonText = currentUserConfirmed
   const currentWeekMonday = getMondayOfCurrentWeek();
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Example usage in attendancePersons:
   const attendancePersons = useMemo(() => {
-    return attendanceRecords
-      .map((rec: any) => {
-        const teamMember = teamData.find(
-          (member: any) => member.First.toLowerCase() === rec.name.toLowerCase()
+    return transformedTeamData
+      .map((member) => {
+        const record = attendanceRecords.find(
+          (rec: any) => rec.name.toLowerCase() === member.First.toLowerCase()
         );
         return {
-          name: rec.name,
-          initials: teamMember ? teamMember.Initials : rec.name,
-          nickname: teamMember ? teamMember.Nickname : rec.name,
+          name: member.First,
+          initials: member.Initials,
+          nickname: member.Nickname,
           attendance:
-            rec.weeks && rec.weeks[currentWeekKey] ? rec.weeks[currentWeekKey].attendance : '',
+            record && record.weeks && record.weeks[currentWeekKey]
+              ? record.weeks[currentWeekKey].attendance
+              : '',
         };
       })
-      .sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [attendanceRecords, teamData, currentWeekKey]);
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [transformedTeamData, attendanceRecords, currentWeekKey]);
 
   const getCellStatus = (
     personAttendance: string,
