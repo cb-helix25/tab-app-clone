@@ -142,6 +142,23 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
+interface MetricItem {
+  title: string;
+  isTimeMoney?: boolean;
+  isMoneyOnly?: boolean;
+  money?: number;
+  hours?: number;
+  prevMoney?: number;
+  prevHours?: number;
+  count?: number;
+  prevCount?: number;
+  showDial?: boolean;
+  dialTarget?: number;
+  dialValue?: number;
+  dialSuffix?: string;
+}
+
+
 //////////////////////
 // Collapsible Section
 //////////////////////
@@ -168,9 +185,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       <div 
         onClick={toggleCollapse} 
         style={{
-          background: colours.grey,
+          background: `linear-gradient(to right, ${colours.grey}, white)`,
           color: '#333333',
-          padding: '8px 12px',
+          padding: '16px 12px', // increased vertical padding for taller header
+          minHeight: '48px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
@@ -187,8 +205,14 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           )}
         </span>
         <Icon
-          iconName={collapsed ? 'DoubleChevronDown' : 'DoubleChevronUp'}
-          styles={{ root: { fontSize: '12px' } }}
+          iconName="ChevronDown"
+          styles={{
+            root: {
+              fontSize: '16px',
+              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+              transition: 'transform 0.3s ease',
+            }
+          }}
         />
       </div>
       {/* Content */}
@@ -681,6 +705,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
+  const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
+
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
   useEffect(() => {
@@ -908,6 +934,10 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
             if (annualLeaveData.user_details && annualLeaveData.user_details.totals) {
               setAnnualLeaveTotals(annualLeaveData.user_details.totals);
+            }
+              // NEW: Set the all_data property from the response
+            if (annualLeaveData.all_data) {
+              setAnnualLeaveAllData(annualLeaveData.all_data);
             }
           } else {
             throw new Error('Invalid annual leave data format.');
@@ -1520,8 +1550,9 @@ const officeAttendanceButtonText = currentUserConfirmed
           onClose={() => setIsBespokePanelOpen(false)}
           team={teamData}
           totals={annualLeaveTotals}
-          holidayEntitlement={userData[0]?.holiday_entitlement || 0}
+          allLeaveEntries={annualLeaveAllData} // <-- Pass the full data here
         />
+
       );
       setBespokePanelTitle('Approve Annual Leave');
       setIsBespokePanelOpen(true);
@@ -1803,6 +1834,12 @@ const officeAttendanceButtonText = currentUserConfirmed
     );
   };  
 
+// Extract mattersOpenedCount and compute conversion rate with two decimals
+const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
+const conversionRate = enquiriesMonthToDate
+  ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
+  : 0;
+  
   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
@@ -1884,65 +1921,141 @@ const officeAttendanceButtonText = currentUserConfirmed
       >
         {/* Time Metrics Section */}
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
-          <div
-            className={mergeStyles({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            })}
-          >
-            {timeMetrics.map((metric, index) => (
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: '20px' }}>
+            {/* Group for the three time-related metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', flex: 1 }}>
+              {timeMetrics.slice(0, 3).map((metric, index) => (
+                <MetricCard
+                  key={metric.title}
+                  title={metric.title}
+                  {...(metric.isMoneyOnly
+                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                    : metric.isTimeMoney
+                    ? {
+                        money: metric.money,
+                        hours: metric.hours,
+                        prevMoney: metric.prevMoney,
+                        prevHours: metric.prevHours,
+                        isTimeMoney: metric.isTimeMoney,
+                        showDial: metric.showDial,
+                        dialTarget: metric.dialTarget,
+                      }
+                    : { count: metric.count, prevCount: metric.prevCount })}
+                  isDarkMode={isDarkMode}
+                  animationDelay={index * 0.1}
+                />
+              ))}
+            </div>
+
+            {/* Vertical spacer: a subtle vertical divider */}
+            <div style={{ borderLeft: '1px solid #ccc', margin: '0 10px' }} />
+
+            {/* Group for the recovered fees metric */}
+            <div style={{ flex: 1 }}>
               <MetricCard
-                key={metric.title}
-                title={metric.title}
-                {...(metric.isMoneyOnly
-                  ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                  : metric.isTimeMoney
+                key={timeMetrics[3].title}
+                title={timeMetrics[3].title}
+                {...(timeMetrics[3].isMoneyOnly
+                  ? { money: timeMetrics[3].money, prevMoney: timeMetrics[3].prevMoney, isMoneyOnly: timeMetrics[3].isMoneyOnly }
+                  : timeMetrics[3].isTimeMoney
                   ? {
-                      money: metric.money,
-                      hours: metric.hours,
-                      prevMoney: metric.prevMoney,
-                      prevHours: metric.prevHours,
-                      isTimeMoney: metric.isTimeMoney,
-                      showDial: metric.showDial,
-                      dialTarget: metric.dialTarget
+                      money: timeMetrics[3].money,
+                      hours: timeMetrics[3].hours,
+                      prevMoney: timeMetrics[3].prevMoney,
+                      prevHours: timeMetrics[3].prevHours,
+                      isTimeMoney: timeMetrics[3].isTimeMoney,
+                      showDial: timeMetrics[3].showDial,
+                      dialTarget: timeMetrics[3].dialTarget,
                     }
-                  : { count: metric.count, prevCount: metric.prevCount })}
+                  : { count: timeMetrics[3].count, prevCount: timeMetrics[3].prevCount })}
                 isDarkMode={isDarkMode}
-                animationDelay={index * 0.1}
+                animationDelay={0}
               />
-            ))}
+            </div>
           </div>
         </CollapsibleSection>
 
         {/* Conversion Metrics Section */}
         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
-          <div
-            className={mergeStyles({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            })}
-          >
-            {enquiryMetrics.map((metric, index) => (
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {/* Group for the three enquiry-related metrics */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '20px',
+                flex: 1,
+              }}
+            >
+              {enquiryMetrics.slice(0, 3).map((metric, index) => (
+                <MetricCard
+                  key={metric.title}
+                  title={metric.title}
+                  {...(metric.isMoneyOnly
+                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                    : metric.isTimeMoney
+                    ? {
+                        money: metric.money,
+                        hours: metric.hours,
+                        prevMoney: metric.prevMoney,
+                        prevHours: metric.prevHours,
+                        isTimeMoney: metric.isTimeMoney,
+                      }
+                    : { count: metric.count, prevCount: metric.prevCount })}
+                  isDarkMode={isDarkMode}
+                  animationDelay={index * 0.1}
+                />
+              ))}
+            </div>
+
+            {/* Vertical spacer */}
+            <div style={{ borderLeft: '1px solid #ccc', margin: '0 10px' }} />
+
+            {/* Group for the Matters Opened and Conversion Rate metrics */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '20px',
+                flex: 1,
+              }}
+            >
+              {/* Matters Opened metric without dial (basic count) */}
               <MetricCard
-                key={metric.title}
-                title={metric.title}
-                {...(metric.isMoneyOnly
-                  ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                  : metric.isTimeMoney
+                key={enquiryMetrics[3].title}
+                title={enquiryMetrics[3].title}
+                {...(enquiryMetrics[3].isMoneyOnly
+                  ? { money: enquiryMetrics[3].money, prevMoney: enquiryMetrics[3].prevMoney, isMoneyOnly: enquiryMetrics[3].isMoneyOnly }
+                  : enquiryMetrics[3].isTimeMoney
                   ? {
-                      money: metric.money,
-                      hours: metric.hours,
-                      prevMoney: metric.prevMoney,
-                      prevHours: metric.prevHours,
-                      isTimeMoney: metric.isTimeMoney
+                      money: enquiryMetrics[3].money,
+                      hours: enquiryMetrics[3].hours,
+                      prevMoney: enquiryMetrics[3].prevMoney,
+                      prevHours: enquiryMetrics[3].prevHours,
+                      isTimeMoney: enquiryMetrics[3].isTimeMoney,
                     }
-                  : { count: metric.count, prevCount: metric.prevCount })}
+                  : { count: enquiryMetrics[3].count, prevCount: enquiryMetrics[3].prevCount })}
                 isDarkMode={isDarkMode}
-                animationDelay={index * 0.1}
+                animationDelay={0}
+                // No dial props passed so this card just shows the count
               />
-            ))}
+
+              {/* Conversion Rate metric with dial (percentage, no £) */}
+              <MetricCard
+                key="Conversion Rate"
+                title="Conversion Rate"
+                {...{
+                  count: conversionRate,
+                  prevCount: 0,
+                }}
+                isDarkMode={isDarkMode}
+                animationDelay={0.1}
+                showDial={true}
+                dialTarget={100}
+                dialValue={conversionRate}
+                dialSuffix="%"  // Displays the percentage symbol
+              />
+            </div>
           </div>
         </CollapsibleSection>
       </div>

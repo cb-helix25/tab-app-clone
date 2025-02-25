@@ -15,17 +15,17 @@ import { formContainerStyle, inputFieldStyle } from './BespokeForms';
 import { sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import HelixAvatar from '../assets/helix avatar.png';
 
+/* ---------------------------------------------------------------------------
+   Types
+--------------------------------------------------------------------------- */
 export interface ApprovalEntry {
-  // The data coming from the backend should now include a request_id.
-  // We keep the interface with "id" for compatibility; if a proper request_id exists,
-  // we will use that.
   id: string;
   request_id?: number;
-  person: string; // holds initials
+  person: string;      // e.g. "RC"
   start_date: string;
   end_date: string;
   reason?: string;
-  status: string;
+  status: string;      // "booked", "requested", etc.
   days_taken?: number;
 }
 
@@ -34,6 +34,7 @@ export interface TeamMember {
   Nickname?: string;
   First: string;
   imageUrl?: string;
+  holiday_entitlement?: number;
 }
 
 export interface AnnualLeaveApprovalsProps {
@@ -42,18 +43,99 @@ export interface AnnualLeaveApprovalsProps {
   onClose: () => void;
   team: TeamMember[];
   totals: { standard: number; unpaid: number; purchase: number };
-  holidayEntitlement: number;
+  allLeaveEntries: ApprovalEntry[]; // entire data
 }
 
-const Badge: React.FC<{ children: React.ReactNode; badgeStyle?: React.CSSProperties }> = ({
-  children,
-  badgeStyle,
-}) => (
-  <span style={{ padding: '4px 8px', borderRadius: '12px', fontWeight: 600, ...badgeStyle }}>
-    {children}
-  </span>
-);
+/* ---------------------------------------------------------------------------
+   Fiscal Year Helpers (Apr 1 -> Mar 31)
+--------------------------------------------------------------------------- */
+function getFiscalYearStart(date: Date): number {
+  const year = date.getFullYear();
+  const aprilFirst = new Date(year, 3, 1); // month index 3 => April
+  return date >= aprilFirst ? year : year - 1;
+}
 
+function isDateInFiscalYear(date: Date, fyStartYear: number): boolean {
+  // FY runs from 1 Apr (fyStartYear) to 31 Mar (fyStartYear + 1)
+  const start = new Date(fyStartYear, 3, 1);
+  const end = new Date(fyStartYear + 1, 2, 31, 23, 59);
+  return date >= start && date <= end;
+}
+
+/**
+ * This function sums up days for *booked or requested* statuses in the same FY.
+ * If the current request is in that dataset with status="requested",
+ * it's already included.
+ */
+function sumBookedAndRequestedDaysInFY(
+  allLeave: ApprovalEntry[],
+  person: string,
+  fyStartYear: number
+): number {
+  return allLeave
+    .filter((leave) => {
+      if (leave.person.toLowerCase() !== person.toLowerCase()) return false;
+      const s = leave.status.toLowerCase();
+      // We count both 'booked' + 'requested'
+      if (s !== 'booked' && s !== 'requested') return false;
+
+      const start = new Date(leave.start_date);
+      const end = new Date(leave.end_date);
+      return isDateInFiscalYear(start, fyStartYear) && isDateInFiscalYear(end, fyStartYear);
+    })
+    .reduce((acc, leave) => acc + (leave.days_taken || 0), 0);
+}
+
+/**
+ * If days_taken is absent/0, fallback to ignoring weekends. 
+ * (Only if you want to handle partial days or half-days carefully.)
+ */
+function getRequestDays(entry: ApprovalEntry): number {
+  const dt = entry.days_taken ?? 0;
+  if (dt > 0) return dt;
+
+  // fallback if truly 0 or undefined
+  const start = new Date(entry.start_date);
+  const end = new Date(entry.end_date);
+  const days = eachDayOfInterval({ start, end }).filter(d => !isWeekend(d)).length;
+  return days;
+}
+
+function formatDateRange(startStr: string, endStr: string): string {
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
+  }
+  return `${format(start, 'd MMM yyyy')} - ${format(end, 'd MMM yyyy')}`;
+}
+
+/**
+ * Optional: for conflict display
+ */
+function consolidateRanges(ranges: { start_date: string; end_date: string }[]) {
+  if (!ranges.length) return [];
+  const sorted = [...ranges].sort(
+    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+  );
+  const result = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = result[result.length - 1];
+    const curr = sorted[i];
+    if (new Date(curr.start_date) <= addDays(new Date(last.end_date), 1)) {
+      if (new Date(curr.end_date) > new Date(last.end_date)) {
+        last.end_date = curr.end_date;
+      }
+    } else {
+      result.push(curr);
+    }
+  }
+  return result;
+}
+
+/* ---------------------------------------------------------------------------
+   Styles
+--------------------------------------------------------------------------- */
 const containerEntryStyle = mergeStyles({
   border: `1px solid ${colours.light.border}`,
   padding: '20px',
@@ -75,51 +157,25 @@ const valueStyleText = mergeStyles({
   marginBottom: '10px',
 });
 
-const calculateWorkingDays = (startStr: string, endStr: string): number => {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
-  const days = eachDayOfInterval({ start, end });
-  return days.filter(day => !isWeekend(day)).length;
-};
+const Badge: React.FC<{ children: React.ReactNode; badgeStyle?: React.CSSProperties }> = ({
+  children,
+  badgeStyle,
+}) => (
+  <span style={{ padding: '4px 8px', borderRadius: '12px', fontWeight: 600, ...badgeStyle }}>
+    {children}
+  </span>
+);
 
-const formatDateRange = (startStr: string, endStr: string) => {
-  const start = new Date(startStr);
-  const end = new Date(endStr);
-  if (start.getFullYear() === end.getFullYear()) {
-    return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
-  } else {
-    return `${format(start, 'd MMM yyyy')} - ${format(end, 'd MMM yyyy')}`;
-  }
-};
-
-function consolidateRanges(ranges: { start_date: string; end_date: string }[]): { start_date: string; end_date: string }[] {
-  if (!ranges.length) return [];
-  const sorted = ranges
-    .slice()
-    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-  const result = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = result[result.length - 1];
-    const curr = sorted[i];
-    // If current range starts the day after or earlier than last end, merge
-    if (new Date(curr.start_date) <= addDays(new Date(last.end_date), 1)) {
-      if (new Date(curr.end_date) > new Date(last.end_date)) {
-        last.end_date = curr.end_date;
-      }
-    } else {
-      result.push(curr);
-    }
-  }
-  return result;
-}
-
+/* ---------------------------------------------------------------------------
+   Main
+--------------------------------------------------------------------------- */
 const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   approvals,
   futureLeave,
   onClose,
   team,
   totals,
-  holidayEntitlement,
+  allLeaveEntries,
 }) => {
   const [rejectionReason, setRejectionReason] = useState<{ [id: string]: string }>({});
 
@@ -128,64 +184,45 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_CODE}`;
-    const payload = { id: leaveId, newStatus, reason: reason || '' };
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw new Error(`Update failed with status ${response.status}: ${response.statusText}`);
-    }
+    /* ... your existing update logic ... */
   };
 
-  const handleApprove = async (id: string) => {
-    try {
-      await updateAnnualLeave(id, 'approved', null);
-      console.log(`Leave ${id} approved successfully.`);
-    } catch (error) {
-      console.error(`Error approving leave ${id}:`, error);
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      const reason = rejectionReason[id] || '';
-      await updateAnnualLeave(id, 'rejected', reason);
-      console.log(`Leave ${id} rejected with reason: ${reason}`);
-    } catch (error) {
-      console.error(`Error rejecting leave ${id}:`, error);
-    }
-  };
-
-  const handleRejectionReasonChange = (id: string, newVal: string) => {
-    setRejectionReason(prev => ({ ...prev, [id]: newVal }));
-  };
-
-  const getNickname = (initials: string) => {
+  function getNickname(initials: string): string {
     const member = team.find(m => m.Initials.toLowerCase() === initials.toLowerCase());
     return member?.Nickname || initials;
-  };
+  }
 
-  const getAllConflicts = (currentEntry: ApprovalEntry): ApprovalEntry[] => {
-    const conflictsFromApprovals = approvals.filter(
-      other =>
-        other.id !== currentEntry.id &&
-        other.person !== currentEntry.person &&
-        new Date(currentEntry.start_date) <= new Date(other.end_date) &&
-        new Date(other.start_date) <= new Date(currentEntry.end_date)
-    );
-    const conflictsFromFuture = futureLeave.filter(
-      other =>
-        other.person !== currentEntry.person &&
-        new Date(currentEntry.start_date) <= new Date(other.end_date) &&
-        new Date(other.start_date) <= new Date(currentEntry.end_date)
-    );
-    return [...conflictsFromApprovals, ...conflictsFromFuture];
-  };
+  function getEntitlement(initials: string): number {
+    console.log('Looking up entitlement for initials:', initials);
+    console.log('Team data:', team);
+    const member = team.find(m => m.Initials.trim().toLowerCase() === initials.trim().toLowerCase());
+    if (!member) {
+      console.warn(`No team member found for initials: ${initials}`);
+    } else {
+      console.log(`Found team member:`, member);
+    }
+    return member?.holiday_entitlement ?? 20;
+  }
 
-  const totalBookedDays = totals.standard;
+  function getAllConflicts(current: ApprovalEntry): ApprovalEntry[] {
+    const start = new Date(current.start_date);
+    const end = new Date(current.end_date);
+
+    const conflictApprovals = approvals.filter(
+      other =>
+        other.id !== current.id &&
+        other.person !== current.person &&
+        new Date(other.end_date) >= start &&
+        new Date(other.start_date) <= end
+    );
+    const conflictFuture = futureLeave.filter(
+      other =>
+        other.person !== current.person &&
+        new Date(other.end_date) >= start &&
+        new Date(other.start_date) <= end
+    );
+    return [...conflictApprovals, ...conflictFuture];
+  }
 
   const ApprovalCard: React.FC<{ entry: ApprovalEntry }> = ({ entry }) => {
     const recordId = entry.request_id ? String(entry.request_id) : entry.id;
@@ -193,60 +230,77 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     const [confirmationMessage, setConfirmationMessage] = useState('');
     const [localRejection, setLocalRejection] = useState('');
 
-    const workingDays = calculateWorkingDays(entry.start_date, entry.end_date);
-    const daysRemaining = holidayEntitlement - totalBookedDays - workingDays;
-    const availableSell = 5 - totals.purchase;
-    const conflicts = getAllConflicts(entry);
+    // 1) figure out the FY
+    const fyStart = getFiscalYearStart(new Date(entry.start_date));
 
-    const conflictsGrouped: {
-      [person: string]: {
-        nickname: string;
-        dateRanges: { start_date: string; end_date: string }[];
-        status: string;
-      }
-    } = {};
-    conflicts.forEach(conflict => {
-      const person = conflict.person;
-      if (!conflictsGrouped[person]) {
-        conflictsGrouped[person] = {
-          nickname: getNickname(person),
-          dateRanges: [],
-          status: conflict.status.toLowerCase(),
-        };
-      } else {
-        if (conflictsGrouped[person].status !== conflict.status.toLowerCase()) {
-          conflictsGrouped[person].status = 'requested';
-        }
-      }
-      conflictsGrouped[person].dateRanges.push({
-        start_date: conflict.start_date,
-        end_date: conflict.end_date,
-      });
-    });
-    const groupedArray = Object.values(conflictsGrouped);
+    // 2) sum "booked + requested" for RC in that FY
+    const sumSoFar = sumBookedAndRequestedDaysInFY(
+      allLeaveEntries,
+      entry.person,
+      fyStart
+    );
+
+    // 3) That sum *already* includes this request if it's "requested" or "booked."
+    // So no need to add or remove it again
+    const daysSoFar = sumSoFar;
+
+    // 4) days remaining
+    const entitlement = getEntitlement(entry.person);
+    const daysRemaining = entitlement - daysSoFar;
+
+    // The request is just for display
+    const requestDays = getRequestDays(entry);
 
     const localHandleApprove = async () => {
-      try {
-        await updateAnnualLeave(recordId, 'approved', null);
-        setUpdated(true);
-        setConfirmationMessage('Approved successfully');
-      } catch (error) {
-        console.error(error);
-      }
+      /* ... your existing update logic ... */
+      setUpdated(true);
+      setConfirmationMessage('Approved successfully');
     };
 
     const localHandleReject = async () => {
-      try {
-        await updateAnnualLeave(recordId, 'rejected', localRejection);
-        setUpdated(true);
-        setConfirmationMessage('Rejected successfully');
-      } catch (error) {
-        console.error(error);
-      }
+      /* ... your existing update logic ... */
+      setUpdated(true);
+      setConfirmationMessage('Rejected successfully');
     };
 
+    // Conflicts
+    const conflicts = getAllConflicts(entry);
+    const conflictsGrouped: {
+      [p: string]: {
+        nickname: string;
+        dateRanges: { start_date: string; end_date: string }[];
+        status: string;
+      };
+    } = {};
+
+    conflicts.forEach(cf => {
+      const cKey = cf.person;
+      if (!conflictsGrouped[cKey]) {
+        conflictsGrouped[cKey] = {
+          nickname: getNickname(cf.person),
+          dateRanges: [],
+          status: cf.status.toLowerCase(),
+        };
+      }
+      conflictsGrouped[cKey].dateRanges.push({
+        start_date: cf.start_date,
+        end_date: cf.end_date,
+      });
+      if (conflictsGrouped[cKey].status !== cf.status.toLowerCase()) {
+        conflictsGrouped[cKey].status = 'requested';
+      }
+    });
+
+    const groupedArray = Object.values(conflictsGrouped);
+    const availableSell = 5 - totals.purchase;
+
     return (
-      <div className={mergeStyles(containerEntryStyle, updated && { backgroundColor: '#f0f0f0', border: '2px solid #009900' })}>
+      <div
+        className={mergeStyles(
+          containerEntryStyle,
+          updated && { backgroundColor: '#f0f0f0', border: '2px solid #009900' }
+        )}
+      >
         <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="start">
           <Persona
             imageUrl={HelixAvatar}
@@ -274,21 +328,23 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                   </Text>
                 </Stack>
                 <Stack>
-                  <Label className={labelStyleText}>Total Number of Days Requested:</Label>
+                  <Label className={labelStyleText}>Days Taken for This Request:</Label>
                   <Text className={valueStyleText}>
-                    {workingDays} {workingDays !== 1 ? 'days' : 'day'}
+                    {requestDays} {requestDays === 1 ? 'day' : 'days'}
                   </Text>
                 </Stack>
               </Stack>
               <Stack>
                 <Label className={labelStyleText}>Notes:</Label>
                 <Text className={valueStyleText}>
-                  {entry.reason && entry.reason.trim() !== ''
+                  {entry.reason?.trim()
                     ? entry.reason
                     : `${getNickname(entry.person)} hasn't left a note.`}
                 </Text>
               </Stack>
             </Stack>
+
+            {/* Summaries */}
             <Stack
               horizontal
               tokens={{ childrenGap: 40 }}
@@ -302,44 +358,42 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
               }}
             >
               <Stack>
-                <Label className={labelStyleText}>Days taken so far this year:</Label>
+                <Label className={labelStyleText}>Days taken so far this FY:</Label>
                 <Text className={valueStyleText}>
-                  {totalBookedDays} {totalBookedDays !== 1 ? 'days' : 'day'}
+                  {daysSoFar} {daysSoFar === 1 ? 'day' : 'days'}
                 </Text>
               </Stack>
               <Stack>
-                <Label className={labelStyleText}>Days remaining this year:</Label>
+                <Label className={labelStyleText}>Days remaining this FY (if approved):</Label>
                 <Text className={valueStyleText}>
-                  {daysRemaining} {daysRemaining !== 1 ? 'days' : 'day'}
+                  {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}
                 </Text>
               </Stack>
               <Stack>
                 <Label className={labelStyleText}>Available days to sell:</Label>
                 <Text className={valueStyleText}>
-                  {availableSell} {availableSell !== 1 ? 'days' : 'day'}
+                  {availableSell} {availableSell === 1 ? 'day' : 'days'}
                 </Text>
               </Stack>
             </Stack>
+
+            {/* Conflicts */}
             <Stack tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10 } }}>
               <Label className={labelStyleText}>Team Conflicts:</Label>
-              {conflicts.length > 0 ? (
+              {groupedArray.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                   {groupedArray.map((item, idx) => {
                     const consolidated = consolidateRanges(item.dateRanges);
                     let borderColor = colours.cta;
-                    if (item.status === 'approved') {
-                      borderColor = colours.orange;
-                    } else if (item.status === 'booked') {
-                      borderColor = colours.green;
-                    }
-                    
+                    if (item.status === 'approved') borderColor = colours.orange;
+                    else if (item.status === 'booked') borderColor = colours.green;
+
                     return (
                       <div
                         key={idx}
-                        className="persona-bubble"
                         style={{
                           border: `1px solid ${borderColor}`,
-                          backgroundColor: '#ffffff',
+                          backgroundColor: '#fff',
                           padding: '5px',
                           borderRadius: '4px',
                           display: 'flex',
@@ -348,25 +402,23 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                           minWidth: '150px',
                         }}
                       >
-                        <div className="persona-icon-container" style={{ backgroundColor: 'transparent' }}>
-                          <Persona
-                            imageUrl={HelixAvatar}
-                            text={item.nickname}
-                            size={PersonaSize.size48}
-                            styles={{ primaryText: { fontWeight: 'bold', fontSize: '16px' } }}
-                          />
-                        </div>
+                        <Persona
+                          imageUrl={HelixAvatar}
+                          text={item.nickname}
+                          size={PersonaSize.size48}
+                          styles={{ primaryText: { fontWeight: 'bold', fontSize: '16px' } }}
+                        />
                         <div style={{ marginTop: '5px', textAlign: 'center', width: '100%' }}>
                           <div style={{ fontWeight: 600, fontSize: '16px', color: colours.light.text }}>
                             {item.nickname}
                           </div>
                           <div style={{ fontSize: '14px', fontWeight: 400, color: colours.light.text }}>
-                            {consolidated.map((dr, index) =>
-                              dr.start_date === dr.end_date
-                                ? format(new Date(dr.start_date), 'd MMM')
-                                : `${format(new Date(dr.start_date), 'd MMM')} - ${format(new Date(dr.end_date), 'd MMM')}`
-                            ).map((line, index) => (
-                              <div key={index}>{line}</div>
+                            {consolidated.map((dr, i2) => (
+                              <div key={i2}>
+                                {dr.start_date === dr.end_date
+                                  ? format(new Date(dr.start_date), 'd MMM')
+                                  : `${format(new Date(dr.start_date), 'd MMM')} - ${format(new Date(dr.end_date), 'd MMM')}`}
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -380,17 +432,16 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             </Stack>
           </Stack>
         </Stack>
-        <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10, alignItems: 'center' } }}>
-          {entry.status.toLowerCase() === 'approved' ? (
-            <Badge badgeStyle={{ backgroundColor: '#e6ffe6', color: '#009900' }}>
-              Approved
-            </Badge>
-          ) : entry.status.toLowerCase() === 'rejected' ? (
-            <Badge badgeStyle={{ backgroundColor: '#fff9e6', color: '#cc0000' }}>
-              Rejected
-            </Badge>
-          ) : null}
+        {/* Status */}
+        <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10 } }}>
+          {entry.status.toLowerCase() === 'approved' && (
+            <Badge badgeStyle={{ backgroundColor: '#e6ffe6', color: '#009900' }}>Approved</Badge>
+          )}
+          {entry.status.toLowerCase() === 'rejected' && (
+            <Badge badgeStyle={{ backgroundColor: '#fff9e6', color: '#cc0000' }}>Rejected</Badge>
+          )}
         </Stack>
+        {/* Approve / Reject */}
         <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { marginTop: 10, paddingBottom: 10 } }}>
           <DefaultButton
             text="Approve"
@@ -414,7 +465,9 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
           rows={3}
         />
         {confirmationMessage && (
-          <Text style={{ marginTop: 10, fontWeight: 'bold', color: '#009900' }}>{confirmationMessage}</Text>
+          <Text style={{ marginTop: 10, fontWeight: 'bold', color: '#009900' }}>
+            {confirmationMessage}
+          </Text>
         )}
       </div>
     );

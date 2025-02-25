@@ -1,5 +1,3 @@
-// src/tabs/home/MetricCard.tsx
-
 import React, { useState } from 'react';
 import { Text, mergeStyles, TooltipHost, DirectionalHint } from '@fluentui/react';
 import CountUp from 'react-countup';
@@ -25,6 +23,9 @@ interface MetricCardProps {
   animationDelay?: number;
   showDial?: boolean;
   dialTarget?: number;
+  dialValue?: number; // NEW property: the value to display in the dial (e.g. matters opened)
+  highlightDial?: boolean; // NEW property to allow highlighting the dial if needed
+  dialSuffix?: string; // NEW property to append (e.g. "%")
 }
 
 const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
@@ -89,15 +90,16 @@ const changeStyle = (isPositive: boolean) =>
     marginTop: '8px',
   });
 
-// This function renders the dial layout; note that it includes the title.
+// Updated renderDialLayout using dialSuffix to decide what to render
 const renderDialLayout = (
   title: string,
   money: number | string | undefined,
-  hours: number | undefined,
+  value: number | undefined,
   isDarkMode: boolean,
-  dialTarget: number | undefined
+  dialTarget: number | undefined,
+  dialSuffix?: string
 ) => {
-  const progress = dialTarget && hours ? Math.min((hours / dialTarget) * 100, 100) : 0;
+  const progress = dialTarget && value ? Math.min((value / dialTarget) * 100, 100) : 0;
   return (
     <div
       className={mergeStyles({
@@ -118,7 +120,7 @@ const renderDialLayout = (
       >
         <CircularProgressbar
           value={progress}
-          text={`${hours !== undefined ? hours.toFixed(1) : '0'}h`}
+          text={`${value !== undefined ? value.toFixed(2) : '0'}${dialSuffix ? dialSuffix : ''}`}
           styles={buildStyles({
             textSize: '18px',
             pathTransitionDuration: 0.5,
@@ -129,32 +131,47 @@ const renderDialLayout = (
           })}
         />
       </div>
-      {/* Title and money/hours details */}
+      {/* Title and details */}
       <div>
         <Text className={metricTitleStyle}>{title}</Text>
-        <Text className={mergeStyles({ display: 'flex', alignItems: 'center' })}>
-          <span className={moneyStyle}>
-            £
+        {dialSuffix === "%" ? (
+          // For percentage (Conversion Rate), only show the value with "%" (no £ or hours)
+          <Text className={mergeStyles({ display: 'flex', alignItems: 'center', fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
             <CountUp
               start={0}
-              end={typeof money === 'number' ? Number(money) : 0}
-              duration={2.5}
-              separator=","
-              decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
-            />
-          </span>
-          <span className={pipeStyle}>|</span>
-          <span className={hoursStyle}>
-            <CountUp
-              start={0}
-              end={hours ? Number(hours) : 0}
+              end={value ? Number(value) : 0}
               duration={2.5}
               separator=","
               decimals={2}
-            />{' '}
-            hrs
-          </span>
-        </Text>
+            />
+            {dialSuffix}
+          </Text>
+        ) : (
+          // Otherwise, show both money and hours
+          <Text className={mergeStyles({ display: 'flex', alignItems: 'center' })}>
+            <span className={moneyStyle}>
+              £
+              <CountUp
+                start={0}
+                end={typeof money === 'number' ? Number(money) : 0}
+                duration={2.5}
+                separator=","
+                decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
+              />
+            </span>
+            <span className={pipeStyle}>|</span>
+            <span className={hoursStyle}>
+              <CountUp
+                start={0}
+                end={value ? Number(value) : 0}
+                duration={2.5}
+                separator=","
+                decimals={2}
+              />{' '}
+              hrs
+            </span>
+          </Text>
+        )}
       </div>
     </div>
   );
@@ -174,6 +191,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
   animationDelay = 0,
   showDial = false,
   dialTarget,
+  dialValue, // NEW: dialValue prop
+  highlightDial,
+  dialSuffix, // NEW: dialSuffix prop
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
 
@@ -267,8 +287,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         aria-label={`${title} metric card`}
       >
-        {showDial && isTimeMoney ? (
-          renderDialLayout(title, money, hours, isDarkMode, dialTarget)
+        {showDial ? (
+          // If showDial is true, render the dial layout using dialValue (or fallback to hours)
+          renderDialLayout(title, money, dialValue !== undefined ? dialValue : hours, isDarkMode, dialTarget, dialSuffix)
         ) : (
           <>
             <Text className={metricTitleStyle}>{title}</Text>

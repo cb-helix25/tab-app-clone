@@ -59,9 +59,13 @@ const mapRatingToStyle = (rating: string | undefined) => {
   }
 };
 
-// Format a number as currency using UK locale (e.g. "£1,234.56")
-const formatCurrency = (num: number): string =>
-  num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
+const formatCurrency = (num: number): string => {
+  if (Math.abs(num) >= 1000) {
+    // Divide by 1000 and format without decimals (or with one decimal if needed)
+    return `£${(num / 1000).toFixed(0)}k`;
+  }
+  return num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
+};
 
 // Format hours (e.g. "12.34h")
 const formatHours = (num: number): string => `${num.toFixed(2)}h`;

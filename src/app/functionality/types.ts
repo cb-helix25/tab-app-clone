@@ -1,5 +1,3 @@
-// src/app/functionality/types.ts
-
 export type SectionName = 'Favorites' | 'General_Processes' | 'Operations' | 'Financial';
 
 export interface Tab {
@@ -55,7 +53,7 @@ export interface UserData {
   ASANAClientID?: string;
   ASANASecret?: string;
   ASANARefreshToken?: string;
-  holiday_entitlement?: number; // Add this field
+  holiday_entitlement?: number; // Added holiday entitlement field
 }
 
 // Define the structure for Enquiry
@@ -190,6 +188,7 @@ export interface POID {
   risk_assessment_date?: string; // ISO format for date
 }
 
+// Define the structure for TeamData
 export interface TeamData {
   "Created Date"?: string;
   "Created Time"?: string;
@@ -204,9 +203,9 @@ export interface TeamData {
   "Rate"?: number;
   "Role"?: string;
   "AOW"?: string;
-  "status"?: string; // <-- Added field for team status (e.g. 'active')
+  "status"?: string; // e.g. 'active'
+  holiday_entitlement?: number; // NEW: Add entitlement here
 }
-
 
 export interface Currency {
   id: number | null;

@@ -121,12 +121,17 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     padding: '5px',
     backgroundColor: colours.light.inputBackground,
     boxSizing: 'border-box',
+    appearance: 'textfield', // Prevents default number field styling in some browsers
     selectors: {
       ':hover': {
         borderColor: colours.light.cta,
       },
       ':focus': {
         borderColor: colours.light.cta,
+      },
+      '::-webkit-inner-spin-button, ::-webkit-outer-spin-button': {
+        appearance: 'none', // Hides the up/down arrows in Chrome, Safari, Edge
+        margin: 0,
       },
       input: {
         padding: '0 5px',
@@ -412,12 +417,8 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       <TextField
                         required={field.required}
                         value={formValues[field.name]?.toString() || ''}
-                        onChange={(e, value) =>
-                          handleInputChange(field.name, value || '')
-                        }
-                        type={
-                          field.type === 'currency-picker' ? 'text' : 'number'
-                        }
+                        onChange={(e, value) => handleInputChange(field.name, value || '')}
+                        type="number"
                         disabled={isSubmitting}
                         styles={{
                           fieldGroup: amountInputStyle(!!field.prefix),
@@ -426,6 +427,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         min={field.min}
                         max={field.max}
                         readOnly={field.editable === false}
+                        onWheel={(e) => e.currentTarget.blur()} // Prevents number input from changing on scroll
                       />
                     </div>
                     {field.helpText && (

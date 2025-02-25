@@ -1,5 +1,3 @@
-// src/functions/getTeamData.ts
-
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
@@ -21,6 +19,7 @@ export interface TeamData {
     "Rate"?: number;                // MONEY as number
     "Role"?: string;
     "AOW"?: string;
+    "holiday_entitlement"?: number; // NEW: Added holiday entitlement field
     "status"?: string;              // New field for team status
 }
 
@@ -100,6 +99,7 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
                 return;
             }
 
+            // Updated SELECT query to include holiday_entitlement
             const query = `
                 SELECT 
                     [Created Date],
@@ -115,6 +115,7 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
                     [Rate],
                     [Role],
                     [AOW],
+                    [holiday_entitlement],
                     [status]
                 FROM [dbo].[team]
             `;
@@ -126,6 +127,7 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
                 } else {
                     context.log(`Rows returned: ${rowCount}`);
                 }
+                connection.close();
             });
 
             request.on("row", (columns) => {
@@ -137,7 +139,6 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
             });
 
             request.on("requestCompleted", () => {
-                connection.close();
                 resolve(result);
             });
 

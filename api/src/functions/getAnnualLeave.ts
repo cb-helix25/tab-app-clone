@@ -1,5 +1,3 @@
-// src/functions/getAnnualLeave/index.ts
-
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
@@ -35,6 +33,7 @@ interface AnnualLeaveResponse {
     annual_leave: AnnualLeaveRecord[];
     future_leave: AnnualLeaveRecord[];
     user_details: UserDetails;
+    all_data?: AnnualLeaveRecord[];  // NEW: Include all rows from the table
 }
 
 interface TeamData {
@@ -133,6 +132,9 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
             queryUserAnnualLeave(userInitials, configProjectData, context, teamAowMap)
         ]);
 
+        // NEW: Step 4.5: Fetch all annual leave data from the table.
+        const allAnnualLeaveEntries = await queryAllAnnualLeave(configProjectData, context);
+
         // Step 5: Enhance leave entries with AOW and Approvers
         const enhanceLeaveWithAOWAndApprover = (leaveEntries: AnnualLeaveRecord[]): AnnualLeaveRecord[] => {
             return leaveEntries.map(entry => ({
@@ -144,6 +146,8 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
 
         const enhancedAnnualLeave = enhanceLeaveWithAOWAndApprover(annualLeaveEntries);
         const enhancedFutureLeave = enhanceLeaveWithAOWAndApprover(futureLeaveEntries);
+        // Enhance the new all_data set:
+        const enhancedAllAnnualLeave = enhanceLeaveWithAOWAndApprover(allAnnualLeaveEntries);
 
         // Step 6: Enhance user_details with AOW
         const userAow = teamAowMap.get(userInitials) || null;
@@ -155,11 +159,12 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
             }
         };
 
-        // Step 7: Construct the response
+        // Step 7: Construct the response, now including all_data
         const response: AnnualLeaveResponse = {
             annual_leave: enhancedAnnualLeave,
             future_leave: enhancedFutureLeave,
-            user_details: enhancedUserDetails
+            user_details: enhancedUserDetails,
+            all_data: enhancedAllAnnualLeave   // NEW: Include all data from the table
         };
 
         context.log("Successfully constructed the response.");
@@ -416,6 +421,84 @@ async function queryFutureLeave(config: any, context: InvocationContext): Promis
             });
 
             sqlRequest.addParameter("Today", TYPES.Date, today);
+            connection.execSql(sqlRequest);
+        });
+
+        connection.connect();
+    });
+}
+
+/**
+ * NEW: Queries the annualLeave table to retrieve all records without filtering.
+ * @param config SQL connection configuration for helix-project-data.
+ * @param context Invocation context for logging.
+ * @returns An array of AnnualLeaveRecord.
+ */
+async function queryAllAnnualLeave(config: any, context: InvocationContext): Promise<AnnualLeaveRecord[]> {
+    context.log("Starting SQL query to fetch all annual leave data.");
+    return new Promise<AnnualLeaveRecord[]>((resolve, reject) => {
+        const connection = new Connection(config);
+
+        connection.on("error", (err) => {
+            context.error("SQL Connection Error (AllAnnualLeave):", err);
+            reject("An error occurred with the SQL connection for all annual leave.");
+        });
+
+        connection.on("connect", (err) => {
+            if (err) {
+                context.error("SQL Connection Error (AllAnnualLeave):", err);
+                reject("Failed to connect to SQL database for all annual leave.");
+                return;
+            }
+
+            const query = `
+                SELECT 
+                    [request_id],
+                    [fe] AS person, 
+                    [start_date], 
+                    [end_date], 
+                    [reason], 
+                    [status], 
+                    [days_taken], 
+                    [leave_type],
+                    [rejection_notes]
+                FROM [dbo].[annualLeave];
+            `;
+
+            const sqlRequest = new SqlRequest(query, (err, rowCount) => {
+                if (err) {
+                    reject(err);
+                    connection.close();
+                    return;
+                }
+            });
+
+            const allAnnualLeaveList: AnnualLeaveRecord[] = [];
+
+            sqlRequest.on("row", (columns) => {
+                const entry: any = {};
+                columns.forEach((col) => {
+                    entry[col.metadata.colName] = col.value;
+                });
+
+                allAnnualLeaveList.push({
+                    request_id: entry.request_id,
+                    person: entry.person || "",
+                    start_date: formatDate(new Date(entry.start_date)),
+                    end_date: formatDate(new Date(entry.end_date)),
+                    reason: entry.reason || "",
+                    status: entry.status || "",
+                    days_taken: entry.days_taken || 0,
+                    leave_type: entry.leave_type || null,
+                    rejection_notes: entry.rejection_notes || null,
+                });
+            });
+
+            sqlRequest.on("requestCompleted", () => {
+                resolve(allAnnualLeaveList);
+                connection.close();
+            });
+
             connection.execSql(sqlRequest);
         });
 
