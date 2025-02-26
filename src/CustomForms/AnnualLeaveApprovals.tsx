@@ -184,7 +184,16 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     newStatus: string,
     reason: string | null
   ): Promise<void> => {
-    /* ... your existing update logic ... */
+    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_UPDATE_ANNUAL_LEAVE_CODE}`;
+    const payload = { id: leaveId, newStatus, reason: reason || '' };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error(`Update failed with status ${response.status}: ${response.statusText}`);
+    }
   };
 
   function getNickname(initials: string): string {
@@ -252,15 +261,25 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
     const requestDays = getRequestDays(entry);
 
     const localHandleApprove = async () => {
-      /* ... your existing update logic ... */
-      setUpdated(true);
-      setConfirmationMessage('Approved successfully');
+      try {
+        await updateAnnualLeave(recordId, 'approved', null);
+        setUpdated(true);
+        setConfirmationMessage('Approved successfully');
+      } catch (error) {
+        console.error(`Error approving leave ${recordId}:`, error);
+        setConfirmationMessage('Approval failed');
+      }
     };
 
     const localHandleReject = async () => {
-      /* ... your existing update logic ... */
-      setUpdated(true);
-      setConfirmationMessage('Rejected successfully');
+      try {
+        await updateAnnualLeave(recordId, 'rejected', localRejection);
+        setUpdated(true);
+        setConfirmationMessage('Rejected successfully');
+      } catch (error) {
+        console.error(`Error rejecting leave ${recordId}:`, error);
+        setConfirmationMessage('Rejection failed');
+      }
     };
 
     // Conflicts

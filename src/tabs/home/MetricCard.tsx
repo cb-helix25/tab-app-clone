@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Text, mergeStyles, TooltipHost, DirectionalHint } from '@fluentui/react';
 import CountUp from 'react-countup';
 import { colours } from '../../app/styles/colours';
@@ -136,7 +136,15 @@ const renderDialLayout = (
         <Text className={metricTitleStyle}>{title}</Text>
         {dialSuffix === "%" ? (
           // For percentage (Conversion Rate), only show the value with "%" (no £ or hours)
-          <Text className={mergeStyles({ display: 'flex', alignItems: 'center', fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
+          <Text
+            className={mergeStyles({
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '24px',
+              fontWeight: '700',
+              color: colours.highlight,
+            })}
+          >
             <CountUp
               start={0}
               end={value ? Number(value) : 0}
@@ -230,16 +238,43 @@ const MetricCard: React.FC<MetricCardProps> = ({
   } else if (countChange) {
     overallChange = countChange.change >= 0;
   }
+  
+  // Force red for Outstanding Client Balances (since any outstanding value is bad)
+  if (title === 'Outstanding Client Balances') {
+    overallChange = false;
+  }
+  
+  // Force green for Fees Recovered This Month (since fees recovered is good)
+  if (title === 'Fees Recovered This Month') {
+    overallChange = true;
+  }
+
+  // Memoize the money display so that it doesn't reset on hover
+  const displayMoneyComponent = useMemo(() => (
+    <CountUp
+      key={`${title}-money`}
+      start={0}
+      end={typeof money === 'number' ? Number(money) : 0}
+      duration={2.5}
+      decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
+      separator=","
+      suffix={typeof money === 'number' && money > 1000 ? "k" : ""}
+    />
+  ), [money, title]);
 
   const tooltipContent = () => {
     if (isMoneyOnly) {
+      const labelText =
+        title === 'Outstanding Client Balances'
+          ? 'Outstanding Client Balances:'
+          : 'Fees Recovered:';
       return (
         <div>
-          <strong>Fees Recovered:</strong> £
+          <strong>{labelText}</strong> £
           {typeof money === 'number'
             ? money > 1000
               ? (money / 1000).toFixed(2) + 'k'
-              : (money / 1000).toFixed(0) + 'k'
+              : money.toFixed(2)
             : money}
         </div>
       );
@@ -288,7 +323,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
         aria-label={`${title} metric card`}
       >
         {showDial ? (
-          // If showDial is true, render the dial layout using dialValue (or fallback to hours)
           renderDialLayout(title, money, dialValue !== undefined ? dialValue : hours, isDarkMode, dialTarget, dialSuffix)
         ) : (
           <>
@@ -300,15 +334,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 </Text>
               ) : (
                 <Text className={mergeStyles({ fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
-                  £
-                  <CountUp
-                    start={0}
-                    end={typeof money === 'number' ? Number(money) : 0}
-                    duration={2.5}
-                    decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
-                    separator=","
-                    suffix="k"
-                  />
+                  £{displayMoneyComponent}
                 </Text>
               )
             ) : isTimeMoney ? (
@@ -344,26 +370,54 @@ const MetricCard: React.FC<MetricCardProps> = ({
         )}
 
         {isHovered && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', justifyContent: 'space-between' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: '10px',
+              justifyContent: 'space-between'
+            }}
+          >
             {isMoneyOnly ? (
-              <div style={{ display: 'flex', flexDirection: 'row', gap: '5px', alignItems: 'center' }}>
-                <Text className={changeStyle(moneyChange ? moneyChange.change >= 0 : true)}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: '5px',
+                  alignItems: 'center'
+                }}
+              >
+                <Text
+                  className={changeStyle(
+                    title === 'Outstanding Client Balances'
+                      ? false
+                      : moneyChange ? moneyChange.change >= 0 : true
+                  )}
+                >
                   £
                   {typeof money === 'number'
                     ? money > 1000
                       ? (money / 1000).toFixed(2)
-                      : (money / 1000).toFixed(0)
+                      : money.toFixed(2)
                     : money}
+                  {typeof money === 'number' && money > 1000 ? "k" : ""}
                 </Text>
               </div>
             ) : isTimeMoney ? (
               <>
                 {moneyChange && (
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: '5px', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      gap: '5px',
+                      alignItems: 'center'
+                    }}
+                  >
                     <Text className={changeStyle(moneyChange.change >= 0)}>
                       £{Math.abs(moneyChange.change).toLocaleString(undefined, {
                         minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
-                        maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
+                        maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0
                       })}
                     </Text>
                     <Text className={changeStyle(moneyChange.change >= 0)}>
@@ -373,7 +427,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   </div>
                 )}
                 {hoursChange && (
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: '5px', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      gap: '5px',
+                      alignItems: 'center'
+                    }}
+                  >
                     <Text className={changeStyle(hoursChange.change >= 0)}>
                       {Math.abs(hoursChange.change).toFixed(2)} hrs
                     </Text>
@@ -386,7 +447,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
               </>
             ) : (
               countChange && (
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '5px', alignItems: 'center' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    gap: '5px',
+                    alignItems: 'center'
+                  }}
+                >
                   <Text className={changeStyle(countChange.change >= 0)}>
                     {Math.abs(countChange.change).toLocaleString()}
                   </Text>

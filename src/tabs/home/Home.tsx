@@ -727,6 +727,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
 
+  const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
+
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
   useEffect(() => {
@@ -989,14 +991,18 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         try {
           setIsLoadingWipClio(true);
           setIsLoadingRecovered(true);
-          const clioID = parseInt(userData[0]['Clio ID'], 10);
+          const clioIDForWip = parseInt(userData[0]['Clio ID'], 10);
+          const clioIDForRecovered =
+            userData?.[0]?.["Full Name"]?.trim() === "Lukasz Zemanek"
+              ? 142961
+              : clioIDForWip;
           const [wipResponse, recoveredResponse] = await Promise.all([
             fetch(
               `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ClioID: clioID }),
+                body: JSON.stringify({ ClioID: clioIDForWip }),
               }
             ),
             fetch(
@@ -1004,7 +1010,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ClioID: clioID }),
+                body: JSON.stringify({ ClioID: clioIDForRecovered }),
               }
             ),
           ]);
@@ -1036,7 +1042,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       };
       fetchWipClioAndRecovered();
     }
-  }, [userData]);
+  }, [userData]);  
 
   useEffect(() => {
     if (cachedAllMatters || cachedAllMattersError) {
@@ -1184,6 +1190,18 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   
 
   useEffect(() => {
+    // First, try to load cached outstanding balances from localStorage
+    const storedData = localStorage.getItem('outstandingBalancesData');
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      console.log("Loaded outstanding balances from localStorage:", parsedData);
+      if (onOutstandingBalancesFetched) {
+        onOutstandingBalancesFetched(parsedData);
+      }
+      setOutstandingBalancesData(parsedData);
+      return; // Exit if we have stored data
+    }
+    
     async function fetchOutstandingBalances() {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
       const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
@@ -1211,32 +1229,34 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     }
   
     async function loadOutstandingBalances() {
-      // If we have cached data, use it instead of fetching again
+      // Use in-memory cache if available
       if (cachedOutstandingBalances) {
         console.log("Using cached outstanding balances:", cachedOutstandingBalances);
         if (onOutstandingBalancesFetched) {
           onOutstandingBalancesFetched(cachedOutstandingBalances);
         }
+        setOutstandingBalancesData(cachedOutstandingBalances);
         return;
       }
   
       try {
         const data = await fetchOutstandingBalances();
         if (data) {
-          cachedOutstandingBalances = data; // Cache it for future use
+          cachedOutstandingBalances = data; // Cache in-memory for subsequent calls
           console.log("Fetched outstanding balances:", data);
+          localStorage.setItem('outstandingBalancesData', JSON.stringify(data));
           if (onOutstandingBalancesFetched) {
             onOutstandingBalancesFetched(data);
           }
+          setOutstandingBalancesData(data);
         }
       } catch (error) {
         console.error("Error in loadOutstandingBalances:", error);
       }
     }
   
-    // Run only once when the component mounts
     loadOutstandingBalances();
-  }, []); // empty dependency array prevents repeated calls  
+  }, []);   
 
   const columns = useMemo(() => createColumnsFunction(isDarkMode), [isDarkMode]);
 
@@ -1298,6 +1318,47 @@ const officeAttendanceButtonText = currentUserConfirmed
       });
   }, [attendanceTeam, attendanceRecords]);
 
+  const normalizeName = (name: string): string => {
+    let normalized = name.trim().toLowerCase();
+    if (normalized === "bianca odonnell") {
+      normalized = "bianca o'donnell";
+    }
+    if (normalized === "samuel packwood") {
+      normalized = "sam packwood";
+    }
+    return normalized;
+  };
+  
+  const userResponsibleName =
+  userData?.[0]?.["Full Name"]?.trim() === "Lukasz Zemanek" ? "Alex Cook" : userData?.[0]?.["Full Name"] || "";
+  
+    const userMatterIDs = useMemo(() => {
+      if (!allMatters || allMatters.length === 0) return [];
+      return allMatters
+        .filter((matter) => 
+          normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
+        )
+        .map((matter) => Number(matter.UniqueID));
+    }, [allMatters, userResponsibleName]);
+
+    const outstandingTotal = useMemo(() => {
+      if (!outstandingBalancesData || !outstandingBalancesData.data || userMatterIDs.length === 0) {
+        return null; // Indicates data is not ready
+      }
+      const matchingBalances = outstandingBalancesData.data.filter((balanceRecord: any) =>
+        balanceRecord.associated_matter_ids.some((id: any) => userMatterIDs.includes(Number(id)))
+      );
+      
+      return matchingBalances.reduce((sum: number, record: any) => sum + (record.total_outstanding_balance || 0), 0);      
+    }, [outstandingBalancesData, userMatterIDs]);
+
+    useEffect(() => {
+      if (userMatterIDs.length && outstandingBalancesData) {
+        console.log("After update - User Matter IDs:", userMatterIDs);
+        console.log("After update - Outstanding Balances Data:", outstandingBalancesData);
+      }
+    }, [userMatterIDs, outstandingBalancesData]);
+
   const metricsData = useMemo(() => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
@@ -1343,18 +1404,20 @@ const officeAttendanceButtonText = currentUserConfirmed
         }).length
       : 0;  
 
-    if (!wipClioData) {
-      return [
-        { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
-        { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
-        { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
-        { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-        { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
-        { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
-        { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
-        { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0 },
-      ];
-    }
+      if (!wipClioData) {
+        return [
+          { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
+          { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
+          { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
+          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
+          { title: 'Outstanding Client Balances', isMoneyOnly: true, money: null, prevMoney: 0 },
+          { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
+          { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
+          { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
+          { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0 },
+        ];
+      }
+      
     const currentWeekData = wipClioData.current_week?.daily_data[formattedToday];
     const lastWeekDate = new Date(today);
     lastWeekDate.setDate(today.getDate() - 7);
@@ -1438,6 +1501,12 @@ const officeAttendanceButtonText = currentUserConfirmed
         prevMoney: 0,
       },
       {
+        title: 'Outstanding Client Balances',
+        isMoneyOnly: true,
+        money: outstandingTotal,
+        prevMoney: 0,
+      },
+      {
         title: 'Enquiries Today',
         isTimeMoney: false,
         count: enquiriesToday,
@@ -1461,7 +1530,7 @@ const officeAttendanceButtonText = currentUserConfirmed
         count: mattersOpenedCount,
         prevCount: 0,
       },
-    ];
+    ];    
   }, [
     wipClioData,
     recoveredData,
@@ -1477,9 +1546,11 @@ const officeAttendanceButtonText = currentUserConfirmed
     userData,
     allMatters,
     userInitials, // ADDED so we recalc if userInitials changes
+    outstandingBalancesData, // ADDED
+    userMatterIDs,           // ADDED
   ]);
-  const timeMetrics = metricsData.slice(0, 4);
-  const enquiryMetrics = metricsData.slice(4);
+  const timeMetrics = metricsData.slice(0, 5);
+  const enquiryMetrics = metricsData.slice(5);
 
   // Combine annualLeaveRecords and futureLeaveRecords for approval filtering
   const combinedLeaveRecords = useMemo(() => {
@@ -1948,7 +2019,14 @@ const conversionRate = enquiriesMonthToDate
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: '20px' }}>
             {/* Group for the three time-related metrics */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', flex: 1 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '20px',
+                flex: 1
+              }}
+            >
               {timeMetrics.slice(0, 3).map((metric, index) => (
                 <MetricCard
                   key={metric.title}
@@ -1975,30 +2053,40 @@ const conversionRate = enquiriesMonthToDate
             {/* Vertical spacer: a subtle vertical divider */}
             <div style={{ borderLeft: '1px solid #ccc', margin: '0 10px' }} />
 
-            {/* Group for the recovered fees metric */}
-            <div style={{ flex: 1 }}>
-              <MetricCard
-                key={timeMetrics[3].title}
-                title={timeMetrics[3].title}
-                {...(timeMetrics[3].isMoneyOnly
-                  ? { money: timeMetrics[3].money, prevMoney: timeMetrics[3].prevMoney, isMoneyOnly: timeMetrics[3].isMoneyOnly }
-                  : timeMetrics[3].isTimeMoney
-                  ? {
-                      money: timeMetrics[3].money,
-                      hours: timeMetrics[3].hours,
-                      prevMoney: timeMetrics[3].prevMoney,
-                      prevHours: timeMetrics[3].prevHours,
-                      isTimeMoney: timeMetrics[3].isTimeMoney,
-                      showDial: timeMetrics[3].showDial,
-                      dialTarget: timeMetrics[3].dialTarget,
-                    }
-                  : { count: timeMetrics[3].count, prevCount: timeMetrics[3].prevCount })}
-                isDarkMode={isDarkMode}
-                animationDelay={0}
-              />
+            {/* Group for the recovered fees and outstanding balances metrics */}
+            <div
+              style={{
+                flex: 1,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '20px'
+              }}
+            >
+              {timeMetrics.slice(3).map((metric, index) => (
+                <MetricCard
+                  key={metric.title}
+                  title={metric.title}
+                  {...(metric.isMoneyOnly
+                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                    : metric.isTimeMoney
+                    ? {
+                        money: metric.money,
+                        hours: metric.hours,
+                        prevMoney: metric.prevMoney,
+                        prevHours: metric.prevHours,
+                        isTimeMoney: metric.isTimeMoney,
+                        showDial: metric.showDial,
+                        dialTarget: metric.dialTarget,
+                      }
+                    : { count: metric.count, prevCount: metric.prevCount })}
+                  isDarkMode={isDarkMode}
+                  animationDelay={index * 0.1}
+                />
+              ))}
             </div>
           </div>
         </CollapsibleSection>
+
 
         {/* Conversion Metrics Section */}
         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
