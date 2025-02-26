@@ -414,7 +414,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                 },
               })}
               onClick={onNewMatter}
-              aria-label="New Matter (wip)"
+              aria-label="New Matter"
             >
               <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
                 <Icon
@@ -437,7 +437,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                     },
                   }}
                 >
-                  New Matter
+                  New Matter (WIP)
                 </Text>
               </Stack>
             </div>

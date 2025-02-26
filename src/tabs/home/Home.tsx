@@ -24,6 +24,7 @@ import {
   PersonaPresence,
   DefaultButton,
   Icon,
+  Toggle,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { initializeIcons } from '@fluentui/react/lib/Icons';
@@ -42,7 +43,7 @@ import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -66,6 +67,9 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
+
+import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
+
 
 initializeIcons();
 
@@ -167,6 +171,12 @@ export interface TeamMember {
   Nickname: string;
 }
 
+interface MatterBalance {
+  id: number;
+  ClientName: string;
+  total_outstanding_balance: number;
+  associated_matter_ids: number[];
+}
 
 //////////////////////
 // Collapsible Section
@@ -1190,7 +1200,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   
 
   useEffect(() => {
-    // First, try to load cached outstanding balances from localStorage
+    // 1. Try loading from localStorage
     const storedData = localStorage.getItem('outstandingBalancesData');
     if (storedData) {
       const parsedData = JSON.parse(storedData);
@@ -1199,9 +1209,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         onOutstandingBalancesFetched(parsedData);
       }
       setOutstandingBalancesData(parsedData);
-      return; // Exit if we have stored data
     }
-    
+  
     async function fetchOutstandingBalances() {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
       const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
@@ -1229,16 +1238,16 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     }
   
     async function loadOutstandingBalances() {
-      // Use in-memory cache if available
+      // Optional: Use in-memory cache if available
       if (cachedOutstandingBalances) {
         console.log("Using cached outstanding balances:", cachedOutstandingBalances);
         if (onOutstandingBalancesFetched) {
           onOutstandingBalancesFetched(cachedOutstandingBalances);
         }
         setOutstandingBalancesData(cachedOutstandingBalances);
-        return;
+        // Note: We do NOT return here so that we still fetch fresh data.
       }
-  
+    
       try {
         const data = await fetchOutstandingBalances();
         if (data) {
@@ -1254,9 +1263,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         console.error("Error in loadOutstandingBalances:", error);
       }
     }
-  
+    
     loadOutstandingBalances();
-  }, []);   
+  }, []);  
 
   const columns = useMemo(() => createColumnsFunction(isDarkMode), [isDarkMode]);
 
@@ -1332,14 +1341,67 @@ const officeAttendanceButtonText = currentUserConfirmed
   const userResponsibleName =
   userData?.[0]?.["Full Name"]?.trim() === "Lukasz Zemanek" ? "Alex Cook" : userData?.[0]?.["Full Name"] || "";
   
-    const userMatterIDs = useMemo(() => {
-      if (!allMatters || allMatters.length === 0) return [];
-      return allMatters
-        .filter((matter) => 
-          normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
-        )
-        .map((matter) => Number(matter.UniqueID));
-    }, [allMatters, userResponsibleName]);
+  const userMatterIDs = useMemo(() => {
+    if (!allMatters || allMatters.length === 0) return [];
+    return allMatters
+      .filter((matter) => 
+        normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
+      )
+      .map((matter) => Number(matter.UniqueID));
+  }, [allMatters, userResponsibleName]);
+
+  const [isOutstandingPanelOpen, setIsOutstandingPanelOpen] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(true); // Changed default to true
+
+    // Create a derived variable mapping the raw outstanding balances data into MatterBalance[]
+    const outstandingBalancesList = useMemo<OutstandingClientBalance[]>(() => {
+      if (outstandingBalancesData && outstandingBalancesData.data) {
+        return outstandingBalancesData.data.map((record: any) => ({
+          id: record.id,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+          associated_matter_ids: record.associated_matter_ids,
+          contact: record.contact,
+          total_outstanding_balance: record.total_outstanding_balance,
+          last_payment_date: record.last_payment_date,
+          last_shared_date: record.last_shared_date,
+          newest_issued_bill_due_date: record.newest_issued_bill_due_date,
+          pending_payments_total: record.pending_payments_total,
+          reminders_enabled: record.reminders_enabled,
+          currency: record.currency,
+          outstanding_bills: record.outstanding_bills,
+        }));
+      }
+      return [];
+    }, [outstandingBalancesData]);
+
+// Create a filtered list for the Outstanding Balances panel.
+const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
+  if (!outstandingBalancesData || !outstandingBalancesData.data) {
+    return [];
+  }
+  const allBalances: OutstandingClientBalance[] = outstandingBalancesData.data.map((record: any) => ({
+    id: record.id,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+    associated_matter_ids: record.associated_matter_ids,
+    contact: record.contact,
+    total_outstanding_balance: record.total_outstanding_balance,
+    last_payment_date: record.last_payment_date,
+    last_shared_date: record.last_shared_date,
+    newest_issued_bill_due_date: record.newest_issued_bill_due_date,
+    pending_payments_total: record.pending_payments_total,
+    reminders_enabled: record.reminders_enabled,
+    currency: record.currency,
+    outstanding_bills: record.outstanding_bills,
+  }));
+  if (showOnlyMine && userMatterIDs.length > 0) {
+    return allBalances.filter((balance) =>
+      balance.associated_matter_ids.some((id: number) => userMatterIDs.includes(id))
+    );
+  }
+  return allBalances;
+}, [outstandingBalancesData, showOnlyMine, userMatterIDs]);
 
     const outstandingTotal = useMemo(() => {
       if (!outstandingBalancesData || !outstandingBalancesData.data || userMatterIDs.length === 0) {
@@ -2062,28 +2124,59 @@ const conversionRate = enquiriesMonthToDate
                 gap: '20px'
               }}
             >
-              {timeMetrics.slice(3).map((metric, index) => (
-                <MetricCard
-                  key={metric.title}
-                  title={metric.title}
-                  {...(metric.isMoneyOnly
-                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                    : metric.isTimeMoney
-                    ? {
-                        money: metric.money,
-                        hours: metric.hours,
-                        prevMoney: metric.prevMoney,
-                        prevHours: metric.prevHours,
-                        isTimeMoney: metric.isTimeMoney,
-                        showDial: metric.showDial,
-                        dialTarget: metric.dialTarget,
-                      }
-                    : { count: metric.count, prevCount: metric.prevCount })}
-                  isDarkMode={isDarkMode}
-                  animationDelay={index * 0.1}
-                />
-              ))}
+              {timeMetrics.slice(3).map((metric, index) => {
+                if (metric.title === 'Outstanding Client Balances') {
+                  return (
+                    <div
+                      key={metric.title}
+                      onClick={() => setIsOutstandingPanelOpen(true)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <MetricCard
+                        title={metric.title}
+                        {...(metric.isMoneyOnly
+                          ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                          : metric.isTimeMoney
+                          ? {
+                              money: metric.money,
+                              hours: metric.hours,
+                              prevMoney: metric.prevMoney,
+                              prevHours: metric.prevHours,
+                              isTimeMoney: metric.isTimeMoney,
+                              showDial: metric.showDial,
+                              dialTarget: metric.dialTarget,
+                            }
+                          : { count: metric.count, prevCount: metric.prevCount })}
+                        isDarkMode={isDarkMode}
+                        animationDelay={index * 0.1}
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <MetricCard
+                    key={metric.title}
+                    title={metric.title}
+                    {...(metric.isMoneyOnly
+                      ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                      : metric.isTimeMoney
+                      ? {
+                          money: metric.money,
+                          hours: metric.hours,
+                          prevMoney: metric.prevMoney,
+                          prevHours: metric.prevHours,
+                          isTimeMoney: metric.isTimeMoney,
+                          showDial: metric.showDial,
+                          dialTarget: metric.dialTarget,
+                        }
+                      : { count: metric.count, prevCount: metric.prevCount })}
+                    isDarkMode={isDarkMode}
+                    animationDelay={index * 0.1}
+                  />
+                );
+              })}
             </div>
+
           </div>
         </CollapsibleSection>
 
@@ -2370,6 +2463,25 @@ const conversionRate = enquiriesMonthToDate
         width="800px"
       >
         {renderContextsPanelContent()}
+      </BespokePanel>
+
+      <BespokePanel
+        isOpen={isOutstandingPanelOpen}
+        onClose={() => setIsOutstandingPanelOpen(false)}
+        title="Outstanding Balances Details"
+        width="800px"
+      >
+        {/* Toggle between "Everyone" and "Only Mine" */}
+        <Toggle
+          label="Show Only My Matters"
+          checked={showOnlyMine}
+          onChange={(ev, checked) => setShowOnlyMine(!!checked)}
+          styles={{ root: { marginBottom: '10px' } }}
+        />
+        <OutstandingBalancesList 
+          balances={filteredBalancesForPanel} 
+          matters={allMatters ?? []} 
+        />
       </BespokePanel>
 
       {/* Bespoke Panel for other actions */}

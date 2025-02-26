@@ -286,6 +286,80 @@ export interface OutstandingBill {
   available_state_transitions: string[];
 }
 
+export interface OutstandingClientContact {
+  id: number;
+  etag: string;
+  name: string;
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  date_of_birth: string;
+  type: string;
+  created_at: string;
+  updated_at: string;
+  prefix?: string | null;
+  title: string;
+  initials: string;
+  clio_connect_email?: string | null;
+  locked_clio_connect_email?: string | null;
+  client_connect_user_id?: string | null;
+  primary_email_address: string;
+  secondary_email_address?: string | null;
+  primary_phone_number: string;
+  secondary_phone_number?: string | null;
+  ledes_client_id?: string | null;
+  has_clio_for_clients_permission: boolean;
+  is_client: boolean;
+  is_clio_for_client_user: boolean;
+  is_co_counsel: boolean;
+  is_bill_recipient: boolean;
+  sales_tax_number?: string | null;
+  currency: { id: number | null };
+}
+
+export interface OutstandingBill {
+  id: number;
+  etag: string;
+  number: string;
+  issued_at: string;
+  created_at: string;
+  due_at: string;
+  tax_rate: number;
+  secondary_tax_rate: number;
+  updated_at: string;
+  subject?: string | null;
+  purchase_order?: string | null;
+  type: string;
+  memo?: string | null;
+  start_at: string;
+  end_at: string;
+  balance: number;
+  state: string;
+  kind: string;
+  total: number;
+  paid: number;
+  paid_at?: string | null;
+  pending: number;
+  due: number;
+  discount_services_only: boolean;
+  can_update: boolean;
+  credits_issued: number;
+  shared: boolean;
+  last_sent_at?: string | null;
+  services_secondary_tax: number;
+  services_sub_total: number;
+  services_tax: number;
+  services_taxable_sub_total: number;
+  services_secondary_taxable_sub_total: number;
+  taxable_sub_total: number;
+  secondary_taxable_sub_total: number;
+  sub_total: number;
+  tax_sum: number;
+  secondary_tax_sum: number;
+  total_tax: number;
+  available_state_transitions: string[];
+}
+
 export interface OutstandingClientBalance {
   id: number;
   created_at: string;
@@ -298,7 +372,7 @@ export interface OutstandingClientBalance {
   newest_issued_bill_due_date: string;
   pending_payments_total: number;
   reminders_enabled: boolean;
-  currency: Currency;
+  currency: { id: number | null; redacted?: boolean };
   outstanding_bills: OutstandingBill[];
 }
 

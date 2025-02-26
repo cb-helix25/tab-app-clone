@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Text, mergeStyles, TooltipHost, DirectionalHint } from '@fluentui/react';
+import { Text, mergeStyles, TooltipHost, DirectionalHint, Icon } from '@fluentui/react';
 import CountUp from 'react-countup';
 import { colours } from '../../app/styles/colours';
 import '../../app/styles/MetricCard.css'; // Import the CSS file
@@ -8,7 +8,6 @@ import '../../app/styles/MetricCard.css'; // Import the CSS file
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 
-// Updated interface: money can be a number or a string.
 interface MetricCardProps {
   title: string;
   count?: number;
@@ -23,9 +22,9 @@ interface MetricCardProps {
   animationDelay?: number;
   showDial?: boolean;
   dialTarget?: number;
-  dialValue?: number; // NEW property: the value to display in the dial (e.g. matters opened)
-  highlightDial?: boolean; // NEW property to allow highlighting the dial if needed
-  dialSuffix?: string; // NEW property to append (e.g. "%")
+  dialValue?: number;
+  highlightDial?: boolean;
+  dialSuffix?: string;
 }
 
 const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
@@ -55,6 +54,7 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
         ? `0 6px 16px ${colours.dark.border}`
         : `0 6px 16px ${colours.light.border}`,
     },
+    position: 'relative', // Added to allow absolute positioning of the sidebar
   });
 
 const metricTitleStyle = mergeStyles({
@@ -90,7 +90,6 @@ const changeStyle = (isPositive: boolean) =>
     marginTop: '8px',
   });
 
-// Updated renderDialLayout using dialSuffix to decide what to render
 const renderDialLayout = (
   title: string,
   money: number | string | undefined,
@@ -110,7 +109,6 @@ const renderDialLayout = (
         justifyContent: 'center',
       })}
     >
-      {/* Dial on the left */}
       <div
         className={mergeStyles({
           width: 80,
@@ -131,11 +129,9 @@ const renderDialLayout = (
           })}
         />
       </div>
-      {/* Title and details */}
       <div>
         <Text className={metricTitleStyle}>{title}</Text>
         {dialSuffix === "%" ? (
-          // For percentage (Conversion Rate), only show the value with "%" (no £ or hours)
           <Text
             className={mergeStyles({
               display: 'flex',
@@ -155,7 +151,6 @@ const renderDialLayout = (
             {dialSuffix}
           </Text>
         ) : (
-          // Otherwise, show both money and hours
           <Text className={mergeStyles({ display: 'flex', alignItems: 'center' })}>
             <span className={moneyStyle}>
               £
@@ -199,9 +194,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
   animationDelay = 0,
   showDial = false,
   dialTarget,
-  dialValue, // NEW: dialValue prop
+  dialValue,
   highlightDial,
-  dialSuffix, // NEW: dialSuffix prop
+  dialSuffix,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
 
@@ -249,7 +244,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
     overallChange = true;
   }
 
-  // Memoize the money display so that it doesn't reset on hover
   const displayMoneyComponent = useMemo(() => (
     <CountUp
       key={`${title}-money`}
@@ -368,6 +362,29 @@ const MetricCard: React.FC<MetricCardProps> = ({
             )}
           </>
         )}
+
+        {isHovered && (
+          <div
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: '12px', // 12px wide bar
+              backgroundColor: colours.grey, // grey bar
+              borderTopRightRadius: '10px', // slightly less than the card's 12px to avoid excessive rounding
+              borderBottomRightRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: title === 'Outstanding Client Balances' ? 1 : 0,
+              transition: 'opacity 0.3s'
+            }}
+          >
+            <Icon iconName="ChevronRight" style={{ color: colours.light.text, fontSize: '12px' }} />
+          </div>
+        )}
+
 
         {isHovered && (
           <div
