@@ -25,6 +25,7 @@ import {
   DefaultButton,
   Icon,
   Toggle,
+  keyframes,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { initializeIcons } from '@fluentui/react/lib/Icons';
@@ -273,11 +274,7 @@ const quickActionOrder: Record<string, number> = {
 const quickActions: QuickLink[] = [
   { title: 'Confirm Attendance', icon: 'Accept' },
   { title: 'Create a Task', icon: 'Checklist' },
-  { title: 'Request CollabSpace', icon: 'Group' },
   { title: 'Save Telephone Note', icon: 'Comment' },
-  { title: 'Save Attendance Note', icon: 'NotePinned' },
-  { title: 'Request ID', icon: 'ContactInfo' },
-  { title: 'Open a Matter', icon: 'FolderOpen' },
   { title: 'Request Annual Leave', icon: 'Calendar' },
 ];
 
@@ -739,6 +736,50 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
 
+  const getCurrentWeekKey = (): string => {
+    const monday = getMondayOfCurrentWeek();
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const options: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    };
+    const mondayStr = monday.toLocaleDateString('en-GB', options);
+    const sundayStr = sunday.toLocaleDateString('en-GB', options);
+    const mondayName = monday.toLocaleDateString('en-GB', { weekday: 'long' });
+    const sundayName = sunday.toLocaleDateString('en-GB', { weekday: 'long' });
+    return `${mondayName}, ${mondayStr} - ${sundayName}, ${sundayStr}`;
+  };
+
+  const getMondayOfCurrentWeek = (): Date => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    return monday;
+  };
+  
+  // Add these functions immediately after:
+  const generateWeekKey = (monday: Date): string => {
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    const mondayStr = monday.toLocaleDateString('en-GB', options);
+    const sundayStr = sunday.toLocaleDateString('en-GB', options);
+    const mondayName = monday.toLocaleDateString('en-GB', { weekday: 'long' });
+    const sundayName = sunday.toLocaleDateString('en-GB', { weekday: 'long' });
+    return `${mondayName}, ${mondayStr} - ${sundayName}, ${sundayStr}`;
+  };
+  
+  const getNextWeekKey = (): string => {
+    const currentMonday = getMondayOfCurrentWeek();
+    const nextMonday = new Date(currentMonday);
+    nextMonday.setDate(currentMonday.getDate() + 7);
+    return generateWeekKey(nextMonday);
+  };
+
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
   useEffect(() => {
@@ -879,7 +920,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     if (cachedAttendance || cachedAttendanceError || cachedAnnualLeave || cachedAnnualLeaveError) {
       // If data is cached, restore it straight away
       setAttendanceRecords(cachedAttendance || []);
-      setAttendanceTeam([]);
       setAttendanceError(cachedAttendanceError);
 
       setAnnualLeaveRecords(cachedAnnualLeave || []);
@@ -1282,12 +1322,19 @@ const currentUserRecord = attendanceRecords.find(
   (record: any) => (record.name || '').toLowerCase() === attendanceName.toLowerCase()
 );
 
-const currentUserConfirmed = !!(
-  currentUserRecord &&
-  Object.values(currentUserRecord.weeks || {}).some(
-    (week: any) => (week.attendance || '').trim() !== ''
-  )
-);
+//////////////////////////////
+// Updated Confirmation Check
+//////////////////////////////
+const now = new Date();
+const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
+const currentWeekKey = getCurrentWeekKey();
+const nextWeekKey = getNextWeekKey();
+
+// Decide which week we consider "the relevant week"
+const relevantWeekKey = isThursdayAfterMidday ? nextWeekKey : currentWeekKey;
+
+// Does the user have an object at all for that week?
+const currentUserConfirmed = !!currentUserRecord?.weeks?.[relevantWeekKey];
 
 const officeAttendanceButtonText = currentUserConfirmed
   ? 'Update Attendance'
@@ -1854,34 +1901,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return `${shortDay} ${dayOfMonth}`;
   };
 
-  const getMondayOfCurrentWeek = (): Date => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diff);
-    return monday;
-  };
-
-  const getCurrentWeekKey = (): string => {
-    const monday = getMondayOfCurrentWeek();
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const options: Intl.DateTimeFormatOptions = {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    };
-    const mondayStr = monday.toLocaleDateString('en-GB', options);
-    const sundayStr = sunday.toLocaleDateString('en-GB', options);
-    const mondayName = monday.toLocaleDateString('en-GB', { weekday: 'long' });
-    const sundayName = sunday.toLocaleDateString('en-GB', { weekday: 'long' });
-    return `${mondayName}, ${mondayStr} - ${sundayName}, ${sundayStr}`;
-  };
-
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-  const currentWeekKey = getCurrentWeekKey();
   const currentWeekMonday = getMondayOfCurrentWeek();
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -1992,6 +2013,20 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     );
   };  
 
+// Define the fadeIn keyframes
+const fadeInKeyframes = keyframes({
+  from: { opacity: 0, transform: 'translateY(5px)' },
+  to: { opacity: 1, transform: 'translateY(0)' },
+});
+
+// Define a style that uses the keyframes
+const noActionsClass = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  animation: `${fadeInKeyframes} 0.3s ease-out`,
+});
+
 // Extract mattersOpenedCount and compute conversion rate with two decimals
 const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
 const conversionRate = enquiriesMonthToDate
@@ -2034,11 +2069,30 @@ const conversionRate = enquiriesMonthToDate
       {/* Quick Actions Bar */}
       <div
         className={quickLinksStyle(isDarkMode)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          // Removed: transform: 'scale(1.2)', transformOrigin: 'top left',
+        }}
       >
-        {immediateActionsReady && (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {immediateActionsList.map((action, index) => (
+        {/* LEFT SLOT: Immediate Actions (spinner, or "No immediate actions", or the list) */}
+        <div style={{ display: 'flex', gap: '10px', minHeight: '40px' }}>
+          {!immediateActionsReady ? (
+            // Just a spinner (no label) while loading
+            <Spinner size={SpinnerSize.small} />
+          ) : immediateActionsList.length === 0 ? (
+            // If there are no immediate actions: fadeIn + green check
+            <div className={noActionsClass}>
+              <Icon
+                iconName="CompletedSolid"
+                styles={{ root: { fontSize: '16px', color: colours.green } }}
+              />
+              <Text>No immediate actions</Text>
+            </div>
+          ) : (
+            // Otherwise, render the immediate actions
+            immediateActionsList.map((action, index) => (
               <QuickActionsCard
                 key={action.title}
                 title={action.title}
@@ -2046,11 +2100,22 @@ const conversionRate = enquiriesMonthToDate
                 isDarkMode={isDarkMode}
                 onClick={action.onClick}
                 iconColor={colours.highlight}
-                style={{ '--card-index': index } as React.CSSProperties}
+                style={{
+                  '--card-index': index,
+                  fontSize: '16px',
+                  padding: '0 16px',
+                  minWidth: '120px',
+                  height: '48px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                } as React.CSSProperties}
               />
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
+
+        {/* RIGHT SLOT: Normal Quick Actions (always shown) */}
         <div style={{ display: 'flex', gap: '10px' }}>
           {normalQuickActions.map((action, index) => (
             <QuickActionsCard
@@ -2060,7 +2125,17 @@ const conversionRate = enquiriesMonthToDate
               isDarkMode={isDarkMode}
               onClick={() => handleActionClick(action)}
               iconColor={colours.highlight}
-              style={{ '--card-index': index } as React.CSSProperties}
+              // Same per-button sizing:
+              style={{
+                '--card-index': index,
+                fontSize: '16px',
+                padding: '0 16px',
+                minWidth: '120px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              } as React.CSSProperties}
               {...(action.title === 'Confirm Attendance' ? { confirmed: currentUserConfirmed } : {})}
             />
           ))}

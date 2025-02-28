@@ -21,12 +21,13 @@ import HelixAvatar from '../assets/helix avatar.png';
 export interface ApprovalEntry {
   id: string;
   request_id?: number;
-  person: string;      // e.g. "RC"
+  person: string; // e.g. "RC"
   start_date: string;
   end_date: string;
   reason?: string;
-  status: string;      // "booked", "requested", etc.
+  status: string; // "booked", "requested", etc.
   days_taken?: number;
+  leave_type?: string; // <-- add this line
 }
 
 export interface TeamMember {
@@ -74,11 +75,19 @@ function sumBookedAndRequestedDaysInFY(
 ): number {
   return allLeave
     .filter((leave) => {
+      // Must match person
       if (leave.person.toLowerCase() !== person.toLowerCase()) return false;
-      const s = leave.status.toLowerCase();
-      // We count both 'booked' + 'requested'
-      if (s !== 'booked' && s !== 'requested') return false;
 
+      // Must be booked or requested (or approved, if that’s used)
+      const s = leave.status.toLowerCase();
+      if (s !== 'booked' && s !== 'requested') return false; 
+
+      // Must be standard leave type
+      if (!leave.leave_type || leave.leave_type.toLowerCase() !== 'standard') {
+        return false;
+      }
+
+      // Must lie within the fiscal year
       const start = new Date(leave.start_date);
       const end = new Date(leave.end_date);
       return isDateInFiscalYear(start, fyStartYear) && isDateInFiscalYear(end, fyStartYear);
