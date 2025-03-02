@@ -36,6 +36,8 @@ import AreaCountCard from '../enquiries/AreaCountCard';
 import ScoreCard from '../enquiries/ScoreCard';
 import NewMatters from './NewMatters';
 import MatterTransactions from './MatterTransactions';
+import Documents from './documents/Documents';
+
 
 
 // ----------------------------------------------
@@ -131,7 +133,7 @@ async function callGetMatterSpecificActivities(matterId: string): Promise<any> {
 // ----------------------------------------------
 // Helper function(s)
 // ----------------------------------------------
-function groupPracticeArea(practiceArea: string): string {
+function groupPracticeArea(practiceArea: string): "Commercial" | "Construction" | "Employment" | "Property" {
   const p = practiceArea.trim().toLowerCase();
   const commercialGroup = [
     'commercial',
@@ -199,8 +201,10 @@ function groupPracticeArea(practiceArea: string): string {
   ];
   if (employmentGroup.includes(p)) return 'Employment';
 
-  return 'Miscellaneous';
+  // Instead of returning "Miscellaneous", default to a valid value:
+  return 'Commercial';
 }
+
 
 function getGroupColor(group: string): string {
   switch (group) {
@@ -233,6 +237,7 @@ function getGroupIcon(group: string): string {
       return 'Help';
   }
 }
+
 
 const nameCorrections: { [fullName: string]: string } = {
   'Bianca ODonnell': "Bianca O'Donnell",
@@ -658,6 +663,7 @@ const Matters: React.FC<MattersProps> = ({
   // If a matter is selected, render the detail pivot
   // ------------------------------------------------
   if (selectedMatter) {
+    const consolidatedCategory = groupPracticeArea(selectedMatter.PracticeArea);
     return (
       <div className={containerStyle(isDarkMode)}>
         <IconButton
@@ -685,6 +691,10 @@ const Matters: React.FC<MattersProps> = ({
   
           <PivotItem headerText="Transactions" itemKey="Transactions">
             <MatterTransactions matter={selectedMatter} transactions={transactions} />
+          </PivotItem>
+  
+          <PivotItem headerText="Documents" itemKey="Documents">
+            <Documents matter={selectedMatter} category={groupPracticeArea(selectedMatter.PracticeArea)} />
           </PivotItem>
         </Pivot>
       </div>

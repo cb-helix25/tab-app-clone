@@ -9,7 +9,7 @@ import { DateRangePicker, Range, RangeKeyDict } from 'react-date-range';
 import { addDays, eachDayOfInterval, format } from 'date-fns';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
-import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
+import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles, sharedDecisionButtonStyles } from '../app/styles/ButtonStyles';
 import HelixAvatar from '../assets/helix avatar.png';
 import GreyHelixMark from '../assets/grey helix mark.png'; // Not currently used
 import '../app/styles/personas.css';
@@ -183,6 +183,14 @@ function AnnualLeaveForm({
   // New state for displaying a confirmation message after submission
   const [confirmationMessage, setConfirmationMessage] = useState<string>('');
 
+  // NEW: Leave type selection state (default: standard)
+  const [selectedLeaveType, setSelectedLeaveType] = useState<string>('standard');
+  const leaveTypeOptions: { key: string; text: string }[] = [
+    { key: 'standard', text: 'Standard' },
+    { key: 'unpaid', text: 'Unpaid' },
+    { key: 'purchase', text: 'Purchase' },
+  ];
+
   // Recalculate total days whenever the dateRanges OR bankHolidays change
   useEffect(() => {
     let total = 0;
@@ -218,8 +226,17 @@ function AnnualLeaveForm({
   };
 
   // Compute effective remaining leave.
+  // For standard leave, use the holiday entitlement minus the standard total.
+  // For unpaid or purchase, the entitlement is hard-coded to 5.
   const holidayEntitlement = Number(userData?.[0]?.holiday_entitlement ?? 0);
-  const effectiveRemaining = holidayEntitlement - totals.standard - totalDays;
+  let effectiveRemaining = 0;
+  if (selectedLeaveType === 'standard') {
+    effectiveRemaining = holidayEntitlement - totals.standard - totalDays;
+  } else if (selectedLeaveType === 'unpaid') {
+    effectiveRemaining = 5 - totals.unpaid - totalDays;
+  } else if (selectedLeaveType === 'purchase') {
+    effectiveRemaining = 5 - totals.purchase - totalDays;
+  }
 
   /**
    * Group "futureLeave" records that overlap with any chosen date ranges.
@@ -297,7 +314,7 @@ function AnnualLeaveForm({
         dateRanges: formattedDateRanges,
         reason: notes || "No additional reason provided.",
         days_taken: totalDays,
-        leave_type: "standard",
+        leave_type: selectedLeaveType,
         overlapDetails: groupedLeave,
       };
       console.log('Annual Leave Form Payload:', payload);
@@ -330,80 +347,121 @@ function AnnualLeaveForm({
    * Renders the side panel showing leave totals.
    */
   function renderSidePanel() {
-    const effectiveRemainingStyle = {
-      color:
-        effectiveRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text,
-    };
-    const defaultUnpaid = 5;
-    const unpaidRemaining = defaultUnpaid - totals.unpaid;
-    const unpaidStyle = {
-      color:
-        unpaidRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text,
-    };
-    const defaultBuy = 5;
-    const buyRemaining = defaultBuy - totals.purchase;
-    const buyStyle = {
-      color:
-        buyRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text,
-    };
-
-    return (
-      <Stack
-        tokens={{ childrenGap: 10 }}
-        style={{
-          minWidth: '300px',
-          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-          padding: '10px',
-          borderRadius: '4px',
-          backgroundColor: 'transparent',
-        }}
-      >
-        <Text
+    if (selectedLeaveType === 'standard') {
+      return (
+        <Stack
+          tokens={{ childrenGap: 10 }}
           style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: isDarkMode ? colours.dark.text : colours.light.text,
+            minWidth: '300px',
+            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+            padding: '10px',
+            borderRadius: '4px',
+            backgroundColor: 'transparent',
           }}
         >
-          Total Days Requested
-        </Text>
-        <Text
-          style={{
-            fontSize: '18px',
-            fontWeight: 400,
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-          }}
-        >
-          {totalDays} {totalDays !== 1 ? 'days' : 'day'}
-        </Text>
-        <div
-          style={{
-            borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-            margin: '20px 0',
-          }}
-        />
-        <Stack tokens={{ childrenGap: 5 }}>
-          <Text style={labelStyle}>Annual Holiday Entitlement</Text>
-          {userData?.[0]?.holiday_entitlement != null ? (
-            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {userData[0].holiday_entitlement} {userData[0].holiday_entitlement !== 1 ? 'days' : 'day'}
-            </Text>
-          ) : (
-            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              N/A
-            </Text>
-          )}
-          <Text style={labelStyle}>Days taken so far this year</Text>
-          <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-            {totals.standard} {totals.standard !== 1 ? 'days' : 'day'}
+          <Text style={{ fontSize: '14px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            Total Days Requested
           </Text>
-          <Text style={labelStyle}>Days Remaining</Text>
-          <Text style={{ ...valueStyle, ...effectiveRemainingStyle }}>
-            {effectiveRemaining} {effectiveRemaining !== 1 ? 'days' : 'day'}
+          <Text style={{ fontSize: '18px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            {totalDays} {totalDays !== 1 ? 'days' : 'day'}
           </Text>
+          <div style={{ borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`, margin: '20px 0' }} />
+          <Stack tokens={{ childrenGap: 5 }}>
+            <Text style={labelStyle}>Annual Holiday Entitlement</Text>
+            {userData?.[0]?.holiday_entitlement != null ? (
+              <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+                {userData[0].holiday_entitlement} {userData[0].holiday_entitlement !== 1 ? 'days' : 'day'}
+              </Text>
+            ) : (
+              <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+                N/A
+              </Text>
+            )}
+            <Text style={labelStyle}>Days taken so far this year</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              {totals.standard} {totals.standard !== 1 ? 'days' : 'day'}
+            </Text>
+            <Text style={labelStyle}>Days Remaining</Text>
+            <Text style={{ ...valueStyle, color: effectiveRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
+              {effectiveRemaining} {effectiveRemaining !== 1 ? 'days' : 'day'}
+            </Text>
+          </Stack>
         </Stack>
-      </Stack>
-    );
+      );
+    } else if (selectedLeaveType === 'unpaid') {
+      const unpaidRemaining = 5 - totals.unpaid - totalDays;
+      return (
+        <Stack
+          tokens={{ childrenGap: 10 }}
+          style={{
+            minWidth: '300px',
+            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+            padding: '10px',
+            borderRadius: '4px',
+            backgroundColor: 'transparent',
+          }}
+        >
+          <Text style={{ fontSize: '14px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            Total Unpaid Days Requested
+          </Text>
+          <Text style={{ fontSize: '18px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            {totalDays} {totalDays !== 1 ? 'days' : 'day'}
+          </Text>
+          <div style={{ borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`, margin: '20px 0' }} />
+          <Stack tokens={{ childrenGap: 5 }}>
+            <Text style={labelStyle}>Unpaid Leave Entitlement</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              5 days
+            </Text>
+            <Text style={labelStyle}>Unpaid Days Taken so far</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              {totals.unpaid} {totals.unpaid !== 1 ? 'days' : 'day'}
+            </Text>
+            <Text style={labelStyle}>Unpaid Days Remaining</Text>
+            <Text style={{ ...valueStyle, color: unpaidRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
+              {unpaidRemaining} {unpaidRemaining !== 1 ? 'days' : 'day'}
+            </Text>
+          </Stack>
+        </Stack>
+      );
+    } else if (selectedLeaveType === 'purchase') {
+      const purchaseRemaining = 5 - totals.purchase - totalDays;
+      return (
+        <Stack
+          tokens={{ childrenGap: 10 }}
+          style={{
+            minWidth: '300px',
+            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+            padding: '10px',
+            borderRadius: '4px',
+            backgroundColor: 'transparent',
+          }}
+        >
+          <Text style={{ fontSize: '14px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            Total Purchase Days Requested
+          </Text>
+          <Text style={{ fontSize: '18px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            {totalDays} {totalDays !== 1 ? 'days' : 'day'}
+          </Text>
+          <div style={{ borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`, margin: '20px 0' }} />
+          <Stack tokens={{ childrenGap: 5 }}>
+            <Text style={labelStyle}>Purchase Leave Entitlement</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              5 days
+            </Text>
+            <Text style={labelStyle}>Purchase Days Taken so far</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              {totals.purchase} {totals.purchase !== 1 ? 'days' : 'day'}
+            </Text>
+            <Text style={labelStyle}>Purchase Days Remaining</Text>
+            <Text style={{ ...valueStyle, color: purchaseRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
+              {purchaseRemaining} {purchaseRemaining !== 1 ? 'days' : 'day'}
+            </Text>
+          </Stack>
+        </Stack>
+      );
+    }
+    return null;
   }
 
   /**
@@ -535,6 +593,21 @@ function AnnualLeaveForm({
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
               <Stack style={{ flex: 1 }} tokens={{ childrenGap: 10 }}>
+                {/* NEW: Leave Type Selector as three side-by-side toggle buttons */}
+                <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { width: '100%' } }}>
+                  {leaveTypeOptions.map((option) => {
+                    const isSelected = selectedLeaveType === option.key;
+                    return (
+                      <DefaultButton
+                        key={option.key}
+                        text={option.text}
+                        onClick={() => setSelectedLeaveType(option.key)}
+                        // Use the decision button style when selected, and default style otherwise
+                        styles={ isSelected ? sharedDecisionButtonStyles : sharedDefaultButtonStyles }
+                      />
+                    );
+                  })}
+                </Stack>
                 {dateRanges.map((range, index) => (
                   <Stack
                     key={index}

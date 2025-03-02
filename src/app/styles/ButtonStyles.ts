@@ -16,7 +16,6 @@ export const sharedPrimaryButtonStyles: IButtonStyles = {
     transition: 'background 0.3s ease, box-shadow 0.3s ease',
     transform: 'none !important',
     outline: 'none !important',
-    // Ensure no default focus ring:
     ':focus': {
       outline: 'none !important',
       border: 'none !important',
@@ -51,11 +50,11 @@ export const sharedPrimaryButtonStyles: IButtonStyles = {
 // Shared Default Button Styles
 export const sharedDefaultButtonStyles: IButtonStyles = {
   root: {
-    padding: '6px 12px', // match the primary button padding
+    padding: '6px 12px',
     borderRadius: '4px',
     backgroundColor: colours.secondaryButtonBackground,
     border: 'none',
-    height: '40px', // match the primary button height
+    height: '40px',
     fontWeight: 'normal',
     color: '#000000',
     transition: 'background 0.3s ease, box-shadow 0.3s ease',
@@ -69,7 +68,7 @@ export const sharedDefaultButtonStyles: IButtonStyles = {
   },
   rootHovered: {
     background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), ${colours.secondaryButtonBackground} !important`,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.15) !important', /* Enhanced shadow on hover */
+    boxShadow: '0 2px 6px rgba(0,0,0,0.15) !important',
     transform: 'none !important',
     outline: 'none !important',
     border: 'none !important',
@@ -89,7 +88,7 @@ export const sharedDefaultButtonStyles: IButtonStyles = {
   },
   label: {
     color: '#000000 !important',
-    fontWeight: 'normal !important', /* Ensure label font weight is normal */
+    fontWeight: 'normal !important',
   },
 };
 
@@ -98,16 +97,15 @@ export const sharedDraftConfirmedButtonStyles: IButtonStyles = {
   root: {
     padding: '6px 12px',
     borderRadius: '4px',
-    backgroundColor: 'transparent', // No background to emphasize border and icon
-    border: `2px solid ${colours.green} !important`, // Green border with !important to override defaults
+    backgroundColor: 'transparent',
+    border: `2px solid ${colours.green} !important`,
     height: '40px',
     fontWeight: '600',
-    color: `${colours.green} !important`, // Green label
-    boxShadow: 'inset 0 0 5px rgba(0,0,0,0.2)', // Inner shadow for pressed effect
+    color: `${colours.green} !important`,
+    boxShadow: 'inset 0 0 5px rgba(0,0,0,0.2)',
     transition: 'background 0.3s ease, box-shadow 0.3s ease, border 0.3s ease',
     transform: 'none !important',
     outline: 'none !important',
-    // Ensure no default focus ring and maintain styles on focus:
     ':focus': {
       outline: 'none !important',
       border: `2px solid ${colours.green} !important`,
@@ -115,21 +113,19 @@ export const sharedDraftConfirmedButtonStyles: IButtonStyles = {
     },
   },
   rootHovered: {
-    background: `${colours.green}cc !important`, // Slightly lighter green on hover
+    background: `${colours.green}cc !important`,
     boxShadow: 'inset 0 0 5px rgba(0,0,0,0.3) !important',
     transform: 'none !important',
     outline: 'none !important',
-    // Border remains green as defined in root
   },
   rootPressed: {
-    background: `${colours.green}b3 !important`, // Even lighter green on press
+    background: `${colours.green}b3 !important`,
     boxShadow: 'inset 0 0 8px rgba(0,0,0,0.3) !important',
     transform: 'none !important',
     outline: 'none !important',
-    // Border remains green as defined in root
   },
   rootFocused: {
-    backgroundColor: 'transparent !important', // Maintain transparent background
+    backgroundColor: 'transparent !important',
     boxShadow: 'inset 0 0 5px rgba(0,0,0,0.2) !important',
     border: `2px solid ${colours.green} !important`,
     transform: 'none !important',
@@ -142,15 +138,59 @@ export const sharedDraftConfirmedButtonStyles: IButtonStyles = {
     boxShadow: 'inset 0 0 5px rgba(0,0,0,0.2) !important',
   },
   icon: {
-    color: `${colours.green} !important`, // Green icon
+    color: `${colours.green} !important`,
   },
   label: {
-    color: `${colours.green} !important`, // Green label
+    color: `${colours.green} !important`,
   },
   iconDisabled: {
-    color: `${colours.green} !important`, // Green icon when disabled
+    color: `${colours.green} !important`,
   },
   labelDisabled: {
-    color: `${colours.green} !important`, // Green label when disabled
+    color: `${colours.green} !important`,
+  },
+};
+
+// NEW: Shared Decision (Choice) Button Styles – blue highlight version
+export const sharedDecisionButtonStyles: IButtonStyles = {
+  root: {
+    padding: '6px 12px',
+    borderRadius: '4px',
+    backgroundColor: colours.highlight,
+    border: 'none',
+    height: '40px',
+    fontWeight: '600',
+    color: '#ffffff',
+    transition: 'background 0.3s ease, box-shadow 0.3s ease',
+    transform: 'none !important',
+    outline: 'none !important',
+    ':focus': {
+      outline: 'none !important',
+      border: 'none !important',
+      transform: 'none !important',
+    },
+  },
+  rootHovered: {
+    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.highlight} !important`,
+    boxShadow: '0 0 8px rgba(0,0,0,0.2) !important',
+    transform: 'none !important',
+    outline: 'none !important',
+    border: 'none !important',
+  },
+  rootPressed: {
+    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%), ${colours.highlight} !important`,
+    boxShadow: '0 0 8px rgba(0,0,0,0.3) !important',
+    transform: 'none !important',
+    outline: 'none !important',
+    border: 'none !important',
+  },
+  rootFocused: {
+    backgroundColor: `${colours.highlight} !important`,
+    transform: 'none !important',
+    outline: 'none !important',
+    border: 'none !important',
+  },
+  label: {
+    color: '#ffffff !important',
   },
 };
