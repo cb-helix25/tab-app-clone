@@ -1,275 +1,488 @@
 // src/tabs/matters/documentIndex.ts
 
-// Define a type for a document entry
+// Define a type for individual requirement fields.
+export interface RequirementField {
+  field: string;
+  description: string;
+}
+
+// Define a type for a document entry.
 export interface DocumentEntry {
-    id: number;
-    title: string;
-    preview: string;
-    requirements: string; // formatted string listing required data
-    fullContent: string;
-    icon: string;
-    type?: string;
-  }
-  
-  // Group documents by litigation area
-  export interface DocumentIndex {
-    Commercial: DocumentEntry[];
-    Construction: DocumentEntry[];
-    Employment: DocumentEntry[];
-    Property: DocumentEntry[];
-  }
-  
-  // Expanded index file with sample document entries for each category
-  const documentIndex: DocumentIndex = {
-    Commercial: [
-      {
-        id: 1,
-        title: "Commercial Litigation Template",
-        preview: "Template to initiate commercial litigation with a clear statement of claim and supporting evidence.",
-        requirements: "Requires client details, contract terms, summary of evidence, and relevant communications.",
-        fullContent: "Full content for the Commercial Litigation Template.",
-        icon: "Money",
+  id: number;
+  title: string;
+  preview: string;
+  // Previously a single string, now split into individual fields.
+  requirements: RequirementField[];
+  fullContent: string; // Full or sample content of the template.
+  icon: string;
+  type?: string;
+  metadata?: { [key: string]: string | number | boolean };
+}
+
+// Group documents by practice area.
+export interface DocumentIndex {
+  Commercial: DocumentEntry[];
+  Employment: DocumentEntry[];
+  Property: DocumentEntry[];
+  Construction: DocumentEntry[];
+}
+
+// Document Index – Revised for Helix Law Ltd
+const documentIndex: DocumentIndex = {
+  // ------------------------------------------------
+  // Commercial Group (includes Corporate, Commercial, and Debt Recovery)
+  // ------------------------------------------------
+  Commercial: [
+    {
+      id: 1,
+      title: "Shareholders’ Agreement",
+      preview:
+        "Agreement setting out shareholder rights, share transfers, dividend policy and dispute resolution mechanisms.",
+      requirements: [
+        { field: "Company Name", description: "Requires company name." },
+        { field: "Registration Number", description: "Requires registration number." },
+        { field: "Shareholders", description: "Requires list of shareholders with share percentages." },
+        { field: "Voting Rights", description: "Requires details of voting rights." },
+        { field: "Dividend Policy", description: "Requires dividend policy." },
+        { field: "Dispute Resolution Clauses", description: "Requires dispute resolution clauses." },
+        { field: "Articles of Association", description: "Must be supported by the Articles of Association." },
+      ],
+      fullContent:
+        "Template for a Shareholders’ Agreement – [Insert clause-by-clause breakdown]. Refer to the Articles of Association for corporate governance provisions.",
+      icon: "Contract",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Companies Act 2006",
+        version: "Standard Template v1.0",
+        dependencies: "Articles of Association",
       },
-      {
-        id: 2,
-        title: "Client Care Letter",
-        preview: "Formal letter to maintain client engagement and outline next steps.",
-        requirements: "Requires client contact details, case background, and next steps for engagement.",
-        fullContent: "Full content for the Client Care Letter.",
-        icon: "Contact",
+    },
+    {
+      id: 2,
+      title: "Partnership Agreement",
+      preview:
+        "Agreement outlining partner roles, profit-sharing, capital contributions, and exit/dissolution procedures.",
+      requirements: [
+        { field: "Firm Name", description: "Requires firm name." },
+        { field: "Partner Identities", description: "Requires partner identities and addresses." },
+        { field: "Capital Contributions", description: "Requires capital contributions." },
+        { field: "Profit-Sharing Ratios", description: "Requires profit-sharing ratios." },
+        { field: "Roles & Responsibilities", description: "Requires roles and responsibilities for each partner." },
+        { field: "Dispute Resolution Process", description: "Requires dispute resolution process." },
+      ],
+      fullContent:
+        "Template for a Partnership Agreement – [Detail partner obligations, dispute resolution, and dissolution procedure].",
+      icon: "Contract",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Partnership Act 1890 (default rules if no agreement exists)",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 3,
-        title: "End of Case Letter",
-        preview: "Letter to formally close a case, summarizing outcomes and final communications.",
-        requirements: "Requires case outcome, final financial summary, and closure details.",
-        fullContent: "Full content for the End of Case Letter.",
-        icon: "Completed",
+    },
+    {
+      id: 3,
+      title: "Board & Shareholder Meeting Minutes",
+      preview:
+        "Minutes and resolutions of board meetings, often key evidence in shareholder disputes.",
+      requirements: [
+        { field: "Meeting Date", description: "Requires meeting date." },
+        { field: "Attendees", description: "Requires list of attendees." },
+        { field: "Resolutions", description: "Requires resolutions passed." },
+        { field: "Objections", description: "Requires any objections raised." },
+        { field: "Supporting Documents", description: "Must reference supporting documents." },
+      ],
+      fullContent:
+        "Template for Meeting Minutes – [Include resolution text and attendance records].",
+      icon: "Minutes",
+      metadata: {
+        documentType: "Internal Record",
+        storageReference: "Minute Book ID",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 4,
-        title: "Settlement Agreement Template",
-        preview: "Draft settlement agreement for resolving commercial disputes outside of court.",
-        requirements: "Requires settlement terms, party details, and dispute resolution clauses.",
-        fullContent: "Full content for the Settlement Agreement Template.",
-        icon: "Agreement",
+    },
+    {
+      id: 4,
+      title: "Unfair Prejudice Petition",
+      preview:
+        "Court petition filed by a minority shareholder alleging unfair prejudice in company affairs.",
+      requirements: [
+        { field: "Petitioner Details", description: "Requires petitioner’s details and shareholding." },
+        { field: "Respondent Details", description: "Requires respondents’ details." },
+        { field: "Statement of Facts", description: "Requires detailed statement of facts (e.g. exclusion, withholding dividends)." },
+        { field: "Breached Provisions", description: "Requires reference to breached provisions of the Shareholders’ Agreement and Articles." },
+        { field: "Relief Sought", description: "Requires relief sought (e.g. share buyout order)." },
+      ],
+      fullContent:
+        "Template for an Unfair Prejudice Petition – [Include sections for factual background, legal basis (Companies Act 2006, s.994), and remedy sought].",
+      icon: "Gavel",
+      metadata: {
+        documentType: "Court Pleading",
+        governingLaw: "Companies Act 2006 s.994",
+        version: "Standard Petition v1.0",
       },
-      {
-        id: 14,
-        title: "Pre-Action Protocol Letter",
-        preview: "Letter outlining steps before litigation, complying with pre-action protocols.",
-        requirements: "Requires details of the claim, timeline of events, and a summary of issues.",
-        fullContent: "Full content for the Pre-Action Protocol Letter.",
-        icon: "PreAction",
+    },
+    {
+      id: 5,
+      title: "Service Agreement",
+      preview:
+        "Contract between a service provider and a client outlining scope, fees, and obligations.",
+      requirements: [
+        { field: "Service Description", description: "Requires detailed service description." },
+        { field: "Fee Structure", description: "Requires fee structure." },
+        { field: "Term", description: "Requires term of the agreement." },
+        { field: "Termination Clause", description: "Requires termination clause." },
+        { field: "Confidentiality Clause", description: "Requires confidentiality clause." },
+        { field: "Dispute Resolution Clause", description: "Should include a dispute resolution clause." },
+      ],
+      fullContent:
+        "Template for a Service Agreement – [Insert standard clauses, with placeholders for service specifics].",
+      icon: "Contract",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "English Contract Law",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 15,
-        title: "Demand Letter for Breach of Contract",
-        preview: "A letter demanding performance or compensation following a breach of contract.",
-        requirements: "Requires contract details, breach evidence, and a clear demand for remedy.",
-        fullContent: "Full content for the Demand Letter for Breach of Contract.",
-        icon: "Demand",
+    },
+    {
+      id: 6,
+      title: "Settlement Agreement",
+      preview:
+        "Agreement to settle commercial disputes with clear terms for payment, release of claims, and confidentiality.",
+      requirements: [
+        { field: "Settlement Amount", description: "Requires details of settlement amount." },
+        { field: "Release Clauses", description: "Requires release clauses." },
+        { field: "Confidentiality Terms", description: "Requires confidentiality terms." },
+        { field: "Payment Schedule", description: "Requires payment schedule." },
+        { field: "Reference Documents", description: "Must reference underlying dispute documents if litigation was pending." },
+      ],
+      fullContent:
+        "Template for a Settlement Agreement – [Clause-by-clause settlement terms].",
+      icon: "Settlement",
+      metadata: {
+        documentType: "Contract / Court Order",
+        governingLaw: "Relevant Commercial Law",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 16,
-        title: "Disclosure Checklist",
-        preview: "A checklist template to ensure all relevant documents are disclosed.",
-        requirements: "Requires a list of documents, descriptions, and status of disclosure.",
-        fullContent: "Full content for the Disclosure Checklist.",
-        icon: "Checklist",
+    },
+    {
+      id: 7,
+      title: "Investment Agreement",
+      preview:
+        "Agreement outlining investment terms, share allocations, representations, and warranties between investor and company.",
+      requirements: [
+        { field: "Investor Details", description: "Requires investor details." },
+        { field: "Investment Amount", description: "Requires investment amount." },
+        { field: "Ownership Percentage", description: "Requires percentage of ownership." },
+        { field: "Valuation", description: "Requires company valuation." },
+        { field: "Exit Rights", description: "Requires rights on exit." },
+        { field: "Disclosure Obligations", description: "Must include disclosure obligations." },
+      ],
+      fullContent:
+        "Template for an Investment Agreement – [Standard clauses with customizable fields].",
+      icon: "Money",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Companies Act 2006 & Commercial Law",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 17,
-        title: "Litigation Bundle Index",
-        preview: "An index template for compiling documents used in litigation bundles.",
-        requirements: "Requires document titles, reference numbers, and summaries for each item.",
-        fullContent: "Full content for the Litigation Bundle Index.",
-        icon: "Index",
+    },
+    {
+      id: 8,
+      title: "Loan Agreement",
+      preview:
+        "Formal contract for a loan, detailing the amount, repayment schedule, interest rate, and default clauses.",
+      requirements: [
+        { field: "Lender Details", description: "Requires lender details." },
+        { field: "Borrower Details", description: "Requires borrower details." },
+        { field: "Principal Amount", description: "Requires principal amount." },
+        { field: "Interest Rate", description: "Requires interest rate." },
+        { field: "Repayment Schedule", description: "Requires repayment schedule." },
+        { field: "Security", description: "Requires details of any security provided." },
+        { field: "Default Provisions", description: "Requires default provisions." },
+        { field: "Repayment Ledger", description: "Must be supported by a repayment ledger." },
+      ],
+      fullContent:
+        "Template for a Loan Agreement – [Include repayment and default provisions].",
+      icon: "Payment",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Commercial and Contract Law",
+        version: "Standard Template v1.0",
       },
-    ],
-    Construction: [
-      {
-        id: 5,
-        title: "Construction Dispute Brief",
-        preview: "Brief outlining the details of a construction dispute including delays and defects.",
-        requirements: "Requires project timelines, contract details, and history of disputes.",
-        fullContent: "Full content for the Construction Dispute Brief.",
-        icon: "ConstructionCone",
+    },
+    {
+      id: 9,
+      title: "Letter Before Action (Debt/Investment)",
+      preview:
+        "Pre-litigation letter demanding remedy for breach of contract or unpaid investment amounts.",
+      requirements: [
+        { field: "Claimant Details", description: "Requires claimant details." },
+        { field: "Respondent Details", description: "Requires respondent details." },
+        { field: "Summary of Dispute", description: "Requires summary of dispute." },
+        { field: "Contract Reference", description: "Requires reference to the underlying contract." },
+        { field: "Clear Demand", description: "Requires a clear demand." },
+        { field: "Deadline", description: "Requires a deadline for response." },
+        { field: "Enclosures List", description: "Should include a list of enclosures." },
+      ],
+      fullContent:
+        "Template for a Letter Before Action – [Customizable sections for facts, demands, and deadlines].",
+      icon: "Letter",
+      metadata: {
+        documentType: "Demand Letter",
+        governingLaw: "Civil Procedure Rules",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 6,
-        title: "Construction Claim Notice",
-        preview: "Notice to initiate a claim regarding construction defects or delays.",
-        requirements: "Requires project details, basis for claim, and supporting documentation.",
-        fullContent: "Full content for the Construction Claim Notice.",
-        icon: "Alert",
+    },
+    {
+      id: 10,
+      title: "Statutory Demand",
+      preview:
+        "Formal demand for payment under insolvency law. If unpaid within 21 days, enables the creditor to petition for bankruptcy or winding-up.",
+      requirements: [
+        { field: "Debtor Details", description: "Requires debtor details." },
+        { field: "Amount Owed", description: "Requires amount owed." },
+        { field: "Debt Origin", description: "Requires a clear statement of debt origin." },
+        { field: "Deadline", description: "Requires a 21-day deadline." },
+        { field: "Legal Threshold", description: "Must follow legal thresholds (e.g., £5k for individuals, £750 for companies)." },
+      ],
+      fullContent:
+        "Template for a Statutory Demand – [Includes statutory language and fields for debtor and creditor details].",
+      icon: "Demand",
+      metadata: {
+        documentType: "Insolvency Notice",
+        governingLaw: "Insolvency Act 1986",
+        version: "Standard Form (SD2 for individuals / 4.1 for companies)",
       },
-      {
-        id: 7,
-        title: "Expert Report Template",
-        preview: "Template for structuring expert evidence in construction disputes.",
-        requirements: "Requires expert witness details, inspection findings, and timeline of events.",
-        fullContent: "Full content for the Expert Report Template.",
-        icon: "ReportDocument",
+    },
+    {
+      id: 11,
+      title: "County Court Claim Form (Debt)",
+      preview:
+        "Court claim form to recover a debt when other measures have failed. Initiates legal proceedings for judgment.",
+      requirements: [
+        { field: "Creditor Details", description: "Requires creditor details." },
+        { field: "Debtor Details", description: "Requires debtor details." },
+        { field: "Amount Claimed", description: "Requires amount claimed (including interest if applicable)." },
+        { field: "Particulars of Claim", description: "Requires brief particulars of claim." },
+        { field: "Reference to Prior Demand", description: "Requires reference to prior demand or statutory notice." },
+      ],
+      fullContent:
+        "Template for a County Court Claim Form – [Based on Form N1 with accompanying particulars (Form N119) if required].",
+      icon: "Court",
+      metadata: {
+        documentType: "Court Pleading",
+        governingLaw: "Civil Procedure Rules",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 18,
-        title: "Extension of Time Claim",
-        preview: "Claim document for seeking an extension of time due to delays.",
-        requirements: "Requires project schedule, reasons for delay, and supporting correspondence.",
-        fullContent: "Full content for the Extension of Time Claim.",
-        icon: "TimeExtension",
+    },
+  ],
+
+  // ------------------------------
+  // Employment
+  // ------------------------------
+  Employment: [
+    {
+      id: 12,
+      title: "Employment Contract",
+      preview:
+        "Contract detailing employment terms including remuneration, duties, notice periods and benefits.",
+      requirements: [
+        { field: "Employee Name", description: "Requires employee’s full name." },
+        { field: "Role", description: "Requires employee’s role." },
+        { field: "Salary", description: "Requires salary details." },
+        { field: "Benefits", description: "Requires list of benefits offered." },
+        { field: "Notice Period", description: "Requires notice period." },
+        { field: "Confidentiality Clause", description: "Requires confidentiality clause." },
+        { field: "Non-Compete Clause", description: "Requires non-compete clause." },
+        { field: "Dispute Resolution", description: "Requires dispute resolution terms." },
+      ],
+      fullContent:
+        "Template for an Employment Contract – [Standard clauses for UK employment, with customizable fields].",
+      icon: "Employee",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Employment Rights Act 1996",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 19,
-        title: "Payment Application Document",
-        preview: "Template for submitting payment applications during construction projects.",
-        requirements: "Requires payment schedule, work completed details, and certification.",
-        fullContent: "Full content for the Payment Application Document.",
-        icon: "Payment",
+    },
+    {
+      id: 13,
+      title: "Disciplinary Procedure",
+      preview:
+        "Procedure document outlining steps for addressing misconduct, investigation, and potential disciplinary actions.",
+      requirements: [
+        { field: "Process Steps", description: "Requires step-by-step process for addressing misconduct." },
+        { field: "Timeframes", description: "Requires expected timeframes for each process step." },
+        { field: "Employer Rights", description: "Requires employer rights during the process." },
+        { field: "Employee Rights", description: "Requires employee rights during the process." },
+        { field: "Compliance", description: "Must be compliant with ACAS guidelines." },
+      ],
+      fullContent:
+        "Template for a Disciplinary Procedure – [Detailed process description and forms for warnings, hearings, and appeals].",
+      icon: "Warning",
+      metadata: {
+        documentType: "Procedure Document",
+        governingLaw: "Employment Law and ACAS Guidelines",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 20,
-        title: "Variation Claim Form",
-        preview: "Form to claim variations due to changes in project scope or conditions.",
-        requirements: "Requires original scope, details of variation, and cost implications.",
-        fullContent: "Full content for the Variation Claim Form.",
-        icon: "Variation",
+    },
+  ],
+
+  // ------------------------------
+  // Property Disputes & Evictions
+  // ------------------------------
+  Property: [
+    {
+      id: 14,
+      title: "Commercial Lease Agreement",
+      preview:
+        "Lease agreement for commercial properties, setting out rental terms, obligations, and repair responsibilities.",
+      requirements: [
+        { field: "Property Address", description: "Requires property address." },
+        { field: "Landlord Details", description: "Requires landlord details." },
+        { field: "Tenant Details", description: "Requires tenant details." },
+        { field: "Lease Duration", description: "Requires lease duration." },
+        { field: "Rental Amount", description: "Requires rental amount and frequency." },
+        { field: "Deposit Details", description: "Requires deposit details." },
+        { field: "Repair Obligations", description: "Requires repair and maintenance obligations." },
+      ],
+      fullContent:
+        "Template for a Commercial Lease Agreement – [Standard lease clauses with customizable fields].",
+      icon: "Home",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "Landlord and Tenant Act 1985 (plus commercial lease standards)",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 21,
-        title: "Site Inspection Report",
-        preview: "Report template for documenting findings during a site inspection.",
-        requirements: "Requires inspection dates, observations, photographs, and expert comments.",
-        fullContent: "Full content for the Site Inspection Report.",
-        icon: "Inspection",
+    },
+    {
+      id: 15,
+      title: "Section 21 Notice (No-Fault Eviction)",
+      preview:
+        "Notice under Section 21 of the Housing Act 1988 for terminating an assured shorthold tenancy without alleging fault.",
+      requirements: [
+        { field: "Tenant Details", description: "Requires tenant details." },
+        { field: "Landlord Details", description: "Requires landlord details." },
+        { field: "Property Address", description: "Requires property address." },
+        { field: "Tenancy Start Date", description: "Requires tenancy start date." },
+        { field: "Deposit Protection", description: "Requires confirmation of deposit protection compliance." },
+        { field: "Notice Period", description: "Requires a notice period of at least 2 months." },
+      ],
+      fullContent:
+        "Template for a Section 21 Notice – [Include statutory language and required fields per Form 6A].",
+      icon: "Notice",
+      metadata: {
+        documentType: "Statutory Notice",
+        governingLaw: "Housing Act 1988",
+        version: "Form 6A Standard",
       },
-    ],
-    Employment: [
-      {
-        id: 8,
-        title: "Employment Law Claim Template",
-        preview: "Template for drafting claims related to wrongful dismissal or discrimination.",
-        requirements: "Requires employee records, employment contract, and incident report.",
-        fullContent: "Full content for the Employment Law Claim Template.",
-        icon: "People",
+    },
+    {
+      id: 16,
+      title: "Section 8 Notice (For Cause Eviction)",
+      preview:
+        "Formal notice to terminate a tenancy for specific breaches such as rent arrears or other tenancy breaches.",
+      requirements: [
+        { field: "Tenant Details", description: "Requires tenant details." },
+        { field: "Breach Details", description: "Requires details of the breach (e.g., outstanding rent)." },
+        { field: "Statutory Grounds", description: "Requires reference to statutory grounds (e.g., Ground 8 for arrears)." },
+      ],
+      fullContent:
+        "Template for a Section 8 Notice – [Include tick-box style ground selection and space for explanation].",
+      icon: "Notice",
+      metadata: {
+        documentType: "Statutory Notice",
+        governingLaw: "Housing Act 1988",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 9,
-        title: "Witness Statement Template",
-        preview: "Template for witness statements in employment disputes.",
-        requirements: "Requires witness details, chronology of events, and supporting evidence.",
-        fullContent: "Full content for the Witness Statement Template.",
-        icon: "Chat",
+    },
+  ],
+
+  // ------------------------------
+  // Construction Disputes & Adjudication
+  // ------------------------------
+  Construction: [
+    {
+      id: 17,
+      title: "Construction Contract",
+      preview:
+        "Main construction contract (e.g. JCT or NEC) governing project delivery and payment, essential as the basis for any dispute.",
+      requirements: [
+        { field: "Project Name", description: "Requires project name." },
+        { field: "Party Details", description: "Requires details of the parties involved." },
+        { field: "Scope of Work", description: "Requires description of the scope of work." },
+        { field: "Contract Price", description: "Requires contract price." },
+        { field: "Key Dates", description: "Requires key dates such as start date, completion date, and payment schedule." },
+        { field: "Bespoke Clauses", description: "Requires any bespoke clauses (e.g., variations, delays, termination)." },
+      ],
+      fullContent:
+        "Standard Construction Contract Template – [Extract relevant clauses and incorporate standard forms such as JCT or NEC with amendments].",
+      icon: "Contract",
+      metadata: {
+        documentType: "Contract",
+        governingLaw: "English Construction Law",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 10,
-        title: "Grievance Procedure Document",
-        preview: "Structured outline of the grievance procedure to be followed in disputes.",
-        requirements: "Requires company policies, incident details, and meeting records.",
-        fullContent: "Full content for the Grievance Procedure Document.",
-        icon: "ReportWarning",
+    },
+    {
+      id: 18,
+      title: "Notice of Adjudication",
+      preview:
+        "Formal notice to commence adjudication under the Housing Grants, Construction and Regeneration Act 1996.",
+      requirements: [
+        { field: "Dispute Details", description: "Requires details of the dispute." },
+        { field: "Party Information", description: "Requires details of the parties involved." },
+        { field: "Contract Reference", description: "Requires reference to the underlying construction contract." },
+        { field: "Relief Sought", description: "Requires description of the relief or remedy being requested." },
+      ],
+      fullContent:
+        "Template for a Notice of Adjudication – [Includes standard fields for project details, dispute description, and timeline].",
+      icon: "Notice",
+      metadata: {
+        documentType: "Dispute Notice",
+        governingLaw: "Housing Grants, Construction and Regeneration Act 1996",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 22,
-        title: "Settlement Agreement for Employment Disputes",
-        preview: "Settlement agreement template designed for resolving employment disputes.",
-        requirements: "Requires settlement terms, employee details, and dispute resolution clauses.",
-        fullContent: "Full content for the Settlement Agreement for Employment Disputes.",
-        icon: "Settlement",
+    },
+    {
+      id: 19,
+      title: "Referral Notice (Adjudication)",
+      preview:
+        "Detailed submission to the adjudicator outlining the claim, supporting evidence, and the relief sought.",
+      requirements: [
+        { field: "Narrative", description: "Requires a narrative of events." },
+        { field: "Contractual References", description: "Requires references to contractual clauses." },
+        { field: "Payment/Breach Details", description: "Requires details of payment claims or breaches." },
+        { field: "Supporting Documents", description: "Requires a list of supporting documents." },
+      ],
+      fullContent:
+        "Template for a Referral Notice – [Customizable sections for background facts, contractual references, and remedy sought].",
+      icon: "Folder",
+      metadata: {
+        documentType: "Adjudication Pleading",
+        governingLaw: "Housing Grants, Construction and Regeneration Act 1996",
+        version: "Standard Template v1.0",
       },
-      {
-        id: 23,
-        title: "Disciplinary Hearing Minutes",
-        preview: "Template for recording minutes during disciplinary hearings.",
-        requirements: "Requires meeting date, participants, key discussion points, and outcomes.",
-        fullContent: "Full content for the Disciplinary Hearing Minutes.",
-        icon: "Minutes",
+    },
+    {
+      id: 20,
+      title: "Project Records & Payment Notices",
+      preview:
+        "Compilation of payment applications, certificates, delay notices, and other project records that support a claim.",
+      requirements: [
+        { field: "Notice Log", description: "Requires a chronological log of all notices (payment, delay, variation)." },
+        { field: "Supporting Invoices/Certificates", description: "Requires supporting invoices or certificates as evidence." },
+        { field: "Issuance Dates", description: "Requires dates when notices were issued." },
+      ],
+      fullContent:
+        "Not a template per se, but an indexable dataset record – to be uploaded as evidence in disputes.",
+      icon: "Checklist",
+      metadata: {
+        documentType: "Data Log",
+        usage: "Evidence for dispute resolution and adjudication",
       },
-      {
-        id: 24,
-        title: "Notice of Dismissal Appeal",
-        preview: "Template for drafting a notice of appeal against a dismissal decision.",
-        requirements: "Requires details of dismissal, grounds for appeal, and supporting evidence.",
-        fullContent: "Full content for the Notice of Dismissal Appeal.",
-        icon: "Appeal",
-      },
-      {
-        id: 25,
-        title: "Employment Tribunal Claim Form",
-        preview: "Claim form template for submitting an employment tribunal claim.",
-        requirements: "Requires claimant details, summary of claim, and relevant evidence.",
-        fullContent: "Full content for the Employment Tribunal Claim Form.",
-        icon: "Tribunal",
-      },
-    ],
-    Property: [
-      {
-        id: 11,
-        title: "Property Litigation Brief",
-        preview: "Detailed brief for property disputes covering boundary conflicts and lease issues.",
-        requirements: "Requires property deeds, lease agreements, and survey reports.",
-        fullContent: "Full content for the Property Litigation Brief.",
-        icon: "Home",
-      },
-      {
-        id: 12,
-        title: "Witness Statement for Property Dispute",
-        preview: "Template for witness statements in property litigation.",
-        requirements: "Requires witness identification, timeline of events, and supporting evidence.",
-        fullContent: "Full content for the Witness Statement for Property Dispute.",
-        icon: "Pill",
-      },
-      {
-        id: 13,
-        title: "Lease Dispute Summary Document",
-        preview: "Outline for summarizing key issues in lease disputes.",
-        requirements: "Requires lease contract details, payment history, and correspondence records.",
-        fullContent: "Full content for the Lease Dispute Summary Document.",
-        icon: "Document",
-      },
-      {
-        id: 26,
-        title: "Boundary Dispute Report",
-        preview: "Report template for documenting boundary disputes.",
-        requirements: "Requires property surveys, title deeds, and photographic evidence.",
-        fullContent: "Full content for the Boundary Dispute Report.",
-        icon: "Boundary",
-      },
-      {
-        id: 27,
-        title: "Possession Claim Template",
-        preview: "Template for initiating a claim to regain possession of property.",
-        requirements: "Requires tenancy details, breach of terms, and eviction notices.",
-        fullContent: "Full content for the Possession Claim Template.",
-        icon: "Possession",
-      },
-      {
-        id: 28,
-        title: "Rent Arrears Demand Letter",
-        preview: "Demand letter template for addressing rent arrears issues.",
-        requirements: "Requires tenant details, arrears calculation, and payment history.",
-        fullContent: "Full content for the Rent Arrears Demand Letter.",
-        icon: "Demand",
-      },
-      {
-        id: 29,
-        title: "Title Deed Analysis Report",
-        preview: "Template for analyzing title deeds in property disputes.",
-        requirements: "Requires property title documents, historical data, and legal opinion.",
-        fullContent: "Full content for the Title Deed Analysis Report.",
-        icon: "Analysis",
-      },
-      {
-        id: 30,
-        title: "Planning Permission Objection Letter",
-        preview: "Objection letter template for challenging planning permission decisions.",
-        requirements: "Requires planning documents, grounds for objection, and supporting evidence.",
-        fullContent: "Full content for the Planning Permission Objection Letter.",
-        icon: "Objection",
-      },
-    ],
-  };
-  
-  export default documentIndex;
-  
+    },
+  ],
+};
+
+export default documentIndex;

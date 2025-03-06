@@ -10,6 +10,8 @@ import {
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 import { DocumentEntry } from './documentIndex';
+// Import the background image
+import tabBg from '../../../assets/tab bg.jpg';
 
 export interface DocumentCardProps {
   doc: DocumentEntry;
@@ -48,10 +50,12 @@ const cardContainerStyle = mergeStyles({
   },
 });
 
-// Top grey container (instead of an image) using the grey colour from the colours file
+// Top image style
 const topImageStyle = mergeStyles({
+  width: '100%',
   height: '120px',
-  backgroundColor: colours.grey,
+  borderTopLeftRadius: '12px',
+  borderTopRightRadius: '12px',
 });
 
 // Full-width title section placed between the image and the content area
@@ -171,8 +175,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ doc, onSelect }) => {
       tabIndex={0}
       aria-label={`View document: ${doc.title}`}
     >
-      {/* Top grey area */}
-      <div className={topImageStyle} />
+      {/* Top image area */}
+      <img
+        src={tabBg}
+        alt="Tab background"
+        className={topImageStyle}
+        style={{ objectFit: 'cover' }}
+      />
 
       {/* Full-width title section */}
       <div className={fullWidthTitleStyle}>

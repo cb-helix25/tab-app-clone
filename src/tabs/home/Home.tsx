@@ -609,12 +609,14 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
     const data: TeamData[] = teamData ?? [];
-    return data.map((member: TeamData) => ({
-      First: member.First ?? '',
-      Initials: member.Initials ?? '',
-      "Entra ID": member["Entra ID"] ?? '',
-      Nickname: member.Nickname ?? member.First ?? '',
-    }));
+    return data
+      .filter((member) => member.status === 'active')
+      .map((member: TeamData) => ({
+        First: member.First ?? '',
+        Initials: member.Initials ?? '',
+        "Entra ID": member["Entra ID"] ?? '',
+        Nickname: member.Nickname ?? member.First ?? '',
+      }));
   }, [teamData]);
 
   const renderContextsPanelContent = () => (

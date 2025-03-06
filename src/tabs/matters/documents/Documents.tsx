@@ -5,14 +5,8 @@ import {
   Stack,
   Text,
   mergeStyles,
-  PrimaryButton,
   DefaultButton,
-  TextField,
   Icon,
-  IconButton,
-  Separator,
-  Toggle,
-  Label,
   Link,
   SearchBox,
 } from '@fluentui/react';
@@ -21,7 +15,7 @@ import { colours } from '../../../app/styles/colours';
 import documentIndex, { DocumentEntry } from './documentIndex';
 import { Matter } from '../../../app/functionality/types';
 import DocumentCard from './DocumentCard';
-import PromptPane from './promptPane'; // Import the new PromptPane component
+import DocumentDetailsPage from './DocumentDetailsPage'; // Use full-page details instead of PromptPane
 
 /* 
 ============================================================================== 
@@ -31,7 +25,7 @@ import PromptPane from './promptPane'; // Import the new PromptPane component
 
 interface DocumentsProps {
   matter?: Matter;
-  category: "Commercial" | "Construction" | "Employment" | "Property";
+  category: "Commercial" | "Construction" | "Employment" | "Property" | "Miscellaneous";
 }
 
 /* 
@@ -40,24 +34,23 @@ interface DocumentsProps {
 ============================================================================== 
 */
 
-// Overall page container (white background)
-const pageContainerStyle = mergeStyles({
-  padding: '30px',
-  backgroundColor: '#fff',
-  minHeight: '100vh',
+// Instead of forcing a full-page white background,
+// we now use a minimal container style.
+const containerStyle = mergeStyles({
+  padding: '16px 0', // Just vertical spacing, so it fits inside the outer matter card.
   fontFamily: 'Raleway, sans-serif',
 });
 
-// Updated header container style: white background and slightly reduced padding for proportionate height
+// Header container: retains its own style for the display number and search.
 const headerContainerStyle = mergeStyles({
   padding: '10px 20px',
   borderRadius: '8px',
-  backgroundColor: '#fff', // always white
+  backgroundColor: '#fff',
   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   marginBottom: '20px',
 });
 
-// Grid style for document cards (max 3 per line)
+// Grid style for document cards (max 3 per row)
 const gridStyle = mergeStyles({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, 1fr)',
@@ -75,6 +68,23 @@ const searchBoxStyles = (isSearchActive: boolean) =>
     transition: 'width 0.3s, opacity 0.3s',
     overflow: 'hidden',
   });
+
+// Styles for dummy document content simulation
+const dummyContentStyle = mergeStyles({
+  backgroundColor: '#ccc',
+  borderRadius: '4px',
+  padding: '10px',
+  marginTop: '8px',
+  height: '120px',
+  position: 'relative',
+});
+const dummyFieldStyle = mergeStyles({
+  backgroundColor: '#fff',
+  height: '12px',
+  width: '80%',
+  borderRadius: '2px',
+  marginBottom: '8px',
+});
 
 /* 
 ============================================================================== 
@@ -108,7 +118,6 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
   const { isDarkMode } = useTheme();
 
   const [documents, setDocuments] = useState<DocumentEntry[]>([]);
-
   useEffect(() => {
     setDocuments(documentIndex[category as keyof typeof documentIndex] || []);
   }, [category]);
@@ -121,7 +130,6 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
 
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const [favoriteDocs, setFavoriteDocs] = useState<number[]>([]);
-
   const toggleFavorite = (docId: number) => {
     setFavoriteDocs((prev) =>
       prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
@@ -154,40 +162,53 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
     });
   };
 
-  // State for the open prompt pane
+  // State for the selected document
   const [selectedDoc, setSelectedDoc] = useState<DocumentEntry | null>(null);
-
   const onSelectDocument = (doc: DocumentEntry) => {
-    setSelectedDoc(doc);
     addToRecentlyUsed(doc);
+    setSelectedDoc(doc);
   };
-
-  const onClosePanel = () => {
+  const onCloseDocument = () => {
     setSelectedDoc(null);
   };
 
+  // New state for hovered document (for pop-up preview) and pop-up position
+  const [hoveredDoc, setHoveredDoc] = useState<DocumentEntry | null>(null);
+  const [popUpPosition, setPopUpPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // Build matter link (similar to MatterOverview)
   const matterLink = matter
-    ? `https://eu.app.clio.com/nc/#/matters/${matter.UniqueID || '-'}`
+    ? `https://eu.app.clio.com/nc/#/matters/${matter.UniqueID || '-'}` 
     : '';
 
+  // If a document is selected, render the full-page DocumentDetailsPage.
+  if (selectedDoc) {
+    return <DocumentDetailsPage doc={selectedDoc} onBack={onCloseDocument} />;
+  }
+
+  // Style for the pop-up preview container
+  const popUpStyle: React.CSSProperties = {
+    position: 'fixed',
+    left: popUpPosition.x + 10,
+    top: popUpPosition.y + 10,
+    backgroundColor: isDarkMode ? '#333' : '#fff',
+    color: isDarkMode ? '#fff' : '#333',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+    padding: '16px',
+    borderRadius: '8px',
+    zIndex: 1000,
+    maxWidth: '300px',
+  };
+
   return (
-    <div className={pageContainerStyle}>
+    <div className={containerStyle}>
       {/* Header: Display matter reference with revealable search bar */}
       {matter && (
         <div className={headerContainerStyle}>
-          <Stack
-            horizontal
-            verticalAlign="center"
-            horizontalAlign="space-between"
-            styles={{ root: { width: '100%' } }}
-          >
-            {/* Left Side: Display Number (smaller icon & text for proportionate height) */}
+          <Stack horizontal verticalAlign="center" horizontalAlign="space-between" styles={{ root: { width: '100%' } }}>
+            {/* Left Side: Display Number */}
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-              <Icon
-                iconName="OpenFolderHorizontal"
-                styles={{ root: { fontSize: 20, color: colours.highlight } }}
-              />
+              <Icon iconName="OpenFolderHorizontal" styles={{ root: { fontSize: 20, color: colours.highlight } }} />
               <Link
                 href={matterLink}
                 target="_blank"
@@ -205,15 +226,8 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
             </Stack>
             {/* Right Side: Revealable Search Bar */}
             <div className={searchContainerStyle}>
-              <div
-                className={searchIconStyle}
-                onClick={() => setSearchActive(!isSearchActive)}
-                title="Toggle Search"
-              >
-                <Icon
-                  iconName={isSearchActive ? 'Cancel' : 'Search'}
-                  styles={{ root: { fontSize: '20px', color: colours.highlight } }}
-                />
+              <div className={searchIconStyle} onClick={() => setSearchActive(!isSearchActive)} title="Toggle Search">
+                <Icon iconName={isSearchActive ? 'Cancel' : 'Search'} styles={{ root: { fontSize: '20px', color: colours.highlight } }} />
               </div>
               <div className={searchBoxStyles(isSearchActive)}>
                 <SearchBox
@@ -265,24 +279,43 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
         {/* Document Cards Grid */}
         <div className={gridStyle}>
           {filteredDocs.map((doc) => (
-            <DocumentCard
+            <div
               key={doc.id}
-              doc={doc}
-              isFavorited={favoriteDocs.includes(doc.id)}
-              onSelect={onSelectDocument}
-              toggleFavorite={toggleFavorite}
-            />
+              onMouseEnter={() => setHoveredDoc(doc)}
+              onMouseMove={(e) => setPopUpPosition({ x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => setHoveredDoc(null)}
+            >
+              <DocumentCard
+                doc={doc}
+                isFavorited={favoriteDocs.includes(doc.id)}
+                onSelect={onSelectDocument}
+                toggleFavorite={toggleFavorite}
+              />
+            </div>
           ))}
         </div>
       </Stack>
 
-      {/* Use the PromptPane component instead of the hard-coded Panel */}
-      {selectedDoc && (
-        <PromptPane
-          doc={selectedDoc}
-          isOpen={!!selectedDoc}
-          onClose={onClosePanel}
-        />
+      {/* Pop-up preview for document on hover */}
+      {hoveredDoc && (
+        <div style={popUpStyle}>
+          {/* Header */}
+          <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 10 }}>
+            <Icon iconName="WordLogo" styles={{ root: { fontSize: 40, color: colours.highlight } }} />
+            <Text variant="large" styles={{ root: { fontWeight: 600 } }}>{hoveredDoc.title}</Text>
+          </Stack>
+          {/* Document Preview Window */}
+          <div className={dummyContentStyle}>
+            <div className={dummyFieldStyle} style={{ width: '90%' }} />
+            <div className={dummyFieldStyle} style={{ width: '70%' }} />
+            <div className={dummyFieldStyle} style={{ width: '80%' }} />
+          </div>
+          {/* Footer */}
+          <Stack horizontal horizontalAlign="space-between" verticalAlign="center" styles={{ root: { marginTop: '12px' } }}>
+            <Text variant="small">.docx</Text>
+            <Text variant="small">Est. 1.2 MB</Text>
+          </Stack>
+        </div>
       )}
     </div>
   );

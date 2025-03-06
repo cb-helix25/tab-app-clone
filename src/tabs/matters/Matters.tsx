@@ -133,7 +133,7 @@ async function callGetMatterSpecificActivities(matterId: string): Promise<any> {
 // ----------------------------------------------
 // Helper function(s)
 // ----------------------------------------------
-function groupPracticeArea(practiceArea: string): "Commercial" | "Construction" | "Employment" | "Property" {
+function groupPracticeArea(practiceArea: string): "Commercial" | "Construction" | "Employment" | "Property" | "Miscellaneous" {
   const p = practiceArea.trim().toLowerCase();
   const commercialGroup = [
     'commercial',
@@ -201,9 +201,10 @@ function groupPracticeArea(practiceArea: string): "Commercial" | "Construction" 
   ];
   if (employmentGroup.includes(p)) return 'Employment';
 
-  // Instead of returning "Miscellaneous", default to a valid value:
-  return 'Commercial';
+  // Fallback to "Miscellaneous" if no match
+  return 'Miscellaneous';
 }
+
 
 
 function getGroupColor(group: string): string {
@@ -238,6 +239,27 @@ function getGroupIcon(group: string): string {
   }
 }
 
+// 1) Define two detail styles near the top (just like you do for the main page)
+const outerDetailContainerStyle = (isDarkMode: boolean) =>
+  mergeStyles({
+    width: '100%',
+    padding: '20px',
+    minHeight: '100vh',
+    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    fontFamily: 'Raleway, sans-serif',
+  });
+
+const innerDetailCardStyle = (isDarkMode: boolean) =>
+  mergeStyles({
+    padding: '30px',
+    borderRadius: '12px',
+    boxShadow: isDarkMode
+      ? '0 4px 16px rgba(0,0,0,0.6)'
+      : '0 4px 16px rgba(0,0,0,0.1)',
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
+  });
 
 const nameCorrections: { [fullName: string]: string } = {
   'Bianca ODonnell': "Bianca O'Donnell",
@@ -588,7 +610,12 @@ const Matters: React.FC<MattersProps> = ({
         displayName = fullName;
       }
       const isLeft = leftTeam.some((n) => n.toLowerCase() === fullName.toLowerCase());
-      const initials = displayName
+      const initials =
+  displayName === 'Joshua Whitcombe'
+    ? 'JWH'
+    : displayName === 'Ryan Choi'
+    ? 'RCH'
+    : displayName
         .split(' ')
         .map((part) => part.charAt(0))
         .join('');
@@ -663,40 +690,63 @@ const Matters: React.FC<MattersProps> = ({
   // If a matter is selected, render the detail pivot
   // ------------------------------------------------
   if (selectedMatter) {
-    const consolidatedCategory = groupPracticeArea(selectedMatter.PracticeArea);
     return (
-      <div className={containerStyle(isDarkMode)}>
-        <IconButton
-          iconProps={{ iconName: 'Back' }}
-          title="Back to Matters"
-          ariaLabel="Back to Matters"
-          onClick={() => setSelectedMatter(null)}
-          styles={{ root: { marginBottom: '20px' } }}
-        />
-        <Pivot
-          aria-label="Matter Detail Tabs"
-          styles={{ root: { marginTop: '20px', marginBottom: '20px' }, link: { fontSize: '16px', fontWeight: 600 } }}
-        >
-          <PivotItem headerText="Overview" itemKey="Overview">
-            <MatterOverview
-              matter={selectedMatter}
-              overviewData={matterOverview}
-              outstandingData={matterOutstandingData}
-              complianceData={complianceData}
-              matterSpecificActivitiesData={matterSpecificActivities}
-              onEdit={() => {}}
-              transactions={transactions}  // Pass transactions here
-            />
-          </PivotItem>
+      <div className={outerDetailContainerStyle(isDarkMode)}>
+        <div className={innerDetailCardStyle(isDarkMode)}>
+          <IconButton
+            iconProps={{ iconName: 'Back' }}
+            title="Back"
+            ariaLabel="Back"
+            onClick={() => setSelectedMatter(null)}
+            styles={{
+              root: {
+                backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+                color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                marginBottom: '20px', // keep any margin you need
+                selectors: {
+                  ':hover': {
+                    backgroundColor: isDarkMode
+                      ? colours.dark.background
+                      : colours.light.background,
+                  },
+                },
+              },
+            }}
+          />
+          <Pivot
+            aria-label="Matter Detail Tabs"
+            styles={{
+              root: { marginBottom: '20px', borderBottom: 'none' },
+              link: { fontSize: '16px', fontWeight: 600 },
+            }}
+          >
+            <PivotItem headerText="Overview" itemKey="Overview">
+              <MatterOverview
+                matter={selectedMatter}
+                overviewData={matterOverview}
+                outstandingData={matterOutstandingData}
+                complianceData={complianceData}
+                matterSpecificActivitiesData={matterSpecificActivities}
+                onEdit={() => {}}
+                transactions={transactions}
+              />
+            </PivotItem>
   
-          <PivotItem headerText="Transactions" itemKey="Transactions">
-            <MatterTransactions matter={selectedMatter} transactions={transactions} />
-          </PivotItem>
+            <PivotItem headerText="Transactions" itemKey="Transactions">
+              <MatterTransactions matter={selectedMatter} transactions={transactions} />
+            </PivotItem>
   
-          <PivotItem headerText="Documents" itemKey="Documents">
-            <Documents matter={selectedMatter} category={groupPracticeArea(selectedMatter.PracticeArea)} />
-          </PivotItem>
-        </Pivot>
+            <PivotItem headerText="Documents" itemKey="Documents">
+              <Documents
+                matter={selectedMatter}
+                category={groupPracticeArea(selectedMatter.PracticeArea)}
+              />
+            </PivotItem>
+          </Pivot>
+        </div>
       </div>
     );
   }  
