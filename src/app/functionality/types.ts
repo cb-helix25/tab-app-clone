@@ -398,3 +398,33 @@ export interface Transaction {
   type: string;
   status?: string | null; // new field added
 }
+
+export interface BoardroomBooking {
+  id: number;
+  fee_earner: string;       // Fee earner's initials
+  booking_date: string;     // Format: 'YYYY-MM-DD'
+  booking_time: string;     // Format: 'HH:MM:SS' (or with fraction, e.g. 'HH:MM:SS.0000000')
+  duration: number;         // Duration in hours (decimal values allowed)
+  reason: string;           // Reason for booking
+  created_at: string;       // Timestamp when created
+  updated_at: string;       // Timestamp when updated
+}
+
+export interface SoundproofPodBooking {
+  id: number;
+  fee_earner: string;       // Fee earner's initials
+  booking_date: string;     // Format: 'YYYY-MM-DD'
+  booking_time: string;     // Format: 'HH:MM:SS' (or with fraction, e.g. 'HH:MM:SS.0000000')
+  duration: number;         // Duration in hours (decimal values allowed)
+  reason: string;           // Reason for booking
+  created_at: string;       // Timestamp when created
+  updated_at: string;       // Timestamp when updated
+}
+
+// Union type for when you want to use both together.
+export type SpaceBooking = BoardroomBooking | SoundproofPodBooking;
+
+export interface FutureBookingsResponse {
+  boardroomBookings: BoardroomBooking[];
+  soundproofBookings: SoundproofPodBooking[];
+}

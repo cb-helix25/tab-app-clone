@@ -1,11 +1,10 @@
-// src/app/App.tsx
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
-import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction } from './functionality/types';
+import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomBooking, SoundproofPodBooking } from './functionality/types';
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -38,37 +37,41 @@ const App: React.FC<AppProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
-  
-  // POID state (updated via Home)
+
+  // Existing state and callbacks
   const [poidData, setPoidData] = useState<POID[]>([]);
-  
-  // State to hold "all matters" fetched from Home
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
-
-  // State to hold outstanding client balances
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
-
-  // NEW: State to hold transactions data; change initial value/type to undefined
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
 
-  // Callback for Home to pass fetched matters
+  // New state for bookings
+  const [boardroomBookings, setBoardroomBookings] = useState<BoardroomBooking[] | null>(null);
+  const [soundproofBookings, setSoundproofBookings] = useState<SoundproofPodBooking[] | null>(null);
+
+  // Callbacks from Home
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
   };
 
-  // Callback for Home to pass outstanding balances
   const handleOutstandingBalancesFetched = (data: any) => {
     setOutstandingBalances(data);
   };
 
-  // Callback for Home to pass POID6Years data
   const handlePOID6YearsFetched = (data: any[]) => {
     setPoidData(data);
   };
 
-  // NEW: Callback for Home to pass transactions data
   const handleTransactionsFetched = (fetchedTransactions: Transaction[]) => {
     setTransactions(fetchedTransactions);
+  };
+
+  // New callbacks for bookings
+  const handleBoardroomBookingsFetched = (data: BoardroomBooking[]) => {
+    setBoardroomBookings(data);
+  };
+
+  const handleSoundproofBookingsFetched = (data: SoundproofPodBooking[]) => {
+    setSoundproofBookings(data);
   };
 
   useEffect(() => {
@@ -81,7 +84,6 @@ const App: React.FC<AppProps> = ({
       }
     };
 
-    // Once all primary data is loaded, hide the custom loading screen
     if (teamsContext && userData && enquiries && matters) {
       closeLoadingScreen();
     }
@@ -108,7 +110,9 @@ const App: React.FC<AppProps> = ({
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
-            onTransactionsFetched={handleTransactionsFetched}  // NEW callback
+            onTransactionsFetched={handleTransactionsFetched}
+            onBoardroomBookingsFetched={handleBoardroomBookingsFetched}
+            onSoundproofBookingsFetched={handleSoundproofBookingsFetched}
             teamData={teamData}
           />
         );
@@ -122,7 +126,7 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
-            poidData={poidData}      
+            poidData={poidData}
             setPoidData={setPoidData}
             teamData={teamData}
           />
@@ -131,7 +135,7 @@ const App: React.FC<AppProps> = ({
         return (
           <Matters
             matters={allMattersFromHome || []}
-            transactions={transactions}  // Pass transactions data to Matters
+            transactions={transactions}
             fetchMatters={fetchMatters}
             isLoading={isLoading}
             error={error}
@@ -155,7 +159,9 @@ const App: React.FC<AppProps> = ({
             onAllMattersFetched={handleAllMattersFetched}
             onOutstandingBalancesFetched={handleOutstandingBalancesFetched}
             onPOID6YearsFetched={handlePOID6YearsFetched}
-            onTransactionsFetched={handleTransactionsFetched}  // NEW callback
+            onTransactionsFetched={handleTransactionsFetched}
+            onBoardroomBookingsFetched={handleBoardroomBookingsFetched}
+            onSoundproofBookingsFetched={handleSoundproofBookingsFetched}
             teamData={teamData}
           />
         );

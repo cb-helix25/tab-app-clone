@@ -152,13 +152,15 @@ export interface FormField {
   label: string;
   name: string;
   type:
-    | 'text'
     | 'number'
+    | 'text'
     | 'textarea'
     | 'dropdown'
     | 'toggle'
     | 'currency-picker'
-    | 'file';
+    | 'file'
+    | 'date'       // <-- Added
+    | 'time';      // <-- Added
   options?: string[];
   step?: number;
   min?: number;
@@ -172,6 +174,7 @@ export interface FormField {
   group?: string;
 }
 
+
 // Update the BespokeFormProps interface to include a matters prop.
 export interface BespokeFormProps {
   fields: FormField[];
@@ -181,6 +184,9 @@ export interface BespokeFormProps {
   style?: React.CSSProperties;
   children?: React.ReactNode;
   matters: Matter[]; // NEW: Pass matters data for Matter Reference dropdowns
+  onChange?: (values: { [key: string]: any }) => void;
+  submitDisabled?: boolean; 
+  conflict?: boolean;
 }
 
 /* ─── NEW: MatterReferenceDropdown Component ──────────────────────────────── */
@@ -258,11 +264,16 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  onChange,
   style,
   children,
   matters,
+  // The new props:
+  conflict = false,       // <-- Provide default false
+  submitDisabled = false, // <-- Provide default false
 }) => {
   const [formValues, setFormValues] = React.useState<{ [key: string]: any }>({});
+
 
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -280,7 +291,16 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   };
 
   const handleInputChange = (fieldName: string, value: any) => {
-    setFormValues((prev) => ({ ...prev, [fieldName]: value }));
+    setFormValues((prev) => {
+      const newValues = { ...prev, [fieldName]: value };
+  
+      // Add this line: call the parent's onChange if it exists.
+      if (onChange) {
+        onChange(newValues);
+      }
+  
+      return newValues;
+    });
   };
 
   const handleFileChange = async (fieldName: string, file: File | null) => {
@@ -542,12 +562,11 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
             <PrimaryButton
               type="submit"
               text={isSubmitting ? 'Submitted' : 'Submit'}
-              styles={
-                isSubmitting
-                  ? sharedDraftConfirmedButtonStyles
-                  : sharedPrimaryButtonStyles
-              }
-              disabled={isSubmitting}
+              // If conflict is true, set to secondary styling + show padlock
+              iconProps={conflict ? { iconName: 'Lock' } : undefined}
+              styles={conflict ? sharedDefaultButtonStyles : sharedPrimaryButtonStyles}
+              // Disable if we are submitting OR there's a conflict
+              disabled={isSubmitting || conflict}
             />
             <DefaultButton
               type="button"

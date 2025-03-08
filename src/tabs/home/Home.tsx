@@ -44,7 +44,7 @@ import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -70,6 +70,8 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import QuickActionsCard from './QuickActionsCard';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
+
+import BookSpaceForm from '../../CustomForms/BookSpaceForm';
 
 
 initializeIcons();
@@ -97,6 +99,8 @@ interface HomeProps {
   onOutstandingBalancesFetched?: (data: any) => void;
   onPOID6YearsFetched?: (data: any[]) => void;
   onTransactionsFetched?: (transactions: Transaction[]) => void;
+  onBoardroomBookingsFetched?: (data: BoardroomBooking[]) => void;
+  onSoundproofBookingsFetched?: (data: SoundproofPodBooking[]) => void;
   teamData?: TeamData[] | null;
 }
 
@@ -276,6 +280,7 @@ const quickActions: QuickLink[] = [
   { title: 'Create a Task', icon: 'Checklist' },
   { title: 'Save Telephone Note', icon: 'Comment' },
   { title: 'Request Annual Leave', icon: 'Calendar' },
+  { title: 'Book Space', icon: 'Room' },
 ];
 
 //////////////////////
@@ -603,7 +608,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched }) => {
   const { isDarkMode } = useTheme();
 
   // Transform teamData into our lite TeamMember type
@@ -737,6 +742,11 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
 
   const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
+
+  const [futureBookings, setFutureBookings] = useState<FutureBookingsResponse>({
+    boardroomBookings: [],
+    soundproofBookings: []
+  });
 
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
@@ -1209,6 +1219,37 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       fetchPOID6Years();
     }
   }, []);  
+
+  useEffect(() => {
+    async function fetchSpaceBookings() {
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_FUTURE_BOOKINGS_PATH}?code=${process.env.REACT_APP_GET_FUTURE_BOOKINGS_CODE}`
+        );
+        if (!response.ok) {
+          throw new Error(`Error fetching space bookings: ${response.status}`);
+        }
+        const data = await response.json();
+        // Separate bookings by space type
+        const boardroomBookings = data.boardroomBookings || [];
+        const soundproofBookings = data.soundproofBookings || [];
+        // Update the futureBookings state
+        setFutureBookings({ boardroomBookings, soundproofBookings });
+        // Optionally, call your callbacks too
+        if (typeof onBoardroomBookingsFetched === "function") {
+          onBoardroomBookingsFetched(boardroomBookings);
+        }
+        if (typeof onSoundproofBookingsFetched === "function") {
+          onSoundproofBookingsFetched(soundproofBookings);
+        }
+      } catch (error) {
+        console.error("Error fetching space bookings:", error);
+      }
+    }
+    fetchSpaceBookings();
+  }, []);
+  
+  
 
   useEffect(() => {
     async function fetchTransactions() {
@@ -1859,7 +1900,16 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           />
         );
         break;
-      default:
+        case 'Book Space':
+          content = (
+            <BookSpaceForm 
+              feeEarner={userData[0].Initials} 
+              onCancel={() => setIsBespokePanelOpen(false)}
+              futureBookings={futureBookings} // Pass your fetched future bookings here
+            />
+          );
+          break;
+        default:
         content = <div>No form available.</div>;
         break;
     }
@@ -1867,7 +1917,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     setBespokePanelContent(content);
     setBespokePanelTitle(titleText);
     setIsBespokePanelOpen(true);
-  }  
+  }   
 
   let normalQuickActions = quickActions
     .filter((action) => {
