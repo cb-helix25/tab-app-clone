@@ -10,7 +10,6 @@ interface QuickActionsCardProps {
   onClick: () => void;
   iconColor?: string;
   confirmed?: boolean;
-  /** Optional inline style to allow passing a custom CSS variable for animation delay */
   style?: React.CSSProperties;
 }
 
@@ -23,8 +22,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   confirmed,
   style,
 }) => {
-  // Base card style for a horizontal bar without circular icon backgrounds,
-  // with increased size (approx. 20% larger)
+  // Base card style
   const baseCardStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
@@ -40,7 +38,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     transition: 'background-color 0.3s, box-shadow 0.3s',
     selectors: {
       ':hover': {
-        backgroundColor: colours.grey, // Updated hover colour
+        backgroundColor: colours.grey,
         boxShadow: isDarkMode
           ? `0 2px 4px ${colours.dark.border}`
           : `0 2px 4px ${colours.light.border}`,
@@ -48,12 +46,10 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     },
   });
 
-  // No extra custom style for the card container for attendance.
   const customStyle = {};
-
   const combinedCardStyle = mergeStyles(baseCardStyle, customStyle);
 
-  // Base icon style with increased size
+  // Icon logic
   let attendanceIconName = icon;
   let attendanceIconStyle = mergeStyles({
     fontSize: '19px',
@@ -61,14 +57,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     marginRight: '4px',
   });
 
-  // Override icon and styling based on action title.
   if (title === 'Confirm Attendance') {
     if (confirmed) {
-      // Show blue tick when confirmed.
       attendanceIconName = 'Accept';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.highlight });
     } else {
-      // Show red cross when not confirmed, with a red pulse effect.
       attendanceIconName = 'Cancel';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, {
         color: colours.red,
@@ -77,7 +70,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       });
     }
   } else if (title === 'Approve Annual Leave') {
-    // Use a yellow "review" icon with pulsing yellow.
     attendanceIconName = 'Warning';
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
       color: colours.yellow,
@@ -85,7 +77,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       boxShadow: 'inset 0 0 5px rgba(255,213,79,0.5)',
     });
   } else if (title === 'Book Requested Leave') {
-    // Use a green confirmation icon with pulsing green.
     attendanceIconName = 'Accept';
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
       color: colours.green,
@@ -94,11 +85,23 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     });
   }
 
-  // Text style with increased size
+  // Text style
   const textStyle = mergeStyles({
     fontWeight: 600,
     fontSize: '14px',
     whiteSpace: 'nowrap',
+  });
+
+  // NEW: Style for the "NEW" badge
+  const newBadgeStyle = mergeStyles({
+    backgroundColor: colours.green,
+    color: '#ffffff',
+    fontSize: '10px',
+    fontWeight: '600',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    marginLeft: '6px',
+    lineHeight: '1', // Keeps it compact
   });
 
   return (
@@ -118,6 +121,10 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       <Text variant="small" styles={{ root: textStyle }}>
         {title}
       </Text>
+      {/* NEW: Add "NEW" badge for "Book Space" */}
+      {title === 'Book Space' && (
+        <Text className={newBadgeStyle}>NEW</Text>
+      )}
     </div>
   );
 };

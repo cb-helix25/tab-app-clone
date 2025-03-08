@@ -408,6 +408,7 @@ export interface BoardroomBooking {
   reason: string;           // Reason for booking
   created_at: string;       // Timestamp when created
   updated_at: string;       // Timestamp when updated
+  spaceType: 'Boardroom';
 }
 
 export interface SoundproofPodBooking {
@@ -419,6 +420,7 @@ export interface SoundproofPodBooking {
   reason: string;           // Reason for booking
   created_at: string;       // Timestamp when created
   updated_at: string;       // Timestamp when updated
+  spaceType: 'Soundproof Pod';
 }
 
 // Union type for when you want to use both together.

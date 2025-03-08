@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Stack, Text, Spinner, SpinnerSize, Icon } from '@fluentui/react';
+import { Stack, Text, Spinner, SpinnerSize, Icon, DefaultButton, IButtonStyles } from '@fluentui/react';
 import { colours } from '../app/styles/colours';
 import { useTheme } from '../app/functionality/ThemeContext';
 import BespokeForm, { FormField } from './BespokeForms';
@@ -9,13 +9,51 @@ import {
   FutureBookingsResponse
 } from '../app/functionality/types';
 
-/**
- * Data for final submission
- */
+// Refined selection styles with pronounced states and larger size
+const selectionStyles: IButtonStyles = {
+  root: {
+    padding: '16px 28px', // Larger padding
+    borderRadius: '10px',
+    backgroundColor: colours.grey,
+    border: 'none',
+    height: '70px', // Even larger height
+    minWidth: '220px', // Wider button
+    fontWeight: '600',
+    fontSize: '18px', // Larger text
+    color: colours.greyText,
+    transition: 'background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+    display: 'flex', // Ensure flex centering works
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rootHovered: {
+    backgroundColor: colours.highlight,
+    color: '#ffffff',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.2)', // More pronounced hover shadow
+    transform: 'translateY(-3px)', // Bigger lift
+  },
+  rootPressed: {
+    backgroundColor: `${colours.highlight}cc`,
+    color: '#ffffff',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.25)', // Pressed shadow
+    transform: 'translateY(2px)', // Pressed down
+  },
+  icon: {
+    marginRight: '12px',
+    fontSize: '22px', // Larger icon
+  },
+  flexContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+};
+
 export interface BookSpaceData {
   fee_earner: string;
-  booking_date: string;      // 'YYYY-MM-DD' final format
-  booking_time: Date;        // We'll only use the time portion for the DB
+  booking_date: string;
+  booking_time: Date;
   duration: number;
   reason: string;
   spaceType: 'Boardroom' | 'Soundproof Pod';
@@ -24,7 +62,7 @@ export interface BookSpaceData {
 export interface BookSpaceFormProps {
   onCancel: () => void;
   feeEarner: string;
-  futureBookings?: FutureBookingsResponse; // Contains boardroomBookings & soundproofBookings
+  futureBookings?: FutureBookingsResponse;
 }
 
 const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
@@ -33,31 +71,19 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
   futureBookings
 }) => {
   const { isDarkMode } = useTheme();
-
-  // Submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-
-  // conflict logic
   const [conflict, setConflict] = useState<boolean>(false);
   const [conflictMessage, setConflictMessage] = useState<string>("");
-
-  // form data from BespokeForm
   const [formValues, setFormValues] = useState<{ [key: string]: any }>({});
-
-  // This array will store all bookings for the chosen date/space, for display:
   const [bookingsForDay, setBookingsForDay] = useState<(BoardroomBooking | SoundproofPodBooking)[]>([]);
+  const [twoWeekBookings, setTwoWeekBookings] = useState<{
+    [date: string]: (BoardroomBooking | SoundproofPodBooking)[];
+  }>({});
+  const [selectedSpaceType, setSelectedSpaceType] = useState<'Boardroom' | 'Soundproof Pod' | null>(null);
 
-  // Define our form fields (no mention of “time” requiring a conflict check)
   const formFields: FormField[] = [
-    {
-      label: 'Space Type',
-      name: 'spaceType',
-      type: 'dropdown',
-      required: true,
-      options: ['Boardroom', 'Soundproof Pod'],
-    },
     {
       label: 'Booking Date',
       name: 'bookingDate',
@@ -88,17 +114,17 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     },
   ];
 
-  /***********************************************************************
-   * 1) Check Conflicts as soon as the user picks a time that lies within
-   *    an existing booking. We ignore duration entirely for the "lock."
-   **********************************************************************/
-  function checkConflictByStartTimeOnly(values: { [key: string]: any }): boolean {
-    const { bookingDate, bookingTime, spaceType } = values;
-    if (!bookingDate || !bookingTime || !spaceType) {
-      return false;
+  function checkConflictAndSuggest(values: { [key: string]: any }): {
+    hasConflict: boolean;
+    conflictEnd?: Date;
+    nextAvailable?: string;
+  } {
+    const { bookingDate, bookingTime, duration } = values;
+    const spaceType = selectedSpaceType;
+    if (!bookingDate || !bookingTime || !spaceType || !duration) {
+      return { hasConflict: false };
     }
 
-    // Convert dd/mm/yyyy → yyyy-mm-dd if needed
     let dateStr = bookingDate;
     if (dateStr.includes('/')) {
       const parts = dateStr.split('/');
@@ -107,14 +133,13 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
       }
     }
 
-    // build newStart ignoring duration
     let timeStr = bookingTime;
     if (timeStr.length === 5) {
       timeStr = `${timeStr}:00`;
     }
     const newStart = new Date(`${dateStr}T${timeStr}Z`);
+    const newEnd = new Date(newStart.getTime() + Number(duration) * 3600000);
 
-    // Filter relevant bookings
     let relevantBookings: (BoardroomBooking | SoundproofPodBooking)[] = [];
     if (futureBookings) {
       relevantBookings =
@@ -123,36 +148,67 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
           : futureBookings.soundproofBookings;
     }
 
-    // Just see if newStart is inside any booking’s (start..end)
-    for (const booking of relevantBookings) {
-      // parse the existing booking’s date/time
+    const dayBookings = relevantBookings.filter((b) => b.booking_date === dateStr);
+    let latestConflictEnd: Date | undefined;
+    for (const booking of dayBookings) {
       const existingStart = new Date(`${booking.booking_date}T${booking.booking_time}Z`);
       const existingEnd = new Date(existingStart.getTime() + booking.duration * 3600000);
-
-      // If newStart is strictly between existingStart and existingEnd
-      // (or equals start?), we say there's a conflict
-      if (newStart >= existingStart && newStart < existingEnd) {
-        return true;
+      if (newStart < existingEnd && newEnd > existingStart) {
+        if (!latestConflictEnd || existingEnd > latestConflictEnd) {
+          latestConflictEnd = existingEnd;
+        }
       }
     }
 
-    return false;
+    if (latestConflictEnd) {
+      const nextAvailable = findNextAvailableSlot(dayBookings, latestConflictEnd, Number(duration), dateStr);
+      return {
+        hasConflict: true,
+        conflictEnd: latestConflictEnd,
+        nextAvailable,
+      };
+    }
+
+    return { hasConflict: false };
   }
 
-  /***********************************************************************
-   * 2) Filter Bookings for the chosen date whenever:
-   *    - bookingDate changes
-   *    - spaceType changes
-   *    Then set them in state so we can show them below the form.
-   **********************************************************************/
+  function findNextAvailableSlot(
+    dayBookings: (BoardroomBooking | SoundproofPodBooking)[],
+    startAfter: Date,
+    duration: number,
+    dateStr: string
+  ): string | undefined {
+    const dayEnd = new Date(`${dateStr}T23:59:59Z`);
+    let proposedStart = new Date(startAfter);
+
+    while (proposedStart <= dayEnd) {
+      const proposedEnd = new Date(proposedStart.getTime() + duration * 3600000);
+      let isSlotAvailable = true;
+
+      for (const booking of dayBookings) {
+        const existingStart = new Date(`${booking.booking_date}T${booking.booking_time}Z`);
+        const existingEnd = new Date(existingStart.getTime() + booking.duration * 3600000);
+        if (proposedStart < existingEnd && proposedEnd > existingStart) {
+          isSlotAvailable = false;
+          proposedStart = new Date(existingEnd);
+          break;
+        }
+      }
+
+      if (isSlotAvailable && proposedEnd <= dayEnd) {
+        return proposedStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+
+    return undefined;
+  }
+
   useEffect(() => {
-    const { bookingDate, spaceType } = formValues;
-    if (!bookingDate || !spaceType) {
+    const { bookingDate } = formValues;
+    if (!bookingDate || !selectedSpaceType) {
       setBookingsForDay([]);
       return;
     }
-
-    // same dd/mm/yyyy logic
     let dateStr = bookingDate;
     if (dateStr.includes('/')) {
       const parts = dateStr.split('/');
@@ -160,74 +216,90 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
         dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
     }
-
-    // Filter the relevant array
     let relevantBookings: (BoardroomBooking | SoundproofPodBooking)[] = [];
     if (futureBookings) {
       relevantBookings =
-        spaceType === 'Boardroom'
+        selectedSpaceType === 'Boardroom'
           ? futureBookings.boardroomBookings
           : futureBookings.soundproofBookings;
     }
-
-    // find all bookings that match dateStr exactly
-    const dayBookings = relevantBookings.filter(
-      (b) => b.booking_date === dateStr
-    );
-
+    const dayBookings = relevantBookings.filter((b) => b.booking_date === dateStr);
     setBookingsForDay(dayBookings);
-  }, [formValues.bookingDate, formValues.spaceType, futureBookings]);
+  }, [formValues.bookingDate, selectedSpaceType, futureBookings]);
 
-  /***********************************************************************
-   * 3) Watch for changes to bookingTime. If it’s inside an existing booking
-   *    -> conflict = true + set a message
-   **********************************************************************/
   useEffect(() => {
-    const conflictFound = checkConflictByStartTimeOnly(formValues);
-    setConflict(conflictFound);
+    const { hasConflict, conflictEnd, nextAvailable } = checkConflictAndSuggest(formValues);
+    setConflict(hasConflict);
 
-    // If conflictFound, build a message
-    if (conflictFound) {
-      setConflictMessage(
-        'This start time overlaps with an existing booking.'
-      );
+    if (hasConflict && conflictEnd) {
+      const endTime = conflictEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let message = `Conflict until ${endTime}.`;
+      if (nextAvailable) {
+        message += ` Your ${formValues.duration}-hour booking fits at ${nextAvailable}.`;
+      } else {
+        message += ` No ${formValues.duration}-hour slot available today.`;
+      }
+      setConflictMessage(message);
     } else {
       setConflictMessage('');
     }
-  }, [formValues.bookingTime, formValues.bookingDate, formValues.spaceType]);
+  }, [formValues.bookingTime, formValues.bookingDate, formValues.duration, selectedSpaceType]);
 
-  /***********************************************************************
-   * 4) Handle form updates from BespokeForm
-   **********************************************************************/
+  useEffect(() => {
+    if (!futureBookings) {
+      setTwoWeekBookings({});
+      return;
+    }
+    const today = new Date('2025-03-08');
+    const twoWeeks: { [date: string]: (BoardroomBooking | SoundproofPodBooking)[] } = {};
+    
+    let daysAdded = 0;
+    let i = 0;
+    while (daysAdded < 10) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      i++;
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      const dateStr = date.toISOString().split('T')[0];
+      twoWeeks[dateStr] = [];
+      daysAdded++;
+    }
+
+    const allBookings = selectedSpaceType
+      ? (selectedSpaceType === 'Boardroom' ? futureBookings.boardroomBookings : futureBookings.soundproofBookings)
+      : [...futureBookings.boardroomBookings, ...futureBookings.soundproofBookings];
+
+    allBookings.forEach((booking) => {
+      const bookingDate = booking.booking_date;
+      if (twoWeeks[bookingDate]) {
+        twoWeeks[bookingDate].push(booking);
+      }
+    });
+    setTwoWeekBookings(twoWeeks);
+  }, [futureBookings, selectedSpaceType]);
+
   const handleFieldChange = (vals: { [key: string]: any }) => {
     setFormValues(vals);
   };
 
-  /***********************************************************************
-   * 5) Final submission
-   **********************************************************************/
   async function handleFormSubmit(values: { [key: string]: any }) {
-    if (conflict) return; // Just in case
-
+    if (conflict || !selectedSpaceType) return;
     setIsSubmitting(true);
     setSubmissionError(null);
-
-    // build booking_time Date from user input
     let t = values.bookingTime;
     if (t.length === 5) {
       t = t + ':00';
     }
     const bookingTimeDate = new Date(`1970-01-01T${t}Z`);
-
     const payload: BookSpaceData = {
       fee_earner: feeEarner,
       booking_date: values.bookingDate,
       booking_time: bookingTimeDate,
       duration: Number(values.duration),
       reason: values.reason,
-      spaceType: values.spaceType as 'Boardroom' | 'Soundproof Pod',
+      spaceType: selectedSpaceType,
     };
-
     try {
       await submitBooking(payload);
       setSubmissionSuccess(true);
@@ -241,21 +313,16 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     }
   }
 
-  // make the actual POST call
   async function submitBooking(data: BookSpaceData) {
     const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_BOOK_SPACE_PATH}?code=${process.env.REACT_APP_INSERT_BOOK_SPACE_CODE}`;
-
-    // format time for DB e.g. '09:30:00.0000000'
     const isoTime = data.booking_time.toISOString().split('T')[1].split('Z')[0];
     let [time, fraction = ''] = isoTime.split('.');
     fraction = (fraction + '0000000').slice(0, 7);
     const finalTimeStr = `${time}.${fraction}`;
-
     const finalPayload = {
       ...data,
       booking_time: finalTimeStr,
     };
-
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -267,104 +334,258 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     return response.json();
   }
 
-  // -----------------------------------------------------------------------
-  // RENDER
-  // -----------------------------------------------------------------------
+  const formatBookingTime = (booking: BoardroomBooking | SoundproofPodBooking) => {
+    const start = new Date(`${booking.booking_date}T${booking.booking_time}Z`);
+    const end = new Date(start.getTime() + booking.duration * 3600000);
+    return `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  const handleSpaceSelection = (spaceType: 'Boardroom' | 'Soundproof Pod') => {
+    setSelectedSpaceType(spaceType);
+    setFormValues({ ...formValues, spaceType });
+  };
+
+  const currentWeekEnd = new Date('2025-03-14');
+  const currentWeekBookings = Object.entries(twoWeekBookings).filter(([date]) => new Date(date) <= currentWeekEnd);
+  const nextWeekBookings = Object.entries(twoWeekBookings).filter(([date]) => new Date(date) > currentWeekEnd);
+
   return (
     <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '20px', position: 'relative' } }}>
-      {/* SPINNER while booking in progress */}
-      {isSubmitting && (
-        <Stack horizontalAlign="center" styles={{ root: { position: 'absolute', width: '100%', zIndex: 1 } }}>
-          <Spinner size={SpinnerSize.large} label="Booking in progress..." />
+      {!selectedSpaceType ? (
+        <Stack horizontal tokens={{ childrenGap: 24 }} horizontalAlign="center">
+          <DefaultButton
+            onClick={() => handleSpaceSelection('Boardroom')}
+            styles={selectionStyles}
+            iconProps={{ iconName: 'OfficeChat' }}
+            text="Boardroom"
+          />
+          <DefaultButton
+            onClick={() => handleSpaceSelection('Soundproof Pod')}
+            styles={selectionStyles}
+            iconProps={{ iconName: 'Phone' }}
+            text="Soundproof Pod"
+          />
         </Stack>
-      )}
-
-      {/* SUCCESS overlay (green with a check) */}
-      {submissionSuccess && (
-        <Stack
-          horizontalAlign="center"
-          styles={{
-            root: {
-              position: 'absolute',
-              width: '100%',
-              zIndex: 1,
-              backgroundColor: '#fff',
-              padding: '10px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            },
-          }}
-        >
-          <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-            <Icon iconName="CheckMark" styles={{ root: { color: 'green', fontSize: '24px' } }} />
-            <Text variant="xLarge" styles={{ root: { color: 'green', fontWeight: 600 } }}>
-              Booking confirmed!
-            </Text>
-          </Stack>
-        </Stack>
-      )}
-
-      {/* ERROR overlay if submission fails */}
-      {submissionError && (
-        <Stack horizontalAlign="center" styles={{ root: { position: 'absolute', width: '100%', zIndex: 1 } }}>
-          <Text variant="large" styles={{ root: { color: 'red' } }}>
-            {submissionError}
-          </Text>
-        </Stack>
-      )}
-
-      {/* Conflict Message (Bigger + Bold) */}
-      {conflict && (
-        <Stack horizontalAlign="center" styles={{ root: { marginBottom: '10px' } }}>
-          <Text variant="large" styles={{ root: { color: colours.cta, fontWeight: 600 } }}>
-            {conflictMessage}
-          </Text>
-        </Stack>
-      )}
-
-      {/* Our main BespokeForm */}
-      <BespokeForm
-        fields={formFields}
-        onSubmit={handleFormSubmit}
-        onCancel={onCancel}
-        onChange={handleFieldChange}
-        matters={[]}
-        // disable submit if conflict or isSubmitting
-        submitDisabled={conflict || isSubmitting}
-        conflict={conflict}
-      />
-
-      {/* Show existing bookings for that date */}
-      {bookingsForDay.length > 0 && (
-        <Stack
-          styles={{
-            root: {
-              backgroundColor: isDarkMode ? '#333' : '#f9f9f9',
-              borderRadius: '8px',
-              padding: '16px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              marginTop: '10px',
-            },
-          }}
-        >
-          <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: '8px' } }}>
-            Existing bookings for {formValues.bookingDate} ({formValues.spaceType}):
-          </Text>
-          {bookingsForDay.map((b) => {
-            // Format the start and end times e.g. '09:00' -> '09:00:00Z' => new Date => local HH:MM
-            const start = new Date(`${b.booking_date}T${b.booking_time}Z`);
-            const end = new Date(start.getTime() + b.duration * 3600000);
-
-            const startStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const endStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            return (
-              <Text key={b.id} variant="smallPlus" styles={{ root: { marginBottom: '4px' } }}>
-                • {startStr} to {endStr} – {b.reason}
+      ) : (
+        <>
+          {isSubmitting && (
+            <Stack horizontalAlign="center" styles={{ root: { position: 'absolute', width: '100%', zIndex: 1 } }}>
+              <Spinner size={SpinnerSize.large} label="Booking in progress..." />
+            </Stack>
+          )}
+          {submissionSuccess && (
+            <Stack
+              horizontalAlign="center"
+              styles={{
+                root: {
+                  position: 'absolute',
+                  width: '100%',
+                  zIndex: 1,
+                  backgroundColor: '#fff',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                },
+              }}
+            >
+              <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                <Icon iconName="CheckMark" styles={{ root: { color: 'green', fontSize: '24px' } }} />
+                <Text variant="xLarge" styles={{ root: { color: 'green', fontWeight: 600 } }}>
+                  Booking confirmed!
+                </Text>
+              </Stack>
+            </Stack>
+          )}
+          {submissionError && (
+            <Stack horizontalAlign="center" styles={{ root: { position: 'absolute', width: '100%', zIndex: 1 } }}>
+              <Text variant="large" styles={{ root: { color: 'red' } }}>
+                {submissionError}
               </Text>
-            );
-          })}
-        </Stack>
+            </Stack>
+          )}
+          {conflict && (
+            <Stack horizontalAlign="center" styles={{ root: { marginBottom: '10px' } }}>
+              <Text variant="large" styles={{ root: { color: colours.cta, fontWeight: 600 } }}>
+                {conflictMessage}
+              </Text>
+            </Stack>
+          )}
+          <BespokeForm
+            fields={formFields}
+            onSubmit={handleFormSubmit}
+            onCancel={onCancel}
+            onChange={handleFieldChange}
+            matters={[]}
+            submitDisabled={conflict || isSubmitting}
+            conflict={conflict}
+          />
+
+          {bookingsForDay.length > 0 && (
+            <Stack
+              styles={{
+                root: {
+                  backgroundColor: colours.grey,
+                  borderRadius: '8px',
+                  padding: '16px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                },
+              }}
+            >
+              <Text
+                variant="mediumPlus"
+                styles={{ root: { fontWeight: 600, color: isDarkMode ? '#ddd' : colours.darkBlue, marginBottom: '12px' } }}
+              >
+                {selectedSpaceType} on {new Date(formValues.bookingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+              <Stack tokens={{ childrenGap: 8 }}>
+                {bookingsForDay.map((b) => (
+                  <Stack
+                    key={b.id}
+                    horizontal
+                    tokens={{ childrenGap: 12 }}
+                    styles={{
+                      root: {
+                        padding: '8px 12px',
+                        backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
+                        borderRadius: '6px',
+                        border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
+                        transition: 'background 0.2s ease',
+                        ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
+                      },
+                    }}
+                  >
+                    <Text variant="medium" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
+                      {formatBookingTime(b)}
+                    </Text>
+                    <Text variant="medium" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
+                      {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
+                    </Text>
+                  </Stack>
+                ))}
+              </Stack>
+            </Stack>
+          )}
+
+          <Stack
+            styles={{
+              root: {
+                backgroundColor: colours.grey,
+                borderRadius: '8px',
+                padding: '16px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+              },
+            }}
+          >
+            <Text
+              variant="mediumPlus"
+              styles={{ root: { fontWeight: 600, color: isDarkMode ? '#ddd' : colours.darkBlue, marginBottom: '12px' } }}
+            >
+              {selectedSpaceType ? `${selectedSpaceType} Availability` : 'Space Availability'} (Next 2 Weeks)
+            </Text>
+            <Stack tokens={{ childrenGap: 16 }}>
+              <Stack tokens={{ childrenGap: 12 }}>
+                <Text variant="medium" styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue } }}>
+                  This Week
+                </Text>
+                {currentWeekBookings.map(([date, bookings]) => (
+                  <Stack key={date}>
+                    <Text
+                      variant="medium"
+                      styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue, marginBottom: '6px' } }}
+                    >
+                      {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </Text>
+                    {bookings.length > 0 ? (
+                      <Stack tokens={{ childrenGap: 6 }}>
+                        {bookings.map((b) => (
+                          <Stack
+                            key={b.id}
+                            horizontal
+                            tokens={{ childrenGap: 12 }}
+                            styles={{
+                              root: {
+                                padding: '6px 10px',
+                                backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
+                                borderRadius: '6px',
+                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
+                                transition: 'background 0.2s ease',
+                                ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
+                              },
+                            }}
+                          >
+                            <Text variant="smallPlus" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
+                              {formatBookingTime(b)}
+                            </Text>
+                            <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
+                              {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
+                            </Text>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#888' : '#999', marginLeft: '10px', fontStyle: 'italic' } }}>
+                        No bookings scheduled
+                      </Text>
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+
+              <Stack styles={{ root: { borderTop: `1px dashed ${isDarkMode ? '#666' : '#ccc'}`, paddingTop: '16px' } }}>
+                <Text variant="medium" styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue } }}>
+                  Next Week
+                </Text>
+              </Stack>
+
+              <Stack tokens={{ childrenGap: 12 }}>
+                {nextWeekBookings.map(([date, bookings]) => (
+                  <Stack key={date}>
+                    <Text
+                      variant="medium"
+                      styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue, marginBottom: '6px' } }}
+                    >
+                      {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </Text>
+                    {bookings.length > 0 ? (
+                      <Stack tokens={{ childrenGap: 6 }}>
+                        {bookings.map((b) => (
+                          <Stack
+                            key={b.id}
+                            horizontal
+                            tokens={{ childrenGap: 12 }}
+                            styles={{
+                              root: {
+                                padding: '6px 10px',
+                                backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
+                                borderRadius: '6px',
+                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
+                                transition: 'background 0.2s ease',
+                                ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
+                              },
+                            }}
+                          >
+                            <Text variant="smallPlus" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
+                              {formatBookingTime(b)}
+                            </Text>
+                            <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
+                              {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
+                            </Text>
+                          </Stack>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#888' : '#999', marginLeft: '10px', fontStyle: 'italic' } }}>
+                        No bookings scheduled
+                      </Text>
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </Stack>
+          </Stack>
+        </>
       )}
     </Stack>
   );
