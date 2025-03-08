@@ -73,12 +73,27 @@ import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
 import BookSpaceForm from '../../CustomForms/BookSpaceForm';
 
+import Attendance from './Attendance'; // Import the Attendance component
+
 
 initializeIcons();
 
 //////////////////////
 // Interfaces
 //////////////////////
+
+interface AttendanceRecord {
+  Attendance_ID: number;
+  Entry_ID: number;
+  First_Name: string;
+  Initials: string;
+  Level: string;
+  Week_Start: string;
+  Week_End: string;
+  ISO_Week: number;
+  Attendance_Days: string;
+  Confirmed_At: string | null;
+}
 
 interface AnnualLeaveRecord {
   person: string;
@@ -547,9 +562,23 @@ const PersonBubble: React.FC<PersonBubbleProps> = ({
   );
 };
 
+const getISOWeek = (date: Date): number => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return Math.round(((d.getTime() - week1.getTime()) / 86400000 + 1) / 7) + 1;
+};
+
 //////////////////////
 // Caching Variables (module-level)
 //////////////////////
+
+// Helper to convert "dd/mm/yyyy" to "yyyy-mm-dd"
+const convertToISO = (dateStr: string): string => {
+  const [day, month, year] = dateStr.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
 
 let cachedAttendance: any[] | null = null;
 let cachedAttendanceError: string | null = null;
@@ -1373,6 +1402,81 @@ const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
 const currentWeekKey = getCurrentWeekKey();
 const nextWeekKey = getNextWeekKey();
 
+const transformedAttendanceRecords = useMemo(() => {
+  if (!cachedAttendance && !attendanceRecords.length) return [];
+  const rawRecords = cachedAttendance || attendanceRecords;
+  return rawRecords
+    .map((record: any) => {
+      const weekKeys = record.weeks ? Object.keys(record.weeks) : [];
+      return weekKeys.map((weekKey) => {
+        // Extract the raw date parts (e.g., "03/03/2025")
+        const rawStart = weekKey.split(' - ')[0].split(', ')[1];
+        const rawEnd = weekKey.split(' - ')[1].split(', ')[1];
+        // Convert them to ISO format
+        const isoStart = convertToISO(rawStart);
+        const isoEnd = convertToISO(rawEnd);
+        return {
+          Attendance_ID: 0,
+          Entry_ID: 0,
+          First_Name: record.name || '',
+          Initials: transformedTeamData.find((t) => t.First.toLowerCase() === record.name.toLowerCase())?.Initials || '',
+          Level: '',
+          Week_Start: isoStart,
+          Week_End: isoEnd,
+          ISO_Week: getISOWeek(new Date(isoStart)),
+          Attendance_Days: record.weeks[weekKey].attendance || '',
+          Confirmed_At: record.weeks[weekKey].confirmed ? new Date().toISOString() : null,
+        };
+      });
+    })
+    .flat();
+}, [attendanceRecords, transformedTeamData]);
+
+const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
+  setAttendanceRecords((prevRecords) => {
+    const newRecords = [...prevRecords];
+    updatedRecords.forEach((updated) => {
+      const weekKey = generateWeekKey(new Date(updated.Week_Start));
+      const index = newRecords.findIndex(
+        (rec: any) => rec.name === updated.First_Name && rec.weeks && rec.weeks[weekKey]
+      );
+      if (index !== -1) {
+        // Update existing record
+        newRecords[index].weeks[weekKey] = {
+          attendance: updated.Attendance_Days,
+          confirmed: !!updated.Confirmed_At,
+        };
+      } else {
+        // Add new record or update with new week
+        const existingPersonIndex = newRecords.findIndex(
+          (rec: any) => rec.name === updated.First_Name
+        );
+        if (existingPersonIndex !== -1) {
+          newRecords[existingPersonIndex].weeks = {
+            ...newRecords[existingPersonIndex].weeks,
+            [weekKey]: {
+              attendance: updated.Attendance_Days,
+              confirmed: !!updated.Confirmed_At,
+            },
+          };
+        } else {
+          newRecords.push({
+            name: updated.First_Name,
+            weeks: {
+              [weekKey]: {
+                attendance: updated.Attendance_Days,
+                confirmed: !!updated.Confirmed_At,
+              },
+            },
+          });
+        }
+      }
+    });
+    cachedAttendance = newRecords; // Update cache
+    return newRecords;
+  });
+};
+
 // Decide which week we consider "the relevant week"
 const relevantWeekKey = isThursdayAfterMidday ? nextWeekKey : currentWeekKey;
 
@@ -1940,8 +2044,6 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
   );
 
-  // Consolidated Attendance Table – helper functions and components
-
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
   const getShortDayLabel = (date: Date): string =>
     date.toLocaleDateString('en-GB', { weekday: 'narrow' });
@@ -2493,94 +2595,19 @@ const conversionRate = enquiriesMonthToDate
         </div>
       )}
 
-      {/* Consolidated Attendance Table wrapped in a collapsible section */}
-      <div className={mergeStyles({ marginBottom: '40px' })}>
-        <CollapsibleSection title="Attendance" metrics={[]}>
-          <div style={{ overflowX: 'auto' }}>
-            <table
-              style={{
-                width: '100%',
-                tableLayout: 'fixed', // Ensures all columns have equal width
-                borderCollapse: 'separate',
-                borderSpacing: '0',
-                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                borderRadius: '8px',
-                overflow: 'hidden',
-                animation: 'fadeIn 0.5s ease-in-out',
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
-                  {attendancePersons.map((person) => (
-                    <th
-                      key={person.initials}
-                      style={{
-                        border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                        padding: '8px',
-                        textAlign: 'center',
-                        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                        width: '100px', // fixed width for each column
-                      }}
-                    >
-                      <AttendancePersonaHeader person={person} />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {weekDays.map((day, index) => {
-                  const dayDate = new Date(currentWeekMonday);
-                  dayDate.setDate(currentWeekMonday.getDate() + index);
-                  const cellDateStr = dayDate.toISOString().split('T')[0];
-                  const isCurrentDay = cellDateStr === todayStr;
-                  return (
-                    <tr key={day} style={isCurrentDay ? { backgroundColor: '#f0f8ff' } : {}}>
-                      <td
-                        style={{
-                          border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                          padding: '8px',
-                          fontWeight: 'bold',
-                          backgroundColor: colours.reporting.tableHeaderBackground,
-                          width: '100px', // fixed width for first column as well
-                        }}
-                      >
-                        {getShortDayLabel(dayDate)}
-                      </td>
-                      {attendancePersons.map((person) => {
-                        const status = getCellStatus(person.attendance, person.initials, day, cellDateStr);
-                        const cellBg = isCurrentDay
-                          ? status === 'in'
-                            ? inHighlight
-                            : status === 'wfh'
-                            ? wfhHighlight
-                            : outHighlight
-                          : isDarkMode
-                          ? colours.dark.sectionBackground
-                          : colours.light.sectionBackground;
-                        return (
-                          <td
-                            key={person.initials}
-                            style={{
-                              border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                              padding: '8px',
-                              textAlign: 'center',
-                              backgroundColor: cellBg,
-                              width: '100px', // fixed width for each column
-                            }}
-                          >
-                            <AttendanceCell status={status} highlight={isCurrentDay} />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CollapsibleSection>
-      </div>
+      <Attendance
+        isDarkMode={isDarkMode}
+        isLoadingAttendance={isLoadingAttendance}
+        isLoadingAnnualLeave={isLoadingAnnualLeave}
+        attendanceError={attendanceError}
+        annualLeaveError={annualLeaveError}
+        attendanceRecords={transformedAttendanceRecords} // Changed to transformed data
+        teamData={transformedTeamData}
+        annualLeaveRecords={annualLeaveRecords}
+        futureLeaveRecords={futureLeaveRecords}
+        userData={userData}
+        onAttendanceUpdated={handleAttendanceUpdated}
+      />
 
       {/* Contexts Panel */}
       <BespokePanel

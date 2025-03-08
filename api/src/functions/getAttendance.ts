@@ -20,8 +20,6 @@ export async function getAttendanceHandler(req: HttpRequest, context: Invocation
   const kvUri = "https://helix-keys.vault.azure.net/";
   const passwordSecretName = "sql-databaseserver-password";
   const sqlServer = "helix-database-server.database.windows.net";
-
-  const projectDataDb = "helix-project-data";
   const coreDataDb = "helix-core-data";
 
   try {
@@ -31,52 +29,44 @@ export async function getAttendanceHandler(req: HttpRequest, context: Invocation
     const password = passwordSecret.value || "";
     context.log("Retrieved SQL password from Key Vault.");
 
-    // 2) Parse SQL connection configs
-    const projectDataConfig = parseConnectionString(
-      `Server=${sqlServer};Database=${projectDataDb};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`,
-      context
-    );
+    // 2) Parse SQL connection config for core-data only
     const coreDataConfig = parseConnectionString(
       `Server=${sqlServer};Database=${coreDataDb};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`,
       context
     );
 
     // 3) Determine date ranges (Previous, Current, Next)
-    const todayDate = new Date();
-    const currentWeekStart = getStartOfWeek(todayDate);
-    const currentWeekEnd   = getEndOfWeek(currentWeekStart);
-    const currentWeekRange = formatWeekRange(currentWeekStart, currentWeekEnd);
+    const todayDate = new Date(); // March 8, 2025
+    const currentWeekStart = getStartOfWeek(todayDate); // 2025-03-03
+    const currentWeekEnd = getEndOfWeek(currentWeekStart); // 2025-03-09
+    const currentWeekRange = formatWeekRange(currentWeekStart, currentWeekEnd); // "Monday, 03/03/2025 - Sunday, 09/03/2025"
 
-    const nextWeekStart = getNextWeekStart(currentWeekStart);
-    const nextWeekEnd   = getEndOfWeek(nextWeekStart);
-    const nextWeekRange = formatWeekRange(nextWeekStart, nextWeekEnd);
+    const nextWeekStart = getNextWeekStart(currentWeekStart); // 2025-03-10
+    const nextWeekEnd = getEndOfWeek(nextWeekStart); // 2025-03-16
+    const nextWeekRange = formatWeekRange(nextWeekStart, nextWeekEnd); // "Monday, 10/03/2025 - Sunday, 16/03/2025"
 
-    // For fallback: previous week range
     const previousWeekStart = new Date(currentWeekStart);
-    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
-    const previousWeekEnd = getEndOfWeek(previousWeekStart);
-    const previousWeekRange = formatWeekRange(previousWeekStart, previousWeekEnd);
-
-    // Determine the day to check (e.g. "Monday", "Tuesday", etc.)
-    const dayToCheckDate = todayDate; // or use getNextWorkingDay(todayDate)
-    const dayToCheck = dayToCheckDate.toLocaleDateString("en-GB", { weekday: "long" });
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7); // 2025-02-24
+    const previousWeekEnd = getEndOfWeek(previousWeekStart); // 2025-03-02
+    const previousWeekRange = formatWeekRange(previousWeekStart, previousWeekEnd); // "Monday, 24/02/2025 - Sunday, 02/03/2025"
 
     context.log(`Previous Week Range: ${previousWeekRange}`);
     context.log(`Current Week Range: ${currentWeekRange}`);
     context.log(`Next Week Range: ${nextWeekRange}`);
-    context.log(`Day to check: ${dayToCheck}`);
 
-    // 4) Query the attendance data with the updated query and format
+    // 4) Query the attendance data from the new table
     const attendees: PersonAttendance[] = await queryAttendance(
       previousWeekRange,
       currentWeekRange,
       nextWeekRange,
-      dayToCheck,
-      projectDataConfig,
+      previousWeekStart,  // Pass Date objects
+      currentWeekStart,
+      nextWeekStart,
+      coreDataConfig,
       context
     );
 
-    // 5) Query your team data (unchanged)
+    // 5) Query team data (unchanged)
     const teamData = await queryTeamData(coreDataConfig, context);
 
     return {
@@ -97,12 +87,14 @@ export async function getAttendanceHandler(req: HttpRequest, context: Invocation
   }
 }
 
-// Revised queryAttendance function returning weekly data per person
+// Updated queryAttendance function with Date parameters
 async function queryAttendance(
   previousWeekRange: string,
   currentWeekRange: string,
   nextWeekRange: string,
-  day: string,
+  previousWeekStart: Date,
+  currentWeekStart: Date,
+  nextWeekStart: Date,
   config: any,
   context: InvocationContext
 ): Promise<PersonAttendance[]> {
@@ -123,27 +115,20 @@ async function queryAttendance(
 
       context.log("Successfully connected to SQL database (Attendance).");
 
-      // Updated query to also select Current_ISO and Next_ISO fields
       const query = `
         SELECT 
-          [First_Name] AS name, 
-          [Current_Attendance] AS current_attendance,
-          [Current_Week] AS current_week,
-          [Current_ISO] AS current_iso,
-          [Next_Attendance] AS next_attendance,
-          [Next_Week] AS next_week,
-          [Next_ISO] AS next_iso,
+          [First_Name] AS name,
           [Level],
-          [Entry_ID]
-        FROM [dbo].[officeAttendance-clioCalendarEntries]
+          [Week_Start],
+          [Week_End],
+          [ISO_Week] AS iso,
+          [Attendance_Days] AS attendance
+        FROM [dbo].[attendance]
         WHERE 
-          [Current_Week] = @CurrentWeek
-          OR
-          [Next_Week] = @NextWeek
-          OR
-          (
-            [Next_Week] = @CurrentWeek
-            AND [Current_Week] = @PreviousWeek
+          [ISO_Week] IN (
+            @PreviousISO, 
+            @CurrentISO, 
+            @NextISO
           )
         ORDER BY [First_Name];
       `;
@@ -159,18 +144,17 @@ async function queryAttendance(
         context.log(`SQL query executed successfully (Attendance). Rows returned: ${rowCount}`);
       });
 
-      // Build a map keyed by person's name to combine weekly data
       const attendanceMap: { [name: string]: PersonAttendance } = {};
 
       sqlRequest.on("row", (columns) => {
         const name = (columns.find(c => c.metadata.colName === "name")?.value as string) || "";
         const level = (columns.find(c => c.metadata.colName === "Level")?.value as string) || "";
-        const currentWeek = (columns.find(c => c.metadata.colName === "current_week")?.value as string) || "";
-        const currentAttendance = (columns.find(c => c.metadata.colName === "current_attendance")?.value as string) || "";
-        const nextWeek = (columns.find(c => c.metadata.colName === "next_week")?.value as string) || "";
-        const nextAttendance = (columns.find(c => c.metadata.colName === "next_attendance")?.value as string) || "";
-        const currentISO = (columns.find(c => c.metadata.colName === "current_iso")?.value as number) || 0;
-        const nextISO = (columns.find(c => c.metadata.colName === "next_iso")?.value as number) || 0;
+        const weekStart = (columns.find(c => c.metadata.colName === "Week_Start")?.value as Date);
+        const weekEnd = (columns.find(c => c.metadata.colName === "Week_End")?.value as Date);
+        const iso = (columns.find(c => c.metadata.colName === "iso")?.value as number) || 0;
+        const attendance = (columns.find(c => c.metadata.colName === "attendance")?.value as string) || "";
+
+        const weekRange = formatWeekRange(weekStart, weekEnd);
 
         if (!attendanceMap[name]) {
           attendanceMap[name] = {
@@ -179,40 +163,43 @@ async function queryAttendance(
             weeks: {}
           };
         }
-        // Add or update current week data if available
-        if (currentWeek) {
-          attendanceMap[name].weeks[currentWeek] = {
-            iso: currentISO,
-            attendance: currentAttendance
-          };
-        }
-        // Add or update next week data if available
-        if (nextWeek) {
-          attendanceMap[name].weeks[nextWeek] = {
-            iso: nextISO,
-            attendance: nextAttendance
-          };
+
+        // Combine attendance for the same week
+        if (!attendanceMap[name].weeks[weekRange]) {
+          attendanceMap[name].weeks[weekRange] = { iso, attendance };
+        } else {
+          const existing = attendanceMap[name].weeks[weekRange].attendance;
+          const combined = [existing, attendance]
+            .filter(Boolean)
+            .join(",")
+            .split(",")
+            .map(day => day.trim())
+            .filter((day, idx, arr) => day && arr.indexOf(day) === idx) // Remove duplicates
+            .join(",");
+          attendanceMap[name].weeks[weekRange].attendance = combined;
         }
       });
 
       sqlRequest.on("requestCompleted", () => {
         const results = Object.values(attendanceMap);
-        // Optionally sort the results by name
         results.sort((a, b) => a.name.localeCompare(b.name));
         context.log("Weekly Attendance Data:", results);
         resolve(results);
         connection.close();
       });
 
-      // Bind parameters
-      sqlRequest.addParameter("PreviousWeek", TYPES.NVarChar, previousWeekRange);
-      sqlRequest.addParameter("CurrentWeek", TYPES.NVarChar, currentWeekRange);
-      sqlRequest.addParameter("NextWeek", TYPES.NVarChar, nextWeekRange);
+      const previousISO = getISOWeek(previousWeekStart); // 9
+      const currentISO = getISOWeek(currentWeekStart);   // 10
+      const nextISO = getISOWeek(nextWeekStart);         // 11
+
+      sqlRequest.addParameter("PreviousISO", TYPES.Int, previousISO);
+      sqlRequest.addParameter("CurrentISO", TYPES.Int, currentISO);
+      sqlRequest.addParameter("NextISO", TYPES.Int, nextISO);
 
       context.log("Executing SQL query with parameters (Attendance):", {
-        PreviousWeek: previousWeekRange,
-        CurrentWeek: currentWeekRange,
-        NextWeek: nextWeekRange
+        PreviousISO: previousISO,
+        CurrentISO: currentISO,
+        NextISO: nextISO
       });
 
       connection.execSql(sqlRequest);
@@ -222,7 +209,7 @@ async function queryAttendance(
   });
 }
 
-// (Team query function remains unchanged)
+// Unchanged functions below (team query and utilities remain the same)
 async function queryTeamData(config: any, context: InvocationContext): Promise<{ First: string; Initials: string; ["Entra ID"]: string; Nickname?: string }[]> {
   return new Promise((resolve, reject) => {
     const connection = new Connection(config);
@@ -281,7 +268,6 @@ async function queryTeamData(config: any, context: InvocationContext): Promise<{
   });
 }
 
-// Utility functions (unchanged except for context)
 function parseConnectionString(connectionString: string, context: InvocationContext): any {
   const parts = connectionString.split(";");
   const config: any = {};
@@ -324,8 +310,8 @@ function parseConnectionString(connectionString: string, context: InvocationCont
 }
 
 function getStartOfWeek(date: Date): Date {
-  const day = date.getDay(); // 0=Sunday, 1=Monday, ...
-  const diff = (day === 0 ? -6 : 1) - day; // Adjust so that Monday is the first day
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
   const start = new Date(date);
   start.setDate(date.getDate() + diff);
   start.setHours(0, 0, 0, 0);
@@ -353,20 +339,12 @@ function formatWeekRange(start: Date, end: Date): string {
   return `Monday, ${startStr} - Sunday, ${endStr}`;
 }
 
-function attendanceIncludesDay(attendance: string, day: string): boolean {
-  if (!attendance) return false;
-  const days = attendance.split(",").map(d => d.trim().toLowerCase());
-  return days.includes(day.toLowerCase());
-}
-
-function getNextWorkingDay(date: Date): Date {
-  const nextDay = new Date(date);
-  nextDay.setDate(date.getDate() + 1);
-  while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-    nextDay.setDate(nextDay.getDate() + 1);
-  }
-  nextDay.setHours(0, 0, 0, 0);
-  return nextDay;
+function getISOWeek(date: Date): number {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return Math.round(((d.getTime() - week1.getTime()) / 86400000 + 1) / 7) + 1;
 }
 
 export default app.http("getAttendance", {
