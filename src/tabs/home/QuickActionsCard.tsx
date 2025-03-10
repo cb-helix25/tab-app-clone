@@ -92,16 +92,13 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     whiteSpace: 'nowrap',
   });
 
-  // NEW: Style for the "NEW" badge
-  const newBadgeStyle = mergeStyles({
+  const pulsingDotStyle = mergeStyles({
+    width: '8px',
+    height: '8px',
     backgroundColor: colours.green,
-    color: '#ffffff',
-    fontSize: '10px',
-    fontWeight: '600',
-    padding: '2px 6px',
-    borderRadius: '4px',
+    borderRadius: '50%', // Makes it circular
     marginLeft: '6px',
-    lineHeight: '1', // Keeps it compact
+    animation: 'subtlePulse 1.5s infinite ease-in-out', // Subtle animation
   });
 
   return (
@@ -121,9 +118,9 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       <Text variant="small" styles={{ root: textStyle }}>
         {title}
       </Text>
-      {/* NEW: Add "NEW" badge for "Book Space" */}
+      {/* Replace the "NEW" badge with a pulsing dot */}
       {title === 'Book Space' && (
-        <Text className={newBadgeStyle}>NEW</Text>
+        <div className={pulsingDotStyle} />
       )}
     </div>
   );

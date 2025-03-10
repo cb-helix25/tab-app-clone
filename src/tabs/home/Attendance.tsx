@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   mergeStyles,
   Text,
@@ -137,6 +137,10 @@ const Attendance: React.FC<AttendanceProps> = ({
     [weekStart: string]: { [initials: string]: string };
   }>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isTableExpanded, setIsTableExpanded] = useState(selectedWeek === 'next');
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const userInitials = userData?.[0]?.Initials || 'LZ';
 
@@ -208,10 +212,19 @@ const Attendance: React.FC<AttendanceProps> = ({
     });
     attendanceRecords.forEach((rec) => {
       if (!initialAttendance[rec.Week_Start]) initialAttendance[rec.Week_Start] = {};
-      initialAttendance[rec.Week_Start][rec.Initials] = rec.Attendance_Days || '';
+      initialAttendance[rec.Week_Start][rec.Initials] = rec.Attendance_Days?.trim() || '';
     });
     setLocalAttendance(initialAttendance);
+    console.log('Initial localAttendance:', initialAttendance); // Debug log
   }, [attendanceRecords, teamData]);
+
+  useEffect(() => {
+    setIsTableExpanded(selectedWeek === 'next');
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+  }, [selectedWeek]);
 
   const hasUnsavedChanges = useMemo(() => {
     return [currentWeek, nextWeek].some((week) => {
@@ -249,14 +262,16 @@ const Attendance: React.FC<AttendanceProps> = ({
 
     const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
     setLocalAttendance((prev) => {
-      const weekData = prev[weekStart] || {};
-      const currentDays = weekData[personInitials] ? weekData[personInitials].split(',') : [];
+      const weekData = { ...prev[weekStart] }; // Deep copy to avoid mutation
+      const currentDays = weekData[personInitials] ? weekData[personInitials].split(',').map((d) => d.trim()) : [];
       const updatedDays = currentDays.includes(day)
         ? currentDays.filter((d) => d !== day)
         : [...currentDays, day];
+      weekData[personInitials] = updatedDays.join(',');
+      console.log(`Clicked ${day} for ${personInitials}: ${weekData[personInitials]}`); // Debug log
       return {
         ...prev,
-        [weekStart]: { ...weekData, [personInitials]: updatedDays.join(',') },
+        [weekStart]: weekData,
       };
     });
   };
@@ -323,23 +338,37 @@ const Attendance: React.FC<AttendanceProps> = ({
   const getShortDayLabel = (date: Date): string =>
     date.toLocaleDateString('en-GB', { weekday: 'narrow' }).toUpperCase();
 
-  const AttendanceCell: React.FC<{ status: 'in' | 'wfh' | 'out'; highlight?: boolean; editable?: boolean }> = ({
-    status,
-    highlight = false,
-    editable = false,
-  }) => {
+  const AttendanceCell: React.FC<{
+    status: 'in' | 'wfh' | 'out';
+    highlight?: boolean;
+    editable?: boolean;
+    proximity?: number; // 0 to 1, where 1 is closest
+  }> = ({ status, highlight = false, editable = false, proximity = 0 }) => {
     let iconName = 'Home';
     if (status === 'in') iconName = 'Accept';
     else if (status === 'out') iconName = 'Airplane';
-    const iconColor = highlight ? '#fff' : (isDarkMode ? colours.dark.grey : colours.light.grey);
+    const baseColor = highlight ? '#ffffff' : isDarkMode ? colours.dark.grey : colours.light.grey;
+    const hoverColor = highlight ? '#e0e0e0' : isDarkMode ? '#e0e0e0' : '#666666';
+    const rBase = parseInt(baseColor.slice(1, 3), 16);
+    const gBase = parseInt(baseColor.slice(3, 5), 16);
+    const bBase = parseInt(baseColor.slice(5, 7), 16);
+    const rHover = parseInt(hoverColor.slice(1, 3), 16);
+    const gHover = parseInt(hoverColor.slice(3, 5), 16);
+    const bHover = parseInt(hoverColor.slice(5, 7), 16);
+    const r = Math.round(rBase + (rHover - rBase) * proximity);
+    const g = Math.round(gBase + (gHover - gBase) * proximity);
+    const b = Math.round(bBase + (bHover - bBase) * proximity);
+    const interpolatedColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
     return (
       <Icon
         iconName={iconName}
         styles={{
           root: {
             fontSize: '20px',
-            color: iconColor,
+            color: interpolatedColor,
             cursor: editable ? 'pointer' : 'default',
+            transition: 'color 0.1s ease-out',
           },
         }}
       />
@@ -389,20 +418,176 @@ const Attendance: React.FC<AttendanceProps> = ({
   const wfhHighlight = 'rgba(54,144,206,0.15)';
   const outHighlight = 'rgba(214,85,65,0.15)';
 
-  const currentWeekButtonStyles: IButtonStyles = {
-    ...(sharedDecisionButtonStyles as object),
-    root: {
-      ...((sharedDecisionButtonStyles as any).root || {}),
-      backgroundColor: selectedWeek === 'current' ? colours.highlight : '#ccc',
-    },
+  const toggleStyle = mergeStyles({
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '10px',
+    fontSize: '14px',
+  });
+
+  const toggleOptionStyle = (isSelected: boolean) =>
+    mergeStyles({
+      padding: '4px 8px',
+      cursor: 'pointer',
+      color: isSelected
+        ? isDarkMode
+          ? colours.dark.highlight
+          : colours.highlight
+        : isDarkMode
+        ? colours.dark.grey
+        : colours.light.grey,
+      borderBottom: isSelected ? `2px solid ${colours.highlight}` : 'none',
+      transition: 'color 0.3s, border-bottom 0.3s',
+      ':hover': {
+        color: isDarkMode ? colours.dark.highlight : colours.highlight,
+      },
+    });
+
+  const tableContainerStyle = mergeStyles({
+    position: 'relative',
+    overflow: 'hidden',
+    transition: 'height 0.4s ease-out',
+    height: isTableExpanded ? `${48 + 40 * 5 + 2}px` : `${48 + 40 + 2}px`,
+  });
+
+  const tableStyle = mergeStyles({
+    width: '100%',
+    tableLayout: 'fixed',
+    borderCollapse: 'separate',
+    borderSpacing: '0px',
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: '8px',
+    overflow: 'visible',
+  });
+
+  const headerRowStyle = mergeStyles({
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    height: '48px',
+  });
+
+  const rowStyle = (isCurrentDay: boolean, index: number, todayIndex: number, isExpanded: boolean, isNextWeek: boolean) =>
+    mergeStyles({
+      display: 'table-row',
+      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      transform: isCurrentDay || isNextWeek
+        ? 'translateY(0)'
+        : isExpanded
+        ? 'translateY(0)'
+        : index < todayIndex
+        ? 'translateY(-100%)'
+        : 'translateY(100%)',
+      opacity: isCurrentDay || isExpanded || isNextWeek ? 1 : 0,
+      transition: 'transform 0.4s ease-out, opacity 0.2s ease-out',
+      animation:
+        isNextWeek && index !== 0
+          ? `slideDown 0.4s ease-out ${(index - 1) * 0.1}s forwards`
+          : isExpanded && !isCurrentDay && !isNextWeek
+          ? index < todayIndex
+            ? `slideUp 0.4s ease-out ${(todayIndex - index - 1) * 0.1}s forwards`
+            : `slideDown 0.4s ease-out ${(index - todayIndex - 1) * 0.1}s forwards`
+          : 'none',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      height: '40px',
+    });
+
+  const cellStyle = mergeStyles({
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    padding: '8px',
+    textAlign: 'center',
+    width: '100px',
+    position: 'relative',
+  });
+
+  React.useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+      @keyframes slideUp {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideDown {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+    return () => void document.head.removeChild(styleSheet);
+  }, []);
+
+  const todayIndex = useMemo(() => {
+    const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
+    const diffDays = Math.floor(
+      (new Date().getTime() - new Date(weekKey.start).getTime()) / (1000 * 3600 * 24)
+    );
+    return diffDays >= 0 && diffDays < 5 ? diffDays : 0;
+  }, [selectedWeek, currentWeek, nextWeek]);
+
+  const orderedWeekDays = useMemo(() => {
+    const days = [...weekDays];
+    if (selectedWeek === 'current') {
+      const currentDay = days.splice(todayIndex, 1)[0];
+      return [currentDay, ...days.slice(0, todayIndex), ...days.slice(todayIndex)];
+    }
+    return days;
+  }, [todayIndex, selectedWeek]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLTableElement>) => {
+    if (tableRef.current) {
+      const rect = tableRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
   };
 
-  const nextWeekButtonStyles: IButtonStyles = {
-    ...(sharedDecisionButtonStyles as object),
-    root: {
-      ...((sharedDecisionButtonStyles as any).root || {}),
-      backgroundColor: selectedWeek === 'next' ? colours.highlight : '#ccc',
-    },
+  const handleMouseEnter = () => {
+    if (selectedWeek === 'current') {
+      setIsTableExpanded(true);
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+        collapseTimeoutRef.current = null;
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (selectedWeek === 'current' && isTableExpanded) {
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+      collapseTimeoutRef.current = setTimeout(() => {
+        setIsTableExpanded(false);
+        setMousePosition(null);
+      }, 1000); // 1-second delay
+    } else {
+      setMousePosition(null); // Clear hover effect for "Next Week" without collapsing
+    }
+  };
+
+  const getCellProximity = (day: string, person: string) => {
+    if (!mousePosition || !tableRef.current) return 0;
+
+    const dayIndex = orderedWeekDays.indexOf(day);
+    const personIndex = attendancePersons.findIndex((p) => p.initials === person);
+    const cellWidth = 100;
+    const cellHeight = 40;
+    const headerHeight = 48;
+
+    const cellCenterX = (personIndex + 1) * cellWidth + cellWidth / 2;
+    const cellCenterY = headerHeight + dayIndex * cellHeight + cellHeight / 2;
+
+    const distance = Math.sqrt(
+      Math.pow(mousePosition.x - cellCenterX, 2) +
+      Math.pow(mousePosition.y - cellCenterY, 2)
+    );
+
+    const maxDistance = 150;
+    const proximity = Math.max(0, 1 - distance / maxDistance);
+    return proximity;
   };
 
   return (
@@ -414,115 +599,118 @@ const Attendance: React.FC<AttendanceProps> = ({
           <MessageBar messageBarType={MessageBarType.error}>{attendanceError || annualLeaveError}</MessageBar>
         ) : (
           <>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: 10 }}>
-              <DefaultButton
-                text={`Current Week (${currentWeek.start})`}
-                styles={currentWeekButtonStyles}
+            <div className={toggleStyle}>
+              <span
+                className={toggleOptionStyle(selectedWeek === 'current')}
                 onClick={() => setSelectedWeek('current')}
-              />
-              <DefaultButton
-                text={`Next Week (${nextWeek.start})`}
-                styles={nextWeekButtonStyles}
+              >
+                This Week
+              </span>
+              <span
+                className={toggleOptionStyle(selectedWeek === 'next')}
                 onClick={() => setSelectedWeek('next')}
-              />
+              >
+                Next Week
+              </span>
             </div>
             {hasUnsavedChanges && (
               <MessageBar messageBarType={MessageBarType.warning}>
                 You have unsaved changes.
               </MessageBar>
             )}
-            <table
-              style={{
-                width: '100%',
-                tableLayout: 'fixed',
-                borderCollapse: 'separate',
-                borderSpacing: '0',
-                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                borderRadius: '8px',
-                overflow: 'hidden',
-                animation: 'fadeIn 0.5s ease-in-out',
-              }}
+            <div
+              className={tableContainerStyle}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
             >
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
-                  {attendancePersons.map((person) => (
-                    <th
-                      key={person.initials}
-                      style={{
-                        border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                        padding: '8px',
-                        textAlign: 'center',
-                        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                        width: '100px',
-                      }}
-                    >
-                      <AttendancePersonaHeader person={person} />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {weekDays.map((day, index) => {
-                  const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
-                  const dayDate = new Date(weekKey.start);
-                  dayDate.setDate(dayDate.getDate() + index);
-                  const cellDateStr = dayDate.toISOString().split('T')[0];
-                  const isCurrentDay = cellDateStr === todayStr && selectedWeek === 'current';
-
-                  return (
-                    <tr key={day} style={isCurrentDay ? { backgroundColor: '#f0f8ff' } : {}}>
-                      <td
+              <table
+                className={tableStyle}
+                ref={tableRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
+                <thead>
+                  <tr className={headerRowStyle}>
+                    <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
+                    {attendancePersons.map((person) => (
+                      <th
+                        key={person.initials}
                         style={{
                           border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
                           padding: '8px',
-                          fontWeight: 'bold',
-                          backgroundColor: colours.reporting.tableHeaderBackground,
+                          textAlign: 'center',
+                          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
                           width: '100px',
-                          fontSize: '14px',
                         }}
                       >
-                        {getShortDayLabel(dayDate)}
-                      </td>
-                      {attendancePersons.map((person) => {
-                        const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
-                        const localDays = localAttendance[weekStart]?.[person.initials] || person.attendance;
-                        const status = getCellStatus(localDays, person.initials, day, cellDateStr);
-                        const cellBg = isCurrentDay
-                          ? status === 'in'
-                            ? inHighlight
-                            : status === 'wfh'
-                            ? wfhHighlight
-                            : outHighlight
-                          : isDarkMode
-                          ? colours.dark.sectionBackground
-                          : colours.light.sectionBackground;
+                        <AttendancePersonaHeader person={person} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderedWeekDays.map((day, index) => {
+                    const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
+                    const originalIndex = weekDays.indexOf(day);
+                    const dayDate = new Date(weekKey.start);
+                    dayDate.setDate(dayDate.getDate() + originalIndex);
+                    const cellDateStr = dayDate.toISOString().split('T')[0];
+                    const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
 
-                        return (
-                          <td
-                            key={person.initials}
-                            style={{
-                              border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                              padding: '8px',
-                              textAlign: 'center',
-                              backgroundColor: cellBg,
-                              width: '100px',
-                            }}
-                            onClick={() => handleCellClick(person.initials, day, cellDateStr)}
-                          >
-                            <AttendanceCell
-                              status={status}
-                              highlight={isCurrentDay}
-                              editable={person.initials === userInitials}
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    return (
+                      <tr
+                        key={day}
+                        className={rowStyle(isCurrentDay, originalIndex, todayIndex, isTableExpanded, selectedWeek === 'next')}
+                      >
+                        <td
+                          style={{
+                            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                            padding: '8px',
+                            fontWeight: 'bold',
+                            backgroundColor: colours.reporting.tableHeaderBackground,
+                            width: '100px',
+                            fontSize: '14px',
+                          }}
+                        >
+                          {getShortDayLabel(dayDate)}
+                        </td>
+                        {attendancePersons.map((person) => {
+                          const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
+                          const localDays = localAttendance[weekStart]?.[person.initials] || person.attendance;
+                          const status = getCellStatus(localDays, person.initials, day, cellDateStr);
+                          const cellBg = isCurrentDay
+                            ? status === 'in'
+                              ? inHighlight
+                              : status === 'wfh'
+                              ? wfhHighlight
+                              : outHighlight
+                            : isDarkMode
+                            ? colours.dark.sectionBackground
+                            : colours.light.sectionBackground;
+                          const proximity = getCellProximity(day, person.initials);
+
+                          return (
+                            <td
+                              key={person.initials}
+                              className={cellStyle}
+                              style={{ backgroundColor: cellBg }}
+                              onClick={() => handleCellClick(person.initials, day, cellDateStr)}
+                            >
+                              <AttendanceCell
+                                status={status}
+                                highlight={isCurrentDay}
+                                editable={person.initials === userInitials}
+                                proximity={proximity}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             {userInitials && (
               <div style={{ marginTop: 10, textAlign: 'right' }}>
                 <DefaultButton

@@ -3,6 +3,7 @@ import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
 import { Connection, Request as SqlRequest, TYPES } from "tedious";
 import axios from "axios";
+import * as querystring from "querystring";
 
 interface AttendancePayload {
   firstName: string;
@@ -22,7 +23,6 @@ export async function insertAttendance(req: HttpRequest, context: InvocationCont
   const calendarId = 288748;
 
   try {
-    // 1) Retrieve secrets from Key Vault
     const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
     const [passwordSecret, clientIdSecret, clientSecretSecret, refreshTokenSecret] = await Promise.all([
       secretClient.getSecret("sql-databaseserver-password"),
@@ -36,17 +36,19 @@ export async function insertAttendance(req: HttpRequest, context: InvocationCont
     const refreshToken = refreshTokenSecret.value || "";
     context.log("Retrieved secrets from Key Vault.");
 
-    // 2) Get Clio access token
-    const tokenResponse = await axios.post(clioTokenUrl, {
+    const tokenPayload = {
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: "refresh_token",
       refresh_token: refreshToken,
+    };
+    context.log("Sending token request with payload:", tokenPayload);
+    const tokenResponse = await axios.post(clioTokenUrl, querystring.stringify(tokenPayload), {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
     const accessToken = tokenResponse.data.access_token;
-    context.log("Clio access token obtained.");
+    context.log("Clio access token obtained:", accessToken);
 
-    // 3) Parse and validate request body
     const rawUpdates = await req.json();
     if (!Array.isArray(rawUpdates) || !rawUpdates.every(isAttendancePayload)) {
       throw new Error("Invalid payload: expected an array of AttendancePayload objects.");
@@ -57,13 +59,11 @@ export async function insertAttendance(req: HttpRequest, context: InvocationCont
     }
     context.log("Received updates:", updates);
 
-    // 4) SQL connection config
     const config = parseConnectionString(
       `Server=${sqlServer};Database=${coreDataDb};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`,
       context
     );
 
-    // 5) Process each update
     const results = await Promise.all(
       updates.map((update) =>
         processAttendanceUpdate(update, accessToken, config, clioCalendarUrl, calendarId, context)
@@ -77,16 +77,19 @@ export async function insertAttendance(req: HttpRequest, context: InvocationCont
   } catch (error) {
     context.error("Error processing attendance updates:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
+    let detailedError = errorMessage;
+    if (axios.isAxiosError(error) && error.response) {
+      detailedError = `${errorMessage} - Clio API Response: ${JSON.stringify(error.response.data)}`;
+    }
     return {
       status: 500,
-      body: `Error processing attendance updates: ${errorMessage}`,
+      body: `Error processing attendance updates: ${detailedError}`,
     };
   } finally {
     context.log("Invocation completed for insertAttendance Azure Function.");
   }
 }
 
-// Type guard for AttendancePayload
 function isAttendancePayload(item: any): item is AttendancePayload {
   return (
     typeof item === "object" &&
@@ -153,10 +156,18 @@ async function deleteExistingEntries(
       const url = `${clioCalendarUrl}/${entryId}.json`;
       const headers = { Authorization: `Bearer ${accessToken}` };
 
-      const checkResponse = await axios.get(url, { headers });
-      if (checkResponse.status === 200) {
-        await axios.delete(url, { headers });
-        context.log(`Deleted Clio entry ${entryId}`);
+      try {
+        const checkResponse = await axios.get(url, { headers });
+        if (checkResponse.status === 200) {
+          await axios.delete(url, { headers });
+          context.log(`Deleted Clio entry ${entryId}`);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          context.log(`Clio entry ${entryId} not found (404), skipping deletion`);
+        } else {
+          throw error; // Re-throw other errors
+        }
       }
     });
     await Promise.all(deletePromises);
@@ -189,7 +200,7 @@ async function createClioEntries(
   context: InvocationContext
 ): Promise<number> {
   if (!attendanceDays) {
-    return getNextEntryId(context); // No Clio entry needed, just a new ID
+    return getNextEntryId(context);
   }
 
   const daysMap: { [key: string]: number } = {
@@ -218,7 +229,7 @@ async function createClioEntries(
     const startDate = new Date(weekStart);
     startDate.setDate(startDate.getDate() + block[0]);
     const endDate = new Date(weekStart);
-    endDate.setDate(endDate.getDate() + block[block.length - 1] + 1); // Exclusive end
+    endDate.setDate(endDate.getDate() + block[block.length - 1] + 1);
 
     const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
     const data = {
@@ -262,12 +273,11 @@ async function upsertAttendanceRecord(
           Attendance_Days = source.Attendance_Days,
           Confirmed_At = source.Confirmed_At
       WHEN NOT MATCHED THEN
-        INSERT (Entry_ID, First_Name, Initials, Level, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
+        INSERT (Entry_ID, First_Name, Initials, Week_Start, Week_End, ISO_Week, Attendance_Days, Confirmed_At)
         VALUES (
           source.Entry_ID,
           source.First_Name,
           source.Initials,
-          (SELECT [Level] FROM [dbo].[team] WHERE Initials = source.Initials),
           source.Week_Start,
           source.Week_End,
           source.ISO_Week,
