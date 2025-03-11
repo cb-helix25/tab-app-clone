@@ -1,6 +1,4 @@
-// src/tabs/matters/MatterOverview.tsx
-
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Stack,
   Text,
@@ -9,17 +7,15 @@ import {
   Separator,
   TooltipHost,
   Link,
-  DefaultButton,
 } from '@fluentui/react';
 import { Matter, Transaction } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 
 // -----------------------------------------------------------------
-// Helper Functions
+// Helper Functions (unchanged)
 // -----------------------------------------------------------------
 
-// Compute initials from a full name
 const getInitials = (name: string): string => {
   if (!name.trim()) return '-';
   return name
@@ -29,7 +25,6 @@ const getInitials = (name: string): string => {
     .join('');
 };
 
-// Format date string using UK locale or return '-'
 const formatDate = (dateStr: string | null): string => {
   if (!dateStr || !dateStr.trim()) return '-';
   try {
@@ -40,12 +35,10 @@ const formatDate = (dateStr: string | null): string => {
   }
 };
 
-// Return raw value or '-'
 const getValue = (value?: string): string => {
   return value && value.trim() ? value : '-';
 };
 
-// Map rating to style
 const mapRatingToStyle = (rating: string | undefined) => {
   switch (rating) {
     case 'Good':
@@ -61,17 +54,15 @@ const mapRatingToStyle = (rating: string | undefined) => {
 
 const formatCurrency = (num: number): string => {
   if (Math.abs(num) >= 1000) {
-    // Divide by 1000 and format without decimals (or with one decimal if needed)
     return `£${(num / 1000).toFixed(0)}k`;
   }
   return num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 };
 
-// Format hours (e.g. "12.34h")
 const formatHours = (num: number): string => `${num.toFixed(2)}h`;
 
 // -----------------------------------------------------------------
-// FinancialSection Component
+// FinancialSection Component (unchanged)
 // -----------------------------------------------------------------
 
 interface FinancialSectionProps {
@@ -88,13 +79,10 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
   isDarkMode,
 }) => {
   const activities = matterSpecificActivitiesData?.data || [];
-
-  // For Work in Progress, include only activities where billed is false.
   const wipActivities = activities.filter((a: any) => !a.billed);
   const wipBillableActivities = wipActivities.filter((a: any) => !a.non_billable);
   const wipNonBillableActivities = wipActivities.filter((a: any) => a.non_billable);
 
-  // For non-billable entries, use non_billable_total if available.
   const wipBillableTotal = wipBillableActivities.reduce(
     (sum: number, a: any) => sum + (a.total ?? 0),
     0
@@ -112,7 +100,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
     0
   );
 
-  // Overall totals from all activities (regardless of billed)
   const overallBillableActivities = activities.filter((a: any) => !a.non_billable);
   const overallNonBillableActivities = activities.filter((a: any) => a.non_billable);
 
@@ -133,19 +120,14 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
     0
   );
 
-  // Outstanding balance from outstandingData
   const outstandingBalance = outstandingData?.total_outstanding_balance || 0;
-
-  // Client Funds (Matter): pick the Trust account balance from overviewData.account_balances
   const trustAccount = overviewData?.account_balances?.find((acc: any) => acc.type === 'Trust');
   const clientFunds = trustAccount ? trustAccount.balance : 0;
 
-  // For the overall totals bar, define a lighter blue for non-billable.
   const nonBillableColor = '#a3c9f1';
 
   return (
     <>
-      {/* Top row: Three horizontal blocks */}
       <div
         className={mergeStyles({
           padding: '20px',
@@ -156,17 +138,14 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
         })}
       >
         <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { justifyContent: 'space-between' } }}>
-          {/* Work in Progress Block */}
           <div className={mergeStyles({ flex: 1, borderRight: '1px solid #ccc', paddingRight: '10px' })}>
             <Text variant="large" styles={{ root: { color: colours.highlight } }}>Work in Progress</Text>
             <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { marginTop: '10px' } }}>
-              {/* Billable Column */}
               <Stack tokens={{ childrenGap: 4 }} styles={{ root: { flex: 1 } }}>
                 <Text variant="small" styles={{ root: { color: colours.highlight } }}>Billable</Text>
                 <Text variant="medium">{formatCurrency(wipBillableTotal)}</Text>
                 <Text variant="small">Hours: {formatHours(wipBillableHours)}</Text>
               </Stack>
-              {/* Non-Billable Column */}
               <Stack tokens={{ childrenGap: 4 }} styles={{ root: { flex: 1 } }}>
                 <Text variant="small" styles={{ root: { color: colours.highlight } }}>Non-Billable</Text>
                 <Text variant="medium">{formatCurrency(wipNonBillableTotal)}</Text>
@@ -174,7 +153,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
               </Stack>
             </Stack>
           </div>
-          {/* Outstanding Balance Block */}
           <div className={mergeStyles({ flex: 1, borderRight: '1px solid #ccc', padding: '0 10px' })}>
             <Text variant="large" styles={{ root: { color: colours.highlight } }}>Outstanding Balance</Text>
             <Stack tokens={{ childrenGap: 4 }} styles={{ root: { marginTop: '10px' } }}>
@@ -187,7 +165,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
               </Text>
             </Stack>
           </div>
-          {/* Client Funds (Matter) Block */}
           <div className={mergeStyles({ flex: 1, paddingLeft: '10px' })}>
             <Text variant="large" styles={{ root: { color: colours.highlight } }}>Client Funds (Matter)</Text>
             <Stack tokens={{ childrenGap: 4 }} styles={{ root: { marginTop: '10px' } }}>
@@ -197,8 +174,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
           </div>
         </Stack>
       </div>
-
-      {/* Overall Totals Bar (Extension of Financial Section, labeled "Time") */}
       <div
         className={mergeStyles({
           width: '100%',
@@ -210,7 +185,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
         })}
       >
         <Text variant="large" styles={{ root: { color: colours.highlight } }}>Time</Text>
-        {/* Totals (above the bar) */}
         <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { justifyContent: 'space-between', marginTop: '10px' } }}>
           <Text variant="small" styles={{ root: { color: colours.highlight } }}>
             Billable: {formatCurrency(overallBillableTotal)} ({formatHours(overallBillableHours)})
@@ -219,7 +193,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
             Non-Billable: {formatCurrency(overallNonBillableTotal)} ({formatHours(overallNonBillableHours)})
           </Text>
         </Stack>
-        {/* Bar Scale */}
         <div
           className={mergeStyles({
             position: 'relative',
@@ -271,7 +244,6 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
             />
           )}
         </div>
-        {/* Labels below the bar */}
         <Stack horizontal tokens={{ childrenGap: 20 }} styles={{ root: { marginTop: '5px', justifyContent: 'space-between' } }}>
           <Text variant="small" styles={{ root: { color: colours.highlight } }}>Billable</Text>
           <Text variant="small" styles={{ root: { color: nonBillableColor } }}>Non-Billable</Text>
@@ -282,10 +254,9 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
 };
 
 // -----------------------------------------------------------------
-// Compliance Components
+// Compliance Components (unchanged)
 // -----------------------------------------------------------------
 
-// Define the shape of a compliance record
 interface ComplianceRecord {
   "Compliance Date": string;
   "Compliance Expiry": string;
@@ -321,7 +292,6 @@ interface ComplianceRecord {
   "Address Verification Check Result": string;
 }
 
-// A simple timeline visualization showing progress from Compliance Date to Expiry.
 const ComplianceTimeline: React.FC<{ startDate: string; expiryDate: string }> = ({ startDate, expiryDate }) => {
   const start = new Date(startDate);
   const end = new Date(expiryDate);
@@ -346,7 +316,6 @@ const ComplianceTimeline: React.FC<{ startDate: string; expiryDate: string }> = 
   );
 };
 
-// Renders all compliance details for one record.
 const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) => {
   const { isDarkMode } = useTheme();
   const containerStyle = mergeStyles({
@@ -359,10 +328,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
 
   return (
     <div className={containerStyle}>
-      {/* Timeline Section */}
       <ComplianceTimeline startDate={record["Compliance Date"]} expiryDate={record["Compliance Expiry"]} />
-
-      {/* Check Details */}
       <Stack tokens={{ childrenGap: 4 }}>
         <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="center">
           <Text variant="small" styles={{ root: { fontWeight: 'bold' } }}>Check ID:</Text>
@@ -373,10 +339,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
           <Text variant="small">{record["Check Result"]}</Text>
         </Stack>
       </Stack>
-
       <Separator styles={{ root: { margin: '10px 0' } }} />
-
-      {/* Individual Check Results */}
       <Stack tokens={{ childrenGap: 4 }}>
         <Text variant="small" styles={{ root: { fontWeight: 'bold' } }}>Individual Check Results:</Text>
         <Stack horizontal tokens={{ childrenGap: 20 }}>
@@ -385,7 +348,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
               iconName={record["PEP and Sanctions Check Result"] === "Passed" ? "Accept" : "Cancel"}
               styles={{ root: { color: record["PEP and Sanctions Check Result"] === "Passed" ? colours.green : colours.red } }}
             />
-            <Text variant="small">PEP &amp; Sanctions: {record["PEP and Sanctions Check Result"]}</Text>
+            <Text variant="small">PEP & Sanctions: {record["PEP and Sanctions Check Result"]}</Text>
           </Stack>
           <Stack horizontal tokens={{ childrenGap: 5 }} verticalAlign="center">
             <Icon
@@ -396,10 +359,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
           </Stack>
         </Stack>
       </Stack>
-
       <Separator styles={{ root: { margin: '10px 0' } }} />
-
-      {/* Risk Details */}
       <Stack tokens={{ childrenGap: 4 }}>
         <Text variant="small" styles={{ root: { fontWeight: 'bold' } }}>Risk Details:</Text>
         <Stack horizontal tokens={{ childrenGap: 10 }}>
@@ -408,10 +368,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
           <Text variant="small">Assessment: {record["Risk Assessment Result"]}</Text>
         </Stack>
       </Stack>
-
       <Separator styles={{ root: { margin: '10px 0' } }} />
-
-      {/* Selections */}
       <Stack tokens={{ childrenGap: 4 }}>
         <Text variant="small" styles={{ root: { fontWeight: 'bold' } }}>Selections:</Text>
         <Stack tokens={{ childrenGap: 2 }}>
@@ -424,10 +381,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
           <Text variant="small">Value Of Instruction: {record["Value Of Instruction"]}</Text>
         </Stack>
       </Stack>
-
       <Separator styles={{ root: { margin: '10px 0' } }} />
-
-      {/* Risk Factors */}
       <Stack tokens={{ childrenGap: 4 }}>
         <Text variant="small" styles={{ root: { fontWeight: 'bold' } }}>Risk Factors:</Text>
         <Stack tokens={{ childrenGap: 5 }}>
@@ -469,7 +423,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
 };
 
 // -----------------------------------------------------------------
-// MatterOverview Component
+// MatterOverview Component (Modified)
 // -----------------------------------------------------------------
 
 interface MatterOverviewProps {
@@ -479,10 +433,9 @@ interface MatterOverviewProps {
   complianceData?: any;
   matterSpecificActivitiesData?: any;
   onEdit?: () => void;
-  transactions?: Transaction[]; // NEW: add transactions
+  transactions?: Transaction[];
 }
 
-// Define a fixed style for labels to ensure alignment
 const labelStyleFixed = mergeStyles({
   fontWeight: 700,
   color: colours.highlight,
@@ -496,7 +449,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   complianceData,
   matterSpecificActivitiesData,
   onEdit,
-  transactions, // NEW: include transactions here
+  transactions,
 }) => {
   const { isDarkMode } = useTheme();
   const ratingStyle = mapRatingToStyle(matter.Rating);
@@ -509,12 +462,10 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
   const matterLink = `https://eu.app.clio.com/nc/#/matters/${matter.UniqueID || '-'}`;
   const clientLink = client ? `https://eu.app.clio.com/nc/#/contacts/${client.id}` : '#';
 
-  // NEW: Filter transactions for the current matter
   const matterTransactions = transactions?.filter(
     (t) => t.matter_ref === matter.DisplayNumber
   ) || [];
 
-  // Build a map of solicitor names to roles
   const solicitorMap: { [name: string]: string[] } = {};
   if (matter.OriginatingSolicitor?.trim()) {
     const name = matter.OriginatingSolicitor.trim();
@@ -529,9 +480,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
     solicitorMap[name] = (solicitorMap[name] || []).concat('Supervising');
   }
 
-  // -----------------------------------------------------------------
-  // Styles for various sections
-  // -----------------------------------------------------------------
   const containerStyleFixed = mergeStyles({
     padding: '20px',
     borderRadius: '8px',
@@ -651,46 +599,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
     },
   });
 
-  const tagStyle = mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: colours.tagBackground,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    borderRadius: '4px',
-    padding: '4px 8px',
-    fontSize: 'small',
-    marginRight: '8px',
-    marginBottom: '8px',
-  });
-
-  /* ------------------------------------------
-   * State for Revealable Datasets
-   * ------------------------------------------
-   */
-  const [overviewOpen, setOverviewOpen] = useState(false);
-  const [outstandingOpen, setOutstandingOpen] = useState(false);
-  const [complianceOpen, setComplianceOpen] = useState(false);
-  const [activitiesOpen, setActivitiesOpen] = useState(false);
-  const [transactionsOpen, setTransactionsOpen] = useState(false); // NEW
-
-  /* ------------------------------------------
-   * Bottom Revealable Panels Styling
-   * ------------------------------------------
-   */
-  const panelStyle = mergeStyles({
-    flex: 1,
-    border: `1px solid ${colours.grey}`,
-    padding: '10px',
-    borderRadius: '4px',
-    backgroundColor: isDarkMode ? '#333' : '#f9f9f9',
-    overflow: 'auto',
-    maxHeight: '300px',
-  });
-
-  /* ------------------------------------------
-   * R E T U R N  M A I N  J S X
-   * ------------------------------------------
-   */
   return (
     <div className={containerStyleFixed}>
       {/* TOP SECTION: Matter reference & rating */}
@@ -735,7 +643,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                 Matter Details
               </Text>
               <Separator />
-              {/* First Section: Practice Area, Description, Opponent */}
               <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
                   <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
@@ -764,10 +671,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   </Stack>
                 )}
               </Stack>
-
               <Separator styles={{ root: { marginTop: '12px', marginBottom: '12px' } }} />
-
-              {/* Second Section: Open Date, CCL Date */}
               <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
                   <Text variant="mediumPlus" styles={{ root: labelStyleFixed }}>
@@ -786,10 +690,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   </Text>
                 </Stack>
               </Stack>
-
               <Separator styles={{ root: { marginTop: '12px', marginBottom: '12px' } }} />
-
-              {/* Third Section: Solicitor Persona Bubbles */}
               <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: '12px' } }}>
                 {Object.entries(solicitorMap).map(([name, roles], idx) => (
                   <TooltipHost key={idx} content={`${name} (${roles.join(', ')})`}>
@@ -872,7 +773,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
                   </Stack>
                 </Stack>
               </Stack>
-              {/* Render Compliance Details within Client Card */}
               {complianceData && Array.isArray(complianceData) && complianceData.length > 0 && (
                 <>
                   <Separator styles={{ root: { marginTop: '12px', marginBottom: '12px' } }} />
@@ -893,66 +793,6 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
           </Stack.Item>
         </Stack>
       </div>
-
-      {/* INLINE TAGS */}
-      <Stack horizontal wrap tokens={{ childrenGap: 8, padding: '12px 0' }}>
-        <span className={tagStyle}>Matter ID: {matter.UniqueID || '-'}</span>
-        <span className={tagStyle}>Client ID: {matter.ClientID || '-'}</span>
-        <span className={tagStyle}>Value: {getValue(matter.ApproxValue)}</span>
-        {matter.Source && matter.Source.trim() && (
-          <span className={tagStyle}>Source: {matter.Source.trim()}</span>
-        )}
-        {matter.Referrer && matter.Referrer.trim() && (
-          <span className={tagStyle}>Referrer: {matter.Referrer.trim()}</span>
-        )}
-      </Stack>
-
-      {/* BOTTOM SECTION: Revealable Panels */}
-      <Stack tokens={{ childrenGap: 10, padding: '20px 0' }}>
-        {/* Buttons Row */}
-        <Stack horizontal tokens={{ childrenGap: 10 }}>
-          <DefaultButton text="Overview" onClick={() => setOverviewOpen(!overviewOpen)} />
-          <DefaultButton text="Outstanding" onClick={() => setOutstandingOpen(!outstandingOpen)} />
-          <DefaultButton text="Compliance" onClick={() => setComplianceOpen(!complianceOpen)} />
-          <DefaultButton text="Activities" onClick={() => setActivitiesOpen(!activitiesOpen)} />
-          <DefaultButton text="Transactions" onClick={() => setTransactionsOpen(!transactionsOpen)} />
-        </Stack>
-
-        {/* Conditionally render dataset panels side by side */}
-        <Stack horizontal tokens={{ childrenGap: 10 }}>
-          {overviewOpen && (
-            <div className={panelStyle}>
-              <pre>{JSON.stringify(overviewData || { info: 'No overview data available.' }, null, 2)}</pre>
-            </div>
-          )}
-          {outstandingOpen && (
-            <div className={panelStyle}>
-              <pre>{JSON.stringify(outstandingData || { info: 'No outstanding data found.' }, null, 2)}</pre>
-            </div>
-          )}
-          {complianceOpen && (
-            <div className={panelStyle}>
-              <pre>{JSON.stringify(complianceData || { info: 'No compliance data available.' }, null, 2)}</pre>
-            </div>
-          )}
-          {activitiesOpen && (
-            <div className={panelStyle}>
-              <pre>
-                {JSON.stringify(
-                  matterSpecificActivitiesData || { info: 'No matter-specific activities data available.' },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-          )}
-          {transactionsOpen && (
-            <div className={panelStyle}>
-              <pre>{JSON.stringify(matterTransactions || { info: 'No transactions available.' }, null, 2)}</pre>
-            </div>
-          )}
-        </Stack>
-      </Stack>
     </div>
   );
 };

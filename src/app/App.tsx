@@ -1,3 +1,4 @@
+// src/app/App.tsx
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
@@ -12,13 +13,13 @@ const Resources = lazy(() => import('../tabs/resources/Resources'));
 const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
 const Roadmap = lazy(() => import('../tabs/roadmap/Roadmap'));
-const ReportingCode = lazy(() => import('../tabs/Reporting/ReportingCode'));
+const ReportingHome = lazy(() => import('../tabs/Reporting/ReportingHome')); // Replace ReportingCode with ReportingHome
 
 interface AppProps {
   teamsContext: TeamsContextType | null;
   userData: UserData[] | null;
   enquiries: Enquiry[] | null;
-  matters: Matter[] | null;  // User-specific matters from index.tsx
+  matters: Matter[] | null;
   fetchMatters: (fullName: string) => Promise<Matter[]>;
   isLoading: boolean;
   error: string | null;
@@ -38,17 +39,14 @@ const App: React.FC<AppProps> = ({
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
 
-  // Existing state and callbacks
+  // Existing state and callbacks (unchanged)
   const [poidData, setPoidData] = useState<POID[]>([]);
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
-
-  // New state for bookings
   const [boardroomBookings, setBoardroomBookings] = useState<BoardroomBooking[] | null>(null);
   const [soundproofBookings, setSoundproofBookings] = useState<SoundproofPodBooking[] | null>(null);
 
-  // Callbacks from Home
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
   };
@@ -65,7 +63,6 @@ const App: React.FC<AppProps> = ({
     setTransactions(fetchedTransactions);
   };
 
-  // New callbacks for bookings
   const handleBoardroomBookingsFetched = (data: BoardroomBooking[]) => {
     setBoardroomBookings(data);
   };
@@ -98,6 +95,11 @@ const App: React.FC<AppProps> = ({
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
   ];
+
+  // Check if the user has authorized initials
+  const authorizedInitials = ['AC', 'JW', 'LZ'];
+  const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+  const isAuthorized = authorizedInitials.includes(userInitials);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -149,7 +151,14 @@ const App: React.FC<AppProps> = ({
       case 'roadmap':
         return <Roadmap userData={userData} />;
       case 'reporting':
-        return <ReportingCode />;
+        return isAuthorized ? (
+          <ReportingHome userData={userData} teamData={teamData} />
+        ) : (
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <h2>Access Denied</h2>
+            <p>You do not have permission to view the Reports dashboard.</p>
+          </div>
+        );
       default:
         return (
           <Home

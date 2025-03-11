@@ -1,7 +1,10 @@
 // src/app/styles/ButtonStyles.ts
-
 import { IButtonStyles } from '@fluentui/react';
 import { colours } from './colours';
+
+// Helper function for creating a consistent radial gradient overlay
+const createRadialGradient = (baseColor: string) =>
+  `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${baseColor} !important`;
 
 // Shared Primary Button Styles
 export const sharedPrimaryButtonStyles: IButtonStyles = {
@@ -23,14 +26,14 @@ export const sharedPrimaryButtonStyles: IButtonStyles = {
     },
   },
   rootHovered: {
-    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.cta} !important`,
+    background: createRadialGradient(colours.cta),
     boxShadow: '0 0 8px rgba(0,0,0,0.2) !important',
     transform: 'none !important',
     outline: 'none !important',
     border: 'none !important',
   },
   rootPressed: {
-    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%), ${colours.cta} !important`,
+    background: createRadialGradient(colours.cta),
     boxShadow: '0 0 8px rgba(0,0,0,0.3) !important',
     transform: 'none !important',
     outline: 'none !important',
@@ -47,7 +50,7 @@ export const sharedPrimaryButtonStyles: IButtonStyles = {
   },
 };
 
-// Shared Default Button Styles
+// Shared Default Button Styles (unchanged)
 export const sharedDefaultButtonStyles: IButtonStyles = {
   root: {
     padding: '6px 12px',
@@ -92,7 +95,7 @@ export const sharedDefaultButtonStyles: IButtonStyles = {
   },
 };
 
-// Shared Draft Confirmed Button Styles
+// Shared Draft Confirmed Button Styles (unchanged)
 export const sharedDraftConfirmedButtonStyles: IButtonStyles = {
   root: {
     padding: '6px 12px',
@@ -151,7 +154,7 @@ export const sharedDraftConfirmedButtonStyles: IButtonStyles = {
   },
 };
 
-// NEW: Shared Decision (Choice) Button Styles – blue highlight version
+// Updated Shared Decision Button Styles using consistent gradient function
 export const sharedDecisionButtonStyles: IButtonStyles = {
   root: {
     padding: '6px 12px',
@@ -171,14 +174,14 @@ export const sharedDecisionButtonStyles: IButtonStyles = {
     },
   },
   rootHovered: {
-    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.highlight} !important`,
+    background: createRadialGradient(colours.highlight),
     boxShadow: '0 0 8px rgba(0,0,0,0.2) !important',
     transform: 'none !important',
     outline: 'none !important',
     border: 'none !important',
   },
   rootPressed: {
-    background: `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 100%), ${colours.highlight} !important`,
+    background: createRadialGradient(colours.highlight),
     boxShadow: '0 0 8px rgba(0,0,0,0.3) !important',
     transform: 'none !important',
     outline: 'none !important',
