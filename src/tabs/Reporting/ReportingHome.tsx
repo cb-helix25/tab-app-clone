@@ -1,4 +1,3 @@
-// src/tabs/Reporting/ReportingHome.tsx
 import React, { useState, useEffect } from 'react';
 import { colours } from '../../app/styles/colours';
 import {
@@ -13,6 +12,7 @@ import {
 import * as microsoftTeams from '@microsoft/teams-js';
 import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import ReportCard from './ReportCard';
+import HomePreview from './HomePreview';
 import './ReportingHome.css';
 
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
@@ -26,7 +26,7 @@ const DATASETS = [
   { key: 'transactions', name: 'Transactions', type: 'Transaction[]' },
   { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse' },
   { key: 'wip', name: 'WIP', type: 'any' },
-  { key: 'recoveredFees', name: 'Recovered Fees', type: 'any' },
+  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]' },
 ] as const;
 
 let cachedData: { [key: string]: any } = {
@@ -428,13 +428,20 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           </div>
         </header>
 
+        <HomePreview
+          enquiries={enquiries}
+          allMatters={allMatters}
+          wip={wip}
+          recoveredFees={recoveredFees}
+        />
+
         <section className="report-section" style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '20px', color: '#333', margin: '0 0 20px' }}>Reports</h2>
           <div
             className="report-cards-container"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns of equal width
+              gridTemplateColumns: 'repeat(4, 1fr)',
               gap: '20px',
               width: '100%',
             }}

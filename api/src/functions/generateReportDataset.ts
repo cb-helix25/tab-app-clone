@@ -1,4 +1,3 @@
-// src/functions/generateReportDataset.ts
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
@@ -56,8 +55,186 @@ interface ClioActivity {
 }
 
 interface CollectedTimeData {
-    [key: string]: any;
-    totalPaymentAllocated?: number;
+    matter_id: number;
+    bill_id: number;
+    contact_id: number;
+    id: number;
+    date: string;
+    created_at: string;
+    kind: string;
+    type: string;
+    activity_type: string;
+    description: string;
+    sub_total: number;
+    tax: number;
+    secondary_tax: number;
+    user_id: number;
+    user_name: string;
+    payment_allocated: number;
+    payment_date: string;
+}
+
+interface POID {
+    poid_id: string;
+    type?: string;
+    terms_acceptance?: boolean;
+    submission_url?: string;
+    submission_date?: string;
+    id_docs_folder?: string;
+    acid?: number;
+    card_id?: string;
+    poc?: string;
+    nationality_iso?: string;
+    nationality?: string;
+    gender?: string;
+    first?: string;
+    last?: string;
+    prefix?: string;
+    date_of_birth?: string;
+    best_number?: string;
+    email?: string;
+    passport_number?: string;
+    drivers_license_number?: string;
+    house_building_number?: string;
+    street?: string;
+    city?: string;
+    county?: string;
+    post_code?: string;
+    country?: string;
+    country_code?: string;
+    company_name?: string;
+    company_number?: string;
+    company_house_building_number?: string;
+    company_street?: string;
+    company_city?: string;
+    company_county?: string;
+    company_post_code?: string;
+    company_country?: string;
+    company_country_code?: string;
+    stage?: string;
+    check_result?: string;
+    check_id?: string;
+    additional_id_submission_id?: string;
+    additional_id_submission_url?: string;
+    additional_id_submission_date?: string;
+    client_id?: string;
+    related_client_id?: string;
+    matter_id?: string;
+    risk_assessor?: string;
+    risk_assessment_date?: string;
+}
+
+interface Transaction {
+    intake_id: number;
+    intake_date: string;
+    transaction_id: string;
+    matter_ref: string;
+    matter_description: string;
+    fe: string;
+    amount: number;
+    transaction_date: string;
+    from_client: boolean;
+    money_sender: string | null;
+    type: string;
+    status?: string | null;
+}
+
+interface OutstandingClientContact {
+    id: number;
+    etag: string;
+    name: string;
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    date_of_birth: string;
+    type: string;
+    created_at: string;
+    updated_at: string;
+    prefix?: string | null;
+    title: string;
+    initials: string;
+    clio_connect_email?: string | null;
+    locked_clio_connect_email?: string | null;
+    client_connect_user_id?: string | null;
+    primary_email_address: string;
+    secondary_email_address?: string | null;
+    primary_phone_number: string;
+    secondary_phone_number?: string | null;
+    ledes_client_id?: string | null;
+    has_clio_for_clients_permission: boolean;
+    is_client: boolean;
+    is_clio_for_client_user: boolean;
+    is_co_counsel: boolean;
+    is_bill_recipient: boolean;
+    sales_tax_number?: string | null;
+    currency: { id: number | null };
+}
+
+interface OutstandingBill {
+    id: number;
+    etag: string;
+    number: string;
+    issued_at: string;
+    created_at: string;
+    due_at: string;
+    tax_rate: number;
+    secondary_tax_rate: number;
+    updated_at: string;
+    subject?: string | null;
+    purchase_order?: string | null;
+    type: string;
+    memo?: string | null;
+    start_at: string;
+    end_at: string;
+    balance: number;
+    state: string;
+    kind: string;
+    total: number;
+    paid: number;
+    paid_at?: string | null;
+    pending: number;
+    due: number;
+    discount_services_only: boolean;
+    can_update: boolean;
+    credits_issued: number;
+    shared: boolean;
+    last_sent_at?: string | null;
+    services_secondary_tax: number;
+    services_sub_total: number;
+    services_tax: number;
+    services_taxable_sub_total: number;
+    services_secondary_taxable_sub_total: number;
+    taxable_sub_total: number;
+    secondary_taxable_sub_total: number;
+    sub_total: number;
+    tax_sum: number;
+    secondary_tax_sum: number;
+    total_tax: number;
+    available_state_transitions: string[];
+}
+
+interface OutstandingClientBalance {
+    id: number;
+    created_at: string;
+    updated_at: string;
+    associated_matter_ids: number[];
+    contact: OutstandingClientContact;
+    total_outstanding_balance: number;
+    last_payment_date: string;
+    last_shared_date?: string | null;
+    newest_issued_bill_due_date: string;
+    pending_payments_total: number;
+    reminders_enabled: boolean;
+    currency: { id: number | null; redacted?: boolean };
+    outstanding_bills: OutstandingBill[];
+}
+
+interface OutstandingClientBalancesResponse {
+    meta: {
+        paging: any;
+        records: number;
+    };
+    data: OutstandingClientBalance[];
 }
 
 interface RequestBody {
@@ -69,6 +246,121 @@ interface RequestBody {
     dateFrom?: string;
     dateTo?: string;
     entraId: string;
+}
+
+// Helper function to assign column values safely for CollectedTimeData
+function assignColumnValue(row: CollectedTimeData, colName: keyof CollectedTimeData, value: any) {
+    switch (colName) {
+        case "matter_id":
+        case "bill_id":
+        case "contact_id":
+        case "id":
+        case "sub_total":
+        case "tax":
+        case "secondary_tax":
+        case "user_id":
+        case "payment_allocated":
+            row[colName] = value != null ? Number(value) : 0;
+            break;
+        case "date":
+        case "created_at":
+        case "kind":
+        case "type":
+        case "activity_type":
+        case "description":
+        case "user_name":
+        case "payment_date":
+            row[colName] = value != null ? String(value) : "";
+            break;
+    }
+}
+
+// Helper function to assign column values safely for POID
+function assignPOIDColumnValue(row: POID, colName: keyof POID, value: any) {
+    switch (colName) {
+        case "acid":
+            row[colName] = value != null ? Number(value) : undefined;
+            break;
+        case "terms_acceptance":
+            row[colName] = value != null ? Boolean(value) : undefined;
+            break;
+        case "poid_id":
+            // For required field, default to an empty string if value is null.
+            row[colName] = value != null ? String(value) : "";
+            break;
+        case "type":
+        case "submission_url":
+        case "submission_date":
+        case "id_docs_folder":
+        case "card_id":
+        case "poc":
+        case "nationality_iso":
+        case "nationality":
+        case "gender":
+        case "first":
+        case "last":
+        case "prefix":
+        case "date_of_birth":
+        case "best_number":
+        case "email":
+        case "passport_number":
+        case "drivers_license_number":
+        case "house_building_number":
+        case "street":
+        case "city":
+        case "county":
+        case "post_code":
+        case "country":
+        case "country_code":
+        case "company_name":
+        case "company_number":
+        case "company_house_building_number":
+        case "company_street":
+        case "company_city":
+        case "company_county":
+        case "company_post_code":
+        case "company_country":
+        case "company_country_code":
+        case "stage":
+        case "check_result":
+        case "check_id":
+        case "additional_id_submission_id":
+        case "additional_id_submission_url":
+        case "additional_id_submission_date":
+        case "client_id":
+        case "related_client_id":
+        case "matter_id":
+        case "risk_assessor":
+        case "risk_assessment_date":
+            row[colName] = value != null ? String(value) : undefined;
+            break;
+    }
+}
+
+// Helper function to assign column values safely for Transaction
+function assignTransactionColumnValue(row: Transaction, colName: keyof Transaction, value: any) {
+    switch (colName) {
+        case "intake_id":
+        case "amount":
+            row[colName] = value != null ? Number(value) : 0;
+            break;
+        case "from_client":
+            row[colName] = value != null ? Boolean(value) : false;
+            break;
+        case "money_sender":
+            row[colName] = value != null ? String(value) : null;
+            break;
+        case "intake_date":
+        case "transaction_id":
+        case "matter_ref":
+        case "matter_description":
+        case "fe":
+        case "transaction_date":
+        case "type":
+        case "status":
+            row[colName] = value != null ? String(value) : "";
+            break;
+    }
 }
 
 // Handler function
@@ -121,6 +413,9 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
     const clioClientIdSecretName = "clio-pbi-clientid";
     const clioTokenUrl = "https://eu.app.clio.com/oauth/token";
     const clioActivitiesUrl = "https://eu.app.clio.com/api/v4/activities.json";
+    const clioApiBaseUrl = "https://eu.app.clio.com/api/v4";
+    const outstandingFields = "id,created_at,updated_at,associated_matter_ids,contact{id,etag,name,first_name,middle_name,last_name,date_of_birth,type,created_at,updated_at,prefix,title,initials,clio_connect_email,locked_clio_connect_email,client_connect_user_id,primary_email_address,secondary_email_address,primary_phone_number,secondary_phone_number,ledes_client_id,has_clio_for_clients_permission,is_client,is_clio_for_client_user,is_co_counsel,is_bill_recipient,sales_tax_number,currency},total_outstanding_balance,last_payment_date,last_shared_date,newest_issued_bill_due_date,pending_payments_total,reminders_enabled,currency{id,etag,code,sign,created_at,updated_at},outstanding_bills{id,etag,number,issued_at,created_at,due_at,tax_rate,secondary_tax_rate,updated_at,subject,purchase_order,type,memo,start_at,end_at,balance,state,kind,total,paid,paid_at,pending,due,discount_services_only,can_update,credits_issued,shared,last_sent_at,services_secondary_tax,services_sub_total,services_tax,services_taxable_sub_total,services_secondary_taxable_sub_total,taxable_sub_total,secondary_taxable_sub_total,sub_total,tax_sum,secondary_tax_sum,total_tax,available_state_transitions}";
+    const balancesUrl = `${clioApiBaseUrl}/outstanding_client_balances.json?fields=${encodeURIComponent(outstandingFields)}`;
 
     const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
     const [passwordSecret, refreshTokenSecret, clientSecret, clientIdSecret] = await Promise.all([
@@ -317,15 +612,33 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             responseData.wip = await fetchClioActivities(clioActivitiesUrl, startDate, endDate, accessToken, context);
         }
 
-        // Fetch recoveredFees (last 24 months for all users)
+        // Fetch recoveredFees (last 24 months, individual records)
         if (datasets.includes("recoveredFees")) {
             const { dateFrom, dateTo } = getLast24Months();
-            responseData.recoveredFees = await new Promise<CollectedTimeData>((resolve, reject) => {
-                const result: CollectedTimeData = { totalPaymentAllocated: 0 };
+            responseData.recoveredFees = await new Promise<CollectedTimeData[]>((resolve, reject) => {
+                const result: CollectedTimeData[] = [];
                 const query = `
-                    SELECT SUM(payment_allocated) AS totalPaymentAllocated
+                    SELECT 
+                        matter_id,
+                        bill_id,
+                        contact_id,
+                        id,
+                        date,
+                        created_at,
+                        kind,
+                        type,
+                        activity_type,
+                        description,
+                        sub_total,
+                        tax,
+                        secondary_tax,
+                        user_id,
+                        user_name,
+                        payment_allocated,
+                        payment_date
                     FROM collectedTime
                     WHERE payment_date BETWEEN @DateFrom AND @DateTo
+                    ORDER BY payment_date DESC
                 `;
                 const request = new SqlRequest(query, (err) => {
                     if (err) {
@@ -337,11 +650,178 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
                 request.addParameter("DateTo", TYPES.Date, dateTo);
 
                 request.on("row", (columns) => {
+                    const row: CollectedTimeData = {
+                        matter_id: 0,
+                        bill_id: 0,
+                        contact_id: 0,
+                        id: 0,
+                        date: "",
+                        created_at: "",
+                        kind: "",
+                        type: "",
+                        activity_type: "",
+                        description: "",
+                        sub_total: 0,
+                        tax: 0,
+                        secondary_tax: 0,
+                        user_id: 0,
+                        user_name: "",
+                        payment_allocated: 0,
+                        payment_date: ""
+                    };
                     columns.forEach((column) => {
-                        if (column.metadata.colName === "totalPaymentAllocated") {
-                            result.totalPaymentAllocated = column.value || 0;
-                        }
+                        assignColumnValue(row, column.metadata.colName as keyof CollectedTimeData, column.value);
                     });
+                    result.push(row);
+                });
+
+                request.on("requestCompleted", () => resolve(result));
+                connection.execSql(request);
+            });
+        }
+
+        // Fetch outstandingBalances (via Clio API)
+        if (datasets.includes("outstandingBalances")) {
+            const accessToken = await getClioAccessToken(clioTokenUrl, clientId, clientSecretValue, refreshToken, context);
+            context.log("Fetching outstanding client balances from Clio API.");
+            const balancesResponse = await fetch(balancesUrl, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!balancesResponse.ok) {
+                const errorText = await balancesResponse.text();
+                context.error("Failed to fetch outstanding client balances:", errorText);
+                throw new Error(`Failed to fetch outstanding client balances: ${errorText}`);
+            }
+
+            const balancesData: OutstandingClientBalancesResponse = await balancesResponse.json();
+            responseData.outstandingBalances = balancesData;
+            context.log("Outstanding client balances retrieved successfully.");
+        }
+
+        // Fetch poidData (POID entries from the last 6 years)
+        if (datasets.includes("poidData")) {
+            const today = new Date();
+            const thresholdDate = new Date(today);
+            thresholdDate.setFullYear(today.getFullYear() - 6);
+            const formattedThresholdDate = thresholdDate.toISOString().split('T')[0];
+        
+            responseData.poidData = await new Promise<POID[]>((resolve, reject) => {
+                const result: POID[] = [];
+                const query = `
+                    SELECT *
+                    FROM poid
+                    WHERE submission_date >= @ThresholdDate
+                    ORDER BY submission_date DESC
+                `;
+                const request = new SqlRequest(query, (err) => {
+                    if (err) {
+                        context.error("SQL Query Error (poidData):", err);
+                        reject(err);
+                    }
+                });
+                request.addParameter("ThresholdDate", TYPES.DateTime, formattedThresholdDate);
+        
+                request.on("row", (columns) => {
+                    const row: POID = {
+                        poid_id: "", // Assuming this is required; adjust if not
+                        type: undefined,
+                        terms_acceptance: undefined,
+                        submission_url: undefined,
+                        submission_date: undefined,
+                        id_docs_folder: undefined,
+                        acid: undefined,
+                        card_id: undefined,
+                        poc: undefined,
+                        nationality_iso: undefined,
+                        nationality: undefined,
+                        gender: undefined,
+                        first: undefined,
+                        last: undefined,
+                        prefix: undefined,
+                        date_of_birth: undefined,
+                        best_number: undefined,
+                        email: undefined,
+                        passport_number: undefined,
+                        drivers_license_number: undefined,
+                        house_building_number: undefined,
+                        street: undefined,
+                        city: undefined,
+                        county: undefined,
+                        post_code: undefined,
+                        country: undefined,
+                        country_code: undefined,
+                        company_name: undefined,
+                        company_number: undefined,
+                        company_house_building_number: undefined,
+                        company_street: undefined,
+                        company_city: undefined,
+                        company_county: undefined,
+                        company_post_code: undefined,
+                        company_country: undefined,
+                        company_country_code: undefined,
+                        stage: undefined,
+                        check_result: undefined,
+                        check_id: undefined,
+                        additional_id_submission_id: undefined,
+                        additional_id_submission_url: undefined,
+                        additional_id_submission_date: undefined,
+                        client_id: undefined,
+                        related_client_id: undefined,
+                        matter_id: undefined,
+                        risk_assessor: undefined,
+                        risk_assessment_date: undefined,
+                    };
+                    columns.forEach((column) => {
+                        assignPOIDColumnValue(row, column.metadata.colName as keyof POID, column.value);
+                    });
+                    result.push(row);
+                });
+        
+                request.on("requestCompleted", () => resolve(result));
+                connection.execSql(request);
+            });
+        }
+
+        // Fetch transactions
+        if (datasets.includes("transactions")) {
+            responseData.transactions = await new Promise<Transaction[]>((resolve, reject) => {
+                const result: Transaction[] = [];
+                const query = `
+                    SELECT *
+                    FROM transactions
+                    ORDER BY transaction_date DESC
+                `;
+                const request = new SqlRequest(query, (err) => {
+                    if (err) {
+                        context.error("SQL Query Error (transactions):", err);
+                        reject(err);
+                    }
+                });
+
+                request.on("row", (columns) => {
+                    const row: Transaction = {
+                        intake_id: 0,
+                        intake_date: "",
+                        transaction_id: "",
+                        matter_ref: "",
+                        matter_description: "",
+                        fe: "",
+                        amount: 0,
+                        transaction_date: "",
+                        from_client: false,
+                        money_sender: null,
+                        type: "",
+                        status: null,
+                    };
+                    columns.forEach((column) => {
+                        assignTransactionColumnValue(row, column.metadata.colName as keyof Transaction, column.value);
+                    });
+                    result.push(row);
                 });
 
                 request.on("requestCompleted", () => resolve(result));
