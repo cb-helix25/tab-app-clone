@@ -1,0 +1,257 @@
+.management-dashboard-container {
+  min-height: 100vh;
+  padding: 40px;
+  font-family: 'Raleway', sans-serif;
+  color: #333;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.animate-dashboard {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+/* Back Arrow */
+.back-arrow {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  color: var(--highlight);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.back-arrow:hover {
+  color: var(--darkBlue);
+  transform: translateX(-5px);
+}
+
+.back-arrow span {
+  margin-left: 5px;
+}
+
+/* Filter Section */
+.filter-section {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  width: 100%;
+  animation: slideInFromLeft 0.6s ease-out forwards;
+}
+
+.date-filter-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 2;
+}
+
+.date-pickers {
+  flex: 0 0 auto;
+}
+
+.date-range-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.date-range-buttons .ms-Stack {
+  width: 100%;
+}
+
+.date-range-buttons .ms-Button {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 4px; /* Reduced from 8px to match original tile style */
+}
+
+.date-range-buttons .ms-Button.unselected {
+  background: #e9ecef;
+  color: #333;
+}
+
+.date-range-buttons .ms-Button.unselected:hover {
+  background: #dee2e6;
+}
+
+.date-range-buttons .ms-Button.selected {
+  background: #3690ce;
+  color: #fff;
+}
+
+.date-range-buttons .ms-Button.selected:hover {
+  background: #3690ce;
+}
+
+.vertical-separator {
+  width: 1px;
+  background: #e9ecef;
+  margin: 0 10px;
+}
+
+.team-slicer-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 1;
+  margin-top: -15px;
+  padding-top: 40px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.team-slicer-buttons .ms-Button--primary {
+  transition: all 0.2s ease;
+  min-width: 0;
+  padding: 0 8px;
+  flex: 1 1 auto;
+  border-radius: 4px; /* Reduced from 8px to match original tile style */
+}
+
+.team-slicer-buttons .ms-Button--primary.unselected {
+  background: #e9ecef;
+  color: #333;
+}
+
+.team-slicer-buttons .ms-Button--primary.unselected:hover {
+  background: #dee2e6;
+}
+
+.team-slicer-buttons .ms-Button--primary.selected {
+  background: #3690ce;
+  color: #fff;
+}
+
+.team-slicer-buttons .ms-Button--primary.selected:hover {
+  background: #3690ce;
+}
+
+/* Metrics Table Section */
+.metrics-table {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  width: 100%;
+}
+
+.metrics-table-header {
+  display: grid;
+  grid-template-columns: 100px repeat(9, 1fr);
+  background: linear-gradient(135deg, #666 0%, #555 100%);
+  color: #fff;
+  padding: 15px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metrics-table-row {
+  display: grid;
+  grid-template-columns: 100px repeat(9, 1fr);
+  background: #ffffff;
+  padding: 15px 20px;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.3s ease;
+  opacity: 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.metrics-table-row:last-child {
+  border-bottom: none;
+  background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f5 100%);
+  font-weight: 700;
+  color: #222;
+}
+
+.metrics-table-row:hover {
+  background: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.metrics-table-row:last-child:hover {
+  background: linear-gradient(135deg, #f1f3f5 0%, #eceff1 100%);
+}
+
+.metrics-table-row span {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.metrics-table-row span:first-child {
+  font-weight: 600;
+  color: var(--highlight);
+  font-size: 15px;
+}
+
+.metrics-table-row:last-child span:first-child {
+  color: #222;
+}
+
+.animate-table-row {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+.metrics-table-row:nth-child(1) { animation-delay: 0s; }
+.metrics-table-row:nth-child(2) { animation-delay: 0.05s; }
+.metrics-table-row:nth-child(3) { animation-delay: 0.1s; }
+.metrics-table-row:nth-child(4) { animation-delay: 0.15s; }
+.metrics-table-row:nth-child(5) { animation-delay: 0.2s; }
+.metrics-table-row:nth-child(6) { animation-delay: 0.25s; }
+.metrics-table-row:nth-child(7) { animation-delay: 0.3s; }
+.metrics-table-row:nth-child(8) { animation-delay: 0.35s; }
+.metrics-table-row:nth-child(9) { animation-delay: 0.4s; }
+.metrics-table-row:nth-child(10) { animation-delay: 0.45s; }
+.metrics-table-row:nth-child(11) { animation-delay: 0.5s; }
+.metrics-table-row:nth-child(12) { animation-delay: 0.55s; }
+.metrics-table-row:nth-child(13) { animation-delay: 0.6s; }
+.metrics-table-row:nth-child(14) { animation-delay: 0.65s; }
+.metrics-table-row:nth-child(15) { animation-delay: 0.7s; }
+.metrics-table-row:nth-child(16) { animation-delay: 0.75s; }
+.metrics-table-row:nth-child(17) { animation-delay: 0.8s; }
+.metrics-table-row:nth-child(18) { animation-delay: 0.85s; }
+.metrics-table-row:nth-child(19) { animation-delay: 0.9s; }
+
+/* Keyframe Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-15px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* CSS Variables */
+:root {
+  --highlight: #3690ce;
+  --darkBlue: #061733;
+  --grey: #666;
+}

@@ -196,4 +196,12 @@ export const sharedDecisionButtonStyles: IButtonStyles = {
   label: {
     color: '#ffffff !important',
   },
+  // Added disabled state for consistency
+  rootDisabled: {
+    backgroundColor: colours.highlight,
+    border: 'none !important',
+    color: '#ffffff !important',
+    opacity: 0.6,
+    boxShadow: 'none !important',
+  },
 };

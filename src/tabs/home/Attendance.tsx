@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, forwardRef, useImperativeHandle, RefAttributes } from 'react';
 import {
   mergeStyles,
   Text,
@@ -8,7 +8,6 @@ import {
   MessageBarType,
   Icon,
   DefaultButton,
-  IButtonStyles,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import InAttendanceImg from '../../assets/in_attendance.png';
@@ -16,7 +15,6 @@ import WfhImg from '../../assets/wfh.png';
 import OutImg from '../../assets/outv2.png';
 import {
   sharedPrimaryButtonStyles,
-  sharedDecisionButtonStyles,
 } from '../../app/styles/ButtonStyles';
 
 interface AttendanceProps {
@@ -119,7 +117,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
   );
 };
 
-const Attendance: React.FC<AttendanceProps> = ({
+const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>> = forwardRef(({
   isDarkMode,
   isLoadingAttendance,
   isLoadingAnnualLeave,
@@ -131,7 +129,7 @@ const Attendance: React.FC<AttendanceProps> = ({
   futureLeaveRecords,
   userData,
   onAttendanceUpdated,
-}) => {
+}, ref) => {
   const [selectedWeek, setSelectedWeek] = useState<'current' | 'next'>('current');
   const [localAttendance, setLocalAttendance] = useState<{
     [weekStart: string]: { [initials: string]: string };
@@ -215,7 +213,7 @@ const Attendance: React.FC<AttendanceProps> = ({
       initialAttendance[rec.Week_Start][rec.Initials] = rec.Attendance_Days?.trim() || '';
     });
     setLocalAttendance(initialAttendance);
-    console.log('Initial localAttendance:', initialAttendance); // Debug log
+    console.log('Initial localAttendance:', initialAttendance);
   }, [attendanceRecords, teamData]);
 
   useEffect(() => {
@@ -262,13 +260,13 @@ const Attendance: React.FC<AttendanceProps> = ({
 
     const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
     setLocalAttendance((prev) => {
-      const weekData = { ...prev[weekStart] }; // Deep copy to avoid mutation
+      const weekData = { ...prev[weekStart] };
       const currentDays = weekData[personInitials] ? weekData[personInitials].split(',').map((d) => d.trim()) : [];
       const updatedDays = currentDays.includes(day)
         ? currentDays.filter((d) => d !== day)
         : [...currentDays, day];
       weekData[personInitials] = updatedDays.join(',');
-      console.log(`Clicked ${day} for ${personInitials}: ${weekData[personInitials]}`); // Debug log
+      console.log(`Clicked ${day} for ${personInitials}: ${weekData[personInitials]}`);
       return {
         ...prev,
         [weekStart]: weekData,
@@ -342,7 +340,7 @@ const Attendance: React.FC<AttendanceProps> = ({
     status: 'in' | 'wfh' | 'out';
     highlight?: boolean;
     editable?: boolean;
-    proximity?: number; // 0 to 1, where 1 is closest
+    proximity?: number;
   }> = ({ status, highlight = false, editable = false, proximity = 0 }) => {
     let iconName = 'Home';
     if (status === 'in') iconName = 'Accept';
@@ -562,9 +560,9 @@ const Attendance: React.FC<AttendanceProps> = ({
       collapseTimeoutRef.current = setTimeout(() => {
         setIsTableExpanded(false);
         setMousePosition(null);
-      }, 1000); // 1-second delay
+      }, 1000);
     } else {
-      setMousePosition(null); // Clear hover effect for "Next Week" without collapsing
+      setMousePosition(null);
     }
   };
 
@@ -589,6 +587,23 @@ const Attendance: React.FC<AttendanceProps> = ({
     const proximity = Math.max(0, 1 - distance / maxDistance);
     return proximity;
   };
+
+  // Expose methods to the parent component via ref
+  useImperativeHandle(ref, () => ({
+    focusTable: () => {
+      if (tableRef.current) {
+        tableRef.current.scrollIntoView({ behavior: 'smooth' });
+        // Expand the table if it's not already expanded
+        if (!isTableExpanded) {
+          setIsTableExpanded(true);
+        }
+      }
+    },
+    setWeek: (week: 'current' | 'next') => {
+      setSelectedWeek(week);
+      setIsTableExpanded(true); // Ensure table is expanded when switching weeks
+    },
+  }));
 
   return (
     <CollapsibleSection title="Attendance">
@@ -726,7 +741,7 @@ const Attendance: React.FC<AttendanceProps> = ({
       </div>
     </CollapsibleSection>
   );
-};
+});
 
 function getISOWeek(date: Date): number {
   const d = new Date(date);

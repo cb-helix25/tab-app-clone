@@ -5,45 +5,16 @@ import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 
-// Define button styles for the "Go To" arrow with explicit typing
-const goToButtonStyles = (isDarkMode: boolean): IButtonStyles => ({
-  root: {
-    position: 'absolute' as const,
-    bottom: '10px',
-    right: '10px',
-    color: isDarkMode ? '#fff' : colours.highlight,
-    backgroundColor: 'transparent',
-    border: 'none',
-    height: '24px',
-    width: '24px',
-    padding: '0',
-    selectors: {
-      ':hover': {
-        backgroundColor: colours.cta,
-        color: '#ffffff',
-      },
-      ':focus': {
-        backgroundColor: colours.cta,
-        color: '#ffffff',
-      },
-    },
-  },
-  icon: {
-    fontSize: '16px',
-    lineHeight: '24px',
-  },
-});
-
 interface Report {
   title: string;
   description: string;
   path: string;
-  icon: string; // Fluent UI icon name
+  icon: string;
 }
 
 interface ReportCardProps {
   report: Report;
-  onGoTo: (path: string) => void;
+  onGoTo: (title: string) => void;
   animationDelay?: number;
 }
 
@@ -77,7 +48,7 @@ const contentStyle = (isDarkMode: boolean) =>
     display: 'flex',
     flexDirection: 'column',
     gap: '5px',
-    zIndex: 2, // Ensure content is above backdrop
+    zIndex: 2,
   });
 
 const titleRowStyle = (isDarkMode: boolean) =>
@@ -101,87 +72,112 @@ const descriptionStyle = mergeStyles({
   margin: '0',
 });
 
-const ReportCard: React.FC<ReportCardProps> = React.memo(
-  ({ report, onGoTo, animationDelay = 0 }) => {
-    const { isDarkMode } = useTheme();
+const ReportCard: React.FC<ReportCardProps> = React.memo(({ report, onGoTo, animationDelay = 0 }) => {
+  const { isDarkMode } = useTheme();
 
-    return (
-      <TooltipHost content={`Go to ${report.title}`}>
-        <div
-          className={`reportCard ${cardStyle(isDarkMode)}`}
-          style={{ '--animation-delay': `${animationDelay}s` } as React.CSSProperties}
-          onClick={() => onGoTo(report.path)}
-          role="button"
-          tabIndex={0}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              onGoTo(report.path);
-            }
+  return (
+    <TooltipHost content={`Go to ${report.title}`}>
+      <div
+        className={`reportCard ${cardStyle(isDarkMode)}`}
+        style={{ '--animation-delay': `${animationDelay}s` } as React.CSSProperties}
+        onClick={() => onGoTo(report.title)} // Use title to toggle the report
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            onGoTo(report.title);
+          }
+        }}
+        aria-label={`Go to ${report.title}`}
+      >
+        <i
+          className={`ms-Icon ms-Icon--${report.icon} backdropIcon`}
+          style={{
+            fontSize: '100px',
+            color: isDarkMode ? '#fff' : colours.highlight,
+            opacity: 0.1,
           }}
-          aria-label={`Go to ${report.title}`}
-        >
-          {/* Backdrop Icon */}
-          <i
-            className={`ms-Icon ms-Icon--${report.icon} backdropIcon`}
-            style={{
-              fontSize: '100px',
-              color: isDarkMode ? '#fff' : colours.highlight,
-              opacity: 0.1,
-            }}
-          />
+        />
 
-          <div className={contentStyle(isDarkMode)}>
-            <div className={titleRowStyle(isDarkMode)}>
-              <i
-                className={`ms-Icon ms-Icon--${report.icon}`}
-                style={{ fontSize: '32px', color: colours.highlight }}
-              />
-              <Text className={titleStyle}>{report.title}</Text>
-            </div>
-            <Text className={descriptionStyle}>{report.description}</Text>
-          </div>
-
-          <TooltipHost content={`Go to ${report.title}`}>
-            <IconButton
-              iconProps={{ iconName: 'ChevronRight' }}
-              title="Go To"
-              ariaLabel="Go To"
-              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                e.stopPropagation();
-                onGoTo(report.path);
-              }}
-              styles={goToButtonStyles(isDarkMode)}
+        <div className={contentStyle(isDarkMode)}>
+          <div className={titleRowStyle(isDarkMode)}>
+            <i
+              className={`ms-Icon ms-Icon--${report.icon}`}
+              style={{ fontSize: '32px', color: colours.highlight }}
             />
-          </TooltipHost>
-
-          <style>{`
-            .reportCard {
-              animation: fadeIn 0.5s ease-in-out;
-              animation-delay: var(--animation-delay, 0s);
-              animation-fill-mode: both;
-            }
-
-            .backdropIcon {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              width: 100px;
-              height: 100px;
-              opacity: 0.1;
-              z-index: 1;
-              pointer-events: none;
-              transition: opacity 0.3s ease;
-            }
-
-            .reportCard:hover .backdropIcon {
-              opacity: 0.2;
-            }
-          `}</style>
+            <Text className={titleStyle}>{report.title}</Text>
+          </div>
+          <Text className={descriptionStyle}>{report.description}</Text>
         </div>
-      </TooltipHost>
-    );
-  }
-);
+
+        <TooltipHost content={`Go to ${report.title}`}>
+          <IconButton
+            iconProps={{ iconName: 'ChevronRight' }}
+            title="Go To"
+            ariaLabel="Go To"
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.stopPropagation();
+              onGoTo(report.title);
+            }}
+            styles={goToButtonStyles(isDarkMode)}
+          />
+        </TooltipHost>
+
+        <style>{`
+          .reportCard {
+            animation: fadeIn 0.5s ease-in-out;
+            animation-delay: var(--animation-delay, 0s);
+            animation-fill-mode: both;
+          }
+
+          .backdropIcon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            opacity: 0.1;
+            z-index: 1;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+          }
+
+          .reportCard:hover .backdropIcon {
+            opacity: 0.2;
+          }
+        `}</style>
+      </div>
+    </TooltipHost>
+  );
+});
+
+const goToButtonStyles = (isDarkMode: boolean): IButtonStyles => ({
+  root: {
+    position: 'absolute' as const,
+    bottom: '10px',
+    right: '10px',
+    color: isDarkMode ? '#fff' : colours.highlight,
+    backgroundColor: 'transparent',
+    border: 'none',
+    height: '24px',
+    width: '24px',
+    padding: '0',
+    selectors: {
+      ':hover': {
+        backgroundColor: colours.cta,
+        color: '#ffffff',
+      },
+      ':focus': {
+        backgroundColor: colours.cta,
+        color: '#ffffff',
+      },
+    },
+  },
+  icon: {
+    fontSize: '16px',
+    lineHeight: '24px',
+  },
+});
 
 export default ReportCard;

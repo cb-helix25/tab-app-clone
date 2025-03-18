@@ -700,6 +700,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   // ADDED: Store user initials so they don't reset on remount
   const storedUserInitials = useRef<string | null>(null); // ADDED
+  const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null); // Add this line
 
   // State declarations...
   const [greeting, setGreeting] = useState<string>('');
@@ -1972,9 +1973,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     switch (titleText) {
       case "Confirm Attendance":
       case "Update Attendance":
-        // The same form
-        content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="109" />;
-        break;
+        if (attendanceRef.current) {
+          const now = new Date();
+          const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
+          // Set the week based on whether it's Thursday after midday
+          attendanceRef.current.setWeek(isThursdayAfterMidday ? 'next' : 'current');
+          attendanceRef.current.focusTable();
+        }
+        return; // Exit early, no panel needed
       case 'Create a Task':
         content = <Tasking />;
         break;
@@ -2004,16 +2010,16 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           />
         );
         break;
-        case 'Book Space':
-          content = (
-            <BookSpaceForm 
-              feeEarner={userData[0].Initials} 
-              onCancel={() => setIsBespokePanelOpen(false)}
-              futureBookings={futureBookings} // Pass your fetched future bookings here
-            />
-          );
-          break;
-        default:
+      case 'Book Space':
+        content = (
+          <BookSpaceForm 
+            feeEarner={userData[0].Initials} 
+            onCancel={() => setIsBespokePanelOpen(false)}
+            futureBookings={futureBookings}
+          />
+        );
+        break;
+      default:
         content = <div>No form available.</div>;
         break;
     }
@@ -2021,7 +2027,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     setBespokePanelContent(content);
     setBespokePanelTitle(titleText);
     setIsBespokePanelOpen(true);
-  }   
+  }
 
   let normalQuickActions = quickActions
     .filter((action) => {
@@ -2596,12 +2602,13 @@ const conversionRate = enquiriesMonthToDate
       )}
 
       <Attendance
+        ref={attendanceRef}
         isDarkMode={isDarkMode}
         isLoadingAttendance={isLoadingAttendance}
         isLoadingAnnualLeave={isLoadingAnnualLeave}
         attendanceError={attendanceError}
         annualLeaveError={annualLeaveError}
-        attendanceRecords={transformedAttendanceRecords} // Changed to transformed data
+        attendanceRecords={transformedAttendanceRecords}
         teamData={transformedTeamData}
         annualLeaveRecords={annualLeaveRecords}
         futureLeaveRecords={futureLeaveRecords}

@@ -13,21 +13,26 @@ import * as microsoftTeams from '@microsoft/teams-js';
 import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import ReportCard from './ReportCard';
 import HomePreview from './HomePreview';
+import ManagementDashboard from './ManagementDashboard';
 import './ReportingHome.css';
 
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
 
 const DATASETS = [
-  { key: 'userData', name: 'User Data', type: 'UserData[]' },
-  { key: 'teamData', name: 'Team Data', type: 'TeamData[]' },
-  { key: 'enquiries', name: 'Enquiries', type: 'Enquiry[]' },
-  { key: 'allMatters', name: 'All Matters', type: 'Matter[]' },
-  { key: 'poidData', name: 'POID 6 Years', type: 'POID[]' },
-  { key: 'transactions', name: 'Transactions', type: 'Transaction[]' },
-  { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse' },
-  { key: 'wip', name: 'WIP', type: 'any' },
-  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]' },
+  { key: 'userData', name: 'User Data', type: 'UserData[]', duration: 1000 }, // 1 second
+  { key: 'teamData', name: 'Team Data', type: 'TeamData[]', duration: 1000 }, // 1 second
+  { key: 'enquiries', name: 'Enquiries', type: 'Enquiry[]', duration: 3000 }, // 3 seconds
+  { key: 'allMatters', name: 'All Matters', type: 'Matter[]', duration: 2500 }, // 2.5 seconds
+  { key: 'poidData', name: 'POID 6 Years', type: 'POID[]', duration: 1500 }, // 1.5 seconds
+  { key: 'transactions', name: 'Transactions', type: 'Transaction[]', duration: 2000 }, // 2 seconds
+  { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 }, // 3 seconds
+  { key: 'wip', name: 'WIP', type: 'any', duration: 2000 }, // 2 seconds
+  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 }, // 2 seconds
 ] as const;
+
+const TOTAL_FETCH_DURATION = 20000; // 20 seconds total
+const DATASET_FETCH_DURATION = 15000; // 15 seconds for datasets
+const WRAPPING_UP_DURATION = TOTAL_FETCH_DURATION - DATASET_FETCH_DURATION; // 5 seconds
 
 let cachedData: { [key: string]: any } = {
   userData: null,
@@ -48,6 +53,7 @@ interface ReportingHomeProps {
 }
 
 const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, teamData }) => {
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>(DATASETS.map((d) => d.key));
   const [fetchedUserData, setFetchedUserData] = useState<UserData[] | null>(cachedData.userData);
@@ -62,6 +68,10 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [fetchStatus, setFetchStatus] = useState<{ [key: string]: 'idle' | 'fetching' | 'success' | 'error' }>(
     Object.fromEntries(DATASETS.map(d => [d.key, 'idle']))
   );
+  const [fetchProgress, setFetchProgress] = useState<{ [key: string]: number }>(
+    Object.fromEntries(DATASETS.map(d => [d.key, 0]))
+  );
+  const [isWrappingUp, setIsWrappingUp] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [entraId, setEntraId] = useState<string | null>(null);
   const [previewDataset, setPreviewDataset] = useState<string | null>(null);
@@ -70,6 +80,21 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const decisionButtonRootStyles = sharedDecisionButtonStyles.root as React.CSSProperties;
   const defaultButtonRootStyles = sharedDefaultButtonStyles.root as React.CSSProperties;
+
+  const datePickerStyles: Partial<any> = {
+    root: { marginRight: 8, width: '100%' },
+    textField: {
+      width: '100%',
+      height: '40px',
+      borderRadius: '4px',
+      backgroundColor: colours.secondaryButtonBackground,
+      border: 'none',
+      padding: '6px 12px',
+      fontSize: '14px',
+      color: '#000000',
+      transition: 'background 0.3s ease, box-shadow 0.3s ease',
+    },
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -124,7 +149,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const fetchReportDatasets = async (datasets: string[]) => {
     setShowSelectionModal(false);
     datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'fetching' })));
+    datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     setError(null);
+    setIsWrappingUp(false);
 
     if (!entraId) {
       setError("Missing Entra ID. Cannot fetch data without user context.");
@@ -134,6 +161,66 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       return;
     }
 
+    // Simulate fetch progress with arbitrary durations
+    const simulateFetchProgress = async () => {
+      const completionPromises: Promise<void>[] = [];
+      const progressIntervals: NodeJS.Timeout[] = [];
+
+      // Start a progress simulation for each dataset
+      datasets.forEach(datasetKey => {
+        const dataset = DATASETS.find(d => d.key === datasetKey);
+        if (!dataset) return;
+
+        const duration = dataset.duration;
+
+        // Promise to mark dataset as completed after its duration
+        const completionPromise = new Promise<void>(resolve => {
+          setTimeout(() => {
+            setFetchStatus(prev => ({ ...prev, [datasetKey]: 'success' }));
+            setFetchProgress(prev => ({ ...prev, [datasetKey]: 100 }));
+            resolve();
+          }, duration);
+        });
+        completionPromises.push(completionPromise);
+
+        // Simulate random progress updates
+        const interval = setInterval(() => {
+          setFetchProgress(prev => {
+            const currentProgress = prev[datasetKey];
+            if (currentProgress >= 100) {
+              clearInterval(interval);
+              return prev;
+            }
+            // Randomly increase progress by 1-15%, ensuring it doesn't exceed 100
+            const increase = Math.random() * 15 + 1;
+            const newProgress = Math.min(currentProgress + increase, 99); // Cap at 99 until completion
+            return { ...prev, [datasetKey]: newProgress };
+          });
+        }, 200); // Update every 200ms
+        progressIntervals.push(interval);
+      });
+
+      // Wait for all datasets to "complete"
+      await Promise.all(completionPromises);
+
+      // Clear all progress intervals
+      progressIntervals.forEach(interval => clearInterval(interval));
+
+      // After all datasets are "completed", show "Wrapping things up"
+      setIsWrappingUp(true);
+
+      // Ensure at least DATASET_FETCH_DURATION has passed before wrapping up
+      const elapsed = Date.now() - startTime;
+      const remainingDatasetTime = DATASET_FETCH_DURATION - elapsed;
+      if (remainingDatasetTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingDatasetTime));
+      }
+    };
+
+    const startTime = Date.now();
+    const progressPromise = simulateFetchProgress();
+
+    // Perform the actual fetch
     try {
       const response = await fetch(
         `${API_BASE_URL}/${process.env.REACT_APP_GENERATE_REPORT_DATASET_PATH}?code=${process.env.REACT_APP_GENERATE_REPORT_DATASET_CODE}`,
@@ -151,56 +238,38 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       if (datasets.includes('userData') && data.userData) {
         cachedData.userData = data.userData;
         setFetchedUserData(cachedData.userData);
-        setFetchStatus(prev => ({ ...prev, userData: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, userData: 'idle' })), 2000);
       }
       if (datasets.includes('teamData') && data.teamData) {
         cachedData.teamData = data.teamData;
         setFetchedTeamData(cachedData.teamData);
-        setFetchStatus(prev => ({ ...prev, teamData: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, teamData: 'idle' })), 2000);
       }
       if (datasets.includes('enquiries') && data.enquiries) {
         cachedData.enquiries = data.enquiries;
         setEnquiries(cachedData.enquiries);
-        setFetchStatus(prev => ({ ...prev, enquiries: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, enquiries: 'idle' })), 2000);
       }
       if (datasets.includes('allMatters') && data.allMatters) {
         cachedData.allMatters = data.allMatters;
         setAllMatters(cachedData.allMatters);
-        setFetchStatus(prev => ({ ...prev, allMatters: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, allMatters: 'idle' })), 2000);
       }
       if (datasets.includes('poidData') && data.poidData) {
         cachedData.poidData = data.poidData;
         setPoidData(cachedData.poidData);
-        setFetchStatus(prev => ({ ...prev, poidData: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, poidData: 'idle' })), 2000);
       }
       if (datasets.includes('transactions') && data.transactions) {
         cachedData.transactions = data.transactions;
         setTransactions(cachedData.transactions);
-        setFetchStatus(prev => ({ ...prev, transactions: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, transactions: 'idle' })), 2000);
       }
       if (datasets.includes('outstandingBalances') && data.outstandingBalances) {
         cachedData.outstandingBalances = data.outstandingBalances;
         setOutstandingBalances(cachedData.outstandingBalances);
-        setFetchStatus(prev => ({ ...prev, outstandingBalances: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, outstandingBalances: 'idle' })), 2000);
       }
       if (datasets.includes('wip') && data.wip) {
         cachedData.wip = data.wip;
         setWip(cachedData.wip);
-        setFetchStatus(prev => ({ ...prev, wip: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, wip: 'idle' })), 2000);
       }
       if (datasets.includes('recoveredFees') && data.recoveredFees) {
         cachedData.recoveredFees = data.recoveredFees;
         setRecoveredFees(cachedData.recoveredFees);
-        setFetchStatus(prev => ({ ...prev, recoveredFees: 'success' }));
-        setTimeout(() => setFetchStatus(prev => ({ ...prev, recoveredFees: 'idle' })), 2000);
       }
 
       DATASETS.forEach(d => {
@@ -210,11 +279,28 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       });
 
       if (!hasFetchedInitially) hasFetchedInitially = true;
+
+      // Wait for the simulated progress to complete "Wrapping things up"
+      await progressPromise;
+
+      // If fetch completes early, wait until TOTAL_FETCH_DURATION
+      const fetchDuration = Date.now() - startTime;
+      if (fetchDuration < TOTAL_FETCH_DURATION) {
+        const remainingTime = TOTAL_FETCH_DURATION - fetchDuration;
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+      // If fetch takes longer, "Wrapping things up" persists until completion (handled by awaiting the fetch)
+      setIsWrappingUp(false);
+      datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
+      datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
       console.log('Fetch error:', err);
+      await progressPromise; // Ensure progress simulation completes
+      setIsWrappingUp(false);
       setTimeout(() => datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' }))), 2000);
+      datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     }
   };
 
@@ -234,6 +320,14 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const togglePreview = (name: string) => {
     setPreviewDataset(previewDataset === name ? null : name);
+  };
+
+  const handleGoTo = (title: string) => {
+    if (title === 'Management Dashboard') {
+      setSelectedReport(title);
+    } else {
+      console.log('Report clicked:', title);
+    }
   };
 
   const getPreviewContent = (name: string) => {
@@ -305,6 +399,24 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     { name: 'Recovered Fees', available: !!recoveredFees, details: recoveredFees ? `${recoveredFees.length} record(s)` : 'Not fetched' },
   ];
 
+  if (selectedReport === 'Management Dashboard') {
+    return (
+      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
+        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
+          <span>← Back</span>
+        </div>
+        <ManagementDashboard
+          enquiries={enquiries}
+          allMatters={allMatters}
+          wip={wip}
+          recoveredFees={recoveredFees}
+          teamData={fetchedTeamData}
+          userData={fetchedUserData}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="reporting-home-container" style={{ backgroundColor: colours.light.background }}>
       <div className="disclaimer animate-disclaimer">
@@ -322,6 +434,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           <button
             className="decision-button"
             onClick={() => setPreviewDataset(null)}
+            style={decisionButtonRootStyles}
           >
             Close
           </button>
@@ -362,12 +475,14 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
               className="decision-button"
               onClick={() => fetchReportDatasets(selectedDatasets)}
               disabled={selectedDatasets.length === 0 || Object.values(fetchStatus).some(status => status === 'fetching')}
+              style={decisionButtonRootStyles}
             >
               Refresh
             </button>
             <button
               className="default-button"
               onClick={() => setShowSelectionModal(false)}
+              style={defaultButtonRootStyles}
             >
               Cancel
             </button>
@@ -375,7 +490,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         </div>
       )}
 
-      {Object.values(fetchStatus).some(status => status === 'fetching' || status === 'success' || status === 'error') && (
+      {(Object.values(fetchStatus).some(status => status === 'fetching' || status === 'success' || status === 'error') || isWrappingUp) && (
         <div className="fetch-status-overlay" style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           background: 'rgba(255, 255, 255, 0.95)', padding: '20px', borderRadius: '12px', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
@@ -383,7 +498,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         }}>
           <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>Fetching Data</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-            {DATASETS.map((dataset, index) => (
+            {DATASETS.map((dataset) => (
               <div
                 key={dataset.key}
                 className="fetch-status-item"
@@ -394,7 +509,6 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                   borderRadius: '6px',
                   textAlign: 'center',
                   display: fetchStatus[dataset.key] === 'idle' ? 'none' : 'block',
-                  animation: fetchStatus[dataset.key] === 'success' || fetchStatus[dataset.key] === 'error' ? `statusFade 0.5s ease-in ${index * 0.1}s forwards` : 'none',
                 }}
               >
                 <span
@@ -410,10 +524,40 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
                   }}
                 />
                 <span style={{ fontSize: '14px', color: '#333' }}>
-                  {fetchStatus[dataset.key] === 'fetching' ? `Fetching ${dataset.name}` : fetchStatus[dataset.key] === 'success' ? `${dataset.name} Updated` : `${dataset.name} Failed`}
+                  {fetchStatus[dataset.key] === 'fetching'
+                    ? `Fetching ${dataset.name} (${Math.round(fetchProgress[dataset.key])}%)`
+                    : fetchStatus[dataset.key] === 'success'
+                      ? `${dataset.name} Updated`
+                      : `${dataset.name} Failed`}
                 </span>
               </div>
             ))}
+            {isWrappingUp && (
+              <div
+                className="fetch-status-item"
+                style={{
+                  flex: '1 1 180px',
+                  padding: '10px',
+                  background: '#f9f9f9',
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                }}
+              >
+                <span
+                  className="status-indicator fetching"
+                  style={{
+                    display: 'inline-block',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    marginRight: '8px',
+                    background: '#ccc',
+                    animation: 'pulse 1s infinite',
+                  }}
+                />
+                <span style={{ fontSize: '14px', color: '#333' }}>Wrapping things up</span>
+              </div>
+            )}
           </div>
           {error && <p style={{ color: '#dc3545', fontSize: '14px', marginTop: '10px' }}>{error}</p>}
         </div>
@@ -437,20 +581,17 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
         <section className="report-section" style={{ marginBottom: '40px' }}>
           <h2 style={{ fontSize: '20px', color: '#333', margin: '0 0 20px' }}>Reports</h2>
-          <div
-            className="report-cards-container"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '20px',
-              width: '100%',
-            }}
-          >
+          <div className="report-cards-container" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '20px',
+            width: '100%',
+          }}>
             {reportSections.map((report, index) => (
               <ReportCard
                 key={report.title}
                 report={report}
-                onGoTo={(path: string) => console.log(`Navigating to ${path}`)}
+                onGoTo={handleGoTo}
                 animationDelay={index * 0.15}
               />
             ))}
@@ -463,19 +604,17 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
             <button
               className="decision-button"
               onClick={() => setIsDataSectionOpen(!isDataSectionOpen)}
+              style={decisionButtonRootStyles}
             >
               {isDataSectionOpen ? 'Collapse' : 'Expand'}
             </button>
           </div>
-          <div
-            className="data-access-grid"
-            style={{
-              display: isDataSectionOpen ? 'flex' : 'none',
-              flexWrap: 'wrap',
-              gap: '20px',
-              transition: 'height 0.3s ease',
-            }}
-          >
+          <div className="data-access-grid" style={{
+            display: isDataSectionOpen ? 'flex' : 'none',
+            flexWrap: 'wrap',
+            gap: '20px',
+            transition: 'height 0.3s ease',
+          }}>
             {availableData.map((data, index) => (
               <div
                 key={data.name}
@@ -511,6 +650,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
             <button
               className="decision-button"
               onClick={() => setShowSelectionModal(true)}
+              style={decisionButtonRootStyles}
             >
               Refresh Data
             </button>
