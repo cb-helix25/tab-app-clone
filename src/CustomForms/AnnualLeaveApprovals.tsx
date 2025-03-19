@@ -28,8 +28,8 @@ export interface ApprovalEntry {
   status: string;
   days_taken?: number;
   leave_type?: string;
-  hearing_confirmation?: string;  // new field
-  hearing_details?: string;       // new field
+  hearing_confirmation?: string | boolean | null;  // Updated to match data
+  hearing_details?: string;                        // Kept as string | undefined
 }
 
 export interface TeamMember {
@@ -374,13 +374,15 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
               </Stack>
             </Stack>
 
-            {entry.hearing_confirmation && (
+            {entry.hearing_confirmation !== undefined && (
               <Stack tokens={{ childrenGap: 5 }}>
                 <Label className={labelStyleText}>Hearing Confirmation:</Label>
                 <Text className={valueStyleText}>
-                  {entry.hearing_confirmation.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+                  {entry.hearing_confirmation === true || (typeof entry.hearing_confirmation === 'string' && entry.hearing_confirmation.toLowerCase() === 'yes')
+                    ? 'There are no hearings during my absence'
+                    : 'There are hearings during my absence'}
                 </Text>
-                {entry.hearing_confirmation.toLowerCase() === 'no' && entry.hearing_details && (
+                {(entry.hearing_confirmation === false || entry.hearing_confirmation === null || (typeof entry.hearing_confirmation === 'string' && entry.hearing_confirmation.toLowerCase() === 'no')) && entry.hearing_details && (
                   <>
                     <Label className={labelStyleText}>Hearing Details:</Label>
                     <Text className={valueStyleText}>{entry.hearing_details}</Text>

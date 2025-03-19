@@ -16,6 +16,8 @@ interface AnnualLeaveRecord {
     rejection_notes: string | null;
     AOW?: string | null; // Added AOW field
     approvers?: string[]; // Added Approvers field
+    hearing_confirmation?: string | null;  // New field: expected "yes" or "no"
+    hearing_details?: string | null;       // New field: additional details if "no"
 }
 
 interface UserDetails {
@@ -164,7 +166,7 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
             annual_leave: enhancedAnnualLeave,
             future_leave: enhancedFutureLeave,
             user_details: enhancedUserDetails,
-            all_data: enhancedAllAnnualLeave   // NEW: Include all data from the table
+            all_data: enhancedAllAnnualLeave
         };
 
         context.log("Successfully constructed the response.");
@@ -191,12 +193,6 @@ app.http("getAnnualLeave", {
 
 // Implement the SQL query functions
 
-/**
- * Queries the team table to retrieve Initials and AOW.
- * @param config SQL connection configuration for helix-core-data.
- * @param context Invocation context for logging.
- * @returns A Map where key is Initials and value is AOW.
- */
 async function queryTeamDataFromSQL(config: any, context: InvocationContext): Promise<Map<string, string | null>> {
     context.log("Starting SQL query to fetch team data (Initials and AOW).");
 
@@ -246,11 +242,6 @@ async function queryTeamDataFromSQL(config: any, context: InvocationContext): Pr
     });
 }
 
-/**
- * Determines approvers based on AOW.
- * @param aow AOW string.
- * @returns Array of approvers.
- */
 function determineApprovers(aow: string): string[] {
     const aowList = aow.toLowerCase().split(',').map(item => item.trim());
     let approver = 'AC'; // Default approver
@@ -259,15 +250,9 @@ function determineApprovers(aow: string): string[] {
         approver = 'JW';
     }
 
-    return ['LZ', approver]; // Always include LZ
+    return ['LZ', approver];
 }
 
-/**
- * Queries the annualLeave table to retrieve current active leave entries.
- * @param config SQL connection configuration for helix-project-data.
- * @param context Invocation context for logging.
- * @returns An array of AnnualLeaveRecord.
- */
 async function queryAnnualLeave(config: any, context: InvocationContext): Promise<AnnualLeaveRecord[]> {
     context.log("Starting SQL query to fetch annual leave data.");
 
@@ -297,7 +282,9 @@ async function queryAnnualLeave(config: any, context: InvocationContext): Promis
                     [status], 
                     [days_taken], 
                     [leave_type],
-                    [rejection_notes]
+                    [rejection_notes],
+                    [hearing_confirmation],
+                    [hearing_details]
                 FROM [dbo].[annualLeave]
                 WHERE 
                     @Today BETWEEN [start_date] AND [end_date];
@@ -329,6 +316,8 @@ async function queryAnnualLeave(config: any, context: InvocationContext): Promis
                     days_taken: entry.days_taken || 0,
                     leave_type: entry.leave_type || null,
                     rejection_notes: entry.rejection_notes || null,
+                    hearing_confirmation: entry.hearing_confirmation || null,
+                    hearing_details: entry.hearing_details || null,
                 });
             });
 
@@ -345,12 +334,6 @@ async function queryAnnualLeave(config: any, context: InvocationContext): Promis
     });
 }
 
-/**
- * Queries the annualLeave table to retrieve future leave entries.
- * @param config SQL connection configuration for helix-project-data.
- * @param context Invocation context for logging.
- * @returns An array of AnnualLeaveRecord.
- */
 async function queryFutureLeave(config: any, context: InvocationContext): Promise<AnnualLeaveRecord[]> {
     context.log("Starting SQL query to fetch future leave data.");
 
@@ -380,7 +363,9 @@ async function queryFutureLeave(config: any, context: InvocationContext): Promis
                     [status], 
                     [days_taken], 
                     [leave_type],
-                    [rejection_notes]
+                    [rejection_notes],
+                    [hearing_confirmation],
+                    [hearing_details]
                 FROM [dbo].[annualLeave]
                 WHERE 
                     [start_date] >= @Today;
@@ -412,6 +397,8 @@ async function queryFutureLeave(config: any, context: InvocationContext): Promis
                     days_taken: entry.days_taken || 0,
                     leave_type: entry.leave_type || null,
                     rejection_notes: entry.rejection_notes || null,
+                    hearing_confirmation: entry.hearing_confirmation || null,
+                    hearing_details: entry.hearing_details || null,
                 });
             });
 
@@ -428,12 +415,6 @@ async function queryFutureLeave(config: any, context: InvocationContext): Promis
     });
 }
 
-/**
- * NEW: Queries the annualLeave table to retrieve all records without filtering.
- * @param config SQL connection configuration for helix-project-data.
- * @param context Invocation context for logging.
- * @returns An array of AnnualLeaveRecord.
- */
 async function queryAllAnnualLeave(config: any, context: InvocationContext): Promise<AnnualLeaveRecord[]> {
     context.log("Starting SQL query to fetch all annual leave data.");
     return new Promise<AnnualLeaveRecord[]>((resolve, reject) => {
@@ -461,7 +442,9 @@ async function queryAllAnnualLeave(config: any, context: InvocationContext): Pro
                     [status], 
                     [days_taken], 
                     [leave_type],
-                    [rejection_notes]
+                    [rejection_notes],
+                    [hearing_confirmation],
+                    [hearing_details]
                 FROM [dbo].[annualLeave];
             `;
 
@@ -491,6 +474,8 @@ async function queryAllAnnualLeave(config: any, context: InvocationContext): Pro
                     days_taken: entry.days_taken || 0,
                     leave_type: entry.leave_type || null,
                     rejection_notes: entry.rejection_notes || null,
+                    hearing_confirmation: entry.hearing_confirmation || null,
+                    hearing_details: entry.hearing_details || null,
                 });
             });
 
@@ -506,14 +491,6 @@ async function queryAllAnnualLeave(config: any, context: InvocationContext): Pro
     });
 }
 
-/**
- * Queries the annualLeave table to retrieve user-specific leave entries within the fiscal year.
- * @param initials User's initials.
- * @param config SQL connection configuration for helix-project-data.
- * @param context Invocation context for logging.
- * @param teamAowMap Map of team initials to AOW.
- * @returns UserDetails object containing leave entries and totals.
- */
 async function queryUserAnnualLeave(initials: string, config: any, context: InvocationContext, teamAowMap: Map<string, string | null>): Promise<UserDetails> {
     context.log("Starting SQL query to fetch user-specific annual leave data.");
 
@@ -535,13 +512,13 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
             // Compute fiscal year boundaries (April 1 - March 31)
             const today = new Date();
             let fiscalStart: Date, fiscalEnd: Date;
-            const currentMonth = today.getMonth(); // 0-indexed (0 = January)
-            if (currentMonth < 3) { // January, February, March
-                fiscalStart = new Date(today.getFullYear() - 1, 3, 1); // April 1 of previous year
-                fiscalEnd = new Date(today.getFullYear(), 2, 31); // March 31 of current year
+            const currentMonth = today.getMonth();
+            if (currentMonth < 3) {
+                fiscalStart = new Date(today.getFullYear() - 1, 3, 1);
+                fiscalEnd = new Date(today.getFullYear(), 2, 31);
             } else {
-                fiscalStart = new Date(today.getFullYear(), 3, 1); // April 1 of current year
-                fiscalEnd = new Date(today.getFullYear() + 1, 2, 31); // March 31 of next year
+                fiscalStart = new Date(today.getFullYear(), 3, 1);
+                fiscalEnd = new Date(today.getFullYear() + 1, 2, 31);
             }
 
             const fiscalStartStr = formatDate(fiscalStart);
@@ -558,7 +535,9 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                     [status],
                     [days_taken],
                     [leave_type],
-                    [rejection_notes]
+                    [rejection_notes],
+                    [hearing_confirmation],
+                    [hearing_details]
                 FROM [dbo].[annualLeave]
                 WHERE [fe] = @Initials
                   AND [start_date] >= @FiscalStart
@@ -591,6 +570,8 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                     days_taken: entry.days_taken || 0,
                     leave_type: entry.leave_type || null,
                     rejection_notes: entry.rejection_notes || null,
+                    hearing_confirmation: entry.hearing_confirmation || null,
+                    hearing_details: entry.hearing_details || null,
                 });
             });
 
@@ -599,7 +580,7 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                 let total_standard = 0;
                 let total_unpaid = 0;
                 let total_purchase = 0;
-                let total_rejected = 0; // To track rejected leave days
+                let total_rejected = 0;
 
                 leaveEntries.forEach(entry => {
                     if (entry.leave_type && typeof entry.days_taken === "number") {
@@ -611,8 +592,6 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                         } else if (lt === "purchase") {
                             total_purchase += entry.days_taken;
                         }
-
-                        // Account for rejection notes if the leave was rejected
                         if (entry.status.toLowerCase() === "rejected" && entry.rejection_notes) {
                             total_rejected += entry.days_taken;
                         }

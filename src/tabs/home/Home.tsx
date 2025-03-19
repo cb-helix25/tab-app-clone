@@ -1037,11 +1037,11 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
                   end_date: rec.end_date,
                   reason: rec.reason,
                   status: rec.status,
-                  id: rec.request_id
-                    ? String(rec.request_id)
-                    : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
+                  id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
                   rejection_notes: rec.rejection_notes || undefined,
                   approvers: ensureLZInApprovers(rec.approvers),
+                  hearing_confirmation: rec.hearing_confirmation, // Add this
+                  hearing_details: rec.hearing_details || undefined, // Add this
                 })
               );
               cachedFutureLeaveRecords = mappedFutureLeave; // ADDED
@@ -1890,6 +1890,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             end_date: item.end_date,
             reason: item.reason,
             status: item.status,
+            hearing_confirmation: item.hearing_confirmation, // Add this
+            hearing_details: item.hearing_details,           // Add this
           }))}
           futureLeave={futureLeaveRecords.map((item) => ({
             id: item.id,
@@ -1898,13 +1900,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             end_date: item.end_date,
             reason: item.reason,
             status: item.status,
+            hearing_confirmation: item.hearing_confirmation, // Add this
+            hearing_details: item.hearing_details,           // Add this
           }))}
           onClose={() => setIsBespokePanelOpen(false)}
-          team={(teamData ?? []) as any} 
+          team={(teamData ?? []) as any}
           totals={annualLeaveTotals}
-          allLeaveEntries={annualLeaveAllData} // <-- Pass the full data here
+          allLeaveEntries={annualLeaveAllData}
         />
-
       );
       setBespokePanelTitle('Approve Annual Leave');
       setIsBespokePanelOpen(true);
