@@ -21,13 +21,15 @@ import HelixAvatar from '../assets/helix avatar.png';
 export interface ApprovalEntry {
   id: string;
   request_id?: number;
-  person: string; // e.g. "RC"
+  person: string;
   start_date: string;
   end_date: string;
   reason?: string;
-  status: string; // "booked", "requested", etc.
+  status: string;
   days_taken?: number;
-  leave_type?: string; // <-- add this line
+  leave_type?: string;
+  hearing_confirmation?: string;  // new field
+  hearing_details?: string;       // new field
 }
 
 export interface TeamMember {
@@ -371,6 +373,21 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
                 </Text>
               </Stack>
             </Stack>
+
+            {entry.hearing_confirmation && (
+              <Stack tokens={{ childrenGap: 5 }}>
+                <Label className={labelStyleText}>Hearing Confirmation:</Label>
+                <Text className={valueStyleText}>
+                  {entry.hearing_confirmation.toLowerCase() === 'yes' ? 'Yes' : 'No'}
+                </Text>
+                {entry.hearing_confirmation.toLowerCase() === 'no' && entry.hearing_details && (
+                  <>
+                    <Label className={labelStyleText}>Hearing Details:</Label>
+                    <Text className={valueStyleText}>{entry.hearing_details}</Text>
+                  </>
+                )}
+              </Stack>
+            )}
 
             {/* Summaries */}
             <Stack

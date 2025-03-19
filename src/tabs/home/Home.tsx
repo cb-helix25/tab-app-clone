@@ -104,6 +104,8 @@ interface AnnualLeaveRecord {
   id: string;
   rejection_notes?: string;
   approvers?: string[];
+  hearing_confirmation?: string; // "yes" or "no"
+  hearing_details?: string;      // Additional details when hearing_confirmation is "no"
 }
 
 interface HomeProps {
@@ -1017,11 +1019,11 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
                 end_date: rec.end_date,
                 reason: rec.reason,
                 status: rec.status,
-                id: rec.request_id
-                  ? String(rec.request_id)
-                  : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
+                id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
                 rejection_notes: rec.rejection_notes || undefined,
                 approvers: ensureLZInApprovers(rec.approvers),
+                hearing_confirmation: rec.hearing_confirmation, // new field
+                hearing_details: rec.hearing_details || undefined, // new field
               })
             );
             cachedAnnualLeave = mappedAnnualLeave;
@@ -1667,7 +1669,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-          { title: 'Outstanding Client Balances', isMoneyOnly: true, money: null, prevMoney: 0 },
+          { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null, prevMoney: 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
@@ -1758,7 +1760,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         prevMoney: 0,
       },
       {
-        title: 'Outstanding Client Balances',
+        title: 'Outstanding Office Balances',
         isMoneyOnly: true,
         money: outstandingTotal,
         prevMoney: 0,
@@ -2360,7 +2362,7 @@ const conversionRate = enquiriesMonthToDate
               }}
             >
               {timeMetrics.slice(3).map((metric, index) => {
-                if (metric.title === 'Outstanding Client Balances') {
+                if (metric.title === 'Outstanding Office Balances') {
                   return (
                     <div
                       key={metric.title}

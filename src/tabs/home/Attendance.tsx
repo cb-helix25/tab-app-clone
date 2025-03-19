@@ -224,13 +224,12 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     }
   }, [selectedWeek]);
 
+  // Updated unsaved changes logic to include cases where no record exists
   const hasUnsavedChanges = useMemo(() => {
     return [currentWeek, nextWeek].some((week) => {
-      const persons = attendanceRecords.filter((rec) => rec.Week_Start === week.start);
-      return persons.some((rec) => {
-        const localDays = localAttendance[week.start]?.[rec.Initials] || '';
-        return localDays !== (rec.Attendance_Days || '') && rec.Initials === userInitials;
-      });
+      const recordedDays = attendanceRecords.find((rec) => rec.Initials === userInitials && rec.Week_Start === week.start)?.Attendance_Days || '';
+      const localDays = localAttendance[week.start]?.[userInitials] || '';
+      return localDays !== recordedDays;
     });
   }, [localAttendance, attendanceRecords, userInitials]);
 
@@ -588,12 +587,10 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     return proximity;
   };
 
-  // Expose methods to the parent component via ref
   useImperativeHandle(ref, () => ({
     focusTable: () => {
       if (tableRef.current) {
         tableRef.current.scrollIntoView({ behavior: 'smooth' });
-        // Expand the table if it's not already expanded
         if (!isTableExpanded) {
           setIsTableExpanded(true);
         }
@@ -601,7 +598,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     },
     setWeek: (week: 'current' | 'next') => {
       setSelectedWeek(week);
-      setIsTableExpanded(true); // Ensure table is expanded when switching weeks
+      setIsTableExpanded(true);
     },
   }));
 

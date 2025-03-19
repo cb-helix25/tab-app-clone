@@ -6,7 +6,8 @@ import {
   Stack,
   IDatePickerStyles,
 } from '@fluentui/react';
-import { Enquiry, Matter, TeamData, UserData } from '../../app/functionality/types';
+import { Enquiry, Matter, TeamData, UserData, POID } from '../../app/functionality/types';
+import MetricCard from './MetricCard';
 import './ManagementDashboard.css';
 
 interface RecoveredFee {
@@ -15,7 +16,8 @@ interface RecoveredFee {
 }
 
 interface WIP {
-  date: string;
+  created_at: string;
+  total?: number;
 }
 
 interface ManagementDashboardProps {
@@ -25,6 +27,7 @@ interface ManagementDashboardProps {
   recoveredFees?: RecoveredFee[] | null;
   teamData?: TeamData[] | null;
   userData?: UserData[] | null;
+  poidData?: POID[] | null;
 }
 
 interface TableRow {
@@ -40,6 +43,25 @@ interface TableRow {
   estTaskTime: string;
 }
 
+// Helper function to format hours as "Xh Ym"
+const formatHours = (hours: number): string => {
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}h ${m}m`;
+};
+
+// Helper function to format currency as £X, £X.Xk, or £X.XXk
+const formatCurrency = (amount: number): string => {
+  if (amount < 10000) {
+    return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  } else if (amount < 100000) {
+    return `£${(amount / 1000).toFixed(1)}k`;
+  } else {
+    return `£${(amount / 1000).toFixed(2)}k`;
+  }
+};
+
 const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   enquiries: propEnquiries,
   allMatters: propAllMatters,
@@ -47,6 +69,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   recoveredFees: propRecoveredFees,
   teamData: propTeamData,
   userData: propUserData,
+  poidData: propPoidData,
 }) => {
   const enquiries = propEnquiries ?? null;
   const allMatters = propAllMatters ?? null;
@@ -54,19 +77,60 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const recoveredFees = propRecoveredFees ?? null;
   const teamData = propTeamData ?? null;
   const userData = propUserData ?? null;
+  const poidData = propPoidData ?? null;
 
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date('2024-09-01'));
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date('2024-12-31'));
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date('2025-03-01'));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date('2025-03-31'));
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [selectedDateRange, setSelectedDateRange] = useState<string | null>(null);
   const [isDatePickerUsed, setIsDatePickerUsed] = useState<boolean>(false);
 
   useEffect(() => {
-    // Clear selected date range when date pickers are used manually
     if (isDatePickerUsed) {
       setSelectedDateRange(null);
     }
   }, [startDate, endDate, isDatePickerUsed]);
+
+  // Calculate card metrics based on date range
+  const totalWipHours = wip?.filter((w) => {
+    const createdAtDate = new Date(w.created_at);
+    return createdAtDate >= (startDate || new Date()) && createdAtDate <= (endDate || new Date());
+  }).reduce((sum, w) => sum + ((w as any).quantity_in_hours || 0), 0) || 0;
+
+  const totalWipPounds = wip?.filter((w) => {
+    const createdAtDate = new Date(w.created_at);
+    return createdAtDate >= (startDate || new Date()) && createdAtDate <= (endDate || new Date());
+  }).reduce((sum, w) => sum + (w.total || 0), 0) || 0;
+
+  const totalCollected = recoveredFees
+    ?.filter((rf) => {
+      const paymentDate = new Date(rf.payment_date);
+      return paymentDate >= (startDate || new Date()) && paymentDate <= (endDate || new Date());
+    })
+    .reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
+
+  const totalEnquiries = enquiries?.filter((e) => {
+    const touchpointDate = new Date(e.Touchpoint_Date as string);
+    return touchpointDate >= (startDate || new Date()) && touchpointDate <= (endDate || new Date());
+  }).length || 0;
+
+  const totalMatters = allMatters?.filter((m) => {
+    const openDateStr = (m as any)["Open Date"];
+    const openDate = new Date(openDateStr);
+    const openDateOnly = new Date(openDate.getFullYear(), openDate.getMonth(), openDate.getDate());
+    const startDateOnly = startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) : new Date();
+    const endDateOnly = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) : new Date();
+    return openDateOnly >= startDateOnly && openDateOnly <= endDateOnly;
+  }).length || 0;
+
+  console.log('poidData:', poidData, 'startDate:', startDate, 'endDate:', endDate);
+  const totalIdSubmissions = poidData?.filter((p) => {
+    const submissionDate = new Date(p.submission_date as string);
+    const submissionDateOnly = new Date(submissionDate.getFullYear(), submissionDate.getMonth(), submissionDate.getDate());
+    const startDateOnly = startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) : new Date();
+    const endDateOnly = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) : new Date();
+    return submissionDateOnly >= startDateOnly && submissionDateOnly <= endDateOnly;
+  }).length || 0;
 
   const tableData: TableRow[] = React.useMemo(() => {
     const initials = teamData
@@ -198,7 +262,6 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
       case 'yearToDate': // UK Financial Year: April 1st to current day
         newStartDate = new Date(today.getFullYear(), 3, 1); // April 1st (month 3)
         if (today.getMonth() < 3) {
-          // If before April, use last year's April 1st
           newStartDate.setFullYear(today.getFullYear() - 1);
         }
         newEndDate = new Date(today);
@@ -228,8 +291,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
 
   return (
     <div className="management-dashboard-container animate-dashboard">
-      {/* Removed back-arrow from ManagementDashboard */}
-      {/* Combined Filter Section */}
+      {/* Filter Section */}
       <div className="filter-section">
         <div className="date-filter-wrapper">
           <div className="date-pickers">
@@ -316,6 +378,49 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             />
           ))}
         </div>
+      </div>
+
+      {/* Metrics Cards */}
+      <div className="metrics-cards" style={{ 
+        display: 'flex', 
+        gap: '20px', 
+        marginBottom: '20px', 
+        marginTop: '20px',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        width: '100%' 
+      }}>
+        <MetricCard 
+          title="WIP (h)" 
+          value={formatHours(totalWipHours)} 
+          style={{ flex: '1', minWidth: '200px' }} 
+        />
+        <MetricCard 
+          title="WIP (£)" 
+          value={formatCurrency(totalWipPounds)} 
+          style={{ flex: '1', minWidth: '200px' }} 
+        />
+        <MetricCard
+          title="Collected"
+          value={formatCurrency(totalCollected)}
+          subtitle={`${startDate?.toLocaleDateString('en-GB')} - ${endDate?.toLocaleDateString('en-GB')}`}
+          style={{ flex: '1', minWidth: '200px' }}
+        />
+        <MetricCard 
+          title="Enquiries" 
+          value={totalEnquiries} 
+          style={{ flex: '1', minWidth: '200px' }} 
+        />
+        <MetricCard 
+          title="Matters" 
+          value={totalMatters} 
+          style={{ flex: '1', minWidth: '200px' }} 
+        />
+        <MetricCard 
+          title="ID Submissions" 
+          value={totalIdSubmissions} 
+          style={{ flex: '1', minWidth: '200px' }} 
+        />
       </div>
 
       {/* Metrics Table */}

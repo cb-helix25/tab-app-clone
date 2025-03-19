@@ -635,7 +635,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
                         user_id,
                         user_name,
                         payment_allocated,
-                        payment_date
+                        CONVERT(VARCHAR(10), payment_date, 120) AS payment_date
                     FROM collectedTime
                     WHERE payment_date BETWEEN @DateFrom AND @DateTo
                     ORDER BY payment_date DESC
@@ -713,7 +713,54 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             responseData.poidData = await new Promise<POID[]>((resolve, reject) => {
                 const result: POID[] = [];
                 const query = `
-                    SELECT *
+                    SELECT 
+                        poid_id,
+                        type,
+                        terms_acceptance,
+                        submission_url,
+                        CONVERT(VARCHAR(10), submission_date, 120) AS submission_date,
+                        id_docs_folder,
+                        acid,
+                        card_id,
+                        poc,
+                        nationality_iso,
+                        nationality,
+                        gender,
+                        first,
+                        last,
+                        prefix,
+                        date_of_birth,
+                        best_number,
+                        email,
+                        passport_number,
+                        drivers_license_number,
+                        house_building_number,
+                        street,
+                        city,
+                        county,
+                        post_code,
+                        country,
+                        country_code,
+                        company_name,
+                        company_number,
+                        company_house_building_number,
+                        company_street,
+                        company_city,
+                        company_county,
+                        company_post_code,
+                        company_country,
+                        company_country_code,
+                        stage,
+                        check_result,
+                        check_id,
+                        additional_id_submission_id,
+                        additional_id_submission_url,
+                        additional_id_submission_date,
+                        client_id,
+                        related_client_id,
+                        matter_id,
+                        risk_assessor,
+                        risk_assessment_date
                     FROM poid
                     WHERE submission_date >= @ThresholdDate
                     ORDER BY submission_date DESC

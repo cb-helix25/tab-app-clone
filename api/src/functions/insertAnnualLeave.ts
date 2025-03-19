@@ -11,15 +11,16 @@ interface DateRange {
   end_date: string;   // Expected format: "YYYY-MM-DD"
 }
 
-// Define the interface for the request body (extended to include days_taken and leave_type)
+// Extended interface for the request body to include hearing fields
 interface InsertAnnualLeaveRequest {
   fe: string; // Fee earner initials
   dateRanges: DateRange[]; // One or more date ranges submitted by the form
   reason?: string; // Made optional
   days_taken: number;
   leave_type: string; // Added 'leave_type' field
-  // overlapDetails is included in the JSON payload but not used in the SQL insert yet.
   overlapDetails: any;
+  hearing_confirmation: string;  // New field: expected "yes" or "no"
+  hearing_details: string;       // New field: additional hearing notes if any
 }
 
 // Define the interface for the SQL insert result
@@ -61,7 +62,7 @@ export async function insertAnnualLeaveHandler(
     };
   }
 
-  const { fe, dateRanges, reason, days_taken, leave_type } = requestBody;
+  const { fe, dateRanges, reason, days_taken, leave_type, hearing_confirmation, hearing_details } = requestBody;
 
   // Validate required fields
   if (!fe || !Array.isArray(dateRanges) || dateRanges.length === 0 || !leave_type) {
@@ -75,13 +76,15 @@ export async function insertAnnualLeaveHandler(
   try {
     context.log("Initiating SQL insert operation for Annual Leave entries.");
 
-    // Insert the annual leave entries into SQL
+    // Insert the annual leave entries into SQL, now including the hearing fields
     const insertResult = await insertAnnualLeaveEntries(
       fe,
       dateRanges,
       reason || "No reason provided.",
       days_taken,
       leave_type,
+      hearing_confirmation,
+      hearing_details,
       context
     );
     context.log("Successfully inserted annual leave entries into SQL database.", insertResult);
@@ -112,6 +115,8 @@ export async function insertAnnualLeaveHandler(
  * @param reason - The reason (notes) for the leave.
  * @param days_taken - Total number of days taken for the leave (not used for per-range calculation).
  * @param leave_type - The type of leave.
+ * @param hearing_confirmation - Hearing confirmation ("yes" or "no")
+ * @param hearing_details - Additional hearing details.
  * @param context - The InvocationContext for logging.
  * @returns A Promise with the insert result.
  */
@@ -121,6 +126,8 @@ async function insertAnnualLeaveEntries(
   reason: string,
   days_taken: number,
   leave_type: string,
+  hearing_confirmation: string,
+  hearing_details: string,
   context: InvocationContext
 ): Promise<InsertResult> {
   const kvUri = "https://helix-keys.vault.azure.net/";
@@ -160,9 +167,9 @@ async function insertAnnualLeaveEntries(
         return new Promise<number>((resolveEntry, rejectEntry) => {
           const query = `
             INSERT INTO [dbo].[annualLeave] 
-              ([fe], [start_date], [end_date], [reason], [status], [days_taken], [leave_type])
+              ([fe], [start_date], [end_date], [reason], [status], [days_taken], [leave_type], [hearing_confirmation], [hearing_details])
             VALUES 
-              (@FE, @StartDate, @EndDate, @Reason, @Status, @DaysTaken, @LeaveType);
+              (@FE, @StartDate, @EndDate, @Reason, @Status, @DaysTaken, @LeaveType, @HearingConfirmation, @HearingDetails);
             SELECT SCOPE_IDENTITY() AS InsertedId;
           `;
 
@@ -207,6 +214,10 @@ async function insertAnnualLeaveEntries(
           sqlRequest.addParameter("Status", TYPES.NVarChar, "requested");
           sqlRequest.addParameter("DaysTaken", TYPES.Float, computedDays);
           sqlRequest.addParameter("LeaveType", TYPES.NVarChar, leave_type);
+          // Convert hearing_confirmation to bit (1 for 'yes', 0 for 'no')
+          const hearingConfirmationBit = hearing_confirmation.toLowerCase() === "yes" ? 1 : 0;
+          sqlRequest.addParameter("HearingConfirmation", TYPES.Bit, hearingConfirmationBit);
+          sqlRequest.addParameter("HearingDetails", TYPES.NVarChar, hearing_details);
 
           context.log("Executing SQL query with parameters (insertAnnualLeave):", {
             FE: fe,
@@ -215,7 +226,9 @@ async function insertAnnualLeaveEntries(
             Reason: reason,
             Status: "requested",
             DaysTaken: computedDays,
-            LeaveType: leave_type
+            LeaveType: leave_type,
+            HearingConfirmation: hearingConfirmationBit,
+            HearingDetails: hearing_details
           });
 
           connection.execSql(sqlRequest);

@@ -412,6 +412,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           recoveredFees={recoveredFees}
           teamData={fetchedTeamData}
           userData={fetchedUserData}
+          poidData={poidData}
         />
       </div>
     );

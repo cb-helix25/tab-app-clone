@@ -1,7 +1,7 @@
 // src/CustomForms/AnnualLeaveForm.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Stack, Text, DefaultButton, TextField, Icon, TooltipHost } from '@fluentui/react';
+import { Stack, Text, DefaultButton, TextField, Icon, TooltipHost, ChoiceGroup } from '@fluentui/react';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
 import BespokeForm, { FormField } from './BespokeForms';
@@ -191,6 +191,11 @@ function AnnualLeaveForm({
     { key: 'purchase', text: 'Purchase' },
   ];
 
+  // NEW: Hearing confirmation state.
+  // Value will be either "yes" or "no". Null indicates no selection yet.
+  const [hearingConfirmation, setHearingConfirmation] = useState<string | null>(null);
+  const [hearingDetails, setHearingDetails] = useState<string>('');
+
   // Recalculate total days whenever the dateRanges OR bankHolidays change
   useEffect(() => {
     let total = 0;
@@ -223,6 +228,8 @@ function AnnualLeaveForm({
   const handleClear = () => {
     setDateRanges([]);
     setNotes('');
+    setHearingConfirmation(null);
+    setHearingDetails('');
   };
 
   // Compute effective remaining leave.
@@ -316,6 +323,8 @@ function AnnualLeaveForm({
         days_taken: totalDays,
         leave_type: selectedLeaveType,
         overlapDetails: groupedLeave,
+        hearing_confirmation: hearingConfirmation,
+        hearing_details: hearingConfirmation === 'no' ? hearingDetails : ''
       };
       console.log('Annual Leave Form Payload:', payload);
 
@@ -682,6 +691,35 @@ function AnnualLeaveForm({
                   multiline
                   rows={3}
                 />
+                {/* NEW: Hearing Confirmation Section */}
+                <Stack tokens={{ childrenGap: 10 }}>
+                  <Stack horizontal tokens={{ childrenGap: 5 }} verticalAlign="center">
+                    <Text style={{ fontWeight: 600 }}>
+                      I confirm there are no hearings during my planned absence on any of the matters I am responsible for or have worked on in the last 3 months
+                    </Text>
+                    <TooltipHost content="Usually leave will not be approved at a time when there is a hearing listed to take place and where you are the fee earner with day to day conduct. Where you have worked on a file and request leave a decision on any leave request for that period will be made on a case by case basis taking into account that as a starting point you might be required to attend that hearing and briefing someone else to attend might be disproportionate.">
+                      <Icon iconName="Info" styles={{ root: { fontSize: 16, cursor: 'pointer' } }} />
+                    </TooltipHost>
+                  </Stack>
+                  <ChoiceGroup
+                    selectedKey={hearingConfirmation || undefined}
+                    options={[
+                      { key: 'yes', text: 'Yes' },
+                      { key: 'no', text: 'No' },
+                    ]}
+                    onChange={(ev, option) => setHearingConfirmation(option?.key || null)}
+                    label="Please select an option"
+                  />
+                  {hearingConfirmation === 'no' && (
+                    <TextField
+                      label="There are the following hearings taking place during this period of absence"
+                      value={hearingDetails}
+                      onChange={(e, newVal) => setHearingDetails(newVal || '')}
+                      multiline
+                      rows={3}
+                    />
+                  )}
+                </Stack>
                 <Stack horizontal tokens={{ childrenGap: 10 }}>
                   <DefaultButton
                     text="Clear"
@@ -693,7 +731,7 @@ function AnnualLeaveForm({
                     className="custom-submit-button"
                     styles={buttonStylesFixedWidth}
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || totalDays === 0}
                   />
                 </Stack>
                 {confirmationMessage && (
