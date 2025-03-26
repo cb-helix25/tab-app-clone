@@ -1,5 +1,6 @@
 import React from 'react';
 import { colours } from '../../app/styles/colours';
+import { WIP } from './ManagementDashboard'; // Import WIP from ManagementDashboard
 import './HomePreview.css';
 
 interface Enquiry {
@@ -8,12 +9,7 @@ interface Enquiry {
 }
 
 interface Matter {
-  'OpenDate': string;
-  // ... other fields
-}
-
-interface WIP {
-  date: string;
+  'OpenDate': string; // Note: This should match the key used in ManagementDashboard (was 'Open Date')
   // ... other fields
 }
 
@@ -26,7 +22,7 @@ interface RecoveredFee {
 interface HomePreviewProps {
   enquiries: Enquiry[] | null;
   allMatters: Matter[] | null;
-  wip: WIP[] | null;
+  wip: WIP[] | null | undefined; // Updated to match ManagementDashboard
   recoveredFees: RecoveredFee[] | null;
 }
 
@@ -59,7 +55,7 @@ const HomePreview: React.FC<HomePreviewProps> = ({
 
   const wipCount = wip?.length || 0;
   const wipRange = wip?.length
-    ? `${formatDate(wip.reduce((min, w) => new Date(w.date) < new Date(min.date) ? w : min, wip[0]).date)} - ${formatDate(wip.reduce((max, w) => new Date(w.date) > new Date(max.date) ? w : max, wip[0]).date)}`
+    ? `${formatDate(wip.reduce((min, w) => new Date(w.created_at) < new Date(min.created_at) ? w : min, wip[0]).created_at)} - ${formatDate(wip.reduce((max, w) => new Date(w.created_at) > new Date(max.created_at) ? w : max, wip[0]).created_at)}`
     : 'N/A';
 
   const recoveredFeesTotal = recoveredFees?.reduce((sum, r) => sum + r.payment_allocated, 0) || 0;

@@ -5,53 +5,60 @@ import {
   PrimaryButton,
   Stack,
   IDatePickerStyles,
+  Modal,
+  DetailsList,
+  IColumn,
+  DetailsListLayoutMode,
+  IconButton,
+  Spinner,
 } from '@fluentui/react';
 import { Enquiry, Matter, TeamData, UserData, POID } from '../../app/functionality/types';
 import MetricCard from './MetricCard';
+import { colours } from '../../app/styles/colours';
 import './ManagementDashboard.css';
 
 interface RecoveredFee {
   payment_date: string;
   payment_allocated: number;
+  user_id: number;
 }
 
-interface WIP {
+export interface WIP {
   created_at: string;
   total?: number;
+  quantity_in_hours?: number;
 }
 
 interface ManagementDashboardProps {
   enquiries?: Enquiry[] | null;
   allMatters?: Matter[] | null;
-  wip?: WIP[] | null;
+  wip?: WIP[] | null | undefined;
   recoveredFees?: RecoveredFee[] | null;
   teamData?: TeamData[] | null;
   userData?: UserData[] | null;
   poidData?: POID[] | null;
+  triggerRefresh?: () => void;
+  lastRefreshTimestamp?: number;
+  isFetching?: boolean;
 }
 
 interface TableRow {
   initial: string;
-  fee: string;
   wipHours: string;
   wipPounds: string;
+  collected: string;
   enquiries: number;
-  enquiryIds: number;
   matters: number;
-  completed: number;
-  tasksPending: number;
-  estTaskTime: string;
+  idSubmissions: number;
 }
 
-// Helper function to format hours as "Xh Ym"
 const formatHours = (hours: number): string => {
-  const totalMinutes = Math.round(hours * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return `${h}h ${m}m`;
+  const whole = Math.floor(hours);
+  const fraction = hours - whole;
+  const minutes = Math.round(fraction * 60);
+  return `${whole}h ${minutes}m`;
 };
 
-// Helper function to format currency as £X, £X.Xk, or £X.XXk
 const formatCurrency = (amount: number): string => {
   if (amount < 10000) {
     return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -62,6 +69,39 @@ const formatCurrency = (amount: number): string => {
   }
 };
 
+const normalizeName = (name: string): string => {
+  return name.replace(/[^a-zA-Z]/g, '').toLowerCase();
+};
+
+const debounce = (func: (...args: any[]) => void, wait: number) => {
+  let timeout: NodeJS.Timeout;
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+};
+
+// Format timestamp: show only time if same day, otherwise full date-time
+const formatTimestamp = (timestamp: number): string => {
+  const now = new Date();
+  const refreshDate = new Date(timestamp);
+  const isSameDay =
+    now.getFullYear() === refreshDate.getFullYear() &&
+    now.getMonth() === refreshDate.getMonth() &&
+    now.getDate() === refreshDate.getDate();
+  return isSameDay
+    ? refreshDate.toLocaleTimeString('en-GB')
+    : refreshDate.toLocaleString('en-GB');
+};
+
+// Format countdown to next refresh (e.g., "4:32")
+const formatCountdown = (remainingMs: number): string => {
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+};
+
 const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   enquiries: propEnquiries,
   allMatters: propAllMatters,
@@ -70,6 +110,9 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   teamData: propTeamData,
   userData: propUserData,
   poidData: propPoidData,
+  triggerRefresh,
+  lastRefreshTimestamp = Date.now(),
+  isFetching = false,
 }) => {
   const enquiries = propEnquiries ?? null;
   const allMatters = propAllMatters ?? null;
@@ -84,154 +127,386 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [selectedDateRange, setSelectedDateRange] = useState<string | null>(null);
   const [isDatePickerUsed, setIsDatePickerUsed] = useState<boolean>(false);
+  const [sortKey, setSortKey] = useState<keyof TableRow>('initial');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [modalTitle, setModalTitle] = useState<string>('');
+  const [modalData, setModalData] = useState<any[]>([]);
+  const [refreshBaseTime, setRefreshBaseTime] = useState<number>(Date.now()); // Base time for countdown
+  const [currentTime, setCurrentTime] = useState<number>(Date.now()); // Real-time clock
 
+  const allColumns = ['wipHours', 'wipPounds', 'collected', 'enquiries', 'matters', 'idSubmissions'] as const;
+  const columnLabels: { [key in typeof allColumns[number]]: string } = {
+    wipHours: 'WIP (h)',
+    wipPounds: 'WIP (£)',
+    collected: 'Collected',
+    enquiries: 'Enquiries',
+    matters: 'Matters',
+    idSubmissions: 'ID Submissions',
+  };
+  const [visibleColumns, setVisibleColumns] = useState<typeof allColumns[number][]>([...allColumns]);
+
+  // Auto-refresh every 5 minutes (300,000 ms) and update countdown
   useEffect(() => {
-    if (isDatePickerUsed) {
-      setSelectedDateRange(null);
-    }
-  }, [startDate, endDate, isDatePickerUsed]);
+    if (!triggerRefresh) return;
 
-  // Calculate card metrics based on date range
-  const totalWipHours = wip?.filter((w) => {
-    const createdAtDate = new Date(w.created_at);
-    return createdAtDate >= (startDate || new Date()) && createdAtDate <= (endDate || new Date());
-  }).reduce((sum, w) => sum + ((w as any).quantity_in_hours || 0), 0) || 0;
+    const FIVE_MINUTES = 300000; // 5 minutes in ms
+    let intervalId: NodeJS.Timeout;
 
-  const totalWipPounds = wip?.filter((w) => {
-    const createdAtDate = new Date(w.created_at);
-    return createdAtDate >= (startDate || new Date()) && createdAtDate <= (endDate || new Date());
-  }).reduce((sum, w) => sum + (w.total || 0), 0) || 0;
-
-  const totalCollected = recoveredFees
-    ?.filter((rf) => {
-      const paymentDate = new Date(rf.payment_date);
-      return paymentDate >= (startDate || new Date()) && paymentDate <= (endDate || new Date());
-    })
-    .reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
-
-  const totalEnquiries = enquiries?.filter((e) => {
-    const touchpointDate = new Date(e.Touchpoint_Date as string);
-    return touchpointDate >= (startDate || new Date()) && touchpointDate <= (endDate || new Date());
-  }).length || 0;
-
-  const totalMatters = allMatters?.filter((m) => {
-    const openDateStr = (m as any)["Open Date"];
-    const openDate = new Date(openDateStr);
-    const openDateOnly = new Date(openDate.getFullYear(), openDate.getMonth(), openDate.getDate());
-    const startDateOnly = startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) : new Date();
-    const endDateOnly = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) : new Date();
-    return openDateOnly >= startDateOnly && openDateOnly <= endDateOnly;
-  }).length || 0;
-
-  console.log('poidData:', poidData, 'startDate:', startDate, 'endDate:', endDate);
-  const totalIdSubmissions = poidData?.filter((p) => {
-    const submissionDate = new Date(p.submission_date as string);
-    const submissionDateOnly = new Date(submissionDate.getFullYear(), submissionDate.getMonth(), submissionDate.getDate());
-    const startDateOnly = startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) : new Date();
-    const endDateOnly = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) : new Date();
-    return submissionDateOnly >= startDateOnly && submissionDateOnly <= endDateOnly;
-  }).length || 0;
-
-  const tableData: TableRow[] = React.useMemo(() => {
-    const initials = teamData
-      ?.filter((team) => team.status === 'active' && team.Initials !== undefined)
-      .map((team) => team.Initials as string) ?? ['AC', 'AT', 'BOD', 'BR', 'CS', 'EL', 'EV', 'FW', 'IL', 'JW', 'JWH', 'LA', 'RC', 'RCH', 'SP', 'SW', 'TM', 'ZK'];
-    const rows = initials.map((initial) => ({
-      initial,
-      fee: recoveredFees?.filter((rf) => new Date(rf.payment_date) >= (startDate || new Date()) && new Date(rf.payment_date) <= (endDate || new Date())).reduce((sum, rf) => sum + rf.payment_allocated, 0).toFixed(2) || '0.00',
-      wipHours: wip?.length.toString() || '0',
-      wipPounds: '0.00',
-      enquiries: enquiries?.length || 0,
-      enquiryIds: enquiries?.length || 0,
-      matters: allMatters?.length || 0,
-      completed: 0,
-      tasksPending: 0,
-      estTaskTime: '0h',
-    }));
-    const total = {
-      initial: 'TOTAL',
-      fee: rows.reduce((sum, row) => sum + parseFloat(row.fee), 0).toFixed(2),
-      wipHours: rows.reduce((sum, row) => sum + parseInt(row.wipHours), 0).toString(),
-      wipPounds: rows.reduce((sum, row) => sum + parseFloat(row.wipPounds), 0).toFixed(2),
-      enquiries: rows.reduce((sum, row) => sum + row.enquiries, 0),
-      enquiryIds: rows.reduce((sum, row) => sum + row.enquiryIds, 0),
-      matters: rows.reduce((sum, row) => sum + row.matters, 0),
-      completed: rows.reduce((sum, row) => sum + row.completed, 0),
-      tasksPending: rows.reduce((sum, row) => sum + row.tasksPending, 0),
-      estTaskTime: '0h',
+    const startAutoRefresh = () => {
+      intervalId = setInterval(() => {
+        const elapsed = Date.now() - refreshBaseTime;
+        if (elapsed >= FIVE_MINUTES && !isFetching) {
+          triggerRefresh();
+          setRefreshBaseTime(Date.now()); // Reset base time after refresh
+        }
+        setCurrentTime(Date.now()); // Update current time for countdown
+      }, 1000); // Check every second
     };
-    return [...rows, total];
-  }, [enquiries, allMatters, wip, recoveredFees, teamData, startDate, endDate]);
 
-  const datePickerStyles: Partial<IDatePickerStyles> = {
-    root: {
-      marginRight: 16,
-      width: 140,
-    },
-    textField: {
-      width: '100%',
-      borderRadius: '4px',
-      background: '#f8f9fa',
-      border: '1px solid #e9ecef',
-      selectors: {
-        '& .ms-TextField-fieldGroup': {
-          border: 'none',
-          background: 'transparent',
-          borderRadius: '4px',
-          display: 'flex',
-          alignItems: 'center',
-          height: '32px',
-        },
-        '& .ms-TextField-field': {
-          fontSize: '14px',
-          color: '#333',
-          padding: '0 12px',
-          height: '100%',
-          lineHeight: '32px',
-        },
-        '&:hover': { borderColor: '#3690ce' },
-        '&:focus-within': { borderColor: '#3690ce', boxShadow: '0 0 4px rgba(54, 144, 206, 0.3)' },
-      },
-    },
-    icon: {
-      color: '#3690ce',
-      fontSize: '16px',
-      right: '8px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      height: 'auto',
-    },
+    startAutoRefresh();
+
+    return () => clearInterval(intervalId);
+  }, [triggerRefresh, refreshBaseTime, isFetching]);
+
+  // Manual refresh handler
+  const handleManualRefresh = () => {
+    if (triggerRefresh) {
+      triggerRefresh();
+      setRefreshBaseTime(Date.now()); // Reset base time for next 5-minute cycle
+    }
   };
 
-  const activeTeamInitials = React.useMemo(() => {
-    return teamData
-      ?.filter((team) => team.status === 'active' && team.Initials !== undefined)
-      .map((team) => team.Initials as string) ?? ['AC', 'AT', 'BOD', 'BR', 'CS', 'EL', 'EV', 'FW', 'IL', 'JW', 'JWH', 'LA', 'RC', 'RCH', 'SP', 'SW', 'TM', 'ZK'];
+  // Calculate remaining time until next refresh
+  const nextRefreshCountdown = Math.max(300000 - (currentTime - refreshBaseTime), 0);
+
+  const solicitorTeamMembers = React.useMemo(() => {
+    return (
+      teamData?.filter(
+        (team) => team.status === 'active' && team.Initials && team["Role"] !== 'Non-solicitor'
+      ) || []
+    );
   }, [teamData]);
+
+  const filteredTeamMembers = React.useMemo(() => {
+    if (selectedTeams.length === 0 || selectedTeams.length === solicitorTeamMembers.length) {
+      return solicitorTeamMembers;
+    }
+    return solicitorTeamMembers.filter((team) => selectedTeams.includes(team.Initials!));
+  }, [solicitorTeamMembers, selectedTeams]);
+
+  const solicitorClioIDs = React.useMemo(
+    () => new Set(filteredTeamMembers.map((tm) => String(tm["Clio ID"] || ""))),
+    [filteredTeamMembers]
+  );
+
+  const solicitorEmails = React.useMemo(
+    () => new Set(filteredTeamMembers.map((tm) => tm.Email?.toLowerCase()).filter(Boolean)),
+    [filteredTeamMembers]
+  );
+
+  const solicitorNormalizedNames = React.useMemo(
+    () => filteredTeamMembers.map((tm) => normalizeName(tm["Full Name"] || "")),
+    [filteredTeamMembers]
+  );
+
+  const filteredWip = React.useMemo(() => {
+    return (
+      wip?.filter((w) => {
+        const createdAtDate = new Date(w.created_at);
+        const createdAtDateOnly = new Date(
+          createdAtDate.getFullYear(),
+          createdAtDate.getMonth(),
+          createdAtDate.getDate()
+        );
+        const startDateOnly = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+          : new Date();
+        const endDateOnly = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+          : new Date();
+        return (
+          createdAtDateOnly >= startDateOnly &&
+          createdAtDateOnly <= endDateOnly &&
+          solicitorClioIDs.has(String((w as any).user?.id))
+        );
+      }) || []
+    );
+  }, [wip, startDate, endDate, solicitorClioIDs]);
+
+  const filteredRecoveredFees = React.useMemo(() => {
+    return (
+      recoveredFees?.filter((rf) => {
+        const paymentDate = new Date(rf.payment_date);
+        const paymentDateOnly = new Date(
+          paymentDate.getFullYear(),
+          paymentDate.getMonth(),
+          paymentDate.getDate()
+        );
+        const startDateOnly = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+          : new Date();
+        const endDateOnly = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+          : new Date();
+        return (
+          paymentDateOnly >= startDateOnly &&
+          paymentDateOnly <= endDateOnly &&
+          solicitorClioIDs.has(String(rf.user_id))
+        );
+      }) || []
+    );
+  }, [recoveredFees, startDate, endDate, solicitorClioIDs]);
+
+  const filteredEnquiries = React.useMemo(() => {
+    return (
+      enquiries?.filter((e) => {
+        const touchpointDate = new Date(e.Touchpoint_Date as string);
+        const touchpointDateOnly = new Date(
+          touchpointDate.getFullYear(),
+          touchpointDate.getMonth(),
+          touchpointDate.getDate()
+        );
+        const startDateOnly = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+          : new Date();
+        const endDateOnly = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+          : new Date();
+        return (
+          touchpointDateOnly >= startDateOnly &&
+          touchpointDateOnly <= endDateOnly &&
+          e.Point_of_Contact &&
+          solicitorEmails.has(e.Point_of_Contact.toLowerCase())
+        );
+      }) || []
+    );
+  }, [enquiries, startDate, endDate, solicitorEmails]);
+
+  const filteredMatters = React.useMemo(() => {
+    return (
+      allMatters?.filter((m) => {
+        const openDate = new Date((m as any)["Open Date"]);
+        const openDateOnly = new Date(
+          openDate.getFullYear(),
+          openDate.getMonth(),
+          openDate.getDate()
+        );
+        const startDateOnly = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+          : new Date();
+        const endDateOnly = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+          : new Date();
+        const solicitor = (m as any)["Originating Solicitor"] || "";
+        const normalizedSolicitor = normalizeName(solicitor);
+        return (
+          openDateOnly >= startDateOnly &&
+          openDateOnly <= endDateOnly &&
+          solicitorNormalizedNames.includes(normalizedSolicitor)
+        );
+      }) || []
+    );
+  }, [allMatters, startDate, endDate, solicitorNormalizedNames]);
+
+  const filteredPoidData = React.useMemo(() => {
+    return (
+      poidData?.filter((p) => {
+        const submissionDate = new Date(p.submission_date as string);
+        const submissionDateOnly = new Date(
+          submissionDate.getFullYear(),
+          submissionDate.getMonth(),
+          submissionDate.getDate()
+        );
+        const startDateOnly = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+          : new Date();
+        const endDateOnly = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+          : new Date();
+        return submissionDateOnly >= startDateOnly && submissionDateOnly <= endDateOnly;
+      }) || []
+    );
+  }, [poidData, startDate, endDate]);
+
+  const getTeamWipHours = (clioId: string): number =>
+    filteredWip
+      .filter((w) => String((w as any).user?.id) === clioId)
+      .reduce((sum, w) => sum + (w.quantity_in_hours || 0), 0) || 0;
+
+  const getTeamWipPounds = (clioId: string): number =>
+    filteredWip
+      .filter((w) => String((w as any).user?.id) === clioId)
+      .reduce((sum, w) => sum + (w.total || 0), 0) || 0;
+
+  const getTeamCollected = (clioId: string): number =>
+    filteredRecoveredFees
+      .filter((rf) => String(rf.user_id) === clioId)
+      .reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
+
+  const getTeamEnquiries = (email: string): number =>
+    filteredEnquiries.filter(
+      (e) => e.Point_of_Contact?.toLowerCase() === email.toLowerCase()
+    ).length || 0;
+
+  const getTeamMatters = (fullName: string): number => {
+    const mappings: { [key: string]: string } = {
+      "Samuel Packwood": "Sam Packwood",
+      "Bianca ODonnell": "Bianca O'Donnell",
+    };
+    return (
+      filteredMatters.filter((m) => {
+        let solicitor = (m as any)["Originating Solicitor"] || "";
+        if (solicitor in mappings) solicitor = mappings[solicitor];
+        return normalizeName(solicitor) === normalizeName(fullName);
+      }).length || 0
+    );
+  };
+
+  const totalWipHoursOverall = React.useMemo(() => {
+    return filteredWip.reduce((sum, w) => sum + (w.quantity_in_hours || 0), 0) || 0;
+  }, [filteredWip]);
+
+  const totalWipPoundsOverall = React.useMemo(() => {
+    return filteredWip.reduce((sum, w) => sum + (w.total || 0), 0) || 0;
+  }, [filteredWip]);
+
+  const totalCollectedOverall = React.useMemo(() => {
+    return filteredRecoveredFees.reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
+  }, [filteredRecoveredFees]);
+
+  const totalEnquiriesOverall = React.useMemo(() => {
+    return filteredEnquiries.length || 0;
+  }, [filteredEnquiries]);
+
+  const totalMattersOverall = React.useMemo(() => {
+    return filteredMatters.length || 0;
+  }, [filteredMatters]);
+
+  const totalIdSubmissionsOverall = React.useMemo(() => {
+    return filteredPoidData.length || 0;
+  }, [filteredPoidData]);
+
+  const tableData = React.useMemo(() => {
+    return filteredTeamMembers.map((team) => {
+      const clioId = String(team["Clio ID"] || "");
+      const email = team.Email || "";
+      const fullName = team["Full Name"] || "";
+      return {
+        initial: team.Initials!,
+        wipHours: formatHours(getTeamWipHours(clioId)),
+        wipPounds: formatCurrency(getTeamWipPounds(clioId)),
+        collected: formatCurrency(getTeamCollected(clioId)),
+        enquiries: getTeamEnquiries(email),
+        matters: getTeamMatters(fullName),
+        idSubmissions: totalIdSubmissionsOverall,
+      };
+    });
+  }, [
+    filteredTeamMembers,
+    filteredWip,
+    filteredRecoveredFees,
+    filteredEnquiries,
+    filteredMatters,
+    totalIdSubmissionsOverall,
+  ]);
+
+  const totalRow: TableRow = {
+    initial: 'TOTAL',
+    wipHours: formatHours(totalWipHoursOverall),
+    wipPounds: formatCurrency(totalWipPoundsOverall),
+    collected: formatCurrency(totalCollectedOverall),
+    enquiries: totalEnquiriesOverall,
+    matters: totalMattersOverall,
+    idSubmissions: totalIdSubmissionsOverall,
+  };
+
+  const finalTableData = React.useMemo(() => [...tableData, totalRow], [tableData, totalRow]);
+
+  const sortedTableData = React.useMemo(() => {
+    const parseHours = (formatted: string): number => {
+      const match = formatted.match(/(\d+)h\s*(\d+)m/);
+      return match ? parseInt(match[1], 10) + parseInt(match[2], 10) / 60 : 0;
+    };
+    const parseCurrency = (formatted: string): number => {
+      let val = formatted.replace(/[^0-9.]/g, '');
+      return formatted.includes('k') ? parseFloat(val) * 1000 : parseFloat(val);
+    };
+
+    const dataWithoutTotal = finalTableData.filter((row) => row.initial !== 'TOTAL');
+    const total = finalTableData.find((row) => row.initial === 'TOTAL')!;
+    return [
+      ...dataWithoutTotal.sort((a, b) => {
+        let aVal: string | number, bVal: string | number;
+        switch (sortKey) {
+          case 'initial':
+            aVal = a.initial.toLowerCase();
+            bVal = b.initial.toLowerCase();
+            break;
+          case 'wipHours':
+            aVal = parseHours(a.wipHours);
+            bVal = parseHours(b.wipHours);
+            break;
+          case 'wipPounds':
+          case 'collected':
+            aVal = parseCurrency(a[sortKey]);
+            bVal = parseCurrency(b[sortKey]);
+            break;
+          case 'enquiries':
+          case 'matters':
+          case 'idSubmissions':
+            aVal = a[sortKey];
+            bVal = b[sortKey];
+            break;
+          default:
+            aVal = a.initial.toLowerCase();
+            bVal = b.initial.toLowerCase();
+            break;
+        }
+        return aVal < bVal ? (sortDirection === 'asc' ? -1 : 1) : aVal > bVal ? (sortDirection === 'asc' ? 1 : -1) : 0;
+      }),
+      total,
+    ];
+  }, [finalTableData, sortKey, sortDirection]);
+
+  const toggleColumn = (colKey: typeof allColumns[number]) => {
+    setVisibleColumns((prev) =>
+      prev.includes(colKey) ? prev.filter((item) => item !== colKey) : [...prev, colKey]
+    );
+  };
+
+  const onHeaderClick = (key: keyof TableRow) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
 
   const toggleTeamSelection = (initial: string) => {
     setSelectedTeams((prev) => {
+      const activeInitials = solicitorTeamMembers.map((tm) => tm.Initials!);
       if (initial === 'All') {
-        return prev.length === activeTeamInitials.length ? [] : [...activeTeamInitials];
+        return prev.length === activeInitials.length ? [] : [...activeInitials];
       }
-      return prev.includes(initial)
-        ? prev.filter((i) => i !== initial)
-        : [...prev, initial];
+      return prev.includes(initial) ? prev.filter((i) => i !== initial) : [...prev, initial];
     });
   };
 
-  const setPredefinedRange = (days: number | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'yearToDate') => {
+  const setPredefinedRange = (
+    days: number | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'yearToDate'
+  ) => {
     const today = new Date();
     let newStartDate: Date;
     let newEndDate: Date = today;
-
     switch (days) {
       case 'yesterday':
         newStartDate = new Date(today);
         newStartDate.setDate(today.getDate() - 1);
         newEndDate = newStartDate;
         break;
-      case 0: // Today
+      case 0:
         newStartDate = new Date(today);
         newEndDate = newStartDate;
         break;
@@ -254,44 +529,130 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         newStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         newEndDate = new Date(today.getFullYear(), today.getMonth(), 0);
         break;
-      case 90: // Last 90 Days
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - 90);
-        newEndDate = new Date(today);
-        break;
-      case 'yearToDate': // UK Financial Year: April 1st to current day
-        newStartDate = new Date(today.getFullYear(), 3, 1); // April 1st (month 3)
-        if (today.getMonth() < 3) {
-          newStartDate.setFullYear(today.getFullYear() - 1);
-        }
-        newEndDate = new Date(today);
-        break;
-      case 365: // Last 365 Days (rolling)
-        newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - 365);
+      case 'yearToDate':
+        newStartDate = new Date(today.getFullYear(), 3, 1);
+        if (today.getMonth() < 3) newStartDate.setFullYear(today.getFullYear() - 1);
         newEndDate = new Date(today);
         break;
       default:
         newStartDate = new Date(today);
-        newStartDate.setDate(today.getDate() - days);
+        newStartDate.setDate(today.getDate() - (days as number));
         newEndDate = new Date(today);
         break;
     }
-
     setIsDatePickerUsed(false);
     setStartDate(newStartDate);
     setEndDate(newEndDate);
     setSelectedDateRange(days.toString());
   };
 
-  const handleDatePickerChange = (setter: (date: Date | undefined) => void) => (date: Date | null | undefined) => {
-    setIsDatePickerUsed(true);
-    setter(date || undefined);
+  const handleDatePickerChange = (setter: (date: Date | undefined) => void) => {
+    const debouncedSetter = debounce((date: Date | null | undefined) => {
+      setIsDatePickerUsed(true);
+      setter(date || undefined);
+    }, 300);
+    return debouncedSetter;
   };
+
+  useEffect(() => {
+    if (isDatePickerUsed) setSelectedDateRange(null);
+  }, [startDate, endDate, isDatePickerUsed]);
+
+  const openModalForMetric = (team: TeamData, colKey: typeof allColumns[number]) => {
+    if (team.Initials === 'TOTAL') return;
+    const clioId = String(team["Clio ID"] || "");
+    const email = team.Email || "";
+    const fullName = team["Full Name"] || "";
+    let records: any[] = [];
+    if (colKey === 'wipHours' || colKey === 'wipPounds') {
+      records = filteredWip.filter((w) => String((w as any).user?.id) === clioId);
+    } else if (colKey === 'collected') {
+      records = filteredRecoveredFees.filter((rf) => String(rf.user_id) === clioId);
+    } else if (colKey === 'enquiries') {
+      records = filteredEnquiries.filter(
+        (e) => e.Point_of_Contact?.toLowerCase() === email.toLowerCase()
+      );
+    } else if (colKey === 'matters') {
+      records = filteredMatters.filter((m) => {
+        let solicitor: string = (m as any)["Originating Solicitor"] || "";
+        const mappings: { [key: string]: string } = {
+          "Samuel Packwood": "Sam Packwood",
+          "Bianca ODonnell": "Bianca O'Donnell",
+        };
+        if (solicitor in mappings) solicitor = mappings[solicitor];
+        return normalizeName(solicitor) === normalizeName(fullName);
+      });
+    }
+    setModalTitle(`${columnLabels[colKey]} Details for ${team.Initials}`);
+    setModalData(records);
+    setModalVisible(true);
+  };
+
+  const getDetailsListColumns = (data: any[]): IColumn[] => {
+    if (data.length === 0) return [];
+    return Object.keys(data[0]).map((key) => ({
+      key,
+      name: key,
+      fieldName: key,
+      minWidth: 50,
+      maxWidth: 200,
+      isResizable: true,
+      onRender: (item: any) => {
+        const val = item[key];
+        return typeof val === 'object' ? JSON.stringify(val) : val;
+      },
+    }));
+  };
+
+  const datePickerStyles: Partial<IDatePickerStyles> = {
+    root: { marginRight: 16, width: 140 },
+    textField: {
+      width: '100%',
+      borderRadius: '4px',
+      background: colours.light.inputBackground,
+      border: `1px solid ${colours.light.border}`,
+      selectors: {
+        '& .ms-TextField-fieldGroup': {
+          border: 'none',
+          background: 'transparent',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          height: '32px',
+        },
+        '& .ms-TextField-field': {
+          fontSize: '14px',
+          color: colours.light.text,
+          padding: '0 12px',
+          height: '100%',
+          lineHeight: '32px',
+        },
+        '&:hover': { borderColor: colours.light.highlight },
+        '&:focus-within': {
+          borderColor: colours.light.highlight,
+          boxShadow: '0 0 4px rgba(54, 144, 206, 0.3)',
+        },
+      },
+    },
+    icon: {
+      color: colours.light.iconColor,
+      fontSize: '16px',
+      right: '8px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      height: 'auto',
+    },
+  };
+
+  const activeTeamInitials = React.useMemo(
+    () => solicitorTeamMembers.map((team) => team.Initials!),
+    [solicitorTeamMembers]
+  );
+
+  const hiddenColumns = allColumns.filter((col) => !visibleColumns.includes(col));
 
   return (
     <div className="management-dashboard-container animate-dashboard">
-      {/* Filter Section */}
       <div className="filter-section">
         <div className="date-filter-wrapper">
           <div className="date-pickers">
@@ -377,81 +738,196 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
               className={selectedTeams.includes(initial) ? 'selected' : 'unselected'}
             />
           ))}
+          <PrimaryButton
+            text="Refresh Now"
+            onClick={handleManualRefresh}
+            style={{ marginLeft: '10px' }}
+          />
+        </div>
+        <div
+          style={{
+            marginTop: '10px',
+            textAlign: 'center',
+            fontSize: '14px',
+            color: colours.light.text,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+          }}
+        >
+          <span>Last refreshed: {formatTimestamp(lastRefreshTimestamp)}</span>
+          <span>Next refresh in: {formatCountdown(nextRefreshCountdown)}</span>
+          {isFetching && (
+            <Spinner
+              size={1} // Small spinner
+              styles={{ root: { marginLeft: '10px' } }}
+            />
+          )}
         </div>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="metrics-cards" style={{ 
-        display: 'flex', 
-        gap: '20px', 
-        marginBottom: '20px', 
-        marginTop: '20px',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        width: '100%' 
-      }}>
-        <MetricCard 
-          title="WIP (h)" 
-          value={formatHours(totalWipHours)} 
-          style={{ flex: '1', minWidth: '200px' }} 
-        />
-        <MetricCard 
-          title="WIP (£)" 
-          value={formatCurrency(totalWipPounds)} 
-          style={{ flex: '1', minWidth: '200px' }} 
-        />
+      <div
+        className="metrics-cards"
+        style={{
+          display: 'flex',
+          gap: '20px',
+          marginBottom: '20px',
+          marginTop: '20px',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          width: '100%',
+        }}
+      >
+        <MetricCard title="WIP (h)" value={formatHours(totalWipHoursOverall)} style={{ flex: '1', minWidth: '200px' }} />
+        <MetricCard title="WIP (£)" value={formatCurrency(totalWipPoundsOverall)} style={{ flex: '1', minWidth: '200px' }} />
         <MetricCard
           title="Collected"
-          value={formatCurrency(totalCollected)}
+          value={formatCurrency(totalCollectedOverall)}
           subtitle={`${startDate?.toLocaleDateString('en-GB')} - ${endDate?.toLocaleDateString('en-GB')}`}
           style={{ flex: '1', minWidth: '200px' }}
         />
-        <MetricCard 
-          title="Enquiries" 
-          value={totalEnquiries} 
-          style={{ flex: '1', minWidth: '200px' }} 
-        />
-        <MetricCard 
-          title="Matters" 
-          value={totalMatters} 
-          style={{ flex: '1', minWidth: '200px' }} 
-        />
-        <MetricCard 
-          title="ID Submissions" 
-          value={totalIdSubmissions} 
-          style={{ flex: '1', minWidth: '200px' }} 
-        />
+        <MetricCard title="Enquiries" value={totalEnquiriesOverall} style={{ flex: '1', minWidth: '200px' }} />
+        <MetricCard title="Matters" value={totalMattersOverall} style={{ flex: '1', minWidth: '200px' }} />
+        <MetricCard title="ID Submissions" value={totalIdSubmissionsOverall} style={{ flex: '1', minWidth: '200px' }} />
       </div>
 
-      {/* Metrics Table */}
-      <div className="metrics-table">
-        <div className="metrics-table-header">
-          <span></span>
-          <span>Fee (£)</span>
-          <span>WIP (h)</span>
-          <span>WIP (£)</span>
-          <span>Enquiries</span>
-          <span>Enquiry IDs</span>
-          <span>Matters</span>
-          <span>Completed</span>
-          <span>Tasks Pending</span>
-          <span>Est Task Time</span>
-        </div>
-        {tableData.map((row) => (
-          <div key={row.initial} className="metrics-table-row animate-table-row">
-            <span>{row.initial}</span>
-            <span>{row.fee}</span>
-            <span>{row.wipHours}</span>
-            <span>{row.wipPounds}</span>
-            <span>{row.enquiries}</span>
-            <span>{row.enquiryIds}</span>
-            <span>{row.matters}</span>
-            <span>{row.completed}</span>
-            <span>{row.tasksPending}</span>
-            <span>{row.estTaskTime}</span>
+      <div
+        className="metrics-table-section"
+        style={{
+          background: colours.light.sectionBackground,
+          padding: '16px',
+          borderRadius: '8px',
+          boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+          marginTop: '-8px',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        {hiddenColumns.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '8px',
+              background: colours.highlightBlue,
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              borderRadius: '4px',
+              marginBottom: '16px',
+            }}
+          >
+            {hiddenColumns.map((col) => (
+              <div
+                key={col}
+                onClick={() => toggleColumn(col)}
+                style={{
+                  padding: '4px 8px',
+                  background: colours.highlightBlue,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1em',
+                  color: colours.light.text,
+                }}
+              >
+                {columnLabels[col]}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
+
+        <div
+          className="metrics-card-header-row"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: colours.light.sectionBackground,
+            padding: '12px',
+            borderRadius: '8px',
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+          }}
+        >
+          <div
+            style={{ flex: '1', fontWeight: 'bold', fontSize: '1.2em', cursor: 'pointer' }}
+            onClick={() => onHeaderClick('initial')}
+          >
+            Person {sortKey === 'initial' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+          </div>
+          {visibleColumns.map((colKey) => (
+            <div
+              key={colKey}
+              style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+              onClick={() => onHeaderClick(colKey)}
+            >
+              <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
+                {columnLabels[colKey]} {sortKey === colKey ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="metrics-card-table" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {sortedTableData.map((row) => (
+            <div
+              key={row.initial}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '12px',
+                border: `1px solid ${colours.light.border}`,
+                borderRadius: '8px',
+                cursor: row.initial === 'TOTAL' ? 'default' : 'pointer',
+              }}
+            >
+              <div style={{ flex: '1', fontWeight: 'bold', fontSize: '1.2em' }}>{row.initial}</div>
+              {allColumns.map(
+                (colKey) =>
+                  visibleColumns.includes(colKey) && (
+                    <div
+                      key={colKey}
+                      style={{ flex: '1', textAlign: 'center' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (row.initial === 'TOTAL') return;
+                        const team = filteredTeamMembers.find((tm) => tm.Initials === row.initial);
+                        if (team) openModalForMetric(team, colKey);
+                      }}
+                    >
+                      <div style={{ fontSize: '1.2em' }}>{row[colKey]}</div>
+                    </div>
+                  )
+              )}
+            </div>
+          ))}
+        </div>
       </div>
+
+      <Modal
+        isOpen={modalVisible}
+        onDismiss={() => setModalVisible(false)}
+        isBlocking={false}
+        containerClassName="modal-container"
+      >
+        <div style={{ padding: '20px', background: colours.light.sectionBackground }}>
+          <h2>{modalTitle}</h2>
+          <IconButton
+            iconProps={{ iconName: 'Cancel' }}
+            onClick={() => setModalVisible(false)}
+            styles={{ root: { float: 'right' } }}
+          />
+          {modalData.length > 0 ? (
+            <DetailsList
+              items={modalData}
+              columns={getDetailsListColumns(modalData)}
+              setKey="set"
+              layoutMode={DetailsListLayoutMode.fixedColumns}
+              isHeaderVisible={true}
+            />
+          ) : (
+            <p>No records found.</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -9,6 +9,7 @@ import {
   Transaction,
   OutstandingClientBalancesResponse,
 } from '../../app/functionality/types';
+import { WIP } from './ManagementDashboard';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import ReportCard from './ReportCard';
@@ -19,20 +20,20 @@ import './ReportingHome.css';
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
 
 const DATASETS = [
-  { key: 'userData', name: 'User Data', type: 'UserData[]', duration: 1000 }, // 1 second
-  { key: 'teamData', name: 'Team Data', type: 'TeamData[]', duration: 1000 }, // 1 second
-  { key: 'enquiries', name: 'Enquiries', type: 'Enquiry[]', duration: 3000 }, // 3 seconds
-  { key: 'allMatters', name: 'All Matters', type: 'Matter[]', duration: 2500 }, // 2.5 seconds
-  { key: 'poidData', name: 'POID 6 Years', type: 'POID[]', duration: 1500 }, // 1.5 seconds
-  { key: 'transactions', name: 'Transactions', type: 'Transaction[]', duration: 2000 }, // 2 seconds
-  { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 }, // 3 seconds
-  { key: 'wip', name: 'WIP', type: 'any', duration: 2000 }, // 2 seconds
-  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 }, // 2 seconds
+  { key: 'userData', name: 'User Data', type: 'UserData[]', duration: 1000 },
+  { key: 'teamData', name: 'Team Data', type: 'TeamData[]', duration: 1000 },
+  { key: 'enquiries', name: 'Enquiries', type: 'Enquiry[]', duration: 3000 },
+  { key: 'allMatters', name: 'All Matters', type: 'Matter[]', duration: 2500 },
+  { key: 'poidData', name: 'POID 6 Years', type: 'POID[]', duration: 1500 },
+  { key: 'transactions', name: 'Transactions', type: 'Transaction[]', duration: 2000 },
+  { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 },
+  { key: 'wip', name: 'WIP', type: 'WIP[]', duration: 2000 }, // Combined WIP
+  { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 },
 ] as const;
 
-const TOTAL_FETCH_DURATION = 20000; // 20 seconds total
-const DATASET_FETCH_DURATION = 15000; // 15 seconds for datasets
-const WRAPPING_UP_DURATION = TOTAL_FETCH_DURATION - DATASET_FETCH_DURATION; // 5 seconds
+const TOTAL_FETCH_DURATION = 20000;
+const DATASET_FETCH_DURATION = 15000;
+const WRAPPING_UP_DURATION = TOTAL_FETCH_DURATION - DATASET_FETCH_DURATION;
 
 let cachedData: { [key: string]: any } = {
   userData: null,
@@ -63,7 +64,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [poidData, setPoidData] = useState<POID[] | null>(cachedData.poidData);
   const [transactions, setTransactions] = useState<Transaction[] | null>(cachedData.transactions);
   const [outstandingBalances, setOutstandingBalances] = useState<OutstandingClientBalancesResponse | null>(cachedData.outstandingBalances);
-  const [wip, setWip] = useState<any>(cachedData.wip);
+  const [wip, setWip] = useState<WIP[] | null | undefined>(cachedData.wip);
   const [recoveredFees, setRecoveredFees] = useState<any>(cachedData.recoveredFees);
   const [fetchStatus, setFetchStatus] = useState<{ [key: string]: 'idle' | 'fetching' | 'success' | 'error' }>(
     Object.fromEntries(DATASETS.map(d => [d.key, 'idle']))
@@ -77,6 +78,8 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [previewDataset, setPreviewDataset] = useState<string | null>(null);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [isDataSectionOpen, setIsDataSectionOpen] = useState(true);
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number>(Date.now()); // Track last refresh
+  const [isFetching, setIsFetching] = useState<boolean>(false); // Track fetch in progress
 
   const decisionButtonRootStyles = sharedDecisionButtonStyles.root as React.CSSProperties;
   const defaultButtonRootStyles = sharedDefaultButtonStyles.root as React.CSSProperties;
@@ -148,6 +151,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const fetchReportDatasets = async (datasets: string[]) => {
     setShowSelectionModal(false);
+    setIsFetching(true); // Indicate refresh in progress
     datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'fetching' })));
     datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     setError(null);
@@ -157,23 +161,23 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       setError("Missing Entra ID. Cannot fetch data without user context.");
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
       console.log('No entraId available for fetch');
-      setTimeout(() => datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' }))), 2000);
+      setTimeout(() => {
+        datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
+        setIsFetching(false);
+      }, 2000);
       return;
     }
 
-    // Simulate fetch progress with arbitrary durations
     const simulateFetchProgress = async () => {
       const completionPromises: Promise<void>[] = [];
       const progressIntervals: NodeJS.Timeout[] = [];
 
-      // Start a progress simulation for each dataset
       datasets.forEach(datasetKey => {
         const dataset = DATASETS.find(d => d.key === datasetKey);
         if (!dataset) return;
 
         const duration = dataset.duration;
 
-        // Promise to mark dataset as completed after its duration
         const completionPromise = new Promise<void>(resolve => {
           setTimeout(() => {
             setFetchStatus(prev => ({ ...prev, [datasetKey]: 'success' }));
@@ -183,7 +187,6 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         });
         completionPromises.push(completionPromise);
 
-        // Simulate random progress updates
         const interval = setInterval(() => {
           setFetchProgress(prev => {
             const currentProgress = prev[datasetKey];
@@ -191,25 +194,18 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
               clearInterval(interval);
               return prev;
             }
-            // Randomly increase progress by 1-15%, ensuring it doesn't exceed 100
             const increase = Math.random() * 15 + 1;
-            const newProgress = Math.min(currentProgress + increase, 99); // Cap at 99 until completion
+            const newProgress = Math.min(currentProgress + increase, 99);
             return { ...prev, [datasetKey]: newProgress };
           });
-        }, 200); // Update every 200ms
+        }, 200);
         progressIntervals.push(interval);
       });
 
-      // Wait for all datasets to "complete"
       await Promise.all(completionPromises);
-
-      // Clear all progress intervals
       progressIntervals.forEach(interval => clearInterval(interval));
-
-      // After all datasets are "completed", show "Wrapping things up"
       setIsWrappingUp(true);
 
-      // Ensure at least DATASET_FETCH_DURATION has passed before wrapping up
       const elapsed = Date.now() - startTime;
       const remainingDatasetTime = DATASET_FETCH_DURATION - elapsed;
       if (remainingDatasetTime > 0) {
@@ -220,7 +216,6 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     const startTime = Date.now();
     const progressPromise = simulateFetchProgress();
 
-    // Perform the actual fetch
     try {
       const response = await fetch(
         `${API_BASE_URL}/${process.env.REACT_APP_GENERATE_REPORT_DATASET_PATH}?code=${process.env.REACT_APP_GENERATE_REPORT_DATASET_CODE}`,
@@ -280,28 +275,35 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
       if (!hasFetchedInitially) hasFetchedInitially = true;
 
-      // Wait for the simulated progress to complete "Wrapping things up"
       await progressPromise;
 
-      // If fetch completes early, wait until TOTAL_FETCH_DURATION
       const fetchDuration = Date.now() - startTime;
       if (fetchDuration < TOTAL_FETCH_DURATION) {
         const remainingTime = TOTAL_FETCH_DURATION - fetchDuration;
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
-      // If fetch takes longer, "Wrapping things up" persists until completion (handled by awaiting the fetch)
       setIsWrappingUp(false);
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
       datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
+      setLastRefreshTimestamp(Date.now()); // Update timestamp on success
+      setIsFetching(false); // Refresh completed
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
       console.log('Fetch error:', err);
-      await progressPromise; // Ensure progress simulation completes
+      await progressPromise;
       setIsWrappingUp(false);
-      setTimeout(() => datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' }))), 2000);
+      setTimeout(() => {
+        datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
+        setIsFetching(false);
+      }, 2000);
       datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     }
+  };
+
+  // Add triggerRefresh function
+  const triggerRefresh = () => {
+    fetchReportDatasets(selectedDatasets);
   };
 
   const toggleSelectAll = () => {
@@ -413,6 +415,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           teamData={fetchedTeamData}
           userData={fetchedUserData}
           poidData={poidData}
+          triggerRefresh={triggerRefresh}
+          lastRefreshTimestamp={lastRefreshTimestamp}
+          isFetching={isFetching}
         />
       </div>
     );

@@ -312,8 +312,8 @@ function AnnualLeaveForm({
     try {
       const feeEarner = userData?.[0]?.Initials || 'XX';
       const formattedDateRanges = dateRanges.map((range) => ({
-        start_date: range.startDate.toISOString().split('T')[0],
-        end_date: range.endDate.toISOString().split('T')[0],
+        start_date: format(range.startDate, 'yyyy-MM-dd'),
+        end_date: format(range.endDate, 'yyyy-MM-dd'),
       }));
 
       const payload = {
