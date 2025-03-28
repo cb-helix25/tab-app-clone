@@ -25,7 +25,7 @@ export const templateBlocks: TemplateBlock[] = [
     options: [
       {
         label: 'Standard Acknowledgment',
-        previewText: `Thank you for your enquiry to Helix Law. We’re a specialist firm of litigation solicitors. We only deal with disputes and act nationally. I am confident we can assist in relation to your matter.\n\nAs a starting point some further initial details and information will help me understand your situation and confirm your best next steps. I have therefore set out below some brief requests and would be grateful if you can please consider this and come back to me as soon as possible.`,
+        previewText: `Thank you for your enquiry to Helix Law. We’re a specialist firm of solicitors only dealing with litigation of disputes and we act nationally. We often deal with disputes such as yours and I am confident we are well-placed to assist in relation to your matter.`,
       },
       {
         label: 'Follow-Up After Call',
@@ -48,9 +48,43 @@ export const templateBlocks: TemplateBlock[] = [
     isMultiSelect: true,
     options: [
       {
+        label: 'The Dispute',
+        previewText: `The Dispute
+  
+  You have provided an initial outline of the position that X`,
+      },
+      {
         label: 'Current Position and Problems',
-        previewText: `We have discussed that you are [INSERT]. You have a dispute with [INSERT] because [INSERT] and have confirmed that [INSERT].\n\nThe dispute with [INSERT] situation creates difficulty for you for obvious reasons, including because [INSERT].\n\nIn addition to the above, additional problems arise and need to be addressed, such as [INSERT].`,
-      },           
+        previewText: `We have discussed that you are [INSERT]. You have a dispute with [INSERT] because [INSERT] and have confirmed that [INSERT].
+  
+  The dispute with [INSERT] situation creates difficulty for you for obvious reasons, including because [INSERT].
+  
+  In addition to the above, additional problems arise and need to be addressed, such as [INSERT].`,
+      },
+    ],
+  },
+  {
+    title: 'Potential Causes of Action and Remedies',
+    description: 'Outline potential causes of action and available remedies.',
+    placeholder: '[Potential Causes of Action and Remedies Placeholder]',
+    isMultiSelect: true,
+    options: [
+      {
+        label: 'Potential Causes of Action and Remedies',
+        previewText: `Potential Causes of Action and Remedies
+  
+  Assuming that you can evidence the position above, then there are likely to be the following causes of action.
+   
+  It is vital that we work together to strategically position you around the following key areas:
+  
+  X
+  Y
+  Z
+   
+  I am experienced in dealing with this type of issue and am happy to assist you and they key is from this point on to carefully position you so that you are in a sufficiently strong position that you can force the Defendants to reach a sensible commercial settlement or if they will not do so proceed to court and obtain the same or a better result, while of course putting you in the best possible position to recover the costs you incur in the litigation from them.
+  
+  In the context of a dispute worth in the high hundreds of thousands or millions, from a cost v benefit analysis, my initial view is it stacks up for you to incur the costs for the initial review below.`,
+      },
     ],
   },
   {
@@ -60,27 +94,65 @@ export const templateBlocks: TemplateBlock[] = [
     isMultiSelect: true,
     options: [
       {
+        label: 'Initial Review and Costs',
+        previewText: `Initial Review and Costs
+  
+  This will require an initial review of core documents such as the contract and taking your instructions around the actions taken to devalue the company, as well as where appropriate, pinning down the stated position on Y. I then anticipate being able to provide initial advice on your current position and best next steps.
+  
+  We charge on a time recorded basis and record all time in 6 minute units. This includes for emails in and out and telephone attendances, and all steps on your behalf. I am a Partner and my hourly rate is £395 + VAT. We work as a team and a number of colleagues may assist in relation to various steps in relation to your matter, at different times. Their time will be recorded and charged on the basis of their hourly rates as applicable from time to time – these are all lower than £395+VAT.
+  
+  For the initial work and review above you will need to budget in the region of approximately £3,000 + VAT. This is an estimate and not a fixed fee; the cost will ultimately depend on the time spent including the scale of documents and enquiries received from you, but based on my experience this is likely to be an accurate estimate at this stage. If it takes less time we will of course bill you less.
+  
+  Further work will incur additional costs on a time basis and in a fully litigated dispute it is not unusual for each party to incur costs of tens of thousands of pounds in this type of dispute, if not higher. Costs will of course be a concern, naturally.
+  
+  Equally, if you are positioned to win a dispute you can usually expect to recover in the region of approximately 65-70% of your costs (if not higher). In this context the fear of being ordered to pay your costs can provide powerful leverage to force resolution of a dispute in your favour. We will of course consider this within our initial review and work as above.`,
+      },
+      {
         label: 'Initial Steps- Review and Advice',
-        previewText: `Initial Steps- Review and Advice\n\nI am experienced in dealing with this type of issue and am happy to assist you. At this initial stage it is necessary and incredibly important to review the background and current position so that we can then advise on your best next steps.\n\nThis will require an initial review of core documents such as [INSERT the contracts, notices, demands, accounts, relevant correspondence set out below] so that we can be as clear as possible on the factual position with companies house and land registry. I then anticipate being able to provide initial advice on your current position and best next steps.`,
+        previewText: `Initial Steps- Review and Advice
+  
+  I am experienced in dealing with this type of issue and am happy to assist you. At this initial stage it is necessary and incredibly important to review the background and current position so that we can then advise on your best next steps.
+  
+  This will require an initial review of core documents such as [INSERT the contracts, notices, demands, accounts, relevant correspondence set out below] so that we can be as clear as possible on the factual position with companies house and land registry. I then anticipate being able to provide initial advice on your current position and best next steps.`,
       },
       {
         label: 'Shareholder Dispute',
-        previewText: `Obviously you will want and need to protect your position in the company as robustly as possible. In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation and filings with companies house. This will enable me to provide you with initial advice on your current position and your best next steps.\n\nTo assist me in completing the review if you can please provide a copy of the shareholders agreement (if any), Directors service agreement (if any), copies of the recent correspondence you have received and sent, and a brief summary over no more than 2 pages of the current position. It is fine to use bullet points within an email for this if you prefer.\n\nOn receipt of the above I will confirm our time and cost estimate for our review of the documents and initial advice on your current position and best next steps.`,
+        previewText: `Obviously you will want and need to protect your position in the company as robustly as possible. In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation and filings with companies house. This will enable me to provide you with initial advice on your current position and your best next steps.
+  
+  To assist me in completing the review if you can please provide a copy of the shareholders agreement (if any), Directors service agreement (if any), copies of the recent correspondence you have received and sent, and a brief summary over no more than 2 pages of the current position. It is fine to use bullet points within an email for this if you prefer.
+  
+  On receipt of the above I will confirm our time and cost estimate for our review of the documents and initial advice on your current position and best next steps.`,
       },
       {
         label: 'Statutory Demand',
-        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation. This will enable me to provide you with initial advice on your current position and your best next steps.\n\nIt is usually important to act quickly in this type of situation to force or avoid a winding up petition being issued. When a petition is issued all company bank accounts are immediately frozen which can have a catastrophic impact on a business for obvious reasons. A quick and robust approach is therefore needed to force resolution.\n\nIt will assist me in completing the review if you can please provide a copy of the contract or agreement (if any), any terms and conditions, the unpaid invoice and copies of the recent correspondence you have received and have sent, as well as a brief summary over no more than 2 pages setting out the relevant background and current position. It is fine to use bullet points for this in an email if you prefer.\n\nOn receipt of the above I will confirm our time and cost estimate for our review of the documents and initial advice on your current position and best next steps.`,
+        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation. This will enable me to provide you with initial advice on your current position and your best next steps.
+  
+  It is usually important to act quickly in this type of situation to force or avoid a winding up petition being issued. When a petition is issued all company bank accounts are immediately frozen which can have a catastrophic impact on a business for obvious reasons. A quick and robust approach is therefore needed to force resolution.
+  
+  It will assist me in completing the review if you can please provide a copy of the contract or agreement (if any), any terms and conditions, the unpaid invoice and copies of the recent correspondence you have received and have sent, as well as a brief summary over no more than 2 pages setting out the relevant background and current position. It is fine to use bullet points for this in an email if you prefer.
+  
+  On receipt of the above I will confirm our time and cost estimate for our review of the documents and initial advice on your current position and best next steps.`,
       },
       {
         label: 'Property-Specific Review and Advice',
-        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation.\n\nAt this initial early stage please provide me with the tenancy agreement, any relevant correspondence, and a brief summary of no more than 2 pages or bullet points in an email, summarising your current position and the dispute. This will enable me to provide you with initial advice on your current position and your best next steps.\n\nFurther documents might be needed from you which I will confirm separately when you have taken the next steps below.`,
+        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation.
+  
+  At this initial early stage please provide me with the tenancy agreement, any relevant correspondence, and a brief summary of no more than 2 pages or bullet points in an email, summarising your current position and the dispute. This will enable me to provide you with initial advice on your current position and your best next steps.
+  
+  Further documents might be needed from you which I will confirm separately when you have taken the next steps below.`,
       },
       {
         label: 'Construction-Specific Scope',
-        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your dispute.\n\nPlease provide me with a copy of the contract, any relevant correspondence, and a brief summary of no more than 2 pages summarising the nature of the dispute. This will enable me to provide you with initial advice on your current position and your best next steps.\n\nIt is likely that further documents and information might be needed which I will confirm in due course, but this will be a useful starting point.\n\nI will then review your position and advise on strategy, including settlement and appropriate next steps and we can then discuss this further.`,
+        previewText: `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your dispute.
+  
+  Please provide me with a copy of the contract, any relevant correspondence, and a brief summary of no more than 2 pages summarising the nature of the dispute. This will enable me to provide you with initial advice on your current position and your best next steps.
+  
+  It is likely that further documents and information might be needed which I will confirm in due course, but this will be a useful starting point.
+  
+  I will then review your position and advise on strategy, including settlement and appropriate next steps and we can then discuss this further.`,
       },
     ],
-  },  
+  },
   {
     title: 'Risk Assessment',
     description: 'Outline potential risks and considerations.',
@@ -135,46 +207,43 @@ export const templateBlocks: TemplateBlock[] = [
     },
   },
   {
-    "title": "Next Steps",
+    "title": "Next Steps to Instruct Helix Law",
     "description": "Define clear next steps for the client.",
     "placeholder": "[Follow-Up Instructions Placeholder]",
     "isMultiSelect": true,
     "options": [
-        {
-            "label": "Confirm Instructions, Payment & Document Submission",
-            "previewText": 
-                "To confirm my instructions and to enable us to open a file and move this forwards, please take the steps below:<p></p>" +
-
-                "<ol style='margin:0; padding-left: 20px;'>" +
-
-                "<li style='margin-bottom: 10px;'>" +
-                "We are required to verify your identity. Please complete the identity form below with your personal details. We will try to verify you electronically initially.<br>" +
-                "<a href=\"https://helix-law.co.uk/proof-of-identity/\" target=\"_blank\" style='color:#3690CE; text-decoration:none;'>https://helix-law.co.uk/proof-of-identity/</a>" +
-                "</li>" +
-
-                "<li style='margin-bottom: 10px;'>" +
-                "Please pay £1,800 on account of costs, using our account details below:<br><br>" +
-                "<div style='margin-left: 30px;'>" +
+      {
+        "label": "Confirm Instructions, Payment & Document Submission",
+        "previewText": 
+          "To confirm my instructions and to enable us to open a file and move this forwards, please take the steps below:" +
+          "<ol style='margin:0; padding-left: 20px;'>" +
+            "<li style='margin-bottom: 10px;'>" +
+              "We are required to verify your identity. Please complete the identity form below with your personal details. We will try to verify you electronically initially.<br>" +
+              "<a href=\"https://helix-law.co.uk/proof-of-identity/\" target=\"_blank\" style='color:#3690CE; text-decoration:none;'>https://helix-law.co.uk/proof-of-identity/</a>" +
+            "</li>" +
+            "<li style='margin-bottom: 10px;'>" +
+              "Provide:<br>" +
+              "X;<br>" +
+              "Y;<br>" +
+              "Z." +
+            "</li>" +
+            "<li style='margin-bottom: 10px;'>" +
+              "Please pay £x on account of costs, using our account details below:<br><br>" +
+              "<div style='margin-left: 30px;'>" +
                 "<div>Helix Law General Client Account</div>" +
                 "<div>Barclays Bank</div>" +
                 "<div>Account Number: 93472434</div>" +
                 "<div>Sort Code: 20-27-91</div>" +
                 "<div>Reference: [FE] - [ACID]</div>" +
-                "</div>" +
-                "</li>" +
-
-                "</ol><p></p>" +
-
-                "<p>Please ensure to quote the above reference so that we promptly identify your payment.</p>" +
-
-                "<p>I have mentioned above some specific documents that will assist me at this stage. Please put these together and email them to me.</p>" +
-
-                "<p>If the file sizes or volume are significant, please let me know and we can arrange a document-sharing facility for you to send these to us. " +
-                "Alternatively, please send the files to me via WeTransfer or Dropbox—both are free services.</p>"
-        }
+              "</div>" +
+            "</li>" +
+          "</ol>" +
+          "<p>Please ensure to quote the above reference so that we promptly identify your payment.</p>" +
+          "<p>I will then deal with compliance with a view to providing you with my Client Care Letter setting out the terms of our retainer and requesting the further documents I will require.</p>" +
+          "<p>If there is anything further you would like to discuss I am very happy to have a further call/answer any questions or queries without charge, and please do not hesitate to contact me.</p>"
+      }
     ]
-},  
-
+  },
   // Separate Block for Meeting Link
   {
     title: 'Meeting Link',

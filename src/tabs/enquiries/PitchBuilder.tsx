@@ -43,24 +43,12 @@ import EmailSignature from './EmailSignature';
  * Converting them into <p> ensures consistent spacing.
  */
 function convertDoubleBreaksToParagraphs(html: string): string {
-  // 1) Normalize line endings (optional, but helps if you have \r\n combos):
-  const normalized = html.replace(/\r\n/g, '\n');
-
-  // 2) Split on two or more consecutive newlines:
-  const paragraphs = normalized.split(/\n\s*\n/);
-
-  // 3) Wrap each chunk in a <p> tag:
-  const wrapped = paragraphs.map((paragraph) => {
-    // Trim each paragraph just in case
-    const trimmed = paragraph.trim();
-
-    // If it’s empty, we can turn it into a single <p>&nbsp;</p> or skip it
-    return trimmed
-      ? `<p>${trimmed}</p>`
-      : `<p style="margin:0;">&nbsp;</p>`;
-  });
-
-  // 4) Join them up without extra line breaks, so the final is all <p>…</p><p>…</p>
+  const normalized = html
+    .replace(/\r\n/g, '\n')
+    .replace(/(<br \/>){2,}/g, '\n\n')
+    .replace(/<\/div>\s*<br \/>/g, '</div>'); // Remove <br> after </div>
+  const paragraphs = normalized.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  const wrapped = paragraphs.map((paragraph) => `<p>${paragraph.trim()}</p>`);
   return wrapped.join('');
 }
 
@@ -80,6 +68,7 @@ const leftoverPlaceholders = [
   '[Google Review Placeholder]',
   '[FE Introduction Placeholder]',
   '[Meeting Link Placeholder]',
+  '[Potential Causes of Action and Remedies Placeholder]', // Add this
 ];
 
 /**
@@ -115,14 +104,15 @@ function removeUnfilledPlaceholders(text: string): string {
 function removeHighlightSpans(html: string): string {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
-  const spans = tempDiv.querySelectorAll(
-    'span[data-placeholder], span[data-inserted], span[data-link]'
+  // Select all elements (span or div) with these data attributes
+  const elements = tempDiv.querySelectorAll(
+    '[data-placeholder], [data-inserted], [data-link]'
   );
-  spans.forEach((span) => {
-    span.removeAttribute('style');
-    span.removeAttribute('data-placeholder');
-    span.removeAttribute('data-inserted');
-    span.removeAttribute('data-link');
+  elements.forEach((el) => {
+    el.removeAttribute('style');
+    el.removeAttribute('data-placeholder');
+    el.removeAttribute('data-inserted');
+    el.removeAttribute('data-link');
   });
   return tempDiv.innerHTML;
 }
@@ -132,8 +122,10 @@ function removeHighlightSpans(html: string): string {
  */
 function cleanTemplateString(template: string): string {
   return template
-    .replace(/^\s*\n|\n\s*$/g, '')
-    .replace(/\n/g, '<br />');
+    .split('\n')
+    .map(line => line.trim())
+    .join('<br />')
+    .replace(/(<br \/>)+$/, ''); // Remove trailing <br /> tags
 }
 
 const boldIcon: IIconProps = { iconName: 'Bold' };
@@ -162,7 +154,6 @@ function replacePlaceholders(
   const userFullName = userData?.[0]?.['Full Name'] || 'Your Name';
   const userRole = userData?.[0]?.['Role'] || 'Your Position';
 
-  // Insert highlight spans so user can see placeholders in the editor
   return template
     .replace(
       /\[Enquiry.First_Name\]/g,
@@ -185,6 +176,10 @@ function replacePlaceholders(
     .replace(
       /\[Current Situation and Problem Placeholder\]/g,
       `<span data-placeholder="[Current Situation and Problem Placeholder]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">[Current Situation and Problem Placeholder]</span>`
+    )
+    .replace(
+      /\[Potential Causes of Action and Remedies Placeholder\]/g,
+      `<span data-placeholder="[Potential Causes of Action and Remedies Placeholder]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">[Potential Causes of Action and Remedies Placeholder]</span>`
     )
     .replace(
       /\[First Name\]/g,
@@ -251,6 +246,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 [FE Introduction Placeholder]
 
 [Current Situation and Problem Placeholder]
+
+[Potential Causes of Action and Remedies Placeholder]
 
 [Scope of Work Placeholder]
 
@@ -380,11 +377,8 @@ Kind Regards,<br>
     selectedOption: string | string[]
   ) {
     let replacementText = '';
-
-    // MultiSelect
     if (block.isMultiSelect && isStringArray(selectedOption)) {
       if (block.title === 'Required Documents') {
-        // If "Required Documents", let's create a <ul> instead of <br><br>
         replacementText = `<ul>${selectedOption
           .map((doc: string) => {
             const option = block.options.find((o) => o.label === doc);
@@ -399,28 +393,19 @@ Kind Regards,<br>
           })
           .join('<br />');
       }
-    }
-    // SingleSelect
-    else if (!block.isMultiSelect && typeof selectedOption === 'string') {
+    } else if (!block.isMultiSelect && typeof selectedOption === 'string') {
       const option = block.options.find((o) => o.label === selectedOption);
       replacementText = option ? option.previewText.trim() : '';
-      // Convert newlines to <br>
       replacementText = replacementText.replace(/\n/g, '<br />');
     }
-
-    // **Apply dynamic substitutions for [FE] and [ACID]**
+  
     replacementText = applyDynamicSubstitutions(replacementText, userData, enquiry);
-
-    // Highlight the inserted block
-    const highlightedReplacement = `<span style="background-color: ${
-      colours.highlightYellow
-    }; padding: 0 3px;" data-inserted="${
-      block.title
-    }" data-placeholder="${
-      block.placeholder
-    }">${cleanTemplateString(replacementText)}</span>`;
-
-    // Actually replace the <span data-placeholder="..."> in the current body
+    const containerTag = 'span';
+    const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
+    const innerHTML = cleanTemplateString(replacementText);
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${innerHTML}</${containerTag}>`;
+    const wrappedHTML = `<!--START_BLOCK:${block.title}-->${highlightedReplacement}<!--END_BLOCK:${block.title}-->`;
+  
     setBody((prevBody) => {
       const newBody = prevBody.replace(
         new RegExp(
@@ -430,14 +415,16 @@ Kind Regards,<br>
           )}"[^>]*>)([\\s\\S]*?)(</span>)`,
           'g'
         ),
-        `$1${highlightedReplacement}$3`
+        `$1${wrappedHTML}$3`
       );
-      return newBody;
+      return newBody.replace(
+        new RegExp(`(<!--END_BLOCK:${block.title}-->)\\s*(<br\\s*/?>)+\\s*`, 'g'),
+        '$1'
+      );
     });
-
+  
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: true }));
-
-    // Move cursor just after the inserted block
+  
     setTimeout(() => {
       if (bodyEditorRef.current) {
         const insertedSpan = bodyEditorRef.current.querySelector(
@@ -731,26 +718,25 @@ Kind Regards,<br>
    * restoring the original placeholder <span>.
    */
   function handleClearBlock(block: TemplateBlock) {
+    // Update state for the selected options and inserted block flag.
     setSelectedTemplateOptions((prev) => ({
       ...prev,
       [block.title]: block.isMultiSelect ? [] : '',
     }));
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: false }));
-    setBody((prevBody) => {
-      const placeholder = block.placeholder;
+  
+    if (bodyEditorRef.current) {
+      // Build a regex to capture everything between the markers.
       const regex = new RegExp(
-        `(<span[^>]*data-inserted="${block.title.replace(
-          /[-[\]{}()*+?.,\\^$|#\s]/g,
-          '\\$&'
-        )}"[^>]*>)([\\s\\S]*?)(</span>)`,
+        `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
         'g'
       );
-      const newBody = prevBody.replace(
-        regex,
-        `<span data-placeholder="${placeholder}" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${placeholder}</span>`
-      );
-      return newBody;
-    });
+      // Build the original placeholder markup.
+      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${block.placeholder}</span>`;
+      
+      // Replace the entire wrapped block with the placeholder.
+      setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
+    }
   }
 
   /**
@@ -828,7 +814,7 @@ Kind Regards,<br>
   useEffect(() => {
     templateBlocks.forEach((block) => {
       if (
-        ['Risk Assessment', 'Next Steps', 'Closing Notes'].includes(block.title) &&
+        ['Risk Assessment', 'Next Steps', 'Next Steps to Instruct Helix Law', 'Closing Notes'].includes(block.title) &&
         block.options.length === 1
       ) {
         const selectedOption = block.options[0].label;
@@ -845,9 +831,13 @@ Kind Regards,<br>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-insert additional blocks for Commercial area of work
+  // Auto-insert additional blocks for Commercial and Property area of work
   useEffect(() => {
-    if (enquiry.Area_of_Work && enquiry.Area_of_Work.toLowerCase() === 'commercial') {
+    if (
+      enquiry.Area_of_Work &&
+      (enquiry.Area_of_Work.toLowerCase() === 'commercial' ||
+        enquiry.Area_of_Work.toLowerCase() === 'property')
+    ) {
       templateBlocks.forEach((block) => {
         if (block.title === 'Introduction') {
           const autoOptionLabel = 'Standard Acknowledgment';
@@ -857,34 +847,70 @@ Kind Regards,<br>
               ...prev,
               [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
             }));
-            insertTemplateBlock(block, block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel);
+            insertTemplateBlock(
+              block,
+              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+            );
           }
         }
         if (block.title === 'Current Situation and Problem') {
-          const autoOptionLabel = 'Current Position and Problems';
+          const autoOptionLabel = 'The Dispute';
           const optionExists = block.options.find((o) => o.label === autoOptionLabel);
           if (optionExists) {
             setSelectedTemplateOptions((prev) => ({
               ...prev,
               [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
             }));
-            insertTemplateBlock(block, block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel);
+            insertTemplateBlock(
+              block,
+              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+            );
+          }
+        }
+        if (block.title === 'Potential Causes of Action and Remedies') {
+          // Auto-insert this block if it has a single option
+          if (block.options.length === 1) {
+            const autoOptionLabel = block.options[0].label;
+            setSelectedTemplateOptions((prev) => ({
+              ...prev,
+              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
+            }));
+            insertTemplateBlock(
+              block,
+              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+            );
           }
         }
         if (block.title === 'Scope of Work') {
-          const autoOptionLabel = 'Initial Steps- Review and Advice';
+          const autoOptionLabel = 'Initial Review and Costs';
           const optionExists = block.options.find((o) => o.label === autoOptionLabel);
           if (optionExists) {
             setSelectedTemplateOptions((prev) => ({
               ...prev,
               [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
             }));
-            insertTemplateBlock(block, block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel);
+            insertTemplateBlock(
+              block,
+              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+            );
+          }
+        }
+        if (block.title === 'Next Steps to Instruct Helix Law') {
+          if (block.options.length === 1) {
+            const autoOptionLabel = block.options[0].label;
+            setSelectedTemplateOptions((prev) => ({
+              ...prev,
+              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
+            }));
+            insertTemplateBlock(
+              block,
+              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+            );
           }
         }
       });
     }
-  }, [enquiry.Area_of_Work]);
+  }, [enquiry.Area_of_Work]);   
 
   // Some styling
   const containerStyle = mergeStyles({
