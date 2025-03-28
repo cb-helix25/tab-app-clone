@@ -1,7 +1,7 @@
 // src/tabs/transactions/TransactionCard.tsx
 
 import React from 'react';
-import { mergeStyles, Text, Stack, Icon, TooltipHost } from '@fluentui/react';
+import { mergeStyles, Text, Stack, TooltipHost, Icon } from '@fluentui/react';
 import { Transaction } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -10,14 +10,12 @@ interface TransactionCardProps {
   transaction: Transaction;
 }
 
-// Left border color-coded by status: green if "processed", yellow if anything else
 const cardContainer = (isDarkMode: boolean, status?: string | null) =>
   mergeStyles({
     backgroundColor: isDarkMode
       ? colours.dark.cardBackground
       : colours.light.cardBackground,
     borderRadius: '8px',
-    padding: '20px',
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(0,0,0,0.6)'
       : '0 2px 8px rgba(0,0,0,0.1)',
@@ -28,107 +26,186 @@ const cardContainer = (isDarkMode: boolean, status?: string | null) =>
         ? colours.yellow
         : 'transparent'
     }`,
-    transition: 'transform 0.2s, box-shadow 0.2s',
+    transition: 'all 0.3s ease',
+    position: 'relative',
+    overflow: 'hidden',
     selectors: {
       ':hover': {
         transform: 'scale(1.02)',
         boxShadow: isDarkMode
           ? '0 4px 12px rgba(0,0,0,0.8)'
           : '0 4px 12px rgba(0,0,0,0.2)',
+        zIndex: 1,
+      },
+      ':hover .transaction-details': {
+        maxHeight: '200px',
+        padding: '12px',
       },
     },
   });
 
-// Header style for the top row of the card
 const headerStyle = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '8px 12px',
+});
+
+const detailsStyle = mergeStyles({
+  maxHeight: 0,
+  padding: 0,
+  overflow: 'hidden',
+  transition: 'max-height 0.4s ease-in-out, padding 0.4s ease-in-out',
+  backgroundColor: 'inherit',
+});
+
+const separatorStyle = mergeStyles({
+  borderTop: `1px solid ${colours.grey}`,
+  margin: '8px 0',
+});
+
+const backdropIconStyle = mergeStyles({
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  right: '12px',
+  fontSize: '40px',
+  opacity: 0.3,
+  pointerEvents: 'none',
+  zIndex: -1,
+  color: colours.grey,
+});
+
+const rowStyle = mergeStyles({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  marginBottom: '12px',
 });
 
-// Update format functions to use thousand separators and UK locale
 const formatDate = (dateStr: string): string =>
   new Date(dateStr).toLocaleDateString('en-GB');
 
 const formatCurrency = (amount: number): string =>
-  amount.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
+  amount.toLocaleString('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+  });
 
 const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
   const { isDarkMode } = useTheme();
 
+  // Convert "requested" to "pending" for display
+  const displayStatus =
+    transaction.status?.toLowerCase() === 'requested'
+      ? 'pending'
+      : transaction.status;
+
   return (
-    <div className={cardContainer(isDarkMode, transaction.status)}>
-      {/* Top row: Amount with icon on left, date on right */}
+    <div className={`ms-Card ${cardContainer(isDarkMode, transaction.status)}`}>
+      {/* Collapsed Header: Matter Ref & Amount */}
       <div className={headerStyle}>
-        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 10 }}>
-          <Icon iconName="Money" styles={{ root: { fontSize: 28, color: colours.highlight } }} />
-          <Text variant="xLarge" styles={{ root: { fontWeight: 700, color: colours.highlight } }}>
-            {formatCurrency(transaction.amount)}
-          </Text>
-        </Stack>
-        <Text variant="small" styles={{ root: { color: isDarkMode ? '#ccc' : '#666' } }}>
-          {formatDate(transaction.transaction_date)}
+        <Text
+          variant="mediumPlus"
+          styles={{
+            root: {
+              fontWeight: 600,
+              color: isDarkMode ? colours.dark.text : colours.light.text,
+            },
+          }}
+        >
+          {transaction.matter_ref}
+        </Text>
+        <Text
+          variant="mediumPlus"
+          styles={{
+            root: {
+              fontWeight: 400,
+              color: isDarkMode ? colours.dark.text : colours.light.text,
+            },
+          }}
+        >
+          {formatCurrency(transaction.amount)}
         </Text>
       </div>
 
-      {/* Body details */}
-      <Stack tokens={{ childrenGap: 6 }}>
-        <TooltipHost content="Transaction ID">
-          <Text variant="small">
-            <strong>ID:</strong> {transaction.transaction_id}
-          </Text>
-        </TooltipHost>
+      {/* Hover Expansion */}
+      <div className={`transaction-details ${detailsStyle}`}>
+        <div className={separatorStyle} />
+        <Stack tokens={{ childrenGap: 6 }}>
+          {/* Row 1: Date and Fee Earner */}
+          <div className={rowStyle}>
+            <TooltipHost content="Date">
+              <Text variant="small">
+                <strong>Date:</strong> {formatDate(transaction.transaction_date)}
+              </Text>
+            </TooltipHost>
+            <TooltipHost content="Fee Earner">
+              <Text variant="small">
+                <strong>FE:</strong> {transaction.fe}
+              </Text>
+            </TooltipHost>
+          </div>
 
-        <TooltipHost content="Matter Reference">
-          <Text variant="small">
-            <strong>Matter Ref:</strong> {transaction.matter_ref}
-          </Text>
-        </TooltipHost>
+          {/* Row 2: Status and Type */}
+          <div className={rowStyle}>
+            {displayStatus && (
+              <TooltipHost content="Status">
+                <Text
+                  variant="small"
+                  styles={{
+                    root: {
+                      color:
+                        displayStatus.toLowerCase() === 'processed'
+                          ? colours.green
+                          : colours.yellow,
+                      fontWeight: 600,
+                    },
+                  }}
+                >
+                  {displayStatus}
+                </Text>
+              </TooltipHost>
+            )}
+            <TooltipHost content="Transaction Type">
+              <Text variant="small">
+                <strong>Type:</strong> {transaction.type}
+              </Text>
+            </TooltipHost>
+          </div>
 
-        {/* Show status in a color-coded text */}
-        {transaction.status && (
-          <TooltipHost content="Status">
-            <Text
-              variant="small"
-              styles={{
-                root: {
-                  color:
-                    transaction.status.toLowerCase() === 'processed'
-                      ? colours.green
-                      : colours.yellow,
-                  fontWeight: 600,
-                },
-              }}
-            >
-              {transaction.status}
-            </Text>
-          </TooltipHost>
-        )}
+          {/* Row 3: Money Source */}
+          <div className={rowStyle}>
+            <TooltipHost content="Money Source">
+              <Text
+                variant="small"
+                styles={{
+                  root: {
+                    color: transaction.from_client ? colours.green : colours.yellow,
+                    fontWeight: 600,
+                  },
+                }}
+              >
+                {transaction.from_client
+                  ? 'From Client'
+                  : `From ${transaction.money_sender || 'Unknown Sender'}`}
+              </Text>
+            </TooltipHost>
+            <div /> {/* Empty div to maintain layout balance */}
+          </div>
 
-        {/* Transaction type */}
-        <TooltipHost content="Transaction Type">
-          <Text variant="small">
-            <strong>Type:</strong> {transaction.type}
-          </Text>
-        </TooltipHost>
-
-        {/* Intake date */}
-        <TooltipHost content="Intake Date">
-          <Text variant="small">
-            <strong>Intake:</strong> {formatDate(transaction.intake_date)}
-          </Text>
-        </TooltipHost>
-
-        {/* From client indicator */}
-        {transaction.from_client && (
-          <TooltipHost content="Money Sent By Client">
-            <Text variant="small" styles={{ root: { color: colours.green, fontWeight: 600 } }}>
-              From Client
-            </Text>
-          </TooltipHost>
-        )}
-      </Stack>
+          {/* Row 4: ID (at the bottom) */}
+          <div className={rowStyle}>
+            <TooltipHost content="Transaction ID">
+              <Text variant="small">
+                <strong>ID:</strong> {transaction.transaction_id}
+              </Text>
+            </TooltipHost>
+            <div /> {/* Empty div to maintain layout balance */}
+          </div>
+        </Stack>
+        <Icon iconName="Pound" className={backdropIconStyle} />
+      </div>
     </div>
   );
 };

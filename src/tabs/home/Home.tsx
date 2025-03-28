@@ -75,6 +75,8 @@ import BookSpaceForm from '../../CustomForms/BookSpaceForm';
 
 import Attendance from './Attendance'; // Import the Attendance component
 
+import TransactionCard from '../transactions/TransactionCard';
+
 
 initializeIcons();
 
@@ -749,6 +751,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [wipClioData, setWipClioData] = useState<any | null>(null);
   const [wipClioError, setWipClioError] = useState<string | null>(null);
   const [recoveredData, setRecoveredData] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recoveredError, setRecoveredError] = useState<string | null>(null);
   const [isLoadingWipClio, setIsLoadingWipClio] = useState<boolean>(false);
   const [isLoadingRecovered, setIsLoadingRecovered] = useState<boolean>(false);
@@ -1288,6 +1291,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       // Use cached data if available
       if (cachedTransactions) {
         console.log("Using cached transactions:", cachedTransactions);
+        setTransactions(cachedTransactions); // Update local state
         if (onTransactionsFetched) {
           onTransactionsFetched(cachedTransactions);
         }
@@ -1303,6 +1307,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         const data = await response.json();
         // Cache the data for future use
         cachedTransactions = data;
+        setTransactions(data); // Update local state with fetched transactions
         if (onTransactionsFetched) {
           onTransactionsFetched(data);
         }
@@ -1311,7 +1316,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       }
     }
     fetchTransactions();
-  }, []); // Runs only once on component mount
+  }, []); // Runs only once on component mount  
   
 
   useEffect(() => {
@@ -2307,6 +2312,13 @@ const conversionRate = enquiriesMonthToDate
         </div>
       </div>
 
+      {/* Transactions Requiring Action */}
+      <ActionSection
+        transactions={transactions}
+        userInitials={userInitials}
+        isDarkMode={isDarkMode}
+      />
+
       {/* Metrics Section Container */}
       <div
         style={{
@@ -2694,6 +2706,7 @@ const conversionRate = enquiriesMonthToDate
           onClick={() => setIsContextPanelOpen(true)}
         />
       </div>
+      
     </div>
   );
 };

@@ -429,6 +429,9 @@ const Matters: React.FC<MattersProps> = ({
   // (A) The base matter from SQL
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
 
+  const allowedUsers = ['Lukasz', 'Alex'];
+  const userFirstName = userData && userData.length > 0 ? userData[0].First.trim() : '';
+
   // (B) The structured extra data from getMatterOverview
   const [matterOverview, setMatterOverview] = useState<any>(null);
 
@@ -734,17 +737,25 @@ const Matters: React.FC<MattersProps> = ({
                 transactions={transactions}
               />
             </PivotItem>
-  
+
             <PivotItem headerText="Transactions" itemKey="Transactions">
               <MatterTransactions matter={selectedMatter} transactions={transactions} />
             </PivotItem>
-  
-            <PivotItem headerText="Documents" itemKey="Documents">
-              <Documents
-                matter={selectedMatter}
-                category={groupPracticeArea(selectedMatter.PracticeArea)}
-              />
-            </PivotItem>
+
+            {allowedUsers.includes(userFirstName) ? (
+              <PivotItem headerText="Documents" itemKey="Documents">
+                <Documents
+                  matter={selectedMatter}
+                  category={groupPracticeArea(selectedMatter.PracticeArea)}
+                />
+              </PivotItem>
+            ) : (
+              <PivotItem headerText="Documents" itemKey="Documents">
+                <MessageBar messageBarType={MessageBarType.error}>
+                  Access Denied: You do not have permission to view Documents.
+                </MessageBar>
+              </PivotItem>
+            )}
           </Pivot>
         </div>
       </div>
@@ -756,9 +767,15 @@ const Matters: React.FC<MattersProps> = ({
   // ------------------------------------------------
   return (
     <div className={containerStyle(isDarkMode)}>
-      {showNewMatterPage ? (
+    {showNewMatterPage ? (
+      allowedUsers.includes(userFirstName) ? (
         <NewMatters poidData={poidData} setPoidData={setPoidData} teamData={teamData} />
       ) : (
+        <MessageBar messageBarType={MessageBarType.error}>
+          This feature is under active development. Please check back soon.
+        </MessageBar>
+      )
+    ) : (
         <>
           <MattersCombinedMenu
             activeGroupedArea={activeGroupedArea}
