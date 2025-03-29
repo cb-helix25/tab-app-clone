@@ -28,7 +28,7 @@ import { availableAttachments, AttachmentOption } from '../../app/customisation/
 import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
-  sharedDraftConfirmedButtonStyles, // **Import the new style**
+  sharedDraftConfirmedButtonStyles,
 } from '../../app/styles/ButtonStyles';
 import {
   sharedEditorStyle,
@@ -38,97 +38,21 @@ import ReactDOMServer from 'react-dom/server';
 import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
-
-
-/**
- * Utility: turn consecutive <br><br> lines into real paragraphs (<p>...).
- * Some email clients (especially Outlook) collapse repeated <br> tags.
- * Converting them into <p> ensures consistent spacing.
- */
-function convertDoubleBreaksToParagraphs(html: string): string {
-  const normalized = html
-    .replace(/\r\n/g, '\n')
-    .replace(/(<br \/>){2,}/g, '\n\n')
-    .replace(/<\/div>\s*<br \/>/g, '</div>'); // Remove <br> after </div>
-  const paragraphs = normalized.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-  const wrapped = paragraphs.map((paragraph) => `<p>${paragraph.trim()}</p>`);
-  return wrapped.join('');
-}
+import {
+  convertDoubleBreaksToParagraphs,
+  removeUnfilledPlaceholders,
+  removeHighlightSpans,
+  cleanTemplateString,
+  isStringArray,
+  replacePlaceholders,
+  applyDynamicSubstitutions,
+  leftoverPlaceholders,
+} from './pitch builder/emailUtils';
+import EmailHeaderFields from './pitch builder/EmailHeaderFields';
 
 interface PitchBuilderProps {
   enquiry: Enquiry;
   userData: any;
-}
-
-const leftoverPlaceholders = [
-  '[Current Situation and Problem Placeholder]',
-  '[Scope of Work Placeholder]',
-  '[Risk Assessment Placeholder]',
-  '[Costs and Budget Placeholder]',
-  '[Required Documents Placeholder]',
-  '[Follow-Up Instructions Placeholder]',
-  '[Closing Notes Placeholder]',
-  '[Google Review Placeholder]',
-  '[FE Introduction Placeholder]',
-  '[Meeting Link Placeholder]',
-  '[Potential Causes of Action and Remedies Placeholder]', // Add this
-];
-
-/**
- * Removes lines that contain leftover placeholders.
- * Also condenses multiple blank lines down to one.
- */
-function removeUnfilledPlaceholders(text: string): string {
-  const lines = text.split('\n');
-  const filteredLines = lines.filter(
-    (line) =>
-      !leftoverPlaceholders.some((placeholder) => line.includes(placeholder))
-  );
-
-  const consolidated: string[] = [];
-  for (const line of filteredLines) {
-    if (
-      line.trim() === '' &&
-      consolidated.length > 0 &&
-      consolidated[consolidated.length - 1].trim() === ''
-    ) {
-      continue;
-    }
-    consolidated.push(line);
-  }
-
-  return consolidated.join('\n').trim();
-}
-
-/**
- * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
- * so final email doesn't have bright highlighting.
- */
-function removeHighlightSpans(html: string): string {
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-  // Select all elements (span or div) with these data attributes
-  const elements = tempDiv.querySelectorAll(
-    '[data-placeholder], [data-inserted], [data-link]'
-  );
-  elements.forEach((el) => {
-    el.removeAttribute('style');
-    el.removeAttribute('data-placeholder');
-    el.removeAttribute('data-inserted');
-    el.removeAttribute('data-link');
-  });
-  return tempDiv.innerHTML;
-}
-
-/**
- * When we insert multiline text from the TemplateBlocks, we turn raw newlines into <br />.
- */
-function cleanTemplateString(template: string): string {
-  return template
-    .split('\n')
-    .map(line => line.trim())
-    .join('<br />')
-    .replace(/(<br \/>)+$/, ''); // Remove trailing <br /> tags
 }
 
 const boldIcon: IIconProps = { iconName: 'Bold' };
@@ -139,88 +63,21 @@ const orderedListIcon: IIconProps = { iconName: 'NumberedList' };
 const linkIcon: IIconProps = { iconName: 'Link' };
 const clearIcon: IIconProps = { iconName: 'Cancel' };
 
-// A quick helper: do we have an array of strings or a single string?
-function isStringArray(value: string | string[]): value is string[] {
-  return Array.isArray(value);
-}
-
-/**
- * Replaces placeholders in the base template, e.g. [Enquiry.First_Name].
- */
-function replacePlaceholders(
-  template: string,
-  intro: string,
-  enquiry: Enquiry,
-  userData: any
-): string {
-  const userFirstName = userData?.[0]?.['First'] || 'Your';
-  const userFullName = userData?.[0]?.['Full Name'] || 'Your Name';
-  const userRole = userData?.[0]?.['Role'] || 'Your Position';
-
-  return template
-    .replace(
-      /\[Enquiry.First_Name\]/g,
-      `<span style="background-color: ${colours.highlightYellow}; padding: 0 3px;" data-placeholder="[Enquiry.First_Name]">${
-        enquiry.First_Name || 'there'
-      }</span>`
-    )
-    .replace(
-      /\[Enquiry.Point_of_Contact\]/g,
-      `<span style="background-color: ${colours.highlightYellow}; padding: 0 3px;" data-placeholder="[Enquiry.Point_of_Contact]">${
-        enquiry.Point_of_Contact || 'Our Team'
-      }</span>`
-    )
-    .replace(
-      /\[FE Introduction Placeholder\]/g,
-      intro
-        ? `<span data-placeholder="[FE Introduction Placeholder]">${intro}</span>`
-        : `<span data-placeholder="[FE Introduction Placeholder]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">[FE Introduction Placeholder]</span>`
-    )
-    .replace(
-      /\[Current Situation and Problem Placeholder\]/g,
-      `<span data-placeholder="[Current Situation and Problem Placeholder]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">[Current Situation and Problem Placeholder]</span>`
-    )
-    .replace(
-      /\[Potential Causes of Action and Remedies Placeholder\]/g,
-      `<span data-placeholder="[Potential Causes of Action and Remedies Placeholder]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">[Potential Causes of Action and Remedies Placeholder]</span>`
-    )
-    .replace(
-      /\[First Name\]/g,
-      `<span data-placeholder="[First Name]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userFirstName}</span>`
-    )
-    .replace(
-      /\[Full Name\]/g,
-      `<span data-placeholder="[Full Name]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userFullName}</span>`
-    )
-    .replace(
-      /\[Position\]/g,
-      `<span data-placeholder="[Position]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userRole}</span>`
-    )
-    .replace(
-      /\[(Scope of Work Placeholder|Risk Assessment Placeholder|Costs and Budget Placeholder|Follow-Up Instructions Placeholder|Closing Notes Placeholder|Required Documents Placeholder|Google Review Placeholder|Meeting Link Placeholder)\]/g,
-      (match) =>
-        `<span data-placeholder="${match}" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${match}</span>`
-    );
-}
-
-/**
- * Helper function to replace [FE] and [ACID] with dynamic values.
- */
-function applyDynamicSubstitutions(
-  text: string,
-  userData: any,
-  enquiry: Enquiry
-): string {
-  const userInitials = userData?.[0]?.['Initials'] || 'XX';
-  const enquiryID = enquiry?.ID || '0000';
-
-  return text
-    .replace(/\[FE\]/g, userInitials)
-    .replace(/\[ACID\]/g, enquiryID);
-}
-
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
+
+// Move highlightBlock inside the component
+function highlightBlock(blockTitle: string, highlight: boolean) {
+  const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
+  if (blockElement) {
+    blockElement.style.transition = 'background-color 0.2s';
+    blockElement.style.backgroundColor = highlight
+      ? colours.highlightYellow
+      : isDarkMode
+      ? colours.dark.cardBackground
+      : colours.light.cardBackground;
+  }
+}
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -406,11 +263,17 @@ Kind Regards,<br>
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${innerHTML}</${containerTag}>`;
-    const wrappedHTML = `<!--START_BLOCK:${block.title}-->${highlightedReplacement}<!--END_BLOCK:${block.title}-->`;
-  
+    // Add inline style to <p> tags to remove bottom margin
+    const styledInnerHTML = innerHTML.replace(
+      /<p>/g,
+      `<p style="margin-bottom: 0;">`
+    );
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${styledInnerHTML}</${containerTag}>`;
+    // Simplified hover handlers to directly call highlightBlock
+    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true)" onmouseout="window.highlightBlock('${block.title}', false)">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
+    
     setBody((prevBody) => {
-      const newBody = prevBody.replace(
+      return prevBody.replace(
         new RegExp(
           `(<span[^>]*data-placeholder="${block.placeholder.replace(
             /[-[\]{}()*+?.,\\^$|#\s]/g,
@@ -419,10 +282,6 @@ Kind Regards,<br>
           'g'
         ),
         `$1${wrappedHTML}$3`
-      );
-      return newBody.replace(
-        new RegExp(`(<!--END_BLOCK:${block.title}-->)\\s*(<br\\s*/?>)+\\s*`, 'g'),
-        '$1'
       );
     });
   
@@ -444,6 +303,9 @@ Kind Regards,<br>
             saveSelection();
           }
         }
+  
+        // Attach highlightBlock to window to make it accessible in inline handlers
+        (window as any).highlightBlock = highlightBlock;
       }
     }, 0);
   }
@@ -1045,90 +907,21 @@ Kind Regards,<br>
 
   return (
     <Stack className={containerStyle}>
-    {/* Row: Form Fields and Enquiry Notes */}
-    <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="stretch">
-      {/* Left Column: To, CC, BCC, Subject Line */}
-      <Stack style={{ width: '50%' }} className={formContainerStyle} tokens={{ childrenGap: 20 }}>
-        {/* First Row: To, CC, BCC */}
-        <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="start">
-          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-            <Label className={labelStyle}>To</Label>
-            <BubbleTextField
-              value={to}
-              onChange={(_, newValue) => setTo(newValue || '')}
-              placeholder="Enter recipient addresses, separated by commas"
-              ariaLabel="To Addresses"
-              isDarkMode={isDarkMode}
-              style={{ borderRadius: '8px' }}
-            />
-          </Stack>
-          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-            <Label className={labelStyle}>CC</Label>
-            <BubbleTextField
-              value={cc}
-              onChange={(_, newValue) => setCc(newValue || '')}
-              placeholder="Enter CC addresses, separated by commas"
-              ariaLabel="CC Addresses"
-              isDarkMode={isDarkMode}
-              style={{ borderRadius: '8px' }}
-            />
-          </Stack>
-          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-            <Label className={labelStyle}>BCC</Label>
-            <BubbleTextField
-              value={bcc}
-              onChange={(_, newValue) => setBcc(newValue || '')}
-              placeholder="Enter BCC addresses, separated by commas"
-              ariaLabel="BCC Addresses"
-              isDarkMode={isDarkMode}
-              style={{ borderRadius: '8px' }}
-            />
-          </Stack>
-        </Stack>
-
-        {/* Second Row: Subject Line */}
-        <Stack tokens={{ childrenGap: 6 }}>
-          <Label className={labelStyle}>Subject Line</Label>
-          <BubbleTextField
-            value={subject}
-            onChange={(_, newValue) => setSubject(newValue || '')}
-            placeholder="Enter email subject"
-            ariaLabel="Email Subject"
-            isDarkMode={isDarkMode}
-            style={{ borderRadius: '8px' }}
-          />
-        </Stack>
-      </Stack>
-
-      {/* Right Column: Enquiry Notes or Message */}
-      <Stack style={{ width: '50%', height: '100%' }} className={formContainerStyle} tokens={{ childrenGap: 6 }}>
-        <Label className={labelStyle}>Enquiry Notes or Message</Label>
-        {enquiry.Initial_first_call_notes && (
-          <div
-            style={{
-              backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-              padding: '10px',
-              borderRadius: '8px',
-              boxShadow: isDarkMode ? '0 2px 5px rgba(255,255,255,0.1)' : '0 2px 5px rgba(0, 0, 0, 0.1)',
-              overflowY: 'auto',
-              height: '100%',
-            }}
-          >
-            <Text
-              variant="small"
-              styles={{
-                root: {
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  whiteSpace: 'pre-wrap',
-                },
-              }}
-            >
-              {enquiry.Initial_first_call_notes}
-            </Text>
-          </div>
-        )}
-      </Stack>
-    </Stack>
+      {/* Row: Form Fields and Enquiry Notes */}
+      <EmailHeaderFields
+        to={to}
+        cc={cc}
+        bcc={bcc}
+        subject={subject}
+        setTo={setTo}
+        setCc={setCc}
+        setBcc={setBcc}
+        setSubject={setSubject}
+        initialNotes={enquiry.Initial_first_call_notes}
+        isDarkMode={isDarkMode}
+        formContainerStyle={formContainerStyle}
+        labelStyle={labelStyle}
+      />
   
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks
@@ -1145,7 +938,8 @@ Kind Regards,<br>
         applyFormat={applyFormat}
         saveSelection={saveSelection}
         handleBlur={handleBlur}
-        handleClearBlock={handleClearBlock} // Already included
+        handleClearBlock={handleClearBlock}
+        highlightBlock={highlightBlock} // Added prop
         bodyEditorRef={bodyEditorRef}
         toolbarStyle={toolbarStyle}
         bubblesContainerStyle={bubblesContainerStyle}
@@ -1188,11 +982,9 @@ Kind Regards,<br>
         handleDraftEmail={handleDraftEmail}
         isSuccessVisible={isSuccessVisible}
         isDraftConfirmed={isDraftConfirmed}
-        removeHighlightSpans={removeHighlightSpans}
-        removeUnfilledPlaceholders={removeUnfilledPlaceholders}
       />
     </Stack>
-  );  
+  );
   
 };
 

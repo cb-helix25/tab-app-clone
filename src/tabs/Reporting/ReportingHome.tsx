@@ -15,6 +15,7 @@ import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app
 import ReportCard from './ReportCard';
 import HomePreview from './HomePreview';
 import ManagementDashboard from './ManagementDashboard';
+import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
 
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
@@ -27,7 +28,7 @@ const DATASETS = [
   { key: 'poidData', name: 'POID 6 Years', type: 'POID[]', duration: 1500 },
   { key: 'transactions', name: 'Transactions', type: 'Transaction[]', duration: 2000 },
   { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 },
-  { key: 'wip', name: 'WIP', type: 'WIP[]', duration: 2000 }, // Combined WIP
+  { key: 'wip', name: 'WIP', type: 'WIP[]', duration: 2000 },
   { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 },
 ] as const;
 
@@ -78,8 +79,8 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [previewDataset, setPreviewDataset] = useState<string | null>(null);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [isDataSectionOpen, setIsDataSectionOpen] = useState(true);
-  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number>(Date.now()); // Track last refresh
-  const [isFetching, setIsFetching] = useState<boolean>(false); // Track fetch in progress
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number>(Date.now());
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
   const decisionButtonRootStyles = sharedDecisionButtonStyles.root as React.CSSProperties;
   const defaultButtonRootStyles = sharedDefaultButtonStyles.root as React.CSSProperties;
@@ -151,7 +152,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const fetchReportDatasets = async (datasets: string[]) => {
     setShowSelectionModal(false);
-    setIsFetching(true); // Indicate refresh in progress
+    setIsFetching(true);
     datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'fetching' })));
     datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
     setError(null);
@@ -285,8 +286,8 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       setIsWrappingUp(false);
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'idle' })));
       datasets.forEach(dataset => setFetchProgress(prev => ({ ...prev, [dataset]: 0 })));
-      setLastRefreshTimestamp(Date.now()); // Update timestamp on success
-      setIsFetching(false); // Refresh completed
+      setLastRefreshTimestamp(Date.now());
+      setIsFetching(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       datasets.forEach(dataset => setFetchStatus(prev => ({ ...prev, [dataset]: 'error' })));
@@ -301,7 +302,6 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     }
   };
 
-  // Add triggerRefresh function
   const triggerRefresh = () => {
     fetchReportDatasets(selectedDatasets);
   };
@@ -379,10 +379,10 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   });
 
   const reportSections = [
-    { title: 'Management Dashboard', description: 'Key metrics and team performance', path: '/management-dashboard', icon: 'BarChartHorizontal' },
-    { title: 'Enquiries', description: 'Enquiry trends and details', path: '/enquiries', icon: 'Chat' },
-    { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'DocumentSet' },
-    { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'TaskLogo' },
+    { title: 'Management Dashboard', description: 'Key metrics and team performance', path: '/management-dashboard', icon: 'Search', isReady: true },
+    { title: 'Enquiries', description: 'Enquiry trends and details', path: '/enquiries', icon: 'People', isReady: false },
+    { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'Folder', isReady: false },
+    { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'CheckList', isReady: false },
   ];
 
   const availableData = [
@@ -597,70 +597,90 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
               <ReportCard
                 key={report.title}
                 report={report}
-                onGoTo={handleGoTo}
+                onGoTo={report.isReady ? handleGoTo : () => {}}
                 animationDelay={index * 0.15}
               />
             ))}
           </div>
         </section>
 
-        <section className="data-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '20px', color: '#333', margin: 0 }}>Available Data</h2>
-            <button
-              className="decision-button"
-              onClick={() => setIsDataSectionOpen(!isDataSectionOpen)}
-              style={decisionButtonRootStyles}
-            >
-              {isDataSectionOpen ? 'Collapse' : 'Expand'}
-            </button>
+        <section className="data-section" style={{
+          marginBottom: '40px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+          borderRadius: '4px',
+          overflow: 'hidden',
+        }}>
+          <div
+            className="collapsible-header"
+            onClick={() => setIsDataSectionOpen(!isDataSectionOpen)}
+            style={{
+              background: `linear-gradient(to right, ${colours.grey}, white)`,
+              color: '#333333',
+              padding: '16px 12px',
+              minHeight: '48px',
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '16px',
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Available Data</span>
+            <Icon
+              iconName="ChevronDown"
+              styles={{
+                root: {
+                  fontSize: '16px',
+                  transform: isDataSectionOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease',
+                },
+              }}
+            />
           </div>
-          <div className="data-access-grid" style={{
-            display: isDataSectionOpen ? 'flex' : 'none',
-            flexWrap: 'wrap',
-            gap: '20px',
-            transition: 'height 0.3s ease',
-          }}>
-            {availableData.map((data, index) => (
-              <div
-                key={data.name}
-                className="data-access-card animate-data-card"
-                style={{ animationDelay: `${index * 0.1}s`, flex: '1 1 300px', maxWidth: '300px', padding: '15px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}
-              >
-                <span
-                  className={`status-indicator ${data.available ? 'available' : 'unavailable'}`}
-                  style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    background: data.available ? '#28a745' : '#dc3545',
-                    marginRight: '10px',
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: '0 0 5px', fontSize: '16px' }}>{data.name}</h4>
-                  <p style={{ margin: '0 0 10px', fontSize: '14px', color: '#666' }}>{data.details}</p>
-                  {isDatasetReady(DATASETS.find(d => d.name === data.name)!.key) && (
-                    <button
-                      onClick={() => togglePreview(data.name)}
-                      style={{ background: 'none', border: 'none', color: colours.blue, cursor: 'pointer', fontSize: '12px', padding: 0 }}
-                    >
-                      Preview
-                    </button>
-                  )}
-                </div>
+          {isDataSectionOpen && (
+            <div
+              style={{
+                padding: '10px 15px',
+                backgroundColor: colours.light.sectionBackground,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <div className="data-access-header">
+                <button
+                  className="refresh-button"
+                  onClick={() => setShowSelectionModal(true)}
+                  disabled={Object.values(fetchStatus).some(status => status === 'fetching')}
+                >
+                  Refresh Data
+                </button>
               </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-            <button
-              className="decision-button"
-              onClick={() => setShowSelectionModal(true)}
-              style={decisionButtonRootStyles}
-            >
-              Refresh Data
-            </button>
-          </div>
+              <ul className="data-access-grid">
+                {availableData.map((data, index) => (
+                  <li key={data.name} className="data-access-item animate-data-item" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <span
+                      className={`indicator ${data.available ? 'available' : 'unavailable'}`}
+                    />
+                    <div className="data-access-content">
+                      <h3>{data.name}</h3>
+                      <div className="data-access-body">
+                        <p>{data.details}</p>
+                        {isDatasetReady(DATASETS.find(d => d.name === data.name)!.key) && (
+                          <div className="data-access-actions">
+                            <button
+                              className="launch-report-link"
+                              onClick={() => togglePreview(data.name)}
+                            >
+                              Preview Sample
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       </main>
 

@@ -1,13 +1,50 @@
+/* HomePreview.css */
+
+/* Existing animation styles */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .home-preview-section .metric-card {
-    animation: fadeIn 0.5s ease-in-out forwards;
-  }
-  
-  .home-preview-section .metric-card:nth-child(1) { animation-delay: 0s; }
-  .home-preview-section .metric-card:nth-child(2) { animation-delay: 0.1s; }
-  .home-preview-section .metric-card:nth-child(3) { animation-delay: 0.2s; }
-  .home-preview-section .metric-card:nth-child(4) { animation-delay: 0.3s; }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.home-preview-section .metric-card {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+.home-preview-section .metric-card:nth-child(1) { animation-delay: 0s; }
+.home-preview-section .metric-card:nth-child(2) { animation-delay: 0.1s; }
+.home-preview-section .metric-card:nth-child(3) { animation-delay: 0.2s; }
+.home-preview-section .metric-card:nth-child(4) { animation-delay: 0.3s; }
+.home-preview-section .metric-card:nth-child(5) { animation-delay: 0.4s; } /* Added for 5th card */
+
+/* New toggle styles */
+.selected {
+  background-color: #3690CE; /* Matches colours.highlight, typically blue */
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.unselected {
+  background-color: #f3f2f1; /* Matches colours.secondaryButtonBackground, light grey */
+  color: #000000;
+  border: 1px solid #d1d1d1;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.selected:hover, .unselected:hover {
+  opacity: 0.9;
+}
+
+.selected:active, .unselected:active {
+  background-color: #2e7db2; /* Slightly darker shade of highlight for pressed state */
+  opacity: 0.8;
+}
+
+/* Ensure buttons fit nicely */
+button {
+  min-width: 80px; /* Consistent with ManagementDashboard button sizes */
+}

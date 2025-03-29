@@ -214,33 +214,7 @@ export const templateBlocks: TemplateBlock[] = [
     "options": [
       {
         "label": "Confirm Instructions, Payment & Document Submission",
-        "previewText": 
-          "To confirm my instructions and to enable us to open a file and move this forwards, please take the steps below:" +
-          "<ol style='margin:0; padding-left: 20px;'>" +
-            "<li style='margin-bottom: 10px;'>" +
-              "We are required to verify your identity. Please complete the identity form below with your personal details. We will try to verify you electronically initially.<br>" +
-              "<a href=\"https://helix-law.co.uk/proof-of-identity/\" target=\"_blank\" style='color:#3690CE; text-decoration:none;'>https://helix-law.co.uk/proof-of-identity/</a>" +
-            "</li>" +
-            "<li style='margin-bottom: 10px;'>" +
-              "Provide:<br>" +
-              "X;<br>" +
-              "Y;<br>" +
-              "Z." +
-            "</li>" +
-            "<li style='margin-bottom: 10px;'>" +
-              "Please pay £x on account of costs, using our account details below:<br><br>" +
-              "<div style='margin-left: 30px;'>" +
-                "<div>Helix Law General Client Account</div>" +
-                "<div>Barclays Bank</div>" +
-                "<div>Account Number: 93472434</div>" +
-                "<div>Sort Code: 20-27-91</div>" +
-                "<div>Reference: [FE] - [ACID]</div>" +
-              "</div>" +
-            "</li>" +
-          "</ol>" +
-          "<p>Please ensure to quote the above reference so that we promptly identify your payment.</p>" +
-          "<p>I will then deal with compliance with a view to providing you with my Client Care Letter setting out the terms of our retainer and requesting the further documents I will require.</p>" +
-          "<p>If there is anything further you would like to discuss I am very happy to have a further call/answer any questions or queries without charge, and please do not hesitate to contact me.</p>"
+        "previewText": `To confirm my instructions and to enable us to open a file and move this forwards, please take the steps below:<ol style='margin:0; padding-left: 20px;'><li style='margin-bottom: 10px;'>We are required to verify your identity. Please complete the identity form below with your personal details. We will try to verify you electronically initially.<br><a href="https://helix-law.co.uk/proof-of-identity/" target="_blank" style='color:#3690CE; text-decoration:none;'>https://helix-law.co.uk/proof-of-identity/</a></li><li style='margin-bottom: 10px;'>Provide:<br>X;<br>Y;<br>Z.</li><li style='margin-bottom: 10px;'>Please pay £x on account of costs, using our account details below:<br><br><div style='margin-left: 30px;'><div>Helix Law General Client Account</div><div>Barclays Bank</div><div>Account Number: 93472434</div><div>Sort Code: 20-27-91</div><div>Reference: [FE] - [ACID]</div></div></li></ol><p>Please ensure to quote the above reference so that we promptly identify your payment.</p><p>I will then deal with compliance with a view to providing you with my Client Care Letter setting out the terms of our retainer and requesting the further documents I will require.</p><p>If there is anything further you would like to discuss I am very happy to have a further call/answer any questions or queries without charge, and please do not hesitate to contact me.</p>`
       }
     ]
   },

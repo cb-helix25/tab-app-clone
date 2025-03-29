@@ -7,7 +7,7 @@ import {
   IDropdownOption,
   Text,
   mergeStyles,
-  Icon, // Added for the green checkmark
+  Icon,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
 import { colours } from '../../../app/styles/colours';
@@ -28,6 +28,7 @@ interface EditorAndTemplateBlocksProps {
   saveSelection: () => void;
   handleBlur: () => void;
   handleClearBlock: (block: TemplateBlock) => void;
+  highlightBlock: (blockTitle: string, highlight: boolean) => void; // Added prop
   bodyEditorRef: RefObject<HTMLDivElement>;
   toolbarStyle: string;
   bubblesContainerStyle: string;
@@ -50,6 +51,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   saveSelection,
   handleBlur,
   handleClearBlock,
+  highlightBlock, // Added prop
   bodyEditorRef,
   toolbarStyle,
   bubblesContainerStyle,
@@ -81,7 +83,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     paddingBottom: '5px',
   });
 
-  // Function for yellow highlight animation
   const scrollToBlockWithHighlight = (blockTitle: string) => {
     const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
     if (blockElement) {

@@ -1,5 +1,3 @@
-// src/components/EmailPreview.tsx
-
 import React from 'react';
 import {
   Stack,
@@ -12,12 +10,13 @@ import {
   PrimaryButton,
   DefaultButton,
 } from '@fluentui/react';
-import { colours } from '../../../app/styles/colours'; // adjust the import path as needed
+import { colours } from '../../../app/styles/colours';
 import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
   sharedDraftConfirmedButtonStyles,
 } from '../../../app/styles/ButtonStyles';
+import { removeHighlightSpans, removeUnfilledPlaceholders } from './emailUtils'; // Adjusted path
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -32,8 +31,6 @@ interface EmailPreviewProps {
   handleDraftEmail: () => void;
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;
-  removeHighlightSpans: (html: string) => string;
-  removeUnfilledPlaceholders: (text: string) => string;
 }
 
 const EmailPreview: React.FC<EmailPreviewProps> = ({
@@ -49,10 +46,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   handleDraftEmail,
   isSuccessVisible,
   isDraftConfirmed,
-  removeHighlightSpans,
-  removeUnfilledPlaceholders,
 }) => {
-  // Process body HTML as done previously
+  // Process body HTML using imported functions
   const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
 
   // Example follow-up options (you may wish to pass these in or centralise them)
@@ -94,7 +89,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           <strong style={{ color: colours.cta }}>
             You're sending an email to {fullName || 'N/A'}
           </strong>
-          <span style={{ color: colours.greyText, margin: '0 8px' }}>&bull;</span>
+          <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
           {enquiry.Point_of_Contact || 'N/A'}
         </Text>
         <MessageBar
