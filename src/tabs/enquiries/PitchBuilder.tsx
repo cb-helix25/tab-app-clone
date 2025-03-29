@@ -36,6 +36,9 @@ import {
 } from '../../app/styles/FilterStyles';
 import ReactDOMServer from 'react-dom/server';
 import EmailSignature from './EmailSignature';
+import EmailPreview from './pitch builder/EmailPreview';
+import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
+
 
 /**
  * Utility: turn consecutive <br><br> lines into real paragraphs (<p>...).
@@ -756,7 +759,6 @@ Kind Regards,<br>
     }
 
     const formatPreviewText = (text: string) => {
-      // Convert embedded newlines to <br> for display in the preview
       return text.replace(/\n/g, '<br />');
     };
 
@@ -828,7 +830,6 @@ Kind Regards,<br>
         );
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-insert additional blocks for Commercial and Property area of work
@@ -927,6 +928,8 @@ Kind Regards,<br>
     flexDirection: 'column',
     gap: '20px',
     boxSizing: 'border-box',
+    flex: 1,      // Let it fill the page if needed
+    minHeight: 0, // So it won't overflow
   });
 
   const formContainerStyle = mergeStyles({
@@ -975,7 +978,7 @@ Kind Regards,<br>
 
   const bubblesContainerStyle = mergeStyles({
     display: 'flex',
-    overflowX: 'auto',
+    flexWrap: 'wrap', // Allow bubbles to wrap to the next line
     padding: '10px 0',
     gap: '10px',
   });
@@ -989,8 +992,8 @@ Kind Regards,<br>
     textAlign: 'center',
     whiteSpace: 'nowrap',
     userSelect: 'none',
-    flexShrink: 0, // Prevent bubbles from shrinking
-    width: 'auto', // Allow bubbles to expand based on content
+    flexShrink: 0,
+    width: 'auto',
     ':hover': {
       backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
     },
@@ -1008,8 +1011,8 @@ Kind Regards,<br>
     textAlign: 'center',
     whiteSpace: 'nowrap',
     userSelect: 'none',
-    flexShrink: 0, // Prevent bubbles from shrinking
-    width: 'auto', // Allow bubbles to expand based on content
+    flexShrink: 0,
+    width: 'auto',
     border: `1px solid ${
       isDarkMode ? colours.dark.borderColor : colours.light.borderColor
     }`,
@@ -1042,552 +1045,155 @@ Kind Regards,<br>
 
   return (
     <Stack className={containerStyle}>
-      {/* Row: Left (Form Fields) and Right (Initial Notes) */}
-      <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="stretch">
-        {/* Left Column: To, CC, BCC, Subject Line */}
-        <Stack style={{ width: '50%' }} className={formContainerStyle} tokens={{ childrenGap: 20 }}>
-          {/* Labels and Inputs */}
-          {/* First Row: To, CC, BCC */}
-          <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="start">
-            <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={labelStyle}>To</Label>
-              <BubbleTextField
-                value={to}
-                onChange={(
-                  _: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-                  newValue?: string
-                ) => setTo(newValue || '')}
-                placeholder="Enter recipient addresses, separated by commas"
-                ariaLabel="To Addresses"
-                isDarkMode={isDarkMode}
-                style={{ borderRadius: '8px' }}
-              />
-            </Stack>
-            <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={labelStyle}>CC</Label>
-              <BubbleTextField
-                value={cc}
-                onChange={(
-                  _: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-                  newValue?: string
-                ) => setCc(newValue || '')}
-                placeholder="Enter CC addresses, separated by commas"
-                ariaLabel="CC Addresses"
-                isDarkMode={isDarkMode}
-                style={{ borderRadius: '8px' }}
-              />
-            </Stack>
-            <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={labelStyle}>BCC</Label>
-              <BubbleTextField
-                value={bcc}
-                onChange={(
-                  _: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-                  newValue?: string
-                ) => setBcc(newValue || '')}
-                placeholder="Enter BCC addresses, separated by commas"
-                ariaLabel="BCC Addresses"
-                isDarkMode={isDarkMode}
-                style={{ borderRadius: '8px' }}
-              />
-            </Stack>
-          </Stack>
-
-          {/* Second Row: Subject Line */}
-          <Stack tokens={{ childrenGap: 6 }}>
-            <Label className={labelStyle}>Subject Line</Label>
+    {/* Row: Form Fields and Enquiry Notes */}
+    <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="stretch">
+      {/* Left Column: To, CC, BCC, Subject Line */}
+      <Stack style={{ width: '50%' }} className={formContainerStyle} tokens={{ childrenGap: 20 }}>
+        {/* First Row: To, CC, BCC */}
+        <Stack horizontal tokens={{ childrenGap: 10 }} verticalAlign="start">
+          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
+            <Label className={labelStyle}>To</Label>
             <BubbleTextField
-              value={subject}
-              onChange={(
-                _: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-                newValue?: string
-              ) => setSubject(newValue || '')}
-              placeholder="Enter email subject"
-              ariaLabel="Email Subject"
+              value={to}
+              onChange={(_, newValue) => setTo(newValue || '')}
+              placeholder="Enter recipient addresses, separated by commas"
+              ariaLabel="To Addresses"
+              isDarkMode={isDarkMode}
+              style={{ borderRadius: '8px' }}
+            />
+          </Stack>
+          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
+            <Label className={labelStyle}>CC</Label>
+            <BubbleTextField
+              value={cc}
+              onChange={(_, newValue) => setCc(newValue || '')}
+              placeholder="Enter CC addresses, separated by commas"
+              ariaLabel="CC Addresses"
+              isDarkMode={isDarkMode}
+              style={{ borderRadius: '8px' }}
+            />
+          </Stack>
+          <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
+            <Label className={labelStyle}>BCC</Label>
+            <BubbleTextField
+              value={bcc}
+              onChange={(_, newValue) => setBcc(newValue || '')}
+              placeholder="Enter BCC addresses, separated by commas"
+              ariaLabel="BCC Addresses"
               isDarkMode={isDarkMode}
               style={{ borderRadius: '8px' }}
             />
           </Stack>
         </Stack>
 
-        {/* Right Column: Enquiry Notes or Message */}
-        <Stack style={{ width: '50%', height: '100%' }} className={formContainerStyle} tokens={{ childrenGap: 6 }}>
-          {/* Label: Enquiry Notes or Message */}
-          <Label className={labelStyle}>Enquiry Notes or Message</Label>
-          {/* Notes Box */}
-          {enquiry.Initial_first_call_notes && (
-            <div
-              style={{
-                backgroundColor: isDarkMode
-                  ? colours.dark.sectionBackground
-                  : colours.light.sectionBackground,
-                padding: '10px',
-                borderRadius: '8px',
-                boxShadow: isDarkMode
-                  ? '0 2px 5px rgba(255,255,255,0.1)'
-                  : '0 2px 5px rgba(0, 0, 0, 0.1)',
-                overflowY: 'auto',
-                height: '100%',
-              }}
-            >
-              <Text
-                variant="small"
-                styles={{
-                  root: {
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    whiteSpace: 'pre-wrap',
-                  },
-                }}
-              >
-                {enquiry.Initial_first_call_notes}
-              </Text>
-            </div>
-          )}
+        {/* Second Row: Subject Line */}
+        <Stack tokens={{ childrenGap: 6 }}>
+          <Label className={labelStyle}>Subject Line</Label>
+          <BubbleTextField
+            value={subject}
+            onChange={(_, newValue) => setSubject(newValue || '')}
+            placeholder="Enter email subject"
+            ariaLabel="Email Subject"
+            isDarkMode={isDarkMode}
+            style={{ borderRadius: '8px' }}
+          />
         </Stack>
       </Stack>
 
-      {/* Row: Email Body and Template Blocks */}
-      <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
-        {/* Left Column: Email Body */}
-        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-          <Label className={labelStyle}>Email Body</Label>
-          <Stack tokens={{ childrenGap: 20 }}>
-            <Stack horizontal tokens={{ childrenGap: 20 }}>
-              <Stack tokens={{ childrenGap: 6 }} grow>
-                <div className={toolbarStyle}>
-                  <IconButton iconProps={boldIcon} ariaLabel="Bold" onClick={() => applyFormat('bold')} />
-                  <IconButton
-                    iconProps={italicIcon}
-                    ariaLabel="Italic"
-                    onClick={() => applyFormat('italic')}
-                  />
-                  <IconButton
-                    iconProps={underlineIcon}
-                    ariaLabel="Underline"
-                    onClick={() => applyFormat('underline')}
-                  />
-                  <IconButton
-                    iconProps={unorderedListIcon}
-                    ariaLabel="Bulleted List"
-                    onClick={() => applyFormat('insertUnorderedList')}
-                  />
-                  <IconButton
-                    iconProps={orderedListIcon}
-                    ariaLabel="Numbered List"
-                    onClick={() => applyFormat('insertOrderedList')}
-                  />
-                  <IconButton
-                    iconProps={linkIcon}
-                    ariaLabel="Insert Link"
-                    onClick={() => {
-                      const url = prompt('Enter the URL');
-                      if (url) {
-                        applyFormat('createLink', url);
-                      }
-                    }}
-                  />
-                </div>
-
-                <div
-                  contentEditable
-                  ref={bodyEditorRef}
-                  onBlur={handleBlur}
-                  suppressContentEditableWarning={true}
-                  className={sharedEditorStyle(isDarkMode)}
-                  style={{
-                    flexGrow: 1,
-                    overflowY: 'auto',
-                    height: 'auto',
-                    minHeight: '200px',
-                    maxHeight: 'none',
-                  }}
-                  aria-label="Email Body Editor"
-                  onMouseUp={saveSelection}
-                  onKeyUp={saveSelection}
-                />
-              </Stack>
-            </Stack>
-
-            {/* Attachments Section Below Email Body Editor */}
-            <Stack tokens={{ childrenGap: 6 }}>
-              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 5 }}>
-                <Label className={labelStyle}>Attachments</Label>
-                <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                  (Available soon)
-                </Text>
-              </Stack>
-              <div className={bubblesContainerStyle}>
-                {filteredAttachments.map((attachment) => (
-                  <div
-                    key={`attachment-${attachment.key}`}
-                    className={attachmentBubbleStyle}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Attachment ${attachment.text} (Coming Soon)`}
-                  >
-                    {attachment.text}
-                  </div>
-                ))}
-              </div>
-            </Stack>
-
-            {isErrorVisible && (
-              <MessageBar
-                messageBarType={MessageBarType.error}
-                isMultiline={false}
-                onDismiss={() => setIsErrorVisible(false)}
-                dismissButtonAriaLabel="Close"
-                styles={{ root: { borderRadius: '4px' } }}
-              >
-                {errorMessage}
-              </MessageBar>
-            )}
-
-            <Separator />
-
-            <Stack horizontal horizontalAlign="space-between" className={buttonGroupStyle}>
-              <PrimaryButton
-                text="Preview Email"
-                onClick={togglePreview}
-                styles={sharedPrimaryButtonStyles}
-                ariaLabel="Preview Email"
-                iconProps={{ iconName: 'Preview' }}
-              />
-
-              <DefaultButton
-                text="Reset"
-                onClick={resetForm}
-                styles={sharedDefaultButtonStyles}
-                ariaLabel="Reset Form"
-                iconProps={{ iconName: 'Refresh' }}
-              />
-            </Stack>
-          </Stack>
-        </Stack>
-
-        {/* Right Column: Template Blocks */}
-        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-          <Label className={labelStyle}>Template Blocks</Label>
-
-          {/* **Added Horizontal Bubbles for Template Blocks** */}
-          <div className={bubblesContainerStyle}>
-            {templateBlocks.map((block: TemplateBlock) => (
-              <div
-                key={`bubble-${block.title}`}
-                className={bubbleStyle}
-                onClick={() => handleScrollToBlock(block.title)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleScrollToBlock(block.title);
-                  }
-                }}
-                aria-label={`Scroll to ${block.title} block`}
-              >
-                {block.title}
-              </div>
-            ))}
-          </div>
-          {/* **End of Added Bubbles** */}
-
-          <Stack className={templatesContainerStyle}>
-            <Stack className={templatesGridStyle}>
-              {templateBlocks.map((block: TemplateBlock) => (
-                <Stack
-                  key={block.title}
-                  id={`template-block-${block.title.replace(/\s+/g, '-')}`} // **Added ID for scrolling**
-                  // example styling for the block "card"
-                  className={mergeStyles({
-                    padding: '15px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    transition: 'background-color 0.2s, box-shadow 0.2s',
-                    backgroundColor: isDarkMode
-                      ? colours.dark.cardBackground
-                      : colours.light.cardBackground,
-                    ':hover': {
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                    },
-                  })}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    const selectedOption = selectedTemplateOptions[block.title];
-                    if (selectedOption) {
-                      insertTemplateBlock(block, selectedOption);
-                    }
-                  }}
-                  aria-label={`Insert template block ${block.title}`}
-                >
-                  <IconButton
-                    iconProps={clearIcon}
-                    ariaLabel={`Clear ${block.title}`}
-                    className={mergeStyles({
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      ':hover': {
-                        backgroundColor: isDarkMode
-                          ? colours.dark.cardHover
-                          : colours.light.cardHover,
-                      },
-                      width: '24px',
-                      height: '24px',
-                      padding: '0',
-                    })}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClearBlock(block);
-                    }}
-                  />
-
-                  <Stack tokens={{ childrenGap: 10 }}>
-                    <Text
-                      variant="mediumPlus"
-                      styles={{
-                        root: { fontWeight: '600', color: colours.highlight },
-                      }}
-                    >
-                      {block.title}
-                    </Text>
-                    <Text
-                      variant="small"
-                      styles={{
-                        root: {
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                        },
-                      }}
-                    >
-                      {block.description}
-                    </Text>
-
-                    <Dropdown
-                      placeholder={
-                        block.isMultiSelect ? 'Select options' : 'Select an option'
-                      }
-                      multiSelect={block.isMultiSelect}
-                      options={block.options.map((option: TemplateOption) => ({
-                        key: option.label,
-                        text: option.label,
-                      }))}
-                      onChange={(
-                        _: React.FormEvent<HTMLDivElement>,
-                        option?: IDropdownOption
-                      ) => {
-                        if (option) {
-                          if (block.isMultiSelect) {
-                            const currentSelections = Array.isArray(
-                              selectedTemplateOptions[block.title]
-                            )
-                              ? (selectedTemplateOptions[block.title] as string[])
-                              : [];
-                            const updatedSelections = option.selected
-                              ? [...currentSelections, option.key as string]
-                              : currentSelections.filter((key) => key !== option.key);
-                            handleMultiSelectChange(block.title, updatedSelections);
-                          } else {
-                            handleSingleSelectChange(
-                              block.title,
-                              option.key as string
-                            );
-                          }
-                        }
-                      }}
-                      selectedKeys={
-                        block.isMultiSelect
-                          ? Array.isArray(selectedTemplateOptions[block.title])
-                            ? (selectedTemplateOptions[block.title] as string[])
-                            : []
-                          : typeof selectedTemplateOptions[block.title] === 'string'
-                          ? [selectedTemplateOptions[block.title] as string]
-                          : []
-                      }
-                      styles={sharedOptionsDropdownStyles(isDarkMode)}
-                      ariaLabel={`Select options for ${block.title}`}
-                      onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-                      onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
-                    />
-
-                    {renderPreview(block)}
-                  </Stack>
-                </Stack>
-              ))}
-            </Stack>
-          </Stack>
-        </Stack>
-      </Stack>
-
-      {/* The Preview Panel */}
-      <Panel
-        isOpen={isPreviewOpen}
-        onDismiss={togglePreview}
-        type={PanelType.largeFixed}
-        headerText="Email Preview"
-        closeButtonAriaLabel="Close"
-        styles={{
-          main: {
-            padding: '20px',
-            backgroundImage: `url('https://helix-law.co.uk/wp-content/uploads/2023/09/Asset-2-2.png')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'top left',
-            backgroundRepeat: 'no-repeat',
-            backgroundColor: isDarkMode
-              ? 'rgba(30, 30, 30, 0.9)'
-              : 'rgba(240, 242, 245, 0.9)',
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-          },
-        }}
-      >
-        <Stack tokens={{ childrenGap: 15 }} styles={{ root: { flex: 1 } }}>
-          <Separator />
-          <Text variant="medium">
-            <strong style={{ color: colours.cta }}>
-              You're sending an email to {fullName || 'N/A'}
-            </strong>
-            <span style={{ color: colours.greyText, margin: '0 8px' }}>&bull;</span>
-            {enquiry.Point_of_Contact || 'N/A'}
-          </Text>
-          <MessageBar
-            messageBarType={MessageBarType.info}
-            isMultiline={false}
-            styles={{ root: { backgroundColor: colours.grey } }}
+      {/* Right Column: Enquiry Notes or Message */}
+      <Stack style={{ width: '50%', height: '100%' }} className={formContainerStyle} tokens={{ childrenGap: 6 }}>
+        <Label className={labelStyle}>Enquiry Notes or Message</Label>
+        {enquiry.Initial_first_call_notes && (
+          <div
+            style={{
+              backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+              padding: '10px',
+              borderRadius: '8px',
+              boxShadow: isDarkMode ? '0 2px 5px rgba(255,255,255,0.1)' : '0 2px 5px rgba(0, 0, 0, 0.1)',
+              overflowY: 'auto',
+              height: '100%',
+            }}
           >
-            This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're
-            responding on the same day.
-          </MessageBar>
-
-          {isSuccessVisible && (
-            <MessageBar
-              messageBarType={MessageBarType.success}
-              isMultiline={false}
-              onDismiss={() => setIsSuccessVisible(false)}
-              dismissButtonAriaLabel="Close"
-              styles={{ root: { borderRadius: '4px', marginTop: '10px' } }} // **Moved and styled the message**
-            >
-              Email drafted successfully!
-            </MessageBar>
-          )}
-
-          <Separator />
-
-          {/* Subject */}
-          <Stack tokens={{ childrenGap: 6 }}>
             <Text
-              variant="large"
+              variant="small"
               styles={{
-                root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' },
+                root: {
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  whiteSpace: 'pre-wrap',
+                },
               }}
             >
-              Subject:
+              {enquiry.Initial_first_call_notes}
             </Text>
-            <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-              {subject || 'N/A'}
-            </Text>
-          </Stack>
-
-          <Separator />
-
-          {/* Body */}
-          <Stack tokens={{ childrenGap: 6 }}>
-            <Text
-              variant="large"
-              styles={{
-                root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' },
-              }}
-            >
-              Body:
-            </Text>
-            <div
-              style={{ whiteSpace: 'pre-wrap' }}
-              dangerouslySetInnerHTML={{
-                __html: removeUnfilledPlaceholders(removeHighlightSpans(body)),
-              }}
-            />
-          </Stack>
-
-          {attachments.length > 0 && (
-            <>
-              <Separator />
-              <Stack tokens={{ childrenGap: 6 }}>
-                <Text
-                  variant="large"
-                  styles={{
-                    root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' },
-                  }}
-                >
-                  Attachments:
-                </Text>
-                <Stack tokens={{ childrenGap: 5 }}>
-                  {attachments.map((att: string) => (
-                    <Text key={att} variant="medium">
-                      -{' '}
-                      {availableAttachments.find((option) => option.key === att)?.text}
-                    </Text>
-                  ))}
-                </Stack>
-              </Stack>
-            </>
-          )}
-
-          {followUp && (
-            <>
-              <Separator />
-              <Stack tokens={{ childrenGap: 6 }}>
-                <Text
-                  variant="large"
-                  styles={{
-                    root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' },
-                  }}
-                >
-                  Follow Up:
-                </Text>
-                <Text variant="medium">
-                  {followUpOptions.find((opt) => opt.key === followUp)?.text}
-                </Text>
-              </Stack>
-            </>
-          )}
-        </Stack>
-
-        <Stack
-          horizontal
-          tokens={{ childrenGap: 15 }}
-          styles={{
-            root: {
-              marginTop: '20px',
-            },
-          }}
-        >
-          <PrimaryButton
-            text="Send Email"
-            onClick={sendEmail}
-            styles={sharedPrimaryButtonStyles}
-            ariaLabel="Send Email"
-            iconProps={{ iconName: 'Mail' }}
-          />
-          {/* **Modified Draft Email Button with Confirmation State** */}
-          <DefaultButton
-            text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
-            onClick={handleDraftEmail}
-            styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles} // **Apply conditional styles**
-            ariaLabel={isDraftConfirmed ? 'Email Drafted' : 'Draft Email'}
-            iconProps={{ iconName: isDraftConfirmed ? 'CheckMark' : 'Edit' }} // **Change icon based on state**
-            disabled={isDraftConfirmed} // **Optional: Disable button while in confirmed state**
-          />
-        </Stack>
-      </Panel>
+          </div>
+        )}
+      </Stack>
     </Stack>
-  );
+  
+      {/* Row: Combined Email Editor and Template Blocks */}
+      <EditorAndTemplateBlocks
+        isDarkMode={isDarkMode}
+        body={body}
+        setBody={setBody}
+        templateBlocks={templateBlocks}
+        selectedTemplateOptions={selectedTemplateOptions}
+        insertedBlocks={insertedBlocks}
+        handleMultiSelectChange={handleMultiSelectChange}
+        handleSingleSelectChange={handleSingleSelectChange}
+        insertTemplateBlock={insertTemplateBlock}
+        renderPreview={renderPreview}
+        applyFormat={applyFormat}
+        saveSelection={saveSelection}
+        handleBlur={handleBlur}
+        handleClearBlock={handleClearBlock} // Already included
+        bodyEditorRef={bodyEditorRef}
+        toolbarStyle={toolbarStyle}
+        bubblesContainerStyle={bubblesContainerStyle}
+        bubbleStyle={bubbleStyle}
+        filteredAttachments={filteredAttachments.map((att) => ({
+          key: att.key,
+          text: att.text,
+        }))}
+      />
+  
+      {/* Row: Preview and Reset Buttons */}
+      <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
+        <PrimaryButton
+          text="Preview Email"
+          onClick={togglePreview}
+          styles={sharedPrimaryButtonStyles}
+          ariaLabel="Preview Email"
+          iconProps={{ iconName: 'Preview' }}
+        />
+        <DefaultButton
+          text="Reset"
+          onClick={resetForm}
+          styles={sharedDefaultButtonStyles}
+          ariaLabel="Reset Form"
+          iconProps={{ iconName: 'Refresh' }}
+        />
+      </Stack>
+  
+      {/* Preview Panel */}
+      <EmailPreview
+        isPreviewOpen={isPreviewOpen}
+        onDismiss={togglePreview}
+        enquiry={enquiry}
+        subject={subject}
+        body={body}
+        attachments={attachments}
+        followUp={followUp}
+        fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
+        sendEmail={sendEmail}
+        handleDraftEmail={handleDraftEmail}
+        isSuccessVisible={isSuccessVisible}
+        isDraftConfirmed={isDraftConfirmed}
+        removeHighlightSpans={removeHighlightSpans}
+        removeUnfilledPlaceholders={removeUnfilledPlaceholders}
+      />
+    </Stack>
+  );  
+  
 };
 
 export default PitchBuilder;
