@@ -203,8 +203,8 @@ export interface TeamData {
   "Rate"?: number;
   "Role"?: string;
   "AOW"?: string;
-  "status"?: string; // e.g. 'active'
-  holiday_entitlement?: number; // NEW: Add entitlement here
+  "status"?: string;
+  holiday_entitlement?: number;
 }
 
 export interface Currency {
@@ -431,4 +431,19 @@ export type SpaceBooking = BoardroomBooking | SoundproofPodBooking;
 export interface FutureBookingsResponse {
   boardroomBookings: BoardroomBooking[];
   soundproofBookings: SoundproofPodBooking[];
+}
+
+export interface AnnualLeaveRecord {
+  person: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  status: string;
+  id: string;
+  rejection_notes?: string;
+  approvers?: string[];
+  hearing_confirmation?: string;
+  hearing_details?: string;
+  days_taken?: number;
+  leave_type?: string;
 }

@@ -585,7 +585,12 @@ const convertToISO = (dateStr: string): string => {
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
-let cachedAttendance: any[] | null = null;
+interface AttendanceData {
+  attendance: any[]; // Replace 'any[]' with a specific type if you know the structure
+  team: any[];      // Replace 'any[]' with TeamMember[] or similar if known
+}
+
+let cachedAttendance: AttendanceData | null = null;
 let cachedAttendanceError: string | null = null;
 let cachedPOID6Years: any[] | null = null;
 
@@ -994,25 +999,37 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   }, [greeting]);
 
   useEffect(() => {
-    // ADDED: Restore from cache immediately
-    if (cachedAttendance || cachedAttendanceError || cachedAnnualLeave || cachedAnnualLeaveError) {
-      // If data is cached, restore it straight away
-      setAttendanceRecords(cachedAttendance || []);
+    // Always restore from cache on mount if available
+    if (cachedAttendance) {
+      setAttendanceRecords(cachedAttendance.attendance); // Use .attendance here
+      setAttendanceTeam(cachedAttendance.team || []);    // Safe now with proper type
+    }
+    if (cachedAttendanceError) {
       setAttendanceError(cachedAttendanceError);
-
-      setAnnualLeaveRecords(cachedAnnualLeave || []);
-      // ADDED: Also restore future leave if cached
-      setFutureLeaveRecords(cachedFutureLeaveRecords || []); // ADDED
+    }
+    if (cachedAnnualLeave) {
+      setAnnualLeaveRecords(cachedAnnualLeave);
+    }
+    if (cachedFutureLeaveRecords) {
+      setFutureLeaveRecords(cachedFutureLeaveRecords);
+    }
+    if (cachedAnnualLeaveError) {
       setAnnualLeaveError(cachedAnnualLeaveError);
-
+    }
+    // Set loading states to false if we have cached data
+    if (cachedAttendance || cachedAttendanceError) {
       setIsLoadingAttendance(false);
+    }
+    if (cachedAnnualLeave || cachedAnnualLeaveError) {
       setIsLoadingAnnualLeave(false);
       setIsActionsLoading(false);
-    } else {
+    }
+  
+    // Only fetch if no cached data exists
+    if (!cachedAttendance && !cachedAttendanceError) {
       const fetchData = async () => {
         try {
           setIsLoadingAttendance(true);
-          setIsLoadingAnnualLeave(true);
           const attendanceResponse = await fetch(
             `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ATTENDANCE_PATH}?code=${process.env.REACT_APP_GET_ATTENDANCE_CODE}`,
             { method: 'POST', headers: { 'Content-Type': 'application/json' } }
@@ -1020,8 +1037,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
           if (!attendanceResponse.ok)
             throw new Error(`Failed to fetch attendance: ${attendanceResponse.status}`);
           const attendanceData = await attendanceResponse.json();
-          cachedAttendance = attendanceData.attendance;
-          
+          cachedAttendance = attendanceData; // Store the full object, not just .attendance
           setAttendanceRecords(attendanceData.attendance);
           setAttendanceTeam(attendanceData.team); // store the "lite" team separately
         } catch (error: any) {
@@ -1033,7 +1049,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         } finally {
           setIsLoadingAttendance(false);
         }
+  
         try {
+          setIsLoadingAnnualLeave(true);
           const annualLeaveResponse = await fetch(
             `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_GET_ANNUAL_LEAVE_CODE}`,
             {
@@ -1056,13 +1074,13 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
                 id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
                 rejection_notes: rec.rejection_notes || undefined,
                 approvers: ensureLZInApprovers(rec.approvers),
-                hearing_confirmation: rec.hearing_confirmation, // new field
-                hearing_details: rec.hearing_details || undefined, // new field
+                hearing_confirmation: rec.hearing_confirmation,
+                hearing_details: rec.hearing_details || undefined,
               })
             );
             cachedAnnualLeave = mappedAnnualLeave;
             setAnnualLeaveRecords(mappedAnnualLeave);
-
+  
             if (Array.isArray(annualLeaveData.future_leave)) {
               const mappedFutureLeave: AnnualLeaveRecord[] = annualLeaveData.future_leave.map(
                 (rec: any) => ({
@@ -1074,18 +1092,17 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
                   id: rec.request_id ? String(rec.request_id) : rec.id || `temp-${rec.start_date}-${rec.end_date}`,
                   rejection_notes: rec.rejection_notes || undefined,
                   approvers: ensureLZInApprovers(rec.approvers),
-                  hearing_confirmation: rec.hearing_confirmation, // Add this
-                  hearing_details: rec.hearing_details || undefined, // Add this
+                  hearing_confirmation: rec.hearing_confirmation,
+                  hearing_details: rec.hearing_details || undefined,
                 })
               );
-              cachedFutureLeaveRecords = mappedFutureLeave; // ADDED
+              cachedFutureLeaveRecords = mappedFutureLeave;
               setFutureLeaveRecords(mappedFutureLeave);
             }
-
+  
             if (annualLeaveData.user_details && annualLeaveData.user_details.totals) {
               setAnnualLeaveTotals(annualLeaveData.user_details.totals);
             }
-              // NEW: Set the all_data property from the response
             if (annualLeaveData.all_data) {
               setAnnualLeaveAllData(annualLeaveData.all_data);
             }
@@ -1443,15 +1460,13 @@ const nextWeekKey = getNextWeekKey();
 
 const transformedAttendanceRecords = useMemo(() => {
   if (!cachedAttendance && !attendanceRecords.length) return [];
-  const rawRecords = cachedAttendance || attendanceRecords;
+  const rawRecords = cachedAttendance?.attendance || attendanceRecords; // Fix here
   return rawRecords
     .map((record: any) => {
       const weekKeys = record.weeks ? Object.keys(record.weeks) : [];
       return weekKeys.map((weekKey) => {
-        // Extract the raw date parts (e.g., "03/03/2025")
         const rawStart = weekKey.split(' - ')[0].split(', ')[1];
         const rawEnd = weekKey.split(' - ')[1].split(', ')[1];
-        // Convert them to ISO format
         const isoStart = convertToISO(rawStart);
         const isoEnd = convertToISO(rawEnd);
         return {
@@ -1511,7 +1526,11 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
         }
       }
     });
-    cachedAttendance = newRecords; // Update cache
+    // Update cache correctly
+    cachedAttendance = {
+      attendance: newRecords,
+      team: cachedAttendance?.team || attendanceTeam, // Preserve team data
+    };
     return newRecords;
   });
 };
@@ -2048,6 +2067,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             userData={userData}
             totals={annualLeaveTotals}
             bankHolidays={bankHolidays}
+            allLeaveRecords={annualLeaveAllData} // Added this prop
           />
         );
         break;
@@ -2071,21 +2091,22 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }
 
   let normalQuickActions = quickActions
-    .filter((action) => {
-      if (action.title === 'Confirm Attendance') {
-        return currentUserConfirmed;
-      }
-      if (action.title === 'Request Annual Leave') {
-        return approvalsNeeded.length === 0 && bookingsNeeded.length === 0;
-      }
+  .filter((action) => {
+    if (action.title === 'Confirm Attendance') {
+      return currentUserConfirmed;
+    }
+    // Always show "Request Annual Leave"
+    if (action.title === 'Request Annual Leave') {
       return true;
-    })
-    .map((action) => {
-      if (action.title === 'Confirm Attendance') {
-        return { ...action, title: 'Update Attendance' };
-      }
-      return action;
-    });
+    }
+    return true;
+  })
+  .map((action) => {
+    if (action.title === 'Confirm Attendance') {
+      return { ...action, title: 'Update Attendance' };
+    }
+    return action;
+  });
   // Sort normal actions by order.
   normalQuickActions.sort(
     (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)

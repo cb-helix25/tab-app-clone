@@ -1,7 +1,6 @@
 // src/CustomForms/AnnualLeaveForm.tsx
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Stack, Text, DefaultButton, TextField, Icon, TooltipHost, ChoiceGroup } from '@fluentui/react';
+import { Stack, Text, DefaultButton, TextField, Icon, TooltipHost, ChoiceGroup, DetailsList, IColumn, SelectionMode, DetailsListLayoutMode } from '@fluentui/react';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
 import BespokeForm, { FormField } from './BespokeForms';
@@ -13,29 +12,15 @@ import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles, sharedDecisionBut
 import HelixAvatar from '../assets/helix avatar.png';
 import GreyHelixMark from '../assets/grey helix mark.png'; // Not currently used
 import '../app/styles/personas.css';
+import { TeamData, AnnualLeaveRecord } from '../app/functionality/types';
 
-interface TeamMember {
-  First: string;
-  Initials: string;
-  'Entra ID': string;
-  Nickname?: string;
-}
-
-export interface AnnualLeaveRecord {
-  person: string;
-  start_date: string;
-  end_date: string;
-  reason: string;
-  status: string;
-}
-
-// NEW: Add optional bankHolidays prop to exclude them from the day count
 interface AnnualLeaveFormProps {
   futureLeave: AnnualLeaveRecord[];
-  team: TeamMember[];
-  userData: any; // adjust type as needed
+  team: TeamData[];
+  userData: any;
   totals: { standard: number; unpaid: number; purchase: number };
-  bankHolidays?: Set<string>; // <-- Only addition to the props
+  bankHolidays?: Set<string>;
+  allLeaveRecords: AnnualLeaveRecord[];
 }
 
 interface DateRangeSelection {
@@ -48,29 +33,15 @@ interface DateRangeSelection {
 const initialFormFields: FormField[] = [];
 
 const buttonStylesFixedWidth = {
-  root: {
-    ...(sharedPrimaryButtonStyles.root as object),
-    width: '150px',
-  },
-  rootHovered: {
-    ...(sharedPrimaryButtonStyles.rootHovered as object),
-  },
-  rootPressed: {
-    ...(sharedPrimaryButtonStyles.rootPressed as object),
-  },
+  root: { ...(sharedPrimaryButtonStyles.root as object), width: '150px' },
+  rootHovered: { ...(sharedPrimaryButtonStyles.rootHovered as object) },
+  rootPressed: { ...(sharedPrimaryButtonStyles.rootPressed as object) },
 };
 
 const buttonStylesFixedWidthSecondary = {
-  root: {
-    ...(sharedDefaultButtonStyles.root as object),
-    width: '150px',
-  },
-  rootHovered: {
-    ...(sharedDefaultButtonStyles.rootHovered as object),
-  },
-  rootPressed: {
-    ...(sharedDefaultButtonStyles.rootPressed as object),
-  },
+  root: { ...(sharedDefaultButtonStyles.root as object), width: '150px' },
+  rootHovered: { ...(sharedDefaultButtonStyles.rootHovered as object) },
+  rootPressed: { ...(sharedDefaultButtonStyles.rootPressed as object) },
 };
 
 const textFieldStyles = {
@@ -79,12 +50,8 @@ const textFieldStyles = {
     border: `1px solid ${colours.light.border}`,
     backgroundColor: colours.light.inputBackground,
     selectors: {
-      ':hover': {
-        borderColor: colours.light.cta,
-      },
-      ':focus': {
-        borderColor: colours.light.cta,
-      },
+      ':hover': { borderColor: colours.light.cta },
+      ':focus': { borderColor: colours.light.cta },
     },
   },
 };
@@ -111,26 +78,73 @@ const valueStyle: React.CSSProperties = {
   color: colours.light.text,
 };
 
-/**
- * Filters out weekends (Sat=6, Sun=0). Also accounts for halfDayStart / halfDayEnd,
- * reducing by 0.5 if those days are weekdays. NEW: Skips bank holiday dates too.
- */
+// Columns for the historical leave list
+const historyColumns: IColumn[] = [
+  {
+    key: 'start_date',
+    name: 'Start Date',
+    fieldName: 'start_date',
+    minWidth: 100,
+    maxWidth: 120,
+    isResizable: true,
+    onRender: (item: AnnualLeaveRecord) => format(new Date(item.start_date), 'd MMM yyyy'),
+  },
+  {
+    key: 'end_date',
+    name: 'End Date',
+    fieldName: 'end_date',
+    minWidth: 100,
+    maxWidth: 120,
+    isResizable: true,
+    onRender: (item: AnnualLeaveRecord) => format(new Date(item.end_date), 'd MMM yyyy'),
+  },
+  {
+    key: 'reason',
+    name: 'Reason',
+    fieldName: 'reason',
+    minWidth: 150,
+    isResizable: true,
+  },
+  {
+    key: 'status',
+    name: 'Status',
+    fieldName: 'status',
+    minWidth: 80,
+    maxWidth: 100,
+    isResizable: true,
+  },
+  {
+    key: 'days_taken',
+    name: 'Days Taken',
+    fieldName: 'days_taken',
+    minWidth: 80,
+    maxWidth: 100,
+    isResizable: true,
+    onRender: (item: AnnualLeaveRecord) => item.days_taken ?? 'N/A',
+  },
+  {
+    key: 'leave_type',
+    name: 'Leave Type',
+    fieldName: 'leave_type',
+    minWidth: 100,
+    maxWidth: 120,
+    isResizable: true,
+    onRender: (item: AnnualLeaveRecord) => item.leave_type || 'N/A',
+  },
+];
+
 function calculateWorkingDays(range: DateRangeSelection, bankHolidays?: Set<string>): number {
   const allDays = eachDayOfInterval({ start: range.startDate, end: range.endDate });
   let workingDays = 0;
 
   allDays.forEach((day) => {
     const dayOfWeek = day.getDay();
-    // Use day string to check against the bankHolidays set
     const dayStr = format(day, 'yyyy-MM-dd');
-
-    // Skip if weekend OR bank holiday
     if (dayOfWeek !== 0 && dayOfWeek !== 6 && !bankHolidays?.has(dayStr)) {
       workingDays += 1;
     }
   });
 
-  // Subtract half-day if start date is a weekday and not a bank holiday
   if (range.halfDayStart) {
     const dayOfWeek = range.startDate.getDay();
     const startStr = format(range.startDate, 'yyyy-MM-dd');
@@ -139,7 +153,6 @@ function calculateWorkingDays(range: DateRangeSelection, bankHolidays?: Set<stri
     }
   }
 
-  // Subtract half-day if end date is a weekday and not a bank holiday
   if (range.halfDayEnd) {
     const dayOfWeek = range.endDate.getDay();
     const endStr = format(range.endDate, 'yyyy-MM-dd');
@@ -151,10 +164,6 @@ function calculateWorkingDays(range: DateRangeSelection, bankHolidays?: Set<stri
   return workingDays;
 }
 
-/**
- * Determines if an interval has overlap with an annual leave record's interval
- * and returns the set of overlapping days.
- */
 function getOverlapDates(leave: AnnualLeaveRecord, range: DateRangeSelection): string[] {
   const selStart = range.startDate;
   const selEnd = range.endDate;
@@ -173,30 +182,25 @@ function AnnualLeaveForm({
   team,
   userData,
   totals,
-  bankHolidays, // <-- Just passed to the local calc
+  bankHolidays,
+  allLeaveRecords,
 }: AnnualLeaveFormProps) {
   const { isDarkMode } = useTheme();
   const [dateRanges, setDateRanges] = useState<DateRangeSelection[]>([]);
   const [totalDays, setTotalDays] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notes, setNotes] = useState<string>('');
-  // New state for displaying a confirmation message after submission
   const [confirmationMessage, setConfirmationMessage] = useState<string>('');
-
-  // NEW: Leave type selection state (default: standard)
   const [selectedLeaveType, setSelectedLeaveType] = useState<string>('standard');
+  const [hearingConfirmation, setHearingConfirmation] = useState<string | null>(null);
+  const [hearingDetails, setHearingDetails] = useState<string>('');
+
   const leaveTypeOptions: { key: string; text: string }[] = [
     { key: 'standard', text: 'Standard' },
     { key: 'unpaid', text: 'Unpaid' },
     { key: 'purchase', text: 'Purchase' },
   ];
 
-  // NEW: Hearing confirmation state.
-  // Value will be either "yes" or "no". Null indicates no selection yet.
-  const [hearingConfirmation, setHearingConfirmation] = useState<string | null>(null);
-  const [hearingDetails, setHearingDetails] = useState<string>('');
-
-  // Recalculate total days whenever the dateRanges OR bankHolidays change
   useEffect(() => {
     let total = 0;
     dateRanges.forEach((range) => {
@@ -208,14 +212,10 @@ function AnnualLeaveForm({
   const handleAddDateRange = () => {
     setDateRanges((prev) => [
       ...prev,
-      {
-        startDate: new Date(),
-        endDate: addDays(new Date(), 1),
-      },
+      { startDate: new Date(), endDate: addDays(new Date(), 1) },
     ]);
   };
 
-  // Allow removal of each date range.
   const handleRemoveDateRange = (index: number) => {
     setDateRanges((prev) => {
       const newRanges = [...prev];
@@ -224,7 +224,6 @@ function AnnualLeaveForm({
     });
   };
 
-  // Clear button handler: resets date ranges and notes.
   const handleClear = () => {
     setDateRanges([]);
     setNotes('');
@@ -232,9 +231,6 @@ function AnnualLeaveForm({
     setHearingDetails('');
   };
 
-  // Compute effective remaining leave.
-  // For standard leave, use the holiday entitlement minus the standard total.
-  // For unpaid or purchase, the entitlement is hard-coded to 5.
   const holidayEntitlement = Number(userData?.[0]?.holiday_entitlement ?? 0);
   let effectiveRemaining = 0;
   if (selectedLeaveType === 'standard') {
@@ -245,47 +241,27 @@ function AnnualLeaveForm({
     effectiveRemaining = 5 - totals.purchase - totalDays;
   }
 
-  /**
-   * Group "futureLeave" records that overlap with any chosen date ranges.
-   */
   const groupedLeave = useMemo(() => {
     const groups: Record<
       string,
-      {
-        nickname: string;
-        dateRanges: { start_date: string; end_date: string }[];
-        status: string;
-      }
+      { nickname: string; dateRanges: { start_date: string; end_date: string }[]; status: string }
     > = {};
     futureLeave.forEach((leave) => {
       dateRanges.forEach((range) => {
         const overlaps = getOverlapDates(leave, range);
         if (overlaps.length > 0) {
-          const teamMember = team.find(
-            (m) => m.Initials.toLowerCase() === leave.person.toLowerCase()
-          );
-          const nickname = teamMember ? teamMember.Nickname || teamMember.First : leave.person;
+          const teamMember = team.find((m) => m.Initials?.toLowerCase() === leave.person.toLowerCase());
+          const nickname = teamMember ? (teamMember.Nickname || teamMember.First || leave.person) : leave.person;
           const leaveStatus = leave.status.toLowerCase();
-          const newRange = {
-            start_date: overlaps[0],
-            end_date: overlaps[overlaps.length - 1],
-          };
+          const newRange = { start_date: overlaps[0], end_date: overlaps[overlaps.length - 1] };
           if (!groups[leave.person]) {
-            groups[leave.person] = {
-              nickname,
-              dateRanges: [newRange],
-              status: leaveStatus,
-            };
+            groups[leave.person] = { nickname, dateRanges: [newRange], status: leaveStatus };
           } else {
             const alreadyExists = groups[leave.person].dateRanges.some(
               (dr) => dr.start_date === newRange.start_date && dr.end_date === newRange.end_date
             );
-            if (!alreadyExists) {
-              groups[leave.person].dateRanges.push(newRange);
-            }
-            if (groups[leave.person].status !== leaveStatus) {
-              groups[leave.person].status = 'requested';
-            }
+            if (!alreadyExists) groups[leave.person].dateRanges.push(newRange);
+            if (groups[leave.person].status !== leaveStatus) groups[leave.person].status = 'requested';
           }
         }
       });
@@ -293,21 +269,12 @@ function AnnualLeaveForm({
     return Object.values(groups);
   }, [futureLeave, dateRanges, team]);
 
-  /**
-   * Submits the form (POST to server).
-   */
   const handleSubmit = async () => {
-    // Client-side validation to ensure required fields are present
     if (dateRanges.length === 0) {
-      alert("Please add at least one date range for your leave.");
+      alert('Please add at least one date range for your leave.');
       return;
     }
-
-    if (!notes.trim()) {
-      // Set a default reason if empty
-      setNotes("No additional reason provided.");
-    }
-
+    if (!notes.trim()) setNotes('No additional reason provided.');
     setIsSubmitting(true);
     try {
       const feeEarner = userData?.[0]?.Initials || 'XX';
@@ -315,19 +282,17 @@ function AnnualLeaveForm({
         start_date: format(range.startDate, 'yyyy-MM-dd'),
         end_date: format(range.endDate, 'yyyy-MM-dd'),
       }));
-
       const payload = {
         fe: feeEarner,
         dateRanges: formattedDateRanges,
-        reason: notes || "No additional reason provided.",
+        reason: notes || 'No additional reason provided.',
         days_taken: totalDays,
         leave_type: selectedLeaveType,
         overlapDetails: groupedLeave,
         hearing_confirmation: hearingConfirmation,
-        hearing_details: hearingConfirmation === 'no' ? hearingDetails : ''
+        hearing_details: hearingConfirmation === 'no' ? hearingDetails : '',
       };
       console.log('Annual Leave Form Payload:', payload);
-
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_INSERT_ANNUAL_LEAVE_CODE}`;
       const response = await fetch(url, {
         method: 'POST',
@@ -340,9 +305,7 @@ function AnnualLeaveForm({
       }
       const result = await response.json();
       console.log('Insert Annual Leave Successful:', result);
-      // Set a confirmation message instead of using alert
-      setConfirmationMessage("Your annual leave request has been submitted successfully.");
-      // Optionally, reset the form after successful submission
+      setConfirmationMessage('Your annual leave request has been submitted successfully.');
       handleClear();
     } catch (error) {
       console.error('Error submitting Annual Leave Form:', error);
@@ -352,9 +315,13 @@ function AnnualLeaveForm({
     }
   };
 
-  /**
-   * Renders the side panel showing leave totals.
-   */
+  const userLeaveHistory = useMemo(() => {
+    const userInitials = userData?.[0]?.Initials?.toLowerCase() || '';
+    return allLeaveRecords
+      .filter((record) => record.person.toLowerCase() === userInitials)
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+  }, [allLeaveRecords, userData]);
+
   function renderSidePanel() {
     if (selectedLeaveType === 'standard') {
       return (
@@ -473,37 +440,23 @@ function AnnualLeaveForm({
     return null;
   }
 
-  /**
-   * Renders the "Team Leave Conflicts" block.
-   */
   function renderTeamLeaveConflicts() {
     if (!groupedLeave.length) return null;
     return (
       <Stack tokens={{ childrenGap: 10 }} style={{ marginTop: 20 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '10px',
-          }}
-        >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
           {groupedLeave.map((item, idx) => {
             const formattedRanges = item.dateRanges
               .map((dr) => {
                 const start = new Date(dr.start_date);
                 const end = new Date(dr.end_date);
                 const sameDay = dr.start_date === dr.end_date;
-                return sameDay
-                  ? format(start, 'd MMM')
-                  : `${format(start, 'd MMM')} - ${format(end, 'd MMM')}`;
+                return sameDay ? format(start, 'd MMM') : `${format(start, 'd MMM')} - ${format(end, 'd MMM')}`;
               })
               .join(' | ');
             let borderColor = colours.cta;
-            if (item.status === 'approved') {
-              borderColor = colours.orange;
-            } else if (item.status === 'booked') {
-              borderColor = colours.green;
-            }
+            if (item.status === 'approved') borderColor = colours.orange;
+            else if (item.status === 'booked') borderColor = colours.green;
             return (
               <div
                 key={idx}
@@ -521,31 +474,13 @@ function AnnualLeaveForm({
                 }}
               >
                 <div className="persona-icon-container" style={{ backgroundColor: 'transparent' }}>
-                  <img
-                    src={HelixAvatar}
-                    alt={item.nickname}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                    }}
-                  />
+                  <img src={HelixAvatar} alt={item.nickname} style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
                 </div>
                 <div style={{ marginTop: '5px', textAlign: 'center', width: '100%' }}>
-                  <div
-                    className="persona-name-text"
-                    style={{ fontWeight: 600, fontSize: '16px', color: colours.light.text }}
-                  >
+                  <div className="persona-name-text" style={{ fontWeight: 600, fontSize: '16px', color: colours.light.text }}>
                     {item.nickname}
                   </div>
-                  <div
-                    className="persona-range-text"
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: 400,
-                      color: colours.light.text,
-                    }}
-                  >
+                  <div className="persona-range-text" style={{ fontSize: '14px', fontWeight: 400, color: colours.light.text }}>
                     {formattedRanges}
                   </div>
                 </div>
@@ -553,16 +488,8 @@ function AnnualLeaveForm({
             );
           })}
         </div>
-        <Text
-          style={{
-            fontStyle: 'italic',
-            marginTop: '10px',
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-          }}
-        >
-          Please note: There are other team members scheduled for leave during the dates you've chosen.
-          This may affect the likelihood of automatic approval for your request. You can still submit your
-          request, and we will notify you of the outcome once a decision has been reached.
+        <Text style={{ fontStyle: 'italic', marginTop: '10px', color: isDarkMode ? colours.dark.text : colours.light.text }}>
+          Please note: There are other team members scheduled for leave during the dates you've chosen...
         </Text>
       </Stack>
     );
@@ -597,12 +524,10 @@ function AnnualLeaveForm({
             onSubmit={handleSubmit}
             onCancel={() => {}}
             isSubmitting={isSubmitting}
-            // IMPORTANT: Pass an empty array for matters (or replace [] with matter data if available)
             matters={[]}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
               <Stack style={{ flex: 1 }} tokens={{ childrenGap: 10 }}>
-                {/* NEW: Leave Type Selector as three side-by-side toggle buttons */}
                 <Stack horizontal tokens={{ childrenGap: 10 }} styles={{ root: { width: '100%' } }}>
                   {leaveTypeOptions.map((option) => {
                     const isSelected = selectedLeaveType === option.key;
@@ -611,8 +536,7 @@ function AnnualLeaveForm({
                         key={option.key}
                         text={option.text}
                         onClick={() => setSelectedLeaveType(option.key)}
-                        // Use the decision button style when selected, and default style otherwise
-                        styles={ isSelected ? sharedDecisionButtonStyles : sharedDefaultButtonStyles }
+                        styles={isSelected ? sharedDecisionButtonStyles : sharedDefaultButtonStyles}
                       />
                     );
                   })}
@@ -691,13 +615,12 @@ function AnnualLeaveForm({
                   multiline
                   rows={3}
                 />
-                {/* NEW: Hearing Confirmation Section */}
                 <Stack tokens={{ childrenGap: 10 }}>
                   <Stack horizontal tokens={{ childrenGap: 5 }} verticalAlign="center">
                     <Text style={{ fontWeight: 600 }}>
-                      I confirm there are no hearings during my planned absence on any of the matters I am responsible for or have worked on in the last 3 months
+                      I confirm there are no hearings during my planned absence...
                     </Text>
-                    <TooltipHost content="Usually leave will not be approved at a time when there is a hearing listed to take place and where you are the fee earner with day to day conduct. Where you have worked on a file and request leave a decision on any leave request for that period will be made on a case by case basis taking into account that as a starting point you might be required to attend that hearing and briefing someone else to attend might be disproportionate.">
+                    <TooltipHost content="Usually leave will not be approved...">
                       <Icon iconName="Info" styles={{ root: { fontSize: 16, cursor: 'pointer' } }} />
                     </TooltipHost>
                   </Stack>
@@ -712,7 +635,7 @@ function AnnualLeaveForm({
                   />
                   {hearingConfirmation === 'no' && (
                     <TextField
-                      label="There are the following hearings taking place during this period of absence"
+                      label="There are the following hearings taking place..."
                       value={hearingDetails}
                       onChange={(e, newVal) => setHearingDetails(newVal || '')}
                       multiline
@@ -746,22 +669,10 @@ function AnnualLeaveForm({
         </div>
         {groupedLeave.length > 0 && (
           <div style={{ position: 'relative', marginBottom: '20px' }}>
-            <div
-              style={{
-                ...infoBoxStyle,
-                backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.grey,
-              }}
-            >
+            <div style={{ ...infoBoxStyle, backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.grey }}>
               <Icon
                 iconName="Info"
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  top: 10,
-                  fontSize: 40,
-                  opacity: 0.1,
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                }}
+                style={{ position: 'absolute', right: 10, top: 10, fontSize: 40, opacity: 0.1, color: isDarkMode ? colours.dark.text : colours.light.text }}
               />
               <Stack tokens={{ childrenGap: 10 }}>
                 <Text style={labelStyle}>Team Leave Conflicts</Text>
@@ -770,6 +681,39 @@ function AnnualLeaveForm({
             </div>
           </div>
         )}
+        <Stack tokens={{ childrenGap: 10 }}>
+          <Text
+            style={{
+              fontSize: '18px',
+              fontWeight: 600,
+              color: isDarkMode ? colours.dark.text : colours.light.text,
+            }}
+          >
+            Your Leave History
+          </Text>
+          <DetailsList
+            items={userLeaveHistory}
+            columns={historyColumns}
+            setKey="set"
+            layoutMode={DetailsListLayoutMode.justified}
+            selectionMode={SelectionMode.none}
+            styles={{
+              root: {
+                backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
+                borderRadius: '4px',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+              },
+              headerWrapper: {
+                backgroundColor: isDarkMode ? colours.dark.grey : colours.light.grey,
+              },
+            }}
+          />
+          {userLeaveHistory.length === 0 && (
+            <Text style={{ color: isDarkMode ? colours.dark.text : colours.light.text, fontStyle: 'italic' }}>
+              No leave history available.
+            </Text>
+          )}
+        </Stack>
       </Stack>
     </>
   );

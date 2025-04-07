@@ -227,8 +227,15 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   // Updated unsaved changes logic to include cases where no record exists
   const hasUnsavedChanges = useMemo(() => {
     return [currentWeek, nextWeek].some((week) => {
-      const recordedDays = attendanceRecords.find((rec) => rec.Initials === userInitials && rec.Week_Start === week.start)?.Attendance_Days || '';
+      const record = attendanceRecords.find(
+        (rec) => rec.Initials === userInitials && rec.Week_Start === week.start
+      );
+      const recordedDays = record ? record.Attendance_Days || '' : null;
       const localDays = localAttendance[week.start]?.[userInitials] || '';
+      // If no record exists, consider it as an unsaved change.
+      if (recordedDays === null) {
+        return true;
+      }
       return localDays !== recordedDays;
     });
   }, [localAttendance, attendanceRecords, userInitials]);
@@ -276,22 +283,23 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const saveAttendance = async () => {
     setIsSaving(true);
     const payloads = [currentWeek, nextWeek]
-      .map((week) => {
-        const localDays = localAttendance[week.start]?.[userInitials] || '';
-        const existingRecord = attendanceRecords.find(
-          (rec) => rec.Initials === userInitials && rec.Week_Start === week.start
-        );
-        if (localDays !== (existingRecord?.Attendance_Days || '')) {
-          return {
-            firstName: teamData.find((t) => t.Initials === userInitials)?.First || 'Unknown',
-            initials: userInitials,
-            weekStart: week.start,
-            attendanceDays: localDays,
-          };
-        }
-        return null;
-      })
-      .filter(Boolean) as { firstName: string; initials: string; weekStart: string; attendanceDays: string }[];
+    .map((week) => {
+      const localDays = localAttendance[week.start]?.[userInitials] || '';
+      const existingRecord = attendanceRecords.find(
+        (rec) => rec.Initials === userInitials && rec.Week_Start === week.start
+      );
+      // Generate payload if no record exists OR the local value differs from the recorded value.
+      if (!existingRecord || localDays !== (existingRecord?.Attendance_Days || '')) {
+        return {
+          firstName: teamData.find((t) => t.Initials === userInitials)?.First || 'Unknown',
+          initials: userInitials,
+          weekStart: week.start,
+          attendanceDays: localDays,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean) as { firstName: string; initials: string; weekStart: string; attendanceDays: string }[];
 
     if (payloads.length === 0) {
       setIsSaving(false);
