@@ -76,6 +76,7 @@ import BookSpaceForm from '../../CustomForms/BookSpaceForm';
 import Attendance from './Attendance'; // Import the Attendance component
 
 import TransactionCard from '../transactions/TransactionCard';
+import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 
 
 initializeIcons();
@@ -701,6 +702,36 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       </Stack>
     </Stack>
   );
+
+  // Inside the Home component, add state (near other state declarations)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isTransactionPopupOpen, setIsTransactionPopupOpen] = useState<boolean>(false);
+
+  // Replace the placeholder handler
+  const handleTransactionClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsTransactionPopupOpen(true);
+  };
+  
+  const handleTransactionSubmit = (
+    values: { transferRequested: boolean; customAmount?: number; transferCustom?: boolean },
+    updatedTransaction: Transaction
+  ) => {
+    // Update the transactions state with the updated transaction
+    setTransactions((prevTransactions) =>
+      prevTransactions.map((tx) =>
+        tx.transaction_id === updatedTransaction.transaction_id ? updatedTransaction : tx
+      )
+    );
+  };
+
+  const updateTransaction = (updatedTransaction: Transaction) => {
+    setTransactions((prevTransactions) =>
+      prevTransactions.map((tx) =>
+        tx.transaction_id === updatedTransaction.transaction_id ? updatedTransaction : tx
+      )
+    );
+  };
 
   // ADDED: Store user initials so they don't reset on remount
   const storedUserInitials = useRef<string | null>(null); // ADDED
@@ -2314,10 +2345,13 @@ const conversionRate = enquiriesMonthToDate
 
       {/* Transactions Requiring Action */}
       <ActionSection
-        transactions={transactions}
-        userInitials={userInitials}
-        isDarkMode={isDarkMode}
-      />
+          transactions={transactions}
+          userInitials={userInitials}
+          isDarkMode={isDarkMode}
+          onTransactionClick={handleTransactionClick}
+          matters={allMatters || []}
+          updateTransaction={updateTransaction}
+        />
 
       {/* Metrics Section Container */}
       <div
@@ -2638,7 +2672,7 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isContextPanelOpen}
         onClose={() => setIsContextPanelOpen(false)}
         title="Context Details"
-        width="800px"
+        width="1000px"
       >
         {renderContextsPanelContent()}
       </BespokePanel>
@@ -2647,7 +2681,7 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isOutstandingPanelOpen}
         onClose={() => setIsOutstandingPanelOpen(false)}
         title="Outstanding Balances Details"
-        width="800px"
+        width="1000px"
       >
         {/* Toggle between "Everyone" and "Only Mine" */}
         <Toggle
@@ -2670,6 +2704,24 @@ const conversionRate = enquiriesMonthToDate
         width="1000px"
       >
         {bespokePanelContent}
+      </BespokePanel>
+
+      {/* Transaction Approval Popup */}
+      <BespokePanel
+        isOpen={isTransactionPopupOpen}
+        onClose={() => setIsTransactionPopupOpen(false)}
+        title="Approve Transaction"
+        width="1000px"
+      >
+        {selectedTransaction && (
+          <TransactionApprovalPopup
+            transaction={selectedTransaction}
+            matters={allMatters || []}
+            onSubmit={handleTransactionSubmit}
+            onCancel={() => setIsTransactionPopupOpen(false)}
+            userInitials={userInitials} // Add userInitials prop
+          />
+        )}
       </BespokePanel>
 
       {/* Selected Form Details */}

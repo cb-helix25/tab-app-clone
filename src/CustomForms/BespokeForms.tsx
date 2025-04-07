@@ -16,9 +16,8 @@ import { colours } from '../app/styles/colours';
 import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
-  sharedDraftConfirmedButtonStyles,
 } from '../app/styles/ButtonStyles';
-import { Matter } from '../app/functionality/types'; // NEW: Import Matter type
+import { Matter } from '../app/functionality/types';
 
 export const INPUT_HEIGHT = 40;
 
@@ -77,11 +76,6 @@ export const dropdownStyle = mergeStyles({
       height: '100%',
       lineHeight: `${INPUT_HEIGHT}px`,
     },
-    '.ms-Dropdown-item.is-selected': {
-      backgroundColor: 'transparent',
-      border: 'none',
-      outline: 'none',
-    },
     '.ms-Dropdown-caretDown': {
       display: 'flex',
       alignItems: 'center',
@@ -117,11 +111,11 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     flexGrow: 1,
     height: '100%',
     border: `1px solid ${colours.light.border}`,
-    borderRadius: '4px',
+    borderRadius: hasPrefix ? '0 4px 4px 0' : '4px',
     padding: '5px',
     backgroundColor: colours.light.inputBackground,
     boxSizing: 'border-box',
-    appearance: 'textfield', // Prevents default number field styling in some browsers
+    appearance: 'textfield',
     selectors: {
       ':hover': {
         borderColor: colours.light.cta,
@@ -130,7 +124,7 @@ export const amountInputStyle = (hasPrefix: boolean) =>
         borderColor: colours.light.cta,
       },
       '::-webkit-inner-spin-button, ::-webkit-outer-spin-button': {
-        appearance: 'none', // Hides the up/down arrows in Chrome, Safari, Edge
+        appearance: 'none',
         margin: 0,
       },
       input: {
@@ -159,8 +153,8 @@ export interface FormField {
     | 'toggle'
     | 'currency-picker'
     | 'file'
-    | 'date'       // <-- Added
-    | 'time';      // <-- Added
+    | 'date'
+    | 'time';
   options?: string[];
   step?: number;
   min?: number;
@@ -172,10 +166,12 @@ export interface FormField {
   helpText?: string;
   placeholder?: string;
   group?: string;
+  styles?: { [key: string]: any };
+  onText?: string;
+  offText?: string;
+  style?: React.CSSProperties;
 }
 
-
-// Update the BespokeFormProps interface to include a matters prop.
 export interface BespokeFormProps {
   fields: FormField[];
   onSubmit: (values: { [key: string]: any }) => void;
@@ -183,13 +179,11 @@ export interface BespokeFormProps {
   isSubmitting?: boolean;
   style?: React.CSSProperties;
   children?: React.ReactNode;
-  matters: Matter[]; // NEW: Pass matters data for Matter Reference dropdowns
+  matters: Matter[];
   onChange?: (values: { [key: string]: any }) => void;
-  submitDisabled?: boolean; 
+  submitDisabled?: boolean;
   conflict?: boolean;
 }
-
-/* ─── NEW: MatterReferenceDropdown Component ──────────────────────────────── */
 
 interface MatterReferenceDropdownProps {
   field: FormField;
@@ -206,14 +200,10 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
 }) => {
   const [filter, setFilter] = React.useState<string>('');
 
-  // Sort matters by OpenDate and map to IComboBoxOption format.
   const sortedOptions = React.useMemo<IComboBoxOption[]>(() => {
     return matters
       .slice()
-      .sort(
-        (a, b) =>
-          new Date(b.OpenDate).getTime() - new Date(a.OpenDate).getTime()
-      )
+      .sort((a, b) => new Date(b.OpenDate).getTime() - new Date(a.OpenDate).getTime())
       .map((m) => ({
         key: m.DisplayNumber,
         text: m.DisplayNumber,
@@ -240,14 +230,13 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
         );
       }}
       disabled={isSubmitting}
-      // ── Override ComboBox styles to mimic a standard Dropdown ──
       styles={{
         root: dropdownStyle,
         input: {
           height: `${INPUT_HEIGHT}px`,
           lineHeight: `${INPUT_HEIGHT}px`,
           padding: '0 5px',
-          border: 'none', // Remove ComboBox's inner border so the outer container shows the dropdownStyle border.
+          border: 'none',
         },
         callout: {
           minWidth: '100%',
@@ -256,8 +245,6 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
     />
   );
 };
-
-/* ─── End of NEW Component ─────────────────────────────────────────────────── */
 
 const BespokeForm: React.FC<BespokeFormProps> = ({
   fields,
@@ -268,12 +255,17 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   style,
   children,
   matters,
-  // The new props:
-  conflict = false,       // <-- Provide default false
-  submitDisabled = false, // <-- Provide default false
+  conflict = false,
+  submitDisabled = false,
 }) => {
-  const [formValues, setFormValues] = React.useState<{ [key: string]: any }>({});
-
+  const [formValues, setFormValues] = React.useState<{ [key: string]: any }>(
+    fields.reduce((acc, field) => {
+      if (field.defaultValue !== undefined) {
+        acc[field.name] = field.defaultValue;
+      }
+      return acc;
+    }, {} as { [key: string]: any })
+  );
 
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -293,12 +285,9 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   const handleInputChange = (fieldName: string, value: any) => {
     setFormValues((prev) => {
       const newValues = { ...prev, [fieldName]: value };
-  
-      // Add this line: call the parent's onChange if it exists.
       if (onChange) {
         onChange(newValues);
       }
-  
       return newValues;
     });
   };
@@ -332,7 +321,6 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
       <div className={formContainerStyle}>
         <Stack tokens={{ childrenGap: 20 }}>
           {fields.map((field, index) => {
-            // Use the new MatterReferenceDropdown for Matter Reference fields.
             if (
               field.label === 'Matter Reference' ||
               field.label === 'Matter Reference (if applicable)'
@@ -391,12 +379,44 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   <div key={index} style={{ marginBottom: '15px' }}>
                     <Toggle
                       label={field.label}
-                      checked={Boolean(formValues[field.name])}
+                      checked={
+                        formValues[field.name] !== undefined
+                          ? Boolean(formValues[field.name])
+                          : Boolean(field.defaultValue)
+                      }
+                      onText={field.onText}
+                      offText={field.offText}
                       onChange={(_, checked) =>
                         handleInputChange(field.name, !!checked)
                       }
                       disabled={isSubmitting}
-                      styles={{ root: toggleStyle }}
+                      styles={{
+                        root: toggleStyle,
+                        pill: {
+                          backgroundColor: 
+                            (formValues[field.name] !== undefined
+                              ? Boolean(formValues[field.name])
+                              : Boolean(field.defaultValue))
+                            ? '#0078d4' // Blue when on
+                            : undefined, // Default gray when off
+                        },
+                        thumb: {
+                          backgroundColor: 
+                            (formValues[field.name] !== undefined
+                              ? Boolean(formValues[field.name])
+                              : Boolean(field.defaultValue))
+                            ? 'white'
+                            : undefined,
+                        },
+                        container: {
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          width: '250px', // Match custom amount width for alignment
+                        },
+                        label: {
+                          marginRight: '10px',
+                        },
+                      }}
                     />
                   </div>
                 );
@@ -419,7 +439,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
               case 'number':
               case 'currency-picker':
                 return (
-                  <div key={index}>
+                  <div key={index} style={field.style}>
                     <label
                       style={{
                         display: 'block',
@@ -437,17 +457,21 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       <TextField
                         required={field.required}
                         value={formValues[field.name]?.toString() || ''}
-                        onChange={(e, value) => handleInputChange(field.name, value || '')}
+                        onChange={(e, value) =>
+                          handleInputChange(field.name, value || '')
+                        }
                         type="number"
                         disabled={isSubmitting}
-                        styles={{
-                          fieldGroup: amountInputStyle(!!field.prefix),
-                        }}
+                        styles={
+                          field.styles || {
+                            fieldGroup: amountInputStyle(!!field.prefix),
+                          }
+                        }
                         step={field.step}
                         min={field.min}
                         max={field.max}
                         readOnly={field.editable === false}
-                        onWheel={(e) => e.currentTarget.blur()} // Prevents number input from changing on scroll
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                     </div>
                     {field.helpText && (
@@ -562,10 +586,10 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
             <PrimaryButton
               type="submit"
               text={isSubmitting ? 'Submitted' : 'Submit'}
-              // If conflict is true, set to secondary styling + show padlock
               iconProps={conflict ? { iconName: 'Lock' } : undefined}
-              styles={conflict ? sharedDefaultButtonStyles : sharedPrimaryButtonStyles}
-              // Disable if we are submitting OR there's a conflict
+              styles={
+                conflict ? sharedDefaultButtonStyles : sharedPrimaryButtonStyles
+              }
               disabled={isSubmitting || conflict}
             />
             <DefaultButton

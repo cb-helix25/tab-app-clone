@@ -1,5 +1,3 @@
-// src/tabs/transactions/TransactionCard.tsx
-
 import React from 'react';
 import { mergeStyles, Text, Stack, TooltipHost, Icon } from '@fluentui/react';
 import { Transaction } from '../../app/functionality/types';
@@ -8,6 +6,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 
 interface TransactionCardProps {
   transaction: Transaction;
+  onClick?: () => void; // Add onClick as an optional prop
 }
 
 const cardContainer = (isDarkMode: boolean, status?: string | null) =>
@@ -20,7 +19,7 @@ const cardContainer = (isDarkMode: boolean, status?: string | null) =>
       ? '0 2px 8px rgba(0,0,0,0.6)'
       : '0 2px 8px rgba(0,0,0,0.1)',
     borderLeft: `6px solid ${
-      status?.toLowerCase() === 'processed'
+      status?.toLowerCase() === 'transfer' // Changed from 'processed' to 'transfer'
         ? colours.green
         : status
         ? colours.yellow
@@ -92,7 +91,7 @@ const formatCurrency = (amount: number): string =>
     minimumFractionDigits: 2,
   });
 
-const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
+const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick }) => {
   const { isDarkMode } = useTheme();
 
   // Convert "requested" to "pending" for display
@@ -102,7 +101,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
       : transaction.status;
 
   return (
-    <div className={`ms-Card ${cardContainer(isDarkMode, transaction.status)}`}>
+    <div
+      className={`ms-Card ${cardContainer(isDarkMode, transaction.status)}`}
+      onClick={onClick} // Apply the onClick handler
+      style={{ cursor: onClick ? 'pointer' : 'default' }} // Show pointer cursor if clickable
+    >
       {/* Collapsed Header: Matter Ref & Amount */}
       <div className={headerStyle}>
         <Text
@@ -156,7 +159,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
                   styles={{
                     root: {
                       color:
-                        displayStatus.toLowerCase() === 'processed'
+                        displayStatus.toLowerCase() === 'transfer' // Updated to match 'transfer'
                           ? colours.green
                           : colours.yellow,
                       fontWeight: 600,

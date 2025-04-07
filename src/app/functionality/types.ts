@@ -397,7 +397,9 @@ export interface Transaction {
   money_sender: string | null;
   type: string;
   status?: string | null; // new field added
+  task_id?: string | null; // add task_id here
 }
+
 
 export interface BoardroomBooking {
   id: number;

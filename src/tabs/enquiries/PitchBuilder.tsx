@@ -637,21 +637,34 @@ Kind Regards,<br>
           })}
         >
           <ul>
-            {selectedOptions.map((doc: string) => (
-              <li
-                key={doc}
-                dangerouslySetInnerHTML={{
-                  __html: formatPreviewText(
-                    block.options.find((o) => o.label === doc)?.previewText.trim() || doc
-                  ),
-                }}
-              ></li>
-            ))}
+            {selectedOptions.map((doc: string) => {
+              const option = block.options.find((o) => o.label === doc);
+              const preview = option ? option.previewText.trim() : doc;
+              const dynamicPreview = applyDynamicSubstitutions(
+                formatPreviewText(preview),
+                userData,
+                enquiry
+              );
+              return (
+                <li
+                  key={doc}
+                  dangerouslySetInnerHTML={{
+                    __html: dynamicPreview,
+                  }}
+                ></li>
+              );
+            })}
           </ul>
         </div>
       );
     } else if (typeof selectedOptions === 'string') {
       const option = block.options.find((o) => o.label === selectedOptions);
+      const preview = option ? option.previewText.trim() : '';
+      const dynamicPreviewText = applyDynamicSubstitutions(
+        formatPreviewText(preview),
+        userData,
+        enquiry
+      );
       return (
         <div
           className={mergeStyles({
@@ -665,7 +678,7 @@ Kind Regards,<br>
         >
           <span
             dangerouslySetInnerHTML={{
-              __html: formatPreviewText(option ? option.previewText.trim() : ''),
+              __html: dynamicPreviewText,
             }}
           />
         </div>

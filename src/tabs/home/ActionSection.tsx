@@ -1,15 +1,18 @@
-// src/tabs/home/ActionSection.tsx
-
 import React, { useState, useMemo } from 'react';
 import { Stack, Text, Toggle, mergeStyles, Icon } from '@fluentui/react';
-import { Transaction } from '../../app/functionality/types';
+import { Transaction, Matter } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import TransactionCard from '../transactions/TransactionCard';
+import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
+import BespokePanel from '../../app/functionality/BespokePanel';
 
 interface ActionSectionProps {
   transactions: Transaction[];
   userInitials: string;
   isDarkMode: boolean;
+  onTransactionClick: (transaction: Transaction) => void;
+  matters: Matter[];
+  updateTransaction: (updatedTransaction: Transaction) => void;
 }
 
 const CollapsibleSection: React.FC<{
@@ -92,27 +95,57 @@ const ActionSection: React.FC<ActionSectionProps> = ({
   transactions,
   userInitials,
   isDarkMode,
+  onTransactionClick,
+  matters,
+  updateTransaction,
 }) => {
   const [showOnlyMine, setShowOnlyMine] = useState(true);
+  const [isTransactionPopupOpen, setIsTransactionPopupOpen] = useState<boolean>(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   // Treat user "LZ" as "AC" for filtering purposes
   const effectiveInitials = userInitials.toLowerCase() === 'lz' ? 'ac' : userInitials;
 
   const filteredTransactions = useMemo(() => {
-    const requested = transactions.filter((tx) => tx.status === 'requested');
+    console.log("All transactions in ActionSection:", transactions);
+    const relevantTransactions = transactions.filter(
+      (tx) => ['requested', 'transfer'].includes((tx.status || '').toLowerCase())
+    );
+    console.log("Relevant transactions (after status filter):", relevantTransactions);
+    console.log("Fee earner values in transactions:", relevantTransactions.map(tx => tx.fe));
+    console.log("Effective initials for filtering:", effectiveInitials);
     if (showOnlyMine) {
-      return requested.filter(
-        (tx) => tx.fe.toLowerCase() === effectiveInitials.toLowerCase()
+      const filtered = relevantTransactions.filter(
+        (tx) => (tx.fe || '').toLowerCase() === effectiveInitials.toLowerCase()
       );
+      console.log("Filtered transactions (showOnlyMine):", filtered);
+      return filtered;
     }
-    return requested;
+    console.log("Filtered transactions (all):", relevantTransactions);
+    return relevantTransactions;
   }, [transactions, effectiveInitials, showOnlyMine]);
 
   const defaultCollapsed = filteredTransactions.length === 0 && showOnlyMine;
 
+  // Handle transaction click to open the popup
+  const handleTransactionClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsTransactionPopupOpen(true);
+  };
+
+  // Handle transaction submission
+  const handleTransactionSubmit = (
+    values: { transferRequested: boolean; customAmount?: number; transferCustom?: boolean },
+    updatedTransaction: Transaction
+  ) => {
+    console.log("Updating transaction in ActionSection:", updatedTransaction);
+    // Notify the parent component to update its state
+    updateTransaction(updatedTransaction);
+  };
+
   return (
     <CollapsibleSection
-      title="Pending Transactions"
+      title="Transfers and Outstanding Balances"
       isDarkMode={isDarkMode}
       defaultCollapsed={defaultCollapsed}
     >
@@ -130,16 +163,38 @@ const ActionSection: React.FC<ActionSectionProps> = ({
               iconName="CompletedSolid"
               styles={{ root: { fontSize: '16px', color: colours.green } }}
             />
-            <Text>No transactions require action at this time.</Text>
+            <Text>No transfers or balances require action at this time.</Text>
           </div>
         ) : (
           <div className={gridContainerStyle}>
             {filteredTransactions.map((tx) => (
-              <TransactionCard key={tx.transaction_id} transaction={tx} />
+              <TransactionCard
+                key={tx.transaction_id}
+                transaction={tx}
+                onClick={() => handleTransactionClick(tx)}
+              />
             ))}
           </div>
         )}
       </Stack>
+
+      {/* Transaction Approval Popup */}
+      <BespokePanel
+        isOpen={isTransactionPopupOpen}
+        onClose={() => setIsTransactionPopupOpen(false)}
+        title="Approve Transaction"
+        width="1000px"
+      >
+        {selectedTransaction && (
+          <TransactionApprovalPopup
+            transaction={selectedTransaction}
+            matters={matters || []}
+            onSubmit={handleTransactionSubmit}
+            onCancel={() => setIsTransactionPopupOpen(false)}
+            userInitials={userInitials} // Pass userInitials to TransactionApprovalPopup
+          />
+        )}
+      </BespokePanel>
     </CollapsibleSection>
   );
 };

@@ -79,14 +79,14 @@ export function removeHighlightSpans(html: string): string {
  * When we insert multiline text from the TemplateBlocks, we turn raw newlines into <br />.
  */
 export function cleanTemplateString(template: string): string {
-    // Trim the entire string to remove leading/trailing whitespace and newlines
-    const trimmedTemplate = template.trim();
-    return trimmedTemplate
-      .split('\n')
-      .map(line => line.trim())
-      .join('<br />')
-      .replace(/(<br \/>)+$/, '');
-  }
+  // Trim the entire string to remove leading/trailing whitespace and newlines
+  const trimmedTemplate = template.trim();
+  return trimmedTemplate
+    .split('\n')
+    .map(line => line.trim())
+    .join('<br />')
+    .replace(/(<br \/>)+$/, '');
+}
 
 /**
  * A quick helper: do we have an array of strings or a single string?
@@ -107,6 +107,7 @@ export function replacePlaceholders(
   const userFirstName = userData?.[0]?.['First'] || 'Your';
   const userFullName = userData?.[0]?.['Full Name'] || 'Your Name';
   const userRole = userData?.[0]?.['Role'] || 'Your Position';
+  const userRate = userData?.[0]?.['Rate'] || '[Rate]';
 
   return template
     .replace(
@@ -148,6 +149,10 @@ export function replacePlaceholders(
       `<span data-placeholder="[Position]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userRole}</span>`
     )
     .replace(
+      /\[Rate\]/g,
+      `<span data-placeholder="[Rate]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userRate}</span>`
+    )
+    .replace(
       /\[(Scope of Work Placeholder|Risk Assessment Placeholder|Costs and Budget Placeholder|Follow-Up Instructions Placeholder|Closing Notes Placeholder|Required Documents Placeholder|Google Review Placeholder|Meeting Link Placeholder)\]/g,
       (match) =>
         `<span data-placeholder="${match}" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${match}</span>`
@@ -164,8 +169,12 @@ export function applyDynamicSubstitutions(
 ): string {
   const userInitials = userData?.[0]?.['Initials'] || 'XX';
   const enquiryID = enquiry?.ID || '0000';
+  const userRole = userData?.[0]?.['Role'] || '[Position]';
+  const userRate = userData?.[0]?.['Rate'] || '[Rate]';
 
   return text
     .replace(/\[FE\]/g, userInitials)
-    .replace(/\[ACID\]/g, enquiryID);
+    .replace(/\[ACID\]/g, enquiryID)
+    .replace(/\[Position\]/g, userRole)
+    .replace(/\[Rate\]/g, userRate);
 }
