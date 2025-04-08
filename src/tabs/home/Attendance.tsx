@@ -137,6 +137,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const [isSaving, setIsSaving] = useState(false);
   const [isTableExpanded, setIsTableExpanded] = useState(selectedWeek === 'next');
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null); // Changed to container ref for scrolling
   const tableRef = useRef<HTMLTableElement>(null);
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -213,7 +214,6 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
       initialAttendance[rec.Week_Start][rec.Initials] = rec.Attendance_Days?.trim() || '';
     });
     setLocalAttendance(initialAttendance);
-    console.log('Initial localAttendance:', initialAttendance);
   }, [attendanceRecords, teamData]);
 
   useEffect(() => {
@@ -224,7 +224,6 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     }
   }, [selectedWeek]);
 
-  // Updated unsaved changes logic to include cases where no record exists
   const hasUnsavedChanges = useMemo(() => {
     return [currentWeek, nextWeek].some((week) => {
       const record = attendanceRecords.find(
@@ -232,11 +231,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
       );
       const recordedDays = record ? record.Attendance_Days || '' : null;
       const localDays = localAttendance[week.start]?.[userInitials] || '';
-      // If no record exists, consider it as an unsaved change.
-      if (recordedDays === null) {
-        return true;
-      }
-      return localDays !== recordedDays;
+      return recordedDays === null || localDays !== recordedDays;
     });
   }, [localAttendance, attendanceRecords, userInitials]);
 
@@ -272,7 +267,6 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
         ? currentDays.filter((d) => d !== day)
         : [...currentDays, day];
       weekData[personInitials] = updatedDays.join(',');
-      console.log(`Clicked ${day} for ${personInitials}: ${weekData[personInitials]}`);
       return {
         ...prev,
         [weekStart]: weekData,
@@ -283,23 +277,22 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const saveAttendance = async () => {
     setIsSaving(true);
     const payloads = [currentWeek, nextWeek]
-    .map((week) => {
-      const localDays = localAttendance[week.start]?.[userInitials] || '';
-      const existingRecord = attendanceRecords.find(
-        (rec) => rec.Initials === userInitials && rec.Week_Start === week.start
-      );
-      // Generate payload if no record exists OR the local value differs from the recorded value.
-      if (!existingRecord || localDays !== (existingRecord?.Attendance_Days || '')) {
-        return {
-          firstName: teamData.find((t) => t.Initials === userInitials)?.First || 'Unknown',
-          initials: userInitials,
-          weekStart: week.start,
-          attendanceDays: localDays,
-        };
-      }
-      return null;
-    })
-    .filter(Boolean) as { firstName: string; initials: string; weekStart: string; attendanceDays: string }[];
+      .map((week) => {
+        const localDays = localAttendance[week.start]?.[userInitials] || '';
+        const existingRecord = attendanceRecords.find(
+          (rec) => rec.Initials === userInitials && rec.Week_Start === week.start
+        );
+        if (!existingRecord || localDays !== (existingRecord?.Attendance_Days || '')) {
+          return {
+            firstName: teamData.find((t) => t.Initials === userInitials)?.First || 'Unknown',
+            initials: userInitials,
+            weekStart: week.start,
+            attendanceDays: localDays,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as { firstName: string; initials: string; weekStart: string; attendanceDays: string }[];
 
     if (payloads.length === 0) {
       setIsSaving(false);
@@ -450,13 +443,16 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
 
   const tableContainerStyle = mergeStyles({
     position: 'relative',
-    overflow: 'hidden',
+    overflowX: 'auto', // Enable horizontal scrolling
+    overflowY: 'hidden',
     transition: 'height 0.4s ease-out',
     height: isTableExpanded ? `${48 + 40 * 5 + 2}px` : `${48 + 40 + 2}px`,
+    maxWidth: '100%', // Ensure it respects parent container width
   });
 
   const tableStyle = mergeStyles({
-    width: '100%',
+    width: `${100 + attendancePersons.length * 100}px`, // Dynamic width based on number of people
+    minWidth: '100%', // Ensure it can expand beyond container if needed
     tableLayout: 'fixed',
     borderCollapse: 'separate',
     borderSpacing: '0px',
@@ -540,12 +536,22 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   }, [todayIndex, selectedWeek]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLTableElement>) => {
-    if (tableRef.current) {
-      const rect = tableRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+    if (tableRef.current && tableContainerRef.current) {
+      const tableRect = tableRef.current.getBoundingClientRect();
+      const containerRect = tableContainerRef.current.getBoundingClientRect();
+      const scrollLeft = tableContainerRef.current.scrollLeft;
+      const scrollTop = tableContainerRef.current.scrollTop;
+  
+      // Calculate mouse position relative to the table's top-left corner
+      const x = e.clientX - tableRect.left + scrollLeft;
+      const y = e.clientY - tableRect.top + scrollTop;
+  
+      // Ensure coordinates are within table bounds
+      if (x >= 0 && y >= 0 && x <= tableRect.width && y <= tableRect.height) {
+        setMousePosition({ x, y });
+      } else {
+        setMousePosition(null); // Reset if outside table
+      }
     }
   };
 
@@ -575,30 +581,32 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
 
   const getCellProximity = (day: string, person: string) => {
     if (!mousePosition || !tableRef.current) return 0;
-
+  
     const dayIndex = orderedWeekDays.indexOf(day);
     const personIndex = attendancePersons.findIndex((p) => p.initials === person);
-    const cellWidth = 100;
-    const cellHeight = 40;
-    const headerHeight = 48;
-
-    const cellCenterX = (personIndex + 1) * cellWidth + cellWidth / 2;
+    const cellWidth = 100; // Fixed width as per tableStyle
+    const cellHeight = 40; // Fixed height as per rowStyle
+    const headerHeight = 48; // Fixed header height
+  
+    // Calculate the center of the cell
+    const cellCenterX = (personIndex + 1) * cellWidth + cellWidth / 2; // +1 to skip the day label column
     const cellCenterY = headerHeight + dayIndex * cellHeight + cellHeight / 2;
-
+  
+    // Calculate distance from mouse to cell center
     const distance = Math.sqrt(
       Math.pow(mousePosition.x - cellCenterX, 2) +
       Math.pow(mousePosition.y - cellCenterY, 2)
     );
-
-    const maxDistance = 150;
+  
+    const maxDistance = 150; // Adjust this value to control the hover radius
     const proximity = Math.max(0, 1 - distance / maxDistance);
     return proximity;
   };
 
   useImperativeHandle(ref, () => ({
     focusTable: () => {
-      if (tableRef.current) {
-        tableRef.current.scrollIntoView({ behavior: 'smooth' });
+      if (tableContainerRef.current) {
+        tableContainerRef.current.scrollIntoView({ behavior: 'smooth' });
         if (!isTableExpanded) {
           setIsTableExpanded(true);
         }
@@ -640,6 +648,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
             )}
             <div
               className={tableContainerStyle}
+              ref={tableContainerRef}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >

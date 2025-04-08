@@ -361,7 +361,9 @@ const EnquiryCard: React.FC<EnquiryCardProps> = ({
                 ariaLabel="Email Client"
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.location.href = enquiry.Email ? `mailto:${enquiry.Email}` : '#';
+                  window.location.href = enquiry.Email
+                    ? `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`
+                    : '#';
                 }}
                 styles={iconButtonStyles(colours.cta)}
               />

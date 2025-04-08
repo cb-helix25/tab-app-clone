@@ -14,10 +14,10 @@ interface AnnualLeaveRecord {
     days_taken: number;
     leave_type: string | null;
     rejection_notes: string | null;
-    AOW?: string | null; // Added AOW field
-    approvers?: string[]; // Added Approvers field
-    hearing_confirmation?: string | null;  // New field: expected "yes" or "no"
-    hearing_details?: string | null;       // New field: additional details if "no"
+    AOW?: string | null;
+    approvers?: string[];
+    hearing_confirmation?: string | null;
+    hearing_details?: string | null;
 }
 
 interface UserDetails {
@@ -25,9 +25,9 @@ interface UserDetails {
     totals: {
         standard: number;
         unpaid: number;
-        purchase: number;
+        sale: number; // Changed from "purchase" to "sale"
         rejected: number;
-        AOW?: string | null; // Added AOW field for the user
+        AOW?: string | null;
     };
 }
 
@@ -35,7 +35,7 @@ interface AnnualLeaveResponse {
     annual_leave: AnnualLeaveRecord[];
     future_leave: AnnualLeaveRecord[];
     user_details: UserDetails;
-    all_data?: AnnualLeaveRecord[];  // NEW: Include all rows from the table
+    all_data?: AnnualLeaveRecord[];
 }
 
 interface TeamData {
@@ -134,7 +134,7 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
             queryUserAnnualLeave(userInitials, configProjectData, context, teamAowMap)
         ]);
 
-        // NEW: Step 4.5: Fetch all annual leave data from the table.
+        // Step 4.5: Fetch all annual leave data from the table
         const allAnnualLeaveEntries = await queryAllAnnualLeave(configProjectData, context);
 
         // Step 5: Enhance leave entries with AOW and Approvers
@@ -148,7 +148,6 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
 
         const enhancedAnnualLeave = enhanceLeaveWithAOWAndApprover(annualLeaveEntries);
         const enhancedFutureLeave = enhanceLeaveWithAOWAndApprover(futureLeaveEntries);
-        // Enhance the new all_data set:
         const enhancedAllAnnualLeave = enhanceLeaveWithAOWAndApprover(allAnnualLeaveEntries);
 
         // Step 6: Enhance user_details with AOW
@@ -161,7 +160,7 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
             }
         };
 
-        // Step 7: Construct the response, now including all_data
+        // Step 7: Construct the response
         const response: AnnualLeaveResponse = {
             annual_leave: enhancedAnnualLeave,
             future_leave: enhancedFutureLeave,
@@ -184,14 +183,14 @@ export async function getAnnualLeaveHandler(req: HttpRequest, context: Invocatio
     }
 }
 
-// Register the function at the top level
+// Register the function
 app.http("getAnnualLeave", {
     methods: ["POST"],
     authLevel: "function",
     handler: getAnnualLeaveHandler
 });
 
-// Implement the SQL query functions
+// SQL query functions
 
 async function queryTeamDataFromSQL(config: any, context: InvocationContext): Promise<Map<string, string | null>> {
     context.log("Starting SQL query to fetch team data (Initials and AOW).");
@@ -579,7 +578,7 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                 // Calculate totals
                 let total_standard = 0;
                 let total_unpaid = 0;
-                let total_purchase = 0;
+                let total_sale = 0; // Changed from "total_purchase" to "total_sale"
                 let total_rejected = 0;
 
                 leaveEntries.forEach(entry => {
@@ -589,8 +588,8 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                             total_standard += entry.days_taken;
                         } else if (lt === "unpaid") {
                             total_unpaid += entry.days_taken;
-                        } else if (lt === "purchase") {
-                            total_purchase += entry.days_taken;
+                        } else if (lt === "sale") { // Changed from "purchase" to "sale"
+                            total_sale += entry.days_taken;
                         }
                         if (entry.status.toLowerCase() === "rejected" && entry.rejection_notes) {
                             total_rejected += entry.days_taken;
@@ -605,7 +604,7 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
                     totals: {
                         standard: total_standard,
                         unpaid: total_unpaid,
-                        purchase: total_purchase,
+                        sale: total_sale, // Changed from "purchase" to "sale"
                         rejected: total_rejected,
                         AOW: userAow
                     }
@@ -628,12 +627,6 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
     });
 }
 
-/**
- * Parses a SQL connection string into a configuration object for Tedious.
- * @param connectionString The SQL connection string.
- * @param context Invocation context for logging.
- * @returns Configuration object for Tedious.
- */
 function parseConnectionString(connectionString: string, context: InvocationContext): any {
     context.log("Parsing SQL connection string.");
     const parts = connectionString.split(";");
@@ -681,11 +674,6 @@ function parseConnectionString(connectionString: string, context: InvocationCont
     return config;
 }
 
-/**
- * Formats a Date object into a YYYY-MM-DD string.
- * @param date The Date object to format.
- * @returns Formatted date string.
- */
 function formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = (`0${(date.getMonth() + 1)}`).slice(-2);

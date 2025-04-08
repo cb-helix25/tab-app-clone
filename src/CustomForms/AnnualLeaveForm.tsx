@@ -18,7 +18,7 @@ interface AnnualLeaveFormProps {
   futureLeave: AnnualLeaveRecord[];
   team: TeamData[];
   userData: any;
-  totals: { standard: number; unpaid: number; purchase: number };
+  totals: { standard: number; unpaid: number; sale: number }; // Updated to match Azure Function
   bankHolidays?: Set<string>;
   allLeaveRecords: AnnualLeaveRecord[];
 }
@@ -197,8 +197,8 @@ function AnnualLeaveForm({
 
   const leaveTypeOptions: { key: string; text: string }[] = [
     { key: 'standard', text: 'Standard' },
-    { key: 'unpaid', text: 'Unpaid' },
-    { key: 'purchase', text: 'Purchase' },
+    { key: 'purchase', text: 'Purchase' }, // Maps to "unpaid" in totals
+    { key: 'sale', text: 'Sell' },         // Maps to "sale" in totals
   ];
 
   useEffect(() => {
@@ -235,10 +235,10 @@ function AnnualLeaveForm({
   let effectiveRemaining = 0;
   if (selectedLeaveType === 'standard') {
     effectiveRemaining = holidayEntitlement - totals.standard - totalDays;
-  } else if (selectedLeaveType === 'unpaid') {
-    effectiveRemaining = 5 - totals.unpaid - totalDays;
   } else if (selectedLeaveType === 'purchase') {
-    effectiveRemaining = 5 - totals.purchase - totalDays;
+    effectiveRemaining = 5 - totals.unpaid - totalDays; // "Purchase" maps to "unpaid"
+  } else if (selectedLeaveType === 'sale') {
+    effectiveRemaining = 5 - totals.sale - totalDays;   // "Sell" maps to "sale"
   }
 
   const groupedLeave = useMemo(() => {
@@ -287,7 +287,7 @@ function AnnualLeaveForm({
         dateRanges: formattedDateRanges,
         reason: notes || 'No additional reason provided.',
         days_taken: totalDays,
-        leave_type: selectedLeaveType,
+        leave_type: selectedLeaveType, // Will be "standard", "purchase", or "sale"
         overlapDetails: groupedLeave,
         hearing_confirmation: hearingConfirmation,
         hearing_details: hearingConfirmation === 'no' ? hearingDetails : '',
@@ -364,44 +364,8 @@ function AnnualLeaveForm({
           </Stack>
         </Stack>
       );
-    } else if (selectedLeaveType === 'unpaid') {
-      const unpaidRemaining = 5 - totals.unpaid - totalDays;
-      return (
-        <Stack
-          tokens={{ childrenGap: 10 }}
-          style={{
-            minWidth: '300px',
-            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-            padding: '10px',
-            borderRadius: '4px',
-            backgroundColor: 'transparent',
-          }}
-        >
-          <Text style={{ fontSize: '14px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-            Total Unpaid Days Requested
-          </Text>
-          <Text style={{ fontSize: '18px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-            {totalDays} {totalDays !== 1 ? 'days' : 'day'}
-          </Text>
-          <div style={{ borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`, margin: '20px 0' }} />
-          <Stack tokens={{ childrenGap: 5 }}>
-            <Text style={labelStyle}>Unpaid Leave Entitlement</Text>
-            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              5 days
-            </Text>
-            <Text style={labelStyle}>Unpaid Days Taken so far</Text>
-            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {totals.unpaid} {totals.unpaid !== 1 ? 'days' : 'day'}
-            </Text>
-            <Text style={labelStyle}>Unpaid Days Remaining</Text>
-            <Text style={{ ...valueStyle, color: unpaidRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
-              {unpaidRemaining} {unpaidRemaining !== 1 ? 'days' : 'day'}
-            </Text>
-          </Stack>
-        </Stack>
-      );
     } else if (selectedLeaveType === 'purchase') {
-      const purchaseRemaining = 5 - totals.purchase - totalDays;
+      const purchaseRemaining = 5 - totals.unpaid - totalDays; // "Purchase" uses "unpaid"
       return (
         <Stack
           tokens={{ childrenGap: 10 }}
@@ -427,11 +391,47 @@ function AnnualLeaveForm({
             </Text>
             <Text style={labelStyle}>Purchase Days Taken so far</Text>
             <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {totals.purchase} {totals.purchase !== 1 ? 'days' : 'day'}
+              {totals.unpaid} {totals.unpaid !== 1 ? 'days' : 'day'}
             </Text>
             <Text style={labelStyle}>Purchase Days Remaining</Text>
             <Text style={{ ...valueStyle, color: purchaseRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
               {purchaseRemaining} {purchaseRemaining !== 1 ? 'days' : 'day'}
+            </Text>
+          </Stack>
+        </Stack>
+      );
+    } else if (selectedLeaveType === 'sale') {
+      const saleRemaining = 5 - totals.sale - totalDays; // "Sell" uses "sale"
+      return (
+        <Stack
+          tokens={{ childrenGap: 10 }}
+          style={{
+            minWidth: '300px',
+            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+            padding: '10px',
+            borderRadius: '4px',
+            backgroundColor: 'transparent',
+          }}
+        >
+          <Text style={{ fontSize: '14px', fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            Total Sell Days Requested
+          </Text>
+          <Text style={{ fontSize: '18px', fontWeight: 400, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+            {totalDays} {totalDays !== 1 ? 'days' : 'day'}
+          </Text>
+          <div style={{ borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`, margin: '20px 0' }} />
+          <Stack tokens={{ childrenGap: 5 }}>
+            <Text style={labelStyle}>Sell Leave Entitlement</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              5 days
+            </Text>
+            <Text style={labelStyle}>Sell Days Taken so far</Text>
+            <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
+              {totals.sale} {totals.sale !== 1 ? 'days' : 'day'}
+            </Text>
+            <Text style={labelStyle}>Sell Days Remaining</Text>
+            <Text style={{ ...valueStyle, color: saleRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
+              {saleRemaining} {saleRemaining !== 1 ? 'days' : 'day'}
             </Text>
           </Stack>
         </Stack>

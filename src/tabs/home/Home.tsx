@@ -1871,7 +1871,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return [...annualLeaveRecords, ...futureLeaveRecords];
   }, [annualLeaveRecords, futureLeaveRecords]);
 
-  const APPROVERS = ['AC', 'JW', 'LZ'];
+  const APPROVERS = ['AC', 'JW', 'LZ', 'KW'];
   // MODIFIED: using userInitials from the ref
   const isApprover = APPROVERS.includes(userInitials);
 
