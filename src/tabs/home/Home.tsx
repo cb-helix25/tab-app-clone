@@ -863,6 +863,22 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     return generateWeekKey(nextMonday);
   };
 
+  // Add the following function to update the approval state:
+const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
+  // Remove the updated approval from annualLeaveRecords.
+  setAnnualLeaveRecords((prevRecords) =>
+    prevRecords.filter(record => record.id !== updatedRequestId)
+  );
+
+  // Also remove it from the full set of leave data if applicable.
+  setAnnualLeaveAllData((prevAllData) =>
+    prevAllData.filter(record => record.id !== updatedRequestId)
+  );
+
+  // You may also add any notifications or logging here.
+  console.log(`Approval with ID ${updatedRequestId} has been marked as ${newStatus}.`);
+};
+
   // ADDED: userInitials logic - store in ref so it doesn't reset on re-render.
   const rawUserInitials = userData?.[0]?.Initials || '';
   useEffect(() => {
@@ -1945,8 +1961,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             end_date: item.end_date,
             reason: item.reason,
             status: item.status,
-            hearing_confirmation: item.hearing_confirmation, // Add this
-            hearing_details: item.hearing_details,           // Add this
+            hearing_confirmation: item.hearing_confirmation,
+            hearing_details: item.hearing_details,
           }))}
           futureLeave={futureLeaveRecords.map((item) => ({
             id: item.id,
@@ -1955,13 +1971,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             end_date: item.end_date,
             reason: item.reason,
             status: item.status,
-            hearing_confirmation: item.hearing_confirmation, // Add this
-            hearing_details: item.hearing_details,           // Add this
+            hearing_confirmation: item.hearing_confirmation,
+            hearing_details: item.hearing_details,
           }))}
           onClose={() => setIsBespokePanelOpen(false)}
           team={(teamData ?? []) as any}
           totals={annualLeaveTotals}
           allLeaveEntries={annualLeaveAllData}
+          onApprovalUpdate={handleApprovalUpdate}  // Pass the callback here
         />
       );
       setBespokePanelTitle('Approve Annual Leave');

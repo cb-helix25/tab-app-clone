@@ -617,6 +617,7 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
   const groupedRoadmap = useMemo<GroupedRoadmap>(() => {
     const groups: GroupedRoadmap = {};
     if (roadmapData) {
+      // Group entries by normalized status
       roadmapData.forEach((entry) => {
         const normStatus = normalizeStatus(entry.status);
         if (!groups[normStatus]) {
@@ -624,9 +625,18 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
         }
         groups[normStatus].push(entry);
       });
+  
+      // For each group, sort the entries so that the newest (by date_requested) comes first
+      Object.keys(groups).forEach((key) => {
+        groups[key].sort(
+          (a, b) =>
+            new Date(b.date_requested).getTime() - new Date(a.date_requested).getTime()
+        );
+      });
     }
     return groups;
   }, [roadmapData]);
+  
 
   /**
    * Open the modal with the selected roadmap entry's details.

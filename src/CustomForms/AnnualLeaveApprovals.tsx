@@ -40,13 +40,14 @@ export interface TeamMember {
   holiday_entitlement?: number;
 }
 
-export interface AnnualLeaveApprovalsProps {
+interface AnnualLeaveApprovalsProps {
   approvals: ApprovalEntry[];
   futureLeave: ApprovalEntry[];
   onClose: () => void;
   team: TeamMember[];
   totals: { standard: number; unpaid: number; purchase: number };
-  allLeaveEntries: ApprovalEntry[]; // entire data
+  allLeaveEntries: ApprovalEntry[];
+  onApprovalUpdate?: (updatedRequestId: string, newStatus: string) => void; // <-- Add this line
 }
 
 /* ---------------------------------------------------------------------------
@@ -187,6 +188,7 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
   team,
   totals,
   allLeaveEntries,
+  onApprovalUpdate,
 }) => {
   const [rejectionReason, setRejectionReason] = useState<{ [id: string]: string }>({});
 
@@ -276,22 +278,31 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
         await updateAnnualLeave(recordId, 'approved', null);
         setUpdated(true);
         setConfirmationMessage('Approved successfully');
+        
+        if (onApprovalUpdate) {
+          onApprovalUpdate(recordId, 'approved');
+        }
       } catch (error) {
         console.error(`Error approving leave ${recordId}:`, error);
         setConfirmationMessage('Approval failed');
       }
     };
-
+    
     const localHandleReject = async () => {
       try {
         await updateAnnualLeave(recordId, 'rejected', localRejection);
         setUpdated(true);
         setConfirmationMessage('Rejected successfully');
+        
+        if (onApprovalUpdate) {
+          onApprovalUpdate(recordId, 'rejected');
+        }
       } catch (error) {
         console.error(`Error rejecting leave ${recordId}:`, error);
         setConfirmationMessage('Rejection failed');
       }
     };
+    
 
     // Conflicts
     const conflicts = getAllConflicts(entry);
