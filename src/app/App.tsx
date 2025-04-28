@@ -97,7 +97,7 @@ const App: React.FC<AppProps> = ({
   ];
 
   // Check if the user has authorized initials
-  const authorizedInitials = ['AC', 'JW', 'LZ'];
+  const authorizedInitials = ['AC', 'JW', 'LZ', 'BL'];
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const isAuthorized = authorizedInitials.includes(userInitials);
 

@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Stack, Text, Toggle, mergeStyles, Icon } from '@fluentui/react';
-import { Transaction, Matter } from '../../app/functionality/types';
+import { Stack, Text, Toggle, mergeStyles, Icon, Separator } from '@fluentui/react';
+import { Transaction, Matter, OutstandingClientBalance } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 import BespokePanel from '../../app/functionality/BespokePanel';
+import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard';
 
 interface ActionSectionProps {
   transactions: Transaction[];
@@ -13,7 +14,22 @@ interface ActionSectionProps {
   onTransactionClick: (transaction: Transaction) => void;
   matters: Matter[];
   updateTransaction: (updatedTransaction: Transaction) => void;
+  // NEW: Prop for outstanding balances (already filtered to only the user's balances)
+  outstandingBalances: OutstandingClientBalance[];
 }
+
+const gridContainerStyle = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+  gap: '20px',
+  width: '100%',
+});
+
+const noActionsClass = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+});
 
 const CollapsibleSection: React.FC<{
   title: string;
@@ -28,7 +44,7 @@ const CollapsibleSection: React.FC<{
     <div
       style={{
         marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
         borderRadius: '4px',
         overflow: 'hidden',
       }}
@@ -65,10 +81,8 @@ const CollapsibleSection: React.FC<{
         <div
           style={{
             padding: '20px',
-            backgroundColor: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+            backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
           }}
         >
           {children}
@@ -78,19 +92,6 @@ const CollapsibleSection: React.FC<{
   );
 };
 
-const gridContainerStyle = mergeStyles({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-  gap: '20px',
-  width: '100%',
-});
-
-const noActionsClass = mergeStyles({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-});
-
 const ActionSection: React.FC<ActionSectionProps> = ({
   transactions,
   userInitials,
@@ -98,7 +99,9 @@ const ActionSection: React.FC<ActionSectionProps> = ({
   onTransactionClick,
   matters,
   updateTransaction,
+  outstandingBalances,
 }) => {
+  // ----------------- Transfers Section -----------------
   const [showOnlyMine, setShowOnlyMine] = useState(true);
   const [isTransactionPopupOpen, setIsTransactionPopupOpen] = useState<boolean>(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -107,78 +110,77 @@ const ActionSection: React.FC<ActionSectionProps> = ({
   const effectiveInitials = userInitials.toLowerCase() === 'lz' ? 'ac' : userInitials;
 
   const filteredTransactions = useMemo(() => {
-    console.log("All transactions in ActionSection:", transactions);
     const relevantTransactions = transactions.filter(
       (tx) => ['requested', 'transfer'].includes((tx.status || '').toLowerCase())
     );
-    console.log("Relevant transactions (after status filter):", relevantTransactions);
-    console.log("Fee earner values in transactions:", relevantTransactions.map(tx => tx.fe));
-    console.log("Effective initials for filtering:", effectiveInitials);
     if (showOnlyMine) {
-      const filtered = relevantTransactions.filter(
+      return relevantTransactions.filter(
         (tx) => (tx.fe || '').toLowerCase() === effectiveInitials.toLowerCase()
       );
-      console.log("Filtered transactions (showOnlyMine):", filtered);
-      return filtered;
     }
-    console.log("Filtered transactions (all):", relevantTransactions);
     return relevantTransactions;
   }, [transactions, effectiveInitials, showOnlyMine]);
 
   const defaultCollapsed = filteredTransactions.length === 0 && showOnlyMine;
 
-  // Handle transaction click to open the popup
-  const handleTransactionClick = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
+  const handleTransactionClickInternal = (tx: Transaction) => {
+    setSelectedTransaction(tx);
     setIsTransactionPopupOpen(true);
   };
 
-  // Handle transaction submission
   const handleTransactionSubmit = (
     values: { transferRequested: boolean; customAmount?: number; transferCustom?: boolean },
-    updatedTransaction: Transaction
+    updatedTx: Transaction
   ) => {
-    console.log("Updating transaction in ActionSection:", updatedTransaction);
-    // Notify the parent component to update its state
-    updateTransaction(updatedTransaction);
+    updateTransaction(updatedTx);
+  };
+
+  // ----------------- Helper Function -----------------
+  // Compute due status for a bill
+  const computeDueStatus = (bill: any): string => {
+    const today = new Date();
+    const dueDate = new Date(bill.due_at);
+    const diffTime = today.getTime() - dueDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} overdue`;
+    } else if (diffDays < 0) {
+      return `Due in ${Math.abs(diffDays)} day${Math.abs(diffDays) > 1 ? 's' : ''}`;
+    } else {
+      return 'Due today';
+    }
   };
 
   return (
-    <CollapsibleSection
-      title="Transfers and Outstanding Balances"
-      isDarkMode={isDarkMode}
-      defaultCollapsed={defaultCollapsed}
-    >
-      <Stack tokens={{ childrenGap: 16 }}>
-        <Toggle
-          checked={showOnlyMine}
-          onText="Mine"
-          offText="All"
-          onChange={(e, checked) => setShowOnlyMine(!!checked)}
-          styles={{ root: { marginBottom: '10px' } }}
-        />
-        {filteredTransactions.length === 0 ? (
-          <div className={noActionsClass}>
-            <Icon
-              iconName="CompletedSolid"
-              styles={{ root: { fontSize: '16px', color: colours.green } }}
+    <CollapsibleSection title="Transfers and Outstanding Balances" isDarkMode={isDarkMode} defaultCollapsed={defaultCollapsed}>
+      {/* ---------- Transfers ---------- */}
+      <Text variant="large" styles={{ root: { fontWeight: 600, marginBottom: '10px' } }}>
+        Transfers
+      </Text>
+      <Toggle
+        checked={showOnlyMine}
+        onText="Mine"
+        offText="All"
+        onChange={(e, checked) => setShowOnlyMine(!!checked)}
+        styles={{ root: { marginBottom: '10px' } }}
+      />
+      {filteredTransactions.length === 0 ? (
+        <div className={noActionsClass}>
+          <Icon iconName="CompletedSolid" styles={{ root: { fontSize: '16px', color: colours.green } }} />
+          <Text>No transfers require action at this time.</Text>
+        </div>
+      ) : (
+        <div className={gridContainerStyle}>
+          {filteredTransactions.map((tx) => (
+            <TransactionCard
+              key={tx.transaction_id}
+              transaction={tx}
+              onClick={() => handleTransactionClickInternal(tx)}
             />
-            <Text>No transfers or balances require action at this time.</Text>
-          </div>
-        ) : (
-          <div className={gridContainerStyle}>
-            {filteredTransactions.map((tx) => (
-              <TransactionCard
-                key={tx.transaction_id}
-                transaction={tx}
-                onClick={() => handleTransactionClick(tx)}
-              />
-            ))}
-          </div>
-        )}
-      </Stack>
+          ))}
+        </div>
+      )}
 
-      {/* Transaction Approval Popup */}
       <BespokePanel
         isOpen={isTransactionPopupOpen}
         onClose={() => setIsTransactionPopupOpen(false)}
@@ -188,13 +190,36 @@ const ActionSection: React.FC<ActionSectionProps> = ({
         {selectedTransaction && (
           <TransactionApprovalPopup
             transaction={selectedTransaction}
-            matters={matters || []}
+            matters={matters}
             onSubmit={handleTransactionSubmit}
             onCancel={() => setIsTransactionPopupOpen(false)}
-            userInitials={userInitials} // Pass userInitials to TransactionApprovalPopup
+            userInitials={userInitials}
           />
         )}
       </BespokePanel>
+
+      <Separator styles={{ root: { marginTop: 20, marginBottom: 20 } }} />
+
+      {/* ---------- Outstanding Balances Sub-Section ---------- */}
+      <CollapsibleSection title="Outstanding Balances" isDarkMode={isDarkMode} defaultCollapsed={true}>
+        {outstandingBalances.length === 0 ? (
+          <div className={noActionsClass}>
+            <Icon iconName="CompletedSolid" styles={{ root: { fontSize: '16px', color: colours.green } }} />
+            <Text>No outstanding balances found.</Text>
+          </div>
+        ) : (
+          <div className={gridContainerStyle}>
+            {outstandingBalances.map((bal) => (
+              <OutstandingBalanceCard
+                key={bal.id}
+                balanceRecord={bal}
+                matters={matters}
+                computeDueStatus={computeDueStatus}
+              />
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
     </CollapsibleSection>
   );
 };

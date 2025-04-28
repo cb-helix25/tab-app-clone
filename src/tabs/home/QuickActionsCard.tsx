@@ -118,10 +118,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       <Text variant="small" styles={{ root: textStyle }}>
         {title}
       </Text>
-      {/* Replace the "NEW" badge with a pulsing dot */}
-      {title === 'Book Space' && (
-        <div className={pulsingDotStyle} />
-      )}
     </div>
   );
 };

@@ -103,6 +103,14 @@ export const financialForms: FormItem[] = [
         defaultValue: false,
       },
       {
+        label: 'Why not?',
+        type: 'textarea',
+        required: true,
+        helpText: 'Please explain why bank details have not been verified.',
+        // Conditional display: show only if "Have bank details been verified?" is false.
+        showIf: { field: 'Have bank details been verified?', equals: false }
+      },
+      {
         label: 'Do we have sufficient client funds to make payment?',
         type: 'toggle',
         required: true,

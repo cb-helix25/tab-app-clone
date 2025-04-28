@@ -95,9 +95,6 @@ export function isStringArray(value: string | string[]): value is string[] {
   return Array.isArray(value);
 }
 
-/**
- * Replaces placeholders in the base template, e.g. [Enquiry.First_Name].
- */
 export function replacePlaceholders(
   template: string,
   intro: string,
@@ -107,7 +104,11 @@ export function replacePlaceholders(
   const userFirstName = userData?.[0]?.['First'] || 'Your';
   const userFullName = userData?.[0]?.['Full Name'] || 'Your Name';
   const userRole = userData?.[0]?.['Role'] || 'Your Position';
-  const userRate = userData?.[0]?.['Rate'] || '[Rate]';
+  // Get the raw rate value
+  const userRate = userData?.[0]?.['Rate'];
+  // Format the rate to include the £ symbol and VAT text
+  const formattedRate =
+    userRate && userRate !== '[Rate]' ? `£${userRate} + VAT` : '[Rate]';
 
   return template
     .replace(
@@ -150,7 +151,8 @@ export function replacePlaceholders(
     )
     .replace(
       /\[Rate\]/g,
-      `<span data-placeholder="[Rate]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${userRate}</span>`
+      // Use the formatted rate here instead of the raw value.
+      `<span data-placeholder="[Rate]" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${formattedRate}</span>`
     )
     .replace(
       /\[(Scope of Work Placeholder|Risk Assessment Placeholder|Costs and Budget Placeholder|Follow-Up Instructions Placeholder|Closing Notes Placeholder|Required Documents Placeholder|Google Review Placeholder|Meeting Link Placeholder)\]/g,
@@ -170,11 +172,14 @@ export function applyDynamicSubstitutions(
   const userInitials = userData?.[0]?.['Initials'] || 'XX';
   const enquiryID = enquiry?.ID || '0000';
   const userRole = userData?.[0]?.['Role'] || '[Position]';
-  const userRate = userData?.[0]?.['Rate'] || '[Rate]';
+  const userRate = userData?.[0]?.['Rate']; // This is the raw rate value from SQL
+  // Format the rate to include the pound symbol and " + VAT"
+  const formattedRate =
+    userRate && userRate !== '[Rate]' ? `£${userRate} + VAT` : '[Rate]';
 
   return text
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)
-    .replace(/\[Rate\]/g, userRate);
+    .replace(/\[Rate\]/g, formattedRate);
 }

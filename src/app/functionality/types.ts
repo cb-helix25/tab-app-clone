@@ -27,6 +27,7 @@ export interface FormItem {
     prefix?: string; // Add prefix for currency or similar
     helpText?: string; // Add help text for tooltips or field explanations
     placeholder?: string; // Optional: For additional placeholders
+    showIf?: { field: string; equals: any };
   }>; // Add fields for forms
 }
 

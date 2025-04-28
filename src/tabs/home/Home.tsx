@@ -78,6 +78,9 @@ import Attendance from './Attendance'; // Import the Attendance component
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 
+import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // Adjust the path if needed
+
+
 
 initializeIcons();
 
@@ -1618,6 +1621,13 @@ const officeAttendanceButtonText = currentUserConfirmed
       .map((matter) => Number(matter.UniqueID));
   }, [allMatters, userResponsibleName]);
 
+  const myOutstandingBalances = useMemo(() => {
+    if (!outstandingBalancesData?.data || userMatterIDs.length === 0) return [];
+    return outstandingBalancesData.data.filter((bal: any) =>
+      bal.associated_matter_ids.some((id: number) => userMatterIDs.includes(Number(id)))
+    );
+  }, [outstandingBalancesData, userMatterIDs]);
+
   const [isOutstandingPanelOpen, setIsOutstandingPanelOpen] = useState(false);
   const [showOnlyMine, setShowOnlyMine] = useState(true); // Changed default to true
 
@@ -2383,13 +2393,14 @@ const conversionRate = enquiriesMonthToDate
 
       {/* Transactions Requiring Action */}
       <ActionSection
-          transactions={transactions}
-          userInitials={userInitials}
-          isDarkMode={isDarkMode}
-          onTransactionClick={handleTransactionClick}
-          matters={allMatters || []}
-          updateTransaction={updateTransaction}
-        />
+        transactions={transactions}
+        userInitials={userInitials}
+        isDarkMode={isDarkMode}
+        onTransactionClick={handleTransactionClick}
+        matters={allMatters || []}
+        updateTransaction={updateTransaction}
+        outstandingBalances={myOutstandingBalances} // pass the pre-filtered data
+      />;
 
       {/* Metrics Section Container */}
       <div
