@@ -62,6 +62,7 @@ const unorderedListIcon: IIconProps = { iconName: 'BulletedList' };
 const orderedListIcon: IIconProps = { iconName: 'NumberedList' };
 const linkIcon: IIconProps = { iconName: 'Link' };
 const clearIcon: IIconProps = { iconName: 'Cancel' };
+const letteredListIcon: IIconProps = { iconName: 'SortLines' };
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();

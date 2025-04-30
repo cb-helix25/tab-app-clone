@@ -133,14 +133,27 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     },
   });
 
-export const toggleStyle = mergeStyles({
-  height: `${INPUT_HEIGHT}px`,
-  selectors: {
-    ':hover': {
-      backgroundColor: colours.light.cardHover,
+  export const toggleStyle = mergeStyles({
+    height: `${INPUT_HEIGHT}px`,
+    selectors: {
+      ':hover': {
+        backgroundColor: colours.light.cardHover,
+      },
     },
-  },
-});
+  });
+  
+  // One-off info-box styles for CHAPS guide & >£50k message
+  export const infoBoxStyle = mergeStyles({
+    backgroundColor: colours.light.sectionBackground,
+    borderLeft: `4px solid ${colours.light.cta}`,
+    padding: '10px 15px',
+    margin: '5px 0 15px',
+    borderRadius: '2px',
+  });
+  export const infoLinkStyle = mergeStyles({
+    color: colours.light.cta,
+    textDecoration: 'underline',
+  });
 
 export interface FormField {
   label: string;
@@ -153,6 +166,7 @@ export interface FormField {
     | 'toggle'
     | 'currency-picker'
     | 'file'
+    | 'message'
     | 'date'
     | 'time';
   options?: string[];
@@ -359,67 +373,55 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
             switch (field.type) {
               case 'dropdown':
                 return (
-                  <Dropdown
-                    key={index}
-                    label={field.label}
-                    options={(field.options || []).map((opt) => ({
-                      key: opt,
-                      text: opt,
-                    }))}
-                    onChange={(_, option) =>
-                      handleInputChange(field.name, option?.key || '')
-                    }
-                    required={field.required}
-                    disabled={isSubmitting}
-                    styles={{ dropdown: dropdownStyle }}
-                  />
+                  <React.Fragment key={index}>
+                    <Dropdown
+                      label={field.label}
+                      options={(field.options || []).map(opt => ({ key: opt, text: opt }))}
+                      onChange={(_, option) => handleInputChange(field.name, option?.key || '')}
+                      required={field.required}
+                      disabled={isSubmitting}
+                      styles={{ dropdown: dropdownStyle }}
+                    />
+                    {field.name === 'Payment Type' &&
+                      formValues['Payment Type'] === 'CHAPS (same day over £1m)' && (
+                        <div className={infoBoxStyle}>
+                          For accounts/ whoever making payment – please refer to this{' '}
+                          <a
+                            href="https://app.nuclino.com/Helix-Law-Limited/Team-Helix/CHAPS-Same-Day-Purpose-Codes-bc03cd9f-117c-4061-83a1-bdf18bd88072"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={infoLinkStyle}
+                          >
+                            guide
+                          </a>.
+                        </div>
+                    )}
+                  </React.Fragment>
                 );
+              
               case 'toggle':
                 return (
-                  <div key={index} style={{ marginBottom: '15px' }}>
-                    <Toggle
-                      label={field.label}
-                      checked={
-                        formValues[field.name] !== undefined
-                          ? Boolean(formValues[field.name])
-                          : Boolean(field.defaultValue)
-                      }
-                      onText={field.onText}
-                      offText={field.offText}
-                      onChange={(_, checked) =>
-                        handleInputChange(field.name, !!checked)
-                      }
-                      disabled={isSubmitting}
-                      styles={{
-                        root: toggleStyle,
-                        pill: {
-                          backgroundColor: 
-                            (formValues[field.name] !== undefined
-                              ? Boolean(formValues[field.name])
-                              : Boolean(field.defaultValue))
-                            ? '#0078d4' // Blue when on
-                            : undefined, // Default gray when off
-                        },
-                        thumb: {
-                          backgroundColor: 
-                            (formValues[field.name] !== undefined
-                              ? Boolean(formValues[field.name])
-                              : Boolean(field.defaultValue))
-                            ? 'white'
-                            : undefined,
-                        },
-                        container: {
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          width: '250px', // Match custom amount width for alignment
-                        },
-                        label: {
-                          marginRight: '10px',
-                        },
-                      }}
-                    />
-                  </div>
+                  <React.Fragment key={index}>
+                    <div style={{ marginBottom: '15px' }}>
+                      <Toggle
+                        label={field.label}
+                        checked={Boolean(formValues[field.name] ?? field.defaultValue)}
+                        onText={field.onText}
+                        offText={field.offText}
+                        onChange={(_, checked) => handleInputChange(field.name, !!checked)}
+                        disabled={isSubmitting}
+                        styles={{ root: toggleStyle }}
+                      />
+                    </div>
+                    {field.name === 'Is the amount you are sending over £50k' &&
+                      formValues[field.name] === true && (
+                        <div className={infoBoxStyle}>
+                          Please note we will need to perform an extra verification check. Accounts will send a small random amount and a small random reference to the payee. You will need to ask them to confirm the amount and reference used before accounts can make the remaining balancing payment.
+                        </div>
+                    )}
+                  </React.Fragment>
                 );
+                
               case 'textarea':
                 return (
                   <TextField

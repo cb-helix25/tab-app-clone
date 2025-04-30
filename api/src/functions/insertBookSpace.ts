@@ -1,14 +1,15 @@
-// src/functions/insertBookSpace.ts
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
 import { Connection, Request as SqlRequest, TYPES } from "tedious";
+import axios from "axios";
+import * as querystring from "querystring";
 
 // Define the interface for the request body
 interface InsertBookSpaceRequest {
   fee_earner: string;
-  booking_date: string;  // 'YYYY-MM-DD'
-  booking_time: string;  // Expected "HH:MM:SS" or with fraction
+  booking_date: string; // 'YYYY-MM-DD'
+  booking_time: string; // Expected "HH:MM:SS" or with fraction
   duration: number;
   reason: string;
   spaceType: "Boardroom" | "Soundproof Pod";
@@ -60,6 +61,24 @@ export async function insertBookSpaceHandler(
       context
     );
     context.log("Successfully inserted booking entry.", insertResult);
+
+    // Insert into Clio calendar
+    try {
+      await insertClioCalendarEvent(
+        fee_earner,
+        booking_date,
+        booking_time,
+        duration,
+        reason,
+        spaceType,
+        context
+      );
+      context.log("Successfully inserted Clio calendar event.");
+    } catch (error) {
+      context.warn("Failed to insert Clio calendar event, but space booking succeeded:", error);
+      // Continue to return success for the space booking
+    }
+
     return {
       status: 201,
       body: JSON.stringify({
@@ -87,7 +106,7 @@ async function insertBookSpaceEntry(
   const kvUri = "https://helix-keys.vault.azure.net/";
   const passwordSecretName = "sql-databaseserver-password";
   const sqlServer = "helix-database-server.database.windows.net";
-  const sqlDatabase = "helix-project-data"; // Adjust if necessary
+  const sqlDatabase = "helix-project-data";
 
   const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
   const passwordSecret = await secretClient.getSecret(passwordSecretName);
@@ -155,12 +174,9 @@ async function insertBookSpaceEntry(
         connection.close();
       });
 
-      // Log the booking_time parameter before binding.
       context.log("Binding parameters for BookingTime:", booking_time);
 
-      // Convert the booking_time string into a Date object using an arbitrary date.
       const bookingTimeValue = new Date(`1970-01-01T${booking_time}Z`);
-      // *** KEY FIX: Pass a Date object for BookingTime to satisfy TIME(7) validation ***
       sqlRequest.addParameter("FeeEarner", TYPES.NVarChar, fee_earner);
       sqlRequest.addParameter("BookingDate", TYPES.Date, booking_date);
       sqlRequest.addParameter("BookingTime", TYPES.Time, bookingTimeValue, { scale: 7 });
@@ -180,6 +196,75 @@ async function insertBookSpaceEntry(
 
     connection.connect();
   });
+}
+
+async function insertClioCalendarEvent(
+  fee_earner: string,
+  booking_date: string,
+  booking_time: string,
+  duration: number,
+  reason: string,
+  spaceType: "Boardroom" | "Soundproof Pod",
+  context: InvocationContext
+): Promise<void> {
+  const kvUri = "https://helix-keys.vault.azure.net/";
+  const clioTokenUrl = "https://eu.app.clio.com/oauth/token";
+  const clioCalendarUrl = "https://eu.app.clio.com/api/v4/calendar_entries.json";
+  const clioCalendarId = 170197; // Updated to your requested calendar ID
+
+  const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+  const [clientIdSecret, clientSecretSecret, refreshTokenSecret] = await Promise.all([
+    secretClient.getSecret("clio-officeattendance-clientid"),
+    secretClient.getSecret("clio-officeattendance-clientsecret"),
+    secretClient.getSecret("clio-officeattendance-refreshtoken"),
+  ]);
+  const clientId = clientIdSecret.value || "";
+  const clientSecret = clientSecretSecret.value || "";
+  const refreshToken = refreshTokenSecret.value || "";
+  context.log("Retrieved Clio OAuth secrets from Key Vault.");
+
+  // Obtain OAuth access token
+  const tokenPayload = {
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  };
+  context.log("Sending Clio token request with payload:", tokenPayload);
+  const tokenResponse = await axios.post(clioTokenUrl, querystring.stringify(tokenPayload), {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+  const accessToken = tokenResponse.data.access_token;
+  context.log("Clio access token obtained:", accessToken);
+
+  const startDateTime = new Date(`${booking_date}T${booking_time}Z`);
+  const endDateTime = new Date(startDateTime.getTime() + duration * 3600000);
+
+  const eventPayload = {
+    data: {
+      calendar_owner: { id: clioCalendarId },
+      summary: `${spaceType} Booking - ${reason}`,
+      description: `Booked by ${fee_earner}. Reason: ${reason}`,
+      start_at: startDateTime.toISOString(),
+      end_at: endDateTime.toISOString(),
+      location: spaceType === "Boardroom" ? "Boardroom" : "Soundproof Pod",
+    },
+  };
+
+  context.log("Clio calendar event payload:", eventPayload);
+
+  try {
+    const response = await axios.post(clioCalendarUrl, eventPayload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    context.log("Clio calendar event created successfully:", response.data);
+  } catch (error: any) {
+    context.error("Error creating Clio calendar event:", error.response?.data || error.message);
+    throw new Error("Failed to create Clio calendar event.");
+  }
 }
 
 function parseConnectionString(connectionString: string, context: InvocationContext): any {

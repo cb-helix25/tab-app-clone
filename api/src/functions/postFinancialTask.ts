@@ -15,15 +15,13 @@ interface RequestBody {
 }
 
 // Formats data into a neat label/value text description.
-function formatDescription(data: any): string {
+function formatDescription(data: Record<string, any>): string {
     let description = '';
-    for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-            description += `${key}: ${data[key]}\n`;
-        }
-    }
+    Object.entries(data).forEach(([key, value]: [string, any]) => {
+      description += `${key}: ${value}\n`;
+    });
     return description.trim();
-}
+  }
 
 // Sanitises data by logging file details and replacing file content with the file name.
 function sanitizeDataForTask(data: any, context: InvocationContext): any {
@@ -308,7 +306,7 @@ export async function postFinancialTaskHandler(req: HttpRequest, context: Invoca
             return {
                 status: 400,
                 body: JSON.stringify({ error: "ASANA credentials not found for the provided initials." })
-            };
+            }; 
         }
         const { ASANAClientID, ASANASecret, ASANARefreshToken, ASANAUserID } = asanaCredentials;
         context.log("ASANA credentials obtained:", { ASANAClientID, ASANAUserID });
@@ -331,21 +329,37 @@ export async function postFinancialTaskHandler(req: HttpRequest, context: Invoca
         const sanitisedData = sanitizeDataForTask(data, context);
         let description = formatDescription(sanitisedData);
         context.log("Initial task description:", description);
-        
+
+        // ───────────────────────────────────────────────────
+        // Append the two extra messages per your colleague’s brief
+        // ───────────────────────────────────────────────────
+        if (
+          formType === "Payment Requests" &&
+          data["Is the amount you are sending over £50k"] === true
+        ) {
+          description += "\n\nPlease note we will need to perform an extra verification check. Accounts will send a small random amount and a random reference to the payee. You will need to ask them to confirm the amount and reference used before accounts can make the remaining balancing payment.";
+          context.log("Appended >£50k verification note to description.");
+        }
+
+        if (
+          formType === "Supplier Payment/Helix Expense" &&
+          data["Payment Type"] === "CHAPS (same day over £1m)"
+        ) {
+          description += "\n\nFor accounts/ whoever making payment - Please refer to this guide https://app.nuclino.com/Helix-Law-Limited/Team-Helix/CHAPS-Same-Day-Purpose-Codes-bc03cd9f-117c-4061-83a1-bdf18bd88072";
+          context.log("Appended CHAPS guide note to description.");
+        }
+
         // ------------------------------
         // OneDrive Integration using Microsoft Graph.
         // ------------------------------
-        // Define mapping of form types to OneDrive subfolder IDs (within the 'financial-forms' folder).
         const formFolderMapping: { [key: string]: string } = {
-            "Payment Requests": "01SHVNVKRYLIPQGFSEVVDIOKCA6LR3LVFU",   // payment-requests subfolder ID
-            "Supplier Payments": "01SHVNVKRFJFPCEFOND5C2PJMBMFYWAY7Y",   // supplier-payment-helix-expense subfolder ID
-            "Transfer Request":   "01SHVNVKQXD7PIEWD7W5C2JRE3SJR5FYTC",   // transfer-request subfolder ID
-            "General Query":      "01SHVNVKSAMI5BILLCIRGIQV67ONCUBBNF"    // general-query subfolder ID
+            "Payment Requests": "01SHVNVKRYLIPQGFSEVVDIOKCA6LR3LVFU",
+            "Supplier Payments": "01SHVNVKRFJFPCEFOND5C2PJMBMFYWAY7Y",
+            "Transfer Request":   "01SHVNVKQXD7PIEWD7W5C2JRE3SJR5FYTC",
+            "General Query":      "01SHVNVKSAMI5BILLCIRGIQV67ONCUBBNF"
         };
-        // Determine target folder based on formType.
         const targetFolderId = formFolderMapping[formType];
         if (targetFolderId) {
-            // Check for attachment data in Disbursement Upload.
             if (
                 data["Disbursement Upload"] &&
                 typeof data["Disbursement Upload"] === 'object' &&
@@ -354,19 +368,15 @@ export async function postFinancialTaskHandler(req: HttpRequest, context: Invoca
                 (data["Disbursement Upload"].fileContent || data["Disbursement Upload"].base64)
             ) {
                 const fileData = data["Disbursement Upload"];
-                const fileName = fileData.fileName; // Use original file name.
+                const fileName = fileData.fileName;
                 const fileContentBase64 = fileData.fileContent || fileData.base64;
                 context.log(`Uploading attachment "${fileName}" for form type "${formType}" to OneDrive folder.`);
                 const graphAccessToken = await getGraphAccessToken(context);
-                // For the Automations user's OneDrive, we use the drive ID from your known configuration.
                 const driveId = "b!Yvwb2hcQd0Sccr_JiZEOOEqq1HfNiPFCs8wM4QfDlvVbiAZXWhpCS47xKdZKl8Vd";
-                // Upload the file.
                 const uploadResult = await uploadFileToOneDrive(graphAccessToken, driveId, targetFolderId, fileName, fileContentBase64, context);
-                // Create an organization-wide sharing link for the uploaded file.
                 if (uploadResult && uploadResult.id) {
                     const sharingLink = await createOrgWideLink(graphAccessToken, driveId, uploadResult.id, context);
                     if (sharingLink) {
-                        // Append a file link to the description so the Asana task includes the file link.
                         description += `\nUploaded File: ${uploadResult.name}\nLink: ${sharingLink}`;
                         context.log("Updated task description with file link:", description);
                     } else {
@@ -381,7 +391,7 @@ export async function postFinancialTaskHandler(req: HttpRequest, context: Invoca
         } else {
             context.log(`No OneDrive folder mapping found for form type: ${formType}. Skipping file upload.`);
         }
-        
+
         // Build task details for Asana using the updated description.
         const matterRef = data["Matter Reference"];
         const finalTaskName = matterRef ? `${matterRef} - ${formType}` : formType;
@@ -389,7 +399,7 @@ export async function postFinancialTaskHandler(req: HttpRequest, context: Invoca
         const dueOn = today.toISOString().split("T")[0];
         const taskBody: any = {
             data: {
-                projects: ["1203336124217593"], // Replace with your actual project ID
+                projects: ["1203336124217593"],
                 name: finalTaskName,
                 notes: description,
                 due_on: dueOn,

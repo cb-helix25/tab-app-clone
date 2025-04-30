@@ -28,7 +28,7 @@ interface EditorAndTemplateBlocksProps {
   saveSelection: () => void;
   handleBlur: () => void;
   handleClearBlock: (block: TemplateBlock) => void;
-  highlightBlock: (blockTitle: string, highlight: boolean) => void; // Added prop
+  highlightBlock: (blockTitle: string, highlight: boolean) => void;
   bodyEditorRef: RefObject<HTMLDivElement>;
   toolbarStyle: string;
   bubblesContainerStyle: string;
@@ -51,7 +51,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   saveSelection,
   handleBlur,
   handleClearBlock,
-  highlightBlock, // Added prop
+  highlightBlock,
   bodyEditorRef,
   toolbarStyle,
   bubblesContainerStyle,
@@ -95,6 +95,62 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     }
   };
 
+  const applyLetteredList = () => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount || !bodyEditorRef.current) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedNode = range.commonAncestorContainer;
+
+    // Check if selection is inside the editor
+    if (!bodyEditorRef.current.contains(selectedNode)) return;
+
+    saveSelection();
+
+    // Check if we're already inside an ordered list with lower-alpha
+    let parentList: Node | Element | null = selectedNode.nodeType === Node.ELEMENT_NODE 
+      ? selectedNode 
+      : selectedNode.parentElement;
+    while (parentList && parentList !== bodyEditorRef.current) {
+      if (
+        parentList instanceof HTMLElement && 
+        parentList.tagName === 'OL' && 
+        parentList.style.listStyleType === 'lower-alpha'
+      ) {
+        // If inside a lettered list, unwrap it
+        document.execCommand('insertUnorderedList', false, undefined); // Toggle off
+        break;
+      }
+      parentList = (parentList as Element).parentElement;
+    }
+
+    if (!parentList || parentList === bodyEditorRef.current) {
+      // Create a new ordered list with lower-alpha style
+      const ol = document.createElement('ol');
+      ol.style.listStyleType = 'lower-alpha';
+      const li = document.createElement('li');
+      ol.appendChild(li);
+
+      if (range.collapsed) {
+        // No selection: insert empty list item
+        range.insertNode(ol);
+        range.setStart(li, 0);
+        range.collapse(true);
+      } else {
+        // Wrap selected content in the list
+        const fragment = range.extractContents();
+        li.appendChild(fragment);
+        ol.appendChild(li);
+        range.insertNode(ol);
+      }
+
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    setBody(bodyEditorRef.current.innerHTML);
+  };
+
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
       {/* Left Column: Editor + Attachments */}
@@ -109,6 +165,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <IconButton iconProps={{ iconName: 'Underline' }} ariaLabel="Underline" onClick={() => applyFormat('underline')} />
                 <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
                 <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
+                <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
                 <IconButton
                   iconProps={{ iconName: 'Link' }}
                   ariaLabel="Insert Link"

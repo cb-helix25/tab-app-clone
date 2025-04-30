@@ -4,7 +4,7 @@ import { FormItem } from '../../app/functionality/types'; // Adjust the path if 
 export const financialForms: FormItem[] = [
   {
     title: 'Transfer Request',
-    url: 'https://form.asana.com/?k=ujtixxpHA7C-flR-UZyF0Q&d=1203336123398249', // Added a valid URL
+    url: 'https://form.asana.com/?k=ujtixxpHA7C-flR-UZyF0Q&d=1203336123398249',
     icon: 'Switch',
     description: 'Submit a transfer request form.',
     tags: ['Financial'],
@@ -17,7 +17,6 @@ export const financialForms: FormItem[] = [
       },
       {
         label: 'Matter Reference',
-        // Changed type from "text" to "dropdown" so that a matter reference dropdown is rendered.
         type: 'dropdown',
         required: true,
       },
@@ -27,7 +26,7 @@ export const financialForms: FormItem[] = [
         step: 250,
         editable: true,
         required: true,
-        prefix: '£', // Display the non-removable £
+        prefix: '£',
       },
       {
         label: 'Narrative',
@@ -52,7 +51,6 @@ export const financialForms: FormItem[] = [
     fields: [
       {
         label: 'Matter Reference',
-        // Changed type from "text" to "dropdown"
         type: 'dropdown',
         required: true,
       },
@@ -65,9 +63,16 @@ export const financialForms: FormItem[] = [
       {
         label: 'Amount',
         type: 'number',
-        prefix: '£', // Display the non-removable £
+        prefix: '£',
         required: true,
       },
+      {
+        label: 'Is the amount you are sending over £50k',
+        type: 'toggle',
+        defaultValue: false,
+        required: true,
+      },
+      // <-- removed informational 'message' field here
       {
         label: 'Payee Name',
         type: 'text',
@@ -107,8 +112,7 @@ export const financialForms: FormItem[] = [
         type: 'textarea',
         required: true,
         helpText: 'Please explain why bank details have not been verified.',
-        // Conditional display: show only if "Have bank details been verified?" is false.
-        showIf: { field: 'Have bank details been verified?', equals: false }
+        showIf: { field: 'Have bank details been verified?', equals: false },
       },
       {
         label: 'Do we have sufficient client funds to make payment?',
@@ -160,7 +164,6 @@ export const financialForms: FormItem[] = [
       },
       {
         label: 'Matter Reference (if applicable)',
-        // Changed type from "text" to "dropdown"
         type: 'dropdown',
         required: false,
         helpText:
@@ -220,6 +223,7 @@ export const financialForms: FormItem[] = [
         ],
         required: true,
       },
+      // <-- removed informational 'message' field here
       {
         label: 'Payee Name',
         type: 'text',

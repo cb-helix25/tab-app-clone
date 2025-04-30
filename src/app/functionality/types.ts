@@ -10,7 +10,7 @@ export interface FormItem {
   title: string;
   url: string;
   icon: string;
-  tags?: string[]; // Existing tags property
+  tags?: string[];
   description?: string;
   embedScript?: {
     key: string;
@@ -18,17 +18,17 @@ export interface FormItem {
   };
   fields?: Array<{
     label: string;
-    type: 'text' | 'number' | 'textarea' | 'dropdown' | 'toggle' | 'currency-picker' | 'file'; // Added 'file'
-    options?: string[]; // For dropdowns
-    step?: number; // For number inputs
-    editable?: boolean; // For currency-picker or number inputs
+    type: 'text' | 'number' | 'textarea' | 'dropdown' | 'toggle' | 'currency-picker' | 'file' | 'message';
+    options?: string[];
+    step?: number;
+    editable?: boolean;
     required?: boolean;
-    defaultValue?: boolean | string | number | File; // Included File type
-    prefix?: string; // Add prefix for currency or similar
-    helpText?: string; // Add help text for tooltips or field explanations
-    placeholder?: string; // Optional: For additional placeholders
+    defaultValue?: boolean | string | number | File;
+    prefix?: string;
+    helpText?: string;
+    placeholder?: string;
     showIf?: { field: string; equals: any };
-  }>; // Add fields for forms
+  }>;
 }
 
 // Define the structure for UserData

@@ -12,36 +12,36 @@ import {
 // Refined selection styles with pronounced states and larger size
 const selectionStyles: IButtonStyles = {
   root: {
-    padding: '16px 28px', // Larger padding
+    padding: '16px 28px',
     borderRadius: '10px',
     backgroundColor: colours.grey,
     border: 'none',
-    height: '70px', // Even larger height
-    minWidth: '220px', // Wider button
+    height: '70px',
+    minWidth: '220px',
     fontWeight: '600',
-    fontSize: '18px', // Larger text
+    fontSize: '18px',
     color: colours.greyText,
     transition: 'background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
     boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-    display: 'flex', // Ensure flex centering works
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
   },
   rootHovered: {
     backgroundColor: colours.highlight,
     color: '#ffffff',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.2)', // More pronounced hover shadow
-    transform: 'translateY(-3px)', // Bigger lift
+    boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+    transform: 'translateY(-3px)',
   },
   rootPressed: {
     backgroundColor: `${colours.highlight}cc`,
     color: '#ffffff',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.25)', // Pressed shadow
-    transform: 'translateY(2px)', // Pressed down
+    boxShadow: '0 4px 10px rgba(0,0,0,0.25)',
+    transform: 'translateY(2px)',
   },
   icon: {
     marginRight: '12px',
-    fontSize: '22px', // Larger icon
+    fontSize: '22px',
   },
   flexContainer: {
     display: 'flex',
@@ -82,6 +82,7 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     [date: string]: (BoardroomBooking | SoundproofPodBooking)[];
   }>({});
   const [selectedSpaceType, setSelectedSpaceType] = useState<'Boardroom' | 'Soundproof Pod' | null>(null);
+  const [displayWeeks, setDisplayWeeks] = useState(2); // Start with 2 weeks
 
   const formFields: FormField[] = [
     {
@@ -250,33 +251,38 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
       setTwoWeekBookings({});
       return;
     }
-    const today = new Date('2025-03-08');
-    const twoWeeks: { [date: string]: (BoardroomBooking | SoundproofPodBooking)[] } = {};
-    
-    let daysAdded = 0;
-    let i = 0;
-    while (daysAdded < 10) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      i++;
-      const dayOfWeek = date.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-      const dateStr = date.toISOString().split('T')[0];
-      twoWeeks[dateStr] = [];
-      daysAdded++;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    const oneYearLater = new Date(today);
+    oneYearLater.setFullYear(today.getFullYear() + 1); // Set to oneのようなyear from today
+
+    const bookingsByDate: { [date: string]: (BoardroomBooking | SoundproofPodBooking)[] } = {};
+
+    // Generate dates for the next year, excluding weekends
+    let currentDate = new Date(today);
+    while (currentDate <= oneYearLater) {
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude weekends
+        const dateStr = currentDate.toISOString().split('T')[0];
+        bookingsByDate[dateStr] = [];
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Populate bookings
     const allBookings = selectedSpaceType
       ? (selectedSpaceType === 'Boardroom' ? futureBookings.boardroomBookings : futureBookings.soundproofBookings)
       : [...futureBookings.boardroomBookings, ...futureBookings.soundproofBookings];
 
     allBookings.forEach((booking) => {
       const bookingDate = booking.booking_date;
-      if (twoWeeks[bookingDate]) {
-        twoWeeks[bookingDate].push(booking);
+      if (bookingsByDate[bookingDate]) {
+        bookingsByDate[bookingDate].push(booking);
       }
     });
-    setTwoWeekBookings(twoWeeks);
+
+    setTwoWeekBookings(bookingsByDate);
   }, [futureBookings, selectedSpaceType]);
 
   const handleFieldChange = (vals: { [key: string]: any }) => {
@@ -345,9 +351,24 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
     setFormValues({ ...formValues, spaceType });
   };
 
-  const currentWeekEnd = new Date('2025-03-14');
-  const currentWeekBookings = Object.entries(twoWeekBookings).filter(([date]) => new Date(date) <= currentWeekEnd);
-  const nextWeekBookings = Object.entries(twoWeekBookings).filter(([date]) => new Date(date) > currentWeekEnd);
+  // Helper to get bookings for the displayed period
+  const getDisplayedBookings = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + displayWeeks * 7); // Calculate end date based on weeks
+    return Object.entries(twoWeekBookings)
+      .filter(([date]) => {
+        const d = new Date(date);
+        return d >= today && d <= endDate;
+      })
+      .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime());
+  };
+
+  // Load more weeks
+  const handleLoadMore = () => {
+    setDisplayWeeks((prev) => prev + 2); // Add 2 more weeks
+  };
 
   return (
     <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '20px', position: 'relative' } }}>
@@ -482,107 +503,56 @@ const BookSpaceForm: React.FC<BookSpaceFormProps> = ({
               variant="mediumPlus"
               styles={{ root: { fontWeight: 600, color: isDarkMode ? '#ddd' : colours.darkBlue, marginBottom: '12px' } }}
             >
-              {selectedSpaceType ? `${selectedSpaceType} Availability` : 'Space Availability'} (Next 2 Weeks)
+              {selectedSpaceType ? `${selectedSpaceType} Availability` : 'Space Availability'}
             </Text>
             <Stack tokens={{ childrenGap: 16 }}>
-              <Stack tokens={{ childrenGap: 12 }}>
-                <Text variant="medium" styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue } }}>
-                  This Week
-                </Text>
-                {currentWeekBookings.map(([date, bookings]) => (
-                  <Stack key={date}>
-                    <Text
-                      variant="medium"
-                      styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue, marginBottom: '6px' } }}
-                    >
-                      {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {getDisplayedBookings().map(([date, bookings]) => (
+                <Stack key={date}>
+                  <Text
+                    variant="medium"
+                    styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue, marginBottom: '6px' } }}
+                  >
+                    {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </Text>
+                  {bookings.length > 0 ? (
+                    <Stack tokens={{ childrenGap: 6 }}>
+                      {bookings.map((b) => (
+                        <Stack
+                          key={b.id}
+                          horizontal
+                          tokens={{ childrenGap: 12 }}
+                          styles={{
+                            root: {
+                              padding: '6px 10px',
+                              backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
+                              borderRadius: '6px',
+                              border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
+                              transition: 'background 0.2s ease',
+                              ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
+                            },
+                          }}
+                        >
+                          <Text variant="smallPlus" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
+                            {formatBookingTime(b)}
+                          </Text>
+                          <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
+                            {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
+                          </Text>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#888' : '#999', marginLeft: '10px', fontStyle: 'italic' } }}>
+                      No bookings scheduled
                     </Text>
-                    {bookings.length > 0 ? (
-                      <Stack tokens={{ childrenGap: 6 }}>
-                        {bookings.map((b) => (
-                          <Stack
-                            key={b.id}
-                            horizontal
-                            tokens={{ childrenGap: 12 }}
-                            styles={{
-                              root: {
-                                padding: '6px 10px',
-                                backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
-                                borderRadius: '6px',
-                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
-                                transition: 'background 0.2s ease',
-                                ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
-                              },
-                            }}
-                          >
-                            <Text variant="smallPlus" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
-                              {formatBookingTime(b)}
-                            </Text>
-                            <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
-                              {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
-                            </Text>
-                          </Stack>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#888' : '#999', marginLeft: '10px', fontStyle: 'italic' } }}>
-                        No bookings scheduled
-                      </Text>
-                    )}
-                  </Stack>
-                ))}
-              </Stack>
-
-              <Stack styles={{ root: { borderTop: `1px dashed ${isDarkMode ? '#666' : '#ccc'}`, paddingTop: '16px' } }}>
-                <Text variant="medium" styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue } }}>
-                  Next Week
-                </Text>
-              </Stack>
-
-              <Stack tokens={{ childrenGap: 12 }}>
-                {nextWeekBookings.map(([date, bookings]) => (
-                  <Stack key={date}>
-                    <Text
-                      variant="medium"
-                      styles={{ root: { fontWeight: 500, color: isDarkMode ? '#ccc' : colours.websiteBlue, marginBottom: '6px' } }}
-                    >
-                      {new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </Text>
-                    {bookings.length > 0 ? (
-                      <Stack tokens={{ childrenGap: 6 }}>
-                        {bookings.map((b) => (
-                          <Stack
-                            key={b.id}
-                            horizontal
-                            tokens={{ childrenGap: 12 }}
-                            styles={{
-                              root: {
-                                padding: '6px 10px',
-                                backgroundColor: isDarkMode ? colours.dark.grey : '#fff',
-                                borderRadius: '6px',
-                                border: `1px solid ${isDarkMode ? colours.dark.border : '#e8e8e8'}`,
-                                transition: 'background 0.2s ease',
-                                ':hover': { backgroundColor: isDarkMode ? '#444' : '#f9f9f9' },
-                              },
-                            }}
-                          >
-                            <Text variant="smallPlus" styles={{ root: { fontWeight: 500, width: '90px', color: colours.blue } }}>
-                              {formatBookingTime(b)}
-                            </Text>
-                            <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#bbb' : colours.greyText } }}>
-                              {b.reason} <span style={{ fontWeight: 300 }}>(by {b.fee_earner})</span>
-                            </Text>
-                          </Stack>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Text variant="smallPlus" styles={{ root: { color: isDarkMode ? '#888' : '#999', marginLeft: '10px', fontStyle: 'italic' } }}>
-                        No bookings scheduled
-                      </Text>
-                    )}
-                  </Stack>
-                ))}
-              </Stack>
+                  )}
+                </Stack>
+              ))}
+              <DefaultButton
+                text="Load More"
+                onClick={handleLoadMore}
+                styles={{ root: { marginTop: '16px', alignSelf: 'center' } }}
+              />
             </Stack>
           </Stack>
         </>
