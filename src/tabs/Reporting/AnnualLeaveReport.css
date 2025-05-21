@@ -1,0 +1,54 @@
+.annual-leave-report-container {
+  min-height: 100vh;
+  padding: 40px;
+  font-family: 'Raleway', sans-serif;
+  color: #333;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.annual-leave-report-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #3690ce;
+  margin-bottom: 10px;
+}
+
+.annual-leave-metric-cards {
+  margin: 24px 0 16px 0;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.annual-leave-table-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+}
+
+.ms-DetailsHeader {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  font-weight: 700;
+  color: #061733;
+}
+
+.ms-DetailsRow-fields {
+  font-size: 1rem;
+}
+
+@media (max-width: 900px) {
+  .annual-leave-report-container {
+    padding: 16px;
+    gap: 16px;
+  }
+  .annual-leave-table-section {
+    padding: 8px;
+  }
+  .annual-leave-metric-cards {
+    flex-direction: column;
+    gap: 16px;
+  }
+}

@@ -17,6 +17,7 @@ import HomePreview from './HomePreview';
 import ManagementDashboard from './ManagementDashboard';
 import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
+import AnnualLeaveReport from './AnnualLeaveReport';
 
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
 
@@ -325,11 +326,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   };
 
   const handleGoTo = (title: string) => {
-    if (title === 'Management Dashboard') {
-      setSelectedReport(title);
-    } else {
-      console.log('Report clicked:', title);
-    }
+    setSelectedReport(title);
   };
 
   const getPreviewContent = (name: string) => {
@@ -380,6 +377,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   const reportSections = [
     { title: 'Management Dashboard', description: 'Key metrics and team performance', path: '/management-dashboard', icon: 'Search', isReady: true },
+    { title: 'Annual Leave', description: 'Annual leave statistics and history', path: '/annual-leave', icon: 'Airplane', isReady: true },
     { title: 'Enquiries', description: 'Enquiry trends and details', path: '/enquiries', icon: 'People', isReady: false },
     { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'Folder', isReady: false },
     { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'CheckList', isReady: false },
@@ -419,6 +417,17 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
           lastRefreshTimestamp={lastRefreshTimestamp}
           isFetching={isFetching}
         />
+      </div>
+    );
+  }
+
+  if (selectedReport === 'Annual Leave') {
+    return (
+      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
+        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
+          <span>← Back</span>
+        </div>
+        <AnnualLeaveReport />
       </div>
     );
   }
