@@ -57,6 +57,10 @@ interface ReportingHomeProps {
   teamData?: TeamData[] | null;
 }
 
+const GET_ANNUAL_LEAVE_ALL_PATH = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_PATH;
+const GET_ANNUAL_LEAVE_ALL_CODE = process.env.REACT_APP_GET_ANNUAL_LEAVE_ALL_CODE;
+const getAnnualLeaveUrl = `${API_BASE_URL}/${GET_ANNUAL_LEAVE_ALL_PATH}?code=${GET_ANNUAL_LEAVE_ALL_CODE}`;
+
 const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, teamData }) => {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -154,6 +158,27 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     setWip(cachedData.wip);
     setRecoveredFees(cachedData.recoveredFees);
   }, []);
+
+
+  const fetchAnnualLeave = async () => {
+  try {
+    const response = await fetch(getAnnualLeaveUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Failed to fetch annual leave: ${response.status}`);
+    const data = await response.json();
+    // The response shape is { all_data: [...] }
+    cachedData.annualLeave = data.all_data ?? [];
+    setAnnualLeave(data.all_data ?? []);
+  } catch (error) {
+    console.error('Failed to fetch annual leave:', error);
+    setAnnualLeave([]);
+    cachedData.annualLeave = [];
+  }
+};
+
+
 
   const fetchReportDatasets = async (datasets: string[]) => {
     setShowSelectionModal(false);
@@ -273,10 +298,9 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         setRecoveredFees(cachedData.recoveredFees);
       }
 
-            // Add this for annual leave
-      if (datasets.includes('annualLeave') && data.annualLeave) {
-        cachedData.annualLeave = data.annualLeave;
-        setAnnualLeave(cachedData.annualLeave);
+      // Add this for annual leave
+      if (datasets.includes('annualLeave')) {
+        await fetchAnnualLeave();
       }
 
       DATASETS.forEach(d => {
@@ -441,7 +465,7 @@ const availableData = [
         <div className="back-arrow" onClick={() => setSelectedReport(null)}>
           <span>← Back</span>
         </div>
-        <AnnualLeaveReport />
+        <AnnualLeaveReport data={annualLeave || []} />
       </div>
     );
   }

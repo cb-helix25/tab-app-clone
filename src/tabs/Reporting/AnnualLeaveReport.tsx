@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { DetailsList, IColumn, Spinner, Stack, Text, PrimaryButton } from '@fluentui/react';
+import React, { useState } from 'react';
+import { DetailsList, IColumn, Stack, Text, PrimaryButton } from '@fluentui/react';
 import MetricCard from './MetricCard';
 import { colours } from '../../app/styles/colours';
 import './AnnualLeaveReport.css';
@@ -18,6 +18,10 @@ export interface AnnualLeaveRecord {
   hearing_details?: string;
 }
 
+interface AnnualLeaveReportProps {
+  data: AnnualLeaveRecord[];
+}
+
 const columns: IColumn[] = [
   { key: 'person', name: 'Person', fieldName: 'person', minWidth: 100, maxWidth: 150, isResizable: true },
   { key: 'start_date', name: 'Start Date', fieldName: 'start_date', minWidth: 100, maxWidth: 120, isResizable: true },
@@ -34,38 +38,9 @@ const formatDate = (dateStr: string) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-const AnnualLeaveReport: React.FC = () => {
-  const [data, setData] = useState<AnnualLeaveRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+const AnnualLeaveReport: React.FC<AnnualLeaveReportProps> = ({ data }) => {
   // For person/team filtering
   const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
-
-  // Update this URL to your actual API endpoint for fetching annual leave data
-  const ANNUAL_LEAVE_API_URL = `${process.env.REACT_APP_PROXY_BASE_URL}/api/getAnnualLeave`;
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(ANNUAL_LEAVE_API_URL)
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to fetch annual leave data');
-        const json = await res.json();
-        // Uncomment for debugging:
-        // console.log('Annual leave API returned:', json);
-        // If your API returns { result: [...] }, update this accordingly:
-        if (Array.isArray(json)) {
-          setData(json);
-        } else if (Array.isArray(json.result)) {
-          setData(json.result);
-        } else {
-          setData([]);
-        }
-        setError(null);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [ANNUAL_LEAVE_API_URL]);
 
   // All unique people in the data
   const allPeople = React.useMemo(
@@ -166,24 +141,18 @@ const AnnualLeaveReport: React.FC = () => {
       </div>
 
       <div className="annual-leave-table-section">
-        {loading ? (
-          <Spinner label="Loading annual leave data..." />
-        ) : error ? (
-          <Text variant="medium" style={{ color: 'red' }}>{error}</Text>
-        ) : (
-          <DetailsList
-            items={filteredData.map((row) => ({
-              ...row,
-              start_date: formatDate(row.start_date),
-              end_date: formatDate(row.end_date),
-              leave_type: row.leave_type || 'N/A',
-            }))}
-            columns={columns}
-            setKey="set"
-            layoutMode={0}
-            styles={{ root: { background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #eee' } }}
-          />
-        )}
+        <DetailsList
+          items={filteredData.map((row) => ({
+            ...row,
+            start_date: formatDate(row.start_date),
+            end_date: formatDate(row.end_date),
+            leave_type: row.leave_type || 'N/A',
+          }))}
+          columns={columns}
+          setKey="set"
+          layoutMode={0}
+          styles={{ root: { background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #eee' } }}
+        />
       </div>
     </div>
   );
