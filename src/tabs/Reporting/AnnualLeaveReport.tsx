@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { DetailsList, IColumn, Spinner, Stack, Text } from '@fluentui/react';
+import { DetailsList, IColumn, Spinner, Stack, Text, PrimaryButton } from '@fluentui/react';
 import MetricCard from './MetricCard';
 import { colours } from '../../app/styles/colours';
 import './AnnualLeaveReport.css';
 
-interface AnnualLeaveRecord {
+export interface AnnualLeaveRecord {
   request_id: number;
   person: string;
   start_date: string;
@@ -39,6 +39,9 @@ const AnnualLeaveReport: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // For person/team filtering
+  const [selectedPersons, setSelectedPersons] = useState<string[]>([]);
+
   // Update this URL to your actual API endpoint for fetching annual leave data
   const ANNUAL_LEAVE_API_URL = `${process.env.REACT_APP_PROXY_BASE_URL}/api/getAnnualLeave`;
 
@@ -47,33 +50,121 @@ const AnnualLeaveReport: React.FC = () => {
     fetch(ANNUAL_LEAVE_API_URL)
       .then(async (res) => {
         if (!res.ok) throw new Error('Failed to fetch annual leave data');
-        return res.json();
-      })
-      .then((json) => {
-        setData(Array.isArray(json) ? json : []);
+        const json = await res.json();
+        // Uncomment for debugging:
+        // console.log('Annual leave API returned:', json);
+        // If your API returns { result: [...] }, update this accordingly:
+        if (Array.isArray(json)) {
+          setData(json);
+        } else if (Array.isArray(json.result)) {
+          setData(json.result);
+        } else {
+          setData([]);
+        }
         setError(null);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [ANNUAL_LEAVE_API_URL]);
 
-  // Example metrics
-  const totalRequests = data.length;
-  const approved = data.filter(d => ['approved', 'booked'].includes(d.status?.toLowerCase())).length;
-  const rejected = data.filter(d => d.status?.toLowerCase() === 'rejected').length;
-  const totalDays = data.reduce((sum, d) => sum + (typeof d.days_taken === 'number' ? d.days_taken : 0), 0);
+  // All unique people in the data
+  const allPeople = React.useMemo(
+    () => Array.from(new Set(data.map(d => d.person))).sort(),
+    [data]
+  );
+
+  // Filtered data for selected persons
+  const filteredData = React.useMemo(() => {
+    if (!selectedPersons.length) return data;
+    return data.filter(d => selectedPersons.includes(d.person));
+  }, [data, selectedPersons]);
+
+  // Aggregate metrics per person
+  const personMetrics = React.useMemo(() => {
+    return allPeople.map(person => {
+      const personRecords = data.filter(d => d.person === person);
+      const annualLeaveTaken = personRecords.filter(x => x.leave_type?.toLowerCase() === 'annual').reduce((sum, x) => sum + x.days_taken, 0);
+      const sickLeaveTaken = personRecords.filter(x => x.leave_type?.toLowerCase() === 'sick').reduce((sum, x) => sum + x.days_taken, 0);
+      const unpaidLeaveTaken = personRecords.filter(x => x.leave_type?.toLowerCase() === 'unpaid').reduce((sum, x) => sum + x.days_taken, 0);
+      // You can add more leave types if needed
+      return {
+        person,
+        annualLeaveTaken,
+        sickLeaveTaken,
+        unpaidLeaveTaken,
+      };
+    });
+  }, [data, allPeople]);
+
+  // Totals for metric cards (can be tailored as needed)
+  const totalRequests = filteredData.length;
+  const approved = filteredData.filter(d => ['approved', 'booked'].includes(d.status?.toLowerCase())).length;
+  const rejected = filteredData.filter(d => d.status?.toLowerCase() === 'rejected').length;
+  const totalDays = filteredData.reduce((sum, d) => sum + (typeof d.days_taken === 'number' ? d.days_taken : 0), 0);
 
   return (
     <div className="annual-leave-report-container">
       <Text variant="xxLarge" className="annual-leave-report-title">
         Annual Leave Report
       </Text>
+
+      {/* Person/Team Slicer */}
+      <div className="person-slicer">
+        <PrimaryButton
+          text="All"
+          onClick={() => setSelectedPersons([])}
+          className={selectedPersons.length === 0 ? 'selected' : ''}
+          style={{ marginRight: 6, marginBottom: 6 }}
+        />
+        {allPeople.map(person => (
+          <PrimaryButton
+            key={person}
+            text={person}
+            onClick={() =>
+              setSelectedPersons(selectedPersons.includes(person)
+                ? selectedPersons.filter(p => p !== person)
+                : [...selectedPersons, person]
+              )
+            }
+            className={selectedPersons.includes(person) ? 'selected' : ''}
+            style={{ marginRight: 6, marginBottom: 6 }}
+          />
+        ))}
+      </div>
+
       <Stack horizontal tokens={{ childrenGap: 24 }} className="annual-leave-metric-cards">
         <MetricCard title="Total Requests" value={totalRequests} />
         <MetricCard title="Approved/Booked" value={approved} />
         <MetricCard title="Rejected" value={rejected} />
         <MetricCard title="Total Days" value={totalDays} />
       </Stack>
+
+      {/* Per-person leave metrics */}
+      <div className="metrics-cards metrics-cards-per-person">
+        {personMetrics
+          .filter(m => selectedPersons.length === 0 || selectedPersons.includes(m.person))
+          .map(m => (
+            <MetricCard
+              key={m.person}
+              title={m.person}
+              value={
+                <>
+                  <span className="metric-line">
+                    <span className="metric-label">Annual:</span> {m.annualLeaveTaken}
+                  </span>
+                  <span className="metric-line">
+                    <span className="metric-label">Sick:</span> {m.sickLeaveTaken}
+                  </span>
+                  <span className="metric-line">
+                    <span className="metric-label">Unpaid:</span> {m.unpaidLeaveTaken}
+                  </span>
+                </>
+              }
+              style={{ minWidth: 180, maxWidth: 240, marginBottom: 12 }}
+            />
+          ))}
+      </div>
+
       <div className="annual-leave-table-section">
         {loading ? (
           <Spinner label="Loading annual leave data..." />
@@ -81,7 +172,7 @@ const AnnualLeaveReport: React.FC = () => {
           <Text variant="medium" style={{ color: 'red' }}>{error}</Text>
         ) : (
           <DetailsList
-            items={data.map((row) => ({
+            items={filteredData.map((row) => ({
               ...row,
               start_date: formatDate(row.start_date),
               end_date: formatDate(row.end_date),

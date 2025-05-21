@@ -17,7 +17,7 @@ import HomePreview from './HomePreview';
 import ManagementDashboard from './ManagementDashboard';
 import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
-import AnnualLeaveReport from './AnnualLeaveReport';
+import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
 
 const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
 
@@ -31,6 +31,7 @@ const DATASETS = [
   { key: 'outstandingBalances', name: 'Outstanding Balances', type: 'OutstandingClientBalancesResponse', duration: 3000 },
   { key: 'wip', name: 'WIP', type: 'WIP[]', duration: 2000 },
   { key: 'recoveredFees', name: 'Recovered Fees', type: 'CollectedTimeData[]', duration: 2000 },
+  { key: 'annualLeave', name: 'Annual Leave', type: 'AnnualLeaveRecord[]', duration: 2000 }, // <-- ADD THIS
 ] as const;
 
 const TOTAL_FETCH_DURATION = 20000;
@@ -47,6 +48,7 @@ let cachedData: { [key: string]: any } = {
   outstandingBalances: null,
   wip: null,
   recoveredFees: null,
+  annualLeave: null,
 };
 let hasFetchedInitially = false;
 
@@ -82,6 +84,8 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
   const [isDataSectionOpen, setIsDataSectionOpen] = useState(true);
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number>(Date.now());
   const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [annualLeave, setAnnualLeave] = useState<AnnualLeaveRecord[] | null>(cachedData.annualLeave);
+
 
   const decisionButtonRootStyles = sharedDecisionButtonStyles.root as React.CSSProperties;
   const defaultButtonRootStyles = sharedDefaultButtonStyles.root as React.CSSProperties;
@@ -269,6 +273,12 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
         setRecoveredFees(cachedData.recoveredFees);
       }
 
+            // Add this for annual leave
+      if (datasets.includes('annualLeave') && data.annualLeave) {
+        cachedData.annualLeave = data.annualLeave;
+        setAnnualLeave(cachedData.annualLeave);
+      }
+
       DATASETS.forEach(d => {
         if (datasets.includes(d.key) && !data[d.key]) {
           setFetchStatus(prev => ({ ...prev, [d.key]: 'idle' }));
@@ -340,6 +350,8 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
       'Outstanding Balances': outstandingBalances?.data,
       'WIP': wip,
       'Recovered Fees': recoveredFees,
+      // ADD THIS:
+      'Annual Leave': annualLeave,
     };
     const data = dataMap[name];
     if (!data) return 'No data available';
@@ -383,21 +395,23 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'CheckList', isReady: false },
   ];
 
-  const availableData = [
-    { name: 'User Data', available: !!fetchedUserData, details: fetchedUserData ? `${fetchedUserData.length} record(s)` : 'Not fetched' },
-    { name: 'Team Data', available: !!fetchedTeamData, details: fetchedTeamData ? `${fetchedTeamData.length} record(s)` : 'Not fetched' },
-    { name: 'Enquiries', available: !!enquiries, details: enquiries ? `${enquiries.length} record(s)` : 'Not fetched' },
-    { name: 'All Matters', available: !!allMatters, details: allMatters ? `${allMatters.length} record(s)` : 'Not fetched' },
-    { name: 'POID 6 Years', available: !!poidData, details: poidData ? `${poidData.length} record(s)` : 'Not fetched' },
-    { name: 'Transactions', available: !!transactions, details: transactions ? `${transactions.length} record(s)` : 'Not fetched' },
-    {
-      name: 'Outstanding Balances',
-      available: !!outstandingBalances,
-      details: outstandingBalances?.data ? `${outstandingBalances.data.length} record(s)` : 'Not fetched',
-    },
-    { name: 'WIP', available: !!wip, details: wip ? `${Array.isArray(wip) ? wip.length + ' record(s)' : 'Available'}` : 'Not fetched' },
-    { name: 'Recovered Fees', available: !!recoveredFees, details: recoveredFees ? `${recoveredFees.length} record(s)` : 'Not fetched' },
-  ];
+const availableData = [
+  { name: 'User Data', available: !!fetchedUserData, details: fetchedUserData ? `${fetchedUserData.length} record(s)` : 'Not fetched' },
+  { name: 'Team Data', available: !!fetchedTeamData, details: fetchedTeamData ? `${fetchedTeamData.length} record(s)` : 'Not fetched' },
+  { name: 'Enquiries', available: !!enquiries, details: enquiries ? `${enquiries.length} record(s)` : 'Not fetched' },
+  { name: 'All Matters', available: !!allMatters, details: allMatters ? `${allMatters.length} record(s)` : 'Not fetched' },
+  { name: 'POID 6 Years', available: !!poidData, details: poidData ? `${poidData.length} record(s)` : 'Not fetched' },
+  { name: 'Transactions', available: !!transactions, details: transactions ? `${transactions.length} record(s)` : 'Not fetched' },
+  {
+    name: 'Outstanding Balances',
+    available: !!outstandingBalances,
+    details: outstandingBalances?.data ? `${outstandingBalances.data.length} record(s)` : 'Not fetched',
+  },
+  { name: 'WIP', available: !!wip, details: wip ? `${Array.isArray(wip) ? wip.length + ' record(s)' : 'Available'}` : 'Not fetched' },
+  { name: 'Recovered Fees', available: !!recoveredFees, details: recoveredFees ? `${recoveredFees.length} record(s)` : 'Not fetched' },
+  // ADD THIS:
+  { name: 'Annual Leave', available: !!annualLeave, details: annualLeave ? `${annualLeave.length} record(s)` : 'Not fetched' },
+];
 
   if (selectedReport === 'Management Dashboard') {
     return (

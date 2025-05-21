@@ -3,7 +3,7 @@ import './MetricCard.css';
 
 interface MetricCardProps {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   subtitle?: string;
   style?: React.CSSProperties; // Added style prop
 }
