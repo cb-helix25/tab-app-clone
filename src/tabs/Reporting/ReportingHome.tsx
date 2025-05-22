@@ -465,7 +465,7 @@ const availableData = [
         <div className="back-arrow" onClick={() => setSelectedReport(null)}>
           <span>← Back</span>
         </div>
-        <AnnualLeaveReport data={annualLeave || []} />
+        <AnnualLeaveReport data={annualLeave || []} teamData={fetchedTeamData || []} />
       </div>
     );
   }
