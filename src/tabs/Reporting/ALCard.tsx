@@ -1,27 +1,31 @@
 import React from "react";
-import { colours } from '../../app/styles/colours';
+import "./ALCard.css";
 
-interface ALCardProps {
+export interface ALCardProps {
   title: string;
-  value: string | number;
-  subtitle?: string;
-  style?: React.CSSProperties;
+  value: number;
+  variant?: "standard" | "left" | "unpaid" | "unpaidLeft";
 }
-const ALCard: React.FC<ALCardProps> = ({ title, value, subtitle, style }) => (
-  <div
-    style={{
-      background: "#fff",
-      borderRadius: "8px",
-      boxShadow: "0 2px 8px #eee",
-      padding: "20px",
-      textAlign: "center",
-      minWidth: "180px",
-      ...style,
-    }}
-  >
-    <div style={{ fontSize: "1.1em", color: colours.highlight, fontWeight: 600 }}>{title}</div>
-    <div style={{ fontSize: "2.2em", fontWeight: 700, margin: "10px 0" }}>{value}</div>
-    {subtitle && <div style={{ color: "#888", fontSize: "0.95em" }}>{subtitle}</div>}
-  </div>
-);
+
+const variantColors: Record<string, string> = {
+  standard: "#0984e3",
+  left: "#00b894",
+  unpaid: "#d35400",
+  unpaidLeft: "#636e72"
+};
+
+const ALCard: React.FC<ALCardProps> = ({ title, value, variant = "standard" }) => {
+  return (
+    <div className={`al-metric-card al-metric-card-${variant}`}>
+      <div
+        className="al-metric-value"
+        style={{ color: variantColors[variant] || "#333" }}
+      >
+        {value}
+      </div>
+      <div className="al-metric-title">{title}</div>
+    </div>
+  );
+};
+
 export default ALCard;

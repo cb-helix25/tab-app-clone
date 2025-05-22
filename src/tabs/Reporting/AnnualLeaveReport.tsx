@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { DatePicker, PrimaryButton, Stack } from "@fluentui/react";
+import { DatePicker, PrimaryButton, Stack, Checkbox } from "@fluentui/react";
 import ALCard from "./ALCard";
 import { colours } from "../../app/styles/colours";
 import { TeamData } from "../../app/functionality/types";
 
 export interface AnnualLeaveRecord {
   request_id: number;
-  fe: string; // user initials
-  start_date: string; // ISO string
+  fe: string;
+  start_date: string;
   end_date: string;
   reason: string;
   status: string;
@@ -25,15 +25,12 @@ interface Props {
 
 const formatDate = (date?: Date) => (date ? date.toLocaleDateString("en-GB") : "");
 
-// Utility: Get start/end of financial year
 function getFinancialYear(date = new Date()) {
   const year = date.getFullYear();
   const start = new Date(date);
   if (date.getMonth() < 3) {
-    // Before April: FY started in previous year
     start.setFullYear(year - 1, 3, 1);
   } else {
-    // April or after
     start.setFullYear(year, 3, 1);
   }
   const end = new Date(start);
@@ -45,12 +42,11 @@ function getFinancialYear(date = new Date()) {
 const UNPAID_LEAVE_CAP = 5;
 
 const AnnualLeaveReport: React.FC<Props> = ({ data, teamData }) => {
-  // Date filter state
   const { start: fyStart, end: fyEnd } = getFinancialYear();
   const [startDate, setStartDate] = useState<Date | undefined>(fyStart);
   const [endDate, setEndDate] = useState<Date | undefined>(fyEnd);
 
-  // Get all active people from team data (Initials)
+  // All active people
   const activePeople = useMemo(
     () =>
       teamData
@@ -63,25 +59,37 @@ const AnnualLeaveReport: React.FC<Props> = ({ data, teamData }) => {
     [teamData]
   );
 
-  // Slicer state: All or a particular person
-  const [selectedInitials, setSelectedInitials] = useState<string | null>(null);
+  // Multi-select FEs
+  const [selectedInitials, setSelectedInitials] = useState<string[]>([]);
 
-  // Filtered people list (all or just one)
+  const toggleInitials = (initials: string) => {
+    setSelectedInitials((prev) =>
+      prev.includes(initials)
+        ? prev.filter((i) => i !== initials)
+        : [...prev, initials]
+    );
+  };
+
+  const selectAll = () => setSelectedInitials(activePeople.map((p) => p.initials));
+  const clearAll = () => setSelectedInitials([]);
+
+  // Only show selected, or all if none
   const filteredPeople = useMemo(() => {
-    return selectedInitials
-      ? activePeople.filter((p) => p.initials === selectedInitials)
+    return selectedInitials.length
+      ? activePeople.filter((p) => selectedInitials.includes(p.initials))
       : activePeople;
   }, [activePeople, selectedInitials]);
 
-  // Filter annual leave by date range and initials
+  // Filter annual leave by date range, initials (multi), and status=booked
   const filteredLeave = useMemo(() => {
     return data.filter((row: AnnualLeaveRecord) => {
       const leaveDate = new Date(row.start_date);
       const afterStart = !startDate || leaveDate >= startDate;
       const beforeEnd = !endDate || leaveDate <= endDate;
       const personMatch =
-        !selectedInitials || row.fe === selectedInitials;
-      return afterStart && beforeEnd && personMatch;
+        selectedInitials.length === 0 || selectedInitials.includes(row.fe);
+      const statusMatch = (row.status || "").toLowerCase() === "booked";
+      return afterStart && beforeEnd && personMatch && statusMatch;
     });
   }, [data, startDate, endDate, selectedInitials]);
 
@@ -96,41 +104,58 @@ const AnnualLeaveReport: React.FC<Props> = ({ data, teamData }) => {
     return map;
   }, [filteredLeave]);
 
-  // For each filtered person, prepare metrics
+  // Summary stats for high-level section
+  const summaryStats = useMemo(() => {
+    let totalStandard = 0,
+      totalUnpaid = 0,
+      totalPeople = filteredPeople.length;
+    filteredPeople.forEach((person) => {
+      const leave = leaveByPerson[person.initials] || [];
+      totalStandard += leave
+        .filter((x: AnnualLeaveRecord) => (x.leave_type || "").toLowerCase() === "standard")
+        .reduce((sum: number, x: AnnualLeaveRecord) => sum + (x.days_taken || 0), 0);
+      totalUnpaid += leave
+        .filter((x: AnnualLeaveRecord) => (x.leave_type || "").toLowerCase() === "unpaid")
+        .reduce((sum: number, x: AnnualLeaveRecord) => sum + (x.days_taken || 0), 0);
+    });
+    return {
+      totalStandard,
+      totalUnpaid: Math.min(totalUnpaid, totalPeople * UNPAID_LEAVE_CAP),
+      totalPeople,
+    };
+  }, [filteredPeople, leaveByPerson]);
+
+  // Per-person cards
   const personCards = filteredPeople
-    .filter(person => !!person.initials)
+    .filter((person) => !!person.initials)
     .map((person) => {
       const leave = leaveByPerson[person.initials] || [];
       const standardTaken = leave
-        .filter((x: AnnualLeaveRecord) => 
-          x.leave_type && x.leave_type.toLowerCase() === "standard"
-        )
+        .filter((x: AnnualLeaveRecord) => (x.leave_type || "").toLowerCase() === "standard")
         .reduce((sum: number, x: AnnualLeaveRecord) => sum + (x.days_taken || 0), 0);
-
       const unpaidTaken = leave
-        .filter((x: AnnualLeaveRecord) => 
-          x.leave_type && x.leave_type.toLowerCase() === "unpaid"
-        )
+        .filter((x: AnnualLeaveRecord) => (x.leave_type || "").toLowerCase() === "unpaid")
         .reduce((sum: number, x: AnnualLeaveRecord) => sum + (x.days_taken || 0), 0);
 
-      const unpaidRemaining = Math.max(0, UNPAID_LEAVE_CAP - unpaidTaken);
+      const unpaidCapped = Math.min(unpaidTaken, UNPAID_LEAVE_CAP);
+      const unpaidRemaining = Math.max(0, UNPAID_LEAVE_CAP - unpaidCapped);
 
       return (
-        <div key={person.initials} style={{ marginBottom: 32, width: "100%" }}>
-          <div style={{ fontWeight: 700, fontSize: 22, color: colours.highlight, marginBottom: 12 }}>
-            {person.fullName} ({person.initials})
+        <div className="al-person-card" key={person.initials}>
+          <div className="al-person-header">
+            <div className="al-person-avatar">{person.initials}</div>
+            <div>
+              <div className="al-person-name">{person.fullName}</div>
+              <div className="al-person-meta">
+                Entitlement: {person.holiday_entitlement} days
+              </div>
+            </div>
           </div>
-          <div style={{
-            display: "flex",
-            gap: "20px",
-            flexWrap: "wrap",
-            marginBottom: 12,
-            width: "100%",
-          }}>
-            <ALCard title="Days Taken (Standard)" value={standardTaken} />
-            <ALCard title="Days Left" value={Math.max(0, (person.holiday_entitlement ?? 0) - standardTaken)} />
-            <ALCard title="Unpaid Leave Taken" value={unpaidTaken} />
-            <ALCard title="Unpaid Leave Remaining" value={unpaidRemaining} />
+          <div className="al-person-metrics">
+            <ALCard title="Days Taken" value={standardTaken} variant="standard" />
+            <ALCard title="Days Left" value={Math.max(0, (person.holiday_entitlement ?? 0) - standardTaken)} variant="left" />
+            <ALCard title="Unpaid Taken" value={unpaidCapped} variant="unpaid" />
+            <ALCard title="Unpaid Left" value={unpaidRemaining} variant="unpaidLeft" />
           </div>
         </div>
       );
@@ -139,47 +164,68 @@ const AnnualLeaveReport: React.FC<Props> = ({ data, teamData }) => {
   return (
     <div className="annual-leave-report-container animate-dashboard">
       <div className="annual-leave-report-title">Annual Leave Report</div>
-      {/* Slicers */}
-      <div className="filter-section">
-        <div className="date-filter-wrapper">
-          <div className="date-pickers">
-            <Stack horizontal tokens={{ childrenGap: 16 }}>
-              <DatePicker
-                placeholder="Start Date"
-                value={startDate}
-                onSelectDate={(date) => setStartDate(date || undefined)}
-                styles={{ root: { marginRight: 8, width: 140 } }}
-                formatDate={formatDate}
-              />
-              <DatePicker
-                placeholder="End Date"
-                value={endDate}
-                onSelectDate={(date) => setEndDate(date || undefined)}
-                styles={{ root: { width: 140 } }}
-                formatDate={formatDate}
-              />
-            </Stack>
+
+      {/* High-level summary */}
+      <div className="al-summary-section">
+        <div>
+          <div className="al-summary-title">Summary ({summaryStats.totalPeople} selected)</div>
+          <div className="al-summary-cards">
+            <ALCard title="Total Standard Leave" value={summaryStats.totalStandard} variant="standard" />
+            <ALCard title="Total Unpaid Leave" value={summaryStats.totalUnpaid} variant="unpaid" />
           </div>
-          <div className="vertical-separator" />
-          <div className="person-slicer" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <PrimaryButton
-              text="All"
-              onClick={() => setSelectedInitials(null)}
-              className={selectedInitials === null ? "selected" : "unselected"}
+        </div>
+        <div className="al-summary-filters">
+          <Stack horizontal tokens={{ childrenGap: 12 }}>
+            <DatePicker
+              placeholder="Start Date"
+              value={startDate}
+              onSelectDate={(date) => setStartDate(date || undefined)}
+              styles={{ root: { width: 115 } }}
+              formatDate={formatDate}
             />
-            {activePeople.map((p) => (
-              <PrimaryButton
-                key={p.initials}
-                text={p.initials}
-                onClick={() => setSelectedInitials(p.initials ?? null)}
-                className={selectedInitials === p.initials ? "selected" : "unselected"}
-              />
-            ))}
+            <DatePicker
+              placeholder="End Date"
+              value={endDate}
+              onSelectDate={(date) => setEndDate(date || undefined)}
+              styles={{ root: { width: 115 } }}
+              formatDate={formatDate}
+            />
+          </Stack>
+          <div className="al-fe-multiselect">
+            <PrimaryButton
+              text="Select All"
+              onClick={selectAll}
+              className="al-fe-action"
+              style={{ marginRight: 4 }}
+            />
+            <PrimaryButton
+              text="Clear"
+              onClick={clearAll}
+              className="al-fe-action"
+            />
           </div>
         </div>
       </div>
-      {/* Per-person metric cards */}
-      <div style={{ marginTop: 40 }}>
+
+      {/* Multi-select FEs */}
+      <div className="al-person-multiselect">
+        {activePeople.map((p) => (
+          <Checkbox
+            key={p.initials}
+            label={p.fullName}
+            checked={selectedInitials.includes(p.initials)}
+            onChange={() => toggleInitials(p.initials)}
+            className={`al-fe-checkbox ${selectedInitials.includes(p.initials) ? "selected" : ""}`}
+            styles={{
+              root: { marginRight: 12, marginBottom: 6 },
+              label: { fontWeight: 500 },
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Person cards grid */}
+      <div className="al-cards-grid">
         {personCards.length > 0 ? personCards : <div>No data found for selection.</div>}
       </div>
     </div>
