@@ -8,19 +8,20 @@ export interface ALCardProps {
 }
 
 const variantColors: Record<string, string> = {
-  standard: "#0984e3",
-  left: "#00b894",
+  standard: "#3690ce",
+  left: "#28a745",
   unpaid: "#d35400",
-  unpaidLeft: "#636e72"
+  unpaidLeft: "#666"
 };
 
-const ALCard: React.FC<ALCardProps> = ({ title, value, variant = "standard" }) => {
+const ALCard: React.FC<ALCardProps> = ({
+  title,
+  value,
+  variant = "standard",
+}) => {
   return (
     <div className={`al-metric-card al-metric-card-${variant}`}>
-      <div
-        className="al-metric-value"
-        style={{ color: variantColors[variant] || "#333" }}
-      >
+      <div className="al-metric-value" style={{ color: variantColors[variant] || "#333" }}>
         {value}
       </div>
       <div className="al-metric-title">{title}</div>

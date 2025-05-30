@@ -1,41 +1,83 @@
 .al-metric-card {
-  background: #f7fbff;
-  border-radius: 12px;
-  box-shadow: 0 1px 8px #dde7f6;
-  padding: 18px 14px 12px 14px;
-  min-width: 95px;
-  min-height: 72px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  width: 80px; /* Fixed width for uniform size */
+  min-height: 60px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: box-shadow 0.18s;
+  transition: all 0.3s ease;
+  border: 1px solid #e9ecef;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.al-metric-card:hover,
+.al-metric-card:focus-visible {
+  background: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  outline: none;
 }
 
 .al-metric-card-standard {
-  border-top: 4px solid #0984e3;
+  border-top: 3px solid #3690ce;
 }
+
 .al-metric-card-left {
-  border-top: 4px solid #00b894;
+  border-top: 3px solid #28a745;
 }
+
 .al-metric-card-unpaid {
-  border-top: 4px solid #d35400;
+  border-top: 3px solid #d35400;
 }
+
 .al-metric-card-unpaidLeft {
-  border-top: 4px solid #636e72;
+  border-top: 3px solid #666;
 }
 
 .al-metric-value {
-  font-size: 2.0rem;
-  font-weight: 800;
-  letter-spacing: -2px;
+  font-size: 24px;
+  font-weight: 700;
   margin-bottom: 4px;
 }
 
 .al-metric-title {
-  font-size: 1rem;
-  color: #768aad;
+  font-size: 12px;
+  color: #666;
   font-weight: 600;
   text-align: center;
-  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.al-person-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 80px); /* Fixed 4-column grid with exact width */
+  gap: 12px;
+  justify-content: space-between;
+}
+
+@media (max-width: 900px) {
+  .al-metric-card {
+    width: 70px; /* Slightly smaller for mobile */
+    min-height: 50px;
+    padding: 12px;
+  }
+  .al-person-metrics {
+    grid-template-columns: repeat(4, 70px); /* Adjust for mobile */
+    gap: 8px;
+  }
+  .al-metric-value {
+    font-size: 20px;
+    margin-bottom: 2px;
+  }
+  .al-metric-title {
+    font-size: 10px;
+  }
 }
