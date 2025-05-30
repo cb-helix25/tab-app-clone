@@ -10,8 +10,6 @@ import {
   DefaultButton,
   Separator,
   mergeStyles,
-  Panel,
-  PanelType,
   Label,
   MessageBar,
   MessageBarType,
@@ -157,7 +155,6 @@ Kind Regards,<br>
   const [isDraftConfirmed, setIsDraftConfirmed] = useState<boolean>(false);
 
   // Deal capture panel state
-  const [isDealFormOpen, setIsDealFormOpen] = useState<boolean>(false);
 
   // Tracks selected template options for each block
   const [selectedTemplateOptions, setSelectedTemplateOptions] = useState<{
@@ -438,15 +435,6 @@ Kind Regards,<br>
     }
   }
 
-  function initiateDraftEmail() {
-    const allowed = ['LZ', 'AC'];
-    if (allowed.includes(userInitials)) {
-      setIsDealFormOpen(true);
-    } else {
-      handleDraftEmail();
-    }
-  }
-
   /**
    * handleDraftEmail: keep HTML, remove placeholders & highlights, convert <br><br> to <p>, then pass to EmailSignature.
    */
@@ -518,7 +506,7 @@ Kind Regards,<br>
     }
   }
 
-  async function handleDealFormSubmit(data: { serviceDescription: string; amount: number; isMultiClient: boolean }) {
+  async function handleDealFormSubmit(data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: any[] }) {
     try {
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
       const payload = {
@@ -539,12 +527,10 @@ Kind Regards,<br>
         const text = await response.text();
         throw new Error(text || 'Failed to save deal');
       }
-      setIsDealFormOpen(false);
       handleDraftEmail();
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to save deal');
       setIsErrorVisible(true);
-      setIsDealFormOpen(false);
     }
   }
 
@@ -1037,17 +1023,11 @@ Kind Regards,<br>
         followUp={followUp}
         fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
         sendEmail={sendEmail}
-        handleDraftEmail={initiateDraftEmail}
+        handleDraftEmail={handleDraftEmail}
+        onDealSubmit={handleDealFormSubmit}
+        userInitials={userInitials}
         isSuccessVisible={isSuccessVisible}
         isDraftConfirmed={isDraftConfirmed}
-      />
-
-      <DealCaptureForm
-        isOpen={isDealFormOpen}
-        onDismiss={() => setIsDealFormOpen(false)}
-        enquiry={enquiry}
-        userInitials={userInitials}
-        onSubmit={handleDealFormSubmit}
       />
     </Stack>
   );
