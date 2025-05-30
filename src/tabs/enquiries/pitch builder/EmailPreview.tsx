@@ -30,12 +30,7 @@ interface EmailPreviewProps {
   fullName: string;
   sendEmail: () => void;
   handleDraftEmail: () => void;
-  onDealSubmit: (data: {
-    serviceDescription: string;
-    amount: number;
-    isMultiClient: boolean;
-    clients: any[];
-  }) => void;
+  onDealSubmit: (data: { serviceDescription: string; amount: number; isMultiClient: boolean }) => void;
   userInitials: string;
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;
@@ -59,6 +54,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
 }) => {
   // Process body HTML using imported functions
   const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
+  const showDealForm = ['LZ', 'AC'].includes(userInitials?.toUpperCase());
+
 
   // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
@@ -69,8 +66,6 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     '14_days': '14 days',
     '30_days': '30 days',
   };
-
-  const showDealForm = ['LZ', 'AC'].includes(userInitials?.toUpperCase());
 
   return (
     <Panel
@@ -181,26 +176,23 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
         {showDealForm && (
           <>
             <Separator />
-            <DealCaptureForm enquiry={enquiry} onSubmit={onDealSubmit} onCancel={() => {}} />
+            <DealCaptureForm
+              enquiry={enquiry}
+              onSubmit={onDealSubmit}
+              onCancel={() => {}}
+            />
           </>
         )}
       </Stack>
 
       <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
-        <PrimaryButton
-          text="Send Email"
-          onClick={sendEmail}
-          styles={sharedPrimaryButtonStyles}
-          ariaLabel="Send Email"
-          iconProps={{ iconName: 'Mail' }}
-        />
+        <PrimaryButton text="Send Email" onClick={sendEmail} styles={sharedPrimaryButtonStyles} />
+
         {!showDealForm && (
           <DefaultButton
             text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
             onClick={handleDraftEmail}
             styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles}
-            ariaLabel={isDraftConfirmed ? 'Email Drafted' : 'Draft Email'}
-            iconProps={{ iconName: isDraftConfirmed ? 'CheckMark' : 'Edit' }}
             disabled={isDraftConfirmed}
           />
         )}
