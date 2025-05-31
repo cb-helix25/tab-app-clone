@@ -8,6 +8,8 @@ import {
   Text,
   mergeStyles,
   Icon,
+  TooltipHost,
+  Separator,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
 import { colours } from '../../../app/styles/colours';
@@ -83,6 +85,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     paddingBottom: '5px',
   });
 
+const [boldActive, setBoldActive] = React.useState(false);
+const [italicActive, setItalicActive] = React.useState(false);
+const [underlineActive, setUnderlineActive] = React.useState(false);
+
+function updateBoldActive() {
+  setBoldActive(document.queryCommandState('bold'));
+}
+function updateItalicActive() {
+  setItalicActive(document.queryCommandState('italic'));
+}
+function updateUnderlineActive() {
+  setUnderlineActive(document.queryCommandState('underline'));
+}
+
   const scrollToBlockWithHighlight = (blockTitle: string) => {
     const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
     if (blockElement) {
@@ -151,6 +167,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     setBody(bodyEditorRef.current.innerHTML);
   };
 
+  React.useEffect(() => {
+  if (bodyEditorRef.current && bodyEditorRef.current.innerHTML !== body) {
+    bodyEditorRef.current.innerHTML = body;
+  }
+}, [body, bodyEditorRef]);
+
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
       {/* Left Column: Editor + Attachments */}
@@ -160,20 +182,65 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           <Stack horizontal tokens={{ childrenGap: 20 }}>
             <Stack tokens={{ childrenGap: 6 }} grow>
               <div className={toolbarStyle}>
-                <IconButton iconProps={{ iconName: 'Bold' }} ariaLabel="Bold" onClick={() => applyFormat('bold')} />
-                <IconButton iconProps={{ iconName: 'Italic' }} ariaLabel="Italic" onClick={() => applyFormat('italic')} />
-                <IconButton iconProps={{ iconName: 'Underline' }} ariaLabel="Underline" onClick={() => applyFormat('underline')} />
-                <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
-                <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
-                <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
-                <IconButton
-                  iconProps={{ iconName: 'Link' }}
-                  ariaLabel="Insert Link"
-                  onClick={() => {
-                    const url = prompt('Enter the URL');
-                    if (url) applyFormat('createLink', url);
-                  }}
-                />
+<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+<TooltipHost content="Bold (Ctrl+B)">
+  <IconButton
+    iconProps={{ iconName: 'Bold' }}
+    ariaLabel="Bold"
+    onClick={() => applyFormat('bold')}
+    checked={boldActive}
+  />
+</TooltipHost>
+<TooltipHost content="Italic (Ctrl+I)">
+  <IconButton
+    iconProps={{ iconName: 'Italic' }}
+    ariaLabel="Italic"
+    onClick={() => applyFormat('italic')}
+    checked={italicActive}
+  />
+</TooltipHost>
+<TooltipHost content="Underline (Ctrl+U)">
+  <IconButton
+    iconProps={{ iconName: 'Underline' }}
+    ariaLabel="Underline"
+    onClick={() => applyFormat('underline')}
+    checked={underlineActive}
+  />
+</TooltipHost>
+
+  <span style={{
+    display: 'inline-block',
+    width: '1px',
+    height: '24px',
+    background: '#ddd',
+    margin: '0 8px'
+  }} />
+
+  <TooltipHost content="Bulleted List (Ctrl+Shift+8)">
+    <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
+  </TooltipHost>
+  <TooltipHost content="Numbered List (Ctrl+Shift+7)">
+    <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
+  </TooltipHost>
+  <TooltipHost content="A, B, C List">
+    <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
+  </TooltipHost>
+
+  <span style={{
+    display: 'inline-block',
+    width: '1px',
+    height: '24px',
+    background: '#ddd',
+    margin: '0 8px'
+  }} />
+
+  <TooltipHost content="Insert Link (Ctrl+K)">
+    <IconButton iconProps={{ iconName: 'Link' }} ariaLabel="Insert Link" onClick={() => {
+      const url = prompt('Enter the URL');
+      if (url) applyFormat('createLink', url);
+    }} />
+  </TooltipHost>
+</div>
               </div>
               <div
                 contentEditable
@@ -189,8 +256,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   maxHeight: 'none',
                 }}
                 aria-label="Email Body Editor"
-                onMouseUp={saveSelection}
-                onKeyUp={saveSelection}
+onMouseUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+onKeyUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+
               />
             </Stack>
           </Stack>

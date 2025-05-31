@@ -3,21 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Stack,
-  Text,
-  TextField,               // ← add this
-  Dropdown,
   IDropdownOption,
   PrimaryButton,
   DefaultButton,
-  Separator,
   mergeStyles,
   Label,
-  MessageBar,
-  MessageBarType,
-  IconButton,
   IIconProps,
-  Pivot,
-  PivotItem,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -39,7 +30,7 @@ import ReactDOMServer from 'react-dom/server';
 import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
-import DealCaptureForm from './pitch builder/DealCaptureForm';
+import PitchHeaderRow from './pitch builder/PitchHeaderRow';
 import {
   convertDoubleBreaksToParagraphs,
   removeUnfilledPlaceholders,
@@ -69,6 +60,24 @@ const letteredListIcon: IIconProps = { iconName: 'SortLines' };
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+
+// Service options
+const SERVICE_OPTIONS: IDropdownOption[] = [
+  { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
+  { key: 'Debt Recovery', text: 'Debt Recovery' },
+  { key: 'Commercial Contract', text: 'Commercial Contract' },
+  { key: 'Other', text: 'Other (bespoke)' },
+];
+
+const [serviceDescription, setServiceDescription] = useState<string>('');
+const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(undefined);
+const [amount, setAmount] = useState<string>('');
+function handleAmountChange(_: any, val?: string) {
+  setAmount(val ?? '');
+}
+function handleAmountBlur() {
+  // Add your amount formatting/validation here if needed.
+}
 
 // Move highlightBlock inside the component
 function highlightBlock(blockTitle: string, highlight: boolean) {
@@ -582,16 +591,6 @@ Kind Regards,<br>
     }
   }, [body]);
 
-  // Example follow-up options
-  const followUpOptions: IDropdownOption[] = [
-    { key: '1_day', text: '1 day' },
-    { key: '2_days', text: '2 days' },
-    { key: '3_days', text: '3 days' },
-    { key: '7_days', text: '7 days' },
-    { key: '14_days', text: '14 days' },
-    { key: '30_days', text: '30 days' },
-  ];
-
   /**
    * Update selected template options for multi-select blocks
    */
@@ -980,7 +979,6 @@ Kind Regards,<br>
 
   return (
     <Stack className={containerStyle}>
-      {/* Tabs for email details and deal capture */}
 <Stack horizontal tokens={{ childrenGap: 20 }} styles={{
   root: {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -994,107 +992,31 @@ Kind Regards,<br>
     transition: 'background 0.3s, box-shadow 0.3s',
   },
 }}>
-{/* DETAILS SECTION */}
-<Stack
-  grow
-  className={enquiryDetailsStyle}
-  styles={{ root: { width: '50%', paddingRight: 20 } }}
-  tokens={{ childrenGap: 16 }}
->
-  {/* Enquiry Details */}
-
-  <Stack horizontal tokens={{ childrenGap: 16 }}>
-    <Stack grow>
-      <Label className={labelStyle}>To</Label>
-      <TextField
-        value={to}
-        onChange={(
-          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-          val?: string
-        ) => setTo(val || '')}
-        placeholder="Recipient email"
-        ariaLabel="To"
-        styles={{ fieldGroup: inputFieldStyle }}
-      />
-    </Stack>
-    <Stack grow>
-      <Label className={labelStyle}>CC</Label>
-      <TextField
-        value={cc}
-        onChange={(
-          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-          val?: string
-        ) => setCc(val || '')}
-        placeholder="CC emails"
-        ariaLabel="CC"
-        styles={{ fieldGroup: inputFieldStyle }}
-      />
-    </Stack>
-    <Stack grow>
-      <Label className={labelStyle}>BCC</Label>
-      <TextField
-        value={bcc}
-        onChange={(
-          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-          val?: string
-        ) => setBcc(val || '')}
-        placeholder="BCC emails"
-        ariaLabel="BCC"
-        styles={{ fieldGroup: inputFieldStyle }}
-      />
-    </Stack>
-  </Stack>
-
-  <Label className={labelStyle}>Subject</Label>
-  <TextField
-    value={subject}
-    onChange={(
-      _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-      val?: string
-    ) => setSubject(val || '')}
-    placeholder="Email subject"
-    ariaLabel="Subject"
-    styles={{ fieldGroup: inputFieldStyle }}
-  />
-
-  {enquiry.Initial_first_call_notes && (
-    <>
-      <Label className={labelStyle}>Enquiry Notes</Label>
-      <Text
-        styles={{
-          root: {
-            background: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            borderRadius: 6,
-            padding: 12,
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-            whiteSpace: 'pre-wrap',
-            fontSize: 14,
-          },
-        }}
-      >
-        {enquiry.Initial_first_call_notes}
-      </Text>
-    </>
-  )}
-</Stack>
-
-  {/* VERTICAL SEPARATOR */}
-  <Separator vertical styles={{ root: { height: 'auto', alignSelf: 'stretch' } }} />
-
-  {/* DEALS SECTION */}
-  <Stack grow styles={{ root: { width: '50%', paddingLeft: 20 } }}>
-    <DealCaptureForm
-      enquiry={enquiry}
-      onSubmit={handleDealFormSubmit}
-      onCancel={() => {}}
-      areaOfWork={enquiry.Area_of_Work}
-      enquiryId={enquiry.ID}
-    />
+  {/* LEFT SIDE: Details */}
+  <Stack grow tokens={{ childrenGap: 16 }}>
+<PitchHeaderRow
+  enquiry={enquiry}
+  to={to}
+  setTo={setTo}
+  cc={cc}
+  setCc={setCc}
+  bcc={bcc}
+  setBcc={setBcc}
+  subject={subject}
+  setSubject={setSubject}
+  serviceDescription={serviceDescription}
+  setServiceDescription={setServiceDescription}
+  selectedOption={selectedOption}
+  setSelectedOption={setSelectedOption}
+  SERVICE_OPTIONS={SERVICE_OPTIONS}
+  amount={amount}
+  handleAmountChange={handleAmountChange}
+  handleAmountBlur={handleAmountBlur}
+  handleDealFormSubmit={handleDealFormSubmit}
+  isDarkMode={isDarkMode}
+/>
   </Stack>
 </Stack>
-
   
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks
