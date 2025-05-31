@@ -16,7 +16,11 @@ import {
   sharedDefaultButtonStyles,
   sharedDraftConfirmedButtonStyles,
 } from '../../../app/styles/ButtonStyles';
-import { removeHighlightSpans, removeUnfilledPlaceholders } from './emailUtils'; // Adjusted path
+import {
+  removeHighlightSpans,
+  removeUnfilledPlaceholders,
+  applyDynamicSubstitutions,
+} from './emailUtils'; // Adjusted path
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -27,10 +31,12 @@ interface EmailPreviewProps {
   attachments: string[];
   followUp?: string;
   fullName: string;
+  userData: any;
   sendEmail: () => void;
   handleDraftEmail: () => void;
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;
+  amount?: string;
 }
 
 const EmailPreview: React.FC<EmailPreviewProps> = ({
@@ -42,13 +48,21 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   attachments,
   followUp,
   fullName,
+  userData,
   sendEmail,
   handleDraftEmail,
   isSuccessVisible,
   isDraftConfirmed,
+  amount,
 }) => {
   // Process body HTML using imported functions
-  const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
+  const substituted = applyDynamicSubstitutions(
+    removeHighlightSpans(body),
+    userData,
+    enquiry,
+    amount
+  );
+  const cleanBody = removeUnfilledPlaceholders(substituted);
 const previewRef = React.useRef<HTMLDivElement>(null);
 
 // Detect missing placeholders in the clean body

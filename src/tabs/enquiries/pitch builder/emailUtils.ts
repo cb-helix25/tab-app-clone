@@ -13,6 +13,7 @@ export const leftoverPlaceholders = [
   '[FE Introduction Placeholder]',
   '[Meeting Link Placeholder]',
   '[Potential Causes of Action and Remedies Placeholder]',
+  '[Amount]',
 ];
 
 /**
@@ -167,7 +168,8 @@ export function replacePlaceholders(
 export function applyDynamicSubstitutions(
   text: string,
   userData: any,
-  enquiry: Enquiry
+  enquiry: Enquiry,
+  amount?: number | string
 ): string {
   const userInitials = userData?.[0]?.['Initials'] || 'XX';
   const enquiryID = enquiry?.ID || '0000';
@@ -177,9 +179,18 @@ export function applyDynamicSubstitutions(
   const formattedRate =
     userRate && userRate !== '[Rate]' ? `£${userRate} + VAT` : '[Rate]';
 
+  const formattedAmount =
+    amount !== undefined && amount !== null && amount !== ''
+      ? `£${Number(amount).toLocaleString('en-GB', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : '[Amount]';
+
   return text
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)
-    .replace(/\[Rate\]/g, formattedRate);
+    .replace(/\[Rate\]/g, formattedRate)
+    .replace(/\[Amount\]/g, formattedAmount);
 }

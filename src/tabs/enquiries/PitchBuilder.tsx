@@ -76,7 +76,11 @@ function handleAmountChange(_: any, val?: string) {
   setAmount(val ?? '');
 }
 function handleAmountBlur() {
-  // Add your amount formatting/validation here if needed.
+  if (!amount) return;
+  const numeric = parseFloat(amount.replace(/[^0-9.]/g, ''));
+  if (!isNaN(numeric)) {
+    setAmount(numeric.toFixed(2));
+  }
 }
 
 // Move highlightBlock inside the component
@@ -275,7 +279,12 @@ Kind Regards,<br>
       replacementText = replacementText.replace(/\n/g, '<br />');
     }
   
-    replacementText = applyDynamicSubstitutions(replacementText, userData, enquiry);
+    replacementText = applyDynamicSubstitutions(
+      replacementText,
+      userData,
+      enquiry,
+      amount
+    );
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
@@ -472,7 +481,10 @@ Kind Regards,<br>
     }
 
     // Remove highlight spans
-    const rawHtml = removeHighlightSpans(body);
+    let rawHtml = removeHighlightSpans(body);
+
+    // Apply dynamic substitutions such as amount just before sending
+    rawHtml = applyDynamicSubstitutions(rawHtml, userData, enquiry, amount);
 
     // Remove leftover placeholders
     const noPlaceholders = removeUnfilledPlaceholders(rawHtml);
@@ -554,6 +566,8 @@ Kind Regards,<br>
         const text = await response.text();
         throw new Error(text || 'Failed to save deal');
       }
+      setServiceDescription(data.serviceDescription);
+      setAmount(data.amount.toString());
       handleDraftEmail();
       setActiveTab('details');
     } catch (error: any) {
@@ -600,6 +614,15 @@ Kind Regards,<br>
       [blockTitle]: selectedOptions,
     }));
   }
+
+  useEffect(() => {
+    Object.entries(selectedTemplateOptions).forEach(([blockTitle, selectedOption]) => {
+      const block = templateBlocks.find((b) => b.title === blockTitle);
+      if (block && insertedBlocks[block.title]) {
+        insertTemplateBlock(block, selectedOption);
+      }
+    });
+  }, [amount]);
 
   /**
    * Update selected template options for single-select blocks
@@ -692,7 +715,8 @@ Kind Regards,<br>
               const dynamicPreview = applyDynamicSubstitutions(
                 formatPreviewText(preview),
                 userData,
-                enquiry
+                enquiry,
+                amount
               );
               return (
                 <li
@@ -712,7 +736,8 @@ Kind Regards,<br>
       const dynamicPreviewText = applyDynamicSubstitutions(
         formatPreviewText(preview),
         userData,
-        enquiry
+        enquiry,
+        amount
       );
       return (
         <div
@@ -1073,6 +1098,8 @@ Kind Regards,<br>
         attachments={attachments}
         followUp={followUp}
         fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
+        userData={userData}
+        amount={amount}
         sendEmail={sendEmail}
         handleDraftEmail={handleDraftEmail}
         isSuccessVisible={isSuccessVisible}
