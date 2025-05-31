@@ -16,6 +16,7 @@ import { Deploy } from "./Deploy";
 import { Publish } from "./Publish";
 import { TeamsFxContext } from "../Context";
 import { app } from "@microsoft/teams-js";
+import { isInTeams } from "../../app/functionality/isInTeams";
 
 export function Welcome(props: { showFunction?: boolean; environment?: string }) {
   const { showFunction, environment } = {
@@ -43,9 +44,12 @@ export function Welcome(props: { showFunction?: boolean; environment?: string })
   });
   const userName = loading || error ? "" : data!.displayName;
   const hubName = useData(async () => {
-    await app.initialize();
-    const context = await app.getContext();
-    return context.app.host.name;
+    if (isInTeams()) {
+      await app.initialize();
+      const context = await app.getContext();
+      return context.app.host.name;
+    }
+    return "local";
   })?.data;
   return (
     <div className="welcome page">

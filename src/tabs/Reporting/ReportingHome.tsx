@@ -11,6 +11,7 @@ import {
 } from '../../app/functionality/types';
 import { WIP } from './ManagementDashboard';
 import * as microsoftTeams from '@microsoft/teams-js';
+import { isInTeams } from '../../app/functionality/isInTeams';
 import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import ReportCard from './ReportCard';
 import HomePreview from './HomePreview';
@@ -116,19 +117,23 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
 
   useEffect(() => {
     const initializeTeams = async () => {
-      try {
-        await microsoftTeams.app.initialize();
-        const context = await microsoftTeams.app.getContext();
-        const userObjectId = context.user?.id;
-        if (userObjectId) {
-          setEntraId(userObjectId);
-          console.log('Teams context EntraID:', userObjectId);
-        } else {
-          setError('Unable to retrieve user ID from Teams context.');
+      if (isInTeams()) {
+        try {
+          await microsoftTeams.app.initialize();
+          const context = await microsoftTeams.app.getContext();
+          const userObjectId = context.user?.id;
+          if (userObjectId) {
+            setEntraId(userObjectId);
+            console.log('Teams context EntraID:', userObjectId);
+          } else {
+            setError('Unable to retrieve user ID from Teams context.');
+          }
+        } catch (err) {
+          setError('Failed to initialize Teams context: ' + (err instanceof Error ? err.message : 'Unknown error'));
+          console.error('Teams initialization error:', err);
         }
-      } catch (err) {
-        setError('Failed to initialize Teams context: ' + (err instanceof Error ? err.message : 'Unknown error'));
-        console.error('Teams initialization error:', err);
+      } else {
+        console.warn('Running outside Teams - skipping Teams initialization');
       }
     };
     initializeTeams();

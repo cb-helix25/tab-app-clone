@@ -7,10 +7,12 @@ import {
   IconButton,
   PrimaryButton,
   DefaultButton,
+  mergeStyles,
 } from '@fluentui/react';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { inputFieldStyle } from '../../../CustomForms/BespokeForms';
 import { useTheme } from '../../../app/functionality/ThemeContext';
+import { colours } from '../../../app/styles/colours';
 import { Enquiry } from '../../../app/functionality/types';
 
 interface ClientInfo {
@@ -56,9 +58,25 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
     onSubmit({ serviceDescription, amount: parsed, isMultiClient, clients });
   };
 
+  const tagStyle = mergeStyles({
+    display: 'inline-block',
+    padding: '4px 8px',
+    borderRadius: '16px',
+    marginRight: '8px',
+    fontSize: '12px',
+    backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+    border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
+  });
+
+
   return (
     <Stack tokens={{ childrenGap: 12 }}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
+      <Text variant="small">Finalise pitch</Text>
+      <Stack horizontal tokens={{ childrenGap: 8 }}>
+        <span className={tagStyle}>{enquiry.Area_of_Work}</span>
+        <span className={tagStyle}>ID {enquiry.ID}</span>
+      </Stack>
       <Text variant="small">Fill in the deal details before drafting your pitch email.</Text>
       <Text>Area of Work: {enquiry.Area_of_Work}</Text>
       <Text>Prospect ID: {enquiry.ID}</Text>

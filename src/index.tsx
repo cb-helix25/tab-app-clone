@@ -7,6 +7,7 @@ import App from './app/App';
 import { createTheme, ThemeProvider } from '@fluentui/react';
 import { colours } from './app/styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
+import { isInTeams } from './app/functionality/isInTeams';
 import { Matter, UserData, Enquiry, TeamData } from './app/functionality/types';
 
 // Define the custom Fluent UI theme
@@ -155,38 +156,49 @@ const AppWithContext: React.FC = () => {
 
   useEffect(() => {
     const initializeTeamsAndFetchData = async () => {
-      try {
-        microsoftTeams.initialize();
-        microsoftTeams.getContext(async (ctx) => {
-          setTeamsContext(ctx);
+      if (isInTeams()) {
+        try {
+          microsoftTeams.initialize();
+          microsoftTeams.getContext(async (ctx) => {
+            setTeamsContext(ctx);
 
-          const objectId = ctx.userObjectId || '';
-          if (!objectId) throw new Error('Missing Teams context objectId.');
+            const objectId = ctx.userObjectId || '';
+            if (!objectId) throw new Error('Missing Teams context objectId.');
 
-          const { dateFrom, dateTo } = getDateRange();
+            const { dateFrom, dateTo } = getDateRange();
 
-          // 1. Fetch user data first to get full name
-          const userDataRes = await fetchUserData(objectId);
-          setUserData(userDataRes);
+            // 1. Fetch user data first to get full name
+            const userDataRes = await fetchUserData(objectId);
+            setUserData(userDataRes);
 
-          const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
+            const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
 
-          // 2. In parallel, fetch enquiries, matters, and team data
-          const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
-            fetchEnquiries('anyone', dateFrom, dateTo),
-            fetchMatters(fullName),
-            fetchTeamData(),
-          ]);
+            // 2. In parallel, fetch enquiries, matters, and team data
+            const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
+              fetchEnquiries('anyone', dateFrom, dateTo),
+              fetchMatters(fullName),
+              fetchTeamData(),
+            ]);
 
-          setEnquiries(enquiriesRes);
-          setMatters(mattersRes);
-          setTeamData(teamDataRes);
+            setEnquiries(enquiriesRes);
+            setMatters(mattersRes);
+            setTeamData(teamDataRes);
+
+            setLoading(false);
+          });
+        } catch (err: any) {
+          console.error('Error initializing or fetching data:', err);
+          setError(err.message || 'Unknown error occurred.');
 
           setLoading(false);
-        });
-      } catch (err: any) {
-        console.error('Error initializing or fetching data:', err);
-        setError(err.message || 'Unknown error occurred.');
+        }
+      } else {
+        console.warn('Running outside Teams - skipping Teams initialization.');
+        setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
+        setUserData([]);
+        setEnquiries([]);
+        setMatters([]);
+        setTeamData(null);
         setLoading(false);
       }
     };

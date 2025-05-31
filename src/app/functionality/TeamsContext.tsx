@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import * as microsoftTeams from '@microsoft/teams-js';
+import { isInTeams } from './isInTeams';
 
 // Define the structure of the TeamsContext
 interface TeamsContextProps {
@@ -24,15 +25,17 @@ export const TeamsProvider: React.FC<TeamsProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Initialize Microsoft Teams SDK
-    microsoftTeams.initialize();
-
-    // Get Teams context
-    microsoftTeams.getContext((teamsContext) => {
-      console.log('Teams Context:', teamsContext); // Debugging Statement
-      setContext(teamsContext);
-      setIsLoading(false); // Set loading to false once context is retrieved
-    });
+    if (isInTeams()) {
+      microsoftTeams.initialize();
+      microsoftTeams.getContext((teamsContext) => {
+        console.log('Teams Context:', teamsContext); // Debugging Statement
+        setContext(teamsContext);
+        setIsLoading(false); // Set loading to false once context is retrieved
+      });
+    } else {
+      console.warn('Running outside Teams - Teams context unavailable');
+      setIsLoading(false);
+    }
   }, []);
 
   return (
