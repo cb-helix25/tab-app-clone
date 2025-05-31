@@ -25,8 +25,15 @@ interface ClientInfo {
 
 interface DealCaptureFormProps {
   enquiry: Enquiry;
-  onSubmit: (data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: ClientInfo[] }) => void;
+  onSubmit: (data: {
+    serviceDescription: string;
+    amount: number;
+    isMultiClient: boolean;
+    clients: ClientInfo[];
+  }) => void;
   onCancel: () => void;
+  areaOfWork?: string;
+  enquiryId?: string | number;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -43,7 +50,13 @@ function formatCurrency(val: string | number) {
   return num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 }
 
-const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, onCancel }) => {
+const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
+  enquiry,
+  onSubmit,
+  onCancel,
+  areaOfWork,
+  enquiryId,
+}) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
   const [serviceDescription, setServiceDescription] = useState(enquiry.Type_of_Work || '');
@@ -313,17 +326,28 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
           </span>
         </Stack>
       )}
-      <Stack horizontal tokens={{ childrenGap: 10 }}>
-        <PrimaryButton
-          text="Confirm & Save"
-          onClick={handleConfirm}
-          styles={sharedPrimaryButtonStyles}
-        />
-        <DefaultButton
-          text="Cancel"
-          onClick={onCancel}
-          styles={sharedDefaultButtonStyles}
-        />
+      <Stack
+        horizontal
+        horizontalAlign="space-between"
+        verticalAlign="center"
+        tokens={{ childrenGap: 10 }}
+      >
+        <Stack horizontal tokens={{ childrenGap: 10 }}>
+          <PrimaryButton
+            text="Confirm & Save"
+            onClick={handleConfirm}
+            styles={sharedPrimaryButtonStyles}
+          />
+          <DefaultButton
+            text="Cancel"
+            onClick={onCancel}
+            styles={sharedDefaultButtonStyles}
+          />
+        </Stack>
+        <Stack horizontal tokens={{ childrenGap: 8 }}>
+          {areaOfWork && <span className={tagStyle}>{areaOfWork}</span>}
+          {enquiryId && <span className={tagStyle}>ID {enquiryId}</span>}
+        </Stack>
       </Stack>
     </Stack>
   );

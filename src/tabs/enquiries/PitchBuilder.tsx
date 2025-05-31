@@ -888,12 +888,15 @@ Kind Regards,<br>
     width: '100%',
   });
 
-  const labelStyle = mergeStyles({
-    fontWeight: '600',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    paddingTop: '20px',
-    paddingBottom: '5px',
+  const enquiryDetailsStyle = mergeStyles({
+    background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    borderRadius: 8,
+    padding: 16,
+    boxShadow: isDarkMode
+      ? `0 0 0 1px ${colours.dark.border}`
+      : `0 0 0 1px ${colours.light.border}`,
   });
+
 
   const toolbarStyle = mergeStyles({
     display: 'flex',
@@ -922,6 +925,13 @@ Kind Regards,<br>
     ':hover': {
       backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
     },
+  });
+
+  const labelStyle = mergeStyles({
+    fontWeight: '600',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    paddingTop: '20px',
+    paddingBottom: '5px',
   });
 
   // New style for greyed-out attachment bubbles
@@ -987,12 +997,11 @@ Kind Regards,<br>
 {/* DETAILS SECTION */}
 <Stack
   grow
+  className={enquiryDetailsStyle}
   styles={{ root: { width: '50%', paddingRight: 20 } }}
-  tokens={{ childrenGap: 16 }}     // ← add tokens here on the outer Stack
+  tokens={{ childrenGap: 16 }}
 >
-  <Text variant="xLarge" styles={{ root: { fontWeight: 700 } }}>
-    Details
-  </Text>
+  {/* Enquiry Details */}
 
   <Stack horizontal tokens={{ childrenGap: 16 }}>
     <Stack grow>
@@ -1076,44 +1085,13 @@ Kind Regards,<br>
 
   {/* DEALS SECTION */}
   <Stack grow styles={{ root: { width: '50%', paddingLeft: 20 } }}>
-    <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-      <Text variant="xLarge" styles={{ root: { fontWeight: 700, marginBottom: 12 } }}>
-        Deals
-      </Text>
-      <Stack horizontal tokens={{ childrenGap: 8 }}>
-        <span className={mergeStyles({
-          display: 'inline-block',
-          padding: '3px 10px',
-          borderRadius: '20px',
-          fontSize: '13px',
-          marginRight: '7px',
-          marginBottom: '2px',
-          fontWeight: 600,
-          background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-          border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
-          color: isDarkMode ? colours.dark.text : colours.light.text,
-          letterSpacing: '0.2px',
-        })}>
-          {enquiry.Area_of_Work}
-        </span>
-        <span className={mergeStyles({
-          display: 'inline-block',
-          padding: '3px 10px',
-          borderRadius: '20px',
-          fontSize: '13px',
-          marginRight: '7px',
-          marginBottom: '2px',
-          fontWeight: 600,
-          background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-          border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
-          color: isDarkMode ? colours.dark.text : colours.light.text,
-          letterSpacing: '0.2px',
-        })}>
-          ID {enquiry.ID}
-        </span>
-      </Stack>
-    </Stack>
-    <DealCaptureForm enquiry={enquiry} onSubmit={handleDealFormSubmit} onCancel={() => {}} />
+    <DealCaptureForm
+      enquiry={enquiry}
+      onSubmit={handleDealFormSubmit}
+      onCancel={() => {}}
+      areaOfWork={enquiry.Area_of_Work}
+      enquiryId={enquiry.ID}
+    />
   </Stack>
 </Stack>
 
