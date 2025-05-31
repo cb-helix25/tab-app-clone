@@ -181,10 +181,15 @@ export function applyDynamicSubstitutions(
 
   const formattedAmount =
     amount !== undefined && amount !== null && amount !== ''
-      ? `£${Number(amount).toLocaleString('en-GB', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? (() => {
+          const num = Number(amount);
+          if (isNaN(num)) return '[Amount]';
+          const withDecimals = num.toLocaleString('en-GB', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+          return `£${withDecimals.replace(/\.00$/, '')}`;
+        })()
       : '[Amount]';
 
   return text

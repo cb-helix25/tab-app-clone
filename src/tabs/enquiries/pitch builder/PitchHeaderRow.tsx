@@ -22,7 +22,7 @@ interface PitchHeaderRowProps {
   setSelectedOption: (o: IDropdownOption | undefined) => void;
   SERVICE_OPTIONS: IDropdownOption[];
   amount: string;
-  handleAmountChange: (_: any, v?: string) => void;
+  handleAmountChange: (v?: string) => void;
   handleAmountBlur: () => void;
   handleDealFormSubmit: (data: {
     serviceDescription: string;

@@ -66,7 +66,11 @@ interface EditorAndTemplateBlocksProps {
   insertedBlocks: { [key: string]: boolean };
   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
   handleSingleSelectChange: (blockTitle: string, selectedOption: string) => void;
-  insertTemplateBlock: (block: TemplateBlock, selectedOption: string | string[]) => void;
+  insertTemplateBlock: (
+    block: TemplateBlock,
+    selectedOption: string | string[],
+    shouldFocus?: boolean
+  ) => void;
   renderPreview: (block: TemplateBlock) => React.ReactNode;
   applyFormat: (command: string, value?: string) => void;
   saveSelection: () => void;

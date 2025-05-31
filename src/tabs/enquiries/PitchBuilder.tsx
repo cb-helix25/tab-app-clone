@@ -72,7 +72,7 @@ const SERVICE_OPTIONS: IDropdownOption[] = [
 const [serviceDescription, setServiceDescription] = useState<string>('');
 const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(undefined);
 const [amount, setAmount] = useState<string>('');
-function handleAmountChange(_: any, val?: string) {
+function handleAmountChange(val?: string) {
   setAmount(val ?? '');
 }
 function handleAmountBlur() {
@@ -254,7 +254,8 @@ Kind Regards,<br>
    */
   function insertTemplateBlock(
     block: TemplateBlock,
-    selectedOption: string | string[]
+    selectedOption: string | string[],
+    shouldFocus: boolean = true
   ) {
     let replacementText = '';
     if (block.isMultiSelect && isStringArray(selectedOption)) {
@@ -319,27 +320,29 @@ Kind Regards,<br>
   
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: true }));
   
-    setTimeout(() => {
-      if (bodyEditorRef.current) {
-        const insertedSpan = bodyEditorRef.current.querySelector(
-          `span[data-inserted="${block.title}"]`
-        );
-        if (insertedSpan) {
-          const range = document.createRange();
-          const sel = window.getSelection();
-          range.setStartAfter(insertedSpan);
-          range.collapse(true);
-          if (sel) {
-            sel.removeAllRanges();
-            sel.addRange(range);
-            saveSelection();
+    if (shouldFocus) {
+      setTimeout(() => {
+        if (bodyEditorRef.current) {
+          const insertedSpan = bodyEditorRef.current.querySelector(
+            `span[data-inserted="${block.title}"]`
+          );
+          if (insertedSpan) {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.setStartAfter(insertedSpan);
+            range.collapse(true);
+            if (sel) {
+              sel.removeAllRanges();
+              sel.addRange(range);
+              saveSelection();
+            }
           }
+
+          // Attach highlightBlock to window to make it accessible in inline handlers
+          (window as any).highlightBlock = highlightBlock;
         }
-  
-        // Attach highlightBlock to window to make it accessible in inline handlers
-        (window as any).highlightBlock = highlightBlock;
-      }
-    }, 0);
+      }, 0);
+    }
   }
 
   /**
@@ -626,7 +629,7 @@ Kind Regards,<br>
     Object.entries(selectedTemplateOptions).forEach(([blockTitle, selectedOption]) => {
       const block = templateBlocks.find((b) => b.title === blockTitle);
       if (block && insertedBlocks[block.title]) {
-        insertTemplateBlock(block, selectedOption);
+        insertTemplateBlock(block, selectedOption, false);
       }
     });
   }, [amount]);
