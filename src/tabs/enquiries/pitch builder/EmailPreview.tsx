@@ -30,7 +30,7 @@ interface EmailPreviewProps {
   fullName: string;
   sendEmail: () => void;
   handleDraftEmail: () => void;
-  onDealSubmit: (data: { serviceDescription: string; amount: number; isMultiClient: boolean }) => void;
+  onDealSubmit: (data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: { firstName: string; lastName: string; email: string; }[] }) => void;
   userInitials: string;
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;

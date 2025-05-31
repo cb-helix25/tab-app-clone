@@ -516,9 +516,9 @@ Kind Regards,<br>
     }
   }
 
-  async function handleDealFormSubmit(data: { serviceDescription: string; amount: number; isMultiClient: boolean }) {
+  async function handleDealFormSubmit(data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: { firstName: string; lastName: string; email: string; }[] }) {
     try {
-      const url = `${process.env.REACT_APP_DEAL_CAPTURE_URL}?code=${process.env.REACT_APP_DEAL_CAPTURE_CODE}`;
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
       const payload = {
         serviceDescription: data.serviceDescription,
         amount: data.amount,
@@ -527,6 +527,7 @@ Kind Regards,<br>
         pitchedBy: userInitials,
         isMultiClient: data.isMultiClient,
         leadClientEmail: enquiry.Email,
+        clients: data.clients,
       };
       const response = await fetch(url, {
         method: 'POST',

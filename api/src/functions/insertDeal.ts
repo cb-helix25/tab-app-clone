@@ -1,7 +1,13 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
-import axios from "axios";
+
+const DEAL_CAPTURE_BASE_URL = "https://instructions-functions.azurewebsites.net/api/dealCapture";
+interface ClientInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
 
 interface DealRequest {
   serviceDescription: string;
@@ -11,7 +17,10 @@ interface DealRequest {
   pitchedBy: string;
   isMultiClient: boolean;
   leadClientEmail: string;
+  clients?: ClientInfo[];
 }
+
+import axios from "axios";
 
 export async function insertDealHandler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   context.log("insertDealHandler invoked");
@@ -28,20 +37,19 @@ export async function insertDealHandler(req: HttpRequest, context: InvocationCon
     return { status: 400, body: "Invalid JSON" };
   }
 
-  const { serviceDescription, amount, areaOfWork, prospectId, pitchedBy, isMultiClient, leadClientEmail } = body;
+  const { serviceDescription, amount, areaOfWork, prospectId, pitchedBy, isMultiClient, leadClientEmail, clients } = body;
 
   if (!serviceDescription || amount === undefined || !areaOfWork || !prospectId || !pitchedBy || !leadClientEmail) {
     return { status: 400, body: "Missing required fields" };
   }
 
   try {
-    const kvUri = "https://helix-keys-v1.vault.azure.net/";
+    const kvUri = "https://helix-keys.vault.azure.net/";
     const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
     const secret = await secretClient.getSecret("dealCapture-code");
     const code = secret.value;
 
-    const url = `https://instructions-functions.azurewebsites.net/api/dealCapture?code=${code}`;
-
+    const url = `${DEAL_CAPTURE_BASE_URL}?code=${code}`;
     const now = new Date();
     const formatDate = (d: Date) => d.toISOString().split("T")[0];
     const formatTime = (d: Date) => d.toISOString().split("T")[1].split(".")[0];
@@ -60,6 +68,7 @@ export async function insertDealHandler(req: HttpRequest, context: InvocationCon
       IsMultiClient: isMultiClient ? 1 : 0,
       LeadClientId: null,
       LeadClientEmail: leadClientEmail,
+      Clients: clients || [],
       CloseDate: null,
       CloseTime: null
     };
