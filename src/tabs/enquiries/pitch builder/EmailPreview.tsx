@@ -56,7 +56,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
   const showDealForm = useLocalData ||
-    ['LZ', 'AC'].includes(userInitials?.toUpperCase());
+    ['LZ', 'AC', 'JD'].includes(userInitials?.toUpperCase());
 
 
   // Example follow-up options (you may wish to pass these in or centralise them)
@@ -120,6 +120,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
             Email drafted successfully!
           </MessageBar>
         )}
+        {showDealForm && (
+          <>
+            <Separator />
+            <DealCaptureForm
+              enquiry={enquiry}
+              onSubmit={onDealSubmit}
+              onCancel={() => {}}
+            />
+          </>
+        )}
 
         <Separator />
 
@@ -175,16 +185,6 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           </>
         )}
 
-        {showDealForm && (
-          <>
-            <Separator />
-            <DealCaptureForm
-              enquiry={enquiry}
-              onSubmit={onDealSubmit}
-              onCancel={() => {}}
-            />
-          </>
-        )}
       </Stack>
 
       <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>

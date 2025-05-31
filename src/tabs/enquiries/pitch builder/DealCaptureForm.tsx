@@ -72,14 +72,13 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
   return (
     <Stack tokens={{ childrenGap: 12 }}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
-      <Text variant="small">Finalise pitch</Text>
+      <Text variant="large" styles={{ root: { fontWeight: 600 } }}>
+        Finalise pitch
+      </Text>
       <Stack horizontal tokens={{ childrenGap: 8 }}>
         <span className={tagStyle}>{enquiry.Area_of_Work}</span>
         <span className={tagStyle}>ID {enquiry.ID}</span>
       </Stack>
-      <Text variant="small">Fill in the deal details before drafting your pitch email.</Text>
-      <Text>Area of Work: {enquiry.Area_of_Work}</Text>
-      <Text>Prospect ID: {enquiry.ID}</Text>
       <TextField
         label="Service Description"
         required

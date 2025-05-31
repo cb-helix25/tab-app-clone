@@ -439,7 +439,7 @@ Kind Regards,<br>
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
 
   function initiateDraftEmail() {
-    const allowed = ['LZ', 'AC'];
+    const allowed = ['LZ', 'AC', 'JD'];
     if (useLocalData || allowed.includes(userInitials)) {
       setIsDealFormOpen(true);
     } else {
