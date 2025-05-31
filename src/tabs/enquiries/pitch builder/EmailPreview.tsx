@@ -17,7 +17,6 @@ import {
   sharedDraftConfirmedButtonStyles,
 } from '../../../app/styles/ButtonStyles';
 import { removeHighlightSpans, removeUnfilledPlaceholders } from './emailUtils'; // Adjusted path
-import DealCaptureForm from './DealCaptureForm';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -30,8 +29,6 @@ interface EmailPreviewProps {
   fullName: string;
   sendEmail: () => void;
   handleDraftEmail: () => void;
-  onDealSubmit: (data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: { firstName: string; lastName: string; email: string; }[] }) => void;
-  userInitials: string;
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;
 }
@@ -47,17 +44,15 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   fullName,
   sendEmail,
   handleDraftEmail,
-  onDealSubmit,
-  userInitials,
   isSuccessVisible,
   isDraftConfirmed,
 }) => {
   // Process body HTML using imported functions
   const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
-  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
-  const showDealForm = useLocalData ||
-    ['LZ', 'AC', 'JD'].includes(userInitials?.toUpperCase());
+const previewRef = React.useRef<HTMLDivElement>(null);
 
+// Detect missing placeholders in the clean body
+const missingPlaceholders = cleanBody.match(/\[[^[\]]+]/g);
 
   // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
@@ -68,6 +63,14 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     '14_days': '14 days',
     '30_days': '30 days',
   };
+
+function highlightPlaceholders(html: string): string {
+  return html.replace(
+    /\[([^[\]]+)]/g,
+    `<span style="color: ${colours.cta}; font-weight: bold;">[$1]</span>`
+  );
+}
+
 
   return (
     <Panel
@@ -93,6 +96,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
       }}
     >
       <Stack tokens={{ childrenGap: 15 }} styles={{ root: { flex: 1 } }}>
+        {missingPlaceholders && missingPlaceholders.length > 0 && (
+          <MessageBar messageBarType={MessageBarType.warning}>
+            <strong>Warning:</strong> There are unfilled placeholders in your email:
+            <ul style={{ margin: '8px 0 0 18px' }}>
+              {missingPlaceholders.map((ph, i) => (
+                <li key={i}>{ph}</li>
+              ))}
+            </ul>
+          </MessageBar>
+        )}
         <Separator />
         <Text variant="medium">
           <strong style={{ color: colours.cta }}>
@@ -120,16 +133,6 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
             Email drafted successfully!
           </MessageBar>
         )}
-        {showDealForm && (
-          <>
-            <Separator />
-            <DealCaptureForm
-              enquiry={enquiry}
-              onSubmit={onDealSubmit}
-              onCancel={() => {}}
-            />
-          </>
-        )}
 
         <Separator />
 
@@ -150,7 +153,11 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
           <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
             Body:
           </Text>
-          <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: cleanBody }} />
+          <div
+            ref={previewRef}
+            style={{ whiteSpace: 'pre-wrap', maxHeight: 350, overflowY: 'auto' }}
+            dangerouslySetInnerHTML={{ __html: highlightPlaceholders(cleanBody) }}
+          />
         </Stack>
 
         {attachments.length > 0 && (
@@ -187,17 +194,34 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
 
       </Stack>
 
-      <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
-        <PrimaryButton text="Send Email" onClick={sendEmail} styles={sharedPrimaryButtonStyles} />
-
-        {!showDealForm && (
+      <Stack horizontal styles={{ root: { marginTop: 20, justifyContent: 'space-between', alignItems: 'center' } }}>
+        <Stack horizontal tokens={{ childrenGap: 15 }}>
+          <PrimaryButton
+            text="Send Email"
+            onClick={sendEmail}
+            styles={sharedPrimaryButtonStyles}
+            disabled
+            title="Sending is disabled in testing mode. Use Draft Email."
+          />
           <DefaultButton
             text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
             onClick={handleDraftEmail}
             styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles}
             disabled={isDraftConfirmed}
+            iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
           />
-        )}
+        </Stack>
+        <DefaultButton
+          text="Copy to Clipboard"
+          styles={sharedDefaultButtonStyles}
+          onClick={() => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = highlightPlaceholders(cleanBody);
+            navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
+          }}
+          iconProps={{ iconName: 'Copy' }}
+          title="Copy the email preview text to your clipboard"
+        />
       </Stack>
     </Panel>
   );

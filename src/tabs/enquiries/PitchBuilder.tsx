@@ -15,6 +15,8 @@ import {
   MessageBarType,
   IconButton,
   IIconProps,
+  Pivot,
+  PivotItem,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -47,7 +49,7 @@ import {
   applyDynamicSubstitutions,
   leftoverPlaceholders,
 } from './pitch builder/emailUtils';
-import EmailHeaderFields from './pitch builder/EmailHeaderFields';
+
 
 interface PitchBuilderProps {
   enquiry: Enquiry;
@@ -154,8 +156,8 @@ Kind Regards,<br>
   // **New State: Confirmation State for Draft Email Button**
   const [isDraftConfirmed, setIsDraftConfirmed] = useState<boolean>(false);
 
-  // Deal capture panel state
-  const [isDealFormOpen, setIsDealFormOpen] = useState<boolean>(false);
+  // Tab state to switch between email details and deals
+  const [activeTab, setActiveTab] = useState<string>('details');
 
   // Tracks selected template options for each block
   const [selectedTemplateOptions, setSelectedTemplateOptions] = useState<{
@@ -441,9 +443,11 @@ Kind Regards,<br>
   function initiateDraftEmail() {
     const allowed = ['LZ', 'AC', 'JD'];
     if (useLocalData || allowed.includes(userInitials)) {
-      setIsDealFormOpen(true);
+      setActiveTab('deals');
     } else {
       handleDraftEmail();
+      setActiveTab('details');
+      setActiveTab('details');
     }
   }
 
@@ -540,12 +544,11 @@ Kind Regards,<br>
         const text = await response.text();
         throw new Error(text || 'Failed to save deal');
       }
-      setIsDealFormOpen(false);
       handleDraftEmail();
+      setActiveTab('details');
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to save deal');
       setIsErrorVisible(true);
-      setIsDealFormOpen(false);
     }
   }
 
@@ -838,7 +841,7 @@ Kind Regards,<br>
   const containerStyle = mergeStyles({
     padding: '30px',
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    borderRadius: '12px',
+    borderRadius: '8px',
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -906,7 +909,7 @@ Kind Regards,<br>
 
   const bubbleStyle = mergeStyles({
     padding: '8px 12px',
-    borderRadius: '20px',
+    borderRadius: '12px',
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     cursor: 'pointer',
@@ -923,7 +926,7 @@ Kind Regards,<br>
   // New style for greyed-out attachment bubbles
   const attachmentBubbleStyle = mergeStyles({
     padding: '8px 12px',
-    borderRadius: '20px',
+    borderRadius: '12px',
     backgroundColor: isDarkMode
       ? colours.dark.disabledBackground
       : colours.light.disabledBackground,
@@ -966,21 +969,134 @@ Kind Regards,<br>
 
   return (
     <Stack className={containerStyle}>
-      {/* Row: Form Fields and Enquiry Notes */}
-      <EmailHeaderFields
-        to={to}
-        cc={cc}
-        bcc={bcc}
-        subject={subject}
-        setTo={setTo}
-        setCc={setCc}
-        setBcc={setBcc}
-        setSubject={setSubject}
-        initialNotes={enquiry.Initial_first_call_notes}
-        isDarkMode={isDarkMode}
-        formContainerStyle={formContainerStyle}
-        labelStyle={labelStyle}
-      />
+      {/* Tabs for email details and deal capture */}
+<Stack horizontal tokens={{ childrenGap: 28 }}>
+  {/* DETAILS CARD */}
+  <Stack
+    className={mergeStyles({
+      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      borderRadius: 12,
+      boxShadow: isDarkMode
+        ? '0 4px 12px ' + colours.dark.border
+        : '0 4px 12px ' + colours.light.border,
+      padding: 24,
+      minWidth: 0,
+      width: '52%',
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      transition: 'background 0.3s, box-shadow 0.3s',
+      '@media (maxWidth: 900px)': { width: '100%', marginBottom: 18 },
+    })}
+  >
+<Stack tokens={{ childrenGap: 16 }}>
+  <Text variant="large" styles={{ root: { fontWeight: 600, marginBottom: 4 } }}>
+    Contact Details
+  </Text>
+  <Stack horizontal tokens={{ childrenGap: 16 }}>
+    <Stack grow>
+      <Label className={labelStyle}>To</Label>
+<BubbleTextField
+  value={to}
+  onChange={(_, val) => setTo(val || '')}
+  placeholder="Recipient email"
+  ariaLabel="To"
+  isDarkMode={isDarkMode}
+/>
+    </Stack>
+    <Stack grow>
+      <Label className={labelStyle}>CC</Label>
+<BubbleTextField
+  value={cc}
+  onChange={(_, val) => setCc(val || '')}
+  placeholder="CC emails"
+  ariaLabel="CC"
+  isDarkMode={isDarkMode}
+/>
+    </Stack>
+    <Stack grow>
+      <Label className={labelStyle}>BCC</Label>
+<BubbleTextField
+  value={bcc}
+  onChange={(_, val) => setBcc(val || '')}
+  placeholder="BCC emails"
+  ariaLabel="BCC"
+  isDarkMode={isDarkMode}
+/>
+    </Stack>
+  </Stack>
+  <Label className={labelStyle} style={{ marginTop: 8 }}>Subject</Label>
+<BubbleTextField
+  value={subject}
+  onChange={(_, val) => setSubject(val || '')}
+  placeholder="Email subject"
+  ariaLabel="Subject"
+  isDarkMode={isDarkMode}
+/>
+  {enquiry.Initial_first_call_notes && (
+    <>
+      <Label className={labelStyle} style={{ marginTop: 8 }}>Enquiry Notes</Label>
+      <Text
+        styles={{
+          root: {
+            background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+            borderRadius: 6,
+            padding: 12,
+            color: isDarkMode ? colours.dark.text : colours.light.text,
+            whiteSpace: 'pre-wrap',
+            fontSize: 14,
+            marginBottom: 2,
+          }
+        }}
+      >
+        {enquiry.Initial_first_call_notes}
+      </Text>
+    </>
+  )}
+</Stack>
+  </Stack>
+
+  {/* DEALS CARD */}
+  <Stack
+    className={mergeStyles({
+      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      borderRadius: 12,
+      boxShadow: isDarkMode
+        ? '0 4px 12px ' + colours.dark.border
+        : '0 4px 12px ' + colours.light.border,
+      padding: 24,
+      minWidth: 0,
+      width: '48%',
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      transition: 'background 0.3s, box-shadow 0.3s',
+      '@media (maxWidth: 900px)': { width: '100%' },
+    })}
+  >
+    <Text
+      variant="xLarge"
+      styles={{
+        root: {
+          fontWeight: 700,
+          color: isDarkMode ? colours.dark.text : colours.light.text,
+          letterSpacing: '0.5px',
+          marginBottom: 12,
+        },
+      }}
+    >
+      Deals
+    </Text>
+    <DealCaptureForm
+      enquiry={enquiry}
+      onSubmit={handleDealFormSubmit}
+      onCancel={() => {}}
+    />
+  </Stack>
+</Stack>
+
   
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks
@@ -1039,8 +1155,6 @@ Kind Regards,<br>
         fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
         sendEmail={sendEmail}
         handleDraftEmail={handleDraftEmail}
-        onDealSubmit={handleDealFormSubmit}
-        userInitials={userInitials}
         isSuccessVisible={isSuccessVisible}
         isDraftConfirmed={isDraftConfirmed}
       />

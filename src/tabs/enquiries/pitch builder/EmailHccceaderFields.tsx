@@ -55,7 +55,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     background: isDarkMode
       ? `linear-gradient(135deg, ${colours.dark.cardBackground}, ${colours.dark.sectionBackground})`
       : `linear-gradient(135deg, ${colours.light.cardBackground}, ${colours.light.sectionBackground})`,
-    borderRadius: '12px',
+    borderRadius: '8px',
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
