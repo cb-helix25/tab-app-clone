@@ -10,10 +10,12 @@ import {
   Icon,
   TooltipHost,
   Separator,
+  Callout,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
+import { leftoverPlaceholders } from './emailUtils';
 
 // Sticky toolbar CSS injection
 if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
@@ -31,19 +33,6 @@ if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-st
   `;
   document.head.appendChild(style);
 }
-
-if (typeof window !== 'undefined' && !document.getElementById('fade-in-animation')) {
-  const style = document.createElement('style');
-  style.id = 'fade-in-animation';
-  style.innerHTML = `
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 
 if (typeof window !== 'undefined' && !document.getElementById('fade-in-animation')) {
   const style = document.createElement('style');
@@ -84,43 +73,65 @@ interface EditorAndTemplateBlocksProps {
   filteredAttachments: { key: string; text: string }[];
 }
 
-const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-  isDarkMode,
-  body,
-  setBody,
-  templateBlocks,
-  selectedTemplateOptions,
-  insertedBlocks,
-  handleMultiSelectChange,
-  handleSingleSelectChange,
-  insertTemplateBlock,
-  renderPreview,
-  applyFormat,
-  saveSelection,
-  handleBlur,
-  handleClearBlock,
-  highlightBlock,
-  bodyEditorRef,
-  toolbarStyle,
-  bubblesContainerStyle,
-  bubbleStyle,
-  filteredAttachments,
-}) => {
+const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
+  const {
+    isDarkMode,
+    body,
+    setBody,
+    templateBlocks,
+    selectedTemplateOptions,
+    insertedBlocks,
+    handleMultiSelectChange,
+    handleSingleSelectChange,
+    insertTemplateBlock,
+    renderPreview,
+    applyFormat,
+    saveSelection,
+    handleBlur,
+    handleClearBlock,
+    highlightBlock,
+    bodyEditorRef,
+    toolbarStyle,
+    bubblesContainerStyle,
+    bubbleStyle,
+    filteredAttachments,
+  } = props;
+
+  const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
+  const cheatSheetButtonRef = React.useRef<HTMLDivElement | null>(null);
+
+  const placeholderInfo = React.useMemo(
+    () => ({
+      blocks: templateBlocks.map((block) => ({
+        title: block.title,
+        placeholder: block.placeholder,
+        options: block.options.map((o) => o.label),
+      })),
+      additional: leftoverPlaceholders.filter(
+        (ph) => !templateBlocks.some((tb) => tb.placeholder === ph)
+      ),
+    }),
+    [templateBlocks]
+  );
+
   const [collapsedBlocks, setCollapsedBlocks] = React.useState<{ [title: string]: boolean }>(
     () =>
       Object.fromEntries(
-        templateBlocks.map(block => [
+        templateBlocks.map((block) => [
           block.title,
           !(
             selectedTemplateOptions[block.title] &&
-            ((Array.isArray(selectedTemplateOptions[block.title]) && (selectedTemplateOptions[block.title] as string[]).length > 0) ||
-              (typeof selectedTemplateOptions[block.title] === 'string' && selectedTemplateOptions[block.title]))
+            ((Array.isArray(selectedTemplateOptions[block.title]) &&
+              (selectedTemplateOptions[block.title] as string[]).length > 0) ||
+              (typeof selectedTemplateOptions[block.title] === 'string' &&
+                selectedTemplateOptions[block.title]))
           ),
         ])
       )
   );
+
   const toggleCollapse = (title: string) => {
-    setCollapsedBlocks(prev => ({
+    setCollapsedBlocks((prev) => ({
       ...prev,
       [title]: !prev[title],
     }));
@@ -129,18 +140,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   React.useEffect(() => {
     setCollapsedBlocks(
       Object.fromEntries(
-        templateBlocks.map(block => [
+        templateBlocks.map((block) => [
           block.title,
           !(
             selectedTemplateOptions[block.title] &&
-            ((Array.isArray(selectedTemplateOptions[block.title]) && (selectedTemplateOptions[block.title] as string[]).length > 0) ||
-              (typeof selectedTemplateOptions[block.title] === 'string' && selectedTemplateOptions[block.title]))
+            ((Array.isArray(selectedTemplateOptions[block.title]) &&
+              (selectedTemplateOptions[block.title] as string[]).length > 0) ||
+              (typeof selectedTemplateOptions[block.title] === 'string' &&
+                selectedTemplateOptions[block.title]))
           ),
         ])
       )
     );
   }, [templateBlocks, selectedTemplateOptions]);
-
 
   const templatesContainerStyle = mergeStyles({
     flex: '1 1 0',
@@ -167,9 +179,27 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     paddingBottom: '5px',
   });
 
+  const toolbarButtonStyle = {
+    root: {
+      color: '#ffffff',
+      width: 32,
+      height: 32,
+    },
+    rootHovered: {
+      backgroundColor: colours.blue,
+      color: '#ffffff',
+    },
+    rootChecked: {
+      backgroundColor: colours.blue,
+      color: '#ffffff',
+    },
+    icon: { fontSize: 18 },
+  };
+
   const [boldActive, setBoldActive] = React.useState(false);
   const [italicActive, setItalicActive] = React.useState(false);
   const [underlineActive, setUnderlineActive] = React.useState(false);
+
   function updateBoldActive() {
     setBoldActive(document.queryCommandState('bold'));
   }
@@ -181,13 +211,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   }
 
   const scrollToBlockWithHighlight = (blockTitle: string) => {
-    const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
+    const blockElement = document.getElementById(
+      `template-block-${blockTitle.replace(/\s+/g, '-')}`
+    );
     if (blockElement) {
       blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       blockElement.style.transition = 'background-color 0.5s';
       blockElement.style.backgroundColor = colours.highlightYellow;
       setTimeout(() => {
-        blockElement.style.backgroundColor = isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground;
+        blockElement.style.backgroundColor = isDarkMode
+          ? colours.dark.cardBackground
+          : colours.light.cardBackground;
       }, 1000);
     }
   };
@@ -203,10 +237,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
     saveSelection();
 
-    let parentList: Node | Element | null = selectedNode.nodeType === Node.ELEMENT_NODE ? selectedNode : selectedNode.parentElement;
+    let parentList: Node | Element | null =
+      selectedNode.nodeType === Node.ELEMENT_NODE
+        ? selectedNode
+        : selectedNode.parentElement;
+
     while (parentList && parentList !== bodyEditorRef.current) {
-      if (parentList instanceof HTMLElement && parentList.tagName === 'OL' && parentList.style.listStyleType === 'lower-alpha') {
-        document.execCommand('insertUnorderedList', false, undefined);        break;
+      if (
+        parentList instanceof HTMLElement &&
+        parentList.tagName === 'OL' &&
+        parentList.style.listStyleType === 'lower-alpha'
+      ) {
+        document.execCommand('insertUnorderedList', false, undefined);
+        break;
       }
       parentList = (parentList as Element).parentElement;
     }
@@ -244,37 +287,149 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Label className={labelStyle}>Email Body</Label>
+        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+          <Label className={labelStyle}>Email Body</Label>
+          <div ref={cheatSheetButtonRef}>
+            <IconButton
+              iconProps={{ iconName: 'Info' }}
+              title="Placeholder Cheat Sheet"
+              ariaLabel="Placeholder Cheat Sheet"
+              onClick={() => setIsCheatSheetOpen(!isCheatSheetOpen)}
+            />
+          </div>
+        </Stack>
+        {isCheatSheetOpen && (
+          <Callout
+            target={cheatSheetButtonRef.current}
+            onDismiss={() => setIsCheatSheetOpen(false)}
+            setInitialFocus
+          >
+            <div
+              style={{
+                maxHeight: 300,
+                overflowY: 'auto',
+                padding: 12,
+                border: `1px dotted ${colours.greyText}`,
+              }}
+            >
+              <Stack tokens={{ childrenGap: 12 }}>
+                {placeholderInfo.blocks.map((info) => (
+                  <Stack key={info.placeholder} tokens={{ childrenGap: 4 }}>
+                    <Text styles={{ root: { fontWeight: 600 } }}>{info.placeholder}</Text>
+                    <Text variant="small">{info.title}</Text>
+                    {info.options.length > 0 && (
+                      <ul style={{ margin: '0 0 0 16px' }}>
+                        {info.options.map((opt) => (
+                          <li key={opt} style={{ fontSize: '12px' }}>
+                            {opt}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Stack>
+                ))}
+                {placeholderInfo.additional.length > 0 && (
+                  <Stack tokens={{ childrenGap: 4 }}>
+                    <Separator />
+                    <Text styles={{ root: { fontWeight: 600 } }}>Other Placeholders</Text>
+                    {placeholderInfo.additional.map((ph) => (
+                      <Text key={ph} variant="small">
+                        {ph}
+                      </Text>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+            </div>
+          </Callout>
+        )}
+
         <Stack tokens={{ childrenGap: 20 }}>
           <Stack horizontal tokens={{ childrenGap: 20 }}>
             <Stack tokens={{ childrenGap: 6 }} grow>
-              <div className={toolbarStyle + ' sticky-toolbar'}>
+              <div className={toolbarStyle + ' sticky-toolbar'} style={{ backgroundColor: colours.darkBlue }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <TooltipHost content="Bold (Ctrl+B)">
-                    <IconButton iconProps={{ iconName: 'Bold' }} ariaLabel="Bold" onClick={() => applyFormat('bold')} checked={boldActive} />
+                    <IconButton
+                      iconProps={{ iconName: 'Bold' }}
+                      ariaLabel="Bold"
+                      onClick={() => applyFormat('bold')}
+                      checked={boldActive}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
                   <TooltipHost content="Italic (Ctrl+I)">
-                    <IconButton iconProps={{ iconName: 'Italic' }} ariaLabel="Italic" onClick={() => applyFormat('italic')} checked={italicActive} />
+                    <IconButton
+                      iconProps={{ iconName: 'Italic' }}
+                      ariaLabel="Italic"
+                      onClick={() => applyFormat('italic')}
+                      checked={italicActive}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
                   <TooltipHost content="Underline (Ctrl+U)">
-                    <IconButton iconProps={{ iconName: 'Underline' }} ariaLabel="Underline" onClick={() => applyFormat('underline')} checked={underlineActive} />
+                    <IconButton
+                      iconProps={{ iconName: 'Underline' }}
+                      ariaLabel="Underline"
+                      onClick={() => applyFormat('underline')}
+                      checked={underlineActive}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
-                  <span style={{ display: 'inline-block', width: '1px', height: '24px', background: '#ddd', margin: '0 8px' }} />
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '1px',
+                      height: '24px',
+                      background: '#ddd',
+                      margin: '0 8px',
+                    }}
+                  />
                   <TooltipHost content="Bulleted List (Ctrl+Shift+8)">
-                    <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
+                    <IconButton
+                      iconProps={{ iconName: 'BulletedList' }}
+                      ariaLabel="Bulleted List"
+                      onClick={() => applyFormat('insertUnorderedList')}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
                   <TooltipHost content="Numbered List (Ctrl+Shift+7)">
-                    <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
+                    <IconButton
+                      iconProps={{ iconName: 'NumberedList' }}
+                      ariaLabel="Numbered List"
+                      onClick={() => applyFormat('insertOrderedList')}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
                   <TooltipHost content="A, B, C List">
-                    <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
+                    <IconButton
+                      iconProps={{ iconName: 'SortLines' }}
+                      ariaLabel="Lettered List"
+                      onClick={applyLetteredList}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
-                  <span style={{ display: 'inline-block', width: '1px', height: '24px', background: '#ddd', margin: '0 8px' }} />
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '1px',
+                      height: '24px',
+                      background: '#ddd',
+                      margin: '0 8px',
+                    }}
+                  />
                   <TooltipHost content="Insert Link (Ctrl+K)">
-                    <IconButton iconProps={{ iconName: 'Link' }} ariaLabel="Insert Link" onClick={() => { const url = prompt('Enter the URL'); if (url) applyFormat('createLink', url); }} />
+                    <IconButton
+                      iconProps={{ iconName: 'Link' }}
+                      ariaLabel="Insert Link"
+                      onClick={() => {
+                        const url = prompt('Enter the URL');
+                        if (url) applyFormat('createLink', url);
+                      }}
+                      styles={toolbarButtonStyle}
+                    />
                   </TooltipHost>
                 </div>
-
               </div>
               <div
                 contentEditable
@@ -282,20 +437,46 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 onBlur={handleBlur}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
-                style={{ flexGrow: 1, overflowY: 'auto', height: 'auto', minHeight: '200px', maxHeight: 'none' }}
+                style={{
+                  flexGrow: 1,
+                  overflowY: 'auto',
+                  height: 'auto',
+                  minHeight: '200px',
+                  maxHeight: 'none',
+                }}
                 aria-label="Email Body Editor"
-                onMouseUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
-                onKeyUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
-                onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
-
+                onMouseUp={() => {
+                  saveSelection();
+                  updateBoldActive();
+                  updateItalicActive();
+                  updateUnderlineActive();
+                }}
+                onKeyUp={() => {
+                  saveSelection();
+                  updateBoldActive();
+                  updateItalicActive();
+                  updateUnderlineActive();
+                }}
+                onFocus={() => {
+                  saveSelection();
+                  updateBoldActive();
+                  updateItalicActive();
+                  updateUnderlineActive();
+                }}
               />
             </Stack>
           </Stack>
           <Stack tokens={{ childrenGap: 6 }}>
             <Label className={labelStyle}>Attachments</Label>
             <div className={bubblesContainerStyle}>
-              {filteredAttachments.map(att => (
-                <div key={`attachment-${att.key}`} className={bubbleStyle} role="button" tabIndex={0} aria-label={`Attachment ${att.text} (Coming Soon)`}>
+              {filteredAttachments.map((att) => (
+                <div
+                  key={`attachment-${att.key}`}
+                  className={bubbleStyle}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Attachment ${att.text} (Coming Soon)`}
+                >
                   {att.text}
                 </div>
               ))}
@@ -308,14 +489,24 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         <Label className={labelStyle}>Template Blocks</Label>
         <Stack className={templatesContainerStyle}>
           <div className={bubblesContainerStyle}>
-            {templateBlocks.map(block => (
+            {templateBlocks.map((block) => (
               <div
                 key={`bubble-${block.title}`}
-                className={mergeStyles(bubbleStyle, { display: 'flex', alignItems: 'center', gap: '5px' })}
+                id={`bubble-${block.title.replace(/\s+/g, '-')}`}
+                className={mergeStyles(bubbleStyle, {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  boxShadow: insertedBlocks[block.title]
+                    ? `inset 0 0 0 2px ${colours.green}`
+                    : undefined,
+                })}
                 role="button"
                 tabIndex={0}
                 onClick={() => scrollToBlockWithHighlight(block.title)}
-                onKeyDown={e => {
+                onMouseEnter={() => highlightBlock(block.title, true)}
+                onMouseLeave={() => highlightBlock(block.title, false)}
+                onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     scrollToBlockWithHighlight(block.title);
                   }
@@ -323,13 +514,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 aria-label={`Scroll to ${block.title} block`}
               >
                 <Text>{block.title}</Text>
-                {insertedBlocks[block.title] && <Icon iconName="CheckMark" styles={{ root: { color: colours.green, fontSize: '12px' } }} />}
+                {insertedBlocks[block.title] && (
+                  <Icon
+                    iconName="CheckMark"
+                    styles={{ root: { color: colours.green, fontSize: '12px' } }}
+                  />
+                )}
               </div>
             ))}
           </div>
-<Stack className={templatesGridStyle}>
-
-            {templateBlocks.map(block => {
+          <Stack className={templatesGridStyle}>
+            {templateBlocks.map((block) => {
               const isCollapsed = collapsedBlocks[block.title];
               return (
                 <Stack
@@ -341,7 +536,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
                     marginBottom: '16px',
                     position: 'relative',
-                    backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                    backgroundColor: isDarkMode
+                      ? colours.dark.cardBackground
+                      : colours.light.cardBackground,
                     transition: 'background-color 0.2s, box-shadow 0.2s',
                   })}
                   role="button"
@@ -359,23 +556,37 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     verticalAlign="center"
                     tokens={{ childrenGap: 10 }}
                     styles={{ root: { cursor: 'pointer', padding: '12px 16px' } }}
-                    onClick={e => { e.stopPropagation(); toggleCollapse(block.title); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCollapse(block.title);
+                    }}
                     aria-expanded={!isCollapsed}
                     aria-controls={`block-content-${block.title}`}
                     tabIndex={0}
-                    onKeyDown={e => {
+                    onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.stopPropagation();
                         toggleCollapse(block.title);
                       }
                     }}
                   >
-                    <Icon iconName={isCollapsed ? 'ChevronRight' : 'ChevronDown'} styles={{ root: { fontSize: 18, color: colours.highlight, marginRight: 6 } }} />
-                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+                    <Icon
+                      iconName={isCollapsed ? 'ChevronRight' : 'ChevronDown'}
+                      styles={{
+                        root: { fontSize: 18, color: colours.highlight, marginRight: 6 },
+                      }}
+                    />
+                    <Text
+                      variant="mediumPlus"
+                      styles={{ root: { fontWeight: 600, color: colours.highlight } }}
+                    >
                       {block.title}
                     </Text>
                     {insertedBlocks[block.title] && (
-                      <Icon iconName="CheckMark" styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }} />
+                      <Icon
+                        iconName="CheckMark"
+                        styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }}
+                      />
                     )}
                     <span style={{ flex: 1 }} />
                     <IconButton
@@ -394,7 +605,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
                         },
                       }}
-                      onClick={e => {
+                      onClick={(e) => {
                         e.stopPropagation();
                         handleClearBlock(block);
                       }}
@@ -407,27 +618,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       styles={{
                         root: {
                           padding: '0 16px 16px 16px',
-                          borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                          borderTop: `1px solid ${
+                            isDarkMode ? colours.dark.border : colours.light.border
+                          }`,
                           animation: 'fadeIn .18s',
                         },
                       }}
                     >
-                      <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text, paddingTop: 8 } }}>
+                      <Text
+                        variant="small"
+                        styles={{
+                          root: {
+                            color: isDarkMode ? colours.dark.text : colours.light.text,
+                            paddingTop: 8,
+                          },
+                        }}
+                      >
                         {block.description}
                       </Text>
                       <Dropdown
                         placeholder={block.isMultiSelect ? 'Select options' : 'Select an option'}
                         multiSelect={block.isMultiSelect}
-                        options={block.options.map((option: TemplateOption) => ({ key: option.label, text: option.label }))}
+                        options={block.options.map((option: TemplateOption) => ({
+                          key: option.label,
+                          text: option.label,
+                        }))}
                         onChange={(_ev, option?: IDropdownOption) => {
                           if (option) {
                             if (block.isMultiSelect) {
-                              const currentSelections = Array.isArray(selectedTemplateOptions[block.title])
+                              const currentSelections = Array.isArray(
+                                selectedTemplateOptions[block.title]
+                              )
                                 ? (selectedTemplateOptions[block.title] as string[])
                                 : [];
                               const updatedSelections = option.selected
                                 ? [...currentSelections, option.key as string]
-                                : currentSelections.filter(key => key !== option.key);
+                                : currentSelections.filter((key) => key !== option.key);
                               handleMultiSelectChange(block.title, updatedSelections);
                             } else {
                               handleSingleSelectChange(block.title, option.key as string);

@@ -94,6 +94,17 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
       ? colours.dark.cardBackground
       : colours.light.cardBackground;
   }
+  const bubbleElement = document.getElementById(`bubble-${blockTitle.replace(/\s+/g, '-')}`);
+  if (bubbleElement) {
+    bubbleElement.style.transition = 'box-shadow 0.2s';
+    bubbleElement.style.boxShadow = highlight ? `inset 0 0 0 2px ${colours.green}` : insertedBlocks[blockTitle] ? `inset 0 0 0 2px ${colours.green}` : 'none';
+  }
+  const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
+  insertedSpans.forEach(span => {
+    const el = span as HTMLElement;
+    el.style.transition = 'outline 0.2s';
+    el.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
+  });
 }
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
@@ -286,6 +297,13 @@ Kind Regards,<br>
       enquiry,
       amount
     );
+    let selectedLabel = '';
+    if (block.isMultiSelect && isStringArray(selectedOption)) {
+      selectedLabel = selectedOption.join(', ');
+    } else if (typeof selectedOption === 'string') {
+      selectedLabel = selectedOption;
+    }
+    const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:2px;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
@@ -294,7 +312,7 @@ Kind Regards,<br>
       /<p>/g,
       `<p style="margin-bottom: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${styledInnerHTML}</${containerTag}>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true)" onmouseout="window.highlightBlock('${block.title}', false)">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -935,7 +953,13 @@ Kind Regards,<br>
   const toolbarStyle = mergeStyles({
     display: 'flex',
     gap: '10px',
-    marginBottom: '8px',
+    marginBottom: '0',
+    backgroundColor: colours.darkBlue,
+    padding: '8px',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px',
+    border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
+    borderBottom: 'none',
   });
 
   const bubblesContainerStyle = mergeStyles({
