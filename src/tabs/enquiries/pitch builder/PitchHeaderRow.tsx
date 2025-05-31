@@ -148,6 +148,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           onCancel={() => {}}
           areaOfWork={enquiry.Area_of_Work}
           enquiryId={enquiry.ID}
+          onAmountChange={handleAmountChange}
+          onAmountBlur={handleAmountBlur}
         />
       </Stack>
     </Stack>

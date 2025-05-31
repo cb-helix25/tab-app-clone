@@ -34,6 +34,8 @@ interface DealCaptureFormProps {
   onCancel: () => void;
   areaOfWork?: string;
   enquiryId?: string | number;
+  onAmountChange?: (val: string) => void;
+  onAmountBlur?: (val: string) => void;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -56,6 +58,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   onCancel,
   areaOfWork,
   enquiryId,
+  onAmountChange,
+  onAmountBlur,
 }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
@@ -77,6 +81,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     if (!val) {
       setAmount('');
       setAmountError(undefined);
+      onAmountChange?.('');
       return;
     }
     // Allow partial valid input while typing (e.g. "4000." or "4,000.5")
@@ -84,20 +89,28 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     if (raw && !/^\d*\.?\d{0,2}$/.test(raw)) {
       setAmount(val);
       setAmountError('Invalid amount');
+      onAmountChange?.(val);
       return;
     }
     setAmount(val);
     setAmountError(undefined);
+    onAmountChange?.(val);
   };
 
   const handleAmountBlur = () => {
-    if (!amount) return;
+    if (!amount) {
+      onAmountBlur?.('');
+      return;
+    }
     const num = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(num) || num <= 0) {
       setAmountError('Amount must be a positive number');
+      onAmountBlur?.(amount);
     } else {
-      setAmount(num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      const formatted = num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      setAmount(formatted);
       setAmountError(undefined);
+      onAmountBlur?.(formatted);
     }
   };
 
