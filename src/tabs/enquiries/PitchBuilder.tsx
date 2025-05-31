@@ -298,6 +298,13 @@ Kind Regards,<br>
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true)" onmouseout="window.highlightBlock('${block.title}', false)">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
     setBody((prevBody) => {
+      const existingBlockRegex = new RegExp(
+        `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
+        'g'
+      );
+      if (existingBlockRegex.test(prevBody)) {
+        return prevBody.replace(existingBlockRegex, wrappedHTML);
+      }
       return prevBody.replace(
         new RegExp(
           `(<span[^>]*data-placeholder="${block.placeholder.replace(
