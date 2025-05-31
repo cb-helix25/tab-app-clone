@@ -11,10 +11,12 @@ import {
   TooltipHost,
   Separator,
   Callout,
+  DefaultButton,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
+import { sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { leftoverPlaceholders } from './emailUtils';
 
 // Sticky toolbar CSS injection
@@ -65,7 +67,6 @@ interface EditorAndTemplateBlocksProps {
   saveSelection: () => void;
   handleBlur: () => void;
   handleClearBlock: (block: TemplateBlock) => void;
-  highlightBlock: (blockTitle: string, highlight: boolean) => void;
   bodyEditorRef: RefObject<HTMLDivElement>;
   toolbarStyle: string;
   bubblesContainerStyle: string;
@@ -89,7 +90,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     saveSelection,
     handleBlur,
     handleClearBlock,
-    highlightBlock,
     bodyEditorRef,
     toolbarStyle,
     bubblesContainerStyle,
@@ -135,6 +135,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
       ...prev,
       [title]: !prev[title],
     }));
+  };
+
+  const collapseAll = () => {
+    setCollapsedBlocks(
+      Object.fromEntries(templateBlocks.map((b) => [b.title, true]))
+    );
+  };
+
+  const expandAll = () => {
+    setCollapsedBlocks(
+      Object.fromEntries(templateBlocks.map((b) => [b.title, false]))
+    );
   };
 
   React.useEffect(() => {
@@ -209,22 +221,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
   function updateUnderlineActive() {
     setUnderlineActive(document.queryCommandState('underline'));
   }
-
-  const scrollToBlockWithHighlight = (blockTitle: string) => {
-    const blockElement = document.getElementById(
-      `template-block-${blockTitle.replace(/\s+/g, '-')}`
-    );
-    if (blockElement) {
-      blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      blockElement.style.transition = 'background-color 0.5s';
-      blockElement.style.backgroundColor = colours.highlightYellow;
-      setTimeout(() => {
-        blockElement.style.backgroundColor = isDarkMode
-          ? colours.dark.cardBackground
-          : colours.light.cardBackground;
-      }, 1000);
-    }
-  };
 
   const applyLetteredList = () => {
     const selection = window.getSelection();
@@ -488,41 +484,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Label className={labelStyle}>Template Blocks</Label>
         <Stack className={templatesContainerStyle}>
-          <div className={bubblesContainerStyle}>
-            {templateBlocks.map((block) => (
-              <div
-                key={`bubble-${block.title}`}
-                id={`bubble-${block.title.replace(/\s+/g, '-')}`}
-                className={mergeStyles(bubbleStyle, {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  boxShadow: insertedBlocks[block.title]
-                    ? `inset 0 0 0 2px ${colours.green}`
-                    : undefined,
-                })}
-                role="button"
-                tabIndex={0}
-                onClick={() => scrollToBlockWithHighlight(block.title)}
-                onMouseEnter={() => highlightBlock(block.title, true)}
-                onMouseLeave={() => highlightBlock(block.title, false)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    scrollToBlockWithHighlight(block.title);
-                  }
-                }}
-                aria-label={`Scroll to ${block.title} block`}
-              >
-                <Text>{block.title}</Text>
-                {insertedBlocks[block.title] && (
-                  <Icon
-                    iconName="CheckMark"
-                    styles={{ root: { color: colours.green, fontSize: '12px' } }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
           <Stack className={templatesGridStyle}>
             {templateBlocks.map((block) => {
               const isCollapsed = collapsedBlocks[block.title];
@@ -555,7 +516,20 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                     horizontal
                     verticalAlign="center"
                     tokens={{ childrenGap: 10 }}
-                    styles={{ root: { cursor: 'pointer', padding: '12px 16px' } }}
+                    styles={{
+                      root: {
+                        cursor: 'pointer',
+                        padding: '12px 16px',
+                        borderLeft: insertedBlocks[block.title]
+                          ? `3px solid ${colours.green}`
+                          : '3px solid transparent',
+                        backgroundColor: insertedBlocks[block.title]
+                          ? isDarkMode
+                            ? 'rgba(16,124,16,0.1)'
+                            : '#f2faf2'
+                          : 'transparent',
+                      },
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleCollapse(block.title);

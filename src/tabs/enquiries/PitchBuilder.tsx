@@ -87,17 +87,22 @@ function handleAmountBlur() {
 function highlightBlock(blockTitle: string, highlight: boolean) {
   const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
   if (blockElement) {
-    blockElement.style.transition = 'background-color 0.2s';
+    blockElement.style.transition = 'background-color 0.2s, border-left 0.2s';
     blockElement.style.backgroundColor = highlight
-      ? colours.highlightYellow
+      ? isDarkMode
+        ? 'rgba(16,124,16,0.25)'
+        : '#e6f6e6'
+      : insertedBlocks[blockTitle]
+      ? isDarkMode
+        ? 'rgba(16,124,16,0.15)'
+        : '#eafaea'
       : isDarkMode
       ? colours.dark.cardBackground
       : colours.light.cardBackground;
-  }
-  const bubbleElement = document.getElementById(`bubble-${blockTitle.replace(/\s+/g, '-')}`);
-  if (bubbleElement) {
-    bubbleElement.style.transition = 'box-shadow 0.2s';
-    bubbleElement.style.boxShadow = highlight ? `inset 0 0 0 2px ${colours.green}` : insertedBlocks[blockTitle] ? `inset 0 0 0 2px ${colours.green}` : 'none';
+    blockElement.style.borderLeft =
+      highlight || insertedBlocks[blockTitle]
+        ? `3px solid ${colours.green}`
+        : '3px solid transparent';
   }
   const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
   insertedSpans.forEach(span => {
@@ -183,6 +188,11 @@ Kind Regards,<br>
 
   // Tab state to switch between email details and deals
   const [activeTab, setActiveTab] = useState<string>('details');
+
+  // IDs returned after saving a deal
+  const [dealId, setDealId] = useState<number | null>(null);
+  const [clientIds, setClientIds] = useState<number[]>([]);
+
 
   // Tracks selected template options for each block
   const [selectedTemplateOptions, setSelectedTemplateOptions] = useState<{
@@ -305,7 +315,7 @@ Kind Regards,<br>
     }
     const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:2px;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
+    const style = `background-color: #eafaea; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
     // Add inline style to <p> tags to remove bottom margin
     const styledInnerHTML = innerHTML.replace(
@@ -439,6 +449,8 @@ Kind Regards,<br>
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
     setIsDraftConfirmed(false); // **Reset confirmation state**
+    setDealId(null);
+    setClientIds([]);
   }
 
   /**
@@ -594,6 +606,13 @@ Kind Regards,<br>
         const text = await response.text();
         throw new Error(text || 'Failed to save deal');
       }
+      try {
+        const json = await response.json();
+        if (json?.dealId) setDealId(json.dealId);
+        if (Array.isArray(json?.clientIds)) setClientIds(json.clientIds);
+      } catch {
+        // response did not contain JSON with IDs
+      }
       setServiceDescription(data.serviceDescription);
       setAmount(data.amount.toString());
       handleDraftEmail();
@@ -730,7 +749,7 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '10px',
             border: isInserted
-              ? `1px solid ${colours.highlightYellow}`
+              ? `1px solid ${colours.green}`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '10px',
             borderRadius: '4px',
@@ -772,7 +791,7 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '10px',
             border: isInserted
-              ? `1px solid ${colours.highlightYellow}`
+              ? `1px solid ${colours.green}`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '10px',
             borderRadius: '4px',
@@ -1025,9 +1044,8 @@ Kind Regards,<br>
     const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
     if (blockElement) {
       blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Optionally, highlight the block temporarily
       blockElement.style.transition = 'background-color 0.5s';
-      blockElement.style.backgroundColor = colours.highlightYellow;
+      blockElement.style.backgroundColor = isDarkMode ? 'rgba(16,124,16,0.25)' : '#e6f6e6';
       setTimeout(() => {
         blockElement.style.backgroundColor = isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground;
       }, 1000);
@@ -1072,6 +1090,8 @@ Kind Regards,<br>
   handleAmountChange={handleAmountChange}
   handleAmountBlur={handleAmountBlur}
   handleDealFormSubmit={handleDealFormSubmit}
+  dealId={dealId}
+  clientIds={clientIds}
   isDarkMode={isDarkMode}
 />
   </Stack>
@@ -1093,7 +1113,6 @@ Kind Regards,<br>
         saveSelection={saveSelection}
         handleBlur={handleBlur}
         handleClearBlock={handleClearBlock}
-        highlightBlock={highlightBlock} // Added prop
         bodyEditorRef={bodyEditorRef}
         toolbarStyle={toolbarStyle}
         bubblesContainerStyle={bubblesContainerStyle}

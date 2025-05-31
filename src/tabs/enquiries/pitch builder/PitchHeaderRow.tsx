@@ -30,6 +30,8 @@ interface PitchHeaderRowProps {
     isMultiClient: boolean;
     clients: { firstName: string; lastName: string; email: string; }[]
   }) => void;
+  dealId?: string | number | null;
+  clientIds?: (string | number)[];
   isDarkMode: boolean;
 }
 
@@ -52,6 +54,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   handleAmountChange,
   handleAmountBlur,
   handleDealFormSubmit,
+  dealId,
+  clientIds,
   isDarkMode,
 }) => {
   const labelStyle = mergeStyles({
@@ -148,6 +152,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           onCancel={() => {}}
           areaOfWork={enquiry.Area_of_Work}
           enquiryId={enquiry.ID}
+          dealId={dealId}
+          clientIds={clientIds}
           onAmountChange={handleAmountChange}
           onAmountBlur={handleAmountBlur}
         />

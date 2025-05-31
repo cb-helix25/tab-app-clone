@@ -34,6 +34,8 @@ interface DealCaptureFormProps {
   onCancel: () => void;
   areaOfWork?: string;
   enquiryId?: string | number;
+  dealId?: string | number | null;
+  clientIds?: (string | number)[];
   onAmountChange?: (val: string) => void;
   onAmountBlur?: (val: string) => void;
 }
@@ -58,6 +60,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   onCancel,
   areaOfWork,
   enquiryId,
+  dealId,
+  clientIds,
   onAmountChange,
   onAmountBlur,
 }) => {
@@ -345,6 +349,17 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
         verticalAlign="center"
         tokens={{ childrenGap: 10 }}
       >
+        <Stack horizontal tokens={{ childrenGap: 8 }}>
+          {areaOfWork && <span className={tagStyle}>{areaOfWork}</span>}
+          {enquiryId && <span className={tagStyle}>ID {enquiryId}</span>}
+          {dealId && <span className={tagStyle}>Deal {dealId}</span>}
+          {clientIds &&
+            clientIds.map((id, idx) => (
+              <span key={idx} className={tagStyle}>
+                Client {id}
+              </span>
+            ))}
+        </Stack>
         <Stack horizontal tokens={{ childrenGap: 10 }}>
           <PrimaryButton
             text="Confirm & Save"
@@ -356,10 +371,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
             onClick={onCancel}
             styles={sharedDefaultButtonStyles}
           />
-        </Stack>
-        <Stack horizontal tokens={{ childrenGap: 8 }}>
-          {areaOfWork && <span className={tagStyle}>{areaOfWork}</span>}
-          {enquiryId && <span className={tagStyle}>ID {enquiryId}</span>}
         </Stack>
       </Stack>
     </Stack>
