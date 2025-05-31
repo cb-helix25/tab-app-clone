@@ -9,6 +9,9 @@ import { colours } from './app/styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { isInTeams } from './app/functionality/isInTeams';
 import { Matter, UserData, Enquiry, TeamData } from './app/functionality/types';
+// Local sample data used when REACT_APP_USE_LOCAL_DATA is set
+import localUserData from './sampleData/localUserData.json';
+import localEnquiries from './sampleData/localEnquiries.json';
 
 // Define the custom Fluent UI theme
 const customTheme = createTheme({
@@ -28,6 +31,9 @@ const customTheme = createTheme({
     xLarge: { fontFamily: 'Raleway, sans-serif' },
   },
 });
+
+// Flag to decide whether to use local sample data instead of remote API
+const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
 
 // Helper function to calculate the date range (6 months)
 const getDateRange = () => {
@@ -156,7 +162,7 @@ const AppWithContext: React.FC = () => {
 
   useEffect(() => {
     const initializeTeamsAndFetchData = async () => {
-      if (isInTeams()) {
+      if (isInTeams() && !useLocalData) {
         try {
           microsoftTeams.initialize();
           microsoftTeams.getContext(async (ctx) => {
@@ -193,10 +199,10 @@ const AppWithContext: React.FC = () => {
           setLoading(false);
         }
       } else {
-        console.warn('Running outside Teams - skipping Teams initialization.');
+        console.warn('Using local sample data for development.');
         setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
-        setUserData([]);
-        setEnquiries([]);
+        setUserData(localUserData as UserData[]);
+        setEnquiries(localEnquiries as Enquiry[]);
         setMatters([]);
         setTeamData(null);
         setLoading(false);

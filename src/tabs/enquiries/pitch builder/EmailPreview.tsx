@@ -54,7 +54,9 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
 }) => {
   // Process body HTML using imported functions
   const cleanBody = removeUnfilledPlaceholders(removeHighlightSpans(body));
-  const showDealForm = ['LZ', 'AC'].includes(userInitials?.toUpperCase());
+  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+  const showDealForm = useLocalData ||
+    ['LZ', 'AC'].includes(userInitials?.toUpperCase());
 
 
   // Example follow-up options (you may wish to pass these in or centralise them)

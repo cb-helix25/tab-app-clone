@@ -1,0 +1,9 @@
+[
+  {
+    "First": "John",
+    "Last": "Doe",
+    "FullName": "John Doe",
+    "Initials": "JD",
+    "Email": "john.doe@example.com"
+  }
+]

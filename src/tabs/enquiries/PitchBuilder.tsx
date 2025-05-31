@@ -436,9 +436,11 @@ Kind Regards,<br>
     }
   }
 
+  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+
   function initiateDraftEmail() {
     const allowed = ['LZ', 'AC'];
-    if (allowed.includes(userInitials)) {
+    if (useLocalData || allowed.includes(userInitials)) {
       setIsDealFormOpen(true);
     } else {
       handleDraftEmail();
