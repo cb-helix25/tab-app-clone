@@ -37,6 +37,12 @@ const SERVICE_OPTIONS: IDropdownOption[] = [
   { key: 'Other', text: 'Other (bespoke)' },
 ];
 
+function formatCurrency(val: string | number) {
+  const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+  if (isNaN(num) || num === 0) return '£0.00';
+  return num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
+}
+
 const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, onCancel }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
@@ -45,25 +51,56 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
     SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work)
   );
   const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState<string | undefined>();
   const [isMultiClient, setIsMultiClient] = useState(false);
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
 
-  const vat = amount ? parseFloat(amount) * 0.2 : 0;
-  const total = amount ? parseFloat(amount) + vat : 0;
+  const vat = amount ? parseFloat(amount.replace(/,/g, '')) * 0.2 : 0;
+  const total = amount ? parseFloat(amount.replace(/,/g, '')) + vat : 0;
+
+  // Format on blur, accept number while typing
+  const handleAmountChange = (_: any, val?: string) => {
+    if (!val) {
+      setAmount('');
+      setAmountError(undefined);
+      return;
+    }
+    // Allow partial valid input while typing (e.g. "4000." or "4,000.5")
+    const raw = val.replace(/,/g, '');
+    if (raw && !/^\d*\.?\d{0,2}$/.test(raw)) {
+      setAmount(val);
+      setAmountError('Invalid amount');
+      return;
+    }
+    setAmount(val);
+    setAmountError(undefined);
+  };
+
+  const handleAmountBlur = () => {
+    if (!amount) return;
+    const num = parseFloat(amount.replace(/,/g, ''));
+    if (isNaN(num) || num <= 0) {
+      setAmountError('Amount must be a positive number');
+    } else {
+      setAmount(num.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      setAmountError(undefined);
+    }
+  };
 
   const handleConfirm = () => {
+    const num = parseFloat(amount.replace(/,/g, ''));
     if (!serviceDescription || !amount) {
       setError('Service description and amount are required');
       return;
     }
-    const parsed = parseFloat(amount);
-    if (isNaN(parsed)) {
-      setError('Amount must be a number');
+    if (isNaN(num) || num <= 0) {
+      setAmountError('Amount must be a positive number');
+      setError('Please enter a valid amount');
       return;
     }
     setError(null);
-    onSubmit({ serviceDescription, amount: parsed, isMultiClient, clients });
+    onSubmit({ serviceDescription, amount: num, isMultiClient, clients });
   };
 
   const tagStyle = mergeStyles({
@@ -104,10 +141,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
   return (
     <Stack tokens={{ childrenGap: 14 }}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
-      <Stack horizontal tokens={{ childrenGap: 8 }}>
-        <span className={tagStyle}>{enquiry.Area_of_Work}</span>
-        <span className={tagStyle}>ID {enquiry.ID}</span>
-      </Stack>
 
       {/* Service Description */}
       <Stack>
@@ -166,32 +199,40 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({ enquiry, onSubmit, on
           label="Amount (ex. VAT)"
           required
           prefix="£"
-          type="number"
-          step={50}
+          type="text"
           value={amount}
-          onChange={(_, v) => setAmount(v || '')}
+          onChange={handleAmountChange}
+          onBlur={handleAmountBlur}
           styles={{ fieldGroup: inputFieldStyle }}
+          errorMessage={amountError}
+          inputMode="decimal"
         />
         {/* Tooltip-like info below the field */}
-{!!amount && (
-  <Text
-    variant="small"
-    styles={{
-      root: {
-        color: colours.greyText,
-        marginTop: 4,
-        marginLeft: 2,
-        padding: '4px 0 0 2px',
-        background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-        borderRadius: 4,
-        display: 'inline-block',
-        fontSize: 13,
-      },
-    }}
-  >
-    {(clients[0].firstName ? clients[0].firstName : "The client")} will be asked to pay £{total.toFixed(2)} on account
-  </Text>
-)}
+        {!amountError &&
+          !!amount &&
+          !isNaN(Number(amount.replace(/,/g, ''))) &&
+          Number(amount.replace(/,/g, '')) > 0 && (
+            <Text
+              variant="small"
+              styles={{
+                root: {
+                  color: colours.greyText,
+                  marginTop: 4,
+                  marginLeft: 2,
+                  padding: '4px 0 0 2px',
+                  background: isDarkMode
+                    ? colours.dark.cardBackground
+                    : colours.light.cardBackground,
+                  borderRadius: 4,
+                  display: 'inline-block',
+                  fontSize: 13,
+                },
+              }}
+            >
+              {(clients[0].firstName || 'The client')} will be asked to pay{' '}
+              {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
+            </Text>
+          )}
       </Stack>
 
       <Toggle

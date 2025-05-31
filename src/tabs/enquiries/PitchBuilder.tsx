@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Stack,
   Text,
+  TextField,               // ← add this
   Dropdown,
   IDropdownOption,
   PrimaryButton,
@@ -49,7 +50,7 @@ import {
   applyDynamicSubstitutions,
   leftoverPlaceholders,
 } from './pitch builder/emailUtils';
-
+import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 
 interface PitchBuilderProps {
   enquiry: Enquiry;
@@ -970,84 +971,98 @@ Kind Regards,<br>
   return (
     <Stack className={containerStyle}>
       {/* Tabs for email details and deal capture */}
-<Stack horizontal tokens={{ childrenGap: 28 }}>
-  {/* DETAILS CARD */}
-  <Stack
-    className={mergeStyles({
-      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      borderRadius: 12,
-      boxShadow: isDarkMode
-        ? '0 4px 12px ' + colours.dark.border
-        : '0 4px 12px ' + colours.light.border,
-      padding: 24,
-      minWidth: 0,
-      width: '52%',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-      transition: 'background 0.3s, box-shadow 0.3s',
-      '@media (maxWidth: 900px)': { width: '100%', marginBottom: 18 },
-    })}
-  >
-<Stack tokens={{ childrenGap: 16 }}>
-  <Text variant="large" styles={{ root: { fontWeight: 600, marginBottom: 4 } }}>
-    Contact Details
+<Stack horizontal tokens={{ childrenGap: 20 }} styles={{
+  root: {
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    borderRadius: 12,
+    boxShadow: isDarkMode
+      ? '0 4px 12px ' + colours.dark.border
+      : '0 4px 12px ' + colours.light.border,
+    padding: 24,
+    width: '100%',
+    position: 'relative',
+    transition: 'background 0.3s, box-shadow 0.3s',
+  },
+}}>
+{/* DETAILS SECTION */}
+<Stack
+  grow
+  styles={{ root: { width: '50%', paddingRight: 20 } }}
+  tokens={{ childrenGap: 16 }}     // ← add tokens here on the outer Stack
+>
+  <Text variant="xLarge" styles={{ root: { fontWeight: 700 } }}>
+    Details
   </Text>
+
   <Stack horizontal tokens={{ childrenGap: 16 }}>
     <Stack grow>
       <Label className={labelStyle}>To</Label>
-<BubbleTextField
-  value={to}
-  onChange={(_, val) => setTo(val || '')}
-  placeholder="Recipient email"
-  ariaLabel="To"
-  isDarkMode={isDarkMode}
-/>
+      <TextField
+        value={to}
+        onChange={(
+          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+          val?: string
+        ) => setTo(val || '')}
+        placeholder="Recipient email"
+        ariaLabel="To"
+        styles={{ fieldGroup: inputFieldStyle }}
+      />
     </Stack>
     <Stack grow>
       <Label className={labelStyle}>CC</Label>
-<BubbleTextField
-  value={cc}
-  onChange={(_, val) => setCc(val || '')}
-  placeholder="CC emails"
-  ariaLabel="CC"
-  isDarkMode={isDarkMode}
-/>
+      <TextField
+        value={cc}
+        onChange={(
+          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+          val?: string
+        ) => setCc(val || '')}
+        placeholder="CC emails"
+        ariaLabel="CC"
+        styles={{ fieldGroup: inputFieldStyle }}
+      />
     </Stack>
     <Stack grow>
       <Label className={labelStyle}>BCC</Label>
-<BubbleTextField
-  value={bcc}
-  onChange={(_, val) => setBcc(val || '')}
-  placeholder="BCC emails"
-  ariaLabel="BCC"
-  isDarkMode={isDarkMode}
-/>
+      <TextField
+        value={bcc}
+        onChange={(
+          _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+          val?: string
+        ) => setBcc(val || '')}
+        placeholder="BCC emails"
+        ariaLabel="BCC"
+        styles={{ fieldGroup: inputFieldStyle }}
+      />
     </Stack>
   </Stack>
-  <Label className={labelStyle} style={{ marginTop: 8 }}>Subject</Label>
-<BubbleTextField
-  value={subject}
-  onChange={(_, val) => setSubject(val || '')}
-  placeholder="Email subject"
-  ariaLabel="Subject"
-  isDarkMode={isDarkMode}
-/>
+
+  <Label className={labelStyle}>Subject</Label>
+  <TextField
+    value={subject}
+    onChange={(
+      _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+      val?: string
+    ) => setSubject(val || '')}
+    placeholder="Email subject"
+    ariaLabel="Subject"
+    styles={{ fieldGroup: inputFieldStyle }}
+  />
+
   {enquiry.Initial_first_call_notes && (
     <>
-      <Label className={labelStyle} style={{ marginTop: 8 }}>Enquiry Notes</Label>
+      <Label className={labelStyle}>Enquiry Notes</Label>
       <Text
         styles={{
           root: {
-            background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+            background: isDarkMode
+              ? colours.dark.sectionBackground
+              : colours.light.sectionBackground,
             borderRadius: 6,
             padding: 12,
             color: isDarkMode ? colours.dark.text : colours.light.text,
             whiteSpace: 'pre-wrap',
             fontSize: 14,
-            marginBottom: 2,
-          }
+          },
         }}
       >
         {enquiry.Initial_first_call_notes}
@@ -1055,45 +1070,50 @@ Kind Regards,<br>
     </>
   )}
 </Stack>
-  </Stack>
 
-  {/* DEALS CARD */}
-  <Stack
-    className={mergeStyles({
-      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      borderRadius: 12,
-      boxShadow: isDarkMode
-        ? '0 4px 12px ' + colours.dark.border
-        : '0 4px 12px ' + colours.light.border,
-      padding: 24,
-      minWidth: 0,
-      width: '48%',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-      transition: 'background 0.3s, box-shadow 0.3s',
-      '@media (maxWidth: 900px)': { width: '100%' },
-    })}
-  >
-    <Text
-      variant="xLarge"
-      styles={{
-        root: {
-          fontWeight: 700,
+  {/* VERTICAL SEPARATOR */}
+  <Separator vertical styles={{ root: { height: 'auto', alignSelf: 'stretch' } }} />
+
+  {/* DEALS SECTION */}
+  <Stack grow styles={{ root: { width: '50%', paddingLeft: 20 } }}>
+    <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+      <Text variant="xLarge" styles={{ root: { fontWeight: 700, marginBottom: 12 } }}>
+        Deals
+      </Text>
+      <Stack horizontal tokens={{ childrenGap: 8 }}>
+        <span className={mergeStyles({
+          display: 'inline-block',
+          padding: '3px 10px',
+          borderRadius: '20px',
+          fontSize: '13px',
+          marginRight: '7px',
+          marginBottom: '2px',
+          fontWeight: 600,
+          background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+          border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
           color: isDarkMode ? colours.dark.text : colours.light.text,
-          letterSpacing: '0.5px',
-          marginBottom: 12,
-        },
-      }}
-    >
-      Deals
-    </Text>
-    <DealCaptureForm
-      enquiry={enquiry}
-      onSubmit={handleDealFormSubmit}
-      onCancel={() => {}}
-    />
+          letterSpacing: '0.2px',
+        })}>
+          {enquiry.Area_of_Work}
+        </span>
+        <span className={mergeStyles({
+          display: 'inline-block',
+          padding: '3px 10px',
+          borderRadius: '20px',
+          fontSize: '13px',
+          marginRight: '7px',
+          marginBottom: '2px',
+          fontWeight: 600,
+          background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+          border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
+          color: isDarkMode ? colours.dark.text : colours.light.text,
+          letterSpacing: '0.2px',
+        })}>
+          ID {enquiry.ID}
+        </span>
+      </Stack>
+    </Stack>
+    <DealCaptureForm enquiry={enquiry} onSubmit={handleDealFormSubmit} onCancel={() => {}} />
   </Stack>
 </Stack>
 
