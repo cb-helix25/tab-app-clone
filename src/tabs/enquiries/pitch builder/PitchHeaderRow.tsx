@@ -1,10 +1,10 @@
 import React from 'react';
-import { Stack, Separator, Label, TextField, mergeStyles } from '@fluentui/react';
+import { Stack, Label, TextField, mergeStyles } from '@fluentui/react';
 import { Enquiry } from '../../../app/functionality/types';
 import DealCaptureForm from './DealCaptureForm';
 import { colours } from '../../../app/styles/colours';
 import { inputFieldStyle } from '../../../CustomForms/BespokeForms';
-import { IDropdownOption, Dropdown } from '@fluentui/react';
+import { IDropdownOption } from '@fluentui/react';
 
 interface PitchHeaderRowProps {
   enquiry: Enquiry;
@@ -54,47 +54,40 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   handleDealFormSubmit,
   isDarkMode,
 }) => {
-  const wrapperStyle = {
-    root: {
-      backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      borderRadius: 12,
-      boxShadow: isDarkMode
-        ? '0 4px 12px ' + colours.dark.border
-        : '0 4px 12px ' + colours.light.border,
-      padding: 24,
-      width: '100%',
-      position: 'relative' as const,
-      transition: 'background 0.3s, box-shadow 0.3s',
-    },
-  };
-
-  const enquiryDetailsStyle = mergeStyles({
-    background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderRadius: 8,
-    padding: 16,
-    boxShadow: isDarkMode
-      ? `0 0 0 1px ${colours.dark.border}`
-      : `0 0 0 1px ${colours.light.border}`,
-  });
-
   const labelStyle = mergeStyles({
     fontWeight: '600',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    paddingTop: '20px',
     paddingBottom: '5px',
   });
 
+  const enquiryNotesBoxStyle = mergeStyles({
+    background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    borderRadius: 6,
+    padding: 12,
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    whiteSpace: 'pre-wrap',
+    fontSize: 14,
+    border: isDarkMode ? `1px solid ${colours.dark.border}` : `1px solid ${colours.light.border}`,
+    marginTop: 8,
+  });
+
   return (
-    <Stack horizontal tokens={{ childrenGap: 20 }} styles={wrapperStyle}>
-      {/* DETAILS SECTION */}
-      <Stack
-        grow
-        className={enquiryDetailsStyle}
-        styles={{ root: { width: '50%', paddingRight: 20 } }}
-        tokens={{ childrenGap: 16 }}
-      >
-        {/* Enquiry Details */}
-        <Stack horizontal tokens={{ childrenGap: 16 }}>
+    <Stack horizontal tokens={{ childrenGap: 24 }} verticalAlign="start" styles={{
+      root: {
+        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+        borderRadius: 12,
+        boxShadow: isDarkMode
+          ? '0 4px 12px ' + colours.dark.border
+          : '0 4px 12px ' + colours.light.border,
+        padding: 24,
+        width: '100%',
+        transition: 'background 0.3s, box-shadow 0.3s',
+      }
+    }}>
+      {/* LEFT SIDE (Details) */}
+      <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '50%' } }}>
+        {/* Row 1: To / CC / BCC */}
+        <Stack horizontal tokens={{ childrenGap: 12 }}>
           <Stack grow>
             <Label className={labelStyle}>To</Label>
             <TextField
@@ -126,46 +119,29 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             />
           </Stack>
         </Stack>
-
-        <Stack horizontal tokens={{ childrenGap: 16 }}>
-          <Stack grow>
-            <Label className={labelStyle}>Subject</Label>
-            <TextField
-              value={subject}
-              onChange={(_, val) => setSubject(val || '')}
-              placeholder="Email subject"
-              ariaLabel="Subject"
-              styles={{ fieldGroup: inputFieldStyle }}
-            />
-          </Stack>
+        {/* Row 2: Subject */}
+        <Stack>
+          <Label className={labelStyle}>Subject</Label>
+          <TextField
+            value={subject}
+            onChange={(_, val) => setSubject(val || '')}
+            placeholder="Email subject"
+            ariaLabel="Subject"
+            styles={{ fieldGroup: inputFieldStyle }}
+          />
         </Stack>
-
+        {/* Row 3: Enquiry Notes */}
         {enquiry.Initial_first_call_notes && (
-          <>
+          <Stack>
             <Label className={labelStyle}>Enquiry Notes</Label>
-            <Stack
-              styles={{
-                root: {
-                  background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                  borderRadius: 6,
-                  padding: 12,
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  whiteSpace: 'pre-wrap',
-                  fontSize: 14,
-                },
-              }}
-            >
+            <div className={enquiryNotesBoxStyle}>
               {enquiry.Initial_first_call_notes}
-            </Stack>
-          </>
+            </div>
+          </Stack>
         )}
       </Stack>
-
-      {/* VERTICAL SEPARATOR */}
-      <Separator vertical styles={{ root: { height: 'auto', alignSelf: 'stretch' } }} />
-
-      {/* DEALS SECTION */}
-      <Stack grow styles={{ root: { width: '50%', paddingLeft: 20 } }}>
+      {/* RIGHT SIDE (Deal Form) */}
+      <Stack styles={{ root: { width: '50%' } }} verticalAlign="start">
         <DealCaptureForm
           enquiry={enquiry}
           onSubmit={handleDealFormSubmit}

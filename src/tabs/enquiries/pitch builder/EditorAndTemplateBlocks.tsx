@@ -15,6 +15,48 @@ import { TemplateBlock, TemplateOption } from '../../../app/customisation/Templa
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
 
+// Sticky toolbar CSS injection
+if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
+  const style = document.createElement('style');
+  style.id = 'sticky-toolbar-style';
+  style.innerHTML = `
+    .sticky-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 11;
+      background: inherit;
+      padding-bottom: 8px;
+      transition: background 0.2s;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+if (typeof window !== 'undefined' && !document.getElementById('fade-in-animation')) {
+  const style = document.createElement('style');
+  style.id = 'fade-in-animation';
+  style.innerHTML = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+
+if (typeof window !== 'undefined' && !document.getElementById('fade-in-animation')) {
+  const style = document.createElement('style');
+  style.id = 'fade-in-animation';
+  style.innerHTML = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 interface EditorAndTemplateBlocksProps {
   isDarkMode: boolean;
   body: string;
@@ -60,6 +102,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   bubbleStyle,
   filteredAttachments,
 }) => {
+  const [collapsedBlocks, setCollapsedBlocks] = React.useState<{ [title: string]: boolean }>(
+    () =>
+      Object.fromEntries(
+        templateBlocks.map(block => [
+          block.title,
+          !(
+            selectedTemplateOptions[block.title] &&
+            ((Array.isArray(selectedTemplateOptions[block.title]) && (selectedTemplateOptions[block.title] as string[]).length > 0) ||
+              (typeof selectedTemplateOptions[block.title] === 'string' && selectedTemplateOptions[block.title]))
+          ),
+        ])
+      )
+  );
+  const toggleCollapse = (title: string) => {
+    setCollapsedBlocks(prev => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
+
+  React.useEffect(() => {
+    setCollapsedBlocks(
+      Object.fromEntries(
+        templateBlocks.map(block => [
+          block.title,
+          !(
+            selectedTemplateOptions[block.title] &&
+            ((Array.isArray(selectedTemplateOptions[block.title]) && (selectedTemplateOptions[block.title] as string[]).length > 0) ||
+              (typeof selectedTemplateOptions[block.title] === 'string' && selectedTemplateOptions[block.title]))
+          ),
+        ])
+      )
+    );
+  }, [templateBlocks, selectedTemplateOptions]);
+
+
   const templatesContainerStyle = mergeStyles({
     flex: '1 1 0',
     display: 'flex',
@@ -85,19 +163,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     paddingBottom: '5px',
   });
 
-const [boldActive, setBoldActive] = React.useState(false);
-const [italicActive, setItalicActive] = React.useState(false);
-const [underlineActive, setUnderlineActive] = React.useState(false);
-
-function updateBoldActive() {
-  setBoldActive(document.queryCommandState('bold'));
-}
-function updateItalicActive() {
-  setItalicActive(document.queryCommandState('italic'));
-}
-function updateUnderlineActive() {
-  setUnderlineActive(document.queryCommandState('underline'));
-}
+  const [boldActive, setBoldActive] = React.useState(false);
+  const [italicActive, setItalicActive] = React.useState(false);
+  const [underlineActive, setUnderlineActive] = React.useState(false);
+  function updateBoldActive() {
+    setBoldActive(document.queryCommandState('bold'));
+  }
+  function updateItalicActive() {
+    setItalicActive(document.queryCommandState('italic'));
+  }
+  function updateUnderlineActive() {
+    setUnderlineActive(document.queryCommandState('underline'));
+  }
 
   const scrollToBlockWithHighlight = (blockTitle: string) => {
     const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
@@ -118,42 +195,29 @@ function updateUnderlineActive() {
     const range = selection.getRangeAt(0);
     const selectedNode = range.commonAncestorContainer;
 
-    // Check if selection is inside the editor
     if (!bodyEditorRef.current.contains(selectedNode)) return;
 
     saveSelection();
 
-    // Check if we're already inside an ordered list with lower-alpha
-    let parentList: Node | Element | null = selectedNode.nodeType === Node.ELEMENT_NODE 
-      ? selectedNode 
-      : selectedNode.parentElement;
+    let parentList: Node | Element | null = selectedNode.nodeType === Node.ELEMENT_NODE ? selectedNode : selectedNode.parentElement;
     while (parentList && parentList !== bodyEditorRef.current) {
-      if (
-        parentList instanceof HTMLElement && 
-        parentList.tagName === 'OL' && 
-        parentList.style.listStyleType === 'lower-alpha'
-      ) {
-        // If inside a lettered list, unwrap it
-        document.execCommand('insertUnorderedList', false, undefined); // Toggle off
-        break;
+      if (parentList instanceof HTMLElement && parentList.tagName === 'OL' && parentList.style.listStyleType === 'lower-alpha') {
+        document.execCommand('insertUnorderedList', false, undefined);        break;
       }
       parentList = (parentList as Element).parentElement;
     }
 
     if (!parentList || parentList === bodyEditorRef.current) {
-      // Create a new ordered list with lower-alpha style
       const ol = document.createElement('ol');
       ol.style.listStyleType = 'lower-alpha';
       const li = document.createElement('li');
       ol.appendChild(li);
 
       if (range.collapsed) {
-        // No selection: insert empty list item
         range.insertNode(ol);
         range.setStart(li, 0);
         range.collapse(true);
       } else {
-        // Wrap selected content in the list
         const fragment = range.extractContents();
         li.appendChild(fragment);
         ol.appendChild(li);
@@ -168,79 +232,45 @@ function updateUnderlineActive() {
   };
 
   React.useEffect(() => {
-  if (bodyEditorRef.current && bodyEditorRef.current.innerHTML !== body) {
-    bodyEditorRef.current.innerHTML = body;
-  }
-}, [body, bodyEditorRef]);
+    if (bodyEditorRef.current && bodyEditorRef.current.innerHTML !== body) {
+      bodyEditorRef.current.innerHTML = body;
+    }
+  }, [body, bodyEditorRef]);
 
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
-      {/* Left Column: Editor + Attachments */}
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Label className={labelStyle}>Email Body</Label>
         <Stack tokens={{ childrenGap: 20 }}>
           <Stack horizontal tokens={{ childrenGap: 20 }}>
             <Stack tokens={{ childrenGap: 6 }} grow>
-              <div className={toolbarStyle}>
-<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-<TooltipHost content="Bold (Ctrl+B)">
-  <IconButton
-    iconProps={{ iconName: 'Bold' }}
-    ariaLabel="Bold"
-    onClick={() => applyFormat('bold')}
-    checked={boldActive}
-  />
-</TooltipHost>
-<TooltipHost content="Italic (Ctrl+I)">
-  <IconButton
-    iconProps={{ iconName: 'Italic' }}
-    ariaLabel="Italic"
-    onClick={() => applyFormat('italic')}
-    checked={italicActive}
-  />
-</TooltipHost>
-<TooltipHost content="Underline (Ctrl+U)">
-  <IconButton
-    iconProps={{ iconName: 'Underline' }}
-    ariaLabel="Underline"
-    onClick={() => applyFormat('underline')}
-    checked={underlineActive}
-  />
-</TooltipHost>
+              <div className={toolbarStyle + ' sticky-toolbar'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <TooltipHost content="Bold (Ctrl+B)">
+                    <IconButton iconProps={{ iconName: 'Bold' }} ariaLabel="Bold" onClick={() => applyFormat('bold')} checked={boldActive} />
+                  </TooltipHost>
+                  <TooltipHost content="Italic (Ctrl+I)">
+                    <IconButton iconProps={{ iconName: 'Italic' }} ariaLabel="Italic" onClick={() => applyFormat('italic')} checked={italicActive} />
+                  </TooltipHost>
+                  <TooltipHost content="Underline (Ctrl+U)">
+                    <IconButton iconProps={{ iconName: 'Underline' }} ariaLabel="Underline" onClick={() => applyFormat('underline')} checked={underlineActive} />
+                  </TooltipHost>
+                  <span style={{ display: 'inline-block', width: '1px', height: '24px', background: '#ddd', margin: '0 8px' }} />
+                  <TooltipHost content="Bulleted List (Ctrl+Shift+8)">
+                    <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
+                  </TooltipHost>
+                  <TooltipHost content="Numbered List (Ctrl+Shift+7)">
+                    <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
+                  </TooltipHost>
+                  <TooltipHost content="A, B, C List">
+                    <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
+                  </TooltipHost>
+                  <span style={{ display: 'inline-block', width: '1px', height: '24px', background: '#ddd', margin: '0 8px' }} />
+                  <TooltipHost content="Insert Link (Ctrl+K)">
+                    <IconButton iconProps={{ iconName: 'Link' }} ariaLabel="Insert Link" onClick={() => { const url = prompt('Enter the URL'); if (url) applyFormat('createLink', url); }} />
+                  </TooltipHost>
+                </div>
 
-  <span style={{
-    display: 'inline-block',
-    width: '1px',
-    height: '24px',
-    background: '#ddd',
-    margin: '0 8px'
-  }} />
-
-  <TooltipHost content="Bulleted List (Ctrl+Shift+8)">
-    <IconButton iconProps={{ iconName: 'BulletedList' }} ariaLabel="Bulleted List" onClick={() => applyFormat('insertUnorderedList')} />
-  </TooltipHost>
-  <TooltipHost content="Numbered List (Ctrl+Shift+7)">
-    <IconButton iconProps={{ iconName: 'NumberedList' }} ariaLabel="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
-  </TooltipHost>
-  <TooltipHost content="A, B, C List">
-    <IconButton iconProps={{ iconName: 'SortLines' }} ariaLabel="Lettered List" onClick={applyLetteredList} />
-  </TooltipHost>
-
-  <span style={{
-    display: 'inline-block',
-    width: '1px',
-    height: '24px',
-    background: '#ddd',
-    margin: '0 8px'
-  }} />
-
-  <TooltipHost content="Insert Link (Ctrl+K)">
-    <IconButton iconProps={{ iconName: 'Link' }} ariaLabel="Insert Link" onClick={() => {
-      const url = prompt('Enter the URL');
-      if (url) applyFormat('createLink', url);
-    }} />
-  </TooltipHost>
-</div>
               </div>
               <div
                 contentEditable
@@ -248,17 +278,11 @@ function updateUnderlineActive() {
                 onBlur={handleBlur}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
-                style={{
-                  flexGrow: 1,
-                  overflowY: 'auto',
-                  height: 'auto',
-                  minHeight: '200px',
-                  maxHeight: 'none',
-                }}
+                style={{ flexGrow: 1, overflowY: 'auto', height: 'auto', minHeight: '200px', maxHeight: 'none' }}
                 aria-label="Email Body Editor"
-onMouseUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
-onKeyUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
-onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+                onMouseUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+                onKeyUp={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
+                onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); updateUnderlineActive(); }}
 
               />
             </Stack>
@@ -266,14 +290,8 @@ onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); upda
           <Stack tokens={{ childrenGap: 6 }}>
             <Label className={labelStyle}>Attachments</Label>
             <div className={bubblesContainerStyle}>
-              {filteredAttachments.map((att) => (
-                <div
-                  key={`attachment-${att.key}`}
-                  className={bubbleStyle}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Attachment ${att.text} (Coming Soon)`}
-                >
+              {filteredAttachments.map(att => (
+                <div key={`attachment-${att.key}`} className={bubbleStyle} role="button" tabIndex={0} aria-label={`Attachment ${att.text} (Coming Soon)`}>
                   {att.text}
                 </div>
               ))}
@@ -282,23 +300,18 @@ onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); upda
         </Stack>
       </Stack>
 
-      {/* Right Column: Template Blocks */}
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Label className={labelStyle}>Template Blocks</Label>
         <Stack className={templatesContainerStyle}>
           <div className={bubblesContainerStyle}>
-            {templateBlocks.map((block: TemplateBlock) => (
+            {templateBlocks.map(block => (
               <div
                 key={`bubble-${block.title}`}
-                className={mergeStyles(bubbleStyle, {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                })}
+                className={mergeStyles(bubbleStyle, { display: 'flex', alignItems: 'center', gap: '5px' })}
                 role="button"
                 tabIndex={0}
                 onClick={() => scrollToBlockWithHighlight(block.title)}
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     scrollToBlockWithHighlight(block.title);
                   }
@@ -306,119 +319,137 @@ onFocus={() => { saveSelection(); updateBoldActive(); updateItalicActive(); upda
                 aria-label={`Scroll to ${block.title} block`}
               >
                 <Text>{block.title}</Text>
-                {insertedBlocks[block.title] && (
-                  <Icon
-                    iconName="CheckMark"
-                    styles={{
-                      root: {
-                        color: colours.green,
-                        fontSize: '12px',
-                      },
-                    }}
-                  />
-                )}
+                {insertedBlocks[block.title] && <Icon iconName="CheckMark" styles={{ root: { color: colours.green, fontSize: '12px' } }} />}
               </div>
             ))}
           </div>
-          <Stack className={templatesGridStyle}>
-            {templateBlocks.map((block: TemplateBlock) => (
-              <Stack
-                key={block.title}
-                id={`template-block-${block.title.replace(/\s+/g, '-')}`}
-                className={mergeStyles({
-                  padding: '15px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  transition: 'background-color 0.2s, box-shadow 0.2s',
-                  backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-                  ':hover': {
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                  },
-                })}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  const selectedOption = selectedTemplateOptions[block.title];
-                  if (selectedOption) {
-                    insertTemplateBlock(block, selectedOption);
-                  }
-                }}
-                aria-label={`Insert template block ${block.title}`}
-              >
-                <IconButton
-                  iconProps={{ iconName: 'Cancel' }}
-                  ariaLabel={`Clear ${block.title}`}
+<Stack className={templatesGridStyle}>
+
+            {templateBlocks.map(block => {
+              const isCollapsed = collapsedBlocks[block.title];
+              return (
+                <Stack
+                  key={block.title}
+                  id={`template-block-${block.title.replace(/\s+/g, '-')}`}
                   className={mergeStyles({
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    ':hover': {
-                      backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
-                    },
-                    width: '24px',
-                    height: '24px',
                     padding: '0',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                    marginBottom: '16px',
+                    position: 'relative',
+                    backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                    transition: 'background-color 0.2s, box-shadow 0.2s',
                   })}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClearBlock(block);
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const selectedOption = selectedTemplateOptions[block.title];
+                    if (selectedOption) {
+                      insertTemplateBlock(block, selectedOption);
+                    }
                   }}
-                />
-                <Stack tokens={{ childrenGap: 10 }}>
-                  <Text variant="mediumPlus" styles={{ root: { fontWeight: '600', color: colours.highlight } }}>
-                    {block.title}
-                  </Text>
-                  <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
-                    {block.description}
-                  </Text>
-                  <Dropdown
-                    placeholder={block.isMultiSelect ? 'Select options' : 'Select an option'}
-                    multiSelect={block.isMultiSelect}
-                    options={block.options.map((option: TemplateOption) => ({
-                      key: option.label,
-                      text: option.label,
-                    }))}
-                    onChange={(
-                      _: React.FormEvent<HTMLDivElement>,
-                      option?: IDropdownOption
-                    ) => {
-                      if (option) {
-                        if (block.isMultiSelect) {
-                          const currentSelections = Array.isArray(selectedTemplateOptions[block.title])
-                            ? (selectedTemplateOptions[block.title] as string[])
-                            : [];
-                          const updatedSelections = option.selected
-                            ? [...currentSelections, option.key as string]
-                            : currentSelections.filter((key) => key !== option.key);
-                          handleMultiSelectChange(block.title, updatedSelections);
-                        } else {
-                          handleSingleSelectChange(block.title, option.key as string);
-                        }
+                  aria-label={`Insert template block ${block.title}`}
+                >
+                  <Stack
+                    horizontal
+                    verticalAlign="center"
+                    tokens={{ childrenGap: 10 }}
+                    styles={{ root: { cursor: 'pointer', padding: '12px 16px' } }}
+                    onClick={e => { e.stopPropagation(); toggleCollapse(block.title); }}
+                    aria-expanded={!isCollapsed}
+                    aria-controls={`block-content-${block.title}`}
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        toggleCollapse(block.title);
                       }
                     }}
-                    selectedKeys={
-                      block.isMultiSelect
-                        ? Array.isArray(selectedTemplateOptions[block.title])
-                          ? (selectedTemplateOptions[block.title] as string[])
-                          : []
-                        : typeof selectedTemplateOptions[block.title] === 'string'
-                        ? [selectedTemplateOptions[block.title] as string]
-                        : []
-                    }
-                    styles={sharedOptionsDropdownStyles(isDarkMode)}
-                    ariaLabel={`Select options for ${block.title}`}
-                    onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-                    onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
-                  />
-                  {renderPreview(block)}
+                  >
+                    <Icon iconName={isCollapsed ? 'ChevronRight' : 'ChevronDown'} styles={{ root: { fontSize: 18, color: colours.highlight, marginRight: 6 } }} />
+                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+                      {block.title}
+                    </Text>
+                    {insertedBlocks[block.title] && (
+                      <Icon iconName="CheckMark" styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }} />
+                    )}
+                    <span style={{ flex: 1 }} />
+                    <IconButton
+                      iconProps={{ iconName: 'Cancel' }}
+                      ariaLabel={`Clear ${block.title}`}
+                      styles={{
+                        root: {
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          width: 24,
+                          height: 24,
+                          padding: 0,
+                        },
+                        rootHovered: {
+                          background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+                        },
+                      }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleClearBlock(block);
+                      }}
+                    />
+                  </Stack>
+                  {!isCollapsed && (
+                    <Stack
+                      tokens={{ childrenGap: 10 }}
+                      id={`block-content-${block.title}`}
+                      styles={{
+                        root: {
+                          padding: '0 16px 16px 16px',
+                          borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                          animation: 'fadeIn .18s',
+                        },
+                      }}
+                    >
+                      <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text, paddingTop: 8 } }}>
+                        {block.description}
+                      </Text>
+                      <Dropdown
+                        placeholder={block.isMultiSelect ? 'Select options' : 'Select an option'}
+                        multiSelect={block.isMultiSelect}
+                        options={block.options.map((option: TemplateOption) => ({ key: option.label, text: option.label }))}
+                        onChange={(_ev, option?: IDropdownOption) => {
+                          if (option) {
+                            if (block.isMultiSelect) {
+                              const currentSelections = Array.isArray(selectedTemplateOptions[block.title])
+                                ? (selectedTemplateOptions[block.title] as string[])
+                                : [];
+                              const updatedSelections = option.selected
+                                ? [...currentSelections, option.key as string]
+                                : currentSelections.filter(key => key !== option.key);
+                              handleMultiSelectChange(block.title, updatedSelections);
+                            } else {
+                              handleSingleSelectChange(block.title, option.key as string);
+                            }
+                          }
+                        }}
+                        selectedKeys={
+                          block.isMultiSelect
+                            ? Array.isArray(selectedTemplateOptions[block.title])
+                              ? (selectedTemplateOptions[block.title] as string[])
+                              : []
+                            : typeof selectedTemplateOptions[block.title] === 'string'
+                            ? [selectedTemplateOptions[block.title] as string]
+                            : []
+                        }
+                        styles={sharedOptionsDropdownStyles(isDarkMode)}
+                        ariaLabel={`Select options for ${block.title}`}
+                        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+                        onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
+                      />
+                      {renderPreview(block)}
+                    </Stack>
+                  )}
                 </Stack>
-              </Stack>
-            ))}
+              );
+            })}
           </Stack>
         </Stack>
       </Stack>
