@@ -468,6 +468,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                         disabled={isSubmitting}
                         styles={
                           field.styles || {
+                            root: { flexGrow: 1 },
                             fieldGroup: amountInputStyle(!!field.prefix),
                           }
                         }

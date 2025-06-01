@@ -110,7 +110,15 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
 
   useLayoutEffect(() => {
     updateToggleTop();
-  }, [isMultiClient, amount, amountError, serviceDescription, selectedOption, clients.length]);
+  }, [
+    isMultiClient,
+    amount,
+    amountError,
+    serviceDescription,
+    selectedOption,
+    clients.length,
+    useBespoke,
+  ]);
 
   useLayoutEffect(() => {
     window.addEventListener("resize", updateToggleTop);
@@ -373,7 +381,10 @@ const toggleHalf = (selected: boolean) =>
               value={amount}
               onChange={handleAmountChange}
               onBlur={handleAmountBlur}
-              styles={{ fieldGroup: amountInputStyle(true) }}
+              styles={{
+                root: { flexGrow: 1 },
+                fieldGroup: amountInputStyle(true),
+              }}
               errorMessage={amountError}
               inputMode="decimal"
             />
@@ -402,7 +413,7 @@ const toggleHalf = (selected: boolean) =>
                 },
               }}
             >
-              {(clients[0].firstName || 'The client')} will be asked to pay{' '}
+              {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
               {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
             </Text>
           )}
