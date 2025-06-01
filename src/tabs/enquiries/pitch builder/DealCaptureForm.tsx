@@ -240,6 +240,8 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    borderTopRightRadius: 8,
+
   });
 
   // Input fields for client details have a subtle left accent using the

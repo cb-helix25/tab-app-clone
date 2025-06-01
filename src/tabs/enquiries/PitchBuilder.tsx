@@ -287,10 +287,10 @@ Kind Regards,<br>
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    templateBlocks.forEach(block => {
+    templateBlocks.forEach((block) => {
       highlightBlock(block.title, false);
     });
-  }, [insertedBlocks, lockedBlocks, editedBlocks, isDarkMode]);
+  }, [insertedBlocks, lockedBlocks, editedBlocks, isDarkMode, body]);
 
   // For the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
@@ -584,21 +584,7 @@ Kind Regards,<br>
     // Reset any header highlights or leftover styles
     setTimeout(() => {
       templateBlocks.forEach((block) => {
-        const header = document.getElementById(
-          `template-block-header-${block.title.replace(/\s+/g, '-')}`
-        );
-        if (header) {
-          (header as HTMLElement).style.backgroundColor = 'transparent';
-        }
-        const spans = document.querySelectorAll(
-          `span[data-inserted="${block.title}"]`
-        );
-        spans.forEach((span) => {
-          if (span instanceof HTMLElement) {
-            span.style.backgroundColor = colours.highlightYellow;
-            span.style.outline = 'none';
-          }
-        });
+        highlightBlock(block.title, false);
       });
     }, 0);
   }
@@ -1004,23 +990,9 @@ function handleInput() {
       
       // Replace the entire wrapped block with the placeholder.
       setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
-      // Once the body and state update, clear any highlight from the block
+      // Once the body updates, ensure any highlight is cleared
       setTimeout(() => {
-        const header = document.getElementById(
-          `template-block-header-${block.title.replace(/\s+/g, '-')}`
-        );
-        if (header) {
-          (header as HTMLElement).style.backgroundColor = 'transparent';
-        }
-        const spans = document.querySelectorAll(
-          `span[data-inserted="${block.title}"]`
-        );
-        spans.forEach((span) => {
-          if (span instanceof HTMLElement) {
-            span.style.backgroundColor = colours.highlightYellow;
-            span.style.outline = 'none';
-          }
-        });
+        highlightBlock(block.title, false);
       }, 0);
     }
   }
