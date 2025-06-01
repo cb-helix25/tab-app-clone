@@ -698,6 +698,28 @@ Kind Regards,<br>
   function handleBlur() {
     if (bodyEditorRef.current) {
       setBody(bodyEditorRef.current.innerHTML);
+
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        let node: Node | null = sel.getRangeAt(0).startContainer;
+        if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+        const span =
+          node && node instanceof Element
+            ? node.closest('span[data-inserted]')
+            : null;
+
+        if (span) {
+          const title = span.getAttribute('data-inserted');
+          if (title && originalBlockContent[title] !== undefined) {
+            setEditedBlocks((prev) => ({
+              ...prev,
+              [title]: span.innerHTML !== originalBlockContent[title],
+            }));
+          }
+          return;
+        }
+      }
+
       Object.keys(insertedBlocks).forEach((title) => {
         if (insertedBlocks[title]) {
           const span = bodyEditorRef.current!.querySelector(
