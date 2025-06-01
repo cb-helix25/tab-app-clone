@@ -108,7 +108,12 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     const blueBg = colours.highlightBlue;
     headerElement.style.transition = 'background-color 0.2s';
     let bg = 'transparent';
-    if (highlight || insertedBlocks[blockTitle]) {
+
+    const isInserted =
+      insertedBlocks[blockTitle] ||
+      document.querySelector(`span[data-inserted="${blockTitle}"]`);
+
+    if (highlight || isInserted) {
       if (lockedBlocks[blockTitle]) {
         bg = lockedBg;
       } else if (editedBlocks[blockTitle]) {
@@ -119,9 +124,11 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     }
     headerElement.style.backgroundColor = bg;
   }
-  const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
-  insertedSpans.forEach(span => {
-    // Fix: check or cast to HTMLElement
+
+  const insertedSpans = document.querySelectorAll(
+    `span[data-inserted="${blockTitle}"]`
+  );
+  insertedSpans.forEach((span) => {
     if (span instanceof HTMLElement) {
       span.style.transition = 'outline 0.2s';
       span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
