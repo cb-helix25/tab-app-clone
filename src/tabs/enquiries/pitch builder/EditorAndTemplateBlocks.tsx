@@ -695,10 +695,26 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                        onRenderTitle={(opts, defaultRender) => {
                          if ((!opts || opts.length === 0) && isInserted) {
                            if (lockedBlocks[block.title]) {
-                             return <span>Locked</span>;
+                             return (
+                               <span style={{ display: 'flex', alignItems: 'center' }}>
+                                 <Icon
+                                   iconName="CheckMark"
+                                   styles={{ root: { color: colours.green, fontSize: 12, marginRight: 4 } }}
+                                 />
+                                 <span>Locked</span>
+                               </span>
+                             );
                            }
                            if (isEdited) {
-                             return <span>Customised</span>;
+                             return (
+                               <span style={{ display: 'flex', alignItems: 'center' }}>
+                                 <Icon
+                                   iconName="Edit"
+                                   styles={{ root: { color: colours.highlightBlue, fontSize: 12, marginRight: 4 } }}
+                                 />
+                                 <span>Customised</span>
+                               </span>
+                             );
                            }
                          }
                          return defaultRender ? defaultRender(opts) : null;

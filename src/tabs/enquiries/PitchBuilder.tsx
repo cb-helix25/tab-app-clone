@@ -786,7 +786,11 @@ Kind Regards,<br>
    * Keep the editor's HTML in sync with our `body` state
    */
   useEffect(() => {
-    if (bodyEditorRef.current && bodyEditorRef.current.innerHTML !== body) {
+    if (
+      bodyEditorRef.current &&
+      bodyEditorRef.current.innerHTML !== body &&
+      document.activeElement !== bodyEditorRef.current
+    ) {
       bodyEditorRef.current.innerHTML = body;
     }
   }, [body]);
