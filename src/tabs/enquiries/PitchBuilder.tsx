@@ -65,6 +65,13 @@ const linkIcon: IIconProps = { iconName: 'Link' };
 const clearIcon: IIconProps = { iconName: 'Cancel' };
 const letteredListIcon: IIconProps = { iconName: 'SortLines' };
 
+// Simple 2D padlock icons used in template block bubbles
+const lockedSvg =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+const unlockedSvg =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+
+
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
@@ -129,9 +136,9 @@ function toggleBlockLock(blockTitle: string) {
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
       span.setAttribute('contenteditable', (!locked).toString());
       span.style.backgroundColor = locked ? lockedBg : colours.highlightYellow;
-      const icon = span.querySelector('.lock-toggle') as HTMLElement | null;
+      const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
       if (icon) {
-        icon.textContent = locked ? '🔒' : '🔓';
+        icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
       }
     }
     return updated;
@@ -399,8 +406,9 @@ Kind Regards,<br>
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
-    const lockButtonStyle = `float:right;margin-left:4px;padding:0 4px;border-radius:6px;background:${colours.grey};cursor:pointer;font-size:10px;user-select:none;`;
-    const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">🔓</span>`;    // Add inline style to <p> tags to remove bottom margin
+    const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+    const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
+    const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">${lockIcon}</span>`;    // Add inline style to <p> tags to remove bottom margin
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin-bottom: 0;">`

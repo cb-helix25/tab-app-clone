@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Stack,
   Text,
-  Toggle,
+
   TextField,
   Dropdown,
   IDropdownOption,
@@ -151,26 +151,40 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     letterSpacing: '0.2px',
   });
 
-  const addClientStyle = mergeStyles({
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '2px 14px 2px 7px',
+  const toggleContainer = mergeStyles({
+    display: 'flex',
+    border: `1px solid ${colours.highlight}`,
     borderRadius: '18px',
-    border: `1px dotted ${colours.greyText}`,
-    color: colours.greyText,
-    background: isDarkMode ? colours.dark.background : colours.light.background,
-    fontSize: '13px',
+    overflow: 'hidden',
+    width: 'fit-content',
     cursor: 'pointer',
-    marginTop: '6px',
-    marginBottom: 0,
-    transition: 'background 0.15s',
-    userSelect: 'none',
-    ':hover': {
-      background: isDarkMode ? '#222' : '#f3f3f3',
-      color: colours.highlight,
-      borderColor: colours.highlight,
-    }
+    marginTop: 2,
+    marginBottom: 6,
   });
+  
+  const toggleHalf = (selected: boolean) =>
+    mergeStyles({
+      padding: '4px 12px',
+      backgroundColor: selected
+        ? colours.highlight
+        : isDarkMode
+        ? colours.dark.background
+        : colours.light.background,
+      color: selected ? '#fff' : isDarkMode ? colours.dark.text : colours.light.text,
+      fontWeight: selected ? 600 : 400,
+      fontSize: 13,
+      userSelect: 'none',
+      transition: 'background-color 0.3s, color 0.3s',
+    });
+
+  const addClientButtonStyles = {
+    root: {
+      marginTop: 6,
+      borderRadius: 18,
+      height: 32,
+    },
+    label: { fontWeight: 'normal' },
+  } as const;
 
   return (
     <Stack tokens={{ childrenGap: 14 }}>
@@ -269,23 +283,27 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
           )}
       </Stack>
 
-      <Toggle
-        label="Proof of ID for multiple clients"
-        checked={isMultiClient}
-        onText="Yes"
-        offText="No"
-        onChange={(_, checked) => setIsMultiClient(!!checked)}
-        styles={{
-          root: { marginTop: 2, marginBottom: 6 }
-        }}
-      />
+      <div className={toggleContainer} aria-label="Select ID type">
+        <div
+          className={toggleHalf(!isMultiClient)}
+          onClick={() => setIsMultiClient(false)}
+        >
+          Single-client ID
+        </div>
+        <div
+          className={toggleHalf(isMultiClient)}
+          onClick={() => setIsMultiClient(true)}
+        >
+          Multi-client ID
+        </div>
+      </div>
       {isMultiClient && (
         <Stack tokens={{ childrenGap: 8 }}>
           {clients.map((client, index) => (
             <Stack horizontal tokens={{ childrenGap: 10 }} key={index} verticalAlign="end">
               <Stack styles={{ root: { width: '25%' } }}>
                 <TextField
-                  label="First Name"
+                  placeholder="First Name"
                   value={client.firstName}
                   onChange={(_, v) => {
                     const updated = [...clients];
@@ -297,7 +315,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
               </Stack>
               <Stack styles={{ root: { width: '25%' } }}>
                 <TextField
-                  label="Last Name"
+                  placeholder="Last Name"
                   value={client.lastName}
                   onChange={(_, v) => {
                     const updated = [...clients];
@@ -309,7 +327,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
               </Stack>
               <Stack styles={{ root: { width: '50%' } }}>
                 <TextField
-                  label="Email"
+                  placeholder="Email"
                   value={client.email}
                   onChange={(_, v) => {
                     const updated = [...clients];
@@ -335,16 +353,14 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
               )}
             </Stack>
           ))}
-          <span
-            className={addClientStyle}
-            onClick={() => setClients([...clients, { firstName: '', lastName: '', email: '' }])}
-            tabIndex={0}
-            role="button"
-            aria-label="Add client"
-          >
-            <span style={{ fontSize: 20, marginRight: 4, fontWeight: 400, marginTop: -2 }}>+</span>
-            Add Client
-          </span>
+          <DefaultButton
+            text="Add Client"
+            iconProps={{ iconName: 'Add' }}
+            onClick={() =>
+              setClients([...clients, { firstName: '', lastName: '', email: '' }])
+            }
+            styles={addClientButtonStyles}
+          />
         </Stack>
       )}
       <Stack

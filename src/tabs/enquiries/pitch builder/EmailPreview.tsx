@@ -21,6 +21,7 @@ import {
   removeUnfilledPlaceholders,
   applyDynamicSubstitutions,
 } from './emailUtils'; // Adjusted path
+import OpenAIAssistant from './OpenAIAssistant';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -68,8 +69,15 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     enquiry,
     amount
   );
-  const cleanBody = removeUnfilledPlaceholders(substituted);
+const cleanBody = removeUnfilledPlaceholders(substituted);
 const previewRef = React.useRef<HTMLDivElement>(null);
+
+  const [isAiOpen, setIsAiOpen] = React.useState(false);
+  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+  const allowedInitials = ['LZ', 'AC'];
+  const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+  const canUseAi = useLocalData || allowedInitials.includes(userInitials);
+
 
 // Detect missing placeholders in the clean body
 const missingPlaceholders = cleanBody.match(/\[[^[\]]+]/g);
@@ -268,6 +276,15 @@ function formatCurrency(val?: string): string {
             iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
           />
         </Stack>
+        {canUseAi && (
+          <DefaultButton
+            text="AI Assist"
+            styles={sharedDefaultButtonStyles}
+            onClick={() => setIsAiOpen(true)}
+            iconProps={{ iconName: 'Robot' }}
+            title="Send this email to OpenAI for suggestions"
+          />
+        )}
         <DefaultButton
           text="Copy to Clipboard"
           styles={sharedDefaultButtonStyles}
@@ -280,6 +297,13 @@ function formatCurrency(val?: string): string {
           title="Copy the email preview text to your clipboard"
         />
       </Stack>
+      {canUseAi && (
+        <OpenAIAssistant
+          isOpen={isAiOpen}
+          onDismiss={() => setIsAiOpen(false)}
+          emailText={`Subject: ${subject}\n\n${previewRef.current?.innerText || ''}`}
+        />
+      )}
     </Panel>
   );
 };
