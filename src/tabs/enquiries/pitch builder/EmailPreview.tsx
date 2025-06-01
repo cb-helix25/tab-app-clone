@@ -32,6 +32,9 @@ interface EmailPreviewProps {
   followUp?: string;
   fullName: string;
   userData: any;
+  serviceDescription?: string;
+  clients?: { firstName: string; lastName: string; email: string }[];
+  to: string;
   sendEmail: () => void;
   handleDraftEmail: () => void;
   isSuccessVisible: boolean;
@@ -49,6 +52,9 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   followUp,
   fullName,
   userData,
+  serviceDescription,
+  clients,
+  to,
   sendEmail,
   handleDraftEmail,
   isSuccessVisible,
@@ -85,6 +91,16 @@ function highlightPlaceholders(html: string): string {
   );
 }
 
+function formatCurrency(val?: string): string {
+  if (!val) return 'N/A';
+  const num = parseFloat(val.replace(/,/g, ''));
+  if (isNaN(num)) return val;
+  return num.toLocaleString('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+  });
+}
 
   return (
     <Panel
@@ -147,6 +163,36 @@ function highlightPlaceholders(html: string): string {
             Email drafted successfully!
           </MessageBar>
         )}
+
+        <Separator />
+
+        {/* Deal Details */}
+        <Stack tokens={{ childrenGap: 4 }}>
+          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
+            Deal Details:
+          </Text>
+          <Text variant="medium">
+            <strong>Service:</strong> {serviceDescription || 'N/A'}
+          </Text>
+          <Text variant="medium">
+            <strong>Amount:</strong> {formatCurrency(amount)}
+          </Text>
+          {clients && clients.length > 0 && (
+            <Stack tokens={{ childrenGap: 2 }}>
+              <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
+                <strong>Clients Requiring ID:</strong>
+              </Text>
+              {clients.map((c, idx) => (
+                <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
+                  {c.firstName} {c.lastName} - {c.email}
+                </Text>
+              ))}
+            </Stack>
+          )}
+          <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
+            <strong>Key Contact:</strong> {to || enquiry.Point_of_Contact || 'N/A'}
+          </Text>
+        </Stack>
 
         <Separator />
 

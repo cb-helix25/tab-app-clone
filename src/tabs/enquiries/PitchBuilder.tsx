@@ -49,6 +49,13 @@ interface PitchBuilderProps {
   userData: any;
 }
 
+interface ClientInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+
 const boldIcon: IIconProps = { iconName: 'Bold' };
 const italicIcon: IIconProps = { iconName: 'Italic' };
 const underlineIcon: IIconProps = { iconName: 'Underline' };
@@ -187,6 +194,7 @@ Kind Regards,<br>
   // IDs returned after saving a deal
   const [dealId, setDealId] = useState<number | null>(null);
   const [clientIds, setClientIds] = useState<number[]>([]);
+  const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
 
 
   // Tracks selected template options for each block
@@ -648,6 +656,7 @@ Kind Regards,<br>
       }
       setServiceDescription(data.serviceDescription);
       setAmount(data.amount.toString());
+      setDealClients(data.clients);
       handleDraftEmail();
       setActiveTab('details');
     } catch (error: any) {
@@ -1279,6 +1288,9 @@ Kind Regards,<br>
         followUp={followUp}
         fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
         userData={userData}
+        serviceDescription={serviceDescription}
+        clients={dealClients}
+        to={to}
         amount={amount}
         sendEmail={sendEmail}
         handleDraftEmail={handleDraftEmail}
