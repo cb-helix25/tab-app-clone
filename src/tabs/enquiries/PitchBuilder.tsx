@@ -271,7 +271,7 @@ Kind Regards,<br>
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    Object.keys(insertedBlocks).forEach(title => {
+    Object.keys(insertedBlocks).forEach((title) => {
       highlightBlock(title, false);
     });
   }, [insertedBlocks, isDarkMode]);
@@ -282,6 +282,11 @@ Kind Regards,<br>
     });
   }, [lockedBlocks]);
 
+  useEffect(() => {
+    Object.keys(insertedBlocks).forEach((title) => {
+      highlightBlock(title, false);
+    });
+  }, [editedBlocks]);
 
   // For the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
