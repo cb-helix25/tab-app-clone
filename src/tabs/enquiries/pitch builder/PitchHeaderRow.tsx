@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { Stack, Label, TextField, mergeStyles, IconButton } from '@fluentui/react';
 import { Enquiry } from '../../../app/functionality/types';
 import DealCaptureForm from './DealCaptureForm';
@@ -86,6 +86,16 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   });
 
   const [showCcBcc, setShowCcBcc] = useState(false);
+  const toCcBccRef = useRef<HTMLDivElement>(null);
+  const [descHeight, setDescHeight] = useState(0);
+  const [rowSpacing, setRowSpacing] = useState(0);
+
+  useLayoutEffect(() => {
+    if (toCcBccRef.current) {
+      const leftHeight = toCcBccRef.current.getBoundingClientRect().height;
+      setRowSpacing(descHeight > leftHeight ? descHeight - leftHeight : 0);
+    }
+  }, [descHeight, showCcBcc]);
 
   return (
     <Stack horizontal tokens={{ childrenGap: 24 }} verticalAlign="start" styles={{
@@ -103,62 +113,64 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
       {/* LEFT SIDE (Details) */}
       <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '50%' } }}>
         {/* Row 1: To / CC / BCC */}
-        <Stack tokens={{ childrenGap: 6 }}>
-          <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
-            <Stack grow>
-              <Label className={labelStyle}>To</Label>
-              <TextField
-                value={to}
-                onChange={(_, val) => setTo(val || '')}
-                placeholder="Recipient email"
-                ariaLabel="To"
-                styles={{ fieldGroup: inputFieldStyle }}
-              />
-            </Stack>
-            {showCcBcc && (
-              <>
-                <Stack grow>
-                  <Label className={labelStyle}>CC</Label>
-                  <TextField
-                    value={cc}
-                    onChange={(_, val) => setCc(val || '')}
-                    placeholder="CC emails"
-                    ariaLabel="CC"
-                    styles={{ fieldGroup: inputFieldStyle }}
-                  />
-                </Stack>
-                <Stack grow>
-                  <Label className={labelStyle}>BCC</Label>
-                  <TextField
-                    value={bcc}
-                    onChange={(_, val) => setBcc(val || '')}
-                    placeholder="BCC emails"
-                    ariaLabel="BCC"
-                    styles={{ fieldGroup: inputFieldStyle }}
-                  />
-                </Stack>
-                <IconButton
-                  iconProps={{ iconName: 'Cancel' }}
-                  ariaLabel="Hide CC/BCC"
-                  onClick={() => setShowCcBcc(false)}
-                  styles={{
-                    root: {
-                      marginBottom: 24,
-                      marginLeft: 4,
-                      backgroundColor: 'transparent',
-                    },
-                    rootHovered: { backgroundColor: 'transparent', color: colours.highlight },
-                  }}
+        <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
+          <Stack tokens={{ childrenGap: 6 }}>
+            <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
+              <Stack grow>
+                <Label className={labelStyle}>To</Label>
+                <TextField
+                  value={to}
+                  onChange={(_, val) => setTo(val || '')}
+                  placeholder="Recipient email"
+                  ariaLabel="To"
+                  styles={{ fieldGroup: inputFieldStyle }}
                 />
-              </>
+              </Stack>
+              {showCcBcc && (
+                <>
+                  <Stack grow>
+                    <Label className={labelStyle}>CC</Label>
+                    <TextField
+                      value={cc}
+                      onChange={(_, val) => setCc(val || '')}
+                      placeholder="CC emails"
+                      ariaLabel="CC"
+                      styles={{ fieldGroup: inputFieldStyle }}
+                    />
+                  </Stack>
+                  <Stack grow>
+                    <Label className={labelStyle}>BCC</Label>
+                    <TextField
+                      value={bcc}
+                      onChange={(_, val) => setBcc(val || '')}
+                      placeholder="BCC emails"
+                      ariaLabel="BCC"
+                      styles={{ fieldGroup: inputFieldStyle }}
+                    />
+                  </Stack>
+                  <IconButton
+                    iconProps={{ iconName: 'Cancel' }}
+                    ariaLabel="Hide CC/BCC"
+                    onClick={() => setShowCcBcc(false)}
+                    styles={{
+                      root: {
+                        marginBottom: 24,
+                        marginLeft: 4,
+                        backgroundColor: 'transparent',
+                      },
+                      rootHovered: { backgroundColor: 'transparent', color: colours.highlight },
+                    }}
+                  />
+                </>
+              )}
+            </Stack>
+            {!showCcBcc && (
+              <span className={toggleCcBccStyle} onClick={() => setShowCcBcc(true)}>
+                Add CC/BCC
+              </span>
             )}
           </Stack>
-          {!showCcBcc && (
-            <span className={toggleCcBccStyle} onClick={() => setShowCcBcc(true)}>
-              Add CC/BCC
-            </span>
-          )}
-        </Stack>
+        </div>
         {/* Row 2: Subject */}
         <Stack>
           <Label className={labelStyle}>Subject</Label>
@@ -196,6 +208,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           setServiceDescription={setServiceDescription}
           selectedOption={selectedOption}
           setSelectedOption={setSelectedOption}
+          onDescriptionHeightChange={setDescHeight}
         />
       </Stack>
     </Stack>

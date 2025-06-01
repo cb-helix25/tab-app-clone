@@ -21,7 +21,7 @@ import {
   removeUnfilledPlaceholders,
   applyDynamicSubstitutions,
 } from './emailUtils'; // Adjusted path
-import OpenAIAssistant from './OpenAIAssistant';
+import ExperimentalAssistant from './ExperimentalAssistant';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -298,7 +298,7 @@ function formatCurrency(val?: string): string {
         />
       </Stack>
       {canUseAi && (
-        <OpenAIAssistant
+        <ExperimentalAssistant
           isOpen={isAiOpen}
           onDismiss={() => setIsAiOpen(false)}
           emailText={`Subject: ${subject}\n\n${previewRef.current?.innerText || ''}`}

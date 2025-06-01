@@ -1,44 +1,26 @@
 import React, { useState } from 'react';
 import { Panel, PanelType, TextField, PrimaryButton, Stack, DefaultButton } from '@fluentui/react';
 
-interface OpenAIAssistantProps {
+interface ExperimentalAssistantProps {
   isOpen: boolean;
   onDismiss: () => void;
   emailText: string;
 }
 
-const OpenAIAssistant: React.FC<OpenAIAssistantProps> = ({ isOpen, onDismiss, emailText }) => {
+const ExperimentalAssistant: React.FC<ExperimentalAssistantProps> = ({ isOpen, onDismiss, emailText }) => {
   const [prompt, setPrompt] = useState<string>('Check this email for typos and suggest improvements.');
   const [response, setResponse] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
-  const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-
   async function runPrompt() {
     setLoading(true);
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: 'You are an assistant that helps improve emails.' },
-            { role: 'user', content: `${prompt}\n\n${emailText}` },
-          ],
-        }),
-      });
-      const json = await res.json();
-      setResponse(json.choices?.[0]?.message?.content || 'No response');
-    } catch (err) {
-      console.error(err);
-      setResponse('Error contacting OpenAI');
-    } finally {
+    // TODO: integrate with bespoke AI API
+    setTimeout(() => {
+      setResponse(
+        `Pretend AI analysed your email:\n\n${emailText}\n\nPrompt used:\n${prompt}`
+      );
       setLoading(false);
-    }
+    }, 500);
   }
 
   return (
@@ -64,4 +46,4 @@ const OpenAIAssistant: React.FC<OpenAIAssistantProps> = ({ isOpen, onDismiss, em
   );
 };
 
-export default OpenAIAssistant;
+export default ExperimentalAssistant;

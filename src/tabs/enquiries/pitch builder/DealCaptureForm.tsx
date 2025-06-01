@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import {
   Stack,
   Text,
-
   TextField,
   Dropdown,
   IDropdownOption,
@@ -42,6 +41,7 @@ interface DealCaptureFormProps {
   setServiceDescription: (val: string) => void;
   selectedOption: IDropdownOption | undefined;
   setSelectedOption: (opt: IDropdownOption | undefined) => void;
+  onDescriptionHeightChange?: (height: number) => void;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -72,6 +72,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   setServiceDescription,
   selectedOption,
   setSelectedOption,
+  onDescriptionHeightChange,
 }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
@@ -80,6 +81,14 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [isMultiClient, setIsMultiClient] = useState(false);
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
+  const descRef = useRef<HTMLDivElement>(null);
+
+  // Service description area height callback for parent
+  useLayoutEffect(() => {
+    if (descRef.current) {
+      onDescriptionHeightChange?.(descRef.current.getBoundingClientRect().height);
+    }
+  }, [onDescriptionHeightChange, useBespoke, serviceDescription, selectedOption]);
 
   const vat = amount ? parseFloat(amount.replace(/,/g, '')) * 0.2 : 0;
   const total = amount ? parseFloat(amount.replace(/,/g, '')) + vat : 0;
@@ -154,37 +163,74 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const toggleContainer = mergeStyles({
     display: 'flex',
     border: `1px solid ${colours.highlight}`,
-    borderRadius: '18px',
+    borderRadius: 4,
     overflow: 'hidden',
     width: 'fit-content',
     cursor: 'pointer',
-    marginTop: 2,
-    marginBottom: 6,
+    marginTop: 8,
+    marginBottom: 8,
   });
-  
+
   const toggleHalf = (selected: boolean) =>
     mergeStyles({
-      padding: '4px 12px',
+      padding: '6px 14px',
       backgroundColor: selected
-        ? colours.highlight
+        ? '#eef4ff'
         : isDarkMode
         ? colours.dark.background
         : colours.light.background,
-      color: selected ? '#fff' : isDarkMode ? colours.dark.text : colours.light.text,
+      color: isDarkMode ? colours.dark.text : colours.light.text,
       fontWeight: selected ? 600 : 400,
       fontSize: 13,
       userSelect: 'none',
       transition: 'background-color 0.3s, color 0.3s',
     });
 
-  const addClientButtonStyles = {
-    root: {
-      marginTop: 6,
-      borderRadius: 18,
-      height: 32,
+  const addClientStyle = mergeStyles({
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '2px 14px 2px 7px',
+    borderRadius: 18,
+    border: `1px dotted ${colours.greyText}`,
+    color: colours.greyText,
+    background: isDarkMode ? colours.dark.background : colours.light.background,
+    fontSize: 13,
+    cursor: 'pointer',
+    marginTop: 6,
+    marginBottom: 0,
+    transition: 'background 0.15s',
+    userSelect: 'none',
+    ':hover': {
+      background: isDarkMode ? '#222' : '#f3f3f3',
+      color: colours.highlight,
+      borderColor: colours.highlight,
     },
-    label: { fontWeight: 'normal' },
-  } as const;
+  });
+
+  const infoTextClass = (show: boolean) =>
+    mergeStyles({
+      maxHeight: show ? 32 : 0,
+      opacity: show ? 1 : 0,
+      overflow: 'hidden',
+      transition: 'max-height 0.2s ease, opacity 0.2s ease',
+      borderLeft: `3px solid ${colours.highlight}`,
+      padding: show ? '6px 8px' : '0 8px',
+      marginTop: 4,
+      marginBottom: 4,
+      background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+      color: isDarkMode ? colours.dark.text : colours.light.text,
+      fontSize: 13,
+    });
+
+  const toggleFreehandStyle = mergeStyles({
+    color: colours.greyText,
+    cursor: 'pointer',
+    fontSize: 12,
+    marginTop: 6,
+    selectors: {
+      ':hover': { color: colours.highlight },
+    },
+  });
 
   return (
     <Stack tokens={{ childrenGap: 14 }}>
@@ -192,53 +238,68 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
 
       {/* Service Description */}
       <Stack>
-        {!useBespoke ? (
-          <Dropdown
-            label="Service Description"
-            options={SERVICE_OPTIONS}
-            styles={{ dropdown: dropdownStyle }}
-            selectedKey={selectedOption?.key}
-            onChange={(_, option) => {
-              if (option?.key === 'Other') {
-                setUseBespoke(true);
-                setServiceDescription('');
-              } else {
-                setSelectedOption(option);
-                setServiceDescription(option?.text || '');
-              }
-            }}
-            required
-          />
-        ) : (
-          <Stack>
-            <TextField
-              label="Bespoke Description"
-              multiline
-              required
-              value={serviceDescription}
-              onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
-              styles={{ fieldGroup: inputFieldStyle }}
-              maxLength={200}
-            />
-            <Text
-              variant="small"
-              styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
-            >
-              {serviceDescription.length}/200 characters
-            </Text>
-            <span
-              onClick={() => setUseBespoke(false)}
-              style={{
-                color: colours.highlight,
-                cursor: 'pointer',
-                fontSize: 13,
-                marginTop: 6,
-              }}
-            >
-              ← Back to standard options
-            </span>
-          </Stack>
-        )}
+        <div ref={descRef}>
+          {!useBespoke ? (
+            <>
+              <Dropdown
+                label="Service Description"
+                options={SERVICE_OPTIONS}
+                styles={{ dropdown: dropdownStyle }}
+                selectedKey={selectedOption?.key}
+                onChange={(_, option) => {
+                  if (option?.key === 'Other') {
+                    setUseBespoke(true);
+                    setServiceDescription('');
+                    setSelectedOption(undefined);
+                  } else {
+                    setSelectedOption(option);
+                    setServiceDescription(option?.text || '');
+                  }
+                }}
+                required
+              />
+              <span
+                className={toggleFreehandStyle}
+                onClick={() => {
+                  setUseBespoke(true);
+                  setServiceDescription('');
+                  setSelectedOption(undefined);
+                }}
+              >
+                Use freehand description
+              </span>
+            </>
+          ) : (
+            <Stack>
+              <TextField
+                label="Freehand Description"
+                multiline
+                required
+                value={serviceDescription}
+                onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
+                styles={{ fieldGroup: inputFieldStyle }}
+                maxLength={200}
+              />
+              <Text
+                variant="small"
+                styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
+              >
+                {serviceDescription.length}/200 characters
+              </Text>
+              <span
+                onClick={() => setUseBespoke(false)}
+                style={{
+                  color: colours.highlight,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  marginTop: 6,
+                }}
+              >
+                ← Back to dropdown options
+              </span>
+            </Stack>
+          )}
+        </div>
       </Stack>
 
       {/* Amount */}
@@ -297,6 +358,9 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
           Multi-client ID
         </div>
       </div>
+      <div className={infoTextClass(isMultiClient)}>
+        Enter the name and email address of each additional client.
+      </div>
       {isMultiClient && (
         <Stack tokens={{ childrenGap: 8 }}>
           {clients.map((client, index) => (
@@ -353,14 +417,18 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
               )}
             </Stack>
           ))}
-          <DefaultButton
-            text="Add Client"
-            iconProps={{ iconName: 'Add' }}
+          <span
+            className={addClientStyle}
             onClick={() =>
               setClients([...clients, { firstName: '', lastName: '', email: '' }])
             }
-            styles={addClientButtonStyles}
-          />
+            tabIndex={0}
+            role="button"
+            aria-label="Add client"
+          >
+            <span style={{ fontSize: 20, marginRight: 4, fontWeight: 400, marginTop: -2 }}>+</span>
+            Add Client
+          </span>
         </Stack>
       )}
       <Stack
