@@ -217,7 +217,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
       padding: show ? '6px 8px' : '0 8px',
       marginTop: 4,
       marginBottom: 4,
-      background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+      background: isDarkMode ? colours.dark.cardBackground : colours.grey,
       color: isDarkMode ? colours.dark.text : colours.light.text,
       fontSize: 13,
     });

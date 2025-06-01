@@ -486,7 +486,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
           styles={{ root: { justifyContent: 'space-between' } }}
         >
           <Label className={labelStyle}>Template Blocks</Label>
-          <Stack horizontal tokens={{ childrenGap: 12 }}>
+          <Stack
+            horizontal
+            tokens={{ childrenGap: 12 }}
+            styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
+          >
             <span
               style={{ color: colours.highlight, cursor: 'pointer' }}
               onClick={expandAll}
@@ -540,6 +544,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                   aria-label={`Insert template block ${block.title}`}
                 >
                   <Stack
+                    id={`template-block-header-${block.title.replace(/\s+/g, '-')}`}
                     horizontal
                     verticalAlign="center"
                     tokens={{ childrenGap: 10 }}
@@ -549,10 +554,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                         padding: '12px 16px',
                         borderLeft: 'none',
                         backgroundColor: insertedBlocks[block.title]
-                          ? lockedBlocks[block.title] || editedBlocks[block.title]
+                          ? lockedBlocks[block.title]
                             ? isDarkMode
                               ? 'rgba(16,124,16,0.1)'
                               : '#eafaea'
+                            : editedBlocks[block.title]
+                            ? colours.highlightBlue
                             : colours.highlightYellow
                           : 'transparent',
                         borderTopLeftRadius: 8,
@@ -587,10 +594,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                     >
                       {block.title}
                     </Text>
-                    {editedBlocks[block.title] && (
+                    {lockedBlocks[block.title] && (
                       <Icon
                         iconName="CheckMark"
                         styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }}
+                      />
+                    )}
+                    {!lockedBlocks[block.title] && editedBlocks[block.title] && (
+                      <Icon
+                        iconName="Edit"
+                        styles={{ root: { color: colours.highlightBlue, fontSize: 14, marginLeft: 6 } }}
                       />
                     )}
                     <span style={{ flex: 1 }} />
@@ -677,8 +690,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                             : []
                        }
                        onRenderTitle={(opts, defaultRender) => {
-                         if ((!opts || opts.length === 0) && isInserted && isEdited) {
-                           return <span>Customised</span>;
+                         if ((!opts || opts.length === 0) && isInserted) {
+                           if (lockedBlocks[block.title]) {
+                             return <span>Locked</span>;
+                           }
+                           if (isEdited) {
+                             return <span>Customised</span>;
+                           }
                          }
                          return defaultRender ? defaultRender(opts) : null;
                        }}

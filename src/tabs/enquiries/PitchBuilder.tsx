@@ -99,29 +99,33 @@ function handleAmountBlur() {
   }
 }
 
-// Move highlightBlock inside the component
 function highlightBlock(blockTitle: string, highlight: boolean) {
-  const blockElement = document.getElementById(
-    `template-block-${blockTitle.replace(/\s+/g, '-')}`
+  const headerElement = document.getElementById(
+    `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
   );
-  if (blockElement) {
+  if (headerElement) {
     const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-    blockElement.style.transition = 'background-color 0.2s';
-    blockElement.style.backgroundColor =
-      highlight || insertedBlocks[blockTitle]
-        ? lockedBlocks[blockTitle]
-          ? lockedBg
-          : colours.highlightYellow
-        : isDarkMode
-        ? colours.dark.cardBackground
-        : colours.light.cardBackground;
-    blockElement.style.borderLeft = 'none';
+    const blueBg = colours.highlightBlue;
+    headerElement.style.transition = 'background-color 0.2s';
+    let bg = 'transparent';
+    if (highlight || insertedBlocks[blockTitle]) {
+      if (lockedBlocks[blockTitle]) {
+        bg = lockedBg;
+      } else if (editedBlocks[blockTitle]) {
+        bg = blueBg;
+      } else {
+        bg = colours.highlightYellow;
+      }
+    }
+    headerElement.style.backgroundColor = bg;
   }
   const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
   insertedSpans.forEach(span => {
-    const el = span as HTMLElement;
-    el.style.transition = 'outline 0.2s';
-    el.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
+    // Fix: check or cast to HTMLElement
+    if (span instanceof HTMLElement) {
+      span.style.transition = 'outline 0.2s';
+      span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
+    }
   });
 }
 
@@ -129,13 +133,17 @@ function toggleBlockLock(blockTitle: string) {
   setLockedBlocks(prev => {
     const locked = !prev[blockTitle];
     const updated = { ...prev, [blockTitle]: locked };
-    const span = bodyEditorRef.current?.querySelector(
-      `span[data-inserted="${blockTitle}"]`
-    ) as HTMLElement | null;
-    if (span) {
+const span = bodyEditorRef.current?.querySelector(
+  `span[data-inserted="${blockTitle}"]`
+) as HTMLElement | null;
+if (span) {
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
       span.setAttribute('contenteditable', (!locked).toString());
-      span.style.backgroundColor = locked ? lockedBg : colours.highlightYellow;
+      span.style.backgroundColor = locked
+        ? lockedBg
+        : editedBlocks[blockTitle]
+        ? colours.highlightBlue
+        : colours.highlightYellow;
       const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
       if (icon) {
         icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
@@ -164,9 +172,7 @@ useEffect(() => {
   (window as any).highlightBlock = highlightBlock;
   (window as any).longLockStart = longLockStart;
   (window as any).longLockEnd = longLockEnd;
-}, []);
-
-
+}, [toggleBlockLock, highlightBlock, longLockStart, longLockEnd]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -824,6 +830,12 @@ Kind Regards,<br>
               originalBlockContent[title]
             );
             setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
+            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+            span.style.backgroundColor = lockedBlocks[title]
+              ? lockedBg
+              : changed
+              ? colours.highlightBlue
+              : colours.highlightYellow;
             if (changed) {
               const block = templateBlocks.find((b) => b.title === title);
               setSelectedTemplateOptions((prev) => ({
@@ -847,6 +859,12 @@ Kind Regards,<br>
               originalBlockContent[title]
             );
             setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
+            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+            span.style.backgroundColor = lockedBlocks[title]
+              ? lockedBg
+              : changed
+              ? colours.highlightBlue
+              : colours.highlightYellow;
             if (changed) {
               const block = templateBlocks.find((b) => b.title === title);
               setSelectedTemplateOptions((prev) => ({
@@ -918,26 +936,49 @@ Kind Regards,<br>
         Array.isArray(selectedOptions) &&
         selectedOptions.length === 0)
     ) {
-      if (isInserted && isEdited) {
-        return (
-          <div
-            className={mergeStyles({
-              marginTop: '6px',
-              border: `1px solid ${colours.green}`,
-              padding: '4px 6px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-            })}
-          >
-            <Icon
-              iconName="CheckMark"
-              styles={{ root: { color: colours.green, marginRight: 4 } }}
-            />
-            <span>Customised</span>
-          </div>
-        );
+      if (isInserted) {
+        if (lockedBlocks[block.title]) {
+          return (
+            <div
+              className={mergeStyles({
+                marginTop: '6px',
+                border: `1px solid ${colours.green}`,
+                padding: '4px 6px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+              })}
+            >
+              <Icon
+                iconName="CheckMark"
+                styles={{ root: { color: colours.green, marginRight: 4 } }}
+              />
+              <span>Locked</span>
+            </div>
+          );
+        }
+        if (isEdited) {
+          return (
+            <div
+              className={mergeStyles({
+                marginTop: '6px',
+                border: `1px solid ${colours.highlightBlue}`,
+                padding: '4px 6px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+              })}
+            >
+              <Icon
+                iconName="Edit"
+                styles={{ root: { color: colours.highlightBlue, marginRight: 4 } }}
+              />
+              <span>Customised</span>
+            </div>
+          );
+        }
       }
       return null;
     }
@@ -952,7 +993,13 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '6px',
             border: isInserted
-              ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
+              ? `1px solid ${
+                  lockedBlocks[block.title]
+                    ? colours.green
+                    : isEdited
+                    ? colours.highlightBlue
+                    : colours.highlightYellow
+                }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
             borderRadius: '4px',
@@ -996,7 +1043,13 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '6px',
             border: isInserted
-              ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
+              ? `1px solid ${
+                  lockedBlocks[block.title]
+                    ? colours.green
+                    : isEdited
+                    ? colours.highlightBlue
+                    : colours.highlightYellow
+                }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
             borderRadius: '4px',
@@ -1243,21 +1296,22 @@ Kind Regards,<br>
 
   const fullName = `${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim();
 
-  /**
-   * Handles scrolling to the selected template block
-   */
-  function handleScrollToBlock(blockTitle: string) {
-  const blockElement = document.getElementById(
-    `template-block-${blockTitle.replace(/\s+/g, '-')}`
-  );
-    if (blockElement) {
-      blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      blockElement.style.transition = 'background-color 0.5s';
-      blockElement.style.backgroundColor = colours.highlightYellow;
+function handleScrollToBlock(blockTitle: string) {
+  const headerElement = document.getElementById(
+    `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
+  ) as HTMLElement | null;
+    if (headerElement) {
+      headerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+      const startColor = lockedBlocks[blockTitle]
+        ? lockedBg
+        : editedBlocks[blockTitle]
+        ? colours.highlightBlue
+        : colours.highlightYellow;
+      headerElement.style.transition = 'background-color 0.5s';
+      headerElement.style.backgroundColor = startColor;
       setTimeout(() => {
-        blockElement.style.backgroundColor = isDarkMode
-          ? colours.dark.cardBackground
-          : colours.light.cardBackground;
+        headerElement.style.backgroundColor = 'transparent';
       }, 1000);
     }
   }
