@@ -581,12 +581,8 @@ Kind Regards,<br>
     setDealId(null);
     setClientIds([]);
 
-    // Reset any header highlights or leftover styles
-    setTimeout(() => {
-      templateBlocks.forEach((block) => {
-        highlightBlock(block.title, false);
-      });
-    }, 0);
+    // Reset any header highlights or leftover styles will be handled
+    // automatically by the effect watching insertedBlocks and body state.
   }
 
   /**
@@ -989,11 +985,9 @@ function handleInput() {
       const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
       
       // Replace the entire wrapped block with the placeholder.
+      // Highlight clearing will be triggered by the effect that monitors
+      // body and insertedBlocks changes.
       setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
-      // Once the body updates, ensure any highlight is cleared
-      setTimeout(() => {
-        highlightBlock(block.title, false);
-      }, 0);
     }
   }
 

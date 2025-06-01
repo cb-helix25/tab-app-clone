@@ -501,20 +501,22 @@ boxShadow: isDarkMode
           <Label className={labelStyle}>Template Blocks</Label>
           <Stack
             horizontal
-            tokens={{ childrenGap: 12 }}
+            verticalAlign="center"
+            tokens={{ childrenGap: 8 }}
             styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
           >
             <span
-              style={{ color: colours.highlight, cursor: 'pointer' }}
-              onClick={expandAll}
+              style={{ color: colours.highlight, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+              onClick={() => {
+                const allCollapsed = Object.values(collapsedBlocks).every(c => c);
+                allCollapsed ? expandAll() : collapseAll();
+              }}
             >
-              Expand All
-            </span>
-            <span
-              style={{ color: colours.highlight, cursor: 'pointer' }}
-              onClick={collapseAll}
-            >
-              Collapse All
+              <Icon
+                iconName={Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp'}
+                styles={{ root: { fontSize: 14 } }}
+              />
+              {Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
             </span>
           </Stack>
         </Stack>

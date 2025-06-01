@@ -105,7 +105,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    borderTopRightRadius: 8,
   });
 
   const toggleCcBccStyle = mergeStyles({
