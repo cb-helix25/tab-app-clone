@@ -121,13 +121,13 @@ export function replacePlaceholders(
   return template
     .replace(
       /\[Enquiry.First_Name\]/g,
-      `<span style="background-color: ${colours.highlightYellow}; padding: 0 3px;" data-placeholder="[Enquiry.First_Name]">${
+      `<span style="background-color: ${colours.highlightYellow}; padding: 1px 3px;" data-placeholder="[Enquiry.First_Name]">${
         enquiry.First_Name || 'there'
       }</span>`
     )
     .replace(
       /\[Enquiry.Point_of_Contact\]/g,
-      `<span style="background-color: ${colours.highlightYellow}; padding: 0 3px;" data-placeholder="[Enquiry.Point_of_Contact]">${
+      `<span style="background-color: ${colours.highlightYellow}; padding: 1px 3px;" data-placeholder="[Enquiry.Point_of_Contact]">${
         enquiry.Point_of_Contact || 'Our Team'
       }</span>`
     )
@@ -135,37 +135,37 @@ export function replacePlaceholders(
       /\[FE Introduction Placeholder\]/g,
       intro
         ? `<span data-placeholder="[FE Introduction Placeholder]">${intro}</span>`
-        : `<span data-placeholder="[FE Introduction Placeholder]" style="background-color: ${colours.grey}; padding: 0 3px;">[FE Introduction Placeholder]</span>`
+        : `<span data-placeholder="[FE Introduction Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[FE Introduction Placeholder]</span>`
     )
     .replace(
       /\[Current Situation and Problem Placeholder\]/g,
-      `<span data-placeholder="[Current Situation and Problem Placeholder]" style="background-color: ${colours.grey}; padding: 0 3px;">[Current Situation and Problem Placeholder]</span>`
+      `<span data-placeholder="[Current Situation and Problem Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[Current Situation and Problem Placeholder]</span>`
     )
     .replace(
       /\[Potential Causes of Action and Remedies Placeholder\]/g,
-      `<span data-placeholder="[Potential Causes of Action and Remedies Placeholder]" style="background-color: ${colours.grey}; padding: 0 3px;">[Potential Causes of Action and Remedies Placeholder]</span>`
+      `<span data-placeholder="[Potential Causes of Action and Remedies Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[Potential Causes of Action and Remedies Placeholder]</span>`
     )
     .replace(
       /\[First Name\]/g,
-      `<span data-placeholder="[First Name]" style="background-color: ${colours.grey}; padding: 0 3px;">${userFirstName}</span>`
+      `<span data-placeholder="[First Name]" style="background-color: ${colours.grey}; padding: 1px 3px;">${userFirstName}</span>`
     )
     .replace(
       /\[Full Name\]/g,
-      `<span data-placeholder="[Full Name]" style="background-color: ${colours.grey}; padding: 0 3px;">${userFullName}</span>`
+      `<span data-placeholder="[Full Name]" style="background-color: ${colours.grey}; padding: 1px 3px;">${userFullName}</span>`
     )
     .replace(
       /\[Position\]/g,
-      `<span data-placeholder="[Position]" style="background-color: ${colours.grey}; padding: 0 3px;">${userRole}</span>`
+      `<span data-placeholder="[Position]" style="background-color: ${colours.grey}; padding: 1px 3px;">${userRole}</span>`
     )
     .replace(
       /\[Rate\]/g,
       // Use the formatted rate here instead of the raw value.
-     `<span data-placeholder="[Rate]" style="background-color: ${colours.grey}; padding: 0 3px;">${formattedRate}</span>`
+     `<span data-placeholder="[Rate]" style="background-color: ${colours.grey}; padding: 1px 3px;">${formattedRate}</span>`
     )
     .replace(
       /\[(Scope of Work Placeholder|Risk Assessment Placeholder|Costs and Budget Placeholder|Follow-Up Instructions Placeholder|Closing Notes Placeholder|Required Documents Placeholder|Google Review Placeholder|Meeting Link Placeholder)\]/g,
       (match) =>
-        `<span data-placeholder="${match}" style="background-color: ${colours.grey}; padding: 0 3px;">${match}</span>`
+        `<span data-placeholder="${match}" style="background-color: ${colours.grey}; padding: 1px 3px;">${match}</span>`
     );
 }
 

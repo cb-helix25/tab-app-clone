@@ -431,7 +431,7 @@ Kind Regards,<br>
     }
     const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:2px;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 1px 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
     const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
@@ -525,7 +525,7 @@ Kind Regards,<br>
     } else {
       setAttachments((prev) => [...prev, attachment.key]);
       saveSelection();
-      const linkHTML = `<span style="background-color: #ffe6e6; padding: 0 3px;" data-link="${attachment.key}"><a href="${attachment.link}" style="color: #3690CE; text-decoration: none;">${attachment.text}</a></span>`;
+      const linkHTML = `<span style="background-color: #ffe6e6; padding: 1px 3px;" data-link="${attachment.key}"><a href="${attachment.link}" style="color: #3690CE; text-decoration: none;">${attachment.text}</a></span>`;
       insertAtCursor(linkHTML);
     }
   }
@@ -952,7 +952,11 @@ function handleInput() {
       ...prev,
       [block.title]: block.isMultiSelect ? [] : '',
     }));
-    setInsertedBlocks((prev) => ({ ...prev, [block.title]: false }));
+    setInsertedBlocks((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
     setLockedBlocks((prev) => {
       const copy = { ...prev };
       delete copy[block.title];
@@ -977,16 +981,21 @@ function handleInput() {
         'g'
       );
       // Build the original placeholder markup.
-      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 0 3px;">${block.placeholder}</span>`;
+      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
       
       // Replace the entire wrapped block with the placeholder.
       setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
       // Once the body and state update, clear any highlight from the block
-      setTimeout(() => highlightBlock(block.title, false), 0);
+      setTimeout(() => {
+        const header = document.getElementById(
+          `template-block-header-${block.title.replace(/\s+/g, '-')}`
+        );
+        if (header) {
+          header.style.backgroundColor = 'transparent';
+        }
+        highlightBlock(block.title, false);
+      }, 0);
     }
-
-    // Defer highlight update until the DOM reflects the cleared block
-    setTimeout(() => highlightBlock(block.title, false), 0);
   }
 
   /**
