@@ -606,7 +606,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                     {!lockedBlocks[block.title] && editedBlocks[block.title] && (
                       <Icon
                         iconName="Edit"
-                        styles={{ root: { color: colours.highlightBlue, fontSize: 14, marginLeft: 6 } }}
+                        styles={{
+                          root: {
+                            color: colours.highlight,
+                            fontSize: 14,
+                            marginLeft: 6,
+                          },
+                        }}
                       />
                     )}
                     <span style={{ flex: 1 }} />

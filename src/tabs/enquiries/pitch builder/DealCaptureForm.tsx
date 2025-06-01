@@ -277,7 +277,10 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
                 required
                 value={serviceDescription}
                 onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
-                styles={{ fieldGroup: inputFieldStyle }}
+                styles={{
+                    fieldGroup: inputFieldStyle,
+                    prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
+                }}
                 maxLength={200}
               />
               <Text
