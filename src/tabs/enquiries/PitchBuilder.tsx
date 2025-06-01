@@ -567,6 +567,9 @@ Kind Regards,<br>
       .map((line) => line.trim())
       .join('\n');
     setBody(newBody);
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = newBody;
+    }
     setAttachments([]);
     setFollowUp(undefined);
     setIsPreviewOpen(false);
@@ -581,15 +584,10 @@ Kind Regards,<br>
     setDealId(null);
     setClientIds([]);
 
-    // Immediately update the editor DOM and clear highlights
-    if (bodyEditorRef.current) {
-      bodyEditorRef.current.innerHTML = newBody;
-    }
-
-    // Ensure highlights are cleared after state updates have been applied
-    setTimeout(() => {
-      templateBlocks.forEach((block) => highlightBlock(block.title, false));
-    }, 0);
+    // Immediately clear any highlight styles from the DOM
+    templateBlocks.forEach((block) => {
+      highlightBlock(block.title, false);
+    });
   }
 
   /**
@@ -990,12 +988,16 @@ function handleInput() {
       );
       // Build the original placeholder markup.
       const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
-      
-      // Replace the entire wrapped block with the placeholder.
-      // Highlight clearing will be triggered by the effect that monitors
-      // body and insertedBlocks changes.
-      setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
-    }
+
+      const update = (prevBody: string) => prevBody.replace(regex, placeholderHTML);
+      // Replace the block immediately in state and DOM
+      setBody((prevBody) => {
+        const newBody = update(prevBody);
+        bodyEditorRef.current!.innerHTML = newBody;
+        return newBody;
+      });
+      // Remove highlight right away so the user sees immediate feedback
+      highlightBlock(block.title, false);    }
   }
 
   /**
