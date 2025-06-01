@@ -227,7 +227,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
 
   const intakeContainer = mergeStyles({
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
+    borderRadius: 4,
     overflow: 'hidden',
   });
 
@@ -240,7 +240,6 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-
   });
 
   // Input fields for client details have a subtle left accent using the
@@ -248,14 +247,14 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
   // full header bar.
   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
     borderLeft: `4px solid ${colours.darkBlue}`,
-    borderRadius: 0,
+    borderRadius: 4,
   });
 
 
 const toggleContainer = mergeStyles({
   display: 'flex',
   border: `2px solid ${colours.darkBlue}`,
-  borderRadius: 0,
+  borderRadius: 4,
   overflow: 'hidden',
   cursor: 'pointer',
   width: '100%',
@@ -411,7 +410,7 @@ const toggleHalf = (selected: boolean) =>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
             <div className={amountContainerStyle}>
-              <span className={mergeStyles(prefixStyle, { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 })}>£</span>
+              <span className={prefixStyle}>£</span>
               <TextField
                 required
                 type="text"
@@ -420,7 +419,7 @@ const toggleHalf = (selected: boolean) =>
                 onBlur={handleAmountBlur}
                 styles={{
                   root: { flexGrow: 1 },
-                  fieldGroup: [amountInputStyle(true), { borderRadius: 0 }],
+                  fieldGroup: amountInputStyle(true),
                 }}
                 errorMessage={amountError}
                 inputMode="decimal"

@@ -55,9 +55,9 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     background: isDarkMode
       ? `linear-gradient(135deg, ${colours.dark.cardBackground}, ${colours.dark.sectionBackground})`
       : `linear-gradient(135deg, ${colours.light.cardBackground}, ${colours.light.sectionBackground})`,
-    borderRadius: 0,
+    borderRadius: '8px',
     boxShadow: isDarkMode
-      ? '0 4px 12px rgba(255, 2, 2, 0.1)'
+      ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
     padding: '20px',
     transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
@@ -86,7 +86,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
 
   // Style for the input fields with a subtle border and hover effect
   const inputFieldStyle = {
-    borderRadius: 0,
+    borderRadius: '8px',
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     transition: 'border-color 0.2s ease-in-out',
     ':hover': {
@@ -98,7 +98,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   const labeledFieldContainerStyle = {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: '8px',
-    borderRadius: 0,
+    borderRadius: '8px',
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     transition: 'border-color 0.2s ease-in-out',
     ':hover': {
@@ -110,7 +110,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   const notesContainerStyle = {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: '12px',
-    borderRadius: 0,
+    borderRadius: '8px',
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     overflowY: 'auto' as const,
     height: '100%',
@@ -139,7 +139,6 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter recipient addresses, separated by commas"
                   ariaLabel="To Addresses"
                   isDarkMode={isDarkMode}
-                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -153,7 +152,6 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter CC addresses, separated by commas"
                   ariaLabel="CC Addresses"
                   isDarkMode={isDarkMode}
-                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -167,7 +165,6 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter BCC addresses, separated by commas"
                   ariaLabel="BCC Addresses"
                   isDarkMode={isDarkMode}
-                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -183,7 +180,6 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
               placeholder="Enter email subject"
               ariaLabel="Email Subject"
               isDarkMode={isDarkMode}
-              borderRadius="0"
               style={inputFieldStyle}
             />
           </Stack>

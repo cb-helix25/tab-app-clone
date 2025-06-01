@@ -581,8 +581,15 @@ Kind Regards,<br>
     setDealId(null);
     setClientIds([]);
 
-    // Reset any header highlights or leftover styles will be handled
-    // automatically by the effect watching insertedBlocks and body state.
+    // Immediately update the editor DOM and clear highlights
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = newBody;
+    }
+
+    // Ensure highlights are cleared after state updates have been applied
+    setTimeout(() => {
+      templateBlocks.forEach((block) => highlightBlock(block.title, false));
+    }, 0);
   }
 
   /**
