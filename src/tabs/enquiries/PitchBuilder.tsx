@@ -1397,46 +1397,29 @@ function handleScrollToBlock(blockTitle: string) {
 
   return (
     <Stack className={containerStyle}>
-<Stack horizontal tokens={{ childrenGap: 20 }} styles={{
-  root: {
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderRadius: 12,
-    boxShadow: isDarkMode
-      ? '0 4px 12px ' + colours.dark.border
-      : '0 4px 12px ' + colours.light.border,
-    padding: 24,
-    width: '100%',
-    position: 'relative',
-    transition: 'background 0.3s, box-shadow 0.3s',
-  },
-}}>
-  {/* LEFT SIDE: Details */}
-  <Stack grow tokens={{ childrenGap: 16 }}>
-<PitchHeaderRow
-  enquiry={enquiry}
-  to={to}
-  setTo={setTo}
-  cc={cc}
-  setCc={setCc}
-  bcc={bcc}
-  setBcc={setBcc}
-  subject={subject}
-  setSubject={setSubject}
-  serviceDescription={serviceDescription}
-  setServiceDescription={setServiceDescription}
-  selectedOption={selectedOption}
-  setSelectedOption={setSelectedOption}
-  SERVICE_OPTIONS={SERVICE_OPTIONS}
-  amount={amount}
-  handleAmountChange={handleAmountChange}
-  handleAmountBlur={handleAmountBlur}
-  handleDealFormSubmit={handleDealFormSubmit}
-  dealId={dealId}
-  clientIds={clientIds}
-  isDarkMode={isDarkMode}
-/>
-  </Stack>
-</Stack>
+      <PitchHeaderRow
+        enquiry={enquiry}
+        to={to}
+        setTo={setTo}
+        cc={cc}
+        setCc={setCc}
+        bcc={bcc}
+        setBcc={setBcc}
+        subject={subject}
+        setSubject={setSubject}
+        serviceDescription={serviceDescription}
+        setServiceDescription={setServiceDescription}
+        selectedOption={selectedOption}
+        setSelectedOption={setSelectedOption}
+        SERVICE_OPTIONS={SERVICE_OPTIONS}
+        amount={amount}
+        handleAmountChange={handleAmountChange}
+        handleAmountBlur={handleAmountBlur}
+        handleDealFormSubmit={handleDealFormSubmit}
+        dealId={dealId}
+        clientIds={clientIds}
+        isDarkMode={isDarkMode}
+      />
   
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks

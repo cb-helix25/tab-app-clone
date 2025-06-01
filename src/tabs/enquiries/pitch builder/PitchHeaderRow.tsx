@@ -169,7 +169,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   return (
     <Stack
       horizontal
-      tokens={{ childrenGap: 16 }}
+      tokens={{ childrenGap: 20 }}
       verticalAlign="start"
       styles={{
         root: {
@@ -180,6 +180,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             : '0 4px 12px ' + colours.light.border,
           padding: 24,
           width: '100%',
+          position: 'relative',
           transition: 'background 0.3s, box-shadow 0.3s',
         },
       }}
