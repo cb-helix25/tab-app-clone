@@ -1071,7 +1071,9 @@ Kind Regards,<br>
    * Handles scrolling to the selected template block
    */
   function handleScrollToBlock(blockTitle: string) {
-    const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
+  const blockElement = document.getElementById(
+    `template-block-${blockTitle.replace(/\s+/g, '-')}`
+  );
     if (blockElement) {
       blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       blockElement.style.transition = 'background-color 0.5s';
