@@ -819,7 +819,7 @@ Kind Regards,<br>
         if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
         const span =
           node && node instanceof Element
-            ? node.closest('span[data-inserted]')
+            ? (node.closest('span[data-inserted]') as HTMLElement | null)
             : null;
 
         if (span) {
@@ -852,7 +852,7 @@ Kind Regards,<br>
         if (insertedBlocks[title]) {
           const span = bodyEditorRef.current!.querySelector(
             `span[data-inserted="${title}"]`
-          );
+          ) as HTMLElement | null;
           if (span && originalBlockContent[title] !== undefined) {
             const changed = isContentChanged(
               span.innerHTML,
