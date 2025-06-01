@@ -33,6 +33,7 @@ interface PitchHeaderRowProps {
   handleDealFormSubmit: (data: {
     serviceDescription: string;
     amount: number;
+    dealExpiry: string;
     isMultiClient: boolean;
     clients: { firstName: string; lastName: string; email: string }[];
   }) => void;
@@ -101,6 +102,9 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     padding: "4px 8px",
     fontWeight: 600,
     fontSize: 13,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
   });
 
   const toggleCcBccStyle = mergeStyles({
@@ -224,7 +228,28 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                   >
                     <Stack grow>
                       <div className={intakeContainer}>
-                        <div className={intakeHeader}>CC</div>
+                        <div className={intakeHeader}>
+                          CC
+                          <IconButton
+                            iconProps={{ iconName: "Cancel" }}
+                            ariaLabel="Hide CC"
+                            onClick={() => setShowCc(false)}
+                            styles={{
+                              root: {
+                                backgroundColor: "transparent",
+                                padding: 0,
+                                marginLeft: 4,
+                                height: 16,
+                                width: 16,
+                              },
+                              rootHovered: {
+                                backgroundColor: "transparent",
+                                color: colours.highlight,
+                              },
+                              icon: { fontSize: 12, color: "#fff" },
+                            }}
+                          />
+                        </div>
                         <TextField
                           value={cc}
                           onChange={(_, val) => setCc(val || "")}
@@ -239,22 +264,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                         />
                       </div>
                     </Stack>
-                    <IconButton
-                      iconProps={{ iconName: "Cancel" }}
-                      ariaLabel="Hide CC"
-                      onClick={() => setShowCc(false)}
-                      styles={{
-                        root: {
-                          marginBottom: 24,
-                          marginLeft: 4,
-                          backgroundColor: "transparent",
-                        },
-                        rootHovered: {
-                          backgroundColor: "transparent",
-                          color: colours.highlight,
-                        },
-                      }}
-                    />
             </Stack>
                 )}
                 {showBcc && (
@@ -265,7 +274,28 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                   >
                     <Stack grow>
                       <div className={intakeContainer}>
-                        <div className={intakeHeader}>BCC</div>
+                        <div className={intakeHeader}>
+                          BCC
+                          <IconButton
+                            iconProps={{ iconName: "Cancel" }}
+                            ariaLabel="Hide BCC"
+                            onClick={() => setShowBcc(false)}
+                            styles={{
+                              root: {
+                                backgroundColor: "transparent",
+                                padding: 0,
+                                marginLeft: 4,
+                                height: 16,
+                                width: 16,
+                              },
+                              rootHovered: {
+                                backgroundColor: "transparent",
+                                color: colours.highlight,
+                              },
+                              icon: { fontSize: 12, color: "#fff" },
+                            }}
+                          />
+                        </div>
                         <TextField
                           value={bcc}
                           onChange={(_, val) => setBcc(val || "")}
@@ -280,22 +310,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                         />
                       </div>
                     </Stack>
-                    <IconButton
-                      iconProps={{ iconName: "Cancel" }}
-                      ariaLabel="Hide BCC"
-                      onClick={() => setShowBcc(false)}
-                      styles={{
-                        root: {
-                          marginBottom: 24,
-                          marginLeft: 4,
-                          backgroundColor: "transparent",
-                        },
-                        rootHovered: {
-                          backgroundColor: "transparent",
-                          color: colours.highlight,
-                        },
-                      }}
-                    />
                   </Stack>
                 )}
               </Stack>

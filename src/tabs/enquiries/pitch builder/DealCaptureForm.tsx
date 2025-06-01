@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
+import { addDays } from 'date-fns';
 import {
   Stack,
   Text,
@@ -34,6 +35,7 @@ interface DealCaptureFormProps {
   onSubmit: (data: {
     serviceDescription: string;
     amount: number;
+    dealExpiry: string;
     isMultiClient: boolean;
     clients: ClientInfo[];
   }) => void;
@@ -85,6 +87,9 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [useBespoke, setUseBespoke] = useState(false);
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | undefined>();
+  const [dealExpiry, setDealExpiry] = useState(
+    addDays(new Date(), 14).toISOString().slice(0, 10)
+  );
   const [isMultiClient, setIsMultiClient] = useState(false);
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +137,28 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     !!amount &&
     !isNaN(Number(amount.replace(/,/g, ''))) &&
     Number(amount.replace(/,/g, '')) > 0;
+
+
+  const paymentInfoWrapper = mergeStyles({
+    minHeight: 32,
+    marginTop: 4,
+    marginBottom: 4,
+  });
+
+  const paymentInfoClass = (show: boolean) =>
+    mergeStyles({
+      maxHeight: show ? 32 : 0,
+      opacity: show ? 1 : 0,
+      overflow: 'hidden',
+      transition: 'max-height 0.2s ease, opacity 0.2s ease',
+      borderLeft: `4px solid ${colours.cta}`,
+      padding: show ? '6px 8px' : '0 8px',
+      background: isDarkMode ? colours.dark.cardBackground : colours.grey,
+      color: isDarkMode ? colours.dark.text : colours.light.text,
+      fontSize: 13,
+    });
+
+
 
   // Format on blur, accept number while typing
   const handleAmountChange = (_: any, val?: string) => {
@@ -183,7 +210,13 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
       return;
     }
     setError(null);
-    onSubmit({ serviceDescription, amount: num, isMultiClient, clients });
+    onSubmit({
+      serviceDescription,
+      amount: num,
+      dealExpiry,
+      isMultiClient,
+      clients,
+    });
   };
 
   const labelStyle = mergeStyles({
@@ -200,10 +233,13 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
 
   const intakeHeader = mergeStyles({
     background: colours.darkBlue,
-    color: '#fff',
-    padding: '4px 8px',
+    color: "#fff",
+    padding: "4px 8px",
     fontWeight: 600,
     fontSize: 13,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
   });
 
   // Input fields for client details have a subtle left accent using the
@@ -368,57 +404,50 @@ const toggleHalf = (selected: boolean) =>
         </div>
       </Stack>
 
-      {/* Amount */}
-      <div>
+      {/* Amount and Expiry */}
+      <Stack horizontal tokens={{ childrenGap: 10 }}>
         <Stack styles={{ root: { width: '50%' } }}>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
-          <div className={amountContainerStyle}>
-            <span className={prefixStyle}>£</span>
+            <div className={amountContainerStyle}>
+              <span className={prefixStyle}>£</span>
+              <TextField
+                required
+                type="text"
+                value={amount}
+                onChange={handleAmountChange}
+                onBlur={handleAmountBlur}
+                styles={{
+                  root: { flexGrow: 1 },
+                  fieldGroup: amountInputStyle(true),
+                }}
+                errorMessage={amountError}
+                inputMode="decimal"
+              />
+            </div>
+          </div>
+
+          {/* Tooltip-like info below the field */}
+          <div className={paymentInfoWrapper}>
+            <div className={paymentInfoClass(showPaymentInfo)}>
+                {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
+                {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
+            </div>
+          </div>
+        </Stack>
+
+        <Stack styles={{ root: { width: '50%' } }}>
+          <div className={intakeContainer}>
+            <div className={intakeHeader}>Deal Expiry</div>
             <TextField
-              required
-              type="text"
-              value={amount}
-              onChange={handleAmountChange}
-              onBlur={handleAmountBlur}
-              styles={{
-                root: { flexGrow: 1 },
-                fieldGroup: amountInputStyle(true),
-              }}
-              errorMessage={amountError}
-              inputMode="decimal"
+              type="date"
+              value={dealExpiry}
+              onChange={(_, v) => setDealExpiry(v || '')}
+              styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
             />
           </div>
-        </div>
-
-        {/* Tooltip-like info below the field */}
-        {!amountError &&
-          !!amount &&
-          !isNaN(Number(amount.replace(/,/g, ''))) &&
-          Number(amount.replace(/,/g, '')) > 0 && (
-            <Text
-              variant="small"
-              styles={{
-                root: {
-                  color: colours.greyText,
-                  marginTop: 4,
-                  marginLeft: 2,
-                  padding: '4px 0 0 2px',
-                  background: isDarkMode
-                    ? colours.dark.cardBackground
-                    : colours.light.cardBackground,
-                  borderRadius: 4,
-                  display: 'inline-block',
-                  fontSize: 13,
-                },
-              }}
-            >
-              {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
-              {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
-            </Text>
-          )}
         </Stack>
-      </div>
+      </Stack>
 
       <Stack>
         <div ref={toggleRef} className={toggleContainer} aria-label="Select ID type">

@@ -15,8 +15,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "typeRoots": ["node_modules/@types"],
-    "types": ["microsoftteams"]  // Removed "@microsoft/teams-js"
+    "typeRoots": ["node_modules/@types"]
   },
   "include": ["src"]
 }

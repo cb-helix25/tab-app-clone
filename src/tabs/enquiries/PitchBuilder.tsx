@@ -722,12 +722,19 @@ Kind Regards,<br>
     }
   }
 
-  async function handleDealFormSubmit(data: { serviceDescription: string; amount: number; isMultiClient: boolean; clients: { firstName: string; lastName: string; email: string; }[] }) {
+  async function handleDealFormSubmit(data: {
+    serviceDescription: string;
+    amount: number;
+    dealExpiry: string;
+    isMultiClient: boolean;
+    clients: { firstName: string; lastName: string; email: string }[];
+  }) {
     try {
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
       const payload = {
         serviceDescription: data.serviceDescription,
         amount: data.amount,
+        dealExpiry: data.dealExpiry,
         areaOfWork: enquiry.Area_of_Work,
         prospectId: enquiry.ID,
         pitchedBy: userInitials,
