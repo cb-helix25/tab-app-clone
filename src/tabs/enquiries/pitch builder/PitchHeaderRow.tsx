@@ -134,8 +134,9 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const updateNotesSpacing = () => {
     if (subjectRef.current) {
-      const subjectTop = subjectRef.current.getBoundingClientRect().top;
-      const spacing = Math.max(toggleTop - subjectTop, 0);
+    const rect = subjectRef.current.getBoundingClientRect();
+    const subjectBottom = rect.top + rect.height + window.scrollY; // match coordinate system
+    const spacing = Math.max(toggleTop - subjectBottom, 0);
       setNotesSpacing(spacing);
     }
   };
@@ -258,7 +259,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </Stack>
         {/* Row 3: Enquiry Notes */}
         {enquiry.Initial_first_call_notes && (
-          <Stack style={{ marginTop: notesSpacing }}>
+          <Stack style={{ marginTop: notesSpacing, transition: 'margin 0.2s ease' }}>
             <div className={enquiryNotesContainer}>
               <div className={enquiryNotesHeader}>Enquiry Notes</div>
               <div className={enquiryNotesContent}>

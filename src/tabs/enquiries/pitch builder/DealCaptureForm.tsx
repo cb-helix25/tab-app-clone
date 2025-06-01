@@ -103,7 +103,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   // changes and whenever the window resizes.
   const updateToggleTop = () => {
     if (toggleRef.current) {
-      onToggleTopChange?.(toggleRef.current.getBoundingClientRect().top);
+const rect = toggleRef.current.getBoundingClientRect();
+onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     }
   };
 
@@ -212,7 +213,7 @@ const toggleContainer = mergeStyles({
   borderRadius: 4,
   overflow: 'hidden',
   cursor: 'pointer',
-  width: 'fit-content',
+  width: '100%',
   marginTop: 8,
   marginBottom: 8,
   height: '100%', // allow stretching in parent flex row
@@ -222,6 +223,7 @@ const toggleContainer = mergeStyles({
 const toggleHalf = (selected: boolean) =>
   mergeStyles({
     padding: '10px 16px',
+    flex: 1,
     height: '100%',
     backgroundColor: selected
       ? colours.darkBlue
