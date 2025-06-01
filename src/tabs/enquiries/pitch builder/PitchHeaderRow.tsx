@@ -68,7 +68,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const enquiryNotesContainer = mergeStyles({
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,
+    borderRadius: 0,
     overflow: "hidden",
   });
 

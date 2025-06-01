@@ -227,7 +227,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
 
   const intakeContainer = mergeStyles({
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,
+    borderRadius: 0,
     overflow: 'hidden',
   });
 
@@ -247,7 +247,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
   // full header bar.
   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
     borderLeft: `4px solid ${colours.darkBlue}`,
-    borderRadius: 4,
+    borderRadius: 0,
   });
 
 
@@ -410,7 +410,7 @@ const toggleHalf = (selected: boolean) =>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
             <div className={amountContainerStyle}>
-              <span className={prefixStyle}>£</span>
+              <span className={mergeStyles(prefixStyle, { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 })}>£</span>
               <TextField
                 required
                 type="text"
@@ -419,7 +419,7 @@ const toggleHalf = (selected: boolean) =>
                 onBlur={handleAmountBlur}
                 styles={{
                   root: { flexGrow: 1 },
-                  fieldGroup: amountInputStyle(true),
+                  fieldGroup: [amountInputStyle(true), { borderRadius: 0 }],
                 }}
                 errorMessage={amountError}
                 inputMode="decimal"
