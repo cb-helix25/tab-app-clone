@@ -74,7 +74,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   });
 
   const enquiryNotesContent = mergeStyles({
-
     background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: 12,
     color: colours.darkBlue,
@@ -133,13 +132,22 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     }
   }, [subject]);
 
-  useLayoutEffect(() => {
+  const updateNotesSpacing = () => {
     if (subjectRef.current) {
       const subjectTop = subjectRef.current.getBoundingClientRect().top;
       const spacing = Math.max(toggleTop - subjectTop, 0);
       setNotesSpacing(spacing);
     }
+  };
+
+  useLayoutEffect(() => {
+    updateNotesSpacing();
   }, [toggleTop, subject, rowSpacing, showCcBcc]);
+
+  useLayoutEffect(() => {
+    window.addEventListener("resize", updateNotesSpacing);
+    return () => window.removeEventListener("resize", updateNotesSpacing);
+  }, []);
 
   const sideContainerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,

@@ -98,11 +98,23 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     }
   }, [onDescriptionHeightChange, useBespoke, serviceDescription, selectedOption]);
 
-  useLayoutEffect(() => {
+  // Provide the latest position of the multi client toggle to the parent so that
+  // the enquiry notes container can align with it. Recalculate on relevant state
+  // changes and whenever the window resizes.
+  const updateToggleTop = () => {
     if (toggleRef.current) {
       onToggleTopChange?.(toggleRef.current.getBoundingClientRect().top);
     }
-  }, [onToggleTopChange, isMultiClient, amount, amountError, serviceDescription, selectedOption]);
+  };
+
+  useLayoutEffect(() => {
+    updateToggleTop();
+  }, [isMultiClient, amount, amountError, serviceDescription, selectedOption, clients.length]);
+
+  useLayoutEffect(() => {
+    window.addEventListener("resize", updateToggleTop);
+    return () => window.removeEventListener("resize", updateToggleTop);
+  }, []);
 
   const vat = amount ? parseFloat(amount.replace(/,/g, '')) * 0.2 : 0;
   const total = amount ? parseFloat(amount.replace(/,/g, '')) + vat : 0;
