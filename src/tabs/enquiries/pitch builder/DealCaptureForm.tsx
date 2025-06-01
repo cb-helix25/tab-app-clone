@@ -53,7 +53,7 @@ interface DealCaptureFormProps {
   selectedOption: IDropdownOption | undefined;
   setSelectedOption: (opt: IDropdownOption | undefined) => void;
   onDescriptionHeightChange?: (height: number) => void;
-  onAmountHeightChange?: (height: number) => void;
+  onToggleTopChange?: (top: number) => void;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -84,7 +84,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   selectedOption,
   setSelectedOption,
   onDescriptionHeightChange,
-  onAmountHeightChange,
+  onToggleTopChange,
 }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
@@ -94,7 +94,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
   const descRef = useRef<HTMLDivElement>(null);
-  const amountRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLDivElement>(null);
 
   // Service description area height callback for parent
   useLayoutEffect(() => {
@@ -104,10 +104,10 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   }, [onDescriptionHeightChange, useBespoke, serviceDescription, selectedOption]);
 
   useLayoutEffect(() => {
-    if (amountRef.current) {
-      onAmountHeightChange?.(amountRef.current.getBoundingClientRect().height);
+    if (toggleRef.current) {
+      onToggleTopChange?.(toggleRef.current.getBoundingClientRect().top);
     }
-  }, [onAmountHeightChange, amount, amountError]);
+  }, [onToggleTopChange, isMultiClient, amount, amountError, serviceDescription, selectedOption]);
 
   const vat = amount ? parseFloat(amount.replace(/,/g, '')) * 0.2 : 0;
   const total = amount ? parseFloat(amount.replace(/,/g, '')) + vat : 0;
@@ -364,7 +364,7 @@ const toggleHalf = (selected: boolean) =>
       </Stack>
 
       {/* Amount */}
-      <div ref={amountRef}>
+      <div>
         <Stack styles={{ root: { width: '50%' } }}>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
@@ -415,20 +415,20 @@ const toggleHalf = (selected: boolean) =>
       </div>
 
       <Stack>
-        <div className={toggleContainer} aria-label="Select ID type">
+        <div ref={toggleRef} className={toggleContainer} aria-label="Select ID type">
           <div
             className={toggleHalf(!isMultiClient)}
             onClick={() => setIsMultiClient(false)}
           >
             <Icon iconName="Contact" styles={{ root: { marginRight: 6 } }} />
-            Single
+            Individual
           </div>
           <div
             className={toggleHalf(isMultiClient)}
             onClick={() => setIsMultiClient(true)}
           >
             <Icon iconName="ContactGroup" styles={{ root: { marginRight: 6 } }} />
-            Multi
+            Multiple Clients
           </div>
         </div>
       </Stack>

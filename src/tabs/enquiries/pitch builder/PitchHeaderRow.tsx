@@ -104,9 +104,9 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
   const [subjectHeight, setSubjectHeight] = useState(0);
-  const [amountHeight, setAmountHeight] = useState(0);
   const [rowSpacing, setRowSpacing] = useState(0);
   const [notesSpacing, setNotesSpacing] = useState(0);
+  const [toggleTop, setToggleTop] = useState(0);
 
   useLayoutEffect(() => {
     if (toCcBccRef.current) {
@@ -127,9 +127,12 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   }, [subject]);
 
   useLayoutEffect(() => {
-    const spacing = Math.max(amountHeight - subjectHeight + 14, 0);
-    setNotesSpacing(spacing);
-  }, [amountHeight, subjectHeight]);
+    if (subjectRef.current) {
+      const subjectTop = subjectRef.current.getBoundingClientRect().top;
+      const spacing = Math.max(toggleTop - subjectTop, 0);
+      setNotesSpacing(spacing);
+    }
+  }, [toggleTop, subject, rowSpacing, showCcBcc]);
 
   return (
     <Stack horizontal tokens={{ childrenGap: 16 }} verticalAlign="start" styles={{
@@ -253,7 +256,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           selectedOption={selectedOption}
           setSelectedOption={setSelectedOption}
           onDescriptionHeightChange={setDescHeight}
-          onAmountHeightChange={setAmountHeight}
+          onToggleTopChange={setToggleTop}
         />
       </Stack>
     </Stack>
