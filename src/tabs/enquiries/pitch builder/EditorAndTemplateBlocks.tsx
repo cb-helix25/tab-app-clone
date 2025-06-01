@@ -55,6 +55,7 @@ interface EditorAndTemplateBlocksProps {
   templateBlocks: TemplateBlock[];
   selectedTemplateOptions: { [key: string]: string | string[] };
   insertedBlocks: { [key: string]: boolean };
+  editedBlocks: { [key: string]: boolean };
   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
   handleSingleSelectChange: (blockTitle: string, selectedOption: string) => void;
   insertTemplateBlock: (
@@ -82,6 +83,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     templateBlocks,
     selectedTemplateOptions,
     insertedBlocks,
+    editedBlocks,
     handleMultiSelectChange,
     handleSingleSelectChange,
     insertTemplateBlock,
@@ -431,6 +433,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                 contentEditable
                 ref={bodyEditorRef}
                 onBlur={handleBlur}
+                onInput={handleBlur}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
                 style={{
@@ -520,14 +523,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                       root: {
                         cursor: 'pointer',
                         padding: '12px 16px',
-                        borderLeft: insertedBlocks[block.title]
-                          ? `3px solid ${colours.green}`
-                          : '3px solid transparent',
+                        borderLeft: 'none',
                         backgroundColor: insertedBlocks[block.title]
-                          ? isDarkMode
-                            ? 'rgba(16,124,16,0.1)'
-                            : '#f2faf2'
+                          ? editedBlocks[block.title]
+                            ? isDarkMode
+                              ? 'rgba(16,124,16,0.1)'
+                              : '#eafaea'
+                            : colours.highlightYellow
                           : 'transparent',
+                        borderTopLeftRadius: 8,
+                        borderTopRightRadius: 8,
+                        borderBottomLeftRadius: isCollapsed ? 8 : 0,
+                        borderBottomRightRadius: isCollapsed ? 8 : 0,
                       },
                     }}
                     onClick={(e) => {
@@ -556,7 +563,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                     >
                       {block.title}
                     </Text>
-                    {insertedBlocks[block.title] && (
+                    {editedBlocks[block.title] && (
                       <Icon
                         iconName="CheckMark"
                         styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }}
@@ -596,6 +603,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                             isDarkMode ? colours.dark.border : colours.light.border
                           }`,
                           animation: 'fadeIn .18s',
+                          borderBottomLeftRadius: 8,
+                          borderBottomRightRadius: 8,
                         },
                       }}
                     >

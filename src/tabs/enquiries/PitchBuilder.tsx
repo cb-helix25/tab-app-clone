@@ -85,24 +85,18 @@ function handleAmountBlur() {
 
 // Move highlightBlock inside the component
 function highlightBlock(blockTitle: string, highlight: boolean) {
-  const blockElement = document.getElementById(`template-block-${blockTitle.replace(/\s+/g, '-')}`);
+  const blockElement = document.getElementById(
+    `template-block-${blockTitle.replace(/\s+/g, '-')}`
+  );
   if (blockElement) {
-    blockElement.style.transition = 'background-color 0.2s, border-left 0.2s';
-    blockElement.style.backgroundColor = highlight
-      ? isDarkMode
-        ? 'rgba(16,124,16,0.25)'
-        : '#e6f6e6'
-      : insertedBlocks[blockTitle]
-      ? isDarkMode
-        ? 'rgba(16,124,16,0.15)'
-        : '#eafaea'
-      : isDarkMode
-      ? colours.dark.cardBackground
-      : colours.light.cardBackground;
-    blockElement.style.borderLeft =
+    blockElement.style.transition = 'background-color 0.2s';
+    blockElement.style.backgroundColor =
       highlight || insertedBlocks[blockTitle]
-        ? `3px solid ${colours.green}`
-        : '3px solid transparent';
+        ? colours.highlightYellow
+        : isDarkMode
+        ? colours.dark.cardBackground
+        : colours.light.cardBackground;
+    blockElement.style.borderLeft = 'none';
   }
   const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
   insertedSpans.forEach(span => {
@@ -201,6 +195,10 @@ Kind Regards,<br>
 
   // Tracks which blocks have been inserted
   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
+
+  const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
+  const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
+
 
   // For the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
@@ -315,7 +313,7 @@ Kind Regards,<br>
     }
     const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:2px;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
-    const style = `background-color: #eafaea; padding: 0 3px; display: block;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
     // Add inline style to <p> tags to remove bottom margin
     const styledInnerHTML = innerHTML.replace(
@@ -347,6 +345,12 @@ Kind Regards,<br>
     });
   
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: true }));
+
+    setOriginalBlockContent((prev) => ({
+      ...prev,
+      [block.title]: `${styledInnerHTML}${labelHTML}`,
+    }));
+    setEditedBlocks((prev) => ({ ...prev, [block.title]: false }));
   
     if (shouldFocus) {
       setTimeout(() => {
@@ -694,6 +698,19 @@ Kind Regards,<br>
   function handleBlur() {
     if (bodyEditorRef.current) {
       setBody(bodyEditorRef.current.innerHTML);
+      Object.keys(insertedBlocks).forEach((title) => {
+        if (insertedBlocks[title]) {
+          const span = bodyEditorRef.current!.querySelector(
+            `span[data-inserted="${title}"]`
+          );
+          if (span && originalBlockContent[title] !== undefined) {
+            setEditedBlocks((prev) => ({
+              ...prev,
+              [title]: span.innerHTML !== originalBlockContent[title],
+            }));
+          }
+        }
+      });
     }
   }
 
@@ -708,7 +725,18 @@ Kind Regards,<br>
       [block.title]: block.isMultiSelect ? [] : '',
     }));
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: false }));
-  
+
+    setEditedBlocks((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
+    setOriginalBlockContent((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
+
     if (bodyEditorRef.current) {
       // Build a regex to capture everything between the markers.
       const regex = new RegExp(
@@ -730,6 +758,8 @@ Kind Regards,<br>
     const selectedOptions = selectedTemplateOptions[block.title];
     const isInserted = insertedBlocks[block.title] || false;
 
+    const isEdited = editedBlocks[block.title] || false;
+
     if (
       !selectedOptions ||
       (block.isMultiSelect &&
@@ -749,7 +779,7 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '10px',
             border: isInserted
-              ? `1px solid ${colours.green}`
+              ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '10px',
             borderRadius: '4px',
@@ -791,7 +821,7 @@ Kind Regards,<br>
           className={mergeStyles({
             marginTop: '10px',
             border: isInserted
-              ? `1px solid ${colours.green}`
+              ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '10px',
             borderRadius: '4px',
@@ -1045,9 +1075,11 @@ Kind Regards,<br>
     if (blockElement) {
       blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       blockElement.style.transition = 'background-color 0.5s';
-      blockElement.style.backgroundColor = isDarkMode ? 'rgba(16,124,16,0.25)' : '#e6f6e6';
+      blockElement.style.backgroundColor = colours.highlightYellow;
       setTimeout(() => {
-        blockElement.style.backgroundColor = isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground;
+        blockElement.style.backgroundColor = isDarkMode
+          ? colours.dark.cardBackground
+          : colours.light.cardBackground;
       }, 1000);
     }
   }
@@ -1105,6 +1137,7 @@ Kind Regards,<br>
         templateBlocks={templateBlocks}
         selectedTemplateOptions={selectedTemplateOptions}
         insertedBlocks={insertedBlocks}
+        editedBlocks={editedBlocks}
         handleMultiSelectChange={handleMultiSelectChange}
         handleSingleSelectChange={handleSingleSelectChange}
         insertTemplateBlock={insertTemplateBlock}
