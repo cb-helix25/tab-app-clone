@@ -93,7 +93,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   useLayoutEffect(() => {
     if (toCcBccRef.current) {
       const leftHeight = toCcBccRef.current.getBoundingClientRect().height;
-      setRowSpacing(descHeight > leftHeight ? descHeight - leftHeight : 0);
+setRowSpacing(descHeight > leftHeight ? (descHeight - leftHeight + 14) : 0);
+
     }
   }, [descHeight, showCcBcc]);
 

@@ -66,6 +66,7 @@ interface EditorAndTemplateBlocksProps {
   renderPreview: (block: TemplateBlock) => React.ReactNode;
   applyFormat: (command: string, value?: string) => void;
   saveSelection: () => void;
+  handleInput: () => void;
   handleBlur: () => void;
   handleClearBlock: (block: TemplateBlock) => void;
   bodyEditorRef: RefObject<HTMLDivElement>;
@@ -91,6 +92,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     renderPreview,
     applyFormat,
     saveSelection,
+    handleInput,
     handleBlur,
     handleClearBlock,
     bodyEditorRef,
@@ -428,6 +430,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                 contentEditable
                 ref={bodyEditorRef}
                 onBlur={handleBlur}
+                onInput={handleInput}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
                 style={{

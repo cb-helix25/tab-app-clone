@@ -830,6 +830,52 @@ Kind Regards,<br>
     }
   }
 
+function handleInput() {
+    if (!bodyEditorRef.current) return;
+    setBody(bodyEditorRef.current.innerHTML);
+
+    const updated: { [key: string]: boolean } = {};
+
+    Object.keys(insertedBlocks).forEach((title) => {
+      if (!insertedBlocks[title]) return;
+
+      const span = bodyEditorRef.current!.querySelector(
+        `span[data-inserted="${title}"]`
+      ) as HTMLElement | null;
+
+      if (span && originalBlockContent[title] !== undefined) {
+        const changed = isContentChanged(span.innerHTML, originalBlockContent[title]);
+        updated[title] = changed;
+
+        const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+        span.style.backgroundColor = lockedBlocks[title]
+          ? lockedBg
+          : changed
+          ? colours.highlightBlue
+          : colours.highlightYellow;
+
+        const headerElement = document.getElementById(
+          `template-block-header-${title.replace(/\s+/g, '-')}`
+        );
+        if (headerElement) {
+          let bg = 'transparent';
+          if (lockedBlocks[title]) {
+            bg = lockedBg;
+          } else if (changed) {
+            bg = colours.highlightBlue;
+          } else if (insertedBlocks[title]) {
+            bg = colours.highlightYellow;
+          }
+          headerElement.style.backgroundColor = bg;
+        }
+      }
+    });
+
+    if (Object.keys(updated).length > 0) {
+      setEditedBlocks((prev) => ({ ...prev, ...updated }));
+    }
+  }
+
   function handleBlur() {
     if (bodyEditorRef.current) {
       setBody(bodyEditorRef.current.innerHTML);
@@ -1391,6 +1437,7 @@ function handleScrollToBlock(blockTitle: string) {
         renderPreview={renderPreview}
         applyFormat={applyFormat}
         saveSelection={saveSelection}
+        handleInput={handleInput}
         handleBlur={handleBlur}
         handleClearBlock={handleClearBlock}
         bodyEditorRef={bodyEditorRef}
