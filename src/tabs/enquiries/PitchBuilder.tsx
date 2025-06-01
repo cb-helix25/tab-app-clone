@@ -958,7 +958,6 @@ function handleInput() {
       delete copy[block.title];
       return copy;
     });
-    highlightBlock(block.title, false);
 
     setEditedBlocks((prev) => {
       const copy = { ...prev };
@@ -978,11 +977,16 @@ function handleInput() {
         'g'
       );
       // Build the original placeholder markup.
-      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.highlightBlue}; padding: 0 3px;">${block.placeholder}</span>`;
+      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 0 3px;">${block.placeholder}</span>`;
       
       // Replace the entire wrapped block with the placeholder.
       setBody((prevBody) => prevBody.replace(regex, placeholderHTML));
+      // Once the body and state update, clear any highlight from the block
+      setTimeout(() => highlightBlock(block.title, false), 0);
     }
+
+    // Defer highlight update until the DOM reflects the cleared block
+    setTimeout(() => highlightBlock(block.title, false), 0);
   }
 
   /**

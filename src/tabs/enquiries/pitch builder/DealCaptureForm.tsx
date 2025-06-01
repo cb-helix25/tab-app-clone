@@ -315,7 +315,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
           value={amount}
           onChange={handleAmountChange}
           onBlur={handleAmountBlur}
-          styles={{ fieldGroup: inputFieldStyle }}
+          styles={{ fieldGroup: inputFieldStyle, prefix: { paddingBottom: 0 } }}
           errorMessage={amountError}
           inputMode="decimal"
         />

@@ -149,7 +149,7 @@ export const sharedDropdownStyles = (isDarkMode: boolean): Partial<IDropdownStyl
   title: {
     backgroundColor: 'transparent',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    fontSize: '14px',
+    fontSize: '13px',
     height: '32px',
     paddingLeft: '12px',
     paddingRight: '36px',
@@ -218,6 +218,7 @@ export const sharedEditorStyle = (isDarkMode: boolean) =>
     border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
     color: isDarkMode ? colours.dark.text : colours.light.text,
+    fontSize: '14px',
     overflowY: 'auto',
     whiteSpace: 'pre-wrap',
     outline: 'none',
@@ -286,7 +287,7 @@ export const sharedOptionsDropdownStyles = (isDarkMode: boolean): Partial<IDropd
   title: {
     backgroundColor: 'transparent',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    fontSize: '14px',
+    fontSize: '13px',
     height: '32px',
     paddingLeft: '12px',
     paddingRight: '36px',

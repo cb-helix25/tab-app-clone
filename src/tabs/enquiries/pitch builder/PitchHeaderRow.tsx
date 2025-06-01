@@ -93,10 +93,11 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   useLayoutEffect(() => {
     if (toCcBccRef.current) {
       const leftHeight = toCcBccRef.current.getBoundingClientRect().height;
-      // Align the "Subject" field with the "Amount" field. The left column
-      // uses an 8px gap while the deal form on the right uses a 14px gap, so
-      // adjust the spacing accordingly.
-      const spacing = descHeight > leftHeight ? descHeight - leftHeight + 6 : 0;
+      // Align the "Subject" field with the "Amount" field. The amount field is
+      // spaced 14px below the service description while the left column uses an
+      // 8px gap. Always offset by this 6px difference and account for any extra
+      // height from the description box.
+      const spacing = Math.max(descHeight - leftHeight, 0) + 6;
       setRowSpacing(spacing);
     }
   }, [descHeight, showCcBcc]);

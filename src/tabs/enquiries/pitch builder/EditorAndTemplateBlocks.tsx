@@ -655,11 +655,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                       }}
                     >
                       <Text
-                        variant="small"
                         styles={{
                           root: {
                             color: isDarkMode ? colours.dark.text : colours.light.text,
                             paddingTop: 8,
+                            fontSize: '13px',
                           },
                         }}
                       >
