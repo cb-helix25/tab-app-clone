@@ -431,7 +431,7 @@ Kind Regards,<br>
     }
     const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:2px;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 1px 3px; display: block;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
     const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;

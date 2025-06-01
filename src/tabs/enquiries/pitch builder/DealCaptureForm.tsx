@@ -167,24 +167,20 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     overflow: 'hidden',
     width: 'fit-content',
     cursor: 'pointer',
-    marginTop: 8,
+    marginTop: 2,
     marginBottom: 8,
   });
 
-  const toggleHalf = (selected: boolean) =>
-    mergeStyles({
-      padding: '6px 14px',
-      backgroundColor: selected
-        ? '#eef4ff'
-        : isDarkMode
-        ? colours.dark.background
-        : colours.light.background,
-      color: isDarkMode ? colours.dark.text : colours.light.text,
-      fontWeight: selected ? 600 : 400,
-      fontSize: 13,
-      userSelect: 'none',
-      transition: 'background-color 0.3s, color 0.3s',
-    });
+const toggleHalf = (selected: boolean) =>
+  mergeStyles({
+    padding: '12px 14px',
+    backgroundColor: selected ? '#eef4ff' : '#fff', // <- this line!
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    fontWeight: selected ? 600 : 400,
+    fontSize: 13,
+    userSelect: 'none',
+    transition: 'background-color 0.3s, color 0.3s',
+  });
 
   const addClientStyle = mergeStyles({
     display: 'inline-flex',
