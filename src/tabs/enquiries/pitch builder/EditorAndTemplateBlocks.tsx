@@ -486,11 +486,25 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
       </Stack>
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Label className={labelStyle}>Template Blocks</Label>
+        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+          <Label className={labelStyle}>Template Blocks</Label>
+          <DefaultButton
+            text="Expand All"
+            onClick={expandAll}
+            styles={sharedDefaultButtonStyles}
+          />
+          <DefaultButton
+            text="Collapse All"
+            onClick={collapseAll}
+            styles={sharedDefaultButtonStyles}
+          />
+        </Stack>
         <Stack className={templatesContainerStyle}>
           <Stack className={templatesGridStyle}>
             {templateBlocks.map((block) => {
               const isCollapsed = collapsedBlocks[block.title];
+              const isInserted = insertedBlocks[block.title] || false;
+              const isEdited = editedBlocks[block.title] || false;
               return (
                 <Stack
                   key={block.title}
@@ -651,7 +665,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                             }
                           }
                         }}
-                        selectedKeys={
+                       selectedKeys={
                           block.isMultiSelect
                             ? Array.isArray(selectedTemplateOptions[block.title])
                               ? (selectedTemplateOptions[block.title] as string[])
@@ -659,11 +673,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                             : typeof selectedTemplateOptions[block.title] === 'string'
                             ? [selectedTemplateOptions[block.title] as string]
                             : []
-                        }
-                        styles={sharedOptionsDropdownStyles(isDarkMode)}
-                        ariaLabel={`Select options for ${block.title}`}
-                        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-                        onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
+                       }
+                       onRenderTitle={(opts, defaultRender) => {
+                         if ((!opts || opts.length === 0) && isInserted && isEdited) {
+                           return <span>Customised</span>;
+                         }
+                         return defaultRender ? defaultRender(opts) : null;
+                       }}
+                       styles={sharedOptionsDropdownStyles(isDarkMode)}
+                       ariaLabel={`Select options for ${block.title}`}
+                       onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+                       onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
                       />
                       {renderPreview(block)}
                     </Stack>

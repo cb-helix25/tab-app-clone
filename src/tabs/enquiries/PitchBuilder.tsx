@@ -200,6 +200,12 @@ Kind Regards,<br>
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
 
+  useEffect(() => {
+    Object.keys(insertedBlocks).forEach(title => {
+      highlightBlock(title, false);
+    });
+  }, [insertedBlocks, isDarkMode]);
+
 
   // For the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
@@ -786,6 +792,7 @@ Kind Regards,<br>
       [block.title]: block.isMultiSelect ? [] : '',
     }));
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: false }));
+    highlightBlock(block.title, false);
 
     setEditedBlocks((prev) => {
       const copy = { ...prev };
