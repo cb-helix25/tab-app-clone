@@ -275,12 +275,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     setBody(bodyEditorRef.current.innerHTML);
   };
 
-  React.useEffect(() => {
-    if (bodyEditorRef.current && bodyEditorRef.current.innerHTML !== body) {
-      bodyEditorRef.current.innerHTML = body;
-    }
-  }, [body, bodyEditorRef]);
-
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
@@ -432,7 +426,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                 contentEditable
                 ref={bodyEditorRef}
                 onBlur={handleBlur}
-                onInput={handleBlur}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
                 style={{
@@ -493,13 +486,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
           <Label className={labelStyle}>Template Blocks</Label>
           <Stack horizontal tokens={{ childrenGap: 12 }}>
             <span
-              style={{ color: colours.cta, cursor: 'pointer' }}
+              style={{ color: colours.highlight, cursor: 'pointer' }}
               onClick={expandAll}
             >
               Expand All
             </span>
             <span
-              style={{ color: colours.cta, cursor: 'pointer' }}
+              style={{ color: colours.highlight, cursor: 'pointer' }}
               onClick={collapseAll}
             >
               Collapse All
