@@ -130,7 +130,16 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
   );
   insertedSpans.forEach((span) => {
     if (span instanceof HTMLElement) {
-      span.style.transition = 'outline 0.2s';
+      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+      const blueBg = colours.highlightBlue;
+      span.style.transition = 'background-color 0.2s, outline 0.2s';
+      let bg = colours.highlightYellow;
+      if (lockedBlocks[blockTitle]) {
+        bg = lockedBg;
+      } else if (editedBlocks[blockTitle]) {
+        bg = blueBg;
+      }
+      span.style.backgroundColor = bg;
       span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
     }
   });
@@ -877,13 +886,6 @@ Kind Regards,<br>
               : changed
               ? colours.highlightBlue
               : colours.highlightYellow;
-            if (changed) {
-              const block = templateBlocks.find((b) => b.title === title);
-              setSelectedTemplateOptions((prev) => ({
-                ...prev,
-                [title]: block?.isMultiSelect ? [] : '',
-              }));
-            }
           }
         }
       });

@@ -240,7 +240,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
       <Stack>
         <div ref={descRef}>
           {!useBespoke ? (
-            <>
+            <Stack tokens={{ childrenGap: 6 }}>
               <Dropdown
                 label="Service Description"
                 options={SERVICE_OPTIONS}
@@ -268,7 +268,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
               >
                 Use freehand description
               </span>
-            </>
+            </Stack>
           ) : (
             <Stack>
               <TextField
