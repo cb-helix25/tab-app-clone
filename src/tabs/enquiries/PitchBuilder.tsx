@@ -77,8 +77,9 @@ const SERVICE_OPTIONS: IDropdownOption[] = [
   { key: 'Other', text: 'Other (bespoke)' },
 ];
 
-const [serviceDescription, setServiceDescription] = useState<string>('');
-const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(undefined);
+const initialOption = SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work);
+const [serviceDescription, setServiceDescription] = useState<string>(initialOption?.text || '');
+const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(initialOption);
 const [amount, setAmount] = useState<string>('');
 function handleAmountChange(val?: string) {
   setAmount(val ?? '');

@@ -11,12 +11,10 @@ import {
   TooltipHost,
   Separator,
   Callout,
-  DefaultButton,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
-import { sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { leftoverPlaceholders } from './emailUtils';
 
 // Sticky toolbar CSS injection
@@ -167,7 +165,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
         ])
       )
     );
-  }, [templateBlocks, selectedTemplateOptions]);
+  }, [templateBlocks]);
 
   const templatesContainerStyle = mergeStyles({
     flex: '1 1 0',
@@ -486,18 +484,27 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
       </Stack>
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+        <Stack
+          horizontal
+          verticalAlign="center"
+          tokens={{ childrenGap: 8 }}
+          styles={{ root: { justifyContent: 'space-between' } }}
+        >
           <Label className={labelStyle}>Template Blocks</Label>
-          <DefaultButton
-            text="Expand All"
-            onClick={expandAll}
-            styles={sharedDefaultButtonStyles}
-          />
-          <DefaultButton
-            text="Collapse All"
-            onClick={collapseAll}
-            styles={sharedDefaultButtonStyles}
-          />
+          <Stack horizontal tokens={{ childrenGap: 12 }}>
+            <span
+              style={{ color: colours.cta, cursor: 'pointer' }}
+              onClick={expandAll}
+            >
+              Expand All
+            </span>
+            <span
+              style={{ color: colours.cta, cursor: 'pointer' }}
+              onClick={collapseAll}
+            >
+              Collapse All
+            </span>
+          </Stack>
         </Stack>
         <Stack className={templatesContainerStyle}>
           <Stack className={templatesGridStyle}>

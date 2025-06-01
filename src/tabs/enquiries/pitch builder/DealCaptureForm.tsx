@@ -38,6 +38,10 @@ interface DealCaptureFormProps {
   clientIds?: (string | number)[];
   onAmountChange?: (val: string) => void;
   onAmountBlur?: (val: string) => void;
+  serviceDescription: string;
+  setServiceDescription: (val: string) => void;
+  selectedOption: IDropdownOption | undefined;
+  setSelectedOption: (opt: IDropdownOption | undefined) => void;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -64,13 +68,13 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   clientIds,
   onAmountChange,
   onAmountBlur,
+  serviceDescription,
+  setServiceDescription,
+  selectedOption,
+  setSelectedOption,
 }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
-  const [serviceDescription, setServiceDescription] = useState(enquiry.Type_of_Work || '');
-  const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(
-    SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work)
-  );
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | undefined>();
   const [isMultiClient, setIsMultiClient] = useState(false);

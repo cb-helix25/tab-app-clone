@@ -156,6 +156,10 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           clientIds={clientIds}
           onAmountChange={handleAmountChange}
           onAmountBlur={handleAmountBlur}
+          serviceDescription={serviceDescription}
+          setServiceDescription={setServiceDescription}
+          selectedOption={selectedOption}
+          setSelectedOption={setSelectedOption}
         />
       </Stack>
     </Stack>

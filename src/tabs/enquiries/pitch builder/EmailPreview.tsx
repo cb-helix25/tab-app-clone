@@ -189,9 +189,6 @@ function formatCurrency(val?: string): string {
               ))}
             </Stack>
           )}
-          <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-            <strong>Key Contact:</strong> {to || enquiry.Point_of_Contact || 'N/A'}
-          </Text>
         </Stack>
 
         <Separator />
