@@ -287,22 +287,10 @@ Kind Regards,<br>
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    Object.keys(insertedBlocks).forEach((title) => {
-      highlightBlock(title, false);
+    templateBlocks.forEach(block => {
+      highlightBlock(block.title, false);
     });
-  }, [insertedBlocks, isDarkMode]);
-
-  useEffect(() => {
-    Object.keys(lockedBlocks).forEach(title => {
-      highlightBlock(title, false);
-    });
-  }, [lockedBlocks]);
-
-  useEffect(() => {
-    Object.keys(insertedBlocks).forEach((title) => {
-      highlightBlock(title, false);
-    });
-  }, [editedBlocks]);
+  }, [insertedBlocks, lockedBlocks, editedBlocks, isDarkMode]);
 
   // For the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
@@ -586,6 +574,9 @@ Kind Regards,<br>
     setErrorMessage('');
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
+    setLockedBlocks({});
+    setEditedBlocks({});
+    setOriginalBlockContent({});
     setIsDraftConfirmed(false); // **Reset confirmation state**
     setDealId(null);
     setClientIds([]);
