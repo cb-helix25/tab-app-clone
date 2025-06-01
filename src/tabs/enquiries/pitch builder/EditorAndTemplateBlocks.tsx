@@ -53,6 +53,7 @@ interface EditorAndTemplateBlocksProps {
   templateBlocks: TemplateBlock[];
   selectedTemplateOptions: { [key: string]: string | string[] };
   insertedBlocks: { [key: string]: boolean };
+  lockedBlocks: { [key: string]: boolean };
   editedBlocks: { [key: string]: boolean };
   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
   handleSingleSelectChange: (blockTitle: string, selectedOption: string) => void;
@@ -82,6 +83,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     templateBlocks,
     selectedTemplateOptions,
     insertedBlocks,
+    lockedBlocks,
     editedBlocks,
     handleMultiSelectChange,
     handleSingleSelectChange,
@@ -547,7 +549,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                         padding: '12px 16px',
                         borderLeft: 'none',
                         backgroundColor: insertedBlocks[block.title]
-                          ? editedBlocks[block.title]
+                          ? lockedBlocks[block.title] || editedBlocks[block.title]
                             ? isDarkMode
                               ? 'rgba(16,124,16,0.1)'
                               : '#eafaea'

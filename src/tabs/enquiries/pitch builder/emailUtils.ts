@@ -65,13 +65,18 @@ export function removeHighlightSpans(html: string): string {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
   const elements = tempDiv.querySelectorAll(
-    'span[data-placeholder], span[data-inserted], span[data-link]'
+    'span[data-placeholder], span[data-inserted], span[data-link], .lock-toggle'
   );
   elements.forEach((el) => {
+    if (el.classList.contains('lock-toggle')) {
+      el.remove();
+      return;
+    }
     el.removeAttribute('style');
     el.removeAttribute('data-placeholder');
     el.removeAttribute('data-inserted');
     el.removeAttribute('data-link');
+    el.removeAttribute('contenteditable');
   });
   const labels = tempDiv.querySelectorAll('.block-label');
   labels.forEach(el => el.remove());

@@ -225,7 +225,7 @@ export const sharedEditorStyle = (isDarkMode: boolean) =>
     selectors: {
       ':focus-visible': {
         border: `1px solid ${colours.cta}`,
-        boxShadow: `0 0 0 3px rgba(255, 0, 0, 0.2)`,
+        boxShadow: `inset 0 0 6px 3px ${colours.grey}`,
       },
       ':after': {
         content: '""',

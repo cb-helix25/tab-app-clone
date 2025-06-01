@@ -98,10 +98,13 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     `template-block-${blockTitle.replace(/\s+/g, '-')}`
   );
   if (blockElement) {
+    const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
     blockElement.style.transition = 'background-color 0.2s';
     blockElement.style.backgroundColor =
       highlight || insertedBlocks[blockTitle]
-        ? colours.highlightYellow
+        ? lockedBlocks[blockTitle]
+          ? lockedBg
+          : colours.highlightYellow
         : isDarkMode
         ? colours.dark.cardBackground
         : colours.light.cardBackground;
@@ -114,6 +117,49 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     el.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
   });
 }
+
+function toggleBlockLock(blockTitle: string) {
+  setLockedBlocks(prev => {
+    const locked = !prev[blockTitle];
+    const updated = { ...prev, [blockTitle]: locked };
+    const span = bodyEditorRef.current?.querySelector(
+      `span[data-inserted="${blockTitle}"]`
+    ) as HTMLElement | null;
+    if (span) {
+      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+      span.setAttribute('contenteditable', (!locked).toString());
+      span.style.backgroundColor = locked ? lockedBg : colours.highlightYellow;
+      const icon = span.querySelector('.lock-toggle') as HTMLElement | null;
+      if (icon) {
+        icon.textContent = locked ? '🔒' : '🔓';
+      }
+    }
+    return updated;
+  });
+}
+
+let lockTimer: number | null = null;
+function longLockStart(blockTitle: string) {
+  lockTimer = window.setTimeout(() => {
+    toggleBlockLock(blockTitle);
+  }, 600);
+}
+
+function longLockEnd() {
+  if (lockTimer) {
+    clearTimeout(lockTimer);
+    lockTimer = null;
+  }
+}
+
+useEffect(() => {
+  (window as any).toggleBlockLock = toggleBlockLock;
+  (window as any).highlightBlock = highlightBlock;
+  (window as any).longLockStart = longLockStart;
+  (window as any).longLockEnd = longLockEnd;
+}, []);
+
+
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -206,6 +252,8 @@ Kind Regards,<br>
   // Tracks which blocks have been inserted
   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
 
+  const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
+
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
 
@@ -214,6 +262,12 @@ Kind Regards,<br>
       highlightBlock(title, false);
     });
   }, [insertedBlocks, isDarkMode]);
+
+  useEffect(() => {
+    Object.keys(lockedBlocks).forEach(title => {
+      highlightBlock(title, false);
+    });
+  }, [lockedBlocks]);
 
 
   // For the body editor
@@ -255,7 +309,9 @@ Kind Regards,<br>
   }
 
   function isContentChanged(current: string, original: string): boolean {
-    return normalizeHtml(current) !== normalizeHtml(original);
+    const clean = (html: string) =>
+      html.replace(/<span class="lock-toggle"[^>]*>.*?<\/span>/, '');
+    return normalizeHtml(clean(current)) !== normalizeHtml(clean(original));
   }
 
 
@@ -343,12 +399,13 @@ Kind Regards,<br>
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 0 3px; display: block;`;
     const innerHTML = cleanTemplateString(replacementText);
-    // Add inline style to <p> tags to remove bottom margin
+    const lockButtonStyle = `float:right;margin-left:4px;padding:0 4px;border-radius:6px;background:${colours.grey};cursor:pointer;font-size:10px;user-select:none;`;
+    const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">🔓</span>`;    // Add inline style to <p> tags to remove bottom margin
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin-bottom: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}">${styledInnerHTML}${labelHTML}</${containerTag}>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true)" onmouseout="window.highlightBlock('${block.title}', false)">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -381,6 +438,7 @@ Kind Regards,<br>
     });
   
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: true }));
+    setLockedBlocks((prev) => ({ ...prev, [block.title]: false }));
 
     setOriginalBlockContent((prev) => ({
       ...prev,
@@ -408,8 +466,11 @@ Kind Regards,<br>
             }
           }
 
-          // Attach highlightBlock to window to make it accessible in inline handlers
+          // Attach helper functions to window for inline handlers
           (window as any).highlightBlock = highlightBlock;
+          (window as any).toggleBlockLock = toggleBlockLock;
+          (window as any).longLockStart = longLockStart;
+          (window as any).longLockEnd = longLockEnd;
         }
       }, 0);
     }
@@ -802,6 +863,11 @@ Kind Regards,<br>
       [block.title]: block.isMultiSelect ? [] : '',
     }));
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: false }));
+    setLockedBlocks((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
     highlightBlock(block.title, false);
 
     setEditedBlocks((prev) => {
@@ -1241,6 +1307,7 @@ Kind Regards,<br>
         templateBlocks={templateBlocks}
         selectedTemplateOptions={selectedTemplateOptions}
         insertedBlocks={insertedBlocks}
+        lockedBlocks={lockedBlocks}
         editedBlocks={editedBlocks}
         handleMultiSelectChange={handleMultiSelectChange}
         handleSingleSelectChange={handleSingleSelectChange}
