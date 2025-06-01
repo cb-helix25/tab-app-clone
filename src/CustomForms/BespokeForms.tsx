@@ -88,6 +88,7 @@ export const dropdownStyle = mergeStyles({
 export const amountContainerStyle = mergeStyles({
   display: 'flex',
   alignItems: 'center',
+  width: '100%',
   height: `${INPUT_HEIGHT}px`,
 });
 
@@ -109,6 +110,7 @@ export const prefixStyle = mergeStyles({
 export const amountInputStyle = (hasPrefix: boolean) =>
   mergeStyles({
     flexGrow: 1,
+    width: '100%',
     height: '100%',
     border: `1px solid ${colours.light.border}`,
     borderRadius: hasPrefix ? '0 4px 4px 0' : '4px',

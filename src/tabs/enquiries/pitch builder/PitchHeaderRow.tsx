@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { Stack, Label, TextField, mergeStyles, IconButton, Separator } from '@fluentui/react';
+import { Stack, TextField, mergeStyles, IconButton, Separator } from '@fluentui/react';
 import { Enquiry } from '../../../app/functionality/types';
 import DealCaptureForm from './DealCaptureForm';
 import { colours } from '../../../app/styles/colours';
@@ -58,21 +58,28 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   clientIds,
   isDarkMode,
 }) => {
-  const labelStyle = mergeStyles({
-    fontWeight: '600',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    paddingBottom: '5px',
+
+  const enquiryNotesContainer = mergeStyles({
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: 4,
+    overflow: 'hidden',
   });
 
-  const enquiryNotesBoxStyle = mergeStyles({
+  const enquiryNotesHeader = mergeStyles({
+    background: colours.grey,
+    color: colours.darkBlue,
+    padding: '4px 8px',
+    fontWeight: 600,
+    fontSize: 13,
+  });
+
+  const enquiryNotesContent = mergeStyles({
+
     background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderRadius: 6,
     padding: 12,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
+    color: colours.darkBlue,
     whiteSpace: 'pre-wrap',
     fontSize: 14,
-    border: isDarkMode ? `1px solid ${colours.dark.border}` : `1px solid ${colours.light.border}`,
-    marginTop: 8,
   });
 
   const intakeContainer = mergeStyles({
@@ -134,21 +141,35 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     }
   }, [toggleTop, subject, rowSpacing, showCcBcc]);
 
+  const sideContainerStyle = mergeStyles({
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    borderRadius: 12,
+    boxShadow: isDarkMode
+      ? '0 4px 12px ' + colours.dark.border
+      : '0 4px 12px ' + colours.light.border,
+    padding: 24,
+    width: '100%',
+    transition: 'background 0.3s, box-shadow 0.3s',
+  });
+
   return (
-    <Stack horizontal tokens={{ childrenGap: 16 }} verticalAlign="start" styles={{
-      root: {
-        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-        borderRadius: 12,
-        boxShadow: isDarkMode
-          ? '0 4px 12px ' + colours.dark.border
-          : '0 4px 12px ' + colours.light.border,
-        padding: 24,
-        width: '100%',
-        transition: 'background 0.3s, box-shadow 0.3s',
-      }
-    }}>
-      {/* LEFT SIDE (Details) */}
-      <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '50%' } }}>
+    <Stack
+      styles={{
+        root: {
+          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+          borderRadius: 12,
+          boxShadow: isDarkMode
+            ? '0 4px 12px ' + colours.dark.border
+            : '0 4px 12px ' + colours.light.border,
+          padding: 24,
+          width: '100%',
+          transition: 'background 0.3s, box-shadow 0.3s',
+        },
+      }}
+    >
+      <Stack horizontal tokens={{ childrenGap: 16 }} verticalAlign="start" styles={{ root: { width: '100%' } }}>
+        {/* LEFT SIDE (Details) */}
+        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '50%' } }} className={sideContainerStyle}>
         {/* Row 1: To / CC / BCC */}
         <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
           <Stack tokens={{ childrenGap: 6 }}>
@@ -230,18 +251,18 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         {/* Row 3: Enquiry Notes */}
         {enquiry.Initial_first_call_notes && (
           <Stack style={{ marginTop: notesSpacing }}>
-            <div className={enquiryNotesBoxStyle}>
-              <Label className={labelStyle} styles={{ root: { marginBottom: 6 } }}>
-                Enquiry Notes
-              </Label>
-              {enquiry.Initial_first_call_notes}
+            <div className={enquiryNotesContainer}>
+              <div className={enquiryNotesHeader}>Enquiry Notes</div>
+              <div className={enquiryNotesContent}>
+                {enquiry.Initial_first_call_notes}
+              </div>
             </div>
           </Stack>
         )}
       </Stack>
       <Separator vertical styles={{ root: { margin: '0 12px' } }} />
       {/* RIGHT SIDE (Deal Form) */}
-      <Stack styles={{ root: { width: '50%', display: 'flex' } }} verticalAlign="stretch">
+      <Stack styles={{ root: { width: '50%', display: 'flex' } }} verticalAlign="stretch" className={sideContainerStyle}>
         <DealCaptureForm
           enquiry={enquiry}
           onSubmit={handleDealFormSubmit}
@@ -260,6 +281,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         />
       </Stack>
     </Stack>
+  </Stack>
   );
 };
 

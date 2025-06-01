@@ -12,21 +12,16 @@ import {
   Label,
 } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
-import { inputFieldStyle, dropdownStyle } from '../../../CustomForms/BespokeForms';
+import {
+  inputFieldStyle,
+  dropdownStyle,
+  amountContainerStyle,
+  prefixStyle,
+  amountInputStyle,
+} from '../../../CustomForms/BespokeForms';
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 import { Enquiry } from '../../../app/functionality/types';
-
-const poundPrefixBox = {
-  background: '#ffffff',
-  border: `1px solid ${colours.light.border}`,
-  borderRadius: '6px',
-  padding: '2px 8px',
-  marginRight: 8,
-  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-  transform: 'translateY(-6px)',
-};
-
 
 interface ClientInfo {
   firstName: string;
@@ -170,19 +165,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     onSubmit({ serviceDescription, amount: num, isMultiClient, clients });
   };
 
-  const tagStyle = mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    padding: '4px 8px',
-    borderRadius: 4,
-    backgroundColor: colours.tagBackground,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    fontSize: 12,
-    fontWeight: 600,
-    marginRight: 8,
-    marginBottom: 4,
-  });
-
   const labelStyle = mergeStyles({
     fontWeight: '600',
     color: isDarkMode ? colours.dark.text : colours.light.text,
@@ -203,21 +185,32 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     fontSize: 13,
   });
 
-  const toggleContainer = mergeStyles({
-    display: 'flex',
-    border: `2px solid ${colours.darkBlue}`,
+  // Input fields for client details have a subtle left accent using the
+  // same colour as section headers to visually connect them without a
+  // full header bar.
+  const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
+    borderLeft: `4px solid ${colours.darkBlue}`,
     borderRadius: 4,
-    overflow: 'hidden',
-    minHeight: 64,
-    width: 'fit-content',
-    cursor: 'pointer',
-    marginTop: 8,
-    marginBottom: 8,
   });
+
+
+const toggleContainer = mergeStyles({
+  display: 'flex',
+  border: `2px solid ${colours.darkBlue}`,
+  borderRadius: 4,
+  overflow: 'hidden',
+  cursor: 'pointer',
+  width: 'fit-content',
+  marginTop: 8,
+  marginBottom: 8,
+  height: '100%', // allow stretching in parent flex row
+  alignItems: 'stretch', // children stretch vertically
+});
 
 const toggleHalf = (selected: boolean) =>
   mergeStyles({
     padding: '10px 16px',
+    height: '100%',
     backgroundColor: selected
       ? colours.darkBlue
       : isDarkMode
@@ -235,23 +228,13 @@ const toggleHalf = (selected: boolean) =>
   });
 
   const addClientStyle = mergeStyles({
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '2px 14px 2px 7px',
-    borderRadius: 18,
-    border: `1px dotted ${colours.greyText}`,
-    color: colours.greyText,
-    background: isDarkMode ? colours.dark.background : colours.light.background,
-    fontSize: 13,
+    color: colours.highlight,
     cursor: 'pointer',
+    fontSize: 13,
     marginTop: 6,
-    marginBottom: 0,
-    transition: 'background 0.15s',
     userSelect: 'none',
-    ':hover': {
-      background: isDarkMode ? '#222' : '#f3f3f3',
-      color: colours.highlight,
-      borderColor: colours.highlight,
+    selectors: {
+      ':hover': { textDecoration: 'underline' },
     },
   });
 
@@ -261,7 +244,7 @@ const toggleHalf = (selected: boolean) =>
       opacity: show ? 1 : 0,
       overflow: 'hidden',
       transition: 'max-height 0.2s ease, opacity 0.2s ease',
-      borderLeft: `3px solid ${colours.highlight}`,
+      borderLeft: `4px solid ${colours.cta}`,
       padding: show ? '6px 8px' : '0 8px',
       marginTop: 4,
       marginBottom: 4,
@@ -368,21 +351,19 @@ const toggleHalf = (selected: boolean) =>
         <Stack styles={{ root: { width: '50%' } }}>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
-          <TextField
-            required
-            prefix="£"
-            type="text"
-            value={amount}
-            onChange={handleAmountChange}
-            onBlur={handleAmountBlur}
-            styles={{
-              fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }],
-              prefix: poundPrefixBox,
-              field: { marginTop: 6 },
-            }}
-            errorMessage={amountError}
-            inputMode="decimal"
-          />
+          <div className={amountContainerStyle}>
+            <span className={prefixStyle}>£</span>
+            <TextField
+              required
+              type="text"
+              value={amount}
+              onChange={handleAmountChange}
+              onBlur={handleAmountBlur}
+              styles={{ fieldGroup: amountInputStyle(true) }}
+              errorMessage={amountError}
+              inputMode="decimal"
+            />
+          </div>
         </div>
 
         {/* Tooltip-like info below the field */}
@@ -427,7 +408,7 @@ const toggleHalf = (selected: boolean) =>
             className={toggleHalf(isMultiClient)}
             onClick={() => setIsMultiClient(true)}
           >
-            <Icon iconName="ContactGroup" styles={{ root: { marginRight: 6 } }} />
+            <Icon iconName="People" styles={{ root: { marginRight: 6 } }} />
             Multiple Clients
           </div>
         </div>
@@ -448,7 +429,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].firstName = v || '';
                     setClients(updated);
                   }}
-                  styles={{ fieldGroup: inputFieldStyle }}
+                  styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
               <Stack styles={{ root: { width: '25%' } }}>
@@ -460,7 +441,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].lastName = v || '';
                     setClients(updated);
                   }}
-                  styles={{ fieldGroup: inputFieldStyle }}
+                  styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
               <Stack styles={{ root: { width: '50%' } }}>
@@ -472,7 +453,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].email = v || '';
                     setClients(updated);
                   }}
-                  styles={{ fieldGroup: inputFieldStyle }}
+                  styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
               {clients.length > 1 && (
@@ -500,8 +481,7 @@ const toggleHalf = (selected: boolean) =>
             role="button"
             aria-label="Add client"
           >
-            <span style={{ fontSize: 20, marginRight: 4, fontWeight: 400, marginTop: -2 }}>+</span>
-            Add Client
+            + Add Client
           </span>
         </Stack>
       )}
@@ -512,17 +492,7 @@ const toggleHalf = (selected: boolean) =>
         tokens={{ childrenGap: 10 }}
         styles={{ root: { marginTop: 'auto' } }}
       >
-        <Stack horizontal tokens={{ childrenGap: 8 }}>
-          {areaOfWork && <span className={tagStyle}>{areaOfWork}</span>}
-          {enquiryId && <span className={tagStyle}>ID {enquiryId}</span>}
-          {dealId && <span className={tagStyle}>Deal {dealId}</span>}
-          {clientIds &&
-            clientIds.map((id, idx) => (
-              <span key={idx} className={tagStyle}>
-                Client {id}
-              </span>
-            ))}
-        </Stack>
+        {/* Tags for area of work, enquiry and deal IDs removed as requested */}
         <Stack horizontal tokens={{ childrenGap: 10 }}>
           <PrimaryButton
             text="Confirm & Save"

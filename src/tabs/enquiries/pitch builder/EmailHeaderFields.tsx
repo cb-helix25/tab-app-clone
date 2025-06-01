@@ -79,6 +79,11 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     letterSpacing: '0.5px',
   });
 
+  // Specific style override for the notes label
+  const notesLabelStyle = mergeStyles(modernLabelStyle, {
+    color: colours.grey,
+  });
+
   // Style for the input fields with a subtle border and hover effect
   const inputFieldStyle = {
     borderRadius: '8px',
@@ -188,14 +193,14 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
         tokens={{ childrenGap: 6 }}
       >
         <div style={notesContainerStyle}>
-          <Label className={modernLabelStyle}>Enquiry Notes or Message</Label>
+          <Label className={notesLabelStyle}>Enquiry Notes or Message</Label>
           {initialNotes && (
             <div ref={notesContentRef}>
               <Text
                 variant={useLargerText ? 'medium' : 'small'}
                 styles={{
                   root: {
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    color: colours.darkBlue,
                     whiteSpace: 'pre-wrap',
                   },
                 }}
