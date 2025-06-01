@@ -89,6 +89,18 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     },
   };
 
+  // Container style for fields where the label sits inside
+  const labeledFieldContainerStyle = {
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    padding: '8px',
+    borderRadius: '8px',
+    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+    transition: 'border-color 0.2s ease-in-out',
+    ':hover': {
+      borderColor: colours.highlight,
+    },
+  };
+
   // Notes container style with a subtle border
   const notesContainerStyle = {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -114,37 +126,43 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
           {/* First Row: To, CC, BCC */}
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="start">
             <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={modernLabelStyle}>To</Label>
-              <BubbleTextField
-                value={to}
-                onChange={(_, newValue) => setTo(newValue || '')}
-                placeholder="Enter recipient addresses, separated by commas"
-                ariaLabel="To Addresses"
-                isDarkMode={isDarkMode}
-                style={inputFieldStyle}
-              />
+              <div style={labeledFieldContainerStyle}>
+                <Label className={modernLabelStyle}>To</Label>
+                <BubbleTextField
+                  value={to}
+                  onChange={(_, newValue) => setTo(newValue || '')}
+                  placeholder="Enter recipient addresses, separated by commas"
+                  ariaLabel="To Addresses"
+                  isDarkMode={isDarkMode}
+                  style={inputFieldStyle}
+                />
+              </div>
             </Stack>
             <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={modernLabelStyle}>CC</Label>
-              <BubbleTextField
-                value={cc}
-                onChange={(_, newValue) => setCc(newValue || '')}
-                placeholder="Enter CC addresses, separated by commas"
-                ariaLabel="CC Addresses"
-                isDarkMode={isDarkMode}
-                style={inputFieldStyle}
-              />
+              <div style={labeledFieldContainerStyle}>
+                <Label className={modernLabelStyle}>CC</Label>
+                <BubbleTextField
+                  value={cc}
+                  onChange={(_, newValue) => setCc(newValue || '')}
+                  placeholder="Enter CC addresses, separated by commas"
+                  ariaLabel="CC Addresses"
+                  isDarkMode={isDarkMode}
+                  style={inputFieldStyle}
+                />
+              </div>
             </Stack>
             <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <Label className={modernLabelStyle}>BCC</Label>
-              <BubbleTextField
-                value={bcc}
-                onChange={(_, newValue) => setBcc(newValue || '')}
-                placeholder="Enter BCC addresses, separated by commas"
-                ariaLabel="BCC Addresses"
-                isDarkMode={isDarkMode}
-                style={inputFieldStyle}
-              />
+              <div style={labeledFieldContainerStyle}>
+                <Label className={modernLabelStyle}>BCC</Label>
+                <BubbleTextField
+                  value={bcc}
+                  onChange={(_, newValue) => setBcc(newValue || '')}
+                  placeholder="Enter BCC addresses, separated by commas"
+                  ariaLabel="BCC Addresses"
+                  isDarkMode={isDarkMode}
+                  style={inputFieldStyle}
+                />
+              </div>
             </Stack>
           </Stack>
 

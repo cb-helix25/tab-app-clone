@@ -46,10 +46,20 @@ const customAmountStyles: Partial<ITextFieldStyles> = {
     backgroundColor: colours.grey,
     boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
   },
+  prefix: {
+    background: '#ffffff',
+    border: `1px solid ${colours.grey}`,
+    borderRadius: '6px',
+    padding: '2px 8px',
+    marginRight: 8,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+    transform: 'translateY(-6px)',
+  },
   field: {
     fontSize: '18px',
     color: colours.greyText,
     fontWeight: 600,
+    marginTop: 6,
   },
 };
 

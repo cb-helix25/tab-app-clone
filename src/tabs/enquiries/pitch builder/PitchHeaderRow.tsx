@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { Stack, Label, TextField, mergeStyles, IconButton } from '@fluentui/react';
+import { Stack, Label, TextField, mergeStyles, IconButton, Separator } from '@fluentui/react';
 import { Enquiry } from '../../../app/functionality/types';
 import DealCaptureForm from './DealCaptureForm';
 import { colours } from '../../../app/styles/colours';
@@ -101,8 +101,12 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const [showCcBcc, setShowCcBcc] = useState(false);
   const toCcBccRef = useRef<HTMLDivElement>(null);
+  const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
+  const [subjectHeight, setSubjectHeight] = useState(0);
+  const [amountHeight, setAmountHeight] = useState(0);
   const [rowSpacing, setRowSpacing] = useState(0);
+  const [notesSpacing, setNotesSpacing] = useState(0);
 
   useLayoutEffect(() => {
     if (toCcBccRef.current) {
@@ -116,8 +120,19 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     }
   }, [descHeight, showCcBcc]);
 
+  useLayoutEffect(() => {
+    if (subjectRef.current) {
+      setSubjectHeight(subjectRef.current.getBoundingClientRect().height);
+    }
+  }, [subject]);
+
+  useLayoutEffect(() => {
+    const spacing = Math.max(amountHeight - subjectHeight + 14, 0);
+    setNotesSpacing(spacing);
+  }, [amountHeight, subjectHeight]);
+
   return (
-    <Stack horizontal tokens={{ childrenGap: 24 }} verticalAlign="start" styles={{
+    <Stack horizontal tokens={{ childrenGap: 16 }} verticalAlign="start" styles={{
       root: {
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         borderRadius: 12,
@@ -136,36 +151,42 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           <Stack tokens={{ childrenGap: 6 }}>
             <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
               <Stack grow>
-                <Label className={labelStyle}>To</Label>
-                <TextField
-                  value={to}
-                  onChange={(_, val) => setTo(val || '')}
-                  placeholder="Recipient email"
-                  ariaLabel="To"
-                  styles={{ fieldGroup: inputFieldStyle }}
-                />
+                <div className={intakeContainer}>
+                  <div className={intakeHeader}>To</div>
+                  <TextField
+                    value={to}
+                    onChange={(_, val) => setTo(val || '')}
+                    placeholder="Recipient email"
+                    ariaLabel="To"
+                    styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+                  />
+                </div>
               </Stack>
               {showCcBcc && (
                 <>
                   <Stack grow>
-                    <Label className={labelStyle}>CC</Label>
-                    <TextField
-                      value={cc}
-                      onChange={(_, val) => setCc(val || '')}
-                      placeholder="CC emails"
-                      ariaLabel="CC"
-                      styles={{ fieldGroup: inputFieldStyle }}
-                    />
+                    <div className={intakeContainer}>
+                      <div className={intakeHeader}>CC</div>
+                      <TextField
+                        value={cc}
+                        onChange={(_, val) => setCc(val || '')}
+                        placeholder="CC emails"
+                        ariaLabel="CC"
+                        styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+                      />
+                    </div>
                   </Stack>
                   <Stack grow>
-                    <Label className={labelStyle}>BCC</Label>
-                    <TextField
-                      value={bcc}
-                      onChange={(_, val) => setBcc(val || '')}
-                      placeholder="BCC emails"
-                      ariaLabel="BCC"
-                      styles={{ fieldGroup: inputFieldStyle }}
-                    />
+                    <div className={intakeContainer}>
+                      <div className={intakeHeader}>BCC</div>
+                      <TextField
+                        value={bcc}
+                        onChange={(_, val) => setBcc(val || '')}
+                        placeholder="BCC emails"
+                        ariaLabel="BCC"
+                        styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+                      />
+                    </div>
                   </Stack>
                   <IconButton
                     iconProps={{ iconName: 'Cancel' }}
@@ -192,7 +213,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </div>
         {/* Row 2: Subject */}
         <Stack>
-          <div className={intakeContainer}>
+          <div ref={subjectRef} className={intakeContainer}>
             <div className={intakeHeader}>Subject</div>
             <TextField
               value={subject}
@@ -205,20 +226,22 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </Stack>
         {/* Row 3: Enquiry Notes */}
         {enquiry.Initial_first_call_notes && (
-          <Stack>
+          <Stack style={{ marginTop: notesSpacing }}>
             <div className={enquiryNotesBoxStyle}>
-              <Label className={labelStyle}>Enquiry Notes</Label>
+              <Label className={labelStyle} styles={{ root: { marginBottom: 6 } }}>
+                Enquiry Notes
+              </Label>
               {enquiry.Initial_first_call_notes}
             </div>
           </Stack>
         )}
       </Stack>
+      <Separator vertical styles={{ root: { margin: '0 12px' } }} />
       {/* RIGHT SIDE (Deal Form) */}
-      <Stack styles={{ root: { width: '50%' } }} verticalAlign="start">
+      <Stack styles={{ root: { width: '50%', display: 'flex' } }} verticalAlign="stretch">
         <DealCaptureForm
           enquiry={enquiry}
           onSubmit={handleDealFormSubmit}
-          onCancel={() => {}}
           areaOfWork={enquiry.Area_of_Work}
           enquiryId={enquiry.ID}
           dealId={dealId}
@@ -230,6 +253,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           selectedOption={selectedOption}
           setSelectedOption={setSelectedOption}
           onDescriptionHeightChange={setDescHeight}
+          onAmountHeightChange={setAmountHeight}
         />
       </Stack>
     </Stack>
