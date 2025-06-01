@@ -75,13 +75,27 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     marginTop: 8,
   });
 
+  const intakeContainer = mergeStyles({
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: 4,
+    overflow: 'hidden',
+  });
+
+  const intakeHeader = mergeStyles({
+    background: colours.darkBlue,
+    color: '#fff',
+    padding: '4px 8px',
+    fontWeight: 600,
+    fontSize: 13,
+  });
+
   const toggleCcBccStyle = mergeStyles({
     color: colours.greyText,
     cursor: 'pointer',
     fontSize: 12,
     marginTop: 6,
     selectors: {
-      ':hover': { color: colours.highlight },
+      ':hover': { color: colours.darkBlue },
     },
   });
 
@@ -178,20 +192,22 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </div>
         {/* Row 2: Subject */}
         <Stack>
-          <Label className={labelStyle}>Subject</Label>
-          <TextField
-            value={subject}
-            onChange={(_, val) => setSubject(val || '')}
-            placeholder="Email subject"
-            ariaLabel="Subject"
-            styles={{ fieldGroup: inputFieldStyle }}
-          />
+          <div className={intakeContainer}>
+            <div className={intakeHeader}>Subject</div>
+            <TextField
+              value={subject}
+              onChange={(_, val) => setSubject(val || '')}
+              placeholder="Email subject"
+              ariaLabel="Subject"
+              styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+            />
+          </div>
         </Stack>
         {/* Row 3: Enquiry Notes */}
         {enquiry.Initial_first_call_notes && (
           <Stack>
-            <Label className={labelStyle}>Enquiry Notes</Label>
             <div className={enquiryNotesBoxStyle}>
+              <Label className={labelStyle}>Enquiry Notes</Label>
               {enquiry.Initial_first_call_notes}
             </div>
           </Stack>

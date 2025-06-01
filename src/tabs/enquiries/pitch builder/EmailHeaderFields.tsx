@@ -169,9 +169,9 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
         className={mergeStyles(formContainerStyle, cardStyle)}
         tokens={{ childrenGap: 6 }}
       >
-        <Label className={modernLabelStyle}>Enquiry Notes or Message</Label>
-        {initialNotes && (
-          <div style={notesContainerStyle}>
+        <div style={notesContainerStyle}>
+          <Label className={modernLabelStyle}>Enquiry Notes or Message</Label>
+          {initialNotes && (
             <div ref={notesContentRef}>
               <Text
                 variant={useLargerText ? 'medium' : 'small'}
@@ -185,8 +185,8 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                 {initialNotes}
               </Text>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Stack>
     </Stack>
   );

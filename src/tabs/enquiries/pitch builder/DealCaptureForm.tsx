@@ -167,14 +167,28 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     paddingBottom: '5px',
   });
 
+  const intakeContainer = mergeStyles({
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: 4,
+    overflow: 'hidden',
+  });
+
+  const intakeHeader = mergeStyles({
+    background: colours.darkBlue,
+    color: '#fff',
+    padding: '4px 8px',
+    fontWeight: 600,
+    fontSize: 13,
+  });
+
   const toggleContainer = mergeStyles({
     display: 'flex',
-    border: `1px solid ${colours.highlight}`,
+    border: `1px solid ${colours.darkBlue}`,
     borderRadius: 4,
     overflow: 'hidden',
     width: 'fit-content',
     cursor: 'pointer',
-    marginTop: 2,
+    marginTop: 26,
     marginBottom: 8,
   });
 
@@ -244,23 +258,25 @@ const toggleHalf = (selected: boolean) =>
         <div ref={descRef}>
           {!useBespoke ? (
             <Stack tokens={{ childrenGap: 6 }}>
-              <Dropdown
-                label="Service Description"
-                options={SERVICE_OPTIONS}
-                styles={{ dropdown: dropdownStyle }}
-                selectedKey={selectedOption?.key}
-                onChange={(_, option) => {
-                  if (option?.key === 'Other') {
-                    setUseBespoke(true);
-                    setServiceDescription('');
-                    setSelectedOption(undefined);
-                  } else {
-                    setSelectedOption(option);
-                    setServiceDescription(option?.text || '');
-                  }
-                }}
-                required
-              />
+              <div className={intakeContainer}>
+                <div className={intakeHeader}>Service Description</div>
+                <Dropdown
+                  options={SERVICE_OPTIONS}
+                  styles={{ dropdown: [dropdownStyle, { border: 'none', borderRadius: 0 }] }}
+                  selectedKey={selectedOption?.key}
+                  onChange={(_, option) => {
+                    if (option?.key === 'Other') {
+                      setUseBespoke(true);
+                      setServiceDescription('');
+                      setSelectedOption(undefined);
+                    } else {
+                      setSelectedOption(option);
+                      setServiceDescription(option?.text || '');
+                    }
+                  }}
+                  required
+                />
+              </div>
               <span
                 className={toggleFreehandStyle}
                 onClick={() => {
@@ -274,18 +290,20 @@ const toggleHalf = (selected: boolean) =>
             </Stack>
           ) : (
             <Stack>
-              <TextField
-                label="Freehand Description"
-                multiline
-                required
-                value={serviceDescription}
-                onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
-                styles={{
-                    fieldGroup: inputFieldStyle,
+              <div className={intakeContainer}>
+                <div className={intakeHeader}>Freehand Description</div>
+                <TextField
+                  multiline
+                  required
+                  value={serviceDescription}
+                  onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
+                  styles={{
+                    fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }],
                     prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
-                }}
-                maxLength={200}
-              />
+                  }}
+                  maxLength={200}
+                />
+              </div>
               <Text
                 variant="small"
                 styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
@@ -310,18 +328,20 @@ const toggleHalf = (selected: boolean) =>
 
       {/* Amount */}
       <Stack styles={{ root: { width: '50%' } }}>
-        <TextField
-          label="Amount (ex. VAT)"
-          required
-          prefix="£"
-          type="text"
-          value={amount}
-          onChange={handleAmountChange}
-          onBlur={handleAmountBlur}
-          styles={{ fieldGroup: inputFieldStyle, prefix: { paddingBottom: 0 } }}
-          errorMessage={amountError}
-          inputMode="decimal"
-        />
+        <div className={intakeContainer}>
+          <div className={intakeHeader}>Amount (ex. VAT)</div>
+          <TextField
+            required
+            prefix="£"
+            type="text"
+            value={amount}
+            onChange={handleAmountChange}
+            onBlur={handleAmountBlur}
+            styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }], prefix: { paddingBottom: 0 } }}
+            errorMessage={amountError}
+            inputMode="decimal"
+          />
+        </div>
         {/* Tooltip-like info below the field */}
         {!amountError &&
           !!amount &&
