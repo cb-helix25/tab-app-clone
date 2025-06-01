@@ -139,6 +139,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter recipient addresses, separated by commas"
                   ariaLabel="To Addresses"
                   isDarkMode={isDarkMode}
+                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -152,6 +153,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter CC addresses, separated by commas"
                   ariaLabel="CC Addresses"
                   isDarkMode={isDarkMode}
+                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -165,6 +167,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   placeholder="Enter BCC addresses, separated by commas"
                   ariaLabel="BCC Addresses"
                   isDarkMode={isDarkMode}
+                  borderRadius="0"
                   style={inputFieldStyle}
                 />
               </div>
@@ -180,6 +183,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
               placeholder="Enter email subject"
               ariaLabel="Email Subject"
               isDarkMode={isDarkMode}
+              borderRadius="0"
               style={inputFieldStyle}
             />
           </Stack>

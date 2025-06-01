@@ -254,7 +254,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
 const toggleContainer = mergeStyles({
   display: 'flex',
   border: `2px solid ${colours.darkBlue}`,
-  borderRadius: 4,
+  borderRadius: 0,
   overflow: 'hidden',
   cursor: 'pointer',
   width: '100%',

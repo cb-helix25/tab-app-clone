@@ -15,6 +15,7 @@ interface BubbleTextFieldProps {
   minHeight?: string;
   type?: string;
   style?: CSSProperties; // Optional style prop
+  borderRadius?: string; // Optional border radius for the field group
 }
 
 const BubbleTextField: React.FC<BubbleTextFieldProps> = ({
@@ -28,11 +29,12 @@ const BubbleTextField: React.FC<BubbleTextFieldProps> = ({
   minHeight = 'auto',
   type = 'text',
   style, // Accept style prop
+  borderRadius = '8px',
 }) => {
   const styles: Partial<ITextFieldStyles> = {
     fieldGroup: {
       border: 'none',
-      borderRadius: '8px',
+      borderRadius,
       padding: multiline ? '8px 7px' : '0 7px',
       height: multiline ? 'auto' : '40px',
       minHeight: multiline ? minHeight : undefined,

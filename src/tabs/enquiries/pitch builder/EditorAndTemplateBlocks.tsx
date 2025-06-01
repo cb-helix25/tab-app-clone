@@ -104,6 +104,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
   const cheatSheetButtonRef = React.useRef<HTMLDivElement | null>(null);
+  const containerStyle = mergeStyles({
+    backgroundColor: isDarkMode ? colours.dark.grey : colours.light.grey,
+    borderRadius: 12,
+boxShadow: isDarkMode
+  ? '0 4px 12px rgba(255, 255, 255, 0.1)'
+  : '0 4px 12px rgba(0, 0, 0, 0.1)', // for light mode
+    padding: 24,
+    width: '100%',
+    transition: 'background 0.3s, box-shadow 0.3s',
+  });
 
   const placeholderInfo = React.useMemo(
     () => ({
@@ -280,7 +290,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
   };
 
   return (
-    <Stack horizontal tokens={{ childrenGap: 20 }} style={{ width: '100%' }}>
+    <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
           <Label className={labelStyle}>Email Body</Label>

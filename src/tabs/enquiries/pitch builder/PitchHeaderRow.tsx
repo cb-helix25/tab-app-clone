@@ -92,7 +92,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const intakeContainer = mergeStyles({
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,
+    borderRadius: 0,
     overflow: "hidden",
   });
 
@@ -161,7 +161,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    borderRadius: 12,
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? "0 4px 12px " + colours.dark.border
       : "0 4px 12px " + colours.light.border,
@@ -178,7 +178,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
       styles={{
         root: {
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          borderRadius: 12,
+          borderRadius: 0,
           boxShadow: isDarkMode
             ? '0 4px 12px ' + colours.dark.border
             : '0 4px 12px ' + colours.light.border,

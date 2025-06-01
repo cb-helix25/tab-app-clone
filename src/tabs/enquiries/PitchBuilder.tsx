@@ -580,6 +580,27 @@ Kind Regards,<br>
     setIsDraftConfirmed(false); // **Reset confirmation state**
     setDealId(null);
     setClientIds([]);
+
+    // Reset any header highlights or leftover styles
+    setTimeout(() => {
+      templateBlocks.forEach((block) => {
+        const header = document.getElementById(
+          `template-block-header-${block.title.replace(/\s+/g, '-')}`
+        );
+        if (header) {
+          (header as HTMLElement).style.backgroundColor = 'transparent';
+        }
+        const spans = document.querySelectorAll(
+          `span[data-inserted="${block.title}"]`
+        );
+        spans.forEach((span) => {
+          if (span instanceof HTMLElement) {
+            span.style.backgroundColor = colours.highlightYellow;
+            span.style.outline = 'none';
+          }
+        });
+      });
+    }, 0);
   }
 
   /**
@@ -989,9 +1010,17 @@ function handleInput() {
           `template-block-header-${block.title.replace(/\s+/g, '-')}`
         );
         if (header) {
-          header.style.backgroundColor = 'transparent';
+          (header as HTMLElement).style.backgroundColor = 'transparent';
         }
-        highlightBlock(block.title, false);
+        const spans = document.querySelectorAll(
+          `span[data-inserted="${block.title}"]`
+        );
+        spans.forEach((span) => {
+          if (span instanceof HTMLElement) {
+            span.style.backgroundColor = colours.highlightYellow;
+            span.style.outline = 'none';
+          }
+        });
       }, 0);
     }
   }
