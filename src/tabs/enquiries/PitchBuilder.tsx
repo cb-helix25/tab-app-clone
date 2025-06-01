@@ -153,7 +153,7 @@ const span = bodyEditorRef.current?.querySelector(
   `span[data-inserted="${blockTitle}"]`
 ) as HTMLElement | null;
 if (span) {
-      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+      const lockedBg = isDarkMode ? 'rgba(135,243,243,0.1)' : colours.accent;
       span.setAttribute('contenteditable', (!locked).toString());
       span.style.backgroundColor = locked
         ? lockedBg
@@ -851,7 +851,7 @@ function handleInput() {
         const changed = isContentChanged(span.innerHTML, originalBlockContent[title]);
         updated[title] = changed;
 
-        const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+    const lockedBg = isDarkMode ? 'rgba(135,243,243,0.1)' : colours.accent;
         span.style.backgroundColor = lockedBlocks[title]
           ? lockedBg
           : changed
@@ -901,7 +901,7 @@ function handleInput() {
               originalBlockContent[title]
             );
             setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
-            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+            const lockedBg = isDarkMode ? 'rgba(135,243,243,0.1)' : colours.accent;
             span.style.backgroundColor = lockedBlocks[title]
               ? lockedBg
               : changed
@@ -930,7 +930,7 @@ function handleInput() {
               originalBlockContent[title]
             );
             setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
-            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+            const lockedBg = isDarkMode ? 'rgba(135,243,243,0.1)' : colours.accent;
             span.style.backgroundColor = lockedBlocks[title]
               ? lockedBg
               : changed
@@ -1379,7 +1379,7 @@ function handleScrollToBlock(blockTitle: string) {
   ) as HTMLElement | null;
     if (headerElement) {
       headerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+      const lockedBg = isDarkMode ? 'rgba(135,243,243,0.1)' : colours.accent;
       const startColor = lockedBlocks[blockTitle]
         ? lockedBg
         : editedBlocks[blockTitle]

@@ -9,6 +9,7 @@ import {
   mergeStyles,
   PrimaryButton,
   DefaultButton,
+  Label,
 } from '@fluentui/react';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { inputFieldStyle, dropdownStyle } from '../../../CustomForms/BespokeForms';
@@ -158,6 +159,12 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     letterSpacing: '0.2px',
+  });
+
+  const labelStyle = mergeStyles({
+    fontWeight: '600',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    paddingBottom: '5px',
   });
 
   const toggleContainer = mergeStyles({
@@ -343,20 +350,25 @@ const toggleHalf = (selected: boolean) =>
           )}
       </Stack>
 
-      <div className={toggleContainer} aria-label="Select ID type">
-        <div
-          className={toggleHalf(!isMultiClient)}
-          onClick={() => setIsMultiClient(false)}
-        >
-          Single-client ID
+      <Stack>
+        <Label className={labelStyle} styles={{ root: { visibility: 'hidden' } }}>
+          ID Type
+        </Label>
+        <div className={toggleContainer} aria-label="Select ID type">
+          <div
+            className={toggleHalf(!isMultiClient)}
+            onClick={() => setIsMultiClient(false)}
+          >
+            Single-client ID
+          </div>
+          <div
+            className={toggleHalf(isMultiClient)}
+            onClick={() => setIsMultiClient(true)}
+          >
+            Multi-client ID
+          </div>
         </div>
-        <div
-          className={toggleHalf(isMultiClient)}
-          onClick={() => setIsMultiClient(true)}
-        >
-          Multi-client ID
-        </div>
-      </div>
+      </Stack>
       <div className={infoTextClass(isMultiClient)}>
         Enter the name and email address of each additional client.
       </div>

@@ -559,8 +559,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                         backgroundColor: insertedBlocks[block.title]
                           ? lockedBlocks[block.title]
                             ? isDarkMode
-                              ? 'rgba(16,124,16,0.1)'
-                              : '#eafaea'
+                              ? 'rgba(135,243,243,0.1)'
+                              : colours.accent
                             : editedBlocks[block.title]
                             ? colours.highlightBlue
                             : colours.highlightYellow
