@@ -61,7 +61,8 @@ interface EditorAndTemplateBlocksProps {
   insertTemplateBlock: (
     block: TemplateBlock,
     selectedOption: string | string[],
-    shouldFocus?: boolean
+    shouldFocus?: boolean,
+    append?: boolean
   ) => void;
   renderPreview: (block: TemplateBlock) => React.ReactNode;
   applyFormat: (command: string, value?: string) => void;
@@ -510,7 +511,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
                   onClick={() => {
                     const selectedOption = selectedTemplateOptions[block.title];
                     if (selectedOption) {
-                      insertTemplateBlock(block, selectedOption);
+                      let append = false;
+                      if (insertedBlocks[block.title] && editedBlocks[block.title]) {
+                        const replace = window.confirm(
+                          'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                        );
+                        append = !replace;
+                      }
+                      insertTemplateBlock(block, selectedOption, true, append);
                     }
                   }}
                   aria-label={`Insert template block ${block.title}`}

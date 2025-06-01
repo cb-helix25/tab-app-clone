@@ -9,6 +9,7 @@ import {
   mergeStyles,
   Label,
   IIconProps,
+  Icon,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -232,6 +233,17 @@ Kind Regards,<br>
     return bodyEditorRef.current?.contains(node) || false;
   }
 
+  function normalizeHtml(html: string): string {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return (div.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isContentChanged(current: string, original: string): boolean {
+    return normalizeHtml(current) !== normalizeHtml(original);
+  }
+
+
   /**
    * Insert some HTML at the cursor. If there's no selection, we append at the end.
    */
@@ -274,7 +286,8 @@ Kind Regards,<br>
   function insertTemplateBlock(
     block: TemplateBlock,
     selectedOption: string | string[],
-    shouldFocus: boolean = true
+    shouldFocus: boolean = true,
+    append: boolean = false
   ) {
     let replacementText = '';
     if (block.isMultiSelect && isStringArray(selectedOption)) {
@@ -330,6 +343,14 @@ Kind Regards,<br>
         'g'
       );
       if (existingBlockRegex.test(prevBody)) {
+        if (append) {
+          return prevBody.replace(existingBlockRegex, (match) =>
+            match.replace(
+              `<!--END_BLOCK:${block.title}-->`,
+              `${highlightedReplacement}<!--END_BLOCK:${block.title}-->`
+            )
+          );
+        }
         return prevBody.replace(existingBlockRegex, wrappedHTML);
       }
       return prevBody.replace(
@@ -348,7 +369,9 @@ Kind Regards,<br>
 
     setOriginalBlockContent((prev) => ({
       ...prev,
-      [block.title]: `${styledInnerHTML}${labelHTML}`,
+      [block.title]: append
+        ? (prev[block.title] || '') + `${styledInnerHTML}${labelHTML}`
+        : `${styledInnerHTML}${labelHTML}`,
     }));
     setEditedBlocks((prev) => ({ ...prev, [block.title]: false }));
   
@@ -711,10 +734,18 @@ Kind Regards,<br>
         if (span) {
           const title = span.getAttribute('data-inserted');
           if (title && originalBlockContent[title] !== undefined) {
-            setEditedBlocks((prev) => ({
-              ...prev,
-              [title]: span.innerHTML !== originalBlockContent[title],
-            }));
+            const changed = isContentChanged(
+              span.innerHTML,
+              originalBlockContent[title]
+            );
+            setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
+            if (changed) {
+              const block = templateBlocks.find((b) => b.title === title);
+              setSelectedTemplateOptions((prev) => ({
+                ...prev,
+                [title]: block?.isMultiSelect ? [] : '',
+              }));
+            }
           }
           return;
         }
@@ -726,10 +757,18 @@ Kind Regards,<br>
             `span[data-inserted="${title}"]`
           );
           if (span && originalBlockContent[title] !== undefined) {
-            setEditedBlocks((prev) => ({
-              ...prev,
-              [title]: span.innerHTML !== originalBlockContent[title],
-            }));
+            const changed = isContentChanged(
+              span.innerHTML,
+              originalBlockContent[title]
+            );
+            setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
+            if (changed) {
+              const block = templateBlocks.find((b) => b.title === title);
+              setSelectedTemplateOptions((prev) => ({
+                ...prev,
+                [title]: block?.isMultiSelect ? [] : '',
+              }));
+            }
           }
         }
       });
@@ -788,6 +827,27 @@ Kind Regards,<br>
         Array.isArray(selectedOptions) &&
         selectedOptions.length === 0)
     ) {
+      if (isInserted && isEdited) {
+        return (
+          <div
+            className={mergeStyles({
+              marginTop: '6px',
+              border: `1px solid ${colours.green}`,
+              padding: '4px 6px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+            })}
+          >
+            <Icon
+              iconName="CheckMark"
+              styles={{ root: { color: colours.green, marginRight: 4 } }}
+            />
+            <span>Customised</span>
+          </div>
+        );
+      }
       return null;
     }
 
@@ -799,15 +859,16 @@ Kind Regards,<br>
       return (
         <div
           className={mergeStyles({
-            marginTop: '10px',
+            marginTop: '6px',
             border: isInserted
               ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '10px',
+            padding: '6px 8px',
             borderRadius: '4px',
+            fontSize: '13px',
           })}
         >
-          <ul>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
             {selectedOptions.map((doc: string) => {
               const option = block.options.find((o) => o.label === doc);
               const preview = option ? option.previewText.trim() : doc;
@@ -820,6 +881,7 @@ Kind Regards,<br>
               return (
                 <li
                   key={doc}
+                  style={{ marginBottom: 4 }}
                   dangerouslySetInnerHTML={{
                     __html: dynamicPreview,
                   }}
@@ -841,12 +903,13 @@ Kind Regards,<br>
       return (
         <div
           className={mergeStyles({
-            marginTop: '10px',
+            marginTop: '6px',
             border: isInserted
               ? `1px solid ${isEdited ? colours.green : colours.highlightYellow}`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '10px',
+            padding: '6px 8px',
             borderRadius: '4px',
+            fontSize: '13px',
           })}
         >
           <span
