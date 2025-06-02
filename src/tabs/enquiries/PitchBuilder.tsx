@@ -157,7 +157,6 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     placeholders.forEach((ph) => {
       if (ph instanceof HTMLElement) {
         ph.style.transition = 'transform 0.2s, font-weight 0.2s';
-        ph.style.fontWeight = highlight ? '600' : 'normal';
         ph.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
       }
     });

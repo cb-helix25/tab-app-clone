@@ -9,10 +9,10 @@ import {
   IconButton,
   Icon,
   mergeStyles,
-  PrimaryButton,
+  MessageBar,
+  MessageBarType,
   Label,
 } from '@fluentui/react';
-import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import {
   inputFieldStyle,
   dropdownStyle,
@@ -93,6 +93,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [isMultiClient, setIsMultiClient] = useState(false);
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLDivElement>(null);
 
@@ -137,7 +138,9 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     !!amount &&
     !isNaN(Number(amount.replace(/,/g, ''))) &&
     Number(amount.replace(/,/g, '')) > 0;
-
+  const showProofInfo =
+    showPaymentInfo &&
+    (!isMultiClient || clients.every((c) => c.firstName && c.lastName && c.email));
 
   const paymentInfoWrapper = mergeStyles({
     minHeight: 32,
@@ -198,7 +201,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     }
   };
 
-  const handleConfirm = () => {
+  const handleSave = () => {
     const num = parseFloat(amount.replace(/,/g, ''));
     if (!serviceDescription || !amount) {
       setError('Service description and amount are required');
@@ -209,6 +212,13 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
       setError('Please enter a valid amount');
       return;
     }
+    const clientsValid = !isMultiClient || clients.every(
+      (c) => c.firstName && c.lastName && c.email
+    );
+    if (!clientsValid) {
+      setError('Please enter details for all additional clients');
+      return;
+    }
     setError(null);
     onSubmit({
       serviceDescription,
@@ -217,6 +227,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
       isMultiClient,
       clients,
     });
+    setIsSaved(true);
   };
 
   const labelStyle = mergeStyles({
@@ -320,6 +331,31 @@ const toggleHalf = (selected: boolean) =>
       ':hover': { color: colours.highlight },
     },
   });
+
+  const allClientFieldsFilled = clients.every(
+    (c) => c.firstName && c.lastName && c.email
+  );
+
+  // Automatically save when all required fields are present
+  useLayoutEffect(() => {
+    const num = parseFloat(amount.replace(/,/g, ''));
+    const validAmount = !isNaN(num) && num > 0;
+    const ready =
+      serviceDescription.trim() &&
+      dealExpiry &&
+      validAmount &&
+      (!isMultiClient || allClientFieldsFilled);
+    if (ready) {
+      handleSave();
+    }
+  }, [serviceDescription, amount, dealExpiry, isMultiClient, clients]);
+
+  useLayoutEffect(() => {
+    if (isSaved) {
+      const timer = setTimeout(() => setIsSaved(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSaved]);
 
   const rootStackStyle = mergeStyles({
     display: 'flex',
@@ -433,6 +469,19 @@ const toggleHalf = (selected: boolean) =>
                 {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
                 {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
             </div>
+            <div className={paymentInfoClass(showProofInfo)}>
+              {(() => {
+                const names = isMultiClient
+                  ? clients.map((c) => c.firstName).filter(Boolean)
+                  : [enquiry.First_Name || 'the client'];
+                const formatList = (list: string[]) => {
+                  if (list.length === 1) return list[0];
+                  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+                  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+                };
+                return `Request for proof of ID will be emailed to ${formatList(names)} immediately after successful delivery of the pitch email.`;
+              })()}
+            </div>
           </div>
         </Stack>
 
@@ -539,22 +588,23 @@ const toggleHalf = (selected: boolean) =>
           </span>
         </Stack>
       )}
-      <Stack
-        horizontal
-        horizontalAlign="space-between"
-        verticalAlign="center"
-        tokens={{ childrenGap: 10 }}
-        styles={{ root: { marginTop: 'auto' } }}
-      >
-        {/* Tags for area of work, enquiry and deal IDs removed as requested */}
-        <Stack horizontal tokens={{ childrenGap: 10 }}>
-          <PrimaryButton
-            text="Confirm & Save"
-            onClick={handleConfirm}
-            styles={sharedPrimaryButtonStyles}
-          />
-        </Stack>
-      </Stack>
+      {isSaved && (
+        <MessageBar
+          messageBarType={MessageBarType.success}
+          isMultiline={false}
+          styles={{
+            root: {
+              backgroundColor: colours.green,
+              color: '#ffffff',
+              borderRadius: 4,
+              marginTop: 10,
+            },
+          }}
+        >
+          <Icon iconName="CheckMark" styles={{ root: { marginRight: 6 } }} />
+          Details saved
+        </MessageBar>
+      )}
     </Stack>
   );
 };
