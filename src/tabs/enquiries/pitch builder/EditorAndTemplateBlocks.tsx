@@ -74,6 +74,7 @@ interface EditorAndTemplateBlocksProps {
   bubblesContainerStyle: string;
   bubbleStyle: string;
   filteredAttachments: { key: string; text: string }[];
+  highlightBlock: (blockTitle: string, highlight: boolean) => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
@@ -100,6 +101,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     bubblesContainerStyle,
     bubbleStyle,
     filteredAttachments,
+    highlightBlock,
   } = props;
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
@@ -200,7 +202,7 @@ boxShadow: isDarkMode
   });
 
   const labelStyle = mergeStyles({
-    fontWeight: '600',
+    fontWeight: 600,
     color: isDarkMode ? colours.dark.text : colours.light.text,
   });
 
@@ -323,7 +325,7 @@ boxShadow: isDarkMode
               <Stack tokens={{ childrenGap: 12 }}>
                 {placeholderInfo.blocks.map((info) => (
                   <Stack key={info.placeholder} tokens={{ childrenGap: 4 }}>
-                    <Text styles={{ root: { fontWeight: 600 } }}>{info.placeholder}</Text>
+                    <Text>{info.placeholder}</Text>
                     <Text variant="small">{info.title}</Text>
                     {info.options.length > 0 && (
                       <ul style={{ margin: '0 0 0 16px' }}>
@@ -339,7 +341,7 @@ boxShadow: isDarkMode
                 {placeholderInfo.additional.length > 0 && (
                   <Stack tokens={{ childrenGap: 4 }}>
                     <Separator />
-                    <Text styles={{ root: { fontWeight: 600 } }}>Other Placeholders</Text>
+                    <Text>Other Placeholders</Text>
                     {placeholderInfo.additional.map((ph) => (
                       <Text key={ph} variant="small">
                         {ph}
@@ -475,6 +477,9 @@ boxShadow: isDarkMode
               />
             </Stack>
           </Stack>
+          {/*
+            Attachments are temporarily disabled. Preserve the code for future
+            use but prevent rendering by wrapping it in a comment block.
           <Stack tokens={{ childrenGap: 6 }} styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}>
             <Label className={labelStyle}>Attachments</Label>
             <div className={bubblesContainerStyle}>
@@ -491,7 +496,8 @@ boxShadow: isDarkMode
               ))}
             </div>
           </Stack>
-        </Stack>
+          */}
+          </Stack>
       </Stack>
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
@@ -546,6 +552,8 @@ boxShadow: isDarkMode
                   })}
                   role="button"
                   tabIndex={0}
+                  onMouseEnter={() => highlightBlock(block.title, true)}
+                  onMouseLeave={() => highlightBlock(block.title, false)}
                   onClick={() => {
                     const selectedOption = selectedTemplateOptions[block.title];
                     if (selectedOption) {
@@ -608,7 +616,7 @@ boxShadow: isDarkMode
                     />
                     <Text
                       variant="mediumPlus"
-                      styles={{ root: { fontWeight: 600, color: colours.highlight } }}
+                      styles={{ root: { color: colours.highlight } }}
                     >
                       {block.title}
                     </Text>

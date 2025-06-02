@@ -106,7 +106,7 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
   if (headerElement) {
     const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
     const blueBg = colours.highlightBlue;
-    headerElement.style.transition = 'background-color 0.2s';
+    headerElement.style.transition = 'background-color 0.2s, transform 0.2s, font-weight 0.2s';
     let bg = 'transparent';
 
     const isInserted =
@@ -123,6 +123,8 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
       }
     }
     headerElement.style.backgroundColor = bg;
+    headerElement.style.fontWeight = highlight ? '600' : 'normal';
+    headerElement.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
   }
 
   const insertedSpans = document.querySelectorAll(
@@ -132,7 +134,7 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     if (span instanceof HTMLElement) {
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
       const blueBg = colours.highlightBlue;
-      span.style.transition = 'background-color 0.2s, outline 0.2s';
+      span.style.transition = 'background-color 0.2s, outline 0.2s, transform 0.2s, font-weight 0.2s';
       let bg = colours.highlightYellow;
       if (lockedBlocks[blockTitle]) {
         bg = lockedBg;
@@ -141,8 +143,24 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
       }
       span.style.backgroundColor = bg;
       span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
+      span.style.fontWeight = highlight ? '600' : 'normal';
+      span.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
     }
   });
+
+  const block = templateBlocks.find((b) => b.title === blockTitle);
+  if (block) {
+    const placeholders = document.querySelectorAll(
+      `span[data-placeholder="${block.placeholder}"]`
+    );
+    placeholders.forEach((ph) => {
+      if (ph instanceof HTMLElement) {
+        ph.style.transition = 'transform 0.2s, font-weight 0.2s';
+        ph.style.fontWeight = highlight ? '600' : 'normal';
+        ph.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
+      }
+    });
+  }
 }
 
 function toggleBlockLock(blockTitle: string) {
@@ -1456,6 +1474,7 @@ function handleScrollToBlock(blockTitle: string) {
           key: att.key,
           text: att.text,
         }))}
+        highlightBlock={highlightBlock}
       />
   
       {/* Row: Preview and Reset Buttons */}

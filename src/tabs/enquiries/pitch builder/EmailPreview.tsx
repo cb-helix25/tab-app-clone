@@ -225,6 +225,8 @@ function formatCurrency(val?: string): string {
           />
         </Stack>
 
+        {/*
+          Attachments preview disabled. Retained code for future use.
         {attachments.length > 0 && (
           <>
             <Separator />
@@ -242,6 +244,7 @@ function formatCurrency(val?: string): string {
             </Stack>
           </>
         )}
+        */}
 
         {followUp && (
           <>
