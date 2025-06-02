@@ -523,7 +523,7 @@ boxShadow: isDarkMode
             >
               <Icon
                 iconName={Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp'}
-                styles={{ root: { fontSize: 14 } }}
+                styles={{ root: { fontSize: 14, marginLeft: 4 } }}
               />
               {Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
             </span>
@@ -577,7 +577,7 @@ boxShadow: isDarkMode
                     styles={{
                       root: {
                         cursor: 'pointer',
-                        padding: '12px 16px',
+                        padding: '12px 20px',
                         borderLeft: 'none',
                         backgroundColor: insertedBlocks[block.title]
                           ? lockedBlocks[block.title]
@@ -611,7 +611,7 @@ boxShadow: isDarkMode
                     <Icon
                       iconName={isCollapsed ? 'ChevronRight' : 'ChevronDown'}
                       styles={{
-                        root: { fontSize: 18, color: colours.highlight, marginRight: 6 },
+                        root: { fontSize: 18, color: colours.highlight, marginRight: 6, marginLeft: 4 },
                       }}
                     />
                     <Text

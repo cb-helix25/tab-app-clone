@@ -32,6 +32,7 @@ import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
 import PitchHeaderRow from './pitch builder/PitchHeaderRow';
+import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
   removeUnfilledPlaceholders,
@@ -143,8 +144,8 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
       }
       span.style.backgroundColor = bg;
       span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
-      span.style.fontWeight = highlight ? '600' : 'normal';
-      span.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
+      span.style.borderRadius = '8px';
+      span.style.fontWeight = 'normal';
     }
   });
 
@@ -437,7 +438,7 @@ Kind Regards,<br>
     }
     const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:8px;text-align:right;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 8px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
     const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
@@ -652,7 +653,9 @@ Kind Regards,<br>
     }
   }
 
-  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+  const inTeams = isInTeams();
+  const useLocalData =
+    process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
   function initiateDraftEmail() {
     const allowed = ['LZ', 'AC', 'JD'];

@@ -22,6 +22,7 @@ import {
   applyDynamicSubstitutions,
 } from './emailUtils'; // Adjusted path
 import ExperimentalAssistant from './ExperimentalAssistant';
+import { isInTeams } from '../../../app/functionality/isInTeams';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -73,7 +74,9 @@ const cleanBody = removeUnfilledPlaceholders(substituted);
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
-  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+  const inTeams = isInTeams();
+  const useLocalData =
+    process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
   const allowedInitials = ['LZ', 'AC'];
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
