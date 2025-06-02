@@ -118,10 +118,12 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   // the enquiry notes container can align with it. Recalculate on relevant state
   // changes and whenever the window resizes.
   const updateToggleTop = () => {
-    if (toggleRef.current) {
-      const rect = toggleRef.current.getBoundingClientRect();
-      onToggleTopChange?.(rect.top + window.scrollY); // account for scroll position
-    }
+    requestAnimationFrame(() => {
+      if (toggleRef.current) {
+        const rect = toggleRef.current.getBoundingClientRect();
+        onToggleTopChange?.(rect.top + window.scrollY);
+      }
+    });
   };
 
   useLayoutEffect(() => {
@@ -130,6 +132,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     isMultiClient,
     amount,
     amountError,
+    amountBlurred,
+    clientsBlurred,
     serviceDescription,
     selectedOption,
     clients.length,
@@ -369,32 +373,33 @@ const toggleHalf = (selected: boolean) =>
   );
 
   // 1. Auto-save only when blurred
-  useLayoutEffect(() => {
-    if (!amountBlurred) return;
+useLayoutEffect(() => {
+  const num = parseFloat(amount.replace(/,/g, ''));
+  const validAmount = !isNaN(num) && num > 0;
+  const ready =
+    amountBlurred &&
+    (!isMultiClient || clientsBlurred) &&
+    serviceDescription.trim() &&
+    dealExpiry &&
+    validAmount &&
+    (!isMultiClient || allClientFieldsFilled);
 
-    const num = parseFloat(amount.replace(/,/g, ''));
-    const validAmount = !isNaN(num) && num > 0;
-    const ready =
-      serviceDescription.trim() &&
-      dealExpiry &&
-      validAmount &&
-      (!isMultiClient || allClientFieldsFilled);
-
-    if (ready) {
-      if (!isSaved) handleSave();
-    } else if (isSaved) {
-      setIsSaved(false);
-    }
-  }, [
-    amountBlurred,
-    serviceDescription,
-    dealExpiry,
-    amount,
-    isMultiClient,
-    clients,
-    allClientFieldsFilled,
-    isSaved,
-  ]);
+  if (ready) {
+    if (!isSaved) handleSave();
+  } else if (isSaved) {
+    setIsSaved(false);
+  }
+}, [
+  amountBlurred,
+  clientsBlurred,
+  serviceDescription,
+  dealExpiry,
+  amount,
+  isMultiClient,
+  clients,
+  allClientFieldsFilled,
+  isSaved,
+]);
 
   // 2. Run toggle alignment logic unconditionally
   useLayoutEffect(() => {
@@ -403,6 +408,8 @@ const toggleHalf = (selected: boolean) =>
     isMultiClient,
     amount,
     amountError,
+    amountBlurred,
+    clientsBlurred,
     serviceDescription,
     selectedOption,
     clients.length,
