@@ -238,7 +238,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         <Stack
           tokens={{ childrenGap: 8 }}
           styles={{ root: { width: "50%" } }}
-          className={dealSideContainerStyle(dealFormSaved)}
+          className={sideContainerStyle}
         >
           {/* Row 1: To / CC / BCC */}
           <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
@@ -406,7 +406,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         <Stack
           styles={{ root: { width: "50%", display: "flex" } }}
           verticalAlign="stretch"
-          className={sideContainerStyle}
+          className={dealSideContainerStyle(dealFormSaved)}
         >
           <DealCaptureForm
             enquiry={enquiry}

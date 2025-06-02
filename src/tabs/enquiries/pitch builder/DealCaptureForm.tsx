@@ -97,6 +97,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [amountBlurred, setAmountBlurred] = useState(false);
+  const [clientsBlurred, setClientsBlurred] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLDivElement>(null);
   // Inform parent components whenever the saved state changes
@@ -117,8 +119,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   // changes and whenever the window resizes.
   const updateToggleTop = () => {
     if (toggleRef.current) {
-const rect = toggleRef.current.getBoundingClientRect();
-onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
+      const rect = toggleRef.current.getBoundingClientRect();
+      onToggleTopChange?.(rect.top + window.scrollY); // account for scroll position
     }
   };
 
@@ -135,17 +137,29 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
   ]);
 
   useLayoutEffect(() => {
-    window.addEventListener("resize", updateToggleTop);
-    return () => window.removeEventListener("resize", updateToggleTop);
+    window.addEventListener('resize', updateToggleTop);
+    return () => window.removeEventListener('resize', updateToggleTop);
   }, []);
+
+  // Reset client blur state when toggling multi-client mode
+  useLayoutEffect(() => {
+    setClientsBlurred(false);
+  }, [isMultiClient]);
 
   const vat = amount ? parseFloat(amount.replace(/,/g, '')) * 0.2 : 0;
   const total = amount ? parseFloat(amount.replace(/,/g, '')) + vat : 0;
   const showPaymentInfo =
+    amountBlurred &&
     !amountError &&
     !!amount &&
     !isNaN(Number(amount.replace(/,/g, ''))) &&
     Number(amount.replace(/,/g, '')) > 0;
+
+  const showProofInfo =
+    isMultiClient &&
+    clientsBlurred &&
+    clients.every((c) => c.firstName && c.lastName && c.email);
+
   const showProofInfoSingle = showPaymentInfo && !isMultiClient;
   const showProofInfoMulti =
     showPaymentInfo &&
@@ -156,15 +170,16 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     minHeight: 32,
     marginTop: 4,
     marginBottom: 4,
+    width: '100%',
   });
 
-  const paymentInfoClass = (show: boolean) =>
+  const paymentInfoClass = (show: boolean, error?: boolean) =>
     mergeStyles({
       maxHeight: show ? 32 : 0,
       opacity: show ? 1 : 0,
       overflow: 'hidden',
       transition: 'max-height 0.2s ease, opacity 0.2s ease',
-      borderLeft: `4px solid ${colours.cta}`,
+      borderLeft: `4px solid ${error ? colours.red : colours.cta}`,
       padding: show ? '6px 8px' : '0 8px',
       background: isDarkMode ? colours.dark.cardBackground : colours.grey,
       color: isDarkMode ? colours.dark.text : colours.light.text,
@@ -196,6 +211,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
   };
 
   const handleAmountBlur = () => {
+    setAmountBlurred(true);
     if (!amount) {
       onAmountBlur?.('');
       return;
@@ -210,6 +226,10 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
       setAmountError(undefined);
       onAmountBlur?.(formatted);
     }
+  };
+
+  const handleClientBlur = () => {
+    setClientsBlurred(true);
   };
 
   const handleSave = () => {
@@ -324,13 +344,14 @@ const toggleHalf = (selected: boolean) =>
       opacity: show ? 1 : 0,
       overflow: 'hidden',
       transition: 'max-height 0.2s ease, opacity 0.2s ease',
-      borderLeft: `4px solid ${colours.cta}`,
+      borderLeft: `4px solid ${error ? colours.red : colours.cta}`,
       padding: show ? '6px 8px' : '0 8px',
       marginTop: 4,
       marginBottom: 4,
       background: isDarkMode ? colours.dark.cardBackground : colours.grey,
       color: isDarkMode ? colours.dark.text : colours.light.text,
       fontSize: 13,
+      width: '100%',
     });
 
   const toggleFreehandStyle = mergeStyles({
@@ -347,9 +368,10 @@ const toggleHalf = (selected: boolean) =>
     (c) => c.firstName && c.lastName && c.email
   );
 
-  // Automatically save when all required fields are present and
-  // toggle completion visual state when requirements change
+  // 1. Auto-save only when blurred
   useLayoutEffect(() => {
+    if (!amountBlurred) return;
+
     const num = parseFloat(amount.replace(/,/g, ''));
     const validAmount = !isNaN(num) && num > 0;
     const ready =
@@ -359,22 +381,43 @@ const toggleHalf = (selected: boolean) =>
       (!isMultiClient || allClientFieldsFilled);
 
     if (ready) {
-      if (!isSaved) {
-        handleSave();
-      }
+      if (!isSaved) handleSave();
     } else if (isSaved) {
       setIsSaved(false);
     }
-  }, [serviceDescription, amount, dealExpiry, isMultiClient, clients, isSaved]);
+  }, [
+    amountBlurred,
+    serviceDescription,
+    dealExpiry,
+    amount,
+    isMultiClient,
+    clients,
+    allClientFieldsFilled,
+    isSaved,
+  ]);
+
+  // 2. Run toggle alignment logic unconditionally
+  useLayoutEffect(() => {
+    updateToggleTop();
+  }, [
+    isMultiClient,
+    amount,
+    amountError,
+    serviceDescription,
+    selectedOption,
+    clients.length,
+    useBespoke,
+  ]);
+
 
   const rootStackStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    border: `2px solid ${isSaved ? colours.green : 'transparent'}`,
-    boxShadow: isSaved ? `inset 0 0 8px ${colours.green}55` : 'none',
+    border: '2px solid transparent',
+    boxShadow: 'none',
     borderRadius: 8,
-    opacity: isSaved ? 0.6 : 1,
+    opacity: 1,
     transition: 'border 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
   });
 
@@ -472,7 +515,6 @@ const toggleHalf = (selected: boolean) =>
                   root: { flexGrow: 1 },
                   fieldGroup: amountInputStyle(true),
                 }}
-                errorMessage={amountError}
                 inputMode="decimal"
               />
             </div>
@@ -493,23 +535,13 @@ const toggleHalf = (selected: boolean) =>
         </Stack>
       </Stack>
       <div className={paymentInfoWrapper}>
-        <div className={paymentInfoClass(showPaymentInfo)}>
+        <div className={paymentInfoClass(!!amountError, true)}>
+          {amountError || ''}
+        </div>
+        <div className={paymentInfoClass(showPaymentInfo && !amountError)}>
           {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
           {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
         </div>
-        {!isMultiClient && (
-          <div className={paymentInfoClass(showProofInfoSingle)}>
-            {(() => {
-              const names = [enquiry.First_Name || 'the client'];
-              const formatList = (list: string[]) => {
-                if (list.length === 1) return list[0];
-                if (list.length === 2) return `${list[0]} and ${list[1]}`;
-                return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
-              };
-              return `Request for proof of ID will be emailed to ${formatList(names)} immediately after successful delivery of the pitch email.`;
-            })()}
-          </div>
-        )}
       </div>
 
       <Stack>
@@ -546,6 +578,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].firstName = v || '';
                     setClients(updated);
                   }}
+                  onBlur={handleClientBlur}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
@@ -558,6 +591,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].lastName = v || '';
                     setClients(updated);
                   }}
+                  onBlur={handleClientBlur}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
@@ -570,6 +604,7 @@ const toggleHalf = (selected: boolean) =>
                     updated[index].email = v || '';
                     setClients(updated);
                   }}
+                  onBlur={handleClientBlur}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
@@ -601,6 +636,21 @@ const toggleHalf = (selected: boolean) =>
             + Add Client
           </span>
         </Stack>
+      )}
+      {isMultiClient && (
+        <div className={paymentInfoWrapper}>
+          <div className={paymentInfoClass(showProofInfo)}>
+            {(() => {
+              const names = clients.map((c) => c.firstName).filter(Boolean);
+              const formatList = (list: string[]) => {
+                if (list.length === 1) return list[0];
+                if (list.length === 2) return `${list[0]} and ${list[1]}`;
+                return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+              };
+              return `Request for proof of ID will be emailed to ${formatList(names)} immediately after successful delivery of the pitch email.`;
+            })()}
+          </div>
+        </div>
       )}
       {/* Completion state indicator handled by parent container */}
     </Stack>
