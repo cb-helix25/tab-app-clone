@@ -33,7 +33,8 @@ const customTheme = createTheme({
 });
 
 // Flag to decide whether to use local sample data instead of remote API
-const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+const inTeams = isInTeams();
+const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
 // Helper function to calculate the date range (6 months)
 const getDateRange = () => {
@@ -162,7 +163,7 @@ const AppWithContext: React.FC = () => {
 
   useEffect(() => {
     const initializeTeamsAndFetchData = async () => {
-      if (isInTeams() && !useLocalData) {
+      if (inTeams && !useLocalData) {
         try {
           microsoftTeams.initialize();
           microsoftTeams.getContext(async (ctx) => {

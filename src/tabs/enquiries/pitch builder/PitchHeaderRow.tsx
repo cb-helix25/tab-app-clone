@@ -186,6 +186,17 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     transition: "background 0.3s, box-shadow 0.3s",
   });
 
+  const verticalSeparatorStyle = mergeStyles({
+    margin: "0 0px",
+    alignSelf: "stretch",
+    selectors: {
+      "::before": {
+        backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
+        width: 2,
+      },
+    },
+  });
+
   return (
     <Stack
       horizontal
@@ -372,7 +383,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             </Stack>
           )}
         </Stack>
-        <Separator vertical styles={{ root: { margin: "0 12px" } }} />
+        <Separator vertical className={verticalSeparatorStyle} />
         {/* RIGHT SIDE (Deal Form) */}
         <Stack
           styles={{ root: { width: "50%", display: "flex" } }}
