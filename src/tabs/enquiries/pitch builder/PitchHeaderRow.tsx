@@ -422,6 +422,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             selectedOption={selectedOption}
             setSelectedOption={setSelectedOption}
             onDescriptionHeightChange={setDescHeight}
+            onToggleTopChange={setToggleTop}
             onSavedChange={setDealFormSaved}
           />
         </Stack>
