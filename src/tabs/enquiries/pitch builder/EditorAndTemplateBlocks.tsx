@@ -202,8 +202,6 @@ boxShadow: isDarkMode
   const labelStyle = mergeStyles({
     fontWeight: '600',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    paddingTop: '20px',
-    paddingBottom: '5px',
   });
 
   const toolbarButtonStyle = {
@@ -292,7 +290,12 @@ boxShadow: isDarkMode
   return (
     <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 6 }}>
+        <Stack
+          horizontal
+          verticalAlign="center"
+          tokens={{ childrenGap: 6 }}
+          styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
+        >
           <Label className={labelStyle}>Email Body</Label>
           <div ref={cheatSheetButtonRef}>
             <IconButton
@@ -472,7 +475,7 @@ boxShadow: isDarkMode
               />
             </Stack>
           </Stack>
-          <Stack tokens={{ childrenGap: 6 }}>
+          <Stack tokens={{ childrenGap: 6 }} styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}>
             <Label className={labelStyle}>Attachments</Label>
             <div className={bubblesContainerStyle}>
               {filteredAttachments.map((att) => (
@@ -496,7 +499,7 @@ boxShadow: isDarkMode
           horizontal
           verticalAlign="center"
           tokens={{ childrenGap: 8 }}
-          styles={{ root: { justifyContent: 'space-between' } }}
+          styles={{ root: { justifyContent: 'space-between', paddingTop: '20px', paddingBottom: '5px' } }}
         >
           <Label className={labelStyle}>Template Blocks</Label>
           <Stack

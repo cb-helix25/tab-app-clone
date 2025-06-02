@@ -1021,7 +1021,9 @@ function handleInput() {
             <div
               className={mergeStyles({
                 marginTop: '6px',
-                border: `1px solid ${colours.green}`,
+                border: `1px solid ${
+                  isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea'
+                }`,
                 padding: '4px 6px',
                 borderRadius: '4px',
                 fontSize: '12px',
@@ -1071,10 +1073,12 @@ function handleInput() {
         <div
           className={mergeStyles({
             marginTop: '6px',
-            border: isInserted
+              border: isInserted
               ? `1px solid ${
                   lockedBlocks[block.title]
-                    ? colours.green
+                    ? isDarkMode
+                      ? 'rgba(16,124,16,0.1)'
+                      : '#eafaea'
                     : isEdited
                     ? colours.highlightBlue
                     : colours.highlightYellow
@@ -1124,7 +1128,9 @@ function handleInput() {
             border: isInserted
               ? `1px solid ${
                   lockedBlocks[block.title]
-                    ? colours.green
+                    ? isDarkMode
+                      ? 'rgba(16,124,16,0.1)'
+                      : '#eafaea'
                     : isEdited
                     ? colours.highlightBlue
                     : colours.highlightYellow
