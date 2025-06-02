@@ -186,6 +186,7 @@ export interface FormField {
   onText?: string;
   offText?: string;
   style?: React.CSSProperties;
+  showIf?: { field: string; equals: any };
 }
 
 export interface BespokeFormProps {
@@ -371,6 +372,13 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   />
                 </Stack>
               );
+            }
+
+            if (field.showIf) {
+              const controllingValue = formValues[field.showIf.field];
+              if (controllingValue !== field.showIf.equals) {
+                return null;
+              }
             }
             switch (field.type) {
               case 'dropdown':

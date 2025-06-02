@@ -176,7 +176,7 @@ async function insertBookSpaceEntry(
 
       context.log("Binding parameters for BookingTime:", booking_time);
 
-      const bookingTimeValue = new Date(`1970-01-01T${booking_time}Z`);
+      const bookingTimeValue = new Date(`1970-01-01T${booking_time}`);
       sqlRequest.addParameter("FeeEarner", TYPES.NVarChar, fee_earner);
       sqlRequest.addParameter("BookingDate", TYPES.Date, booking_date);
       sqlRequest.addParameter("BookingTime", TYPES.Time, bookingTimeValue, { scale: 7 });
@@ -237,7 +237,7 @@ async function insertClioCalendarEvent(
   const accessToken = tokenResponse.data.access_token;
   context.log("Clio access token obtained:", accessToken);
 
-  const startDateTime = new Date(`${booking_date}T${booking_time}Z`);
+  const startDateTime = new Date(`${booking_date}T${booking_time}`);
   const endDateTime = new Date(startDateTime.getTime() + duration * 3600000);
 
   const eventPayload = {

@@ -100,10 +100,35 @@ function handleAmountBlur() {
   }
 }
 
-function highlightBlock(blockTitle: string, highlight: boolean) {
+function highlightBlock(
+  blockTitle: string,
+  highlight: boolean,
+  source?: 'editor' | 'template'
+) {
+  const isLocked = lockedBlocks[blockTitle];
   const headerElement = document.getElementById(
     `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
   );
+  const baseScale = 0.03;
+  const hoveredScale = 1 + baseScale * 0.25; // 75% less
+  const otherScale = 1 + baseScale * 0.5; // 50% less
+  const defaultScale = 1 + baseScale;
+  let headerScale = 1;
+  let editorScale = 1;
+
+  if (highlight) {
+    if (source === 'editor') {
+      headerScale = otherScale;
+      editorScale = hoveredScale;
+    } else if (source === 'template') {
+      headerScale = hoveredScale;
+      editorScale = otherScale;
+    } else {
+      headerScale = defaultScale;
+      editorScale = defaultScale;
+    }
+  }
+  
   if (headerElement) {
     const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
     const blueBg = colours.highlightBlue;
@@ -124,8 +149,9 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
       }
     }
     headerElement.style.backgroundColor = bg;
-    headerElement.style.fontWeight = highlight ? '600' : 'normal';
-    headerElement.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
+    const active = highlight && !isLocked;
+    headerElement.style.fontWeight = active ? '600' : 'normal';
+    headerElement.style.transform = `scale(${headerScale})`;
   }
 
   const insertedSpans = document.querySelectorAll(
@@ -143,9 +169,10 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
         bg = blueBg;
       }
       span.style.backgroundColor = bg;
-      span.style.outline = highlight ? `1px dotted ${colours.cta}` : 'none';
+      span.style.outline = highlight && !isLocked ? `1px dotted ${colours.cta}` : 'none';
       span.style.borderRadius = '8px';
       span.style.fontWeight = 'normal';
+      span.style.transform = `scale(${editorScale})`;
     }
   });
 
@@ -157,7 +184,7 @@ function highlightBlock(blockTitle: string, highlight: boolean) {
     placeholders.forEach((ph) => {
       if (ph instanceof HTMLElement) {
         ph.style.transition = 'transform 0.2s, font-weight 0.2s';
-        ph.style.transform = highlight ? 'scale(1.03)' : 'scale(1)';
+        ph.style.transform = `scale(${editorScale})`;
       }
     });
   }
@@ -445,11 +472,11 @@ Kind Regards,<br>
     const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">${lockIcon}</span>`;    // Add inline style to <p> tags to remove bottom margin
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
-      `<p style="margin-bottom: 0;">`
+      `<p style="margin: 0;">`
     );
     const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
-    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true)" onmouseout="window.highlightBlock('${block.title}', false)">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
+    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
     setBody((prevBody) => {
       const existingBlockRegex = new RegExp(
@@ -478,7 +505,19 @@ Kind Regards,<br>
         `$1${wrappedHTML}$3`
       );
     });
-  
+
+    // Remove grey placeholder styling once the block is inserted
+    setTimeout(() => {
+      const phSpan = bodyEditorRef.current?.querySelector(
+        `span[data-placeholder="${block.placeholder}"]`
+      ) as HTMLElement | null;
+      if (phSpan) {
+        phSpan.style.backgroundColor = 'transparent';
+        phSpan.style.padding = '0';
+        phSpan.style.display = 'contents';
+      }
+    }, 0);
+
     setInsertedBlocks((prev) => ({ ...prev, [block.title]: true }));
     setLockedBlocks((prev) => ({ ...prev, [block.title]: false }));
 

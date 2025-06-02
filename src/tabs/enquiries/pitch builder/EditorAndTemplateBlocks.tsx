@@ -74,7 +74,7 @@ interface EditorAndTemplateBlocksProps {
   bubblesContainerStyle: string;
   bubbleStyle: string;
   filteredAttachments: { key: string; text: string }[];
-  highlightBlock: (blockTitle: string, highlight: boolean) => void;
+  highlightBlock: (blockTitle: string, highlight: boolean, source?: 'editor' | 'template') => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
@@ -553,8 +553,8 @@ boxShadow: isDarkMode
                   })}
                   role="button"
                   tabIndex={0}
-                  onMouseEnter={() => highlightBlock(block.title, true)}
-                  onMouseLeave={() => highlightBlock(block.title, false)}
+                  onMouseEnter={() => highlightBlock(block.title, true, 'template')}
+                  onMouseLeave={() => highlightBlock(block.title, false, 'template')}
                   onClick={() => {
                     const selectedOption = selectedTemplateOptions[block.title];
                     if (selectedOption) {
