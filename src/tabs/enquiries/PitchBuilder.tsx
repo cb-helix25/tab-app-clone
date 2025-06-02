@@ -289,6 +289,7 @@ Kind Regards,<br>
   const [dealId, setDealId] = useState<number | null>(null);
   const [clientIds, setClientIds] = useState<number[]>([]);
   const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
+  const [isMultiClientFlag, setIsMultiClientFlag] = useState<boolean>(false);
 
 
   // Tracks selected template options for each block
@@ -632,12 +633,37 @@ Kind Regards,<br>
     return true;
   }
 
+  async function insertDealIfNeeded() {
+    try {
+      const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+      const payload = {
+        serviceDescription,
+        amount: numericAmount,
+        areaOfWork: enquiry.Area_of_Work,
+        prospectId: enquiry.ID,
+        pitchedBy: userInitials,
+        isMultiClient: isMultiClientFlag,
+        leadClientEmail: enquiry.Email,
+        clients: dealClients,
+      };
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.error('Failed to insert deal:', e);
+    }
+  }
+
   /**
    * If user hits "Send Email" in the preview, we might do something else.
    * For now, just console.log and reset.
    */
-  function sendEmail() {
+  async function sendEmail() {
     if (validateForm()) {
+      await insertDealIfNeeded();
       console.log('Email Sent:', {
         to,
         cc,
@@ -676,6 +702,7 @@ Kind Regards,<br>
       setIsErrorVisible(true);
       return;
     }
+    await insertDealIfNeeded();
 
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
@@ -780,6 +807,7 @@ Kind Regards,<br>
       setServiceDescription(data.serviceDescription);
       setAmount(data.amount.toString());
       setDealClients(data.clients);
+      setIsMultiClientFlag(data.isMultiClient);
       handleDraftEmail();
       setActiveTab('details');
     } catch (error: any) {

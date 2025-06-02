@@ -106,6 +106,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
     onSavedChange?.(isSaved);
   }, [isSaved, onSavedChange]);
 
+const [clientFieldFocusCount, setClientFieldFocusCount] = useState(0);
 
   // Service description area height callback for parent
   useLayoutEffect(() => {
@@ -230,10 +231,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
       setAmountError(undefined);
       onAmountBlur?.(formatted);
     }
-  };
-
-  const handleClientBlur = () => {
-    setClientsBlurred(true);
   };
 
   const handleSave = () => {
@@ -585,7 +582,23 @@ useLayoutEffect(() => {
                     updated[index].firstName = v || '';
                     setClients(updated);
                   }}
-                  onBlur={handleClientBlur}
+                  onFocus={() => {
+                    setClientFieldFocusCount(c => c + 1);
+                    updateToggleTop();
+                  }}
+                  onBlur={() => {
+                    setClientFieldFocusCount(c => {
+                      const newCount = c - 1;
+                      if (
+                        newCount <= 0 &&
+                        clients.every(c => c.firstName && c.lastName && c.email)
+                      ) {
+                        setClientsBlurred(true);
+                      }
+                      return newCount;
+                    });
+                    updateToggleTop();
+                  }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
@@ -598,7 +611,23 @@ useLayoutEffect(() => {
                     updated[index].lastName = v || '';
                     setClients(updated);
                   }}
-                  onBlur={handleClientBlur}
+                  onFocus={() => {
+                    setClientFieldFocusCount(c => c + 1);
+                    updateToggleTop();
+                  }}
+                  onBlur={() => {
+                    setClientFieldFocusCount(c => {
+                      const newCount = c - 1;
+                      if (
+                        newCount <= 0 &&
+                        clients.every(c => c.firstName && c.lastName && c.email)
+                      ) {
+                        setClientsBlurred(true);
+                      }
+                      return newCount;
+                    });
+                    updateToggleTop();
+                  }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
@@ -611,7 +640,23 @@ useLayoutEffect(() => {
                     updated[index].email = v || '';
                     setClients(updated);
                   }}
-                  onBlur={handleClientBlur}
+                  onFocus={() => {
+                    setClientFieldFocusCount(c => c + 1);
+                    updateToggleTop();
+                  }}
+                  onBlur={() => {
+                    setClientFieldFocusCount(c => {
+                      const newCount = c - 1;
+                      if (
+                        newCount <= 0 &&
+                        clients.every(c => c.firstName && c.lastName && c.email)
+                      ) {
+                        setClientsBlurred(true);
+                      }
+                      return newCount;
+                    });
+                    updateToggleTop();
+                  }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
               </Stack>
