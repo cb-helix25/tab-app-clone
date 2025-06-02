@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { addDays } from 'date-fns';
 import {
   Stack,
@@ -9,8 +9,6 @@ import {
   IconButton,
   Icon,
   mergeStyles,
-  MessageBar,
-  MessageBarType,
   Label,
 } from '@fluentui/react';
 import {
@@ -51,6 +49,10 @@ interface DealCaptureFormProps {
   setSelectedOption: (opt: IDropdownOption | undefined) => void;
   onDescriptionHeightChange?: (height: number) => void;
   onToggleTopChange?: (top: number) => void;
+  /**
+   * Notify parent components when the saved/completion state changes
+   */
+  onSavedChange?: (saved: boolean) => void;
 }
 
 // Service options, 'Other' triggers bespoke input
@@ -82,6 +84,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   setSelectedOption,
   onDescriptionHeightChange,
   onToggleTopChange,
+  onSavedChange,
 }) => {
   const { isDarkMode } = useTheme();
   const [useBespoke, setUseBespoke] = useState(false);
@@ -96,6 +99,11 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLDivElement>(null);
+  // Inform parent components whenever the saved state changes
+  useEffect(() => {
+    onSavedChange?.(isSaved);
+  }, [isSaved, onSavedChange]);
+
 
   // Service description area height callback for parent
   useLayoutEffect(() => {
@@ -138,9 +146,11 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
     !!amount &&
     !isNaN(Number(amount.replace(/,/g, ''))) &&
     Number(amount.replace(/,/g, '')) > 0;
-  const showProofInfo =
+  const showProofInfoSingle = showPaymentInfo && !isMultiClient;
+  const showProofInfoMulti =
     showPaymentInfo &&
-    (!isMultiClient || clients.every((c) => c.firstName && c.lastName && c.email));
+    isMultiClient &&
+    clients.every((c) => c.firstName && c.lastName && c.email);
 
   const paymentInfoWrapper = mergeStyles({
     minHeight: 32,
@@ -159,6 +169,7 @@ onToggleTopChange?.(rect.top + window.scrollY); // accounts for scrolling
       background: isDarkMode ? colours.dark.cardBackground : colours.grey,
       color: isDarkMode ? colours.dark.text : colours.light.text,
       fontSize: 13,
+      width: '100%',
     });
 
 
@@ -336,7 +347,8 @@ const toggleHalf = (selected: boolean) =>
     (c) => c.firstName && c.lastName && c.email
   );
 
-  // Automatically save when all required fields are present
+  // Automatically save when all required fields are present and
+  // toggle completion visual state when requirements change
   useLayoutEffect(() => {
     const num = parseFloat(amount.replace(/,/g, ''));
     const validAmount = !isNaN(num) && num > 0;
@@ -345,22 +357,25 @@ const toggleHalf = (selected: boolean) =>
       dealExpiry &&
       validAmount &&
       (!isMultiClient || allClientFieldsFilled);
-    if (ready) {
-      handleSave();
-    }
-  }, [serviceDescription, amount, dealExpiry, isMultiClient, clients]);
 
-  useLayoutEffect(() => {
-    if (isSaved) {
-      const timer = setTimeout(() => setIsSaved(false), 3000);
-      return () => clearTimeout(timer);
+    if (ready) {
+      if (!isSaved) {
+        handleSave();
+      }
+    } else if (isSaved) {
+      setIsSaved(false);
     }
-  }, [isSaved]);
+  }, [serviceDescription, amount, dealExpiry, isMultiClient, clients, isSaved]);
 
   const rootStackStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    border: `2px solid ${isSaved ? colours.green : 'transparent'}`,
+    boxShadow: isSaved ? `inset 0 0 8px ${colours.green}55` : 'none',
+    borderRadius: 8,
+    opacity: isSaved ? 0.6 : 1,
+    transition: 'border 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
   });
 
   return (
@@ -463,26 +478,6 @@ const toggleHalf = (selected: boolean) =>
             </div>
           </div>
 
-          {/* Tooltip-like info below the field */}
-          <div className={paymentInfoWrapper}>
-            <div className={paymentInfoClass(showPaymentInfo)}>
-                {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
-                {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
-            </div>
-            <div className={paymentInfoClass(showProofInfo)}>
-              {(() => {
-                const names = isMultiClient
-                  ? clients.map((c) => c.firstName).filter(Boolean)
-                  : [enquiry.First_Name || 'the client'];
-                const formatList = (list: string[]) => {
-                  if (list.length === 1) return list[0];
-                  if (list.length === 2) return `${list[0]} and ${list[1]}`;
-                  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
-                };
-                return `Request for proof of ID will be emailed to ${formatList(names)} immediately after successful delivery of the pitch email.`;
-              })()}
-            </div>
-          </div>
         </Stack>
 
         <Stack styles={{ root: { width: '50%' } }}>
@@ -497,6 +492,25 @@ const toggleHalf = (selected: boolean) =>
           </div>
         </Stack>
       </Stack>
+      <div className={paymentInfoWrapper}>
+        <div className={paymentInfoClass(showPaymentInfo)}>
+          {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
+          {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
+        </div>
+        {!isMultiClient && (
+          <div className={paymentInfoClass(showProofInfoSingle)}>
+            {(() => {
+              const names = [enquiry.First_Name || 'the client'];
+              const formatList = (list: string[]) => {
+                if (list.length === 1) return list[0];
+                if (list.length === 2) return `${list[0]} and ${list[1]}`;
+                return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+              };
+              return `Request for proof of ID will be emailed to ${formatList(names)} immediately after successful delivery of the pitch email.`;
+            })()}
+          </div>
+        )}
+      </div>
 
       <Stack>
         <div ref={toggleRef} className={toggleContainer} aria-label="Select ID type">
@@ -588,23 +602,7 @@ const toggleHalf = (selected: boolean) =>
           </span>
         </Stack>
       )}
-      {isSaved && (
-        <MessageBar
-          messageBarType={MessageBarType.success}
-          isMultiline={false}
-          styles={{
-            root: {
-              backgroundColor: colours.green,
-              color: '#ffffff',
-              borderRadius: 4,
-              marginTop: 10,
-            },
-          }}
-        >
-          <Icon iconName="CheckMark" styles={{ root: { marginRight: 6 } }} />
-          Details saved
-        </MessageBar>
-      )}
+      {/* Completion state indicator handled by parent container */}
     </Stack>
   );
 };

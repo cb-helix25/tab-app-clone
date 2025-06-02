@@ -129,6 +129,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const [rowSpacing, setRowSpacing] = useState(0);
   const [notesSpacing, setNotesSpacing] = useState(0);
   const [toggleTop, setToggleTop] = useState(0);
+  const [dealFormSaved, setDealFormSaved] = useState(false);
 
   useLayoutEffect(() => {
     if (toCcBccRef.current) {
@@ -186,6 +187,23 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     transition: "background 0.3s, box-shadow 0.3s",
   });
 
+  const dealSideContainerStyle = (saved: boolean) =>
+    mergeStyles(sideContainerStyle, {
+      border: `2px solid ${saved ? colours.green : "transparent"}`,
+      boxShadow: saved
+        ? `inset 0 0 8px ${colours.green}55, ${
+            isDarkMode
+              ? "0 4px 12px " + colours.dark.border
+              : "0 4px 12px " + colours.light.border
+          }`
+        : isDarkMode
+        ? "0 4px 12px " + colours.dark.border
+        : "0 4px 12px " + colours.light.border,
+      opacity: saved ? 0.6 : 1,
+      transition:
+        "background 0.3s, box-shadow 0.3s, border 0.3s ease, opacity 0.3s ease",
+    });
+
   const verticalSeparatorStyle = mergeStyles({
     margin: "0 0px",
     alignSelf: "stretch",
@@ -220,7 +238,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         <Stack
           tokens={{ childrenGap: 8 }}
           styles={{ root: { width: "50%" } }}
-          className={sideContainerStyle}
+          className={dealSideContainerStyle(dealFormSaved)}
         >
           {/* Row 1: To / CC / BCC */}
           <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
@@ -404,7 +422,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             selectedOption={selectedOption}
             setSelectedOption={setSelectedOption}
             onDescriptionHeightChange={setDescHeight}
-            onToggleTopChange={setToggleTop}
+            onSavedChange={setDealFormSaved}
           />
         </Stack>
   </Stack>
