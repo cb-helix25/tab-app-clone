@@ -3,6 +3,7 @@ import {
   Stack,
   Label,
   IconButton,
+  DefaultButton,
   Dropdown,
   IDropdownOption,
   Text,
@@ -16,6 +17,7 @@ import { TemplateBlock, TemplateOption } from '../../../app/customisation/Templa
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
 import { leftoverPlaceholders } from './emailUtils';
+import EditBlockModal from './EditBlockModal';
 
 // Sticky toolbar CSS injection
 if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
@@ -146,6 +148,40 @@ boxShadow: isDarkMode
         ])
       )
   );
+
+const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
+  const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
+
+  const openEditModal = (block: TemplateBlock) => {
+    setPreviewNode(renderPreview(block));
+    setBlockToEdit(block);
+  };
+
+  const requestChange = async (content: string, notes: string) => {
+    if (!blockToEdit) return;
+    const payload = {
+      block: blockToEdit.title.toLowerCase().replace(/\s+/g, ''),
+      proposedContent: content,
+      notes,
+    };
+    try {
+      await fetch(
+        `${process.env.REACT_APP_PROXY_BASE_URL}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email_contents: JSON.stringify(payload, null, 2),
+            user_email: 'lz@helix-law.com',
+          }),
+        }
+      );
+    } catch (err) {
+      console.error('Failed to send change request', err);
+    } finally {
+      setBlockToEdit(null);
+    }
+  };
 
   const toggleCollapse = (title: string) => {
     setCollapsedBlocks((prev) => ({
@@ -290,8 +326,17 @@ boxShadow: isDarkMode
   };
 
   return (
-    <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
-      <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
+    <>
+      <EditBlockModal
+        isOpen={!!blockToEdit}
+        onDismiss={() => setBlockToEdit(null)}
+        blockTitle={blockToEdit?.title || ''}
+        previewContent={previewNode}
+        onSubmit={requestChange}
+        isDarkMode={isDarkMode}
+      />
+      <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
+        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Stack
           horizontal
           verticalAlign="center"
@@ -640,6 +685,27 @@ boxShadow: isDarkMode
                       />
                     )}
                     <span style={{ flex: 1 }} />
+                    <DefaultButton
+                      text="✏ Edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(block);
+                      }}
+                      styles={{
+                        root: {
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '0 4px',
+                          height: 24,
+                          fontSize: 12,
+                          color: colours.greyText,
+                        },
+                        rootHovered: {
+                          background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+                        },
+                      }}
+                    />
                     <IconButton
                       iconProps={{ iconName: 'Cancel' }}
                       ariaLabel={`Clear ${block.title}`}
@@ -764,6 +830,7 @@ boxShadow: isDarkMode
         </Stack>
       </Stack>
     </Stack>
+    </>
   );
 };
 

@@ -741,8 +741,14 @@ Kind Regards,<br>
       setIsErrorVisible(true);
       return;
     }
-    await insertDealIfNeeded();
-
+    await handleDealFormSubmit({
+      serviceDescription,
+      amount: parseFloat(amount.replace(/,/g, '')) || 0,
+      dealExpiry: '', // or actual value if needed
+      isMultiClient: isMultiClientFlag,
+      clients: dealClients,
+    });
+    
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
 
