@@ -20,7 +20,7 @@ interface AnnualLeaveRecord {
   fe: string;
   start_date: string; // "YYYY-MM-DD" or ISO string
   end_date: string;   // "YYYY-MM-DD" or ISO string
-  // Add other fields if necessary
+  clio_entry_id?: number | null; // ID of the created Clio calendar entry
 }
 
 /**
@@ -136,47 +136,52 @@ export async function updateAnnualLeaveHandler(
         };
       }
 
-      // Fetch Clio secrets from Azure Key Vault
-      const clioSecrets = await fetchClioSecrets(context);
-      if (!clioSecrets) {
-        context.error("Failed to retrieve Clio secrets from Key Vault.");
-        return {
-          status: 500,
-          body: "Internal server error: Unable to retrieve Clio secrets.",
-        };
-      }
+      if (leaveRecord.clio_entry_id) {
+        context.log(`Clio entry already exists with ID ${leaveRecord.clio_entry_id}, skipping creation.`);
+      } else {
+        
+        // Fetch Clio secrets from Azure Key Vault
+        const clioSecrets = await fetchClioSecrets(context);
+        if (!clioSecrets) {
+          context.error("Failed to retrieve Clio secrets from Key Vault.");
+          return {
+            status: 500,
+            body: "Internal server error: Unable to retrieve Clio secrets.",
+          };
+        }
 
-      // Obtain Clio access token
-      const accessToken = await getClioAccessToken(clioSecrets, context);
-      if (!accessToken) {
-        context.error("Failed to obtain Clio access token.");
-        return {
-          status: 500,
-          body: "Internal server error: Unable to obtain Clio access token.",
-        };
-      }
+        // Obtain Clio access token
+        const accessToken = await getClioAccessToken(clioSecrets, context);
+        if (!accessToken) {
+          context.error("Failed to obtain Clio access token.");
+          return {
+            status: 500,
+            body: "Internal server error: Unable to obtain Clio access token.",
+          };
+        }
 
-      // Create Clio calendar entry
-      try {
-        const clioEntryId = await createClioCalendarEntry(
-          accessToken,
-          leaveRecord.fe,
-          leaveRecord.start_date,
-          leaveRecord.end_date,
-          context
-        );
+        // Create Clio calendar entry
+        try {
+          const clioEntryId = await createClioCalendarEntry(
+            accessToken,
+            leaveRecord.fe,
+            leaveRecord.start_date,
+            leaveRecord.end_date,
+            context
+          );
 
-        context.log(`Successfully created Clio calendar entry with ID: ${clioEntryId}`);
+          context.log(`Successfully created Clio calendar entry with ID: ${clioEntryId}`);
 
-        // Optionally, update the SQL record with the Clio entry ID
-        // await updateClioEntryId(id, clioEntryId, context);
+          // Update the SQL record with the Clio entry ID
+          await updateClioEntryId(id, clioEntryId, context);
 
-      } catch (clioError) {
-        context.error("Error creating Clio calendar entry:", clioError);
-        return {
-          status: 500,
-          body: "Internal server error: Unable to create Clio calendar entry.",
-        };
+        } catch (clioError) {
+          context.error("Error creating Clio calendar entry:", clioError);
+          return {
+            status: 500,
+            body: "Internal server error: Unable to create Clio calendar entry.",
+          };
+        }
       }
     }
 
@@ -229,7 +234,7 @@ async function fetchAnnualLeaveRecord(id: string, context: InvocationContext): P
       context.log("Connected to SQL database (fetchAnnualLeaveRecord).");
 
       const query = `
-        SELECT fe, start_date, end_date
+        SELECT fe, start_date, end_date, ClioEntryId
         FROM [dbo].[annualLeave]
         WHERE request_id = @ID
       `;
@@ -254,6 +259,7 @@ async function fetchAnnualLeaveRecord(id: string, context: InvocationContext): P
           fe: columns.find(c => c.metadata.colName === "fe")?.value as string,
           start_date: columns.find(c => c.metadata.colName === "start_date")?.value as string,
           end_date: columns.find(c => c.metadata.colName === "end_date")?.value as string,
+          clio_entry_id: columns.find(c => c.metadata.colName === "ClioEntryId")?.value as number | null,
         };
       });
 
@@ -464,6 +470,65 @@ async function updateAnnualLeaveRecord(
         NewStatus: newStatus,
         RejectionNotes: rejectionNotes,
       });
+
+      connection.execSql(request);
+    });
+
+    connection.connect();
+  });
+}
+
+async function updateClioEntryId(
+  id: string,
+  clioEntryId: number,
+  context: InvocationContext
+): Promise<number> {
+  const kvUri = "https://helix-keys.vault.azure.net/";
+  const passwordSecretName = "sql-databaseserver-password";
+  const sqlServer = "helix-database-server.database.windows.net";
+  const sqlDatabase = "helix-project-data";
+
+  const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+  const passwordSecret = await secretClient.getSecret(passwordSecretName);
+  const password = passwordSecret.value || "";
+
+  const connectionString = `Server=${sqlServer};Database=${sqlDatabase};User ID=helix-database-server;Password=${password};Encrypt=true;TrustServerCertificate=false;`;
+  const config = parseConnectionString(connectionString);
+
+  return new Promise<number>((resolve, reject) => {
+    const connection = new Connection(config);
+
+    connection.on("error", (err) => {
+      context.error("SQL Connection Error:", err);
+      reject(err);
+    });
+
+    connection.on("connect", (err) => {
+      if (err) {
+        context.error("SQL Connection Error on connect:", err);
+        reject("Failed to connect to SQL database.");
+        return;
+      }
+
+      const query = `
+        UPDATE [dbo].[annualLeave]
+           SET [ClioEntryId] = @ClioEntryId
+         WHERE [request_id] = @ID;
+      `;
+
+      const request = new SqlRequest(query, (sqlErr, rowCount) => {
+        if (sqlErr) {
+          context.error("SQL query error:", sqlErr);
+          connection.close();
+          reject(sqlErr);
+          return;
+        }
+        connection.close();
+        resolve(rowCount);
+      });
+
+      request.addParameter("ID", TYPES.Int, parseInt(id, 10));
+      request.addParameter("ClioEntryId", TYPES.Int, clioEntryId);
 
       connection.execSql(request);
     });

@@ -284,6 +284,10 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   }, [enquiries, startDate, endDate, solicitorEmails]);
 
   const filteredMatters = React.useMemo(() => {
+    const mappings: { [key: string]: string } = {
+      "Samuel Packwood": "Sam Packwood",
+      "Bianca ODonnell": "Bianca O'Donnell",
+    };
     return (
       allMatters?.filter((m) => {
         const openDate = new Date((m as any)["Open Date"]);
@@ -298,7 +302,8 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         const endDateOnly = endDate
           ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
           : new Date();
-        const solicitor = (m as any)["Originating Solicitor"] || "";
+        let solicitor = (m as any)["Originating Solicitor"] || "";
+        if (solicitor in mappings) solicitor = mappings[solicitor];
         const normalizedSolicitor = normalizeName(solicitor);
         return (
           openDateOnly >= startDateOnly &&
