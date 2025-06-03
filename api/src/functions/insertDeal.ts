@@ -2,7 +2,10 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/fu
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
 
-const DEAL_CAPTURE_BASE_URL = "https://instructions-functions.azurewebsites.net/api/dealCapture";
+const DEAL_CAPTURE_BASE_URL =
+  process.env.DEAL_CAPTURE_BASE_URL ||
+  "https://instructions-functions.azurewebsites.net/api/dealCapture";
+
 interface ClientInfo {
   firstName: string;
   lastName: string;
@@ -17,6 +20,7 @@ interface DealRequest {
   pitchedBy: string;
   isMultiClient: boolean;
   leadClientEmail: string;
+  leadClientId: number;
   clients?: ClientInfo[];
 }
 
@@ -37,7 +41,17 @@ export async function insertDealHandler(req: HttpRequest, context: InvocationCon
     return { status: 400, body: "Invalid JSON" };
   }
 
-  const { serviceDescription, amount, areaOfWork, prospectId, pitchedBy, isMultiClient, leadClientEmail, clients } = body;
+const {
+  serviceDescription,
+  amount,
+  areaOfWork,
+  prospectId,
+  pitchedBy,
+  isMultiClient,
+  leadClientEmail,
+  leadClientId,
+  clients
+} = body;
 
   if (!serviceDescription || amount === undefined || !areaOfWork || !prospectId || !pitchedBy || !leadClientEmail) {
     return { status: 400, body: "Missing required fields" };
@@ -45,9 +59,18 @@ export async function insertDealHandler(req: HttpRequest, context: InvocationCon
 
   try {
     const kvUri = "https://helix-keys.vault.azure.net/";
-    const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
-    const secret = await secretClient.getSecret("dealCapture-code");
-    const code = secret.value;
+
+    let code = process.env.DEAL_CAPTURE_CODE;
+    if (!code) {
+      const secretClient = new SecretClient(kvUri, new DefaultAzureCredential());
+      const secret = await secretClient.getSecret("dealCapture-code");
+      code = secret.value;
+    }
+
+    if (!code) {
+      context.error("Deal capture code missing in configuration");
+      return { status: 500, body: "Deal capture code not configured" };
+    }
 
     const url = `${DEAL_CAPTURE_BASE_URL}?code=${code}`;
     const now = new Date();
@@ -66,7 +89,7 @@ export async function insertDealHandler(req: HttpRequest, context: InvocationCon
       PitchValidUntil: formatDate(new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)),
       Status: "pitched",
       IsMultiClient: isMultiClient ? 1 : 0,
-      LeadClientId: null,
+      LeadClientId: leadClientId,
       LeadClientEmail: leadClientEmail,
       Clients: clients || [],
       CloseDate: null,
