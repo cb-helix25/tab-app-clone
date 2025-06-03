@@ -17,7 +17,7 @@ import { TemplateBlock, TemplateOption } from '../../../app/customisation/Templa
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
 import { leftoverPlaceholders } from './emailUtils';
-import EditBlockModal from './EditBlockModal';
+import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
 
 // Sticky toolbar CSS injection
 if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
@@ -133,6 +133,14 @@ boxShadow: isDarkMode
     [templateBlocks]
   );
 
+  const blockOptionsMap = React.useMemo(
+    () =>
+      Object.fromEntries(
+        templateBlocks.map((b) => [b.title, b.options.map((o) => o.label)])
+      ),
+    [templateBlocks]
+  );
+
   const [collapsedBlocks, setCollapsedBlocks] = React.useState<{ [title: string]: boolean }>(
     () =>
       Object.fromEntries(
@@ -157,17 +165,11 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
     setBlockToEdit(block);
   };
 
-  const requestChange = async (
-    content: string,
-    notes: string,
-    referenceBlock?: string
-  ) => {
+  const requestChange = async (payload: EditRequestPayload) => {
     if (!blockToEdit) return;
-    const payload = {
+    const finalPayload = {
+      ...payload,
       block: blockToEdit.title.toLowerCase().replace(/\s+/g, ''),
-      proposedContent: content,
-      notes,
-      referenceBlock,
     };
     try {
       await fetch(
@@ -176,7 +178,7 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email_contents: JSON.stringify(payload, null, 2),
+            email_contents: JSON.stringify(finalPayload, null, 2),
             user_email: 'lz@helix-law.com',
           }),
         }
@@ -339,6 +341,7 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
         previewContent={previewNode}
         onSubmit={requestChange}
         referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
+        blockOptionsMap={blockOptionsMap}
         isDarkMode={isDarkMode}
       />
       <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>

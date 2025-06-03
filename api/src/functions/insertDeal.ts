@@ -7,9 +7,10 @@ const DEAL_CAPTURE_BASE_URL =
   "https://instructions-functions.azurewebsites.net/api/dealCapture";
 
 interface ClientInfo {
-  firstName: string;
-  lastName: string;
-  email: string;
+  clientId?: number;
+  prospectId?: number;
+  clientEmail: string;
+  isLeadClient?: boolean;
 }
 
 interface DealRequest {
@@ -73,27 +74,21 @@ const {
     }
 
     const url = `${DEAL_CAPTURE_BASE_URL}?code=${code}`;
-    const now = new Date();
-    const formatDate = (d: Date) => d.toISOString().split("T")[0];
-    const formatTime = (d: Date) => d.toISOString().split("T")[1].split(".")[0];
 
     const payload = {
-      InstructionRef: null,
-      ProspectId: prospectId,
-      ServiceDescription: serviceDescription,
-      Amount: amount,
-      AreaOfWork: areaOfWork,
-      PitchedBy: pitchedBy,
-      PitchedDate: formatDate(now),
-      PitchedTime: formatTime(now),
-      PitchValidUntil: formatDate(new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)),
-      Status: "pitched",
-      IsMultiClient: isMultiClient ? 1 : 0,
-      LeadClientId: leadClientId,
-      LeadClientEmail: leadClientEmail,
-      Clients: clients || [],
-      CloseDate: null,
-      CloseTime: null
+      serviceDescription,
+      amount,
+      areaOfWork,
+      prospectId,
+      pitchedBy,
+      isMultiClient,
+      leadClientEmail,
+      clients: (clients || []).map(c => ({
+        clientId: c.clientId,
+        prospectId: c.prospectId,
+        clientEmail: c.clientEmail,
+        isLeadClient: c.isLeadClient ?? false,
+      })),
     };
 
     const response = await axios.post(url, payload);

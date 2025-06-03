@@ -7,7 +7,8 @@ import {
   DefaultButton,
   PrimaryButton,
   Dropdown,
-  IDropdownOption,
+  ComboBox,
+  IComboBoxOption,
   Text,
   mergeStyles,
 } from '@fluentui/react';
@@ -17,6 +18,19 @@ import {
   sharedDefaultButtonStyles,
 } from '../../../app/styles/ButtonStyles';
 import { inputFieldStyle } from '../../../CustomForms/BespokeForms';
+
+interface ReferenceBlockPayload {
+  title: string;
+  option?: string;
+  notes?: string;
+}
+
+export interface EditRequestPayload {
+  block: string;
+  proposedContent: string;
+  notes: string;
+  referenceBlock?: ReferenceBlockPayload;
+}
 
 interface EditBlockModalProps {
   /** Whether the modal is visible */
@@ -28,15 +42,21 @@ interface EditBlockModalProps {
   /** Preview of the original template content */
   previewContent: React.ReactNode;
   /** Handler when the user saves their changes */
-  onSubmit: (content: string, notes: string, referenceBlock?: string) => Promise<void> | void;
+  onSubmit: (payload: EditRequestPayload) => Promise<void> | void;
   /** Initial text for the block editor */
   initialContent?: string;
   /** Initial notes text */
   initialNotes?: string;
   /** Initially selected block reference */
   initialReference?: string;
+  /** Initially selected option on reference block */
+  initialReferenceOption?: string;
+  /** Initial notes about referencing */
+  initialReferenceNotes?: string;
   /** Blocks that can be referenced from this editor */
-  referenceOptions: IDropdownOption[];
+  referenceOptions: { key: string; text: string }[];
+  /** Map of block titles to their option labels */
+  blockOptionsMap: { [blockTitle: string]: string[] };
   /** Whether dark mode styles should be used */
   isDarkMode: boolean;
 }
@@ -50,12 +70,17 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   initialContent = '',
   initialNotes = '',
   initialReference,
+  initialReferenceOption,
+  initialReferenceNotes,
   referenceOptions,
+  blockOptionsMap,
   isDarkMode,
 }) => {
   const [content, setContent] = useState<string>(initialContent);
   const [notes, setNotes] = useState<string>(initialNotes);
   const [reference, setReference] = useState<string | undefined>(initialReference);
+  const [referenceOption, setReferenceOption] = useState<string | undefined>(initialReferenceOption);
+  const [referenceNotes, setReferenceNotes] = useState<string>(initialReferenceNotes || '');
 
   const containerClass = mergeStyles({
     padding: 0,
@@ -93,7 +118,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
         </div>
         <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
           <Text variant="small">
-            Edit the content below or provide notes referencing another block.
+            Update the content below or explain how this block should change.
           </Text>
           <div>{previewContent}</div>
           <TextField
@@ -105,11 +130,24 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             styles={{ fieldGroup: inputFieldStyle }}
           />
           <Dropdown
-            label="Reference Block (optional)"
+            label="Reference another block (optional)"
             selectedKey={reference}
             options={referenceOptions}
-            onChange={(_, option) => setReference(option?.key as string)}
+            onChange={(_, option) => {
+              setReference(option?.key as string);
+              setReferenceOption(undefined);
+            }}
           />
+          {reference && (
+            <ComboBox
+              label="Reference option"
+              selectedKey={referenceOption}
+              allowFreeform
+              options={(blockOptionsMap[reference] || []).map((o) => ({ key: o, text: o })) as IComboBoxOption[]}
+              onChange={(_, option, __, value) => setReferenceOption((option ? option.key : value) as string)}
+              styles={{ root: { width: '100%' }, input: { height: '32px' } }}
+            />
+          )}
           <TextField
             label="Notes"
             multiline
@@ -118,11 +156,34 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             onChange={(_, v) => setNotes(v || '')}
             styles={{ fieldGroup: inputFieldStyle }}
           />
+          {reference && (
+            <TextField
+              label="Notes about referencing the other block"
+              multiline
+              autoAdjustHeight
+              value={referenceNotes}
+              onChange={(_, v) => setReferenceNotes(v || '')}
+              styles={{ fieldGroup: inputFieldStyle }}
+            />
+          )}
           <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 10 }}>
             <PrimaryButton
               text="Save"
               styles={sharedPrimaryButtonStyles}
-              onClick={() => onSubmit(content, notes, reference)}
+              onClick={() =>
+                onSubmit({
+                  block: blockTitle,
+                  proposedContent: content,
+                  notes,
+                  referenceBlock: reference
+                    ? {
+                        title: reference,
+                        option: referenceOption,
+                        notes: referenceNotes,
+                      }
+                    : undefined,
+                })
+              }
             />
             <DefaultButton
               text="Cancel"
@@ -130,6 +191,12 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
               onClick={onDismiss}
             />
           </Stack>
+          {reference && (
+            <Text variant="small">
+              This edit affects {blockTitle} and references {reference}
+              {referenceOption ? `: ${referenceOption}` : ''}. Notes: {referenceNotes || 'None'}.
+            </Text>
+          )}
         </Stack>
       </div>
     </Modal>

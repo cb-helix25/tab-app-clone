@@ -748,7 +748,7 @@ Kind Regards,<br>
       isMultiClient: isMultiClientFlag,
       clients: dealClients,
     });
-    
+
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
 
@@ -831,6 +831,7 @@ Kind Regards,<br>
         pitchedBy: userInitials,
         isMultiClient: data.isMultiClient,
         leadClientEmail: enquiry.Email,
+        leadClientId: enquiry.ID,
         clients: data.clients,
       };
       const response = await fetch(url, {
