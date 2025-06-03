@@ -157,12 +157,17 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
     setBlockToEdit(block);
   };
 
-  const requestChange = async (content: string, notes: string) => {
+  const requestChange = async (
+    content: string,
+    notes: string,
+    referenceBlock?: string
+  ) => {
     if (!blockToEdit) return;
     const payload = {
       block: blockToEdit.title.toLowerCase().replace(/\s+/g, ''),
       proposedContent: content,
       notes,
+      referenceBlock,
     };
     try {
       await fetch(
@@ -333,6 +338,7 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
         blockTitle={blockToEdit?.title || ''}
         previewContent={previewNode}
         onSubmit={requestChange}
+        referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
         isDarkMode={isDarkMode}
       />
       <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>

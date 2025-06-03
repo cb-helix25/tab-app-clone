@@ -6,6 +6,9 @@ import {
   IconButton,
   DefaultButton,
   PrimaryButton,
+  Dropdown,
+  IDropdownOption,
+  Text,
   mergeStyles,
 } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
@@ -25,11 +28,15 @@ interface EditBlockModalProps {
   /** Preview of the original template content */
   previewContent: React.ReactNode;
   /** Handler when the user saves their changes */
-  onSubmit: (content: string, notes: string) => Promise<void> | void;
+  onSubmit: (content: string, notes: string, referenceBlock?: string) => Promise<void> | void;
   /** Initial text for the block editor */
   initialContent?: string;
   /** Initial notes text */
   initialNotes?: string;
+  /** Initially selected block reference */
+  initialReference?: string;
+  /** Blocks that can be referenced from this editor */
+  referenceOptions: IDropdownOption[];
   /** Whether dark mode styles should be used */
   isDarkMode: boolean;
 }
@@ -42,10 +49,13 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   onSubmit,
   initialContent = '',
   initialNotes = '',
+  initialReference,
+  referenceOptions,
   isDarkMode,
 }) => {
   const [content, setContent] = useState<string>(initialContent);
   const [notes, setNotes] = useState<string>(initialNotes);
+  const [reference, setReference] = useState<string | undefined>(initialReference);
 
   const containerClass = mergeStyles({
     padding: 0,
@@ -82,6 +92,9 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
           <IconButton iconProps={{ iconName: 'Cancel' }} onClick={onDismiss} />
         </div>
         <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
+          <Text variant="small">
+            Edit the content below or provide notes referencing another block.
+          </Text>
           <div>{previewContent}</div>
           <TextField
             label="Content"
@@ -90,6 +103,12 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             value={content}
             onChange={(_, v) => setContent(v || '')}
             styles={{ fieldGroup: inputFieldStyle }}
+          />
+          <Dropdown
+            label="Reference Block (optional)"
+            selectedKey={reference}
+            options={referenceOptions}
+            onChange={(_, option) => setReference(option?.key as string)}
           />
           <TextField
             label="Notes"
@@ -103,7 +122,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             <PrimaryButton
               text="Save"
               styles={sharedPrimaryButtonStyles}
-              onClick={() => onSubmit(content, notes)}
+              onClick={() => onSubmit(content, notes, reference)}
             />
             <DefaultButton
               text="Cancel"
