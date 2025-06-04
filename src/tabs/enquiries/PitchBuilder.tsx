@@ -32,6 +32,7 @@ import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
 import PitchHeaderRow from './pitch builder/PitchHeaderRow';
+import OperationStatusToast from './pitch builder/OperationStatusToast';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -308,6 +309,14 @@ Kind Regards,<br>
 
   // **New State: Confirmation State for Draft Email Button**
   const [isDraftConfirmed, setIsDraftConfirmed] = useState<boolean>(false);
+
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+    loading?: boolean;
+  } | null>(null);
+
+  const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
   // Tab state to switch between email details and deals
   const [activeTab, setActiveTab] = useState<string>('details');
@@ -693,8 +702,10 @@ Kind Regards,<br>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      return true;
     } catch (e) {
       console.error('Failed to insert deal:', e);
+      return false;
     }
   }
 
@@ -704,7 +715,17 @@ Kind Regards,<br>
    */
   async function sendEmail() {
     if (validateForm()) {
-      await insertDealIfNeeded();
+      setToast({ message: 'Saving deal...', type: 'info', loading: true });
+      const dealOk = await insertDealIfNeeded();
+      if (dealOk) {
+        setToast({ message: 'Deal saved', type: 'success' });
+      } else {
+        setToast({ message: 'Failed to save deal', type: 'error' });
+        setTimeout(() => setToast(null), 3000);
+        return;
+      }
+      await delay(800);
+      setToast({ message: 'Sending email...', type: 'info', loading: true });
       console.log('Email Sent:', {
         to,
         cc,
@@ -714,8 +735,10 @@ Kind Regards,<br>
         attachments,
         followUp,
       });
+      setToast({ message: 'Email sent', type: 'success' });
       setIsSuccessVisible(true);
       resetForm();
+      setTimeout(() => setToast(null), 3000);
     }
   }
 
@@ -743,8 +766,17 @@ Kind Regards,<br>
       setIsErrorVisible(true);
       return;
     }
-    // Persist the deal information when the user drafts the email
-    await insertDealIfNeeded();
+    setToast({ message: 'Saving deal...', type: 'info', loading: true });
+    const dealOk = await insertDealIfNeeded();
+    if (dealOk) {
+      setToast({ message: 'Deal saved', type: 'success' });
+    } else {
+      setToast({ message: 'Failed to save deal', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    await delay(800);
+    setToast({ message: 'Drafting email...', type: 'info', loading: true });
 
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
@@ -797,67 +829,34 @@ Kind Regards,<br>
         const errorText = await response.text();
         throw new Error(errorText || 'Failed to draft email.');
       }
+      setToast({ message: 'Email drafted', type: 'success' });
       setIsSuccessVisible(true);
       setIsDraftConfirmed(true); // **Set confirmation state**
-      // Revert the confirmation state after 3 seconds
       setTimeout(() => {
         setIsDraftConfirmed(false);
       }, 3000);
+      setTimeout(() => setToast(null), 3000);
     } catch (error: any) {
       console.error('Error drafting email:', error);
       setErrorMessage(error.message || 'An unknown error occurred.');
       setIsErrorVisible(true);
+      setToast({ message: 'Failed to draft email', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
     }
   }
 
-  async function handleDealFormSubmit(data: {
+  function handleDealFormSubmit(data: {
     serviceDescription: string;
     amount: number;
     dealExpiry: string;
     isMultiClient: boolean;
     clients: { firstName: string; lastName: string; email: string }[];
   }) {
-    try {
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
-      const payload = {
-        serviceDescription: data.serviceDescription,
-        amount: data.amount,
-        dealExpiry: data.dealExpiry,
-        areaOfWork: enquiry.Area_of_Work,
-        prospectId: enquiry.ID,
-        pitchedBy: userInitials,
-        isMultiClient: data.isMultiClient,
-        leadClientEmail: enquiry.Email,
-        leadClientId: enquiry.ID,
-        ...(data.isMultiClient && {
-          clients: data.clients.map((c) => ({ clientEmail: c.email })),
-        }),
-      };
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Failed to save deal');
-      }
-      try {
-        const json = await response.json();
-        if (json?.dealId) setDealId(json.dealId);
-        if (Array.isArray(json?.clientIds)) setClientIds(json.clientIds);
-      } catch {
-        // response did not contain JSON with IDs
-      }
-      setServiceDescription(data.serviceDescription);
-      setAmount(data.amount.toString());
-      setDealClients(data.clients);
-      setIsMultiClientFlag(data.isMultiClient);
-      setActiveTab('details');
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to save deal');
-      setIsErrorVisible(true);
-    }
+    setServiceDescription(data.serviceDescription);
+    setAmount(data.amount.toString());
+    setDealClients(data.clients);
+    setIsMultiClientFlag(data.isMultiClient);
+    setActiveTab('details');
   }
 
   /**
@@ -1588,6 +1587,12 @@ function handleScrollToBlock(blockTitle: string) {
         handleDraftEmail={handleDraftEmail}
         isSuccessVisible={isSuccessVisible}
         isDraftConfirmed={isDraftConfirmed}
+      />
+      <OperationStatusToast
+        visible={toast !== null}
+        message={toast?.message || ''}
+        type={toast?.type || 'info'}
+        loading={toast?.loading}
       />
     </Stack>
   );

@@ -107,6 +107,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   }, [isSaved, onSavedChange]);
 
 const [clientFieldFocusCount, setClientFieldFocusCount] = useState(0);
+const addingClientRef = useRef(false);
 
   // Service description area height callback for parent
   useLayoutEffect(() => {
@@ -583,15 +584,17 @@ useLayoutEffect(() => {
                     setClients(updated);
                   }}
                   onFocus={() => {
-                    setClientFieldFocusCount(c => c + 1);
+                    setClientsBlurred(false);
+                    setClientFieldFocusCount((c) => c + 1);
                     updateToggleTop();
                   }}
                   onBlur={() => {
-                    setClientFieldFocusCount(c => {
+                    setClientFieldFocusCount((c) => {
                       const newCount = c - 1;
                       if (
+                        !addingClientRef.current &&
                         newCount <= 0 &&
-                        clients.every(c => c.firstName && c.lastName && c.email)
+                        clients.every((c) => c.firstName && c.lastName && c.email)
                       ) {
                         setClientsBlurred(true);
                       }
@@ -612,15 +615,17 @@ useLayoutEffect(() => {
                     setClients(updated);
                   }}
                   onFocus={() => {
-                    setClientFieldFocusCount(c => c + 1);
+                    setClientsBlurred(false);
+                    setClientFieldFocusCount((c) => c + 1);
                     updateToggleTop();
                   }}
                   onBlur={() => {
-                    setClientFieldFocusCount(c => {
+                    setClientFieldFocusCount((c) => {
                       const newCount = c - 1;
                       if (
+                        !addingClientRef.current &&
                         newCount <= 0 &&
-                        clients.every(c => c.firstName && c.lastName && c.email)
+                        clients.every((c) => c.firstName && c.lastName && c.email)
                       ) {
                         setClientsBlurred(true);
                       }
@@ -641,15 +646,16 @@ useLayoutEffect(() => {
                     setClients(updated);
                   }}
                   onFocus={() => {
-                    setClientFieldFocusCount(c => c + 1);
+                    setClientsBlurred(false);
+                    setClientFieldFocusCount((c) => c + 1);
                     updateToggleTop();
                   }}
                   onBlur={() => {
-                    setClientFieldFocusCount(c => {
+                    setClientFieldFocusCount((c) => {
                       const newCount = c - 1;
                       if (
                         newCount <= 0 &&
-                        clients.every(c => c.firstName && c.lastName && c.email)
+                        clients.every((c) => c.firstName && c.lastName && c.email)
                       ) {
                         setClientsBlurred(true);
                       }
@@ -678,9 +684,14 @@ useLayoutEffect(() => {
           ))}
           <span
             className={addClientStyle}
-            onClick={() =>
-              setClients([...clients, { firstName: '', lastName: '', email: '' }])
-            }
+            onMouseDown={() => {
+              addingClientRef.current = true;
+            }}
+            onClick={() => {
+              setClients([...clients, { firstName: '', lastName: '', email: '' }]);
+              setClientsBlurred(false);
+              addingClientRef.current = false;
+            }}
             tabIndex={0}
             role="button"
             aria-label="Add client"
