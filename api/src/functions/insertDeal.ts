@@ -4,7 +4,8 @@ import { SecretClient } from "@azure/keyvault-secrets";
 
 const DEAL_CAPTURE_BASE_URL =
   process.env.DEAL_CAPTURE_BASE_URL ||
-  "https://instructions-functions.azurewebsites.net/api/dealCapture";
+  "https://instructions-vnet-functions.azurewebsites.net/api/dealCapture";
+
 
 interface ClientInfo {
   clientId?: number;

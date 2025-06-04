@@ -684,7 +684,9 @@ Kind Regards,<br>
         pitchedBy: userInitials,
         isMultiClient: isMultiClientFlag,
         leadClientEmail: enquiry.Email,
-        clients: dealClients,
+        ...(isMultiClientFlag && {
+          clients: dealClients.map((c) => ({ clientEmail: c.email })),
+        }),
       };
       await fetch(url, {
         method: 'POST',
@@ -741,13 +743,8 @@ Kind Regards,<br>
       setIsErrorVisible(true);
       return;
     }
-    await handleDealFormSubmit({
-      serviceDescription,
-      amount: parseFloat(amount.replace(/,/g, '')) || 0,
-      dealExpiry: '', // or actual value if needed
-      isMultiClient: isMultiClientFlag,
-      clients: dealClients,
-    });
+    // Persist the deal information when the user drafts the email
+    await insertDealIfNeeded();
 
     // Remove highlight spans
     let rawHtml = removeHighlightSpans(body);
@@ -832,7 +829,9 @@ Kind Regards,<br>
         isMultiClient: data.isMultiClient,
         leadClientEmail: enquiry.Email,
         leadClientId: enquiry.ID,
-        clients: data.clients,
+        ...(data.isMultiClient && {
+          clients: data.clients.map((c) => ({ clientEmail: c.email })),
+        }),
       };
       const response = await fetch(url, {
         method: 'POST',
@@ -854,7 +853,6 @@ Kind Regards,<br>
       setAmount(data.amount.toString());
       setDealClients(data.clients);
       setIsMultiClientFlag(data.isMultiClient);
-      handleDraftEmail();
       setActiveTab('details');
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to save deal');
