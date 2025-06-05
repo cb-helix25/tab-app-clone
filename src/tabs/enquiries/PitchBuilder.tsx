@@ -681,33 +681,38 @@ Kind Regards,<br>
     return true;
   }
 
-  async function insertDealIfNeeded() {
-    try {
-      const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
-      const payload = {
-        serviceDescription,
-        amount: numericAmount,
-        areaOfWork: enquiry.Area_of_Work,
-        prospectId: enquiry.ID,
-        pitchedBy: userInitials,
-        isMultiClient: isMultiClientFlag,
-        leadClientEmail: enquiry.Email,
-        ...(isMultiClientFlag && {
-          clients: dealClients.map((c) => ({ clientEmail: c.email })),
-        }),
-      };
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      return true;
-    } catch (e) {
-      console.error('Failed to insert deal:', e);
-      return false;
-    }
+async function insertDealIfNeeded() {
+  try {
+    const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
+    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+    const payload = {
+      serviceDescription,
+      amount: numericAmount,
+      areaOfWork: enquiry.Area_of_Work,
+      prospectId: enquiry.ID,
+      pitchedBy: userInitials,
+      isMultiClient: isMultiClientFlag,
+      leadClientEmail: enquiry.Email,
+      ...(isMultiClientFlag && {
+        clients: dealClients.map((c) => ({ clientEmail: c.email })),
+      }),
+    };
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    // ✅ Trigger same confirmation message as draft/send
+    setIsDraftConfirmed(true);
+    setTimeout(() => setIsDraftConfirmed(false), 3000);
+
+    return true;
+  } catch (e) {
+    console.error('Failed to insert deal:', e);
+    return false;
   }
+}
 
   /**
    * If user hits "Send Email" in the preview, we might do something else.

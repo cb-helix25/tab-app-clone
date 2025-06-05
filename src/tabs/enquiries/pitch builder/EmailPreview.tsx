@@ -80,7 +80,7 @@ const previewRef = React.useRef<HTMLDivElement>(null);
   const allowedInitials = ['LZ', 'AC'];
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
-
+  const showAiAssistButton = false;
 
 // Detect missing placeholders in the clean body
 const missingPlaceholders = cleanBody.match(/\[[^[\]]+]/g);
@@ -282,7 +282,7 @@ function formatCurrency(val?: string): string {
             iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
           />
         </Stack>
-        {canUseAi && (
+        {canUseAi && showAiAssistButton && (
           <DefaultButton
             text="AI Assist"
             styles={sharedDefaultButtonStyles}
@@ -303,7 +303,7 @@ function formatCurrency(val?: string): string {
           title="Copy the email preview text to your clipboard"
         />
       </Stack>
-      {canUseAi && (
+      {canUseAi && showAiAssistButton && (
         <ExperimentalAssistant
           isOpen={isAiOpen}
           onDismiss={() => setIsAiOpen(false)}
