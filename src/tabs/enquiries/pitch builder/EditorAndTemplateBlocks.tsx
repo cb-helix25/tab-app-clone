@@ -14,9 +14,10 @@ import {
   Callout,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
+import { TemplateSet, templateSetOptions } from '../../../app/customisation/TemplateBlockSets';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
-import { leftoverPlaceholders } from './emailUtils';
+import { getLeftoverPlaceholders } from './emailUtils';
 import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
 
 // Sticky toolbar CSS injection
@@ -77,6 +78,8 @@ interface EditorAndTemplateBlocksProps {
   bubbleStyle: string;
   filteredAttachments: { key: string; text: string }[];
   highlightBlock: (blockTitle: string, highlight: boolean, source?: 'editor' | 'template') => void;
+  templateSet: TemplateSet;
+  onTemplateSetChange: (set: TemplateSet) => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
@@ -104,6 +107,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     bubbleStyle,
     filteredAttachments,
     highlightBlock,
+    templateSet,
+    onTemplateSetChange,
   } = props;
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
@@ -126,7 +131,7 @@ boxShadow: isDarkMode
         placeholder: block.placeholder,
         options: block.options.map((o) => o.label),
       })),
-      additional: leftoverPlaceholders.filter(
+      additional: getLeftoverPlaceholders(templateBlocks).filter(
         (ph) => !templateBlocks.some((tb) => tb.placeholder === ph)
       ),
     }),
@@ -555,19 +560,20 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
       </Stack>
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Stack
-          horizontal
-          verticalAlign="center"
-          tokens={{ childrenGap: 8 }}
-          styles={{ root: { justifyContent: 'space-between', paddingTop: '20px', paddingBottom: '5px' } }}
-        >
+        <Stack tokens={{ childrenGap: 8 }}>
           <Label className={labelStyle}>Template Blocks</Label>
           <Stack
             horizontal
             verticalAlign="center"
             tokens={{ childrenGap: 8 }}
-            styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
+            styles={{ root: { paddingBottom: '5px' } }}
           >
+            <Dropdown
+              selectedKey={templateSet}
+              onChange={(_, option) => onTemplateSetChange(option?.key as TemplateSet)}
+              options={templateSetOptions}
+              styles={{ dropdown: { width: 140 } }}
+            />
             <span
               style={{ color: colours.highlight, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
               onClick={() => {

@@ -1,14 +1,15 @@
 import { Enquiry } from '../../../app/functionality/types';
 import { colours } from '../../../app/styles/colours';
-import { templateBlocks } from '../../../app/customisation/TemplateBlocks';
+import { templateBlocks, TemplateBlock } from '../../../app/customisation/TemplateBlocks';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-export const leftoverPlaceholders = [
-  ...templateBlocks.map((b) => b.placeholder),
-  '[Amount]'
-];
+export function getLeftoverPlaceholders(blocks: TemplateBlock[] = templateBlocks): string[] {
+  return [...blocks.map((b) => b.placeholder), '[Amount]'];
+}
+
+export const leftoverPlaceholders = getLeftoverPlaceholders();
 
 /**
  * Utility: turn consecutive <br><br> lines into real paragraphs (<p>...).

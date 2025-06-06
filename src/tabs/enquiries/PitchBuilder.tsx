@@ -16,7 +16,8 @@ import { colours } from '../../app/styles/colours';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
-import { templateBlocks, TemplateBlock, TemplateOption } from '../../app/customisation/TemplateBlocks';
+import { TemplateBlock, TemplateOption } from '../../app/customisation/TemplateBlocks';
+import { getTemplateBlocks, TemplateSet, templateSetOptions } from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
   sharedPrimaryButtonStyles,
@@ -42,7 +43,6 @@ import {
   isStringArray,
   replacePlaceholders,
   applyDynamicSubstitutions,
-  leftoverPlaceholders,
 } from './pitch builder/emailUtils';
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 
@@ -77,6 +77,9 @@ const unlockedSvg =
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+
+  const [templateSet, setTemplateSet] = useState<TemplateSet>('Comprehensive');
+  const templateBlocks = getTemplateBlocks(templateSet);
 
 // Service options
 const SERVICE_OPTIONS: IDropdownOption[] = [
@@ -257,27 +260,38 @@ useEffect(() => {
   const [cc, setCc] = useState<string>('');
   const [bcc, setBcc] = useState<string>('1day@followupthen.com');
 
-  // Basic template that includes placeholders derived from the template blocks
-  const BASE_TEMPLATE = `Dear [Enquiry.First_Name],
+  function generateBaseTemplate(blocks: TemplateBlock[]): string {
+    return `Dear [Enquiry.First_Name],\n\n${blocks
+      .map((b) => b.placeholder)
+      .join('\n\n')}\n\nKind Regards,<br>\n\n[First Name]<br>\n\n[Full Name]<br>\n[Position]`;
+  }
 
-${templateBlocks.map((b) => b.placeholder).join('\n\n')}
+  const BASE_TEMPLATE = React.useMemo(
+    () => generateBaseTemplate(templateBlocks),
+    [templateBlocks]
+  );
 
-Kind Regards,<br>
-
-[First Name]<br>
-
-[Full Name]<br>
-[Position]`;
-
-  // The main "body" of the editor content
-  // We'll insert placeholders right away
-  const [body, setBody] = useState<string>(() => {
-    // Optionally you can do the placeholder replacements here if desired
-    return replacePlaceholders(BASE_TEMPLATE, '', enquiry, userData)
+  function generateInitialBody(blocks: TemplateBlock[]): string {
+    return replacePlaceholders(generateBaseTemplate(blocks), '', enquiry, userData)
       .split('\n')
       .map((line) => line.trim())
       .join('\n');
-  });
+  }
+
+  const [body, setBody] = useState<string>(() => generateInitialBody(templateBlocks));
+
+  useEffect(() => {
+    const newBody = generateInitialBody(templateBlocks);
+    setBody(newBody);
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = newBody;
+    }
+    setSelectedTemplateOptions({});
+    setInsertedBlocks({});
+    setLockedBlocks({});
+    setEditedBlocks({});
+    setOriginalBlockContent({});
+  }, [templateSet]);
 
   // Attachments, followUp, preview, error states, etc...
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -609,10 +623,7 @@ Kind Regards,<br>
     setCc('');
     setBcc('2day@followupthen.com');
     // Re-load the base template
-    const newBody = replacePlaceholders(BASE_TEMPLATE, '', enquiry, userData)
-      .split('\n')
-      .map((line) => line.trim())
-      .join('\n');
+    const newBody = generateInitialBody(templateBlocks);
     setBody(newBody);
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = newBody;
@@ -1511,6 +1522,8 @@ function handleScrollToBlock(blockTitle: string) {
         body={body}
         setBody={setBody}
         templateBlocks={templateBlocks}
+        templateSet={templateSet}
+        onTemplateSetChange={setTemplateSet}
         selectedTemplateOptions={selectedTemplateOptions}
         insertedBlocks={insertedBlocks}
         lockedBlocks={lockedBlocks}
