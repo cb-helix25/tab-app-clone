@@ -23,6 +23,7 @@ import {
 } from './emailUtils'; // Adjusted path
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
+import { TemplateBlock } from '../../../app/customisation/TemplateBlocks';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -30,6 +31,7 @@ interface EmailPreviewProps {
   enquiry: any; // Ideally, replace with the appropriate type e.g., Enquiry
   subject: string;
   body: string;
+  templateBlocks: TemplateBlock[];
   attachments: string[];
   followUp?: string;
   fullName: string;
@@ -50,6 +52,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   enquiry,
   subject,
   body,
+  templateBlocks,
   attachments,
   followUp,
   fullName,
@@ -70,7 +73,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     enquiry,
     amount
   );
-const cleanBody = removeUnfilledPlaceholders(substituted);
+const cleanBody = removeUnfilledPlaceholders(substituted, templateBlocks);
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);

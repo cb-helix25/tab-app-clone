@@ -272,7 +272,13 @@ useEffect(() => {
   );
 
   function generateInitialBody(blocks: TemplateBlock[]): string {
-    return replacePlaceholders(generateBaseTemplate(blocks), '', enquiry, userData)
+    return replacePlaceholders(
+      generateBaseTemplate(blocks),
+      '',
+      enquiry,
+      userData,
+      blocks
+    )
       .split('\n')
       .map((line) => line.trim())
       .join('\n');
@@ -781,7 +787,7 @@ async function insertDealIfNeeded() {
     rawHtml = applyDynamicSubstitutions(rawHtml, userData, enquiry, amount);
 
     // Remove leftover placeholders
-    const noPlaceholders = removeUnfilledPlaceholders(rawHtml);
+    const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
 
     // After removing leftover placeholders/highlights in handleDraftEmail():
     const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
@@ -1573,6 +1579,7 @@ function handleScrollToBlock(blockTitle: string) {
         enquiry={enquiry}
         subject={subject}
         body={body}
+        templateBlocks={templateBlocks}
         attachments={attachments}
         followUp={followUp}
         fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}

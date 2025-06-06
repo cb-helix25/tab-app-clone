@@ -30,11 +30,14 @@ export function convertDoubleBreaksToParagraphs(html: string): string {
  * Removes lines that contain leftover placeholders.
  * Also condenses multiple blank lines down to one.
  */
-export function removeUnfilledPlaceholders(text: string): string {
+export function removeUnfilledPlaceholders(
+  text: string,
+  blocks: TemplateBlock[] = templateBlocks
+): string {
+  const placeholders = getLeftoverPlaceholders(blocks);
   const lines = text.split('\n');
   const filteredLines = lines.filter(
-    (line) =>
-      !leftoverPlaceholders.some((placeholder) => line.includes(placeholder))
+    (line) => !placeholders.some((placeholder) => line.includes(placeholder))
   );
 
   const consolidated: string[] = [];
@@ -102,7 +105,8 @@ export function replacePlaceholders(
   template: string,
   intro: string,
   enquiry: Enquiry,
-  userData: any
+  userData: any,
+  blocks: TemplateBlock[] = templateBlocks
 ): string {
   const userFirstName = userData?.[0]?.['First'] || 'Your';
   const userFullName = userData?.[0]?.['Full Name'] || 'Your Name';
@@ -128,7 +132,7 @@ export function replacePlaceholders(
     );
 
   // Insert placeholders for each template block
-  templateBlocks.forEach((block) => {
+  blocks.forEach((block) => {
     const regex = new RegExp(escapeRegExp(block.placeholder), 'g');
     const content =
       block.placeholder === '[FE Introduction Placeholder]' && intro

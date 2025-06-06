@@ -254,6 +254,19 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
     color: isDarkMode ? colours.dark.text : colours.light.text,
   });
 
+  const templateSetDropdownStyles = {
+    root: { width: 'auto' },
+    dropdown: { backgroundColor: 'transparent', border: 'none', padding: 0 },
+    title: {
+      backgroundColor: 'transparent',
+      color: colours.highlight,
+      fontWeight: 600,
+      paddingLeft: 0,
+      paddingRight: 16,
+    },
+    caretDown: { color: colours.highlight },
+  } as const;
+  
   const toolbarButtonStyle = {
     root: {
       color: '#ffffff',
@@ -572,7 +585,7 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
               selectedKey={templateSet}
               onChange={(_, option) => onTemplateSetChange(option?.key as TemplateSet)}
               options={templateSetOptions}
-              styles={{ dropdown: { width: 140 } }}
+              styles={templateSetDropdownStyles}
             />
             <span
               style={{ color: colours.highlight, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
