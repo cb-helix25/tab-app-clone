@@ -1,5 +1,11 @@
 import React, { RefObject } from 'react';
 import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from 'react-beautiful-dnd';
+import {
   Stack,
   Label,
   IconButton,
@@ -78,6 +84,8 @@ interface EditorAndTemplateBlocksProps {
   bubbleStyle: string;
   filteredAttachments: { key: string; text: string }[];
   highlightBlock: (blockTitle: string, highlight: boolean, source?: 'editor' | 'template') => void;
+  onReorderBlocks: (startIndex: number, endIndex: number) => void;
+  onDuplicateBlock: (index: number) => void;
   templateSet: TemplateSet;
   onTemplateSetChange: (set: TemplateSet) => void;
 }
@@ -107,6 +115,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     bubbleStyle,
     filteredAttachments,
     highlightBlock,
+    onReorderBlocks,
+    onDuplicateBlock,
     templateSet,
     onTemplateSetChange,
   } = props;
@@ -236,17 +246,16 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-    maxHeight: '100%',
     overflowY: 'auto',
   });
 
   const templatesGridStyle = mergeStyles({
     flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
-    maxHeight: '100%',
   });
 
   const labelStyle = mergeStyles({
@@ -255,14 +264,20 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
   });
 
   const templateSetDropdownStyles = {
-    root: { width: 'auto' },
+    root: {
+      width: 'auto',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4,
+    },
     dropdown: { backgroundColor: 'transparent', border: 'none', padding: 0 },
     title: {
       backgroundColor: 'transparent',
       color: colours.highlight,
       fontWeight: 600,
       paddingLeft: 0,
-      paddingRight: 16,
+      paddingRight: 0,
     },
     caretDown: { color: colours.highlight },
   } as const;
@@ -603,258 +618,300 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
           </Stack>
         </Stack>
         <Stack className={templatesContainerStyle}>
-          <Stack className={templatesGridStyle}>
-            {templateBlocks.map((block) => {
-              const isCollapsed = collapsedBlocks[block.title];
-              const isInserted = insertedBlocks[block.title] || false;
-              const isEdited = editedBlocks[block.title] || false;
-              return (
-                <Stack
-                  key={block.title}
-                  id={`template-block-${block.title.replace(/\s+/g, '-')}`}
-                  className={mergeStyles({
-                    padding: '0',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                    marginBottom: '16px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    backgroundColor: isDarkMode
-                      ? colours.dark.cardBackground
-                      : colours.light.cardBackground,
-                    transition: 'background-color 0.2s, box-shadow 0.2s',
-                  })}
-                  role="button"
-                  tabIndex={0}
-                  onMouseEnter={() => highlightBlock(block.title, true, 'template')}
-                  onMouseLeave={() => highlightBlock(block.title, false, 'template')}
-                  onClick={() => {
-                    const selectedOption = selectedTemplateOptions[block.title];
-                    if (selectedOption) {
-                      let append = false;
-                      if (insertedBlocks[block.title] && editedBlocks[block.title]) {
-                        const replace = window.confirm(
-                          'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                        );
-                        append = !replace;
-                      }
-                      insertTemplateBlock(block, selectedOption, true, append);
-                    }
-                  }}
-                  aria-label={`Insert template block ${block.title}`}
+          <DragDropContext onDragEnd={(result: DropResult) => {
+            if (!result.destination) return;
+            if (result.destination.index === result.source.index) return;
+            onReorderBlocks(result.source.index, result.destination.index);
+          }}>
+            <Droppable droppableId="templateBlocks">
+              {(provided) => (
+                <div
+                  className={templatesGridStyle}
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
                 >
-                  <Stack
-                    id={`template-block-header-${block.title.replace(/\s+/g, '-')}`}
-                    horizontal
-                    verticalAlign="center"
-                    tokens={{ childrenGap: 10 }}
-                    styles={{
-                      root: {
-                        cursor: 'pointer',
-                        padding: '12px 20px',
-                        borderLeft: 'none',
-                        backgroundColor: insertedBlocks[block.title]
-                          ? lockedBlocks[block.title]
-                            ? isDarkMode
-                              ? 'rgba(16,124,16,0.1)'
-                              : '#eafaea'
-                            : editedBlocks[block.title]
-                            ? colours.highlightBlue
-                            : colours.highlightYellow
-                          : 'transparent',
-                        borderTopLeftRadius: 8,
-                        borderTopRightRadius: 8,
-                        borderBottomLeftRadius: isCollapsed ? 8 : 0,
-                        borderBottomRightRadius: isCollapsed ? 8 : 0,
-                      },
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleCollapse(block.title);
-                    }}
-                    aria-expanded={!isCollapsed}
-                    aria-controls={`block-content-${block.title}`}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        toggleCollapse(block.title);
-                      }
-                    }}
-                  >
-                    <Icon
-                      iconName={isCollapsed ? 'ChevronRight' : 'ChevronDown'}
-                      styles={{
-                        root: { fontSize: 18, color: colours.highlight, marginRight: 6, marginLeft: 4 },
-                      }}
-                    />
-                    <Text
-                      variant="mediumPlus"
-                      styles={{ root: { color: colours.highlight } }}
-                    >
-                      {block.title}
-                    </Text>
-                    {lockedBlocks[block.title] && (
-                      <Icon
-                        iconName="CheckMark"
-                        styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }}
-                      />
-                    )}
-                    {!lockedBlocks[block.title] && editedBlocks[block.title] && (
-                      <Icon
-                        iconName="Edit"
-                        styles={{
-                          root: {
-                            color: colours.highlight,
-                            fontSize: 14,
-                            marginLeft: 6,
-                          },
-                        }}
-                      />
-                    )}
-                    <span style={{ flex: 1 }} />
-                    <DefaultButton
-                      text="✏ Edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditModal(block);
-                      }}
-                      styles={{
-                        root: {
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '0 4px',
-                          height: 24,
-                          fontSize: 12,
-                          color: colours.greyText,
-                        },
-                        rootHovered: {
-                          background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
-                        },
-                      }}
-                    />
-                    <IconButton
-                      iconProps={{ iconName: 'Cancel' }}
-                      ariaLabel={`Clear ${block.title}`}
-                      styles={{
-                        root: {
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          width: 24,
-                          height: 24,
-                          padding: 0,
-                        },
-                        rootHovered: {
-                          background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
-                        },
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleClearBlock(block);
-                      }}
-                    />
-                  </Stack>
-                  {!isCollapsed && (
-                    <Stack
-                      tokens={{ childrenGap: 10 }}
-                      id={`block-content-${block.title}`}
-                      styles={{
-                        root: {
-                          padding: '0 16px 16px 16px',
-                          borderTop: `1px solid ${
-                            isDarkMode ? colours.dark.border : colours.light.border
-                          }`,
-                          animation: 'fadeIn .18s',
-                          borderBottomLeftRadius: 8,
-                          borderBottomRightRadius: 8,
-                        },
-                      }}
-                    >
-                      <Text
-                        styles={{
-                          root: {
-                            color: isDarkMode ? colours.dark.text : colours.light.text,
-                            paddingTop: 8,
-                            fontSize: '13px',
-                          },
-                        }}
-                      >
-                        {block.description}
-                      </Text>
-                      <Dropdown
-                        placeholder={block.isMultiSelect ? 'Select options' : 'Select an option'}
-                        multiSelect={block.isMultiSelect}
-                        options={block.options.map((option: TemplateOption) => ({
-                          key: option.label,
-                          text: option.label,
-                        }))}
-                        onChange={(_ev, option?: IDropdownOption) => {
-                          if (option) {
-                            if (block.isMultiSelect) {
-                              const currentSelections = Array.isArray(
-                                selectedTemplateOptions[block.title]
-                              )
-                                ? (selectedTemplateOptions[block.title] as string[])
-                                : [];
-                              const updatedSelections = option.selected
-                                ? [...currentSelections, option.key as string]
-                                : currentSelections.filter((key) => key !== option.key);
-                              handleMultiSelectChange(block.title, updatedSelections);
-                            } else {
-                              handleSingleSelectChange(block.title, option.key as string);
-                            }
-                          }
-                        }}
-                       selectedKeys={
-                          block.isMultiSelect
-                            ? Array.isArray(selectedTemplateOptions[block.title])
-                              ? (selectedTemplateOptions[block.title] as string[])
-                              : []
-                            : typeof selectedTemplateOptions[block.title] === 'string'
-                            ? [selectedTemplateOptions[block.title] as string]
-                            : []
-                       }
-                       onRenderTitle={(opts, defaultRender) => {
-                         if ((!opts || opts.length === 0) && isInserted) {
-                           if (lockedBlocks[block.title]) {
-                             return (
-                               <span style={{ display: 'flex', alignItems: 'center' }}>
-                                 <Icon
-                                   iconName="CheckMark"
-                                   styles={{ root: { color: colours.green, fontSize: 12, marginRight: 4 } }}
-                                 />
-                                 <span>Locked</span>
-                               </span>
-                             );
-                           }
-                           if (isEdited) {
-                             return (
-                               <span style={{ display: 'flex', alignItems: 'center' }}>
-                                 <Icon
-                                   iconName="Edit"
-                                   styles={{ root: { color: colours.highlightBlue, fontSize: 12, marginRight: 4 } }}
-                                 />
-                                 <span>Customised</span>
-                               </span>
-                             );
-                           }
-                         }
-                         return defaultRender ? defaultRender(opts) : null;
-                       }}
-                       styles={sharedOptionsDropdownStyles(isDarkMode)}
-                       ariaLabel={`Select options for ${block.title}`}
-                       onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
-                       onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
-                      />
-                      {renderPreview(block)}
-                    </Stack>
-                  )}
-                </Stack>
-              );
-            })}
-          </Stack>
+                  {templateBlocks.map((block, index) => {
+                    const isCollapsed = collapsedBlocks[block.title];
+                    const isInserted = insertedBlocks[block.title] || false;
+                    const isEdited = editedBlocks[block.title] || false;
+                    return (
+                      <Draggable key={block.title + index} draggableId={block.title + index} index={index}>
+                        {(dragProvided) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            {...dragProvided.dragHandleProps}
+                            id={`template-block-${block.title.replace(/\s+/g, '-')}`}
+                            className={mergeStyles({
+                              padding: '0',
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                              marginBottom: '16px',
+                              position: 'relative',
+                              overflow: 'hidden',
+                              backgroundColor: isDarkMode
+                                ? colours.dark.cardBackground
+                                : colours.light.cardBackground,
+                              transition: 'background-color 0.2s, box-shadow 0.2s',
+                            })}
+                            role="button"
+                            tabIndex={0}
+                            onMouseEnter={() => highlightBlock(block.title, true, 'template')}
+                            onMouseLeave={() => highlightBlock(block.title, false, 'template')}
+                            onClick={() => {
+                              const selectedOption = selectedTemplateOptions[block.title];
+                              if (selectedOption) {
+                                let append = false;
+                                if (insertedBlocks[block.title] && editedBlocks[block.title]) {
+                                  const replace = window.confirm(
+                                    'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                                  );
+                                  append = !replace;
+                                }
+                                insertTemplateBlock(block, selectedOption, true, append);
+                              }
+                            }}
+                            aria-label={`Insert template block ${block.title}`}
+                          >
+                            <div
+                              id={`template-block-header-${block.title.replace(/\s+/g, '-')}`}
+                              style={{
+                                cursor: 'pointer',
+                                padding: '12px 20px',
+                                borderLeft: 'none',
+                                backgroundColor: insertedBlocks[block.title]
+                                  ? lockedBlocks[block.title]
+                                    ? isDarkMode
+                                      ? 'rgba(16,124,16,0.1)'
+                                      : '#eafaea'
+                                    : editedBlocks[block.title]
+                                    ? colours.highlightBlue
+                                    : colours.highlightYellow
+                                  : 'transparent',
+                                borderTopLeftRadius: 8,
+                                borderTopRightRadius: 8,
+                                borderBottomLeftRadius: collapsedBlocks[block.title] ? 8 : 0,
+                                borderBottomRightRadius: collapsedBlocks[block.title] ? 8 : 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCollapse(block.title);
+                              }}
+                              aria-expanded={!collapsedBlocks[block.title]}
+                              aria-controls={`block-content-${block.title}`}
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.stopPropagation();
+                                  toggleCollapse(block.title);
+                                }
+                              }}
+                            >
+                              <Icon
+                                iconName={collapsedBlocks[block.title] ? 'ChevronRight' : 'ChevronDown'}
+                                styles={{
+                                  root: { fontSize: 18, color: colours.highlight, marginRight: 6, marginLeft: 4 },
+                                }}
+                              />
+                              <Text variant="mediumPlus" styles={{ root: { color: colours.highlight } }}>
+                                {block.title}
+                              </Text>
+                              {lockedBlocks[block.title] && (
+                                <Icon
+                                  iconName="CheckMark"
+                                  styles={{ root: { color: colours.green, fontSize: 14, marginLeft: 6 } }}
+                                />
+                              )}
+                              {!lockedBlocks[block.title] && editedBlocks[block.title] && (
+                                <Icon
+                                  iconName="Edit"
+                                  styles={{
+                                    root: {
+                                      color: colours.highlight,
+                                      fontSize: 14,
+                                      marginLeft: 6,
+                                    },
+                                  }}
+                                />
+                              )}
+                              <span style={{ flex: 1 }} />
+                              <DefaultButton
+                                text="✏ Edit"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditModal(block);
+                                }}
+                                styles={{
+                                  root: {
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '0 4px',
+                                    height: 24,
+                                    fontSize: 12,
+                                    color: colours.greyText,
+                                  },
+                                  rootHovered: {
+                                    background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+                                  },
+                                }}
+                              />
+                              <IconButton
+                                iconProps={{ iconName: 'Add' }}
+                                ariaLabel={`Duplicate ${block.title}`}
+                                styles={{
+                                  root: {
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    width: 24,
+                                    height: 24,
+                                    padding: 0,
+                                  },
+                                  rootHovered: {
+                                    background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+                                  },
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDuplicateBlock(index);
+                                }}
+                              />
+                              <IconButton
+                                iconProps={{ iconName: 'Cancel' }}
+                                ariaLabel={`Clear ${block.title}`}
+                                styles={{
+                                  root: {
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    width: 24,
+                                    height: 24,
+                                    padding: 0,
+                                  },
+                                  rootHovered: {
+                                    background: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+                                  },
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleClearBlock(block);
+                                }}
+                              />
+                            </div>
+
+                            {!collapsedBlocks[block.title] && (
+                              <div
+                                id={`block-content-${block.title}`}
+                                style={{
+                                  padding: '0 16px 16px 16px',
+                                  borderTop: `1px solid ${
+                                    isDarkMode ? colours.dark.border : colours.light.border
+                                  }`,
+                                  animation: 'fadeIn .18s',
+                                  borderBottomLeftRadius: 8,
+                                  borderBottomRightRadius: 8,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 10,
+                                }}
+                              >
+                                <Text
+                                  styles={{
+                                    root: {
+                                      color: isDarkMode ? colours.dark.text : colours.light.text,
+                                      paddingTop: 8,
+                                      fontSize: '13px',
+                                    },
+                                  }}
+                                >
+                                  {block.description}
+                                </Text>
+                                <Dropdown
+                                  placeholder={block.isMultiSelect ? 'Select options' : 'Select an option'}
+                                  multiSelect={block.isMultiSelect}
+                                  options={block.options.map((option: TemplateOption) => ({
+                                    key: option.label,
+                                    text: option.label,
+                                  }))}
+                                  onChange={(_ev, option?: IDropdownOption) => {
+                                    if (!option) return;
+                                    if (block.isMultiSelect) {
+                                      const currentSelections = Array.isArray(
+                                        selectedTemplateOptions[block.title]
+                                      )
+                                        ? (selectedTemplateOptions[block.title] as string[])
+                                        : [];
+                                      const updatedSelections = option.selected
+                                        ? [...currentSelections, option.key as string]
+                                        : currentSelections.filter((key) => key !== option.key);
+                                      handleMultiSelectChange(block.title, updatedSelections);
+                                    } else {
+                                      handleSingleSelectChange(block.title, option.key as string);
+                                    }
+                                  }}
+                                  selectedKeys={
+                                    block.isMultiSelect
+                                      ? Array.isArray(selectedTemplateOptions[block.title])
+                                        ? (selectedTemplateOptions[block.title] as string[])
+                                        : []
+                                      : typeof selectedTemplateOptions[block.title] === 'string'
+                                      ? [selectedTemplateOptions[block.title] as string]
+                                      : []
+                                  }
+                                  onRenderTitle={(opts, defaultRender) => {
+                                    const isInserted = insertedBlocks[block.title] || false;
+                                    const isEdited = editedBlocks[block.title] || false;
+                                    if ((!opts || opts.length === 0) && isInserted) {
+                                      if (lockedBlocks[block.title]) {
+                                        return (
+                                          <span style={{ display: 'flex', alignItems: 'center' }}>
+                                            <Icon
+                                              iconName="CheckMark"
+                                              styles={{ root: { color: colours.green, fontSize: 12, marginRight: 4 } }}
+                                            />
+                                            <span>Locked</span>
+                                          </span>
+                                        );
+                                      }
+                                      if (isEdited) {
+                                        return (
+                                          <span style={{ display: 'flex', alignItems: 'center' }}>
+                                            <Icon
+                                              iconName="Edit"
+                                              styles={{
+                                                root: { color: colours.highlightBlue, fontSize: 12, marginRight: 4 },
+                                              }}
+                                            />
+                                            <span>Customised</span>
+                                          </span>
+                                        );
+                                      }
+                                    }
+                                    return defaultRender ? defaultRender(opts) : null;
+                                  }}
+                                  styles={sharedOptionsDropdownStyles(isDarkMode)}
+                                  ariaLabel={`Select options for ${block.title}`}
+                                  onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+                                  onFocus={(e: React.FocusEvent<HTMLDivElement>) => e.stopPropagation()}
+                                />
+                                {renderPreview(block)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+
+                    );
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </Stack>
       </Stack>
     </Stack>

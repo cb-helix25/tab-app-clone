@@ -16,7 +16,7 @@ import { colours } from '../../app/styles/colours';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
-import { TemplateBlock, TemplateOption } from '../../app/customisation/TemplateBlocks';
+import { templateBlocks as defaultTemplateBlocks, TemplateBlock, TemplateOption } from '../../app/customisation/TemplateBlocks';
 import { getTemplateBlocks, TemplateSet, templateSetOptions } from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
@@ -248,6 +248,8 @@ useEffect(() => {
       .join(' ');
   }
 
+const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
+
   // Default subject
   const [subject, setSubject] = useState<string>(
     enquiry.Area_of_Work
@@ -267,8 +269,8 @@ useEffect(() => {
   }
 
   const BASE_TEMPLATE = React.useMemo(
-    () => generateBaseTemplate(templateBlocks),
-    [templateBlocks]
+    () => generateBaseTemplate(blocks),
+    [blocks]
   );
 
   function generateInitialBody(blocks: TemplateBlock[]): string {
@@ -284,7 +286,7 @@ useEffect(() => {
       .join('\n');
   }
 
-  const [body, setBody] = useState<string>(() => generateInitialBody(templateBlocks));
+  const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
 
   useEffect(() => {
     const newBody = generateInitialBody(templateBlocks);
@@ -1100,6 +1102,33 @@ function handleInput() {
       highlightBlock(block.title, false);    }
   }
 
+function reorderTemplateBlocks(start: number, end: number) {
+  setBlocks((prev) => {
+    const updated = Array.from(prev);
+    const [moved] = updated.splice(start, 1);
+    updated.splice(end, 0, moved);
+    return updated;
+  });
+}
+
+function duplicateTemplateBlock(index: number) {
+  setBlocks((prev) => {
+    const copy = [...prev];
+    const block = { ...copy[index] };
+    let base = block.title;
+    let suffix = 1;
+    let newTitle = `${base} Copy`;
+    const titles = new Set(copy.map((b) => b.title));
+    while (titles.has(newTitle)) {
+      suffix += 1;
+      newTitle = `${base} Copy ${suffix}`;
+    }
+    block.title = newTitle;
+    copy.splice(index + 1, 0, block);
+    return copy;
+  });
+}
+
   /**
    * Renders the "preview" text for a selected block in the UI
    */
@@ -1537,7 +1566,7 @@ function handleScrollToBlock(blockTitle: string) {
         isDarkMode={isDarkMode}
         body={body}
         setBody={setBody}
-        templateBlocks={templateBlocks}
+        templateBlocks={blocks}
         templateSet={templateSet}
         onTemplateSetChange={setTemplateSet}
         selectedTemplateOptions={selectedTemplateOptions}
@@ -1557,11 +1586,10 @@ function handleScrollToBlock(blockTitle: string) {
         toolbarStyle={toolbarStyle}
         bubblesContainerStyle={bubblesContainerStyle}
         bubbleStyle={bubbleStyle}
-        filteredAttachments={filteredAttachments.map((att) => ({
-          key: att.key,
-          text: att.text,
-        }))}
+        filteredAttachments={filteredAttachments.map(att => ({ key: att.key, text: att.text }))}
         highlightBlock={highlightBlock}
+        onReorderBlocks={reorderTemplateBlocks}
+        onDuplicateBlock={duplicateTemplateBlock}
       />
   
       {/* Row: Preview and Reset Buttons */}
