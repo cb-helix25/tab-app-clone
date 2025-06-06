@@ -297,7 +297,12 @@ useEffect(() => {
     setLockedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
+    autoInsertDefaultBlocks();
   }, [templateSet]);
+
+  useEffect(() => {
+    autoInsertDefaultBlocks();
+  }, [enquiry.Area_of_Work]);
 
   // Attachments, followUp, preview, error states, etc...
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -647,6 +652,8 @@ useEffect(() => {
     setIsDraftConfirmed(false); // **Reset confirmation state**
     setDealId(null);
     setClientIds([]);
+
+    autoInsertDefaultBlocks();
 
     // Immediately clear any highlight styles from the DOM
     templateBlocks.forEach((block) => {
@@ -1245,34 +1252,35 @@ function handleInput() {
     return null;
   }
 
-  // Auto-insert single-option blocks for "Risk Assessment", "Next Steps", and "Closing Notes" on mount
-  useEffect(() => {
+  const DEFAULT_SINGLE_OPTION_BLOCKS = [
+    'Risk Assessment',
+    'Next Steps',
+    'Next Steps to Instruct Helix Law',
+    'Closing Notes',
+  ];
+
+  function autoInsertDefaultBlocks() {
     templateBlocks.forEach((block) => {
       if (
-        ['Risk Assessment', 'Next Steps', 'Next Steps to Instruct Helix Law', 'Closing Notes'].includes(block.title) &&
+        DEFAULT_SINGLE_OPTION_BLOCKS.includes(block.title) &&
         block.options.length === 1
       ) {
-        const selectedOption = block.options[0].label;
+        const autoOption = block.options[0].label;
         setSelectedTemplateOptions((prev) => ({
           ...prev,
-          [block.title]: block.isMultiSelect ? [selectedOption] : selectedOption,
+          [block.title]: block.isMultiSelect ? [autoOption] : autoOption,
         }));
         insertTemplateBlock(
           block,
-          block.isMultiSelect ? [selectedOption] : selectedOption
+          block.isMultiSelect ? [autoOption] : autoOption
         );
       }
-    });
-  }, []);
 
-  // Auto-insert additional blocks for Commercial and Property area of work
-  useEffect(() => {
-    if (
-      enquiry.Area_of_Work &&
-      (enquiry.Area_of_Work.toLowerCase() === 'commercial' ||
-        enquiry.Area_of_Work.toLowerCase() === 'property')
-    ) {
-      templateBlocks.forEach((block) => {
+      if (
+        enquiry.Area_of_Work &&
+        (enquiry.Area_of_Work.toLowerCase() === 'commercial' ||
+          enquiry.Area_of_Work.toLowerCase() === 'property')
+      ) {
         if (block.title === 'Introduction') {
           const autoOptionLabel = 'Standard Acknowledgment';
           const optionExists = block.options.find((o) => o.label === autoOptionLabel);
@@ -1287,6 +1295,7 @@ function handleInput() {
             );
           }
         }
+
         if (block.title === 'Current Situation and Problem') {
           const autoOptionLabel = 'The Dispute';
           const optionExists = block.options.find((o) => o.label === autoOptionLabel);
@@ -1301,8 +1310,9 @@ function handleInput() {
             );
           }
         }
+
         if (block.title === 'Potential Causes of Action and Remedies') {
-          // Auto-insert this block if it has a single option
+
           if (block.options.length === 1) {
             const autoOptionLabel = block.options[0].label;
             setSelectedTemplateOptions((prev) => ({
@@ -1342,9 +1352,9 @@ function handleInput() {
             );
           }
         }
-      });
-    }
-  }, [enquiry.Area_of_Work]);   
+      }
+    });
+  }
 
   // Some styling
   const containerStyle = mergeStyles({
