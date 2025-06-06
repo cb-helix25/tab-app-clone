@@ -257,30 +257,10 @@ useEffect(() => {
   const [cc, setCc] = useState<string>('');
   const [bcc, setBcc] = useState<string>('1day@followupthen.com');
 
-  // Basic template that includes placeholders
+  // Basic template that includes placeholders derived from the template blocks
   const BASE_TEMPLATE = `Dear [Enquiry.First_Name],
 
-[FE Introduction Placeholder]
-
-[Current Situation and Problem Placeholder]
-
-[Potential Causes of Action and Remedies Placeholder]
-
-[Scope of Work Placeholder]
-
-[Risk Assessment Placeholder]
-
-[Costs and Budget Placeholder]
-
-[Required Documents Placeholder]
-
-[Follow-Up Instructions Placeholder]
-
-[Meeting Link Placeholder]
-
-[Closing Notes Placeholder]
-
-[Google Review Placeholder]
+${templateBlocks.map((b) => b.placeholder).join('\n\n')}
 
 Kind Regards,<br>
 

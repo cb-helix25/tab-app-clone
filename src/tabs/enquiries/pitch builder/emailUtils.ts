@@ -1,19 +1,13 @@
 import { Enquiry } from '../../../app/functionality/types';
 import { colours } from '../../../app/styles/colours';
+import { templateBlocks } from '../../../app/customisation/TemplateBlocks';
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 export const leftoverPlaceholders = [
-  '[Current Situation and Problem Placeholder]',
-  '[Scope of Work Placeholder]',
-  '[Risk Assessment Placeholder]',
-  '[Costs and Budget Placeholder]',
-  '[Required Documents Placeholder]',
-  '[Follow-Up Instructions Placeholder]',
-  '[Closing Notes Placeholder]',
-  '[Google Review Placeholder]',
-  '[FE Introduction Placeholder]',
-  '[Meeting Link Placeholder]',
-  '[Potential Causes of Action and Remedies Placeholder]',
-  '[Amount]',
+  ...templateBlocks.map((b) => b.placeholder),
+  '[Amount]'
 ];
 
 /**
@@ -118,7 +112,7 @@ export function replacePlaceholders(
   const formattedRate =
     userRate && userRate !== '[Rate]' ? `£${userRate} + VAT` : '[Rate]';
 
-  return template
+  let result = template
     .replace(
       /\[Enquiry.First_Name\]/g,
       `<span style="background-color: ${colours.highlightYellow}; padding: 1px 3px;" data-placeholder="[Enquiry.First_Name]">${
@@ -130,21 +124,22 @@ export function replacePlaceholders(
       `<span style="background-color: ${colours.highlightYellow}; padding: 1px 3px;" data-placeholder="[Enquiry.Point_of_Contact]">${
         enquiry.Point_of_Contact || 'Our Team'
       }</span>`
-    )
-    .replace(
-      /\[FE Introduction Placeholder\]/g,
-      intro
-        ? `<span data-placeholder="[FE Introduction Placeholder]">${intro}</span>`
-        : `<span data-placeholder="[FE Introduction Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[FE Introduction Placeholder]</span>`
-    )
-    .replace(
-      /\[Current Situation and Problem Placeholder\]/g,
-      `<span data-placeholder="[Current Situation and Problem Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[Current Situation and Problem Placeholder]</span>`
-    )
-    .replace(
-      /\[Potential Causes of Action and Remedies Placeholder\]/g,
-      `<span data-placeholder="[Potential Causes of Action and Remedies Placeholder]" style="background-color: ${colours.grey}; padding: 1px 3px;">[Potential Causes of Action and Remedies Placeholder]</span>`
-    )
+    );
+
+  // Insert placeholders for each template block
+  templateBlocks.forEach((block) => {
+    const regex = new RegExp(escapeRegExp(block.placeholder), 'g');
+    const content =
+      block.placeholder === '[FE Introduction Placeholder]' && intro
+        ? intro
+        : block.placeholder;
+    result = result.replace(
+      regex,
+      `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${content}</span>`
+    );
+  });
+
+  result = result
     .replace(
       /\[First Name\]/g,
       `<span data-placeholder="[First Name]" style="background-color: ${colours.grey}; padding: 1px 3px;">${userFirstName}</span>`
@@ -159,14 +154,10 @@ export function replacePlaceholders(
     )
     .replace(
       /\[Rate\]/g,
-      // Use the formatted rate here instead of the raw value.
-     `<span data-placeholder="[Rate]" style="background-color: ${colours.grey}; padding: 1px 3px;">${formattedRate}</span>`
-    )
-    .replace(
-      /\[(Scope of Work Placeholder|Risk Assessment Placeholder|Costs and Budget Placeholder|Follow-Up Instructions Placeholder|Closing Notes Placeholder|Required Documents Placeholder|Google Review Placeholder|Meeting Link Placeholder)\]/g,
-      (match) =>
-        `<span data-placeholder="${match}" style="background-color: ${colours.grey}; padding: 1px 3px;">${match}</span>`
+      `<span data-placeholder="[Rate]" style="background-color: ${colours.grey}; padding: 1px 3px;">${formattedRate}</span>`
     );
+
+  return result;
 }
 
 /**

@@ -218,7 +218,7 @@ export const templateBlocks: TemplateBlock[] = [
       },
       {
         "label": "Instruct Helix Law - Pitch",
-        "previewText": `We are required to verify your identity. Please complete your details <a href="https://instruct.helix-law.com/pitch/?pid=22388" target="_blank" style='color:#3690CE; text-decoration:none;'>here</a>. We will try to verify you electronically initially.`      }
+        "previewText": `Please confirm your instructions by clicking <a href="https://instruct.helix-law.com/pitch/?pid=22388" target="_blank" style='color:#3690CE; text-decoration:none;'>here</a>. This single link will verify your identity, request the key documents and take funds on account so we can open a file without delay. I will then send you my Client Care Letter setting out the terms of our retainer. If you have any queries I'm very happy to discuss them without charge.`      }
     ]
   },
   // Separate Block for Meeting Link
