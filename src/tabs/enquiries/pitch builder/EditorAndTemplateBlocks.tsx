@@ -648,7 +648,7 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
                               boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
                               marginBottom: '16px',
                               position: 'relative',
-                              overflow: 'hidden',
+                              overflow: 'visible',
                               backgroundColor: isDarkMode
                                 ? colours.dark.cardBackground
                                 : colours.light.cardBackground,

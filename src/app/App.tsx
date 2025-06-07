@@ -11,6 +11,7 @@ const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
 const Resources = lazy(() => import('../tabs/resources/Resources'));
 const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
+const Instructions = lazy(() => import('../tabs/instructions/Instructions'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
 const Roadmap = lazy(() => import('../tabs/roadmap/Roadmap'));
 const ReportingHome = lazy(() => import('../tabs/Reporting/ReportingHome')); // Replace ReportingCode with ReportingHome
@@ -86,19 +87,38 @@ const App: React.FC<AppProps> = ({
     }
   }, [teamsContext, userData, enquiries, matters]);
 
-  const tabs: Tab[] = [
+  // Determine the current user's initials
+  const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+
+  // Tabs visible to all users
+  const baseTabs: Tab[] = [
     { key: 'home', text: 'Home' },
     { key: 'forms', text: 'Forms' },
     { key: 'resources', text: 'Resources' },
     { key: 'enquiries', text: 'Enquiries' },
+  ];
+
+  // Add the Instructions tab only for Luke (LZ) and Alex (AC).
+  // Make it always visible when developing locally (hostname === 'localhost').
+  const instructionsUsers = ['LZ', 'AC'];
+  const isLocalhost = window.location.hostname === 'localhost';
+  const showInstructionsTab =
+    instructionsUsers.includes(userInitials) || isLocalhost;
+
+  const tabsWithInstructions = showInstructionsTab
+    ? [...baseTabs, { key: 'instructions', text: 'Instructions' }]
+    : baseTabs;
+
+  const tabs: Tab[] = [
+    ...tabsWithInstructions,
     { key: 'matters', text: 'Matters' },
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
   ];
 
-  // Check if the user has authorized initials
+  // Check if the user has authorized initials for the Reporting tab
   const authorizedInitials = ['AC', 'JW', 'LZ', 'BL'];
-  const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+
   const isAuthorized = authorizedInitials.includes(userInitials);
 
   const renderContent = () => {
@@ -133,6 +153,8 @@ const App: React.FC<AppProps> = ({
             teamData={teamData}
           />
         );
+      case 'instructions':
+        return <Instructions />;
       case 'matters':
         return (
           <Matters

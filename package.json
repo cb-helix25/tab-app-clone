@@ -10,7 +10,7 @@
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
     "@craco/craco": "^7.1.0",
-    "@fluentui/react": "^8.122.9",
+    "@fluentui/react": "^8.123.0",
     "@fluentui/react-charting": "^5.23.56",
     "@fluentui/react-components": "^9.57.0",
     "@microsoft/teams-js": "^2.34.0",

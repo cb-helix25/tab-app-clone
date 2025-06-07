@@ -3,22 +3,27 @@
 import React from 'react';
 import { Pivot, PivotItem, IPivotStyles, initializeIcons } from '@fluentui/react';
 import { colours } from './colours';
-import './CustomTabs.css'; // Import the CSS file for custom styles
+import './CustomTabs.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { Tab } from '../functionality/types'; // Import from shared types
+import { Tab } from '../functionality/types';
 
-initializeIcons(); // Initialize Fluent UI icons
+initializeIcons();
 
 interface CustomTabsProps {
   selectedKey: string;
-  onLinkClick: (item?: PivotItem, ev?: React.MouseEvent<HTMLElement>) => void;
-  tabs: Tab[]; // Use the shared Tab interface
+  onLinkClick: (
+    item?: PivotItem,
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
+  ) => void;
+  tabs: Tab[];
   ariaLabel?: string;
 }
 
 const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
   root: {
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
     borderRadius: '8px',
     padding: '5px',
     display: 'flex',
@@ -53,7 +58,9 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
     },
   },
   linkIsSelected: {
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
     transform: 'scale(1.05)',
     boxShadow: isDarkMode
       ? '0 4px 8px rgba(255,255,255,0.2)'
@@ -67,37 +74,44 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
   },
 });
 
-const CustomTabs: React.FC<CustomTabsProps> = ({ selectedKey, onLinkClick, tabs, ariaLabel }) => {
-  const { isDarkMode } = useTheme(); // Access isDarkMode from Theme Context
+const CustomTabs: React.FC<CustomTabsProps> = ({
+  selectedKey,
+  onLinkClick,
+  tabs,
+  ariaLabel,
+}) => {
+  const { isDarkMode } = useTheme();
 
-  // Handle link clicks, preventing disabled tabs from being selected
-  const handleLinkClick = (item?: PivotItem, ev?: React.MouseEvent<HTMLElement>) => {
-    const clickedTab = tabs.find(tab => tab.key === item?.props.itemKey);
+  const handleLinkClick = (
+    item?: PivotItem,
+    ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
+  ) => {
+    const clickedTab = tabs.find((tab) => tab.key === item?.props.itemKey);
     if (clickedTab?.disabled) {
-      ev?.preventDefault(); // Prevent the default action
+      ev?.preventDefault();
       return;
     }
-    onLinkClick(item, ev);
+    onLinkClick(item, ev as any);
   };
 
   return (
     <Pivot
       selectedKey={selectedKey}
-      onLinkClick={handleLinkClick} // Use the custom handler
+      onLinkClick={handleLinkClick}
       aria-label={ariaLabel || 'Custom Tabs'}
       styles={customPivotStyles(isDarkMode)}
-      className="customPivot" // Add custom class here
+      className="customPivot"
     >
       {tabs.map((tab, index) => (
         <PivotItem
           itemKey={tab.key}
           key={tab.key}
           headerText={tab.text}
-          itemIcon={tab.key === 'reporting' ? 'Lock' : undefined} // Add lock icon only for "Reporting"
+          itemIcon={tab.key === 'reporting' ? 'Lock' : undefined}
           headerButtonProps={{
-            className: tab.disabled ? 'disabledTab' : '', // Apply disabled class
-            style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties, // Dynamic delay
-            'aria-disabled': tab.disabled ? 'true' : undefined, // Accessibility
+            className: tab.disabled ? 'disabledTab' : '',
+            style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
+            'aria-disabled': tab.disabled ? 'true' : undefined,
           }}
         />
       ))}
