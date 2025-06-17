@@ -1356,7 +1356,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
   
   useEffect(() => {
     async function fetchInstructions() {
-      if (!enquiries || enquiries.length === 0) return;
+      if (!userInitials) return;
       const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
@@ -1364,23 +1364,19 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         console.error('Missing env variables for instruction data');
         return;
       }
-      const results: InstructionData[] = [];
-      for (const enq of enquiries) {
-        try {
-          const url = `${baseUrl}/${path}?code=${code}&enquiryId=${enq.ID}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            results.push(data);
-          }
-        } catch (err) {
-          console.error('Error fetching instructions for enquiry', enq.ID, err);
+      try {
+        const url = `${baseUrl}/${path}?code=${code}&initials=${userInitials}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setInstructionData(Array.isArray(data) ? data : [data]);
         }
+      } catch (err) {
+        console.error('Error fetching instructions for user', userInitials, err);
       }
-      setInstructionData(results);
     }
     fetchInstructions();
-  }, [enquiries]);
+  }, [userInitials]);
 
   useEffect(() => {
     async function fetchTransactions() {

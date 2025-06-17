@@ -124,17 +124,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
 
   const renderOriginal = (
     <Stack tokens={{ childrenGap: 8 }}>
-      <Text variant="small">Placeholder: {block.placeholder}</Text>
-      <Text variant="small">Options:</Text>
-      <ul style={{ margin: 0, paddingLeft: 16 }}>
-        {block.options.map((opt) => (
-          <li key={opt.label} style={{ marginBottom: 4 }}>
-            <Text variant="small">
-              {opt.label}: {opt.previewText}
-            </Text>
-          </li>
-        ))}
-      </ul>
+      <Text variant="small">{block.description}</Text>
       <div>{previewContent}</div>
     </Stack>
   );
@@ -158,7 +148,10 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
         </Stack>
         <Stack style={{ width: '50%' }} tokens={{ childrenGap: 8 }}>
           <Text variant="mediumPlus">Proposed</Text>
-          <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>
+          <div
+            style={{ whiteSpace: 'pre-wrap' }}
+            dangerouslySetInnerHTML={{ __html: content.replace(/\n/g, '<br />') }}
+          />
         </Stack>
       </Stack>
       {notes && <Text variant="small">Notes: {notes}</Text>}

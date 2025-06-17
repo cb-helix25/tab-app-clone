@@ -154,7 +154,11 @@ const App: React.FC<AppProps> = ({
           />
         );
       case 'instructions':
-        return <Instructions enquiries={enquiries} />;
+        return (
+          <Instructions
+            userInitials={userInitials}
+          />
+        );
       case 'matters':
         return (
           <Matters

@@ -3,19 +3,18 @@ import { Stack, Text, mergeStyles } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
-import { InstructionData, Enquiry } from '../../app/functionality/types';
+import { InstructionData } from '../../app/functionality/types';
 
 interface InstructionsProps {
-  enquiries: Enquiry[] | null;
+  userInitials: string;
 }
-
-const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
+const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
   const { isDarkMode } = useTheme();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
   useEffect(() => {
     async function fetchData() {
-      if (!enquiries || enquiries.length === 0) return;
+      if (!userInitials) return;
       const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
@@ -24,25 +23,21 @@ const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
         return;
       }
 
-      const results: InstructionData[] = [];
-      for (const enq of enquiries) {
-        try {
-          const url = `${baseUrl}/${path}?code=${code}&enquiryId=${enq.ID}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            results.push(data);
-          } else {
-            console.error('Failed to fetch instructions for enquiry', enq.ID);
-          }
-        } catch (err) {
-          console.error('Error fetching instructions for enquiry', enq.ID, err);
+      try {
+        const url = `${baseUrl}/${path}?code=${code}&initials=${userInitials}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setInstructionData(Array.isArray(data) ? data : [data]);
+        } else {
+          console.error('Failed to fetch instructions for user', userInitials);
         }
+      } catch (err) {
+        console.error('Error fetching instructions for user', userInitials, err);
       }
-      setInstructionData(results);
     }
     fetchData();
-  }, [enquiries]);
+  }, [userInitials]);
 
   const containerStyle = mergeStyles({
     width: '100%',

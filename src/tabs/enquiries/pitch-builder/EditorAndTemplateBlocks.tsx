@@ -677,7 +677,7 @@ boxShadow: isDarkMode
                             id={`template-block-${block.title.replace(/\s+/g, '-')}`}
                             className={mergeStyles({
                               padding: '0',
-                              borderRadius: '8px',
+                              borderRadius: '0px',
                               boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
                               marginBottom: '16px',
                               position: 'relative',
@@ -721,10 +721,10 @@ boxShadow: isDarkMode
                                     ? colours.highlightBlue
                                     : colours.highlightYellow
                                   : 'transparent',
-                                borderTopLeftRadius: 8,
-                                borderTopRightRadius: 8,
-                                borderBottomLeftRadius: collapsedBlocks[block.title] ? 8 : 0,
-                                borderBottomRightRadius: collapsedBlocks[block.title] ? 8 : 0,
+                                borderTopLeftRadius: 0,
+                                borderTopRightRadius: 0,
+                                borderBottomLeftRadius: 0,
+                                borderBottomRightRadius: 0,
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 10,
@@ -845,8 +845,8 @@ boxShadow: isDarkMode
                                     isDarkMode ? colours.dark.border : colours.light.border
                                   }`,
                                   animation: 'fadeIn .18s',
-                                  borderBottomLeftRadius: 8,
-                                  borderBottomRightRadius: 8,
+                                  borderBottomLeftRadius: 0,
+                                  borderBottomRightRadius: 0,
                                   display: 'flex',
                                   flexDirection: 'column',
                                   gap: 10,
@@ -885,7 +885,23 @@ boxShadow: isDarkMode
                                         ? [...currentSelections, option.key as string]
                                         : currentSelections.filter((key) => key !== option.key);
                                       handleMultiSelectChange(block.title, updatedSelections);
+                                      let append = false;
+                                      if (insertedBlocks[block.title] && editedBlocks[block.title]) {
+                                        const replace = window.confirm(
+                                          'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                                        );
+                                        append = !replace;
+                                      }
+                                      insertTemplateBlock(block, updatedSelections, true, append);
                                     } else {
+                                      let append = false;
+                                      if (insertedBlocks[block.title] && editedBlocks[block.title]) {
+                                        const replace = window.confirm(
+                                          'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                                        );
+                                        append = !replace;
+                                      }
+                                      insertTemplateBlock(block, option.key as string, true, append);
                                       handleSingleSelectChange(block.title, option.key as string);
                                     }
                                   }}
