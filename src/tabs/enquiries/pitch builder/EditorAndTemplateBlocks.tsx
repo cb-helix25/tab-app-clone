@@ -19,7 +19,7 @@ import {
   Separator,
   Callout,
 } from '@fluentui/react';
-import { TemplateBlock, TemplateOption } from '../../../app/customisation/TemplateBlocks';
+import { TemplateBlock, TemplateOption } from '../../../app/customisation/DefaultTemplateBlocks';
 import { TemplateSet, templateSetOptions } from '../../../app/customisation/TemplateBlockSets';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
