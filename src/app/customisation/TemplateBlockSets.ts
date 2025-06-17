@@ -3,24 +3,24 @@ import {
   TemplateBlock,
   TemplateOption,
 } from './TemplateBlocks';
-import simplifiedTemplateBlocks from './SimplifiedTemplateBlocks';
+import defaultTemplateBlocks from './DefaultTemplateBlocks';
 import condensedTemplateBlocks from './CondensedTemplateBlocks';
 
-export type TemplateSet = 'Comprehensive' | 'Condensed' | 'Simple';
+export type TemplateSet = 'Comprehensive' | 'Condensed' | 'Default';
 
 export const templateBlockSets: Record<TemplateSet, TemplateBlock[]> = {
   Comprehensive: comprehensiveTemplateBlocks,
   Condensed: condensedTemplateBlocks,
-  Simple: simplifiedTemplateBlocks,
+  Default: defaultTemplateBlocks,
 };
 
 export const templateSetOptions = [
   { key: 'Comprehensive', text: 'Comprehensive' },
   { key: 'Condensed', text: 'Condensed' },
-  { key: 'Simple', text: 'Simple' },
+  { key: 'Default', text: 'Default' },
 ];
 
-export function getTemplateBlocks(set: TemplateSet = 'Comprehensive'): TemplateBlock[] {
+export function getTemplateBlocks(set: TemplateSet = 'Default'): TemplateBlock[] {
   return templateBlockSets[set];
 }
 

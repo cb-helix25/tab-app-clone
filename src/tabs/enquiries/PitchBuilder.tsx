@@ -78,7 +78,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  const [templateSet, setTemplateSet] = useState<TemplateSet>('Comprehensive');
+  const [templateSet, setTemplateSet] = useState<TemplateSet>('Default');
   const templateBlocks = getTemplateBlocks(templateSet);
 
   function handleTemplateSetChange(newSet: TemplateSet) {
