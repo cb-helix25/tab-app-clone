@@ -4,13 +4,17 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles, statusColors } from './componentTokens';
 
+interface InstructionTask {
+  name: string;
+  status: 'pending' | 'completed' | 'awaiting' | 'notStarted';
+}
+
+
 interface Instruction {
   id: number;
   client: string;
   submitted: string;
-  idCheck: 'pending' | 'completed';
-  documents: 'pending' | 'completed';
-  payment: 'awaiting' | 'completed';
+  tasks: InstructionTask[];
 }
 
 const sampleInstructions: Instruction[] = [
@@ -18,21 +22,25 @@ const sampleInstructions: Instruction[] = [
     id: 1,
     client: 'John Doe',
     submitted: '2025-06-01',
-    idCheck: 'completed',
-    documents: 'pending',
-    payment: 'awaiting',
+    tasks: [
+      { name: 'Send CCL', status: 'completed' },
+      { name: 'Risk Assessment', status: 'pending' },
+      { name: 'Risk Assessment Form', status: 'notStarted' },
+    ],
   },
   {
     id: 2,
     client: 'Jane Smith',
     submitted: '2025-06-04',
-    idCheck: 'pending',
-    documents: 'pending',
-    payment: 'awaiting',
+    tasks: [
+      { name: 'Send CCL', status: 'pending' },
+      { name: 'Risk Assessment', status: 'awaiting' },
+      { name: 'Risk Assessment Form', status: 'notStarted' },
+    ],
   },
 ];
 
-const statusIcon = (status: 'pending' | 'completed' | 'awaiting') => {
+const statusIcon = (status: 'pending' | 'completed' | 'awaiting' | 'notStarted') => {
   const color = statusColors[status];
   const iconName = status === 'completed' ? 'CheckMark' : 'Clock';
   return <Icon iconName={iconName} styles={{ root: { color } }} />;
@@ -55,19 +63,18 @@ const Instructions: React.FC = () => {
         <Stack key={inst.id} tokens={cardTokens} styles={cardStyles}>
           <Text variant="large">{inst.client}</Text>
           <Text>Submitted: {inst.submitted}</Text>
-          <Stack horizontal tokens={{ childrenGap: 20 }}>
-            <Stack horizontal tokens={{ childrenGap: 6 }} verticalAlign="center">
-              {statusIcon(inst.idCheck)}
-              <Text>ID Check</Text>
-            </Stack>
-            <Stack horizontal tokens={{ childrenGap: 6 }} verticalAlign="center">
-              {statusIcon(inst.documents)}
-              <Text>Documents</Text>
-            </Stack>
-            <Stack horizontal tokens={{ childrenGap: 6 }} verticalAlign="center">
-              {statusIcon(inst.payment)}
-              <Text>Payment</Text>
-            </Stack>
+          <Stack tokens={{ childrenGap: 10 }}>
+            {inst.tasks.map((task) => (
+              <Stack
+                horizontal
+                tokens={{ childrenGap: 6 }}
+                verticalAlign="center"
+                key={task.name}
+              >
+                {statusIcon(task.status)}
+                <Text>{task.name}</Text>
+              </Stack>
+            ))}
           </Stack>
         </Stack>
       ))}

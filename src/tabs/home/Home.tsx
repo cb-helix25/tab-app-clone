@@ -2400,7 +2400,7 @@ const conversionRate = enquiriesMonthToDate
         matters={allMatters || []}
         updateTransaction={updateTransaction}
         outstandingBalances={myOutstandingBalances} // pass the pre-filtered data
-      />;
+      />
 
       {/* Metrics Section Container */}
       <div

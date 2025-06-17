@@ -24,6 +24,7 @@ interface DealRequest {
   leadClientEmail: string;
   leadClientId: number;
   clients?: ClientInfo[];
+  passcode?: string;
 }
 
 import axios from "axios";
@@ -55,6 +56,9 @@ const {
   clients
 } = body;
 
+  // Generate a 5 digit numerical passcode if not provided
+  const passcode = body.passcode || Math.floor(10000 + Math.random() * 90000).toString();
+
   if (!serviceDescription || amount === undefined || !areaOfWork || !prospectId || !pitchedBy || !leadClientEmail) {
     return { status: 400, body: "Missing required fields" };
   }
@@ -81,6 +85,7 @@ const {
       amount,
       areaOfWork,
       prospectId,
+      passcode,
       pitchedBy,
       isMultiClient,
       leadClientEmail,
@@ -94,7 +99,16 @@ const {
 
     const response = await axios.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
-      return { status: 200, body: "Deal captured" };
+      const result = typeof response.data === 'object' ? response.data : {};
+      return {
+        status: 200,
+        body: JSON.stringify({
+          message: "Deal captured",
+          passcode,
+          ...result,
+        }),
+        headers: { "Content-Type": "application/json" },
+      };
     }
     return { status: response.status, body: response.statusText };
   } catch (error: any) {

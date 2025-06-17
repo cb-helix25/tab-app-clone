@@ -172,7 +172,9 @@ export function applyDynamicSubstitutions(
   text: string,
   userData: any,
   enquiry: Enquiry,
-  amount?: number | string
+  amount?: number | string,
+  passcode?: string,
+  checkoutLink?: string
 ): string {
   const userInitials = userData?.[0]?.['Initials'] || 'XX';
   const enquiryID = enquiry?.ID || '0000';
@@ -195,10 +197,17 @@ export function applyDynamicSubstitutions(
         })()
       : '[Amount]';
 
+  const finalCheckoutLink = checkoutLink ||
+    (passcode
+      ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}`
+      : process.env.REACT_APP_CHECKOUT_URL || '#');
+
   return text
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)
     .replace(/\[Rate\]/g, formattedRate)
-    .replace(/\[Amount\]/g, formattedAmount);
+    .replace(/\[Amount\]/g, formattedAmount)
+    .replace(/\[Passcode\]/g, passcode || '[Passcode]')
+    .replace(/\[CheckoutLink\]/g, finalCheckoutLink);
 }

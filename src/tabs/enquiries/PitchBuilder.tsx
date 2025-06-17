@@ -289,6 +289,7 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
   const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
 
   useEffect(() => {
+    setBlocks(templateBlocks);
     const newBody = generateInitialBody(templateBlocks);
     setBody(newBody);
     if (bodyEditorRef.current) {
@@ -330,6 +331,7 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
 
   // IDs returned after saving a deal
   const [dealId, setDealId] = useState<number | null>(null);
+  const [dealPasscode, setDealPasscode] = useState<string>('');
   const [clientIds, setClientIds] = useState<number[]>([]);
   const [dealClients, setDealClients] = useState<ClientInfo[]>([]);
   const [isMultiClientFlag, setIsMultiClientFlag] = useState<boolean>(false);
@@ -471,7 +473,11 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
       replacementText,
       userData,
       enquiry,
-      amount
+      amount,
+      dealPasscode,
+      dealPasscode
+        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        : undefined
     );
     let selectedLabel = '';
     if (block.isMultiSelect && isStringArray(selectedOption)) {
@@ -703,11 +709,18 @@ async function insertDealIfNeeded() {
         clients: dealClients.map((c) => ({ clientEmail: c.email })),
       }),
     };
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.passcode) {
+        setDealPasscode(data.passcode);
+      }
+    }
 
     // ✅ Trigger same confirmation message as draft/send
     setIsDraftConfirmed(true);
@@ -793,7 +806,17 @@ async function insertDealIfNeeded() {
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
-    rawHtml = applyDynamicSubstitutions(rawHtml, userData, enquiry, amount);
+    const checkoutLink = dealPasscode
+      ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      : undefined;
+    rawHtml = applyDynamicSubstitutions(
+      rawHtml,
+      userData,
+      enquiry,
+      amount,
+      dealPasscode,
+      checkoutLink
+    );
 
     // Remove leftover placeholders
     const noPlaceholders = removeUnfilledPlaceholders(rawHtml, templateBlocks);
@@ -1226,7 +1249,11 @@ function duplicateTemplateBlock(index: number) {
                 formatPreviewText(preview),
                 userData,
                 enquiry,
-                amount
+                amount,
+                dealPasscode,
+                dealPasscode
+                  ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+                  : undefined
               );
               return (
                 <li
@@ -1248,7 +1275,11 @@ function duplicateTemplateBlock(index: number) {
         formatPreviewText(preview),
         userData,
         enquiry,
-        amount
+        amount,
+        dealPasscode,
+        dealPasscode
+          ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+          : undefined
       );
       return (
         <div
@@ -1630,6 +1661,7 @@ function handleScrollToBlock(blockTitle: string) {
         handleDraftEmail={handleDraftEmail}
         isSuccessVisible={isSuccessVisible}
         isDraftConfirmed={isDraftConfirmed}
+        passcode={dealPasscode}
       />
       <OperationStatusToast
         visible={toast !== null}

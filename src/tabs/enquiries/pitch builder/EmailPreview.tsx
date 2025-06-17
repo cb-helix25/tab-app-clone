@@ -44,6 +44,7 @@ interface EmailPreviewProps {
   isSuccessVisible: boolean;
   isDraftConfirmed: boolean;
   amount?: string;
+  passcode?: string;
 }
 
 const EmailPreview: React.FC<EmailPreviewProps> = ({
@@ -65,13 +66,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   isSuccessVisible,
   isDraftConfirmed,
   amount,
+  passcode,
 }) => {
   // Process body HTML using imported functions
   const substituted = applyDynamicSubstitutions(
     removeHighlightSpans(body),
     userData,
     enquiry,
-    amount
+    amount,
+    passcode,
+    passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
   );
 const cleanBody = removeUnfilledPlaceholders(substituted, templateBlocks);
 const previewRef = React.useRef<HTMLDivElement>(null);

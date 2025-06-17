@@ -22,4 +22,5 @@ export const statusColors = {
   pending: colours.orange,
   completed: colours.green,
   awaiting: colours.yellow,
+  notStarted: colours.greyText,
 };
