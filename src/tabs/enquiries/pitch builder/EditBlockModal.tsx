@@ -18,6 +18,7 @@ import {
   sharedDefaultButtonStyles,
 } from '../../../app/styles/ButtonStyles';
 import { inputFieldStyle } from '../../../CustomForms/BespokeForms';
+import { TemplateBlock } from '../../../app/customisation/TemplateBlockSets';
 
 interface ReferenceBlockPayload {
   title: string;
@@ -41,6 +42,8 @@ interface EditBlockModalProps {
   blockTitle: string;
   /** Preview of the original template content */
   previewContent: React.ReactNode;
+  /** Original block details including options and placeholder */
+  block: TemplateBlock;
   /** Handler when the user saves their changes */
   onSubmit: (payload: EditRequestPayload) => Promise<void> | void;
   /** Initial text for the block editor */
@@ -66,6 +69,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   onDismiss,
   blockTitle,
   previewContent,
+  block,
   onSubmit,
   initialContent = '',
   initialNotes = '',
@@ -109,6 +113,23 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     justifyContent: 'space-between',
   });
 
+  const renderOriginal = (
+    <Stack tokens={{ childrenGap: 8 }}>
+      <Text variant="small">Placeholder: {block.placeholder}</Text>
+      <Text variant="small">Options:</Text>
+      <ul style={{ margin: 0, paddingLeft: 16 }}>
+        {block.options.map((opt) => (
+          <li key={opt.label} style={{ marginBottom: 4 }}>
+            <Text variant="small">
+              {opt.label}: {opt.previewText}
+            </Text>
+          </li>
+        ))}
+      </ul>
+      <div>{previewContent}</div>
+    </Stack>
+  );
+
   return (
     <Modal isOpen={isOpen} onDismiss={onDismiss} isBlocking={false}>
       <div className={containerClass}>
@@ -120,52 +141,58 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
           <Text variant="small">
             Update the content below or explain how this block should change.
           </Text>
-          <div>{previewContent}</div>
-          <TextField
-            label="Content"
-            multiline
-            autoAdjustHeight
-            value={content}
-            onChange={(_, v) => setContent(v || '')}
-            styles={{ fieldGroup: inputFieldStyle }}
-          />
-          <Dropdown
-            label="Reference another block (optional)"
-            selectedKey={reference}
-            options={referenceOptions}
-            onChange={(_, option) => {
-              setReference(option?.key as string);
-              setReferenceOption(undefined);
-            }}
-          />
-          {reference && (
-            <ComboBox
-              label="Reference option"
-              selectedKey={referenceOption}
-              allowFreeform
-              options={(blockOptionsMap[reference] || []).map((o) => ({ key: o, text: o })) as IComboBoxOption[]}
-              onChange={(_, option, __, value) => setReferenceOption((option ? option.key : value) as string)}
-              styles={{ root: { width: '100%' }, input: { height: '32px' } }}
-            />
-          )}
-          <TextField
-            label="Notes"
-            multiline
-            autoAdjustHeight
-            value={notes}
-            onChange={(_, v) => setNotes(v || '')}
-            styles={{ fieldGroup: inputFieldStyle }}
-          />
-          {reference && (
-            <TextField
-              label="Notes about referencing the other block"
-              multiline
-              autoAdjustHeight
-              value={referenceNotes}
-              onChange={(_, v) => setReferenceNotes(v || '')}
-              styles={{ fieldGroup: inputFieldStyle }}
-            />
-          )}
+          <Stack horizontal tokens={{ childrenGap: 20 }}>
+            <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
+              {renderOriginal}
+            </Stack>
+            <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
+              <TextField
+                label="Content"
+                multiline
+                autoAdjustHeight
+                value={content}
+                onChange={(_, v) => setContent(v || '')}
+                styles={{ fieldGroup: inputFieldStyle }}
+              />
+              <Dropdown
+                label="Reference another block (optional)"
+                selectedKey={reference}
+                options={referenceOptions}
+                onChange={(_, option) => {
+                  setReference(option?.key as string);
+                  setReferenceOption(undefined);
+                }}
+              />
+              {reference && (
+                <ComboBox
+                  label="Reference option"
+                  selectedKey={referenceOption}
+                  allowFreeform
+                  options={(blockOptionsMap[reference] || []).map((o) => ({ key: o, text: o })) as IComboBoxOption[]}
+                  onChange={(_, option, __, value) => setReferenceOption((option ? option.key : value) as string)}
+                  styles={{ root: { width: '100%' }, input: { height: '32px' } }}
+                />
+              )}
+              <TextField
+                label="Notes"
+                multiline
+                autoAdjustHeight
+                value={notes}
+                onChange={(_, v) => setNotes(v || '')}
+                styles={{ fieldGroup: inputFieldStyle }}
+              />
+              {reference && (
+                <TextField
+                  label="Notes about referencing the other block"
+                  multiline
+                  autoAdjustHeight
+                  value={referenceNotes}
+                  onChange={(_, v) => setReferenceNotes(v || '')}
+                  styles={{ fieldGroup: inputFieldStyle }}
+                />
+              )}
+            </Stack>
+          </Stack>
           <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 10 }}>
             <PrimaryButton
               text="Save"

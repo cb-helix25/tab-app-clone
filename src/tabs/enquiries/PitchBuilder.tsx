@@ -1130,6 +1130,28 @@ function handleInput() {
       highlightBlock(block.title, false);    }
   }
 
+  function clearAllBlocks() {
+    if (bodyEditorRef.current) {
+      let newBody = bodyEditorRef.current.innerHTML;
+      templateBlocks.forEach((block) => {
+        const regex = new RegExp(
+          `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
+          'g'
+        );
+        const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
+        newBody = newBody.replace(regex, placeholderHTML);
+      });
+      bodyEditorRef.current.innerHTML = newBody;
+      setBody(newBody);
+    }
+    setSelectedTemplateOptions({});
+    setInsertedBlocks({});
+    setLockedBlocks({});
+    setEditedBlocks({});
+    setOriginalBlockContent({});
+    templateBlocks.forEach((block) => highlightBlock(block.title, false));
+  }
+
 function reorderTemplateBlocks(start: number, end: number) {
   setBlocks((prev) => {
     const updated = Array.from(prev);
@@ -1626,6 +1648,7 @@ function handleScrollToBlock(blockTitle: string) {
         highlightBlock={highlightBlock}
         onReorderBlocks={reorderTemplateBlocks}
         onDuplicateBlock={duplicateTemplateBlock}
+        onClearAllBlocks={clearAllBlocks}
       />
   
       {/* Row: Preview and Reset Buttons */}

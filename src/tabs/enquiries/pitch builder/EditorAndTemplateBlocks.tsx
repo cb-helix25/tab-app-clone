@@ -7,7 +7,6 @@ import {
 } from 'react-beautiful-dnd';
 import {
   Stack,
-  Label,
   IconButton,
   DefaultButton,
   Dropdown,
@@ -20,9 +19,10 @@ import {
   Callout,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/ProductionTemplateBlocks';
-import { TemplateSet, templateSetOptions } from '../../../app/customisation/TemplateBlockSets';
+import { TemplateSet } from '../../../app/customisation/TemplateBlockSets';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
+import { sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { getLeftoverPlaceholders } from './emailUtils';
 import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
 
@@ -88,6 +88,7 @@ interface EditorAndTemplateBlocksProps {
   onDuplicateBlock: (index: number) => void;
   templateSet: TemplateSet;
   onTemplateSetChange: (set: TemplateSet) => void;
+  onClearAllBlocks: () => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
@@ -119,6 +120,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     onDuplicateBlock,
     templateSet,
     onTemplateSetChange,
+    onClearAllBlocks,
   } = props;
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
@@ -266,30 +268,6 @@ boxShadow: isDarkMode
     flexDirection: 'column',
     gap: '20px',
   });
-
-  const labelStyle = mergeStyles({
-    fontWeight: 600,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-  });
-
-  const templateSetDropdownStyles = {
-    root: {
-      width: 'auto',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 4,
-    },
-    dropdown: { backgroundColor: 'transparent', border: 'none', padding: 0 },
-    title: {
-      backgroundColor: 'transparent',
-      color: colours.highlight,
-      fontWeight: 600,
-      paddingLeft: 0,
-      paddingRight: 0,
-    },
-    caretDown: { color: colours.highlight },
-  } as const;
   
   const toolbarButtonStyle = {
     root: {
@@ -376,16 +354,19 @@ boxShadow: isDarkMode
 
   return (
     <>
-      <EditBlockModal
-        isOpen={!!blockToEdit}
-        onDismiss={() => setBlockToEdit(null)}
-        blockTitle={blockToEdit?.title || ''}
-        previewContent={previewNode}
-        onSubmit={requestChange}
-        referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
-        blockOptionsMap={blockOptionsMap}
-        isDarkMode={isDarkMode}
-      />
+      {blockToEdit && (
+        <EditBlockModal
+          isOpen={true}
+          onDismiss={() => setBlockToEdit(null)}
+          blockTitle={blockToEdit.title}
+          previewContent={previewNode}
+          block={blockToEdit}
+          onSubmit={requestChange}
+          referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
+          blockOptionsMap={blockOptionsMap}
+          isDarkMode={isDarkMode}
+        />
+      )}
       <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
         <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Stack
@@ -394,7 +375,6 @@ boxShadow: isDarkMode
           tokens={{ childrenGap: 6 }}
           styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
         >
-          <Label className={labelStyle}>Email Body</Label>
           <div ref={cheatSheetButtonRef}>
             <IconButton
               iconProps={{ iconName: 'Info' }}
@@ -598,42 +578,39 @@ boxShadow: isDarkMode
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
         <Stack tokens={{ childrenGap: 8 }}>
-          <Label className={labelStyle}>Template Blocks</Label>
-          <Stack
+        <Stack
             horizontal
             verticalAlign="center"
             tokens={{ childrenGap: 8 }}
             styles={{ root: { paddingBottom: '5px' } }}
-          >
-            <Dropdown
-              selectedKey={templateSet}
-              onChange={(_, option) => onTemplateSetChange(option?.key as TemplateSet)}
-              options={templateSetOptions}
-              styles={templateSetDropdownStyles}
-            />
+            >
               <DefaultButton
                 text="Simplified"
                 onClick={() => onTemplateSetChange('Simplified')}
                 disabled={templateSet === 'Simplified'}
+                styles={sharedDefaultButtonStyles}
               />
               <DefaultButton
                 text="Production"
                 onClick={() => onTemplateSetChange('Production')}
                 disabled={templateSet === 'Production'}
+                styles={sharedDefaultButtonStyles}
               />
-            <span
-              style={{ color: colours.highlight, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+              <DefaultButton
+                text={Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
+                iconProps={{ iconName: Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp' }}
               onClick={() => {
                 const allCollapsed = Object.values(collapsedBlocks).every(c => c);
                 allCollapsed ? expandAll() : collapseAll();
               }}
-            >
-              <Icon
-                iconName={Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp'}
-                styles={{ root: { fontSize: 14, marginLeft: 4 } }}
+                styles={sharedDefaultButtonStyles}
               />
-              {Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
-            </span>
+              <DefaultButton
+                text="Clear"
+                iconProps={{ iconName: 'Cancel' }}
+                onClick={onClearAllBlocks}
+                styles={sharedDefaultButtonStyles}
+              />
           </Stack>
         </Stack>
         <Stack className={templatesContainerStyle}>
@@ -856,7 +833,10 @@ boxShadow: isDarkMode
                                     key: option.label,
                                     text: option.label,
                                   }))}
-                                  onChange={(_ev, option?: IDropdownOption) => {
+                                  onChange={(
+                                    _ev: React.FormEvent<HTMLDivElement>,
+                                    option?: IDropdownOption
+                                  ) => {
                                     if (!option) return;
                                     if (block.isMultiSelect) {
                                       const currentSelections = Array.isArray(
@@ -881,7 +861,12 @@ boxShadow: isDarkMode
                                       ? [selectedTemplateOptions[block.title] as string]
                                       : []
                                   }
-                                  onRenderTitle={(opts, defaultRender) => {
+                                  onRenderTitle={(
+                                    opts?: IDropdownOption[],
+                                    defaultRender?: (
+                                      opts?: IDropdownOption[]
+                                    ) => JSX.Element | null
+                                  ) => {
                                     const isInserted = insertedBlocks[block.title] || false;
                                     const isEdited = editedBlocks[block.title] || false;
                                     if ((!opts || opts.length === 0) && isInserted) {
