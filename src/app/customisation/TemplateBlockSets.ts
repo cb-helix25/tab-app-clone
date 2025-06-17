@@ -1,6 +1,10 @@
-import { templateBlocks as comprehensiveTemplateBlocks, TemplateBlock, TemplateOption } from './TemplateBlocks';
-import { templateBlocks as simplifiedTemplateBlocks } from './SimplifiedTemplateBlocks';
-import { templateBlocks as condensedTemplateBlocks } from './CondensedTemplateBlocks';
+import {
+  templateBlocks as comprehensiveTemplateBlocks,
+  TemplateBlock,
+  TemplateOption,
+} from './TemplateBlocks';
+import simplifiedTemplateBlocks from './SimplifiedTemplateBlocks';
+import condensedTemplateBlocks from './CondensedTemplateBlocks';
 
 export type TemplateSet = 'Comprehensive' | 'Condensed' | 'Simple';
 
