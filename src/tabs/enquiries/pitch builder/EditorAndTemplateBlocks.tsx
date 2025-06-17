@@ -19,7 +19,7 @@ import {
   Separator,
   Callout,
 } from '@fluentui/react';
-import { TemplateBlock, TemplateOption } from '../../../app/customisation/DefaultTemplateBlocks';
+import { TemplateBlock, TemplateOption } from '../../../app/customisation/ProductionTemplateBlocks';
 import { TemplateSet, templateSetOptions } from '../../../app/customisation/TemplateBlockSets';
 import { colours } from '../../../app/styles/colours';
 import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
@@ -172,13 +172,22 @@ boxShadow: isDarkMode
       )
   );
 
-const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
+  const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
   const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
 
   const openEditModal = (block: TemplateBlock) => {
     setPreviewNode(renderPreview(block));
     setBlockToEdit(block);
   };
+
+  React.useEffect(() => {
+    (window as any).openBlockEdit = (title: string) => {
+      const block = templateBlocks.find((b) => b.title === title);
+      if (block) {
+        openEditModal(block);
+      }
+    };
+  }, [templateBlocks]);
 
   const requestChange = async (payload: EditRequestPayload) => {
     if (!blockToEdit) return;
@@ -602,6 +611,16 @@ const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null)
               options={templateSetOptions}
               styles={templateSetDropdownStyles}
             />
+              <DefaultButton
+                text="Simplified"
+                onClick={() => onTemplateSetChange('Simplified')}
+                disabled={templateSet === 'Simplified'}
+              />
+              <DefaultButton
+                text="Production"
+                onClick={() => onTemplateSetChange('Production')}
+                disabled={templateSet === 'Production'}
+              />
             <span
               style={{ color: colours.highlight, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
               onClick={() => {

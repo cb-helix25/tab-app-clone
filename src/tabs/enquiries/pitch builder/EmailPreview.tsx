@@ -23,7 +23,7 @@ import {
 } from './emailUtils'; // Adjusted path
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
-import { TemplateBlock } from '../../../app/customisation/DefaultTemplateBlocks';
+import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;

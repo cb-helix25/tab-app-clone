@@ -1,6 +1,6 @@
 import { Enquiry } from '../../../app/functionality/types';
 import { colours } from '../../../app/styles/colours';
-import { templateBlocks, TemplateBlock } from '../../../app/customisation/DefaultTemplateBlocks';
+import { templateBlocks, TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

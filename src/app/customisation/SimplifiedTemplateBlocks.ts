@@ -1,4 +1,4 @@
-import { TemplateBlock } from './TemplateBlocks';
+import { TemplateBlock } from './ProductionTemplateBlocks';
 
 const reviewText = `In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation. This will enable me to provide you with initial advice on your current position and your best next steps.`;
 

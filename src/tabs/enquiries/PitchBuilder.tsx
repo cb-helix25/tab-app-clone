@@ -16,7 +16,7 @@ import { colours } from '../../app/styles/colours';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
-import { templateBlocks as defaultTemplateBlocks, TemplateBlock, TemplateOption } from '../../app/customisation/TemplateBlocks';
+import { TemplateBlock, TemplateOption } from '../../app/customisation/ProductionTemplateBlocks';
 import { getTemplateBlocks, TemplateSet, templateSetOptions } from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
@@ -78,7 +78,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  const [templateSet, setTemplateSet] = useState<TemplateSet>('Comprehensive');
+  const [templateSet, setTemplateSet] = useState<TemplateSet>('Simplified');
   const templateBlocks = getTemplateBlocks(templateSet);
 
   function handleTemplateSetChange(newSet: TemplateSet) {
@@ -265,7 +265,7 @@ useEffect(() => {
       .join(' ');
   }
 
-const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
+  const [blocks, setBlocks] = useState<TemplateBlock[]>(getTemplateBlocks('Simplified'));
 
   // Default subject
   const [subject, setSubject] = useState<string>(
@@ -494,11 +494,14 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
     const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
     const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">${lockIcon}</span>`;    // Add inline style to <p> tags to remove bottom margin
+    const editButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+    const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
+    const editButton = `<span class="edit-toggle" style="${editButtonStyle}" onclick="window.openBlockEdit('${block.title}')">${editIcon}</span>`;
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${editButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     

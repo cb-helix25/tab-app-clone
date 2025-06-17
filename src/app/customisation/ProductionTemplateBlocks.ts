@@ -260,5 +260,7 @@ export const templateBlocks: TemplateBlock[] = [
         previewText: `I hope the above [and our call] is useful and of course come back to me if I can help you further.\n\nIn the meantime, I’m wondering if you can help me by providing a brief positive Google review of me and Helix Law. We’re a small but specialist team, and this would make a huge difference to us.\n\nIf you don’t mind, please can you give us a brief 5* positive review at the following link:\n\nhttp://bit.ly/2gGwyNJ\n\nYou will need to be signed into Google.\n\nMany thanks in advance.`,
       },
     ],
-  }  
+  }
 ];
+
+export default templateBlocks;

@@ -1,26 +1,23 @@
 import {
-  templateBlocks as comprehensiveTemplateBlocks,
+  templateBlocks as productionTemplateBlocks,
   TemplateBlock,
   TemplateOption,
-} from './TemplateBlocks';
+} from './ProductionTemplateBlocks';
 import simplifiedTemplateBlocks from './SimplifiedTemplateBlocks';
-import condensedTemplateBlocks from './CondensedTemplateBlocks';
 
-export type TemplateSet = 'Comprehensive' | 'Condensed' | 'Simple';
+export type TemplateSet = 'Production' | 'Simplified';
 
 export const templateBlockSets: Record<TemplateSet, TemplateBlock[]> = {
-  Comprehensive: comprehensiveTemplateBlocks,
-  Condensed: condensedTemplateBlocks,
-  Simple: simplifiedTemplateBlocks,
+  Production: productionTemplateBlocks,
+  Simplified: simplifiedTemplateBlocks,
 };
 
 export const templateSetOptions = [
-  { key: 'Comprehensive', text: 'Comprehensive' },
-  { key: 'Condensed', text: 'Condensed' },
-  { key: 'Simple', text: 'Simple' },
+  { key: 'Production', text: 'Production' },
+  { key: 'Simplified', text: 'Simplified' },
 ];
 
-export function getTemplateBlocks(set: TemplateSet = 'Comprehensive'): TemplateBlock[] {
+export function getTemplateBlocks(set: TemplateSet = 'Simplified'): TemplateBlock[] {
   return templateBlockSets[set];
 }
 
