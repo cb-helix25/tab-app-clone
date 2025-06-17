@@ -45,7 +45,7 @@
 
 /* Claimed (Smaller) */
 .mainArea.claimedBg::before {
-  background-image: url("D:\\helix projects\\workspace\\tab apps\\helix hub v1\\src\\assets\\check.png");
+  background-image: url("../../assets/check.png");
   opacity: 0.15; /* 15% opacity */
   filter: grayscale(100%); /* Make it greyscale */
   width: 80px; /* Smaller */
@@ -53,7 +53,7 @@
 
 /* Unclaimed (Bigger & More to the Right) */
 .mainArea.unclaimedBg::before {
-  background-image: url("D:\\helix projects\\workspace\\tab apps\\helix hub v1\\src\\assets\\grey helix mark.png");
+  background-image: url("../../assets/grey helix mark.png");
   opacity: 1.0; /* Full opacity */
   width: 150px; /* Bigger */
   right: -35px; /* Move further right */

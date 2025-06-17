@@ -30,10 +30,10 @@ import {
 } from '../../app/styles/FilterStyles';
 import ReactDOMServer from 'react-dom/server';
 import EmailSignature from './EmailSignature';
-import EmailPreview from './pitch builder/EmailPreview';
-import EditorAndTemplateBlocks from './pitch builder/EditorAndTemplateBlocks';
-import PitchHeaderRow from './pitch builder/PitchHeaderRow';
-import OperationStatusToast from './pitch builder/OperationStatusToast';
+import EmailPreview from './pitch-builder/EmailPreview';
+import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
+import PitchHeaderRow from './pitch-builder/PitchHeaderRow';
+import OperationStatusToast from './pitch-builder/OperationStatusToast';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -43,7 +43,7 @@ import {
   isStringArray,
   replacePlaceholders,
   applyDynamicSubstitutions,
-} from './pitch builder/emailUtils';
+} from './pitch-builder/emailUtils';
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 
 interface PitchBuilderProps {
