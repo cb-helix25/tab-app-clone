@@ -18,6 +18,7 @@ import PoidCard from './PoidCard';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import POIDPreview from './POIDPreview';
+import StepHeader from './StepHeader';
 
 // Export (or define) TagButtonProps at the top so it’s available.
 export interface TagButtonProps {
@@ -177,7 +178,7 @@ const stepTitles: { [key in StepKey]: string } = {
 // Container styles
 const containerStyle = mergeStyles({
   padding: '40px',
-  backgroundColor: '#f5f5f5',
+  backgroundColor: colours.grey,
   minHeight: '100vh',
   transition: 'background-color 0.3s',
 });
@@ -223,6 +224,15 @@ const sidePanelStyle = mergeStyles({
   top: 40,
   maxHeight: '80vh',
   overflowY: 'auto',
+});
+
+const formContainerStyle = mergeStyles({
+  background: '#fff',
+  borderRadius: 8,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  padding: 20,
+  maxWidth: 520,
+  margin: '0 auto',
 });
 
 // ----- TagButton & Styles -----
@@ -401,8 +411,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
 
   // ----- [1] Client Info Step -----
   const renderClientInfoStep = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <Text variant="xLarge">{stepTitles.clientInfo}</Text>
+    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+      <StepHeader title={stepTitles.clientInfo} active />
       <div ref={dateButtonRef} style={{ display: 'inline-block' }}>
         <PrimaryButton
           text={selectedDate ? `Date: ${selectedDate.toLocaleDateString()}` : 'Select Date'}
@@ -516,7 +526,7 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
     return (
       <Stack tokens={{ childrenGap: 8 }} className={completed ? completedCollapsedCardStyle : collapsedCardStyle} key={step}>
         <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-          <Text variant="large">{stepTitles[step]}</Text>
+          <StepHeader title={stepTitles[step]} />
           <PrimaryButton text="Edit" onClick={() => setCurrentStep(step)} styles={sharedPrimaryButtonStyles} />
         </Stack>
         <Text>{summary}</Text>
@@ -531,8 +541,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
         return renderClientInfoStep();
       case 'clientType':
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.clientType}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.clientType} active />
             <Stack horizontal wrap tokens={{ childrenGap: 20 }} horizontalAlign="center">
               {[
                 { label: 'Individual', icon: 'Contact' },
@@ -558,8 +568,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
         );
       case 'poidSelection':
         return (
-          <Stack tokens={{ childrenGap: 20 }}>
-            <Text variant="xLarge">{stepTitles.poidSelection}</Text>
+          <Stack tokens={{ childrenGap: 20 }} className={formContainerStyle}>
+            <StepHeader title={stepTitles.poidSelection} active />
             <SearchBox
               placeholder="Search by name or ID..."
               value={poidSearchTerm}
@@ -609,8 +619,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
         );
       case 'areaOfWork':
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.areaOfWork}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.areaOfWork} active />
             <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
               {['Commercial', 'Property', 'Construction', 'Employment'].map((area) => (
                 <TagButton
@@ -633,8 +643,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
             ? practiceAreasByArea[areaOfWork]
             : ['Please select an Area of Work'];
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.practiceArea}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.practiceArea} active />
             <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
               {options.map((pa) => (
                 <TagButton
@@ -654,8 +664,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       }
       case 'description':
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.description}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.description} active />
             <TextField
               multiline
               rows={4}
@@ -670,8 +680,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       case 'folderStructure': {
         const folderOptions = ['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment'];
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.folderStructure}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.folderStructure} active />
             <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
               {folderOptions.map((option) => (
                 <TagButton
@@ -689,8 +699,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       case 'disputeValue': {
         const disputeValueOptions = ['Less than £10k', '£10k - £500k', '£500k - £1m', '£1m - £5m', '£5 - £20m', '£20m+'];
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.disputeValue}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.disputeValue} active />
             <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
               {disputeValueOptions.map((option) => (
                 <TagButton
@@ -708,8 +718,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       case 'source': {
         const sourceOptions = ['referral', 'organic search', 'paid search', 'your following', 'tbc'];
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.source}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.source} active />
             <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
               {sourceOptions.map((option) => (
                 <TagButton
@@ -758,8 +768,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
           opponentSolicitorEmail.trim() !== '' &&
           noConflict;
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.opponentDetails}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.opponentDetails} active />
             <Text variant="medium" styles={{ root: { marginBottom: 10 } }}>Opponent Details:</Text>
             <TextField
               placeholder="Opponent's Name (First and Last)"
@@ -817,8 +827,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
           consideredFirmWideSanctions &&
           consideredFirmWideAML;
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.riskAssessment}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.riskAssessment} active />
             <Stack horizontal tokens={{ childrenGap: 40 }}>
               {/* Left Column: Core Risk Factors */}
               <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
@@ -966,8 +976,8 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       }
       case 'review':
         return (
-          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-            <Text variant="xLarge">{stepTitles.review}</Text>
+          <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center" className={formContainerStyle}>
+            <StepHeader title={stepTitles.review} active />
             <Text variant="medium">
               <strong>Client Details</strong>:<br />
               Date: {selectedDate?.toLocaleDateString() || 'N/A'} <br />

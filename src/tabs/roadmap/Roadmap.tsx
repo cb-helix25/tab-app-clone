@@ -20,6 +20,7 @@ import { colours } from '../../app/styles/colours';
 import BespokeForm from '../../CustomForms/BespokeForms';
 import { UserData } from '../../app/functionality/types';
 import { format } from 'date-fns';
+import '../../app/styles/Roadmap.css';
 
 // Define the properties for the Roadmap component
 interface RoadmapProps {
@@ -229,15 +230,14 @@ interface RoadmapEntryItemProps {
 }
 
 const RoadmapEntryItem: React.FC<RoadmapEntryItemProps> = ({ entry, isDarkMode, onClick, animationDelay }) => {
+  const iconName = getStatusIcon(entry.status);
   return (
     <div
-      className={mergeStyles({
+      className={mergeStyles('roadmap-entry', {
         borderTop: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
         paddingTop: '10px',
         cursor: 'pointer',
         display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
         alignItems: 'flex-start',
         opacity: 0,
         transform: 'translateY(20px)',
@@ -250,48 +250,55 @@ const RoadmapEntryItem: React.FC<RoadmapEntryItemProps> = ({ entry, isDarkMode, 
       tabIndex={0}
       aria-label={`View details for ${entry.label}`}
     >
-      <Text
-        styles={{
-          root: {
-            textAlign: 'left',
-            fontSize: '16px',
-            color: colours.blue,
-            flex: 1,
-            fontWeight: 600,
-          },
-        }}
-      >
-        {entry.label}
-      </Text>
-      <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="start">
-        <Text className={greyBubbleStyle}>{formatDate(entry.date_requested)}</Text>
-        <Text className={greyBubbleStyle}>{entry.component}</Text>
-      </Stack>
-      {/* Display description directly in the entry */}
-      <Text
-        styles={{
-          root: {
-            marginTop: '10px',
-            fontSize: '14px',
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-          },
-        }}
-      >
-        {entry.description}
-      </Text>
-      {/* Display requester label */}
-      <Text
-        styles={{
-          root: {
-            marginTop: '5px',
-            fontSize: '12px',
-            color: colours.greyText,
-            fontStyle: 'italic',
-          },
-        }}
-      >
-        Requested by: {entry.requested_by}
-      </Text>
+      <div className="entry-icon">
+        <Icon iconName={iconName} className="icon-outline" />
+        <Icon iconName={iconName} className="icon-filled" />
+      </div>
+      <div className="entry-text">
+        <span className="entry-main">
+          <Text
+            styles={{
+              root: {
+                textAlign: 'left',
+                fontSize: '16px',
+                color: colours.blue,
+                fontWeight: 600,
+              },
+            }}
+          >
+            {entry.label}
+          </Text>
+          <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="start">
+            <Text className={greyBubbleStyle}>{formatDate(entry.date_requested)}</Text>
+            <Text className={greyBubbleStyle}>{entry.component}</Text>
+          </Stack>
+        </span>
+        <span className="entry-reveal">
+          <Text
+            styles={{
+              root: {
+                fontSize: '14px',
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+              },
+            }}
+          >
+            {entry.description}
+          </Text>
+          <Text
+            styles={{
+              root: {
+                marginTop: '5px',
+                fontSize: '12px',
+                color: colours.greyText,
+                fontStyle: 'italic',
+              },
+            }}
+          >
+            Requested by: {entry.requested_by}
+          </Text>
+        </span>
+      </div>
+
     </div>
   );
 };
