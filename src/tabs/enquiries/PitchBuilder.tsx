@@ -1341,9 +1341,9 @@ function duplicateTemplateBlock(index: number) {
 
   const DEFAULT_SINGLE_OPTION_BLOCKS = [
     'Risk Assessment',
-    'Next Steps',
     'Next Steps to Instruct Helix Law',
     'Closing Notes',
+    'Closing',
   ];
 
   function autoInsertDefaultBlocks(blocksToUse: TemplateBlock[] = templateBlocks) {
@@ -1368,76 +1368,31 @@ function duplicateTemplateBlock(index: number) {
         (enquiry.Area_of_Work.toLowerCase() === 'commercial' ||
           enquiry.Area_of_Work.toLowerCase() === 'property')
       ) {
-        if (block.title === 'Introduction') {
-          const autoOptionLabel = 'Standard Acknowledgment';
-          const optionExists = block.options.find((o) => o.label === autoOptionLabel);
-          if (optionExists) {
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
-            }));
-            insertTemplateBlock(
-              block,
-              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
-            );
-          }
-        }
+        const autoMap: Record<string, string> = {
+          Introduction: 'Standard Acknowledgment',
+          'Current Situation and Problem': 'The Dispute',
+          'Issue Summary': 'The Dispute',
+          'Scope of Work': 'Initial Review and Costs',
+          'Scope & Cost': 'Initial Review & Advice',
+          'Next Steps to Instruct Helix Law': block.options[0]?.label,
+          'Next Steps': 'Confirm Instructions & Payment',
+          Closing: 'Closing',
+        };
 
-        if (block.title === 'Current Situation and Problem') {
-          const autoOptionLabel = 'The Dispute';
-          const optionExists = block.options.find((o) => o.label === autoOptionLabel);
-          if (optionExists) {
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
-            }));
-            insertTemplateBlock(
-              block,
-              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
-            );
-          }
-        }
+        const autoOptionLabel = autoMap[block.title];
+        const optionExists = autoOptionLabel
+          ? block.options.find((o) => o.label === autoOptionLabel)
+          : undefined;
 
-        if (block.title === 'Potential Causes of Action and Remedies') {
-
-          if (block.options.length === 1) {
-            const autoOptionLabel = block.options[0].label;
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
-            }));
-            insertTemplateBlock(
-              block,
-              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
-            );
-          }
-        }
-        if (block.title === 'Scope of Work') {
-          const autoOptionLabel = 'Initial Review and Costs';
-          const optionExists = block.options.find((o) => o.label === autoOptionLabel);
-          if (optionExists) {
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
-            }));
-            insertTemplateBlock(
-              block,
-              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
-            );
-          }
-        }
-        if (block.title === 'Next Steps to Instruct Helix Law') {
-          if (block.options.length === 1) {
-            const autoOptionLabel = block.options[0].label;
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
-            }));
-            insertTemplateBlock(
-              block,
-              block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
-            );
-          }
+        if (optionExists) {
+          setSelectedTemplateOptions((prev) => ({
+            ...prev,
+            [block.title]: block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel,
+          }));
+          insertTemplateBlock(
+            block,
+            block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
+          );
         }
       }
     });

@@ -127,8 +127,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
   const [rowSpacing, setRowSpacing] = useState(0);
-  const [notesSpacing, setNotesSpacing] = useState(0);
-  const [toggleTop, setToggleTop] = useState(0);
+  // Static spacing between the subject line and enquiry notes
+  const notesSpacing = 8;
   const [dealFormSaved, setDealFormSaved] = useState(false);
 
   useLayoutEffect(() => {
@@ -142,24 +142,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
       setRowSpacing(spacing);
     }
   }, [descHeight, showCc, showBcc]);
-
-  const updateNotesSpacing = () => {
-    if (subjectRef.current) {
-      const rect = subjectRef.current.getBoundingClientRect();
-      const subjectBottom = rect.top + rect.height + window.scrollY; // match coordinate system
-      const spacing = Math.max(toggleTop - subjectBottom, 0);
-      setNotesSpacing(spacing);
-    }
-  };
-
-  useLayoutEffect(() => {
-    updateNotesSpacing();
-  }, [toggleTop, subject, rowSpacing, showCc, showBcc]);
-
-  useLayoutEffect(() => {
-    window.addEventListener("resize", updateNotesSpacing);
-    return () => window.removeEventListener("resize", updateNotesSpacing);
-  }, []);
 
     useEffect(() => {
     if (cc && !showCc) {
@@ -422,7 +404,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             selectedOption={selectedOption}
             setSelectedOption={setSelectedOption}
             onDescriptionHeightChange={setDescHeight}
-            onToggleTopChange={setToggleTop}
             onSavedChange={setDealFormSaved}
           />
         </Stack>

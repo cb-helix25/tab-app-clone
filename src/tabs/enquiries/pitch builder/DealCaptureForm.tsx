@@ -48,7 +48,6 @@ interface DealCaptureFormProps {
   selectedOption: IDropdownOption | undefined;
   setSelectedOption: (opt: IDropdownOption | undefined) => void;
   onDescriptionHeightChange?: (height: number) => void;
-  onToggleTopChange?: (top: number) => void;
   /**
    * Notify parent components when the saved/completion state changes
    */
@@ -83,7 +82,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   selectedOption,
   setSelectedOption,
   onDescriptionHeightChange,
-  onToggleTopChange,
   onSavedChange,
 }) => {
   const { isDarkMode } = useTheme();
@@ -100,7 +98,6 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [amountBlurred, setAmountBlurred] = useState(false);
   const [clientsBlurred, setClientsBlurred] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
-  const toggleRef = useRef<HTMLDivElement>(null);
   // Inform parent components whenever the saved state changes
   useEffect(() => {
     onSavedChange?.(isSaved);
@@ -115,37 +112,6 @@ const addingClientRef = useRef(false);
       onDescriptionHeightChange?.(descRef.current.getBoundingClientRect().height);
     }
   }, [onDescriptionHeightChange, useBespoke, serviceDescription, selectedOption]);
-
-  // Provide the latest position of the multi client toggle to the parent so that
-  // the enquiry notes container can align with it. Recalculate on relevant state
-  // changes and whenever the window resizes.
-  const updateToggleTop = () => {
-    requestAnimationFrame(() => {
-      if (toggleRef.current) {
-        const rect = toggleRef.current.getBoundingClientRect();
-        onToggleTopChange?.(rect.top + window.scrollY);
-      }
-    });
-  };
-
-  useLayoutEffect(() => {
-    updateToggleTop();
-  }, [
-    isMultiClient,
-    amount,
-    amountError,
-    amountBlurred,
-    clientsBlurred,
-    serviceDescription,
-    selectedOption,
-    clients.length,
-    useBespoke,
-  ]);
-
-  useLayoutEffect(() => {
-    window.addEventListener('resize', updateToggleTop);
-    return () => window.removeEventListener('resize', updateToggleTop);
-  }, []);
 
   // Reset client blur state when toggling multi-client mode
   useLayoutEffect(() => {
@@ -399,22 +365,6 @@ useLayoutEffect(() => {
   isSaved,
 ]);
 
-  // 2. Run toggle alignment logic unconditionally
-  useLayoutEffect(() => {
-    updateToggleTop();
-  }, [
-    isMultiClient,
-    amount,
-    amountError,
-    amountBlurred,
-    clientsBlurred,
-    serviceDescription,
-    selectedOption,
-    clients.length,
-    useBespoke,
-  ]);
-
-
   const rootStackStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
@@ -550,7 +500,7 @@ useLayoutEffect(() => {
       </div>
 
       <Stack>
-        <div ref={toggleRef} className={toggleContainer} aria-label="Select ID type">
+        <div className={toggleContainer} aria-label="Select ID type">
           <div
             className={toggleHalf(!isMultiClient)}
             onClick={() => setIsMultiClient(false)}
@@ -586,7 +536,6 @@ useLayoutEffect(() => {
                   onFocus={() => {
                     setClientsBlurred(false);
                     setClientFieldFocusCount((c) => c + 1);
-                    updateToggleTop();
                   }}
                   onBlur={() => {
                     setClientFieldFocusCount((c) => {
@@ -600,7 +549,6 @@ useLayoutEffect(() => {
                       }
                       return newCount;
                     });
-                    updateToggleTop();
                   }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
@@ -617,7 +565,6 @@ useLayoutEffect(() => {
                   onFocus={() => {
                     setClientsBlurred(false);
                     setClientFieldFocusCount((c) => c + 1);
-                    updateToggleTop();
                   }}
                   onBlur={() => {
                     setClientFieldFocusCount((c) => {
@@ -631,7 +578,6 @@ useLayoutEffect(() => {
                       }
                       return newCount;
                     });
-                    updateToggleTop();
                   }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
@@ -648,7 +594,6 @@ useLayoutEffect(() => {
                   onFocus={() => {
                     setClientsBlurred(false);
                     setClientFieldFocusCount((c) => c + 1);
-                    updateToggleTop();
                   }}
                   onBlur={() => {
                     setClientFieldFocusCount((c) => {
@@ -661,7 +606,6 @@ useLayoutEffect(() => {
                       }
                       return newCount;
                     });
-                    updateToggleTop();
                   }}
                   styles={{ fieldGroup: clientFieldGroupStyle }}
                 />
