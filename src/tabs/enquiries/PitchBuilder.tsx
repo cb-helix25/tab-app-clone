@@ -81,6 +81,23 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Comprehensive');
   const templateBlocks = getTemplateBlocks(templateSet);
 
+  function handleTemplateSetChange(newSet: TemplateSet) {
+    setTemplateSet(newSet);
+    const newBlocks = getTemplateBlocks(newSet);
+    setBlocks(newBlocks);
+    const newBody = generateInitialBody(newBlocks);
+    setBody(newBody);
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = newBody;
+    }
+    setSelectedTemplateOptions({});
+    setInsertedBlocks({});
+    setLockedBlocks({});
+    setEditedBlocks({});
+    setOriginalBlockContent({});
+    autoInsertDefaultBlocks(newBlocks);
+  }
+
 // Service options
 const SERVICE_OPTIONS: IDropdownOption[] = [
   { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
@@ -289,22 +306,7 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
   const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
 
   useEffect(() => {
-    setBlocks(templateBlocks);
-    const newBody = generateInitialBody(templateBlocks);
-    setBody(newBody);
-    if (bodyEditorRef.current) {
-      bodyEditorRef.current.innerHTML = newBody;
-    }
-    setSelectedTemplateOptions({});
-    setInsertedBlocks({});
-    setLockedBlocks({});
-    setEditedBlocks({});
-    setOriginalBlockContent({});
-    autoInsertDefaultBlocks();
-  }, [templateSet]);
-
-  useEffect(() => {
-    autoInsertDefaultBlocks();
+    autoInsertDefaultBlocks(templateBlocks);
   }, [enquiry.Area_of_Work]);
 
   // Attachments, followUp, preview, error states, etc...
@@ -661,7 +663,7 @@ const [blocks, setBlocks] = useState<TemplateBlock[]>(defaultTemplateBlocks);
     setDealId(null);
     setClientIds([]);
 
-    autoInsertDefaultBlocks();
+    autoInsertDefaultBlocks(templateBlocks);
 
     // Immediately clear any highlight styles from the DOM
     templateBlocks.forEach((block) => {
@@ -1319,8 +1321,8 @@ function duplicateTemplateBlock(index: number) {
     'Closing Notes',
   ];
 
-  function autoInsertDefaultBlocks() {
-    templateBlocks.forEach((block) => {
+  function autoInsertDefaultBlocks(blocksToUse: TemplateBlock[] = templateBlocks) {
+    blocksToUse.forEach((block) => {
       if (
         DEFAULT_SINGLE_OPTION_BLOCKS.includes(block.title) &&
         block.options.length === 1
@@ -1599,7 +1601,7 @@ function handleScrollToBlock(blockTitle: string) {
         setBody={setBody}
         templateBlocks={blocks}
         templateSet={templateSet}
-        onTemplateSetChange={setTemplateSet}
+        onTemplateSetChange={handleTemplateSetChange}
         selectedTemplateOptions={selectedTemplateOptions}
         insertedBlocks={insertedBlocks}
         lockedBlocks={lockedBlocks}
