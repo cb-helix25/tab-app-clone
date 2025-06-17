@@ -17,6 +17,7 @@ import {
   TooltipHost,
   Separator,
   Callout,
+  IButtonStyles,
 } from '@fluentui/react';
 import { TemplateBlock, TemplateOption } from '../../../app/customisation/ProductionTemplateBlocks';
 import { TemplateSet } from '../../../app/customisation/TemplateBlockSets';
@@ -127,6 +128,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
   const cheatSheetButtonRef = React.useRef<HTMLDivElement | null>(null);
+  const [isActionsInfoOpen, setIsActionsInfoOpen] = React.useState(false);
+  const actionsInfoButtonRef = React.useRef<HTMLDivElement | null>(null);
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.grey : colours.light.grey,
     borderRadius: 12,
@@ -137,6 +140,16 @@ boxShadow: isDarkMode
     width: '100%',
     transition: 'background 0.3s, box-shadow 0.3s',
   });
+
+  const selectedButtonStyles: IButtonStyles = {
+    ...sharedDefaultButtonStyles,
+    root: {
+      ...(sharedDefaultButtonStyles.root as any),
+      backgroundColor: colours.accent,
+      fontWeight: 600,
+    },
+  };
+
 
   const placeholderInfo = React.useMemo(
     () => ({
@@ -380,66 +393,6 @@ boxShadow: isDarkMode
       )}
       <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
         <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Stack
-          horizontal
-          verticalAlign="center"
-          tokens={{ childrenGap: 6 }}
-          styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}
-        >
-          <div ref={cheatSheetButtonRef}>
-            <IconButton
-              iconProps={{ iconName: 'Info' }}
-              title="Placeholder Cheat Sheet"
-              ariaLabel="Placeholder Cheat Sheet"
-              onClick={() => setIsCheatSheetOpen(!isCheatSheetOpen)}
-            />
-          </div>
-        </Stack>
-        {isCheatSheetOpen && (
-          <Callout
-            target={cheatSheetButtonRef.current}
-            onDismiss={() => setIsCheatSheetOpen(false)}
-            setInitialFocus
-          >
-            <div
-              style={{
-                maxHeight: 300,
-                overflowY: 'auto',
-                padding: 12,
-                border: `1px dotted ${colours.greyText}`,
-              }}
-            >
-              <Stack tokens={{ childrenGap: 12 }}>
-                {placeholderInfo.blocks.map((info) => (
-                  <Stack key={info.placeholder} tokens={{ childrenGap: 4 }}>
-                    <Text>{info.placeholder}</Text>
-                    <Text variant="small">{info.title}</Text>
-                    {info.options.length > 0 && (
-                      <ul style={{ margin: '0 0 0 16px' }}>
-                        {info.options.map((opt) => (
-                          <li key={opt} style={{ fontSize: '12px' }}>
-                            {opt}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </Stack>
-                ))}
-                {placeholderInfo.additional.length > 0 && (
-                  <Stack tokens={{ childrenGap: 4 }}>
-                    <Separator />
-                    <Text>Other Placeholders</Text>
-                    {placeholderInfo.additional.map((ph) => (
-                      <Text key={ph} variant="small">
-                        {ph}
-                      </Text>
-                    ))}
-                  </Stack>
-                )}
-              </Stack>
-            </div>
-          </Callout>
-        )}
 
         <Stack tokens={{ childrenGap: 20 }}>
           <Stack horizontal tokens={{ childrenGap: 20 }}>
@@ -588,25 +541,33 @@ boxShadow: isDarkMode
       </Stack>
 
       <Stack style={{ width: '50%' }} tokens={{ childrenGap: 20 }}>
-        <Stack tokens={{ childrenGap: 8 }}>
         <Stack
             horizontal
             verticalAlign="center"
             tokens={{ childrenGap: 8 }}
-            styles={{ root: { paddingBottom: '5px' } }}
-            >
+            styles={{ root: { paddingBottom: '5px', justifyContent: 'space-between' } }}
+          >
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
               <DefaultButton
                 text="Simplified"
                 onClick={() => onTemplateSetChange('Simplified')}
-                disabled={templateSet === 'Simplified'}
-                styles={sharedDefaultButtonStyles}
+                styles={templateSet === 'Simplified' ? selectedButtonStyles : sharedDefaultButtonStyles}
               />
               <DefaultButton
                 text="Production"
                 onClick={() => onTemplateSetChange('Production')}
-                disabled={templateSet === 'Production'}
-                styles={sharedDefaultButtonStyles}
+                styles={templateSet === 'Production' ? selectedButtonStyles : sharedDefaultButtonStyles}
               />
+              <div ref={cheatSheetButtonRef}>
+                <IconButton
+                  iconProps={{ iconName: 'Info' }}
+                  title="Placeholder Cheat Sheet"
+                  ariaLabel="Placeholder Cheat Sheet"
+                  onClick={() => setIsCheatSheetOpen(!isCheatSheetOpen)}
+              />
+              </div>
+            </Stack>
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginLeft: 'auto' } }}>
               <DefaultButton
                 text={Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
                 iconProps={{ iconName: Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp' }}
@@ -614,16 +575,81 @@ boxShadow: isDarkMode
                 const allCollapsed = Object.values(collapsedBlocks).every(c => c);
                 allCollapsed ? expandAll() : collapseAll();
               }}
-                styles={sharedDefaultButtonStyles}
+              styles={sharedDefaultButtonStyles}
+            />
+            <DefaultButton
+              text="Clear"
+              iconProps={{ iconName: 'Cancel' }}
+              onClick={onClearAllBlocks}
+              styles={sharedDefaultButtonStyles}
+            />
+            <div ref={actionsInfoButtonRef}>
+              <IconButton
+                iconProps={{ iconName: 'Info' }}
+                title="Actions Info"
+                ariaLabel="Actions Info"
+                onClick={() => setIsActionsInfoOpen(!isActionsInfoOpen)}
               />
-              <DefaultButton
-                text="Clear"
-                iconProps={{ iconName: 'Cancel' }}
-                onClick={onClearAllBlocks}
-                styles={sharedDefaultButtonStyles}
-              />
+              </div>
           </Stack>
         </Stack>
+          {isCheatSheetOpen && (
+            <Callout
+              target={cheatSheetButtonRef.current}
+              onDismiss={() => setIsCheatSheetOpen(false)}
+              setInitialFocus
+            >
+              <div
+                style={{
+                  maxHeight: 300,
+                  overflowY: 'auto',
+                  padding: 12,
+                  border: `1px dotted ${colours.greyText}`,
+                }}
+              >
+                <Stack tokens={{ childrenGap: 12 }}>
+                  {placeholderInfo.blocks.map((info) => (
+                    <Stack key={info.placeholder} tokens={{ childrenGap: 4 }}>
+                      <Text>{info.placeholder}</Text>
+                      <Text variant="small">{info.title}</Text>
+                      {info.options.length > 0 && (
+                        <ul style={{ margin: '0 0 0 16px' }}>
+                          {info.options.map((opt) => (
+                            <li key={opt} style={{ fontSize: '12px' }}>
+                              {opt}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Stack>
+                  ))}
+                  {placeholderInfo.additional.length > 0 && (
+                    <Stack tokens={{ childrenGap: 4 }}>
+                      <Separator />
+                      <Text>Other Placeholders</Text>
+                      {placeholderInfo.additional.map((ph) => (
+                        <Text key={ph} variant="small">
+                          {ph}
+                        </Text>
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              </div>
+            </Callout>
+          )}
+          {isActionsInfoOpen && (
+            <Callout
+              target={actionsInfoButtonRef.current}
+              onDismiss={() => setIsActionsInfoOpen(false)}
+              setInitialFocus
+            >
+              <Stack tokens={{ childrenGap: 4 }} styles={{ root: { padding: 12 } }}>
+                <Text variant="small">Collapse All hides block content.</Text>
+                <Text variant="small">Clear removes all inserted blocks.</Text>
+              </Stack>
+            </Callout>
+          )}
         <Stack className={templatesContainerStyle}>
           <DragDropContext onDragEnd={(result: DropResult) => {
             if (!result.destination) return;

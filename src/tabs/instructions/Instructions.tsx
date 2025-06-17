@@ -16,10 +16,11 @@ const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
   useEffect(() => {
     async function fetchData() {
       if (!enquiries || enquiries.length === 0) return;
-      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
-      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
-      if (!code || !path || !baseUrl) {
+      const code = process.env.REACT_APP_FETCH_INSTRUCTION_DATA_CODE;
+      const baseUrl =
+        process.env.REACT_APP_INSTRUCTIONS_BASE_URL ||
+        "https://instructions-vnet-functions.azurewebsites.net/api/fetchInstructionData";
+      if (!code) {
         console.error('Missing env variables for instruction data');
         return;
       }
@@ -27,7 +28,7 @@ const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
       const results: InstructionData[] = [];
       for (const enq of enquiries) {
         try {
-          const url = `${baseUrl}/${path}?code=${code}&enquiryId=${enq.ID}`;
+          const url = `${baseUrl}?code=${code}&prospectId=${enq.ID}`;
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
@@ -43,7 +44,6 @@ const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
     }
     fetchData();
   }, [enquiries]);
-
 
   const containerStyle = mergeStyles({
     width: '100%',
