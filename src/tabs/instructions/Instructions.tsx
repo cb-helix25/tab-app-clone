@@ -1,53 +1,49 @@
-import React from 'react';
-import { Stack, Text, Icon, mergeStyles } from '@fluentui/react';
+import React, { useEffect, useState } from 'react';
+import { Stack, Text, mergeStyles } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
-import { dashboardTokens, cardTokens, cardStyles, statusColors } from './componentTokens';
+import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
+import { InstructionData, Enquiry } from '../../app/functionality/types';
 
-interface InstructionTask {
-  name: string;
-  status: 'pending' | 'completed' | 'awaiting' | 'notStarted';
+interface InstructionsProps {
+  enquiries: Enquiry[] | null;
 }
 
-
-interface Instruction {
-  id: number;
-  client: string;
-  submitted: string;
-  tasks: InstructionTask[];
-}
-
-const sampleInstructions: Instruction[] = [
-  {
-    id: 1,
-    client: 'John Doe',
-    submitted: '2025-06-01',
-    tasks: [
-      { name: 'Send CCL', status: 'completed' },
-      { name: 'Risk Assessment', status: 'pending' },
-      { name: 'Risk Assessment Form', status: 'notStarted' },
-    ],
-  },
-  {
-    id: 2,
-    client: 'Jane Smith',
-    submitted: '2025-06-04',
-    tasks: [
-      { name: 'Send CCL', status: 'pending' },
-      { name: 'Risk Assessment', status: 'awaiting' },
-      { name: 'Risk Assessment Form', status: 'notStarted' },
-    ],
-  },
-];
-
-const statusIcon = (status: 'pending' | 'completed' | 'awaiting' | 'notStarted') => {
-  const color = statusColors[status];
-  const iconName = status === 'completed' ? 'CheckMark' : 'Clock';
-  return <Icon iconName={iconName} styles={{ root: { color } }} />;
-};
-
-const Instructions: React.FC = () => {
+const Instructions: React.FC<InstructionsProps> = ({ enquiries }) => {
   const { isDarkMode } = useTheme();
+  const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!enquiries || enquiries.length === 0) return;
+      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
+      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
+      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      if (!code || !path || !baseUrl) {
+        console.error('Missing env variables for instruction data');
+        return;
+      }
+
+      const results: InstructionData[] = [];
+      for (const enq of enquiries) {
+        try {
+          const url = `${baseUrl}/${path}?code=${code}&enquiryId=${enq.ID}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            results.push(data);
+          } else {
+            console.error('Failed to fetch instructions for enquiry', enq.ID);
+          }
+        } catch (err) {
+          console.error('Error fetching instructions for enquiry', enq.ID, err);
+        }
+      }
+      setInstructionData(results);
+    }
+    fetchData();
+  }, [enquiries]);
+
 
   const containerStyle = mergeStyles({
     width: '100%',
@@ -59,23 +55,11 @@ const Instructions: React.FC = () => {
   return (
     <Stack tokens={dashboardTokens} className={containerStyle}>
       <Text variant="xLarge">Instruction Dashboard</Text>
-      {sampleInstructions.map((inst) => (
-        <Stack key={inst.id} tokens={cardTokens} styles={cardStyles}>
-          <Text variant="large">{inst.client}</Text>
-          <Text>Submitted: {inst.submitted}</Text>
-          <Stack tokens={{ childrenGap: 10 }}>
-            {inst.tasks.map((task) => (
-              <Stack
-                horizontal
-                tokens={{ childrenGap: 6 }}
-                verticalAlign="center"
-                key={task.name}
-              >
-                {statusIcon(task.status)}
-                <Text>{task.name}</Text>
-              </Stack>
-            ))}
-          </Stack>
+      {instructionData.map((inst, idx) => (
+        <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {JSON.stringify(inst, null, 2)}
+          </pre>
         </Stack>
       ))}
     </Stack>

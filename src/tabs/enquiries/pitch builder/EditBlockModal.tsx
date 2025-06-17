@@ -7,8 +7,12 @@ import {
   DefaultButton,
   PrimaryButton,
   Dropdown,
+  IDropdownOption,
+  ChoiceGroup,
+  IChoiceGroupOption,
   ComboBox,
   IComboBoxOption,
+  IComboBox,
   Text,
   mergeStyles,
 } from '@fluentui/react';
@@ -17,7 +21,7 @@ import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
 } from '../../../app/styles/ButtonStyles';
-import { inputFieldStyle } from '../../../CustomForms/BespokeForms';
+import { inputFieldStyle, dropdownStyle } from '../../../CustomForms/BespokeForms';
 import { TemplateBlock } from '../../../app/customisation/TemplateBlockSets';
 
 interface ReferenceBlockPayload {
@@ -28,6 +32,8 @@ interface ReferenceBlockPayload {
 
 export interface EditRequestPayload {
   block: string;
+  level: 'block' | 'option';
+  option?: string;
   proposedContent: string;
   notes: string;
   referenceBlock?: ReferenceBlockPayload;
@@ -85,6 +91,9 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const [reference, setReference] = useState<string | undefined>(initialReference);
   const [referenceOption, setReferenceOption] = useState<string | undefined>(initialReferenceOption);
   const [referenceNotes, setReferenceNotes] = useState<string>(initialReferenceNotes || '');
+  const [level, setLevel] = useState<'block' | 'option'>('block');
+  const [optionToEdit, setOptionToEdit] = useState<string | undefined>(block.options[0]?.label);
+  const [step, setStep] = useState<'edit' | 'confirm'>('edit');
 
   const containerClass = mergeStyles({
     padding: 0,
@@ -130,6 +139,173 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     </Stack>
   );
 
+  const originalOptionText = optionToEdit
+    ? block.options.find((o) => o.label === optionToEdit)?.previewText || ''
+    : '';
+
+  const renderConfirm = (
+    <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
+      <Text variant="small">Please review your suggestion before submitting.</Text>
+      <Text variant="small">Change level: {level}{level === 'option' ? ` (${optionToEdit})` : ''}</Text>
+      <Stack horizontal tokens={{ childrenGap: 20 }}>
+        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 8 }}>
+          <Text variant="mediumPlus">Current</Text>
+          {level === 'option' ? (
+            <div style={{ whiteSpace: 'pre-wrap' }}>{originalOptionText}</div>
+          ) : (
+            <div>{previewContent}</div>
+          )}
+        </Stack>
+        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 8 }}>
+          <Text variant="mediumPlus">Proposed</Text>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>
+        </Stack>
+      </Stack>
+      {notes && <Text variant="small">Notes: {notes}</Text>}
+      {reference && (
+        <Text variant="small">
+          References {reference}
+          {referenceOption ? `: ${referenceOption}` : ''}. {referenceNotes}
+        </Text>
+      )}
+      <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 10 }}>
+        <PrimaryButton
+          text="Submit Suggestion"
+          styles={sharedPrimaryButtonStyles}
+          onClick={() =>
+            onSubmit({
+              block: blockTitle,
+              level,
+              option: level === 'option' ? optionToEdit : undefined,
+              proposedContent: content,
+              notes,
+              referenceBlock: reference
+                ? {
+                  title: reference,
+                  option: referenceOption,
+                  notes: referenceNotes,
+                }
+                : undefined,
+            })
+          }
+        />
+        <DefaultButton text="Back" styles={sharedDefaultButtonStyles} onClick={() => setStep('edit')} />
+      </Stack>
+    </Stack>
+  );
+
+  const renderEdit = (
+    <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
+      <Text variant="small">Update the content below or explain how this block should change.</Text>
+      <ChoiceGroup
+        label="Change scope"
+        options={[
+          { key: 'block', text: 'Block' },
+          { key: 'option', text: 'Option' },
+        ]}
+        selectedKey={level}
+        onChange={(
+          _e?: React.FormEvent<HTMLElement | HTMLInputElement>,
+          opt?: IChoiceGroupOption
+        ) => {
+          if (opt) setLevel(opt.key as 'block' | 'option');
+        }}
+      />
+      {level === 'option' && (
+        <Dropdown
+          label="Option to change"
+          selectedKey={optionToEdit}
+          options={block.options.map((o) => ({ key: o.label, text: o.label }))}
+          onChange={(
+            _e: React.FormEvent<HTMLDivElement>,
+            opt?: IDropdownOption
+          ) => setOptionToEdit(opt?.key as string)}
+          styles={{ dropdown: dropdownStyle }}
+        />
+      )}
+      <Stack horizontal tokens={{ childrenGap: 20 }}>
+        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
+          {renderOriginal}
+        </Stack>
+        <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
+          <TextField
+            label="Proposed content"
+            multiline
+            autoAdjustHeight
+            value={content}
+            onChange={(
+              _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+              v?: string
+            ) => setContent(v || '')}
+            styles={{ fieldGroup: inputFieldStyle }}
+          />
+          <Dropdown
+            label="Reference another block (optional)"
+            selectedKey={reference}
+            options={referenceOptions}
+            onChange={(
+              _e: React.FormEvent<HTMLDivElement>,
+              option?: IDropdownOption
+            ) => {
+              setReference(option?.key as string);
+              setReferenceOption(undefined);
+            }}
+            styles={{ dropdown: dropdownStyle }}
+          />
+          {reference && (
+            <ComboBox
+              label="Reference option"
+              selectedKey={referenceOption}
+              allowFreeform
+              options={(blockOptionsMap[reference] || []).map((o) => ({ key: o, text: o })) as IComboBoxOption[]}
+              onChange={(
+                _e: React.FormEvent<IComboBox>,
+                option?: IComboBoxOption,
+                _index?: number,
+                value?: string
+              ) =>
+                setReferenceOption((option ? option.key : value) as string)
+              }
+              styles={{
+                root: [dropdownStyle, { width: '100%' }],
+                input: { height: '32px', lineHeight: '32px', padding: '0 5px', border: 'none' },
+                callout: { minWidth: '100%' },
+              }}
+            />
+          )}
+          <TextField
+            label="Notes"
+            multiline
+            autoAdjustHeight
+            value={notes}
+            onChange={(
+              _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+              v?: string
+            ) => setNotes(v || '')}
+            styles={{ fieldGroup: inputFieldStyle }}
+          />
+          {reference && (
+            <TextField
+              label="Notes about referencing the other block"
+              multiline
+              autoAdjustHeight
+              value={referenceNotes}
+              onChange={(
+                _e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+                v?: string
+              ) => setReferenceNotes(v || '')}
+              styles={{ fieldGroup: inputFieldStyle }}
+            />
+          )}
+        </Stack>
+      </Stack>
+      <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 10 }}>
+        <PrimaryButton text="Review" styles={sharedPrimaryButtonStyles} onClick={() => setStep('confirm')} />
+        <DefaultButton text="Cancel" styles={sharedDefaultButtonStyles} onClick={onDismiss} />
+      </Stack>
+    </Stack>
+  );
+
   return (
     <Modal isOpen={isOpen} onDismiss={onDismiss} isBlocking={false}>
       <div className={containerClass}>
@@ -137,94 +313,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
           {blockTitle}
           <IconButton iconProps={{ iconName: 'Cancel' }} onClick={onDismiss} />
         </div>
-        <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
-          <Text variant="small">
-            Update the content below or explain how this block should change.
-          </Text>
-          <Stack horizontal tokens={{ childrenGap: 20 }}>
-            <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
-              {renderOriginal}
-            </Stack>
-            <Stack style={{ width: '50%' }} tokens={{ childrenGap: 12 }}>
-              <TextField
-                label="Content"
-                multiline
-                autoAdjustHeight
-                value={content}
-                onChange={(_, v) => setContent(v || '')}
-                styles={{ fieldGroup: inputFieldStyle }}
-              />
-              <Dropdown
-                label="Reference another block (optional)"
-                selectedKey={reference}
-                options={referenceOptions}
-                onChange={(_, option) => {
-                  setReference(option?.key as string);
-                  setReferenceOption(undefined);
-                }}
-              />
-              {reference && (
-                <ComboBox
-                  label="Reference option"
-                  selectedKey={referenceOption}
-                  allowFreeform
-                  options={(blockOptionsMap[reference] || []).map((o) => ({ key: o, text: o })) as IComboBoxOption[]}
-                  onChange={(_, option, __, value) => setReferenceOption((option ? option.key : value) as string)}
-                  styles={{ root: { width: '100%' }, input: { height: '32px' } }}
-                />
-              )}
-              <TextField
-                label="Notes"
-                multiline
-                autoAdjustHeight
-                value={notes}
-                onChange={(_, v) => setNotes(v || '')}
-                styles={{ fieldGroup: inputFieldStyle }}
-              />
-              {reference && (
-                <TextField
-                  label="Notes about referencing the other block"
-                  multiline
-                  autoAdjustHeight
-                  value={referenceNotes}
-                  onChange={(_, v) => setReferenceNotes(v || '')}
-                  styles={{ fieldGroup: inputFieldStyle }}
-                />
-              )}
-            </Stack>
-          </Stack>
-          <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 10 }}>
-            <PrimaryButton
-              text="Save"
-              styles={sharedPrimaryButtonStyles}
-              onClick={() =>
-                onSubmit({
-                  block: blockTitle,
-                  proposedContent: content,
-                  notes,
-                  referenceBlock: reference
-                    ? {
-                        title: reference,
-                        option: referenceOption,
-                        notes: referenceNotes,
-                      }
-                    : undefined,
-                })
-              }
-            />
-            <DefaultButton
-              text="Cancel"
-              styles={sharedDefaultButtonStyles}
-              onClick={onDismiss}
-            />
-          </Stack>
-          {reference && (
-            <Text variant="small">
-              This edit affects {blockTitle} and references {reference}
-              {referenceOption ? `: ${referenceOption}` : ''}. Notes: {referenceNotes || 'None'}.
-            </Text>
-          )}
-        </Stack>
+        {step === 'edit' ? renderEdit : renderConfirm}
       </div>
     </Modal>
   );

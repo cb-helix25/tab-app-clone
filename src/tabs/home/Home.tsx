@@ -44,7 +44,7 @@ import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -285,13 +285,14 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
 
 const quickActionOrder: Record<string, number> = {
   'Confirm Attendance': 1,
-  'Create a Task': 2,
-  'Request CollabSpace': 3,
-  'Save Telephone Note': 4,
-  'Save Attendance Note': 5,
-  'Request ID': 6,
-  'Open a Matter': 7,
-  'Request Annual Leave': 8,
+  'Review Instructions': 2,
+  'Create a Task': 3,
+  'Request CollabSpace': 4,
+  'Save Telephone Note': 5,
+  'Save Attendance Note': 6,
+  'Request ID': 7,
+  'Open a Matter': 8,
+  'Request Annual Leave': 9,
 };
 
 //////////////////////
@@ -822,6 +823,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     soundproofBookings: []
   });
 
+  const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
     const sunday = new Date(monday);
@@ -1351,7 +1354,34 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     fetchSpaceBookings();
   }, []);
   
-  
+
+  useEffect(() => {
+    async function fetchInstructions() {
+      if (!enquiries || enquiries.length === 0) return;
+      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
+      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
+      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      if (!code || !path || !baseUrl) {
+        console.error('Missing env variables for instruction data');
+        return;
+      }
+      const results: InstructionData[] = [];
+      for (const enq of enquiries) {
+        try {
+          const url = `${baseUrl}/${path}?code=${code}&enquiryId=${enq.ID}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            results.push(data);
+          }
+        } catch (err) {
+          console.error('Error fetching instructions for enquiry', enq.ID, err);
+        }
+      }
+      setInstructionData(results);
+    }
+    fetchInstructions();
+  }, [enquiries]);
 
   useEffect(() => {
     async function fetchTransactions() {
@@ -2047,6 +2077,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
     });
   }
+  if (instructionData.length > 0) {
+    immediateActionsList.push({
+      title: 'Review Instructions',
+      icon: 'OpenFile',
+      onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
+    });
+  }
   immediateActionsList = immediateActionsList.concat(immediateALActions);
   // Sort immediate actions by the predefined order.
   immediateActionsList.sort(
@@ -2098,10 +2135,17 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           />
         );
         break;
+      case 'Review Instructions':
+        content = (
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '20px' }}>
+            {JSON.stringify(instructionData, null, 2)}
+          </pre>
+        );
+          break;
       case 'Book Space':
         content = (
-          <BookSpaceForm 
-            feeEarner={userData[0].Initials} 
+          <BookSpaceForm
+            feeEarner={userData[0].Initials}
             onCancel={() => setIsBespokePanelOpen(false)}
             futureBookings={futureBookings}
           />

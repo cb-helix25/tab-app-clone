@@ -1604,6 +1604,10 @@ function handleScrollToBlock(blockTitle: string) {
         onReorderBlocks={reorderTemplateBlocks}
         onDuplicateBlock={duplicateTemplateBlock}
         onClearAllBlocks={clearAllBlocks}
+        showToast={(msg, type) => {
+          setToast({ message: msg, type });
+          setTimeout(() => setToast(null), 3000);
+        }}
       />
   
       {/* Row: Preview and Reset Buttons */}

@@ -89,6 +89,7 @@ interface EditorAndTemplateBlocksProps {
   templateSet: TemplateSet;
   onTemplateSetChange: (set: TemplateSet) => void;
   onClearAllBlocks: () => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
@@ -121,6 +122,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     templateSet,
     onTemplateSetChange,
     onClearAllBlocks,
+    showToast,
   } = props;
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
@@ -198,6 +200,9 @@ boxShadow: isDarkMode
       block: blockToEdit.title.toLowerCase().replace(/\s+/g, ''),
     };
     try {
+      if (showToast) {
+        showToast('Submitting suggestion...', 'info');
+      }
       await fetch(
         `${process.env.REACT_APP_PROXY_BASE_URL}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
         {
@@ -209,8 +214,14 @@ boxShadow: isDarkMode
           }),
         }
       );
+      if (showToast) {
+        showToast('Thanks! Your suggestion has been submitted for review.', 'success');
+      }
     } catch (err) {
       console.error('Failed to send change request', err);
+      if (showToast) {
+        showToast('Failed to submit suggestion', 'error');
+      }
     } finally {
       setBlockToEdit(null);
     }

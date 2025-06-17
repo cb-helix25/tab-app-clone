@@ -448,3 +448,13 @@ export interface AnnualLeaveRecord {
   days_taken?: number;
   leave_type?: string;
 }
+
+export interface InstructionData {
+  prospectId: number;
+  deals: any[];
+  jointClients: any[];
+  instructions: any[];
+  documents: any[];
+  riskAssessments: any[];
+  electronicIDChecks: any[];
+}
