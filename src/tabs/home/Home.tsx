@@ -1353,30 +1353,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
     fetchSpaceBookings();
   }, []);
-  
-  useEffect(() => {
-    async function fetchInstructions() {
-      if (!userInitials) return;
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
-      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
-      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
-      if (!baseUrl || !path || !code) {
-        console.error('Missing env variables for instruction data');
-        return;
-      }
-      try {
-        const url = `${baseUrl}/${path}?code=${code}&initials=${userInitials}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          setInstructionData(Array.isArray(data) ? data : [data]);
-        }
-      } catch (err) {
-        console.error('Error fetching instructions for user', userInitials, err);
-      }
-    }
-    fetchInstructions();
-  }, [userInitials]);
 
   useEffect(() => {
     async function fetchTransactions() {

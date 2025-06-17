@@ -9,9 +9,9 @@ export async function getInstructionDataHandler(req: HttpRequest, context: Invoc
         return { status: 405, body: "Method not allowed" };
     }
 
-    const enquiryId = req.query.get("enquiryId") || req.query.get("cid");
-    if (!enquiryId) {
-        return { status: 400, body: "Missing enquiryId/cid query parameter" };
+    const initials = req.query.get("initials") || req.query.get("userInitials");
+    if (!initials) {
+        return { status: 400, body: "Missing initials query parameter" };
     }
 
     // Build the URL to the Instructions function
@@ -31,7 +31,7 @@ export async function getInstructionDataHandler(req: HttpRequest, context: Invoc
         }
     }
 
-    const url = `${baseUrl}?code=${code}&prospectId=${encodeURIComponent(enquiryId)}`;
+    const url = `${baseUrl}?code=${code}&initials=${encodeURIComponent(initials)}`;
 
     try {
         const response = await fetch(url);
