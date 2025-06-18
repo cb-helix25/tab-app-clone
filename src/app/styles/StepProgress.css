@@ -1,18 +1,18 @@
-.apple-stepper {
+.step-progress {
     list-style: none;
     display: flex;
     padding: 0;
     margin: 0;
 }
 
-.apple-stepper li {
+.step-progress li {
     display: flex;
     align-items: center;
     position: relative;
     color: var(--helix-dark-blue);
 }
 
-.apple-stepper li::after {
+.step-progress li::after {
     content: '';
     position: absolute;
     top: 12px;
@@ -22,7 +22,7 @@
     background: var(--helix-grey);
 }
 
-.apple-stepper li:last-child::after {
+.step-progress li:last-child::after {
     display: none;
 }
 
@@ -55,6 +55,10 @@
     border: 2px solid var(--helix-highlight);
     background: #fff;
     color: var(--helix-highlight);
+}
+
+.current .step-label {
+    font-weight: bold;
 }
 
 .step-label {

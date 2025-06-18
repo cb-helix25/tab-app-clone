@@ -10,7 +10,6 @@ const createRadialGradient = (baseColor: string) =>
 export const sharedPrimaryButtonStyles: IButtonStyles = {
   root: {
     padding: '6px 12px',
-    borderRadius: '4px',
     backgroundColor: colours.cta,
     border: 'none',
     height: '40px',

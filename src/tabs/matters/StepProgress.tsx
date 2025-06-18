@@ -12,7 +12,7 @@ function StepProgress<T extends string>({ steps, current, onStepClick }: StepPro
     const indexOf = (key: T) => steps.findIndex(s => s.key === key);
     const currentIndex = indexOf(current);
     return (
-        <ul className="apple-stepper">
+        <ul className="step-progress">
             {steps.map((step, idx) => {
                 const done = idx < currentIndex;
                 const isCurrent = idx === currentIndex;

@@ -1,0 +1,16 @@
+.tag-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--helix-highlight);
+    background-color: white;
+    color: var(--helix-dark-blue);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tag-button.active {
+    background-color: var(--helix-highlight);
+    color: white; }

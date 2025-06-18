@@ -121,9 +121,35 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   };
 
   return (
-    <Stack horizontal tokens={{ childrenGap: 20 }} verticalAlign="stretch">
-      {/* Left Column: To, CC, BCC, Subject Line */}
-      <div ref={fieldsStackRef} style={{ width: '50%' }}>
+    <Stack tokens={{ childrenGap: 20 }} verticalAlign="stretch">
+      {/* Enquiry Notes or Message */}
+      <Stack
+        style={{ width: '100%', height: '100%' }}
+        className={mergeStyles(formContainerStyle, cardStyle)}
+        tokens={{ childrenGap: 6 }}
+      >
+        <div style={notesContainerStyle}>
+          <Label className={notesLabelStyle}>Enquiry Notes or Message</Label>
+          {initialNotes && (
+            <div ref={notesContentRef}>
+              <Text
+                variant={useLargerText ? 'medium' : 'small'}
+                styles={{
+                  root: {
+                    color: colours.darkBlue,
+                    whiteSpace: 'pre-wrap',
+                  },
+                }}
+              >
+                {initialNotes}
+              </Text>
+            </div>
+          )}
+        </div>
+      </Stack>
+
+      {/* Recipient and Subject Fields */}
+      <div ref={fieldsStackRef} style={{ width: '100%' }}>
         <Stack
           className={mergeStyles(formContainerStyle, cardStyle)}
           tokens={{ childrenGap: 16 }}
@@ -186,31 +212,6 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
         </Stack>
       </div>
 
-      {/* Right Column: Enquiry Notes or Message */}
-      <Stack
-        style={{ width: '50%', height: '100%' }}
-        className={mergeStyles(formContainerStyle, cardStyle)}
-        tokens={{ childrenGap: 6 }}
-      >
-        <div style={notesContainerStyle}>
-          <Label className={notesLabelStyle}>Enquiry Notes or Message</Label>
-          {initialNotes && (
-            <div ref={notesContentRef}>
-              <Text
-                variant={useLargerText ? 'medium' : 'small'}
-                styles={{
-                  root: {
-                    color: colours.darkBlue,
-                    whiteSpace: 'pre-wrap',
-                  },
-                }}
-              >
-                {initialNotes}
-              </Text>
-            </div>
-          )}
-        </div>
-      </Stack>
     </Stack>
   );
 };

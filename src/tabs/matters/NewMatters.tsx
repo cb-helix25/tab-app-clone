@@ -9,7 +9,6 @@ import {
   TextField,
   Toggle,
   Dropdown,
-  mergeStyles,
 } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import PoidCard from './PoidCard';
@@ -141,22 +140,6 @@ const stepTitles: { [key in StepKey]: string } = {
   review: 'Review & Build Matter',
 };
 
-// Container styles
-const containerStyle = mergeStyles({
-  padding: '40px',
-  backgroundColor: colours.grey,
-  minHeight: '100vh',
-  transition: 'background-color 0.3s',
-});
-const expandedCardStyle = mergeStyles({
-  background: 'linear-gradient(135deg, #ffffff 0%, #f3f2f1 100%)',
-  border: '1px solid #e1dfdd',
-  borderRadius: 8,
-  padding: 30,
-  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-  transition: 'transform 0.3s, box-shadow 0.3s',
-  marginBottom: 30,
-});
 interface NewMattersProps {
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
@@ -493,7 +476,7 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
   };
 
   return (
-    <Stack className={containerStyle}>
+    <Stack className="workflow-container">
       <StepProgress steps={stepProgressSteps} current={stepsOrder[openStep]} onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))} />
       {stepsOrder.map((stepKey, idx) => (
         <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>

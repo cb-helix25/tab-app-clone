@@ -17,30 +17,18 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     onToggle,
 }) => (
     <div
-        className={`step-header${open ? ' active' : ''}`}
+        className={`step-header${open ? ' open' : ''}${complete ? ' completed' : ''}`}
         onClick={onToggle}
         role="button"
         tabIndex={0}
+        aria-expanded={open}
     >
         <div className="step-number">{step}</div>
-        <h2>
+        <div className="step-title">
             {title}
-            {complete && (
-                <span className="completion-tick visible">
-                    <svg viewBox="0 0 24 24">
-                        <polyline
-                            points="5,13 10,18 19,7"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    </svg>
-                </span>
-            )}
-        </h2>
-        <span className="toggle-icon">{open ? '−' : '+'}</span>
+            {complete && <span className="completion-check">✓</span>}
+        </div>
+        <div className="toggle-icon">{open ? '−' : '+'}</div>
     </div>
 );
 

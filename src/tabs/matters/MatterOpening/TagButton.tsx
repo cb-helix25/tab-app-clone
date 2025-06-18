@@ -1,6 +1,5 @@
 import React from 'react';
-import { PrimaryButton } from '@fluentui/react';
-import { colours } from '../../../app/styles/colours';
+import '../../../app/styles/TagButton.css';
 
 export interface TagButtonProps {
     label: string;
@@ -16,21 +15,14 @@ const clientTypeButtonStyle = (active: boolean, customColor?: string) => ({
     padding: '12px 24px',
     fontSize: '18px',
     fontWeight: 700,
-    backgroundColor: '#f3f2f1',
-    color: active ? customColor || colours.highlight : '#333',
-    border: '1px solid #ccc',
-    margin: '5px',
+    color: active ? customColor : undefined,
 });
 
-const tagButtonStyle = (active: boolean, customColor?: string) => ({
+const tagButtonStyle = (active: boolean) => ({
     borderRadius: '20px',
     padding: '10px 20px',
     fontSize: '16px',
     fontWeight: 600,
-    backgroundColor: active ? customColor || colours.highlight : '#f3f2f1',
-    color: active ? '#fff' : '#333',
-    border: `1px solid ${customColor || colours.highlight}`,
-    margin: '5px',
 });
 
 const TagButton: React.FC<TagButtonProps> = ({
@@ -41,17 +33,13 @@ const TagButton: React.FC<TagButtonProps> = ({
     styleVariant = 'option',
     color,
 }) => {
-    const style =
-        styleVariant === 'clientType'
-            ? clientTypeButtonStyle(active, color)
-            : tagButtonStyle(active, color);
+    const style = styleVariant === 'clientType' ? clientTypeButtonStyle(active, color) : tagButtonStyle(active);
+    const className = `tag-button${active ? ' active' : ''}`;
     return (
-        <PrimaryButton
-            text={label}
-            iconProps={icon ? { iconName: icon } : undefined}
-            onClick={onClick}
-            styles={{ root: style as any }}
-        />
+        <button className={className} onClick={onClick} style={style as React.CSSProperties}>
+            {icon && <span className={`ms-Icon ms-Icon--${icon}`} aria-hidden="true" style={{ marginRight: 4 }} />}
+            {label}
+        </button>
     );
 };
 
