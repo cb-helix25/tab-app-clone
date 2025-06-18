@@ -15,6 +15,7 @@ import PoidCard from './PoidCard';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
 import StepProgress from './StepProgress';
+import StepOverview from './StepOverview';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
@@ -146,6 +147,11 @@ interface NewMattersProps {
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
+  instructionRef?: string;
+  clientId?: string;
+  feeEarner?: string;
+  stage?: string;
+  matterRef?: string;
 }
 
 interface RiskCore {
@@ -158,8 +164,23 @@ interface RiskCore {
   valueOfInstruction: string;
 }
 
-const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData }) => {
+const NewMatters: React.FC<NewMattersProps> = ({
+  poidData,
+  setPoidData,
+  teamData,
+  instructionRef = '',
+  clientId = '',
+  feeEarner,
+  stage = 'New Matter',
+  matterRef,
+}) => {
   const [openStep, setOpenStep] = useState<number>(0);
+
+  const idExpiry = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toLocaleDateString('en-GB');
+  }, []);
 
   // Client info
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -528,9 +549,25 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
 
   return (
     <Stack className="workflow-container">
+      <ClientDetails stage={stage} instructionRef={instructionRef} />
+      <ClientHub
+        instructionRef={instructionRef}
+        clientId={clientId}
+        feeEarner={feeEarner}
+        idExpiry={idExpiry}
+        idVerified={false}
+        matterRef={matterRef}
+      />
       <StepProgress
         steps={stepProgressSteps}
         current={stepsOrder[openStep]}
+        onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
+      />
+      <StepOverview
+        steps={stepProgressSteps}
+        current={stepsOrder[openStep]}
+        isComplete={isStepComplete}
+        details={stepDetails}
         onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
       />
       {stepsOrder.map((stepKey, idx) => (

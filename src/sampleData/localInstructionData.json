@@ -1,0 +1,22 @@
+[
+    {
+        "prospectId": 123,
+        "deals": [
+            {
+                "id": "deal1",
+                "status": "open"
+            }
+        ],
+        "jointClients": [],
+        "instructions": [
+            {
+                "id": 1,
+                "type": "instruction",
+                "details": "Sample instruction"
+            }
+        ],
+        "documents": [],
+        "riskAssessments": [],
+        "electronicIDChecks": []
+    }
+]

@@ -15,6 +15,7 @@ import {
   FocusZone,
   FocusZoneDirection,
   DirectionalHint,
+  Separator,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -122,12 +123,14 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       border-radius: 8px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.2);
       animation: fadeInScale 0.2s ease forwards;
+      max-width: 280px;
     }
     .inline-options-callout .option-preview {
       font-size: 11px;
       padding: 0 4px;
       margin-top: 2px;
       display: block;
+      text-align: left;
     }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
@@ -1722,7 +1725,7 @@ function handleScrollToBlock(blockTitle: string) {
           target={inlineOptionsTarget}
           onDismiss={closeInlineOptions}
           setInitialFocus={false}
-          directionalHint={DirectionalHint.bottomRightEdge}
+          directionalHint={DirectionalHint.bottomLeftEdge}
           directionalHintFixed
           styles={{
             root: {
@@ -1794,6 +1797,7 @@ function handleScrollToBlock(blockTitle: string) {
                       }}
                       styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
                     />
+                    {hoveredOption === o.label && <Separator />}
                     {(hoveredOption === o.label || isSelected) && (
                       <span
                         className="option-preview"

@@ -212,11 +212,11 @@ export const inlineOptionButtonStyles = (
   isDarkMode: boolean
 ): IButtonStyles => ({
   root: {
-    padding: '8px 12px',
+    padding: '6px 8px',
     margin: '2px 0',
-    borderRadius: '0px',
-    minWidth: '120px',
-    width: 'auto',
+    borderRadius: 2,
+    minWidth: '140px',
+    width: '100%',
     transition: 'background-color 0.2s ease',
     backgroundColor: isSelected
       ? isDarkMode
@@ -226,6 +226,8 @@ export const inlineOptionButtonStyles = (
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     textAlign: 'left',
+    display: 'flex',
+    justifyContent: 'flex-start',
     selectors: {
       ':focus': {
         outline: `2px solid ${colours.highlight}`,

@@ -4,6 +4,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
 import { InstructionData } from '../../app/functionality/types';
+import localInstructionData from '../../sampleData/localInstructionData.json';
 
 interface InstructionsProps {
   userInitials: string;
@@ -12,9 +13,18 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
   const { isDarkMode } = useTheme();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
+  const useLocalData =
+    process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
+    window.location.hostname === 'localhost';
+
   useEffect(() => {
     async function fetchData() {
       if (!userInitials) return;
+
+      if (useLocalData) {
+        setInstructionData(localInstructionData as InstructionData[]);
+        return;
+      }
       const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
@@ -37,7 +47,7 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
       }
     }
     fetchData();
-  }, [userInitials]);
+  }, [userInitials, useLocalData]);
 
   const containerStyle = mergeStyles({
     width: '100%',
