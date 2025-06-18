@@ -79,6 +79,36 @@ const lockedSvg =
 const unlockedSvg =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
 
+// Inject styles for inline block labels and option callout
+if (typeof window !== 'undefined' && !document.getElementById('block-label-style')) {
+  const style = document.createElement('style');
+  style.id = 'block-label-style';
+  style.innerHTML = `
+    .block-label {
+      display: block;
+      font-size: 10px;
+      color: ${colours.greyText};
+      margin-top: 8px;
+      text-align: right;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .block-label:hover {
+      text-decoration: underline;
+      color: ${colours.highlight};
+    }
+    .block-label:active {
+      color: ${colours.highlight};
+    }
+    .inline-options-callout .option-preview {
+      font-size: 11px;
+      padding: 0 4px;
+      margin-top: 2px;
+      display: block;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
@@ -376,6 +406,7 @@ useEffect(() => {
 
   const [inlineOptionsBlock, setInlineOptionsBlock] = useState<TemplateBlock | null>(null);
   const [inlineOptionsTarget, setInlineOptionsTarget] = useState<HTMLElement | null>(null);
+  const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   useEffect(() => {
     if (inlineOptionsBlock) {
@@ -523,7 +554,7 @@ useEffect(() => {
     } else if (typeof selectedOption === 'string') {
       selectedLabel = selectedOption;
     }
-    const labelHTML = `<span class="block-label" data-label-title="${block.title}" style="display:block;font-size:10px;color:${colours.greyText};margin-top:8px;text-align:right;cursor:pointer;" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
+    const labelHTML = `<span class="block-label" data-label-title="${block.title}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
@@ -1648,11 +1679,13 @@ function handleScrollToBlock(blockTitle: string) {
   
       {inlineOptionsBlock && inlineOptionsTarget && (
         <Callout
+          className="inline-options-callout"
           target={inlineOptionsTarget}
           onDismiss={closeInlineOptions}
           setInitialFocus
-          directionalHint={DirectionalHint.bottomLeftEdge}
-          styles={{ root: { padding: 8, borderRadius: 0 } }}
+          directionalHint={DirectionalHint.bottomRightEdge}
+          directionalHintFixed
+          styles={{ root: { padding: 8 } }}
         >
           <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
             <Stack tokens={{ childrenGap: 4 }}>
@@ -1671,7 +1704,12 @@ function handleScrollToBlock(blockTitle: string) {
                   dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
                   );
                 return (
-                  <Stack key={o.label} tokens={{ childrenGap: 2 }}>
+                  <Stack
+                    key={o.label}
+                    tokens={{ childrenGap: 2 }}
+                    onMouseEnter={() => setHoveredOption(o.label)}
+                    onMouseLeave={() => setHoveredOption(null)}
+                  >
                     <DefaultButton
                       text={o.label}
                       onClick={() => {
@@ -1709,10 +1747,12 @@ function handleScrollToBlock(blockTitle: string) {
                       }}
                       styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
                     />
-                    <span
-                      style={{ fontSize: '11px', padding: '0 4px' }}
-                      dangerouslySetInnerHTML={{ __html: preview }}
-                    />
+                    {(hoveredOption === o.label || isSelected) && (
+                      <span
+                        className="option-preview"
+                        dangerouslySetInnerHTML={{ __html: preview }}
+                      />
+                    )}
                   </Stack>
                 );
               })}
