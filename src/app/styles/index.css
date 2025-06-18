@@ -21,3 +21,4 @@ body {
 * {
   box-sizing: border-box;
 }
+@import './StepProgress.css';

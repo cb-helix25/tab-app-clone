@@ -19,6 +19,7 @@ import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
+import StepProgress from './StepProgress';
 
 // Export (or define) TagButtonProps at the top so it’s available.
 export interface TagButtonProps {
@@ -1063,10 +1064,12 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
     'riskAssessment',
     'review',
   ];
+  const stepProgressSteps = stepsOrder.map((key) => ({ key, label: stepTitles[key] }));
   const stepOrderIndex = (step: StepKey): number => stepsOrder.indexOf(step);
 
   return (
     <Stack className={containerStyle}>
+      <StepProgress steps={stepProgressSteps} current={currentStep} onStepClick={setCurrentStep} />
       {stepsOrder.map((step) =>
         stepOrderIndex(step) < stepOrderIndex(currentStep)
           ? renderCollapsedStep(step)

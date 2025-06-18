@@ -46,56 +46,62 @@
         height: 20px;
         margin-right: 8px;
         transition: transform 0.3s ease;
-      }
-      
-      .icon-filled {
-        display: none;
-      }
-      
-      .roadmap-entry:hover .icon-outline,
-      .roadmap-entry.active .icon-outline {
-        display: none;
-      }
-      
-      .roadmap-entry:hover .icon-filled,
-      .roadmap-entry.active .icon-filled {
-        display: inline-flex;
-      }
-      
-      .roadmap-entry:hover .entry-icon,
-      .roadmap-entry.active .entry-icon {
-        transform: scale(1.1);
-      }
-      
-      .entry-text {
-        position: relative;
-        overflow: hidden;
-        height: 4.5rem;
-      }
-      
-      .entry-text>span {
-        transition: transform 0.3s ease-in-out;
-        display: block;
-      }
-      
-      .entry-main {
-        transform: translateY(0);
-      }
-      
-      .entry-reveal {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        transform: translateY(100%);
-      }
-      
-      .roadmap-entry:hover .entry-main,
-      .roadmap-entry.active .entry-main {
-        transform: translateY(-100%);
-      }
-      
-      .roadmap-entry:hover .entry-reveal,
-      .roadmap-entry.active .entry-reveal {
-        transform: translateY(0);
-      }
+        }
+        
+        .icon-filled {
+          display: none;
+        }
+        
+        .roadmap-entry:hover .icon-outline,
+        .roadmap-entry.active .icon-outline {
+          display: none;
+        }
+        
+        .roadmap-entry:hover .icon-filled,
+        .roadmap-entry.active .icon-filled {
+          display: inline-flex;
+        }
+        
+        .roadmap-entry:hover .entry-icon,
+        .roadmap-entry.active .entry-icon {
+          transform: scale(1.1);
+        }
+        
+        .entry-text {
+          position: relative;
+          overflow: hidden;
+          perspective: 600px;
+          min-height: 2.5rem;
+        }
+        
+        .entry-text>span {
+          transition: transform 0.6s ease, opacity 0.3s ease;
+          display: block;
+          backface-visibility: hidden;
+        }
+        
+        .entry-main {
+          transform-origin: top;
+          transform: rotateX(0deg);
+        }
+        
+        .entry-reveal {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          transform-origin: bottom;
+          transform: rotateX(-90deg);
+          opacity: 0;
+        }
+        
+        .roadmap-entry:hover .entry-main,
+        .roadmap-entry.active .entry-main {
+          transform: rotateX(90deg);
+        }
+        
+        .roadmap-entry:hover .entry-reveal,
+        .roadmap-entry.active .entry-reveal {
+          transform: rotateX(0deg);
+          opacity: 1;
+        }

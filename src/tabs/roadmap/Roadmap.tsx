@@ -170,7 +170,7 @@ const markerStyle = (statusColor: string) =>
 const contentContainerStyle = mergeStyles({
   position: 'relative',
   marginLeft: '31%',
-  maxWidth: '1000px',
+  width: '69%',
 });
 
 /**
