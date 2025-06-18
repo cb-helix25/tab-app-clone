@@ -15,7 +15,6 @@ import PoidCard from './PoidCard';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
 import StepProgress from './StepProgress';
-import StepOverview from './StepOverview';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
@@ -563,13 +562,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
         current={stepsOrder[openStep]}
         onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
       />
-      <StepOverview
-        steps={stepProgressSteps}
-        current={stepsOrder[openStep]}
-        isComplete={isStepComplete}
-        details={stepDetails}
-        onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
-      />
       {stepsOrder.map((stepKey, idx) => (
         <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
           <StepHeader
@@ -578,6 +570,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
             complete={isStepComplete(stepKey)}
             open={openStep === idx}
             onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
+            summary={stepDetails[stepKey]}
           />
           <div className="step-content">
             {openStep === idx && renderStepContent(stepKey)}

@@ -7,6 +7,7 @@ import {
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
+import { componentTokens } from '../../app/styles/componentTokens';
 import { FormItem } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/FormCard.css'; // Ensure this has your .backdropIcon CSS
@@ -52,17 +53,17 @@ interface FormCardProps {
 
 const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    padding: '20px',
+    padding: componentTokens.card.base.padding,
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
     border: `1px solid ${
       isDarkMode ? colours.dark.border : colours.light.border
     }`,
-    borderRadius: '8px',
+    borderRadius: componentTokens.card.base.borderRadius,
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(255, 255, 255, 0.1)'
-      : '0 2px 8px rgba(0, 0, 0, 0.1)',
+      : componentTokens.card.base.boxShadow,
     transition: 'box-shadow 0.3s, transform 0.3s, background-color 0.3s',
     cursor: 'pointer',
     display: 'flex',
@@ -73,8 +74,8 @@ const cardStyle = (isDarkMode: boolean) =>
     ':hover': {
       boxShadow: isDarkMode
         ? '0 4px 16px rgba(255, 255, 255, 0.2)'
-        : '0 4px 16px rgba(0, 0, 0, 0.2)',
-      transform: 'translateY(-5px)',
+        : componentTokens.card.hover.boxShadow,
+      transform: componentTokens.card.hover.transform,
     },
   });
 

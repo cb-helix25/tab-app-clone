@@ -156,3 +156,9 @@
     opacity: 1;
     transform: scaleY(1);
 }
+
+.step-summary {
+    margin-left: 32px;
+    margin-top: 4px;
+    font-size: 13px;
+}

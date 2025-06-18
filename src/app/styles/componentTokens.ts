@@ -78,6 +78,19 @@ export const componentTokens = {
       borderRadius: '4px',
     },
   },
+
+  /** Generic card styles used for form tiles and quick actions */
+  card: {
+    base: {
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    },
+    hover: {
+      boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+      transform: 'translateY(-5px)',
+    },
+  },
 } as const;
 
 export type ComponentTokens = typeof componentTokens;

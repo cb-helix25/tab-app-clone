@@ -1,6 +1,7 @@
 import React from 'react';
 import { mergeStyles, Icon, Text } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
+import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/QuickActionsCard.css';
 
 interface QuickActionsCardProps {
@@ -27,21 +28,22 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     padding: '7px 12px',
-    borderRadius: '4px',
+    borderRadius: componentTokens.card.base.borderRadius,
     display: 'flex',
     alignItems: 'center',
     gap: '7px',
     boxShadow: isDarkMode
       ? `0 2px 4px ${colours.dark.border}`
-      : `0 2px 4px ${colours.light.border}`,
+      : componentTokens.card.base.boxShadow,
     cursor: 'pointer',
-    transition: 'background-color 0.3s, box-shadow 0.3s',
+    transition: 'background-color 0.3s, box-shadow 0.3s, transform 0.3s',
     selectors: {
       ':hover': {
         backgroundColor: colours.grey,
         boxShadow: isDarkMode
           ? `0 2px 4px ${colours.dark.border}`
-          : `0 2px 4px ${colours.light.border}`,
+          : componentTokens.card.hover.boxShadow,
+        transform: componentTokens.card.hover.transform,
       },
     },
   });

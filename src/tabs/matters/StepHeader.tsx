@@ -13,6 +13,7 @@ interface StepHeaderProps {
     editable?: boolean;
     allowToggleWhenLocked?: boolean;
     dimOnLock?: boolean;
+    summary?: React.ReactNode;
 }
 
 const StepHeader: React.FC<StepHeaderProps> = ({
@@ -26,6 +27,7 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     editable = true,
     allowToggleWhenLocked = false,
     dimOnLock = true,
+    summary,
 }) => {
     const baseStyle: React.CSSProperties = {
         backgroundColor: componentTokens.stepHeader.base.backgroundColor,
@@ -57,48 +59,56 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     const showEdit = editable && !open && !locked && complete;
 
     return (
-        <div
-            className={`step-header${open ? ' active' : ''}${complete ? ' completed' : ''}`}
-            onClick={handleClick}
-            role="button"
-            tabIndex={locked && !allowToggleWhenLocked ? -1 : 0}
-            aria-expanded={open}
-            aria-disabled={locked && !allowToggleWhenLocked}
-            style={{ ...baseStyle, ...activeStyle, ...lockedStyle }}
-        >
-            <div className="step-number">{step}</div>
-            <h2 className="step-title">
-                {title}
-                {complete && (
-                    <span className="completion-check visible">
-                        <svg viewBox="0 0 24 24">
-                            <polyline
-                                points="5,13 10,18 19,7"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
+        <>
+            <div
+                className={`step-header${open ? ' active' : ''}${complete ? ' completed' : ''}`}
+                onClick={handleClick}
+                role="button"
+                tabIndex={locked && !allowToggleWhenLocked ? -1 : 0}
+                aria-expanded={open}
+                aria-disabled={locked && !allowToggleWhenLocked}
+                style={{ ...baseStyle, ...activeStyle, ...lockedStyle }}
+            >
+                <div className="step-number">{step}</div>
+                <h2 className="step-title">
+                    {title}
+                    {complete && (
+                        <span className="completion-check visible">
+                            <svg viewBox="0 0 24 24">
+                                <polyline
+                                    points="5,13 10,18 19,7"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                        </span>
+                    )}
+                </h2>
+                {showEdit && (
+                    <span
+                        className="edit-step"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.();
+                            onToggle();
+                        }}
+                    >
+                        ✎
+
                     </span>
                 )}
-            </h2>
-            {showEdit && (
-                <span
-                    className="edit-step"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.();
-                        onToggle();
-                    }}
-                >
-                    ✎
-                </span>
-            )}
-            <span className="toggle-icon">{open ? '−' : '+'}</span>
+                <span className="toggle-icon">{open ? '−' : '+'}</span>
 
-        </div>
+            </div>
+            {summary && !open && (
+                <div className="step-summary">
+                    {summary}
+                </div>
+            )}
+        </>
     );
 };
 
