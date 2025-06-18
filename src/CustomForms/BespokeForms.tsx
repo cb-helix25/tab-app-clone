@@ -13,6 +13,7 @@ import {
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
 import { colours } from '../app/styles/colours';
+import { componentTokens } from '../app/styles/componentTokens';
 import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
@@ -25,8 +26,9 @@ export const formContainerStyle = mergeStyles({
   marginTop: '10px',
   padding: '20px',
   backgroundColor: colours.light.sectionBackground,
-  borderRadius: '4px',
-  boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+  borderRadius: componentTokens.stepHeader.base.borderRadius,
+  border: `1px solid ${componentTokens.stepContent.borderColor}`,
+  boxShadow: componentTokens.stepContent.boxShadow,
   display: 'flex',
   flexDirection: 'column',
   gap: '20px',
@@ -36,7 +38,7 @@ export const inputFieldStyle = mergeStyles({
   height: `${INPUT_HEIGHT}px`,
   padding: '5px',
   border: `1px solid ${colours.light.border}`,
-  borderRadius: '4px',
+  borderRadius: componentTokens.stepHeader.base.borderRadius,
   backgroundColor: colours.light.inputBackground,
   boxSizing: 'border-box',
   selectors: {
@@ -55,7 +57,7 @@ export const inputFieldStyle = mergeStyles({
 export const dropdownStyle = mergeStyles({
   height: `${INPUT_HEIGHT}px`,
   border: `1px solid ${colours.light.border}`,
-  borderRadius: '4px',
+  borderRadius: componentTokens.stepHeader.base.borderRadius,
   backgroundColor: colours.light.inputBackground,
   display: 'flex',
   alignItems: 'center',
@@ -101,8 +103,8 @@ export const prefixStyle = mergeStyles({
   backgroundColor: colours.light.sectionBackground,
   border: `1px solid ${colours.light.border}`,
   borderRight: 'none',
-  borderTopLeftRadius: '4px',
-  borderBottomLeftRadius: '4px',
+  borderTopLeftRadius: componentTokens.stepHeader.base.borderRadius,
+  borderBottomLeftRadius: componentTokens.stepHeader.base.borderRadius,
   fontWeight: 'bold',
   padding: '0 5px',
 });
@@ -113,7 +115,9 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     width: '100%',
     height: '100%',
     border: `1px solid ${colours.light.border}`,
-    borderRadius: hasPrefix ? '0 4px 4px 0' : '4px',
+    borderRadius: hasPrefix
+      ? `0 ${componentTokens.stepHeader.base.borderRadius} ${componentTokens.stepHeader.base.borderRadius} 0`
+      : componentTokens.stepHeader.base.borderRadius,
     padding: '5px',
     backgroundColor: colours.light.inputBackground,
     boxSizing: 'border-box',
@@ -135,14 +139,19 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     },
   });
 
-  export const toggleStyle = mergeStyles({
-    height: `${INPUT_HEIGHT}px`,
-    selectors: {
-      ':hover': {
-        backgroundColor: colours.light.cardHover,
-      },
+export const toggleStyle = mergeStyles({
+  height: `${INPUT_HEIGHT}px`,
+  backgroundColor: componentTokens.toggleButton.base.backgroundColor,
+  color: componentTokens.toggleButton.base.color,
+  border: componentTokens.toggleButton.base.border,
+  borderRadius: componentTokens.toggleButton.base.borderRadius,
+  padding: componentTokens.toggleButton.base.padding,
+  selectors: {
+    ':hover': {
+      backgroundColor: componentTokens.toggleButton.hover.backgroundColor,
     },
-  });
+  },
+});
   
   // One-off info-box styles for CHAPS guide & >£50k message
   export const infoBoxStyle = mergeStyles({
