@@ -204,3 +204,35 @@ export const sharedDecisionButtonStyles: IButtonStyles = {
     boxShadow: 'none !important',
   },
 };
+
+
+// Button style for inline option selections inside the editor
+export const inlineOptionButtonStyles = (
+  isSelected: boolean,
+  isDarkMode: boolean
+): IButtonStyles => ({
+  root: {
+    padding: '8px 12px',
+    margin: '2px 0',
+    borderRadius: '6px',
+    backgroundColor: isSelected
+      ? isDarkMode
+        ? colours.dark.grey
+        : colours.grey
+      : 'transparent',
+    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    textAlign: 'left',
+    selectors: {
+      ':focus': {
+        outline: `2px solid ${colours.highlight}`,
+      },
+    },
+  },
+  rootHovered: {
+    backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+  },
+  rootPressed: {
+    backgroundColor: isDarkMode ? colours.dark.inputBackground : colours.light.inputBackground,
+  },
+});

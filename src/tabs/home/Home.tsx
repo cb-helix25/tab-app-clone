@@ -146,36 +146,6 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-}
-
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-}
-
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-}
-
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-}
-
-interface CollapsibleSectionProps {
-  title: string;
-  metrics: { title: string }[];
-  children: React.ReactNode;
-}
-
 interface MetricItem {
   title: string;
   isTimeMoney?: boolean;

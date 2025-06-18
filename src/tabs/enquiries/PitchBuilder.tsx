@@ -10,6 +10,11 @@ import {
   Label,
   IIconProps,
   Icon,
+  Callout,
+  Dropdown,
+  FocusZone,
+  FocusZoneDirection,
+  DirectionalHint,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -23,6 +28,7 @@ import {
   sharedPrimaryButtonStyles,
   sharedDefaultButtonStyles,
   sharedDraftConfirmedButtonStyles,
+  inlineOptionButtonStyles,
 } from '../../app/styles/ButtonStyles';
 import {
   sharedEditorStyle,
@@ -249,12 +255,28 @@ function longLockEnd() {
   }
 }
 
+  function openInlineOptions(e: MouseEvent, blockTitle: string) {
+    e.stopPropagation();
+    const block = templateBlocks.find((b) => b.title === blockTitle);
+    if (block) {
+      setInlineOptionsBlock(block);
+      setInlineOptionsTarget(e.currentTarget as HTMLElement);
+    }
+  }
+
+  function closeInlineOptions() {
+    setInlineOptionsBlock(null);
+    setInlineOptionsTarget(null);
+  }
+
+
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
   (window as any).longLockStart = longLockStart;
   (window as any).longLockEnd = longLockEnd;
-}, [toggleBlockLock, highlightBlock, longLockStart, longLockEnd]);
+  (window as any).openInlineOptions = openInlineOptions;
+}, [toggleBlockLock, highlightBlock, longLockStart, longLockEnd, openInlineOptions]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -351,6 +373,20 @@ useEffect(() => {
 
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
+
+  const [inlineOptionsBlock, setInlineOptionsBlock] = useState<TemplateBlock | null>(null);
+  const [inlineOptionsTarget, setInlineOptionsTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (inlineOptionsBlock) {
+      const newTarget = bodyEditorRef.current?.querySelector(
+        `span.block-label[data-label-title="${inlineOptionsBlock.title}"]`
+      ) as HTMLElement | null;
+      if (newTarget) {
+        setInlineOptionsTarget(newTarget);
+      }
+    }
+  }, [body, inlineOptionsBlock]);
 
   useEffect(() => {
     templateBlocks.forEach((block) => {
@@ -487,7 +523,7 @@ useEffect(() => {
     } else if (typeof selectedOption === 'string') {
       selectedLabel = selectedOption;
     }
-    const labelHTML = `<span class="block-label" style="display:block;font-size:10px;color:${colours.greyText};margin-top:8px;text-align:right;">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
+    const labelHTML = `<span class="block-label" data-label-title="${block.title}" style="display:block;font-size:10px;color:${colours.greyText};margin-top:8px;text-align:right;cursor:pointer;" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
@@ -1610,6 +1646,66 @@ function handleScrollToBlock(blockTitle: string) {
         }}
       />
   
+      {inlineOptionsBlock && inlineOptionsTarget && (
+        <Callout
+          target={inlineOptionsTarget}
+          onDismiss={closeInlineOptions}
+          setInitialFocus
+          directionalHint={DirectionalHint.bottomLeftEdge}
+          styles={{ root: { padding: 8 } }}
+        >
+          <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
+            <Stack tokens={{ childrenGap: 4 }}>
+              {inlineOptionsBlock.options.map((o: TemplateOption) => {
+                const isSelected = inlineOptionsBlock.isMultiSelect
+                  ? Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
+                  (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label)
+                  : selectedTemplateOptions[inlineOptionsBlock.title] === o.label;
+                return (
+                  <DefaultButton
+                    key={o.label}
+                    text={o.label}
+                    onClick={() => {
+                      if (inlineOptionsBlock.isMultiSelect) {
+                        const currentSelections = Array.isArray(
+                          selectedTemplateOptions[inlineOptionsBlock.title]
+                        )
+                          ? (selectedTemplateOptions[inlineOptionsBlock.title] as string[])
+                          : [];
+                        const updated = currentSelections.includes(o.label)
+                          ? currentSelections.filter((k) => k !== o.label)
+                          : [...currentSelections, o.label];
+                        handleMultiSelectChange(inlineOptionsBlock.title, updated);
+                        let append = false;
+                        if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
+                          const replace = window.confirm(
+                            'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                          );
+                          append = !replace;
+                        }
+                        insertTemplateBlock(inlineOptionsBlock, updated, true, append);
+                      } else {
+                        let append = false;
+                        if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
+                          const replace = window.confirm(
+                            'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                          );
+                          append = !replace;
+                        }
+                        insertTemplateBlock(inlineOptionsBlock, o.label, true, append);
+                        handleSingleSelectChange(inlineOptionsBlock.title, o.label);
+                        closeInlineOptions();
+                      }
+                    }}
+                    styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
+                  />
+                );
+              })}
+            </Stack>
+          </FocusZone>
+        </Callout>
+      )}
+
       {/* Row: Preview and Reset Buttons */}
       <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
         <PrimaryButton
