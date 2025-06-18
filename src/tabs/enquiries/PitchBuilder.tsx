@@ -259,8 +259,8 @@ function longLockEnd() {
     e.stopPropagation();
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (block) {
-      setInlineOptionsBlock(block);
       setInlineOptionsTarget(e.currentTarget as HTMLElement);
+      setInlineOptionsBlock(block);
     }
   }
 
@@ -1652,7 +1652,7 @@ function handleScrollToBlock(blockTitle: string) {
           onDismiss={closeInlineOptions}
           setInitialFocus
           directionalHint={DirectionalHint.bottomLeftEdge}
-          styles={{ root: { padding: 8 } }}
+          styles={{ root: { padding: 8, borderRadius: 0 } }}
         >
           <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
             <Stack tokens={{ childrenGap: 4 }}>
@@ -1661,44 +1661,59 @@ function handleScrollToBlock(blockTitle: string) {
                   ? Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
                   (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label)
                   : selectedTemplateOptions[inlineOptionsBlock.title] === o.label;
+
+                const preview = applyDynamicSubstitutions(
+                  o.previewText.replace(/\n/g, '<br />'),
+                  userData,
+                  enquiry,
+                  amount,
+                  dealPasscode,
+                  dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                  );
                 return (
-                  <DefaultButton
-                    key={o.label}
-                    text={o.label}
-                    onClick={() => {
-                      if (inlineOptionsBlock.isMultiSelect) {
-                        const currentSelections = Array.isArray(
-                          selectedTemplateOptions[inlineOptionsBlock.title]
-                        )
-                          ? (selectedTemplateOptions[inlineOptionsBlock.title] as string[])
-                          : [];
-                        const updated = currentSelections.includes(o.label)
-                          ? currentSelections.filter((k) => k !== o.label)
-                          : [...currentSelections, o.label];
-                        handleMultiSelectChange(inlineOptionsBlock.title, updated);
-                        let append = false;
-                        if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
-                          const replace = window.confirm(
-                            'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                          );
-                          append = !replace;
+                  <Stack key={o.label} tokens={{ childrenGap: 2 }}>
+                    <DefaultButton
+                      text={o.label}
+                      onClick={() => {
+                        if (inlineOptionsBlock.isMultiSelect) {
+                          const currentSelections = Array.isArray(
+                            selectedTemplateOptions[inlineOptionsBlock.title]
+                          )
+                            ? (selectedTemplateOptions[inlineOptionsBlock.title] as string[])
+                            : [];
+                          const updated = currentSelections.includes(o.label)
+                            ? currentSelections.filter((k) => k !== o.label)
+                            : [...currentSelections, o.label];
+                          handleMultiSelectChange(inlineOptionsBlock.title, updated);
+                          let append = false;
+                          if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
+                            const replace = window.confirm(
+                              'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                            );
+                            append = !replace;
+                          }
+                          insertTemplateBlock(inlineOptionsBlock, updated, true, append);
+                        } else {
+                          let append = false;
+                          if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
+                            const replace = window.confirm(
+                              'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                            );
+                            append = !replace;
+                          }
+                          insertTemplateBlock(inlineOptionsBlock, o.label, true, append);
+                          handleSingleSelectChange(inlineOptionsBlock.title, o.label);
+                          closeInlineOptions();
+
                         }
-                        insertTemplateBlock(inlineOptionsBlock, updated, true, append);
-                      } else {
-                        let append = false;
-                        if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
-                          const replace = window.confirm(
-                            'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                          );
-                          append = !replace;
-                        }
-                        insertTemplateBlock(inlineOptionsBlock, o.label, true, append);
-                        handleSingleSelectChange(inlineOptionsBlock.title, o.label);
-                        closeInlineOptions();
-                      }
-                    }}
-                    styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
-                  />
+                      }}
+                      styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
+                    />
+                    <span
+                      style={{ fontSize: '11px', padding: '0 4px' }}
+                      dangerouslySetInnerHTML={{ __html: preview }}
+                    />
+                  </Stack>
                 );
               })}
             </Stack>
