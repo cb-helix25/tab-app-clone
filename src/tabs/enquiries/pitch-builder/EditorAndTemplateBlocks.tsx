@@ -141,13 +141,50 @@ boxShadow: isDarkMode
     transition: 'background 0.3s, box-shadow 0.3s',
   });
 
+  const whiteButtonStyles: IButtonStyles = {
+    ...sharedDefaultButtonStyles,
+    root: {
+      ...(sharedDefaultButtonStyles.root as any),
+      backgroundColor: '#ffffff',
+    },
+    rootHovered: {
+      ...(sharedDefaultButtonStyles.rootHovered as any),
+      background:
+        'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), #ffffff !important',
+    },
+    rootPressed: {
+      ...(sharedDefaultButtonStyles.rootPressed as any),
+      background:
+        'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), #ffffff !important',
+    },
+    rootFocused: {
+      ...(sharedDefaultButtonStyles.rootFocused as any),
+      backgroundColor: '#ffffff !important',
+    },
+  };
+
   const selectedButtonStyles: IButtonStyles = {
     ...sharedDefaultButtonStyles,
     root: {
       ...(sharedDefaultButtonStyles.root as any),
-      backgroundColor: colours.accent,
+      backgroundColor: colours.highlightBlue,
       fontWeight: 600,
     },
+    rootHovered: {
+      ...(sharedDefaultButtonStyles.rootHovered as any),
+      background:
+        `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), ${colours.highlightBlue} !important`,
+    },
+    rootPressed: {
+      ...(sharedDefaultButtonStyles.rootPressed as any),
+      background:
+        `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.highlightBlue} !important`,
+    },
+    rootFocused: {
+      ...(sharedDefaultButtonStyles.rootFocused as any),
+      backgroundColor: `${colours.highlightBlue} !important`,
+    },
+
   };
 
 
@@ -551,12 +588,12 @@ boxShadow: isDarkMode
               <DefaultButton
                 text="Simplified"
                 onClick={() => onTemplateSetChange('Simplified')}
-                styles={templateSet === 'Simplified' ? selectedButtonStyles : sharedDefaultButtonStyles}
+                styles={templateSet === 'Simplified' ? selectedButtonStyles : whiteButtonStyles}
               />
               <DefaultButton
                 text="Production"
                 onClick={() => onTemplateSetChange('Production')}
-                styles={templateSet === 'Production' ? selectedButtonStyles : sharedDefaultButtonStyles}
+                styles={templateSet === 'Production' ? selectedButtonStyles : whiteButtonStyles}
               />
               <div ref={cheatSheetButtonRef}>
                 <IconButton
@@ -575,13 +612,13 @@ boxShadow: isDarkMode
                 const allCollapsed = Object.values(collapsedBlocks).every(c => c);
                 allCollapsed ? expandAll() : collapseAll();
               }}
-              styles={sharedDefaultButtonStyles}
+                styles={whiteButtonStyles}
             />
             <DefaultButton
               text="Clear"
               iconProps={{ iconName: 'Cancel' }}
               onClick={onClearAllBlocks}
-              styles={sharedDefaultButtonStyles}
+                styles={whiteButtonStyles}
             />
             <div ref={actionsInfoButtonRef}>
               <IconButton
@@ -651,11 +688,14 @@ boxShadow: isDarkMode
             </Callout>
           )}
         <Stack className={templatesContainerStyle}>
-          <DragDropContext onDragEnd={(result: DropResult) => {
-            if (!result.destination) return;
-            if (result.destination.index === result.source.index) return;
-            onReorderBlocks(result.source.index, result.destination.index);
-          }}>
+            <DragDropContext
+              onDragEnd={(result: DropResult) => {
+                if (!result.destination) return;
+                if (result.destination.index === result.source.index) return;
+                onReorderBlocks(result.source.index, result.destination.index);
+              }}
+              autoScrollDisabled={true}
+            >
             <Droppable droppableId="templateBlocks">
               {(provided) => (
                 <div

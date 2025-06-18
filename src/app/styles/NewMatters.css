@@ -1,0 +1,36 @@
+/* Styles adapted from reference instructions */
+.new-matter-container {
+    padding: 40px;
+    background: var(--helix-grey);
+    min-height: 100vh;
+}
+
+.step-section {
+    margin-bottom: 8px;
+}
+
+.step-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--helix-grey);
+    color: var(--helix-dark-blue);
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.3s;
+}
+
+.step-header.active {
+    background: var(--helix-dark-blue);
+    color: #fff;
+}
+
+.step-content {
+    padding: 12px;
+    border: 2px solid rgba(211, 211, 211, 0.5);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.09);
+    border-radius: 4px;
+    margin-bottom: 20px;
+}

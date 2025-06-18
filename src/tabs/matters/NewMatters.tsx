@@ -20,6 +20,7 @@ import { colours } from '../../app/styles/colours';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
 import StepProgress from './StepProgress';
+import '../../app/styles/NewMatters.css';
 
 // Export (or define) TagButtonProps at the top so it’s available.
 export interface TagButtonProps {
@@ -176,22 +177,7 @@ const stepTitles: { [key in StepKey]: string } = {
   review: 'Review & Build Matter',
 };
 
-// Container styles
-const containerStyle = mergeStyles({
-  padding: '40px',
-  backgroundColor: colours.grey,
-  minHeight: '100vh',
-  transition: 'background-color 0.3s',
-});
-const expandedCardStyle = mergeStyles({
-  background: 'linear-gradient(135deg, #ffffff 0%, #f3f2f1 100%)',
-  border: '1px solid #e1dfdd',
-  borderRadius: 8,
-  padding: 30,
-  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-  transition: 'transform 0.3s, box-shadow 0.3s',
-  marginBottom: 30,
-});
+// Container styles now defined in NewMatters.css
 const completedCollapsedCardStyle = mergeStyles({
   backgroundColor: '#fff',
   border: `2px solid ${colours.green}`,
@@ -525,7 +511,11 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
       completed = true;
     }
     return (
-      <Stack tokens={{ childrenGap: 8 }} className={completed ? completedCollapsedCardStyle : collapsedCardStyle} key={step}>
+      <Stack
+        tokens={{ childrenGap: 8 }}
+        className={`${completed ? completedCollapsedCardStyle : collapsedCardStyle} step-section`}
+        key={step}
+      >
         <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
           <StepHeader title={stepTitles[step]} />
           <PrimaryButton text="Edit" onClick={() => setCurrentStep(step)} styles={sharedPrimaryButtonStyles} />
@@ -1068,13 +1058,21 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
   const stepOrderIndex = (step: StepKey): number => stepsOrder.indexOf(step);
 
   return (
-    <Stack className={containerStyle}>
-      <StepProgress steps={stepProgressSteps} current={currentStep} onStepClick={setCurrentStep} />
+    <Stack className="new-matter-container">
+      <StepProgress
+        steps={stepProgressSteps}
+        current={currentStep}
+        onStepClick={setCurrentStep}
+      />
       {stepsOrder.map((step) =>
         stepOrderIndex(step) < stepOrderIndex(currentStep)
           ? renderCollapsedStep(step)
           : step === currentStep
-          ? <div key={step} className={expandedCardStyle}>{renderExpandedStep(step)}</div>
+            ? (
+              <div key={step} className="step-content">
+                {renderExpandedStep(step)}
+              </div>
+            )
           : null
       )}
     </Stack>
