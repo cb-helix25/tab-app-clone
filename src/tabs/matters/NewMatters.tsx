@@ -14,7 +14,7 @@ import { POID, TeamData } from '../../app/functionality/types';
 import PoidCard from './PoidCard';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
-import StepProgress from './StepProgress';
+import StepOverview from './StepOverview';
 import { colours } from '../../app/styles/colours';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import '../../app/styles/NewMatters.css';
@@ -476,23 +476,34 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
   };
 
   return (
-    <Stack className="workflow-container">
-      <StepProgress steps={stepProgressSteps} current={stepsOrder[openStep]} onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))} />
-      {stepsOrder.map((stepKey, idx) => (
-        <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
-          <StepHeader
-            step={idx + 1}
-            title={stepTitles[stepKey]}
-            complete={isStepComplete(stepKey)}
-            open={openStep === idx}
-            onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
+    <div className="workflow-container">
+      <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
+        <Stack style={{ flexGrow: 1 }}>
+          {stepsOrder.map((stepKey, idx) => (
+            <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
+              <StepHeader
+                step={idx + 1}
+                title={stepTitles[stepKey]}
+                complete={isStepComplete(stepKey)}
+                open={openStep === idx}
+                onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
+              />
+              <div className="step-content">
+                {openStep === idx && renderStepContent(stepKey)}
+              </div>
+            </div>
+          ))}
+        </Stack>
+        <aside style={{ flexBasis: '260px', flexShrink: 0 }}>
+          <StepOverview
+            steps={stepProgressSteps}
+            current={stepsOrder[openStep]}
+            isComplete={(key) => isStepComplete(key as StepKey)}
+            onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
           />
-          <div className="step-content">
-            {openStep === idx && renderStepContent(stepKey)}
-          </div>
-        </div>
-      ))}
-    </Stack>
+        </aside>
+      </div>
+    </div>
   );
 };
 

@@ -1,0 +1,49 @@
+.step-overview {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.step-overview li {
+    display: flex;
+    align-items: center;
+    color: var(--helix-dark-blue);
+}
+
+.step-overview li .step-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--helix-grey);
+    color: var(--helix-dark-blue);
+    font-size: 0.8rem;
+    margin-right: 8px;
+}
+
+.step-overview li.done .step-marker {
+    background: var(--helix-highlight);
+    color: #fff;
+}
+
+.step-overview li.done .step-label {
+    text-decoration: line-through;
+}
+
+.step-overview li.current .step-marker {
+    border: 2px solid var(--helix-highlight);
+    background: #fff;
+    color: var(--helix-highlight);
+}
+
+.step-overview li.current .step-label {
+    font-weight: bold;
+}
+
+.step-overview .step-label {
+    font-size: 14px; }
