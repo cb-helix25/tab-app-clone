@@ -554,7 +554,13 @@ useEffect(() => {
     } else if (typeof selectedOption === 'string') {
       selectedLabel = selectedOption;
     }
-    const labelHTML = `<span class="block-label" data-label-title="${block.title}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}${selectedLabel ? ` - ${selectedLabel}` : ''}</span>`;
+    const labelHTML = `<span 
+      class="block-label" 
+      data-label-title="${block.title}"
+      onmousedown="event.preventDefault(); window.openInlineOptions(event, '${block.title}')"
+      >
+      ${block.title}
+    </span>`;
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
@@ -1682,7 +1688,7 @@ function handleScrollToBlock(blockTitle: string) {
           className="inline-options-callout"
           target={inlineOptionsTarget}
           onDismiss={closeInlineOptions}
-          setInitialFocus
+          setInitialFocus={false}
           directionalHint={DirectionalHint.bottomRightEdge}
           directionalHintFixed
           styles={{ root: { padding: 8 } }}
