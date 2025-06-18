@@ -15,7 +15,7 @@ Compress-Archive -Path * -DestinationPath $zipPath -Force
 Pop-Location
 
 Write-Host "Deploying to Azure"
-az webapp deployment source config-zip --resource-group Main --name link-hub-v1 --src $zipPath
+az webapp deploy --resource-group Main --name link-hub-v1 --src-path build.zip
 
 Write-Host "Cleaning up build artifacts"
 Remove-Item -Recurse -Force $buildDir
