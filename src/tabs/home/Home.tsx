@@ -37,6 +37,8 @@ import OutImg from '../../assets/outv2.png';
 import '../../app/styles/VerticalLabelPanel.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/MetricCard.css';
+import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
+import { componentTokens } from '../../app/styles/componentTokens';
 
 import Tasking from '../../CustomForms/Tasking';
 import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
@@ -189,28 +191,31 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
   const metricLabels = metrics.length > 0 ? metrics.map(m => m.title).join(' | ') : '';
 
   return (
-    // Outer container with a drop shadow and rounded corners (no border)
     <div
       style={{
         marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-        borderRadius: '4px',
+        boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
+        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
-      <div 
-        onClick={toggleCollapse} 
+      <div
+        onClick={toggleCollapse}
         style={{
-          background: `linear-gradient(to right, ${colours.grey}, white)`,
-          color: '#333333',
-          padding: '16px 12px', // increased vertical padding for taller header
+          backgroundColor: collapsed
+            ? componentTokens.stepHeader.base.backgroundColor
+            : componentTokens.stepHeader.active.backgroundColor,
+          color: collapsed
+            ? componentTokens.stepHeader.base.textColor
+            : componentTokens.stepHeader.active.textColor,
+          padding: '16px 12px',
           minHeight: '48px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '16px',
+          borderRadius: componentTokens.stepHeader.base.borderRadius,
         }}
       >
         <span style={{ fontWeight: 600 }}>
@@ -232,13 +237,13 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           }}
         />
       </div>
-      {/* Content */}
       {!collapsed && (
-        <div 
+        <div
           style={{
-            padding: '10px 15px',
+            padding: componentTokens.summaryPane.base.padding,
             backgroundColor: colours.light.sectionBackground,
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+            boxShadow: componentTokens.summaryPane.base.boxShadow,
+            borderRadius: componentTokens.summaryPane.base.borderRadius,
           }}
         >
           {children}
@@ -284,7 +289,7 @@ const quickActions: QuickLink[] = [
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    padding: '20px',
+    padding: (cardStyles.root as React.CSSProperties).padding,
     minHeight: '100vh',
     boxSizing: 'border-box',
   });
@@ -322,12 +327,10 @@ const mainContentStyle = mergeStyles({
 
 const quickLinksStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
     padding: '10px',
-    borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? `0 2px 4px ${colours.dark.border}`
-      : `0 2px 4px ${colours.light.border}`,
     transition: 'background-color 0.3s, box-shadow 0.3s',
     display: 'flex',
     flexDirection: 'row',
@@ -638,8 +641,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   }, [teamData]);
 
   const renderContextsPanelContent = () => (
-    <Stack tokens={{ childrenGap: 30 }} style={{ padding: 20 }}>
-      <Stack tokens={{ childrenGap: 10 }}>
+    <Stack tokens={dashboardTokens} styles={cardStyles}>
+      <Stack tokens={cardTokens}>
         <Text variant="xLarge" styles={{ root: { fontWeight: '600' } }}>
           Teams Context
         </Text>
@@ -659,7 +662,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
           }}
         />
       </Stack>
-      <Stack tokens={{ childrenGap: 10 }}>
+      <Stack tokens={cardTokens}>
         <Text variant="xLarge" styles={{ root: { fontWeight: '600' } }}>
           SQL Context
         </Text>
@@ -2272,7 +2275,7 @@ const conversionRate = enquiriesMonthToDate
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
 
   return (
-    <div className={containerStyle(isDarkMode)}>
+    <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
       {/* Header: Greeting only */}
       <Stack
         horizontal
@@ -2792,8 +2795,8 @@ const conversionRate = enquiriesMonthToDate
           onClick={() => setIsContextPanelOpen(true)}
         />
       </div>
-      
-    </div>
+
+    </Stack>
   );
 };
 

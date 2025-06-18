@@ -4,6 +4,7 @@ import {
   Icon,
   IconButton,
   TooltipHost,
+  Stack,
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
@@ -11,6 +12,7 @@ import { componentTokens } from '../../app/styles/componentTokens';
 import { FormItem } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/FormCard.css'; // Ensure this has your .backdropIcon CSS
+import { cardTokens, cardStyles as instructionsCardStyles } from '../instructions/componentTokens';
 
 const iconButtonStyles = (iconColor: string) => ({
   root: {

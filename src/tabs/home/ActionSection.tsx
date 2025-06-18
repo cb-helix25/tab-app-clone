@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Stack, Text, Toggle, mergeStyles, Icon, Separator } from '@fluentui/react';
 import { Transaction, Matter, OutstandingClientBalance } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
+import { cardStyles } from '../instructions/componentTokens';
+import { componentTokens } from '../../app/styles/componentTokens';
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 import BespokePanel from '../../app/functionality/BespokePanel';
@@ -44,18 +46,20 @@ const CollapsibleSection: React.FC<{
     <div
       style={{
         marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-        borderRadius: '4px',
+        boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
+        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
         overflow: 'hidden',
       }}
     >
       <div
         onClick={toggleCollapse}
         style={{
-          background: `linear-gradient(to right, ${colours.grey}, ${
-            isDarkMode ? colours.dark.sectionBackground : 'white'
-          })`,
-          color: '#333333',
+          backgroundColor: collapsed
+            ? componentTokens.stepHeader.base.backgroundColor
+            : componentTokens.stepHeader.active.backgroundColor,
+          color: collapsed
+            ? componentTokens.stepHeader.base.textColor
+            : componentTokens.stepHeader.active.textColor,
           padding: '16px 12px',
           minHeight: '48px',
           cursor: 'pointer',
@@ -63,6 +67,7 @@ const CollapsibleSection: React.FC<{
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '16px',
+          borderRadius: componentTokens.stepHeader.base.borderRadius,
         }}
       >
         <span style={{ fontWeight: 600 }}>{title}</span>
@@ -80,9 +85,12 @@ const CollapsibleSection: React.FC<{
       {!collapsed && (
         <div
           style={{
-            padding: '20px',
-            backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            padding: componentTokens.summaryPane.base.padding,
+            backgroundColor: isDarkMode
+              ? colours.dark.sectionBackground
+              : colours.light.sectionBackground,
+            boxShadow: componentTokens.summaryPane.base.boxShadow,
+            borderRadius: componentTokens.summaryPane.base.borderRadius,
           }}
         >
           {children}

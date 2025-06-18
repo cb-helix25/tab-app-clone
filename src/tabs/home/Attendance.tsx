@@ -10,6 +10,8 @@ import {
   DefaultButton,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
+import { cardStyles } from '../instructions/componentTokens';
+import { componentTokens } from '../../app/styles/componentTokens';
 import InAttendanceImg from '../../assets/in_attendance.png';
 import WfhImg from '../../assets/wfh.png';
 import OutImg from '../../assets/outv2.png';
@@ -71,16 +73,20 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
     <div
       style={{
         marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-        borderRadius: '4px',
+        boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
+        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
         overflow: 'hidden',
       }}
     >
       <div
         onClick={toggleCollapse}
         style={{
-          background: `linear-gradient(to right, ${colours.grey}, white)`,
-          color: '#333333',
+          backgroundColor: collapsed
+            ? componentTokens.stepHeader.base.backgroundColor
+            : componentTokens.stepHeader.active.backgroundColor,
+          color: collapsed
+            ? componentTokens.stepHeader.base.textColor
+            : componentTokens.stepHeader.active.textColor,
           padding: '16px 12px',
           minHeight: '48px',
           cursor: 'pointer',
@@ -88,6 +94,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '16px',
+          borderRadius: componentTokens.stepHeader.base.borderRadius,
         }}
       >
         <span style={{ fontWeight: 600 }}>{title}</span>
@@ -105,9 +112,10 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
       {!collapsed && (
         <div
           style={{
-            padding: '10px 15px',
+            padding: componentTokens.summaryPane.base.padding,
             backgroundColor: colours.light.sectionBackground,
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+            boxShadow: componentTokens.summaryPane.base.boxShadow,
+            borderRadius: componentTokens.summaryPane.base.borderRadius,
           }}
         >
           {children}
