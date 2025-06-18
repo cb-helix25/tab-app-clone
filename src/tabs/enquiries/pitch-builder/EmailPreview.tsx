@@ -124,19 +124,15 @@ function formatCurrency(val?: string): string {
     <Panel
       isOpen={isPreviewOpen}
       onDismiss={onDismiss}
-      type={PanelType.largeFixed}
+      type={PanelType.custom}
+      customWidth="700px"
       headerText="Email Preview"
       closeButtonAriaLabel="Close"
       styles={{
         main: {
           padding: '20px',
-          backgroundImage: `url('https://helix-law.co.uk/wp-content/uploads/2023/09/Asset-2-2.png')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'top left',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: 'rgba(240, 242, 245, 0.9)',
+          backgroundColor: colours.light.previewBackground,
           color: colours.light.text,
-          borderRadius: '8px',
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
