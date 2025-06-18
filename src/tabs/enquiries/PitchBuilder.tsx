@@ -86,6 +86,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
   style.innerHTML = `
     .block-label {
       display: block;
+      position: relative;
       font-size: 10px;
       color: ${colours.greyText};
       margin-top: 8px;
@@ -97,14 +98,44 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       text-decoration: underline;
       color: ${colours.highlight};
     }
+    .block-label:hover::after {
+      content: attr(data-selected);
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: ${colours.grey};
+      color: ${colours.greyText};
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transform: translateY(4px);
+      opacity: 0;
+      animation: fadeInBlockLabel 0.2s forwards;
+      pointer-events: none;
+      z-index: 10;
+    }
     .block-label:active {
       color: ${colours.highlight};
+    }
+    .inline-options-callout {
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      animation: fadeInScale 0.2s ease forwards;
     }
     .inline-options-callout .option-preview {
       font-size: 11px;
       padding: 0 4px;
       margin-top: 2px;
       display: block;
+    }
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeInBlockLabel {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
   `;
   document.head.appendChild(style);
@@ -554,9 +585,11 @@ useEffect(() => {
     } else if (typeof selectedOption === 'string') {
       selectedLabel = selectedOption;
     }
-    const labelHTML = `<span 
-      class="block-label" 
+    const labelHTML = `<span
+      class="block-label"
       data-label-title="${block.title}"
+      data-selected="${selectedLabel}"
+      title="${selectedLabel}"
       onmousedown="event.preventDefault(); window.openInlineOptions(event, '${block.title}')"
       >
       ${block.title}
@@ -1691,7 +1724,15 @@ function handleScrollToBlock(blockTitle: string) {
           setInitialFocus={false}
           directionalHint={DirectionalHint.bottomRightEdge}
           directionalHintFixed
-          styles={{ root: { padding: 8 } }}
+          styles={{
+            root: {
+              padding: 8,
+              borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+              animation: 'fadeInScale 0.2s ease',
+            },
+          }}
         >
           <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
             <Stack tokens={{ childrenGap: 4 }}>

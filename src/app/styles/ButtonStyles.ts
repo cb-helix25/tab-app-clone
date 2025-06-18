@@ -215,6 +215,8 @@ export const inlineOptionButtonStyles = (
     padding: '8px 12px',
     margin: '2px 0',
     borderRadius: '0px',
+    minWidth: '120px',
+    width: 'auto',
     transition: 'background-color 0.2s ease',
     backgroundColor: isSelected
       ? isDarkMode

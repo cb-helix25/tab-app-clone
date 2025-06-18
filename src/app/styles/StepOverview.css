@@ -9,8 +9,23 @@
 
 .step-overview li {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     color: var(--helix-dark-blue);
+}
+
+.overview-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 4px 0;
+    cursor: pointer;
+    color: inherit;
+}
+
+.overview-header .chevron {
+    margin-left: auto;
 }
 
 .step-overview li .step-marker {
@@ -46,4 +61,28 @@
 }
 
 .step-overview .step-label {
-    font-size: 14px; }
+    font-size: 14px;
+    }
+    
+    .overview-content {
+        display: none;
+        margin-left: 32px;
+        margin-top: 4px;
+        font-size: 13px;
+    }
+    
+    .overview-content.open {
+        display: block;
+    }
+    
+    .edit-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 4px;
+        background: none;
+        border: none;
+        color: var(--helix-dark-blue);
+        cursor: pointer;
+        font-size: 12px;
+    }

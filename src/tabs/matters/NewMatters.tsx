@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Stack,
   Text,
@@ -14,7 +14,9 @@ import { POID, TeamData } from '../../app/functionality/types';
 import PoidCard from './PoidCard';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
-import StepOverview from './StepOverview';
+import StepProgress from './StepProgress';
+import ClientDetails from './ClientDetails';
+import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import '../../app/styles/NewMatters.css';
@@ -304,6 +306,55 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
 
   const stepProgressSteps = stepsOrder.map((key) => ({ key, label: stepTitles[key] }));
 
+  const stepDetails = React.useMemo(() => ({
+    clientInfo: (
+      <div>
+        <div>Date: {selectedDate ? selectedDate.toLocaleDateString() : '-'}</div>
+        <div>Supervising: {supervisingPartner || '-'}</div>
+        <div>Originating: {originatingSolicitor || '-'}</div>
+        <div>Funds: {fundsReceived || '-'}</div>
+      </div>
+    ),
+    clientType: <div>Type: {clientType || '-'}</div>,
+    poidSelection: <div>IDs: {selectedPoidIds.join(', ') || '-'}</div>,
+    areaOfWork: <div>{areaOfWork || '-'}</div>,
+    practiceArea: <div>{practiceArea || '-'}</div>,
+    description: <div>{description || '-'}</div>,
+    folderStructure: <div>{folderStructure || '-'}</div>,
+    disputeValue: <div>{disputeValue || '-'}</div>,
+    source: (
+      <div>
+        {source || '-'}
+        {source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+      </div>
+    ),
+    opponentDetails: (
+      <div>
+        <div>Opponent: {opponentName || '-'}</div>
+        <div>Solicitor: {opponentSolicitorName || '-'}</div>
+      </div>
+    ),
+    riskAssessment: <div>Risk: {transactionRiskLevel || '-'}</div>,
+    review: null,
+  }), [
+    selectedDate,
+    supervisingPartner,
+    originatingSolicitor,
+    fundsReceived,
+    clientType,
+    selectedPoidIds,
+    areaOfWork,
+    practiceArea,
+    description,
+    folderStructure,
+    disputeValue,
+    source,
+    referrerName,
+    opponentName,
+    opponentSolicitorName,
+    transactionRiskLevel,
+  ]);
+
   const renderStepContent = (step: StepKey) => {
 
     switch (step) {
@@ -476,34 +527,27 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
   };
 
   return (
-    <div className="workflow-container">
-      <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
-        <Stack style={{ flexGrow: 1 }}>
-          {stepsOrder.map((stepKey, idx) => (
-            <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
-              <StepHeader
-                step={idx + 1}
-                title={stepTitles[stepKey]}
-                complete={isStepComplete(stepKey)}
-                open={openStep === idx}
-                onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
-              />
-              <div className="step-content">
-                {openStep === idx && renderStepContent(stepKey)}
-              </div>
-            </div>
-          ))}
-        </Stack>
-        <aside style={{ flexBasis: '260px', flexShrink: 0 }}>
-          <StepOverview
-            steps={stepProgressSteps}
-            current={stepsOrder[openStep]}
-            isComplete={(key) => isStepComplete(key as StepKey)}
-            onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
+    <Stack className="workflow-container">
+      <StepProgress
+        steps={stepProgressSteps}
+        current={stepsOrder[openStep]}
+        onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
+      />
+      {stepsOrder.map((stepKey, idx) => (
+        <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
+          <StepHeader
+            step={idx + 1}
+            title={stepTitles[stepKey]}
+            complete={isStepComplete(stepKey)}
+            open={openStep === idx}
+            onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
           />
-        </aside>
-      </div>
-    </div>
+          <div className="step-content">
+            {openStep === idx && renderStepContent(stepKey)}
+          </div>
+        </div>
+      ))}
+    </Stack>
   );
 };
 
