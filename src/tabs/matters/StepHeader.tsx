@@ -1,43 +1,47 @@
 import React from 'react';
-import { Stack, Text, mergeStyles } from '@fluentui/react';
-import { componentTokens } from '../../app/styles/componentTokens';
+import '../../app/styles/NewMatters.css';
 
 interface StepHeaderProps {
+    step: number;
     title: string;
-    active?: boolean;
-    locked?: boolean;
-    onClick?: () => void;
+    complete?: boolean;
+    open: boolean;
+    onToggle: () => void;
 }
 
 const StepHeader: React.FC<StepHeaderProps> = ({
+    step,
     title,
-    active = false,
-    locked = false,
-    onClick,
-}) => {
-    const base = componentTokens.stepHeader.base;
-    const activeTokens = componentTokens.stepHeader.active;
-    const headerStyle = mergeStyles({
-        backgroundColor: active ? activeTokens.backgroundColor : base.backgroundColor,
-        color: active ? activeTokens.textColor : base.textColor,
-        borderRadius: base.borderRadius,
-        boxShadow: base.boxShadow,
-        padding: '12px 16px',
-        marginBottom: 16,
-        cursor: onClick ? 'pointer' : 'default',
-        opacity: locked ? componentTokens.stepHeader.lockedOpacity : 1,
-    });
-
-    return (
-        <Stack
-            className={headerStyle}
-            horizontalAlign="start"
-            onClick={locked ? undefined : onClick}
-        >
-            <Text variant="mediumPlus">{title}</Text>
-        </Stack>
-    );
-  
-};
+    complete = false,
+    open,
+    onToggle,
+}) => (
+    <div
+        className={`step-header${open ? ' active' : ''}`}
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+    >
+        <div className="step-number">{step}</div>
+        <h2>
+            {title}
+            {complete && (
+                <span className="completion-tick visible">
+                    <svg viewBox="0 0 24 24">
+                        <polyline
+                            points="5,13 10,18 19,7"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    </svg>
+                </span>
+            )}
+        </h2>
+        <span className="toggle-icon">{open ? '−' : '+'}</span>
+    </div>
+);
 
 export default StepHeader;
