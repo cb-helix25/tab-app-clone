@@ -20,58 +20,20 @@ import { colours } from '../../app/styles/colours';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import '../../app/styles/NewMatters.css';
 
-// Export (or define) TagButtonProps at the top so it’s available.
-export interface TagButtonProps {
-  label: string;
-  icon?: string;
-  active: boolean;
-  onClick: () => void;
-  styleVariant?: 'clientType' | 'option';
-  color?: string;
-}
-
-const clientTypeButtonStyle = (active: boolean, customColor?: string) => ({
-  borderRadius: '25px',
-  padding: '12px 24px',
-  fontSize: '18px',
-  fontWeight: 700,
-  backgroundColor: '#f3f2f1',
-  color: active ? customColor || colours.highlight : '#333',
-  border: '1px solid #ccc',
-  margin: '5px',
-});
-
-const tagButtonStyle = (active: boolean, customColor?: string) => ({
-  borderRadius: '20px',
-  padding: '10px 20px',
-  fontSize: '16px',
-  fontWeight: 600,
-  backgroundColor: active ? customColor || colours.highlight : '#f3f2f1',
-  color: active ? '#fff' : '#333',
-  border: `1px solid ${customColor || colours.highlight}`,
-  margin: '5px',
-});
-
-const TagButton: React.FC<TagButtonProps> = ({
-  label,
-  icon,
-  active,
-  onClick,
-  styleVariant = 'option',
-  color,
-}) => {
-  const style = styleVariant === 'clientType'
-    ? clientTypeButtonStyle(active, color)
-    : tagButtonStyle(active, color);
-  return (
-    <PrimaryButton
-      text={label}
-      iconProps={icon ? { iconName: icon } : undefined}
-      onClick={onClick}
-      styles={{ root: style as any }}
-    />
-  );
-};
+// Components for individual steps
+import TagButton from './MatterOpening/TagButton';
+import ClientInfoStep from './MatterOpening/ClientInfoStep';
+import ClientTypeStep from './MatterOpening/ClientTypeStep';
+import PoidSelectionStep from './MatterOpening/PoidSelectionStep';
+import AreaOfWorkStep from './MatterOpening/AreaOfWorkStep';
+import PracticeAreaStep from './MatterOpening/PracticeAreaStep';
+import DescriptionStep from './MatterOpening/DescriptionStep';
+import FolderStructureStep from './MatterOpening/FolderStructureStep';
+import DisputeValueStep from './MatterOpening/DisputeValueStep';
+import SourceStep from './MatterOpening/SourceStep';
+import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
+import RiskAssessmentStep from './MatterOpening/RiskAssessmentStep';
+import ReviewStep from './MatterOpening/ReviewStep';
 
 const practiceAreasByArea: { [key: string]: string[] } = {
   Commercial: [
@@ -359,346 +321,172 @@ const NewMatters: React.FC<NewMattersProps> = ({ poidData, setPoidData, teamData
 
   const stepProgressSteps = stepsOrder.map((key) => ({ key, label: stepTitles[key] }));
 
-  const renderClientInfo = () => (
-    <Stack tokens={{ childrenGap: 20 }}>
-      <div ref={dateButtonRef}>
-
-        <PrimaryButton
-          text={selectedDate ? `Date: ${selectedDate.toLocaleDateString()}` : 'Select Date'}
-          onClick={() => setIsDateCalloutOpen(!isDateCalloutOpen)}
-          styles={{ root: tagButtonStyle(!!selectedDate, colours.highlight) as any }}
-        />
-        {isDateCalloutOpen && (
-          <Callout target={dateButtonRef.current} onDismiss={() => setIsDateCalloutOpen(false)} setInitialFocus>
-            <DatePicker
-              value={selectedDate || undefined}
-              onSelectDate={(date) => {
-                if (date) setSelectedDate(date);
-                setIsDateCalloutOpen(false);
-              }}
-              styles={{ root: { margin: 8, width: 200 } }}
-            />
-          </Callout>
-        )}
-      </div>
-      <Stack>
-        <Text variant="mediumPlus" style={{ marginBottom: 6 }}>Select Supervising Partner</Text>
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
-          {partnerOptions.map((name) => (
-            <TagButton key={name} label={name} active={supervisingPartner === name} onClick={() => setSupervisingPartner(name)} color={colours.highlight} />
-          ))}
-        </Stack>
-      </Stack>
-      <Stack>
-        <Text variant="mediumPlus" style={{ marginBottom: 6 }}>Select Originating Solicitor</Text>
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
-          {partnerOptions.map((name) => (
-            <TagButton key={name} label={name} active={originatingSolicitor === name} onClick={() => setOriginatingSolicitor(name)} color={colours.highlight} />
-          ))}
-        </Stack>
-      </Stack>
-      <Stack>
-        <Text variant="mediumPlus" style={{ marginBottom: 6 }}>Have funds on account been received?</Text>
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
-          {['Yes', 'No', 'Not Required'].map((option) => (
-            <TagButton key={option} label={option} active={fundsReceived === option} onClick={() => setFundsReceived(option)} color={colours.highlight} />
-          ))}
-        </Stack>
-      </Stack>
-      <PrimaryButton text="Continue" onClick={() => setOpenStep(1)} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-  );
-
-  const renderClientType = () => (
-    <Stack tokens={{ childrenGap: 20 }}>
-      <Stack horizontal wrap tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        {[
-          { label: 'Individual', icon: 'Contact' },
-          { label: 'Company', icon: 'CityNext' },
-          { label: 'Multiple Individuals', icon: 'People' },
-          { label: 'Existing Client', icon: 'Folder' },
-        ].map((opt) => (
-          <TagButton
-            key={opt.label}
-            label={opt.label}
-            icon={opt.icon}
-            active={clientType === opt.label}
-            onClick={() => { setClientType(opt.label); setOpenStep(2); }}
-            styleVariant="clientType"
-            color={colours.highlight}
-          />
-        ))}
-      </Stack>
-    </Stack>
-  );
-
-  const renderPoidSelection = () => (
-    <Stack tokens={{ childrenGap: 20 }}>
-      <SearchBox
-        placeholder="Search by name or ID..."
-        value={poidSearchTerm}
-        onChange={(_, newValue) => setPoidSearchTerm(newValue || '')}
-        styles={{ root: { width: 400, marginBottom: 20 } }}
-      />
-      <Stack horizontal tokens={{ childrenGap: 20 }}>
-        <div style={{ flex: 1 }} className="grid" ref={poidGridRef as any}>
-          {filteredPoidData.slice(0, visiblePoidCount).map((poid) => (
-            <div key={poid.poid_id} onClick={() => handlePoidClick(poid)} role="button" tabIndex={0}>
-              <PoidCard poid={poid} selected={selectedPoidIds.includes(poid.poid_id)} onClick={() => handlePoidClick(poid)} teamData={teamData} />
-            </div>
-          ))}
-        </div>
-        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: 260 } }}>
-          <Text variant="mediumPlus" styles={{ root: { marginBottom: 10 } }}>Preview</Text>
-          {selectedPoidIds.length === 0 ? (
-            <Text variant="small">No POIDs selected.</Text>
-          ) : (
-            filteredPoidData
-              .filter((poid) => selectedPoidIds.includes(poid.poid_id))
-              .map((poid) => (
-                <div key={poid.poid_id} style={{ borderBottom: '1px solid #e1dfdd', paddingBottom: 8, marginBottom: 8 }}>
-                  <POIDPreview poid={poid} />
-                </div>
-              ))
-          )}
-          <PrimaryButton text="Confirm POID Selection" onClick={() => setOpenStep(3)} styles={{ root: { ...(sharedPrimaryButtonStyles.root as any), height: 36, padding: '0 12px', fontSize: 14 } }} />
-        </Stack>
-      </Stack>
-    </Stack>
-  );
-
-  const renderAreaOfWork = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
-        {['Commercial', 'Property', 'Construction', 'Employment'].map((area) => (
-          <TagButton
-            key={area}
-            label={area}
-            active={areaOfWork === area}
-            onClick={() => { setAreaOfWork(area); setOpenStep(4); }}
-            color={getGroupColor(area)}
-          />
-        ))}
-      </Stack>
-    </Stack>
-  );
-
-  const renderPracticeArea = () => {
-    const options = areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work'];
-    return (
-      <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
-          {options.map((pa) => (
-            <TagButton
-              key={pa}
-              label={pa}
-              active={practiceArea === pa}
-              onClick={() => { setPracticeArea(pa); setOpenStep(5); }}
-              color={getGroupColor(areaOfWork)}
-            />
-          ))}
-        </Stack>
-      </Stack>
-    );
-  };
-
-  const renderDescription = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <TextField
-        multiline
-        rows={4}
-        placeholder="Enter matter description..."
-        value={description}
-        onChange={(_, newVal) => setDescription(newVal || '')}
-        styles={{ root: { width: 400 } }}
-      />
-      <PrimaryButton text="Continue" onClick={() => setOpenStep(6)} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-  );
-
-  const renderFolderStructure = () => {
-    const folderOptions = ['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment'];
-    return (
-      <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
-          {folderOptions.map((option) => (
-            <TagButton
-              key={option}
-              label={option}
-              active={folderStructure === option}
-              onClick={() => { setFolderStructure(option); setOpenStep(7); }}
-              color={colours.highlight}
-            />
-          ))}
-        </Stack>
-      </Stack>
-    );
-  };
-
-  const renderDisputeValue = () => {
-    const disputeValueOptions = ['Less than £10k', '£10k - £500k', '£500k - £1m', '£1m - £5m', '£5 - £20m', '£20m+'];
-    return (
-      <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
-          {disputeValueOptions.map((option) => (
-            <TagButton
-              key={option}
-              label={option}
-              active={disputeValue === option}
-              onClick={() => { setDisputeValue(option); setOpenStep(8); }}
-              color={colours.highlight}
-            />
-          ))}
-        </Stack>
-      </Stack>
-    );
-  };
-
-  const renderSource = () => {
-    const sourceOptions = ['referral', 'organic search', 'paid search', 'your following', 'tbc'];
-    return (
-      <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
-          {sourceOptions.map((option) => (
-            <TagButton
-              key={option}
-              label={option}
-              active={source === option}
-              onClick={() => {
-                setSource(option);
-                if (option !== 'referral') setReferrerName('');
-              }}
-              color={colours.highlight}
-            />
-          ))}
-        </Stack>
-        {source === 'referral' && (
-          <TextField
-            placeholder="Enter referrer's name"
-            value={referrerName}
-            onChange={(_, newVal) => setReferrerName(newVal || '')}
-            styles={{ root: { width: 400 } }}
-          />
-        )}
-        <PrimaryButton
-          text="Continue"
-          onClick={() => setOpenStep(9)}
-          disabled={source === 'referral' && !referrerName.trim()}
-          styles={sharedPrimaryButtonStyles}
-        />
-      </Stack>
-    );
-  };
-
-  const renderOpponentDetails = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <TextField placeholder="Opponent Name" value={opponentName} onChange={(_, v) => setOpponentName(v || '')} styles={{ root: { width: 400 } }} />
-      <TextField placeholder="Opponent Email" value={opponentEmail} onChange={(_, v) => setOpponentEmail(v || '')} styles={{ root: { width: 400 } }} />
-      <TextField placeholder="Opponent Solicitor" value={opponentSolicitorName} onChange={(_, v) => setOpponentSolicitorName(v || '')} styles={{ root: { width: 400 } }} />
-      <TextField placeholder="Solicitor Company" value={opponentSolicitorCompany} onChange={(_, v) => setOpponentSolicitorCompany(v || '')} styles={{ root: { width: 400 } }} />
-      <TextField placeholder="Solicitor Email" value={opponentSolicitorEmail} onChange={(_, v) => setOpponentSolicitorEmail(v || '')} styles={{ root: { width: 400 } }} />
-      <Toggle label="No Conflict of Interest" checked={noConflict} onChange={(_, val) => setNoConflict(!!val)} />
-      <PrimaryButton text="Continue" onClick={() => setOpenStep(10)} disabled={!noConflict} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-  );
-
-  const riskOptions = [
-    { key: 'Low', text: 'Low' },
-    { key: 'Medium', text: 'Medium' },
-    { key: 'High', text: 'High' },
-  ];
-
-  const renderRiskAssessment = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <Stack horizontal tokens={{ childrenGap: 40 }}>
-        <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
-          <Dropdown label="Client Type" placeholder="Select option" options={riskOptions} selectedKey={riskCore.clientType} onChange={(_, o) => setRiskCore({ ...riskCore, clientType: o?.key as string })} />
-          <Dropdown label="Destination of Funds" placeholder="Select option" options={riskOptions} selectedKey={riskCore.destinationOfFunds} onChange={(_, o) => setRiskCore({ ...riskCore, destinationOfFunds: o?.key as string })} />
-          <Dropdown label="Funds Type" placeholder="Select option" options={riskOptions} selectedKey={riskCore.fundsType} onChange={(_, o) => setRiskCore({ ...riskCore, fundsType: o?.key as string })} />
-          <Dropdown label="How was Client Introduced?" placeholder="Select option" options={riskOptions} selectedKey={riskCore.clientIntroduced} onChange={(_, o) => setRiskCore({ ...riskCore, clientIntroduced: o?.key as string })} />
-          <Dropdown label="Limitation" placeholder="Select option" options={riskOptions} selectedKey={riskCore.limitation} onChange={(_, o) => setRiskCore({ ...riskCore, limitation: o?.key as string })} />
-          <Dropdown label="Source of Funds" placeholder="Select option" options={riskOptions} selectedKey={riskCore.sourceOfFunds} onChange={(_, o) => setRiskCore({ ...riskCore, sourceOfFunds: o?.key as string })} />
-          <Dropdown label="Value of Instruction" placeholder="Select option" options={riskOptions} selectedKey={riskCore.valueOfInstruction} onChange={(_, o) => setRiskCore({ ...riskCore, valueOfInstruction: o?.key as string })} />
-        </Stack>
-        <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
-          <Toggle label="I have considered client risk factors" checked={consideredClientRisk} onChange={(_, c) => setConsideredClientRisk(!!c)} />
-          <Toggle label="I have considered transaction risk factors" checked={consideredTransactionRisk} onChange={(_, c) => setConsideredTransactionRisk(!!c)} />
-          {consideredTransactionRisk && (
-            <Dropdown
-              label="Transaction Risk Level"
-              placeholder="Select risk level"
-              options={[{ key: 'Low Risk', text: 'Low Risk' }, { key: 'Medium Risk', text: 'Medium Risk' }, { key: 'High Risk', text: 'High Risk' }]}
-              selectedKey={transactionRiskLevel}
-              onChange={(_, o) => setTransactionRiskLevel(o?.key as string)}
-            />
-          )}
-          <Toggle label="I have considered the Firm Wide Sanctions Risk Assessment" checked={consideredFirmWideSanctions} onChange={(_, c) => setConsideredFirmWideSanctions(!!c)} />
-          <Toggle label="I have considered the Firm Wide AML policy" checked={consideredFirmWideAML} onChange={(_, c) => setConsideredFirmWideAML(!!c)} />
-        </Stack>
-      </Stack>
-      <PrimaryButton text="Continue" onClick={() => setOpenStep(11)} disabled={!isStepComplete('riskAssessment')} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-  );
-
-  const renderReview = () => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-      <Text variant="medium">
-        <strong>Client Details</strong>:<br />
-        Date: {selectedDate?.toLocaleDateString() || 'N/A'} <br />
-        Supervising Partner: {supervisingPartner || 'N/A'} <br />
-        Originating Solicitor: {originatingSolicitor || 'N/A'} <br />
-        Funds: {fundsReceived || 'N/A'}<br /><br />
-        <strong>Client Type</strong>: {clientType || 'N/A'} <br />
-        <strong>POID(s)</strong>: {selectedPoidIds.join(', ') || 'None'} <br />
-        <strong>Area of Work</strong>: {areaOfWork || 'N/A'} <br />
-        <strong>Practice Area</strong>: {practiceArea || 'N/A'} <br />
-        <strong>Description</strong>: {description || 'N/A'} <br />
-        <strong>Folder Structure</strong>: {folderStructure || 'N/A'} <br />
-        <strong>Dispute Value</strong>: {disputeValue || 'N/A'} <br />
-        <strong>Source</strong>: {source || 'N/A'} <br />
-        {source === 'referral' && <><strong>Referrer's Name</strong>: {referrerName || 'N/A'} <br /></>}
-        <strong>Opponent Details</strong>: <br />
-        Opponent: {opponentName || 'N/A'} ({opponentEmail || 'N/A'}) <br />
-        Opponent Solicitor: {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'}) <br />
-        <strong>Conflict of Interest</strong>: {noConflict ? 'There is no Conflict of Interest' : 'There is a Conflict of Interest'} <br /><br />
-        <strong>Risk Assessment</strong>:<br />
-        Core Risk Factors: {JSON.stringify(riskCore)} <br />
-        Client Risk: {consideredClientRisk ? 'Yes' : 'No'} <br />
-        Transaction Risk: {consideredTransactionRisk ? transactionRiskLevel : 'No'} <br />
-        Firm Wide Sanctions: {consideredFirmWideSanctions ? 'Yes' : 'No'}<br />
-        AML: {consideredFirmWideAML ? 'Yes' : 'No'} <br />
-      </Text>
-      <PrimaryButton text="Build Matter" onClick={() => console.log('Matter built')} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-  );
-
   const renderStepContent = (step: StepKey) => {
 
     switch (step) {
       case 'clientInfo':
-        return renderClientInfo();
+        return (
+          <ClientInfoStep
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            supervisingPartner={supervisingPartner}
+            setSupervisingPartner={setSupervisingPartner}
+            originatingSolicitor={originatingSolicitor}
+            setOriginatingSolicitor={setOriginatingSolicitor}
+            fundsReceived={fundsReceived}
+            setFundsReceived={setFundsReceived}
+            isDateCalloutOpen={isDateCalloutOpen}
+            setIsDateCalloutOpen={setIsDateCalloutOpen}
+            dateButtonRef={dateButtonRef}
+            partnerOptions={partnerOptions}
+            onContinue={() => setOpenStep(1)}
+          />
+        );
       case 'clientType':
-        return renderClientType();
+        return (
+          <ClientTypeStep
+            clientType={clientType}
+            setClientType={setClientType}
+            onContinue={() => setOpenStep(2)}
+          />
+        );
       case 'poidSelection':
-        return renderPoidSelection();
+        return (
+          <PoidSelectionStep
+            poidData={poidData}
+            teamData={teamData}
+            filteredPoidData={filteredPoidData}
+            visiblePoidCount={visiblePoidCount}
+            selectedPoidIds={selectedPoidIds}
+            poidSearchTerm={poidSearchTerm}
+            setPoidSearchTerm={setPoidSearchTerm}
+            poidGridRef={poidGridRef}
+            handlePoidClick={handlePoidClick}
+            onConfirm={() => setOpenStep(3)}
+          />
+        );
       case 'areaOfWork':
-        return renderAreaOfWork();
+        return (
+          <AreaOfWorkStep
+            areaOfWork={areaOfWork}
+            setAreaOfWork={setAreaOfWork}
+            onContinue={() => setOpenStep(4)}
+            getGroupColor={getGroupColor}
+          />
+        );
       case 'practiceArea':
-        return renderPracticeArea();
+        return (
+          <PracticeAreaStep
+            options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
+            practiceArea={practiceArea}
+            setPracticeArea={setPracticeArea}
+            onContinue={() => setOpenStep(5)}
+            groupColor={getGroupColor(areaOfWork)}
+          />
+        );
       case 'description':
-        return renderDescription();
+        return (
+          <DescriptionStep
+            description={description}
+            setDescription={setDescription}
+            onContinue={() => setOpenStep(6)}
+          />
+        );
       case 'folderStructure':
-        return renderFolderStructure();
+        return (
+          <FolderStructureStep
+            folderStructure={folderStructure}
+            setFolderStructure={setFolderStructure}
+            onContinue={() => setOpenStep(7)}
+            folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
+          />
+        );
       case 'disputeValue':
-        return renderDisputeValue();
+        return (
+          <DisputeValueStep
+            disputeValue={disputeValue}
+            setDisputeValue={setDisputeValue}
+            onContinue={() => setOpenStep(8)}
+          />
+        );
       case 'source':
-        return renderSource();
+        return (
+          <SourceStep
+            source={source}
+            setSource={setSource}
+            referrerName={referrerName}
+            setReferrerName={setReferrerName}
+            onContinue={() => setOpenStep(9)}
+          />
+        );
       case 'opponentDetails':
-        return renderOpponentDetails();
+        return (
+          <OpponentDetailsStep
+            opponentName={opponentName}
+            setOpponentName={setOpponentName}
+            opponentEmail={opponentEmail}
+            setOpponentEmail={setOpponentEmail}
+            opponentSolicitorName={opponentSolicitorName}
+            setOpponentSolicitorName={setOpponentSolicitorName}
+            opponentSolicitorCompany={opponentSolicitorCompany}
+            setOpponentSolicitorCompany={setOpponentSolicitorCompany}
+            opponentSolicitorEmail={opponentSolicitorEmail}
+            setOpponentSolicitorEmail={setOpponentSolicitorEmail}
+            noConflict={noConflict}
+            setNoConflict={setNoConflict}
+            onContinue={() => setOpenStep(10)}
+          />
+        );
       case 'riskAssessment':
-        return renderRiskAssessment();
+        return (
+          <RiskAssessmentStep
+            riskCore={riskCore}
+            setRiskCore={setRiskCore}
+            consideredClientRisk={consideredClientRisk}
+            setConsideredClientRisk={setConsideredClientRisk}
+            consideredTransactionRisk={consideredTransactionRisk}
+            setConsideredTransactionRisk={setConsideredTransactionRisk}
+            transactionRiskLevel={transactionRiskLevel}
+            setTransactionRiskLevel={setTransactionRiskLevel}
+            consideredFirmWideSanctions={consideredFirmWideSanctions}
+            setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
+            consideredFirmWideAML={consideredFirmWideAML}
+            setConsideredFirmWideAML={setConsideredFirmWideAML}
+            onContinue={() => setOpenStep(11)}
+            isStepComplete={() => isStepComplete('riskAssessment')}
+          />
+        );
       case 'review':
-        return renderReview();
+        return (
+          <ReviewStep
+            selectedDate={selectedDate}
+            supervisingPartner={supervisingPartner}
+            originatingSolicitor={originatingSolicitor}
+            fundsReceived={fundsReceived}
+            clientType={clientType}
+            selectedPoidIds={selectedPoidIds}
+            areaOfWork={areaOfWork}
+            practiceArea={practiceArea}
+            description={description}
+            folderStructure={folderStructure}
+            disputeValue={disputeValue}
+            source={source}
+            referrerName={referrerName}
+            opponentName={opponentName}
+            opponentEmail={opponentEmail}
+            opponentSolicitorName={opponentSolicitorName}
+            opponentSolicitorCompany={opponentSolicitorCompany}
+            opponentSolicitorEmail={opponentSolicitorEmail}
+            noConflict={noConflict}
+            riskCore={riskCore}
+            consideredClientRisk={consideredClientRisk}
+            consideredTransactionRisk={consideredTransactionRisk}
+            transactionRiskLevel={transactionRiskLevel}
+            consideredFirmWideSanctions={consideredFirmWideSanctions}
+            consideredFirmWideAML={consideredFirmWideAML}
+            onBuild={() => console.log('Matter built')}
+          />
+        );
       default:
         return null;
     }
