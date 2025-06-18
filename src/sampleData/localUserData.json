@@ -1,9 +1,10 @@
 [
   {
-    "First": "John",
-    "Last": "Doe",
-    "FullName": "John Doe",
-    "Initials": "JD",
-    "Email": "john.doe@example.com"
+    "First": "Lukasz",
+    "Last": "Zemanek",
+    "FullName": "Lukasz Zemanek",
+    "Nickname": "Luke",
+    "Initials": "LZ",
+    "Email": "lz@helix-law.com"
   }
 ]
