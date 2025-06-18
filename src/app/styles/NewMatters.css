@@ -73,6 +73,20 @@
     height: 14px;
 }
 
+.step-header .edit-step {
+    margin-left: auto;
+    margin-right: 12px;
+    font-size: 14px;
+    color: var(--helix-blue);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: color 0.2s;
+}
+
+.step-header .edit-step:hover {
+    color: var(--helix-highlight);
+}
+
 .step-header.completed .completion-check {
     opacity: 1;
     transform: scale(1);
