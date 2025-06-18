@@ -93,7 +93,7 @@
     animation: tickPop 0.3s ease;
 }
 
-.step-header.completed:not(.open) {
+.step-header.completed:not(.active) {
     border-left: 4px solid var(--helix-highlight);
 }
 
@@ -109,7 +109,7 @@
     }
 }
 
-.step-header.open {
+.step-header.active {
     background: var(--helix-dark-blue);
     border: 1px solid var(--helix-dark-blue);
     border-bottom: none;
@@ -118,16 +118,16 @@
     color: #fff;
 }
 
-.step-header.open .step-number {
+.step-header.active .step-number {
     color: #fff;
 }
 
-.step-header.open .step-title,
-.step-header.open .toggle-icon {
+.step-header.active .step-title,
+.step-header.active .toggle-icon {
     color: #fff;
 }
 
-.step-header.open .completion-check {
+.step-header.active .completion-check {
     color: #20b26c;
     background: #fff;
 }
@@ -150,7 +150,7 @@
 }
 
 .step-section.active .step-content,
-.step-header.open+.step-content {
+.step-header.active+.step-content {
     max-height: none;
     padding: 12px;
     opacity: 1;

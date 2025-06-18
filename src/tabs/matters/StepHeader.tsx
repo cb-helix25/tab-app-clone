@@ -11,6 +11,8 @@ interface StepHeaderProps {
     locked?: boolean;
     onEdit?: () => void;
     editable?: boolean;
+    allowToggleWhenLocked?: boolean;
+    dimOnLock?: boolean;
 }
 
 const StepHeader: React.FC<StepHeaderProps> = ({
@@ -22,6 +24,8 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     locked = false,
     onEdit,
     editable = true,
+    allowToggleWhenLocked = false,
+    dimOnLock = true,
 }) => {
     const baseStyle: React.CSSProperties = {
         backgroundColor: componentTokens.stepHeader.base.backgroundColor,
@@ -41,32 +45,32 @@ const StepHeader: React.FC<StepHeaderProps> = ({
         : {};
 
     const lockedStyle: React.CSSProperties = locked
-        ? { cursor: 'not-allowed', opacity: componentTokens.stepHeader.lockedOpacity }
+        ? { cursor: allowToggleWhenLocked ? 'pointer' : 'not-allowed', opacity: dimOnLock ? componentTokens.stepHeader.lockedOpacity : 1 }
         : {};
 
     const handleClick = () => {
-        if (!locked) {
+        if (!locked || allowToggleWhenLocked) {
             onToggle();
         }
     };
 
-    const showEdit = editable && !open && complete && !locked;
+    const showEdit = editable && !open && !locked && complete;
 
     return (
         <div
-            className={`step-header${open ? ' open' : ''}${complete ? ' completed' : ''}`}
+            className={`step-header${open ? ' active' : ''}${complete ? ' completed' : ''}`}
             onClick={handleClick}
             role="button"
-            tabIndex={locked ? -1 : 0}
+            tabIndex={locked && !allowToggleWhenLocked ? -1 : 0}
             aria-expanded={open}
-            aria-disabled={locked}
+            aria-disabled={locked && !allowToggleWhenLocked}
             style={{ ...baseStyle, ...activeStyle, ...lockedStyle }}
         >
             <div className="step-number">{step}</div>
             <h2 className="step-title">
                 {title}
                 {complete && (
-                    <span className="completion-check">
+                    <span className="completion-check visible">
                         <svg viewBox="0 0 24 24">
                             <polyline
                                 points="5,13 10,18 19,7"
