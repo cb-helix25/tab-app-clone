@@ -34,7 +34,7 @@ import CustomPagination from '../../app/styles/CustomPagination';
 import EnquiryCard from './EnquiryCard';
 import EnquiryOverview from './EnquiryOverview';
 import PitchBuilder from './PitchBuilder';
-import EnquiryDetails from './EnquiryDetails';
+import EnquiryData from './EnquiryData';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { Pivot, PivotItem } from '@fluentui/react';
@@ -767,12 +767,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     );
   }, [currentRating, isDarkMode, ratingOptions]);
 
-  const handleUpdateEnquiry = useCallback((updatedEnquiry: Enquiry) => {
-    setLocalEnquiries((prev) =>
-      prev.map((enq) => (enq.ID === updatedEnquiry.ID ? updatedEnquiry : enq))
-    );
-  }, []);
-
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
       <Stack
@@ -841,13 +835,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           <PivotItem headerText="Pitch Builder" itemKey="Pitch">
             <PitchBuilder enquiry={enquiry} userData={userData} />
           </PivotItem>
-          <PivotItem headerText="Details" itemKey="Details">
-            <EnquiryDetails enquiry={enquiry} onUpdate={handleUpdateEnquiry} />
+          <PivotItem headerText="Data" itemKey="Data">
+            <EnquiryData enquiry={enquiry} />
           </PivotItem>
         </Pivot>
       </Stack>
     ),
-    [handleBackToList, handleSubTabChange, handleRate, isDarkMode, handleUpdateEnquiry, activeSubTab, userData]
+    [handleBackToList, handleSubTabChange, handleRate, isDarkMode, activeSubTab, userData]
   );
 
   const calculateAnimationDelay = (row: number, col: number) => {

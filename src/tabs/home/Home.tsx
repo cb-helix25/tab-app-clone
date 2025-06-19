@@ -2324,15 +2324,15 @@ const conversionRate = enquiriesMonthToDate
 
   return (
     <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-      {/* Header: Greeting only */}
-      <Stack
-        horizontal
-        horizontalAlign="space-between"
-        verticalAlign="start"
-        className={headerStyle}
-      >
-        <Stack verticalAlign="start" tokens={{ childrenGap: 8 }}>
-          {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0) && (
+      {/* Header: Show the review message only when there is something to review */}
+      {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0) && (
+        <Stack
+          horizontal
+          horizontalAlign="space-between"
+          verticalAlign="start"
+          className={headerStyle}
+        >
+          <Stack verticalAlign="start" tokens={{ childrenGap: 8 }}>
             <Text className={`${reviewMessageStyle(isDarkMode)} ${fadeInAnimationStyle}`}>
               You have items to review
               <Icon
@@ -2346,9 +2346,9 @@ const conversionRate = enquiriesMonthToDate
                 }}
               />
             </Text>
-          )}
+          </Stack>
         </Stack>
-      </Stack>
+      )}
 
       {/* Quick Actions Bar */}
       <div

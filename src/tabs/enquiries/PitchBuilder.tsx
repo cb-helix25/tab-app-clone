@@ -569,6 +569,27 @@ useEffect(() => {
   }
 
   /**
+   * Insert a single template option's preview text at the current cursor
+   * position, without wrapping it in block controls.
+   */
+  function insertOptionAtCursor(block: TemplateBlock, optionLabel: string) {
+    const option = block.options.find((o) => o.label === optionLabel);
+    if (!option) return;
+    let html = option.previewText.trim().replace(/\n/g, '<br />');
+    html = applyDynamicSubstitutions(
+      html,
+      userData,
+      enquiry,
+      amount,
+      dealPasscode,
+      dealPasscode
+        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        : undefined
+    );
+    insertAtCursor(html);
+  }
+
+  /**
    * Insert a template block's text (either single or multiSelect) at the corresponding placeholder <span>.
    */
   function insertTemplateBlock(
@@ -1808,6 +1829,13 @@ function handleScrollToBlock(blockTitle: string) {
                           dangerouslySetInnerHTML={{ __html: preview }}
                         />
                       )}
+                      <IconButton
+                        iconProps={{ iconName: 'Add' }}
+                        title="Insert at cursor"
+                        ariaLabel="Insert at cursor"
+                        onClick={() => insertOptionAtCursor(inlineOptionsBlock, o.label)}
+                        styles={{ root: { marginTop: 2, alignSelf: 'flex-start' } }}
+                      />
                     </Stack>
                   );
                 })}
@@ -1854,6 +1882,13 @@ function handleScrollToBlock(blockTitle: string) {
                           {(hoveredOption === option.key || isSelected) && (
                             <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
                           )}
+                          <IconButton
+                            iconProps={{ iconName: 'Add' }}
+                            title="Insert at cursor"
+                            ariaLabel="Insert at cursor"
+                            onClick={() => insertOptionAtCursor(inlineOptionsBlock, option.key as string)}
+                            styles={{ root: { marginTop: 2, alignSelf: 'flex-start' } }}
+                          />
                         </Stack>
                       );
                     };
