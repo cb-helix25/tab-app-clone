@@ -1,7 +1,7 @@
 /* Client Hero Section */
 .client-hero {
     width: 100%;
-    background-color: var(--website-blue);
+    background-color: var(--helix-dark-blue);
     color: #fff;
     padding-bottom: 1rem;
     position: relative;
@@ -25,7 +25,7 @@
     width: auto;
     height: 100%;
     aspect-ratio: 1 / 1;
-    background: url('../../assets/mark192colour.png') no-repeat right center;
+    background: url('../../assets/markwhite.svg') no-repeat right center;
     background-size: auto 100%;
     opacity: 0.25;
     pointer-events: none;

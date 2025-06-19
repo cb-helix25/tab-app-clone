@@ -114,12 +114,9 @@ const sectionHeaderStyleCustom = (isDarkMode: boolean) =>
 
 const resourceGridStyle = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
   gap: '20px',
   paddingTop: '15px',
-  '@media (min-width: 1000px)': {
-    gridTemplateColumns: 'repeat(5, 1fr)',
-  },
 });
 
 const footerStyle = (isDarkMode: boolean) =>
@@ -162,8 +159,17 @@ const Resources: React.FC<ResourcesProps> = () => {
     };
   }, []);
 
-  // Define number of columns per row for delay calculation
-  const columnsPerRow = 5;
+  // Define number of columns per row for delay calculation based on screen width
+  const [columnsPerRow, setColumnsPerRow] = useState(
+    Math.max(1, Math.floor(window.innerWidth / 250))
+  );
+
+  useEffect(() => {
+    const handleResize = () =>
+      setColumnsPerRow(Math.max(1, Math.floor(window.innerWidth / 250)));
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize resources with hard-coded data
   const resourcesSections: ResourcesSections = useMemo(() => {

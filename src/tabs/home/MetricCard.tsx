@@ -31,63 +31,59 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    padding: '12px',
-    borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? `0 4px 12px ${colours.dark.border}`
-      : `0 4px 12px ${colours.light.border}`,
-    transition: 'background-color 0.3s, box-shadow 0.3s, transform 0.3s, border 0.3s',
+    padding: '8px 12px 8px 16px',
+    borderLeft: `4px solid ${colours.highlight}`,
+    borderRadius: '6px',
+    boxShadow: isDarkMode ? `0 2px 6px ${colours.dark.border}` : `0 2px 6px ${colours.light.border}`,
+    transition: 'background-color 0.2s, box-shadow 0.2s, transform 0.2s, border 0.2s',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    alignItems: 'center',
-    height: '120px',
+    alignItems: 'flex-start',
+    height: 'auto',
     flex: '1 1 30%',
-    minWidth: '250px',
-    maxWidth: '400px',
+    minWidth: '180px',
+    maxWidth: '220px',
     cursor: 'pointer',
-    border:
-      isPositive !== null ? `2px solid ${isPositive ? 'green' : 'red'}` : '2px solid transparent',
+    border: isPositive !== null ? `2px solid ${isPositive ? 'green' : 'red'}` : '2px solid transparent',
     ':hover': {
-      transform: 'translateY(-5px)',
-      boxShadow: isDarkMode
-        ? `0 6px 16px ${colours.dark.border}`
-        : `0 6px 16px ${colours.light.border}`,
+      transform: 'translateY(-3px)',
+      boxShadow: isDarkMode ? `0 4px 8px ${colours.dark.border}` : `0 4px 8px ${colours.light.border}`,
     },
-    position: 'relative', // Added to allow absolute positioning of the sidebar
+    position: 'relative',
   });
 
 const metricTitleStyle = mergeStyles({
-  fontSize: '14px',
+  fontSize: '12px',
   fontWeight: '600',
-  marginBottom: '6px',
+  marginBottom: '4px',
 });
 
 const moneyStyle = mergeStyles({
-  fontSize: '20px',
+  fontSize: '18px',
   fontWeight: '700',
   color: colours.highlight,
 });
 
 const pipeStyle = mergeStyles({
-  fontSize: '20px',
+  fontSize: '18px',
   fontWeight: '500',
   color: colours.greyText,
   margin: '0 8px',
 });
 
 const hoursStyle = mergeStyles({
-  fontSize: '20px',
+  fontSize: '18px',
   fontWeight: '500',
   color: colours.greyText,
 });
 
 const changeStyle = (isPositive: boolean) =>
   mergeStyles({
-    fontSize: '12px',
+    fontSize: '10px',
     fontWeight: '600',
     color: isPositive ? 'green' : 'red',
-    marginTop: '8px',
+    marginTop: '4px',
   });
 
 const renderDialLayout = (

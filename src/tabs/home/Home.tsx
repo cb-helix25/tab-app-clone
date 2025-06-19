@@ -372,7 +372,7 @@ const subLabelStyle = (isDarkMode: boolean) =>
 
 const favouritesGridStyle = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
   gap: '16px',
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
 });
@@ -2417,7 +2417,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '16px',
                 flex: 1
               }}
@@ -2453,7 +2453,7 @@ const conversionRate = enquiriesMonthToDate
               style={{
                 flex: 1,
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '16px'
               }}
             >
@@ -2521,7 +2521,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '16px',
                 flex: 1,
               }}
@@ -2554,7 +2554,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '16px',
                 flex: 1,
               }}

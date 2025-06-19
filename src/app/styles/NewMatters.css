@@ -6,8 +6,9 @@
 }
 
 .workflow-main {
-    max-width: 1200px;
-    margin: -2.5rem auto 2rem auto;
+    width: 100%;
+        max-width: none;
+        margin: 1.5rem auto 2rem auto;
     display: flex;
     gap: 32px;
     flex-wrap: wrap;

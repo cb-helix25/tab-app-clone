@@ -1,37 +1,35 @@
 /* src/tabs/home/MetricCard.css */
 
-@keyframes dropIn {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* Simplified metric card styling inspired by the ClientHub component */
 
 @keyframes fadeInUp {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
-  100% {
+
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
 .metricCard {
-  background-color: #ffffff; /* Always white */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Subtle initial shadow */
-  transition: transform 0.3s, box-shadow 0.3s; /* Smooth transitions */
-  opacity: 0; /* Initially invisible */
-  animation: dropIn 0.3s ease forwards;
+  position: relative;
+  background: #ffffff;
+  border-left: 4px solid #3690CE;
+  /* accent bar */
+  border-radius: 6px;
+  padding: 8px 12px 8px 16px;
+  /* space for accent */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0;
+  animation: fadeInUp 0.3s ease forwards;
   animation-delay: var(--animation-delay, 0s);
 }
 
 .metricCard:hover {
-  transform: translateY(-5px); /* Slight upward movement */
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2); /* Intensified shadow on hover */
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }

@@ -319,20 +319,6 @@ if (span) {
   });
 }
 
-let lockTimer: number | null = null;
-function longLockStart(blockTitle: string) {
-  lockTimer = window.setTimeout(() => {
-    toggleBlockLock(blockTitle);
-  }, 600);
-}
-
-  function longLockEnd() {
-    if (lockTimer) {
-      clearTimeout(lockTimer);
-      lockTimer = null;
-    }
-  }
-
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [selectedBlockTarget, setSelectedBlockTarget] =
     useState<HTMLElement | null>(null);
@@ -380,14 +366,12 @@ function longLockStart(blockTitle: string) {
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
-  (window as any).longLockStart = longLockStart;
-  (window as any).longLockEnd = longLockEnd;
   (window as any).openInlineOptions = openInlineOptions;
   (window as any).selectBlock = selectBlock;
   (window as any).clearSelectedBlock = clearSelectedBlock;
   (window as any).selectBlock = selectBlock;
   (window as any).clearSelectedBlock = clearSelectedBlock;
-}, [toggleBlockLock, highlightBlock, longLockStart, longLockEnd, openInlineOptions]);
+}, [toggleBlockLock, highlightBlock, openInlineOptions]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -720,7 +704,7 @@ useEffect(() => {
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${editButton}${optionsButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${lockButton}${editButton}${optionsButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onclick="window.selectBlock(event, '${block.title}')" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -796,8 +780,6 @@ useEffect(() => {
           // Attach helper functions to window for inline handlers
           (window as any).highlightBlock = highlightBlock;
           (window as any).toggleBlockLock = toggleBlockLock;
-          (window as any).longLockStart = longLockStart;
-          (window as any).longLockEnd = longLockEnd;
         }
       }, 0);
     }

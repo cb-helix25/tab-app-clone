@@ -118,3 +118,27 @@ body.light .tabsContainer a {
   --tab-background-hover: #f0f0f0; /* Secondary hover background */
   --tab-text-hover: #000000;
 }
+
+@media (max-width: 480px) {
+  .resourceCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .resourceCard .backdropIcon {
+    right: 20px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .resourceCard .separator {
+    display: none;
+  }
+
+  .resourceCard .actionsContainer {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    margin-top: 10px;
+  }
+}
