@@ -28,13 +28,16 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   // Base card style
   const baseCardStyle = mergeStyles(
     cardStyles.root,
-    ({
+    {
       backgroundColor: isDarkMode
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       color: isDarkMode ? colours.dark.text : colours.light.text,
       // Match the tab menu size so the actions don't look more important
       padding: '0 12px',
+      height: '48px',
+      lineHeight: '48px',
+      fontSize: '16px',
       borderRadius: componentTokens.card.base.borderRadius,
       display: 'flex',
       alignItems: 'center',
@@ -50,9 +53,9 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
           transform: componentTokens.card.hover.transform,
         },
       },
-    } as any)
+    } as any
   );
-  
+
 
   const customStyle = {};
   const combinedCardStyle = mergeStyles(baseCardStyle, customStyle);
