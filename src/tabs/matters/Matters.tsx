@@ -33,7 +33,6 @@ import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
-import ScoreCard from '../enquiries/ScoreCard';
 import NewMatters from './NewMatters';
 import MatterTransactions from './MatterTransactions';
 import Documents from './documents/Documents';
@@ -260,14 +259,6 @@ const innerDetailCardStyle = (isDarkMode: boolean) =>
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
   });
-
-const nameCorrections: { [fullName: string]: string } = {
-  'Bianca ODonnell': "Bianca O'Donnell",
-  'Samuel Packwood': 'Sam Packwood',
-  'Luke Zemanek': 'Lukasz Zemanek',
-};
-
-const leftTeam: string[] = ['Candice Quarcoo', 'Luara Locateli', 'Tristan Makin'];
 
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
@@ -589,61 +580,6 @@ const Matters: React.FC<MattersProps> = ({
     return sortedMonths.map((month) => ({ month, ...counts[month] }));
   }, [filteredMatters]);
 
-  const originatingArray = useMemo(() => {
-    const rawEntries = Object.entries(
-      filteredMatters.reduce((acc, m) => {
-        if (m.OriginatingSolicitor) {
-          acc[m.OriginatingSolicitor] = (acc[m.OriginatingSolicitor] || 0) + 1;
-        }
-        return acc;
-      }, {} as { [name: string]: number })
-    );
-    const transformed = rawEntries.map(([rawName, count]) => {
-      let fullName = rawName;
-      let displayName = rawName;
-      if (teamData) {
-        const member = teamData.find((tm) => tm['Full Name'] === rawName);
-        if (member && member['Full Name']) {
-          fullName = member['Full Name'];
-        }
-      }
-      if (nameCorrections[fullName]) {
-        displayName = nameCorrections[fullName];
-      } else {
-        displayName = fullName;
-      }
-      const isLeft = leftTeam.some((n) => n.toLowerCase() === fullName.toLowerCase());
-      const initials =
-  displayName === 'Joshua Whitcombe'
-    ? 'JWH'
-    : displayName === 'Ryan Choi'
-    ? 'RCH'
-    : displayName
-        .split(' ')
-        .map((part) => part.charAt(0))
-        .join('');
-      return { initials, count, isLeft, fullName };
-    });
-    const combined = transformed.reduce((acc, curr) => {
-      if (acc[curr.initials]) {
-        acc[curr.initials].count += curr.count;
-        acc[curr.initials].isLeft = acc[curr.initials].isLeft || curr.isLeft;
-      } else {
-        acc[curr.initials] = { ...curr };
-      }
-      return acc;
-    }, {} as {
-      [initials: string]: { initials: string; count: number; isLeft: boolean; fullName: string };
-    });
-    const combinedArray = Object.values(combined);
-    const nonLeft = combinedArray.filter((item) => !item.isLeft);
-    const left = combinedArray.filter((item) => item.isLeft);
-    nonLeft.sort((a, b) => b.count - a.count);
-    const leftOrdered = left.sort((a, b) => leftTeam.indexOf(a.fullName) - leftTeam.indexOf(b.fullName));
-    const excludeInitials = ['LZ', 'KW', 'JWS', 'BL'];
-    return [...nonLeft, ...leftOrdered].filter((item) => !excludeInitials.includes(item.initials));
-  }, [filteredMatters, teamData]);
-
   // --------------------------------------
   // NEW: find outstanding data for the selected matter
   // --------------------------------------
@@ -880,63 +816,6 @@ const Matters: React.FC<MattersProps> = ({
                         )}
                       </Stack>
   
-                      <Stack
-                        horizontal
-                        horizontalAlign="center"
-                        wrap
-                        verticalAlign="center"
-                        styles={{ root: { width: '100%' } }}
-                        tokens={{ childrenGap: 10 }}
-                      >
-                        {originatingArray.map((item, idx, arr) => (
-                          <React.Fragment key={item.fullName}>
-                            <Stack horizontalAlign="center" styles={{ root: { minWidth: '80px', textAlign: 'center' } }}>
-                              <Text
-                                variant="xLarge"
-                                styles={{
-                                  root: {
-                                    fontWeight: 600,
-                                    color: item.isLeft ? '#888888' : colours.highlight,
-                                    fontFamily: 'Raleway, sans-serif',
-                                  },
-                                }}
-                              >
-                                {item.count}
-                              </Text>
-                              <Text
-                                variant="small"
-                                styles={{
-                                  root: {
-                                    fontWeight: 400,
-                                    marginTop: '4px',
-                                    color: item.isLeft
-                                      ? '#888888'
-                                      : isDarkMode
-                                      ? colours.dark.text
-                                      : colours.light.text,
-                                    fontFamily: 'Raleway, sans-serif',
-                                    fontStyle: item.isLeft ? 'italic' : 'normal',
-                                  },
-                                }}
-                              >
-                                {item.initials}
-                              </Text>
-                            </Stack>
-                            {idx < arr.length - 1 && (
-                              <Text
-                                styles={{
-                                  root: {
-                                    margin: '0 10px',
-                                    color: isDarkMode ? '#fff' : '#333',
-                                  },
-                                }}
-                              >
-                                |
-                              </Text>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </Stack>
                     </Stack>
                   </Stack>
   

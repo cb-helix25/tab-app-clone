@@ -43,8 +43,10 @@ interface FormsProps {
 // Styles
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    padding: '20px',
+    padding: '40px 20px',
     width: '100%',
+    maxWidth: '1200px',
+    margin: '0 auto',
     minHeight: '100vh',
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
     display: 'flex',
@@ -68,20 +70,20 @@ const mainContentStyle = (isDarkMode: boolean) =>
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '30px',
     paddingBottom: '40px', // Added padding to create gap before footer
   });
 
 const sectionStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    border: '1px solid transparent',
     borderRadius: '8px',
-    padding: '20px',
+    padding: '30px',
     boxSizing: 'border-box',
     boxShadow: isDarkMode
-      ? '0 4px 12px rgba(255, 255, 255, 0.1)'
-      : '0 4px 12px rgba(0, 0, 0, 0.1)',
+      ? '0 2px 4px rgba(255, 255, 255, 0.1)'
+      : '0 2px 4px rgba(0, 0, 0, 0.05)',
     transition: 'background-color 0.3s, border 0.3s, box-shadow 0.3s',
     marginBottom: '40px',
     selectors: {
@@ -96,14 +98,14 @@ const sectionHeaderStyleCustom = (isDarkMode: boolean) =>
     fontSize: '20px',
     fontWeight: '700',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    marginBottom: '30px',
+    marginBottom: '20px',
     marginTop: '0px',
   });
 
 const resourceGridStyle = mergeStyles({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-  gap: '20px',
+  gap: '24px',
   paddingTop: '15px',
 });
 

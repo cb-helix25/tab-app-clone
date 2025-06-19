@@ -33,8 +33,6 @@
       }
       
             .roadmap-entry {
-              border-left: 2px solid var(--helix-cta, #2f497d);
-              padding-left: 12px;
               margin-bottom: 12px;
             }
       

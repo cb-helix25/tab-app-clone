@@ -123,7 +123,7 @@ const containerStyle = (isDarkMode: boolean) =>
 const timelineLineStyle = (isDarkMode: boolean) =>
   mergeStyles({
     position: 'absolute',
-    left: '28.2%',
+    left: '50%',
     transform: 'translateX(-50%)',
     top: 0,
     bottom: 0,
@@ -140,10 +140,13 @@ const stackTokens: IStackTokens = { childrenGap: 20 };
 /**
  * Styles for each timeline row.
  */
-const timelineRowStyle = mergeStyles({
-  position: 'relative',
-  marginBottom: '60px',
-});
+const timelineRowStyle = (side: 'left' | 'right') =>
+  mergeStyles({
+    position: 'relative',
+    marginBottom: '60px',
+    display: 'flex',
+    flexDirection: side === 'left' ? 'row-reverse' : 'row',
+  });
 
 /**
  * Styles for the status marker.
@@ -151,7 +154,7 @@ const timelineRowStyle = mergeStyles({
 const markerStyle = (statusColor: string) =>
   mergeStyles({
     position: 'absolute',
-    left: '28.2%',
+    left: '50%',
     top: '50%',
     transform: 'translate(-50%, -50%)',
     width: '20px',
@@ -167,11 +170,14 @@ const markerStyle = (statusColor: string) =>
 /**
  * Styles for the content container.
  */
-const contentContainerStyle = mergeStyles({
-  position: 'relative',
-  marginLeft: '31%',
-  width: '69%',
-});
+const contentContainerStyle = (side: 'left' | 'right') =>
+  mergeStyles({
+    position: 'relative',
+    width: '50%',
+    paddingLeft: side === 'right' ? '40px' : 0,
+    paddingRight: side === 'left' ? '40px' : 0,
+    textAlign: side === 'left' ? 'right' : 'left',
+  });
 
 /**
  * Styles for the content box with animations.
@@ -315,16 +321,17 @@ interface RoadmapGroupProps {
   groupIndex: number;
   isDarkMode: boolean;
   onEntryClick: (entry: RoadmapEntry) => void;
+  side: 'left' | 'right';
 }
 
-const RoadmapGroup: React.FC<RoadmapGroupProps> = ({ group, groupIndex, isDarkMode, onEntryClick }) => {
+const RoadmapGroup: React.FC<RoadmapGroupProps> = ({ group, groupIndex, isDarkMode, onEntryClick, side }) => {
   const isFormGroup = group.status.toLowerCase() === 'add suggestion';
   const statusColor = statusColorMapping[group.status.toLowerCase()] || colours.darkBlue;
 
   return (
-    <div key={group.status} className={timelineRowStyle}>
+    <div key={group.status} className={timelineRowStyle(side)}>
       <div className={markerStyle(statusColor)} />
-      <div className={contentContainerStyle}>
+      <div className={contentContainerStyle(side)}>
         <Stack
           className={mergeStyles(contentBoxStyle(isDarkMode), {
             animationDelay: `${group.animationDelay}s`,
@@ -728,6 +735,7 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
                 groupIndex={groupIndex}
                 isDarkMode={isDarkMode}
                 onEntryClick={openModal}
+                side={groupIndex % 2 === 0 ? 'left' : 'right'}
               />
             ))
           ) : (

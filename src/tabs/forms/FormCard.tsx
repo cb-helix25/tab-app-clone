@@ -55,17 +55,15 @@ interface FormCardProps {
 
 const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    padding: componentTokens.card.base.padding,
+    padding: '16px',
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    border: `1px solid ${
-      isDarkMode ? colours.dark.border : colours.light.border
-    }`,
-    borderRadius: componentTokens.card.base.borderRadius,
+    border: 'none',
+    borderRadius: '12px',
     boxShadow: isDarkMode
-      ? '0 2px 8px rgba(255, 255, 255, 0.1)'
-      : componentTokens.card.base.boxShadow,
+      ? '0 1px 3px rgba(255, 255, 255, 0.1)'
+      : '0 1px 3px rgba(0, 0, 0, 0.06)',
     transition: 'box-shadow 0.3s, transform 0.3s, background-color 0.3s',
     cursor: 'pointer',
     display: 'flex',
@@ -115,7 +113,7 @@ const actionsContainerStyle = mergeStyles({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: '10px',
+  gap: '8px',
   zIndex: 2, // Ensure buttons are above the backdrop icon
 });
 
@@ -124,7 +122,7 @@ const separatorStyle = (isDarkMode: boolean) =>
     width: '1px',
     backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
     height: '60%',
-    margin: '0 15px',
+    margin: '0 12px',
     alignSelf: 'center',
     zIndex: 2,
   });

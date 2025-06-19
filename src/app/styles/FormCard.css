@@ -20,18 +20,18 @@
 .backdropIcon {
   position: absolute;
   top: 50%;
-  right: 80px; /* Adjust positioning if needed */
+  right: 70px;
   transform: translateY(-50%);
-  font-size: 80px; /* Large for subtle background */
-  opacity: 0.5; /* Subtle transparency */
-  pointer-events: none; /* Prevent interaction */
-  z-index: -1; /* Position it behind the text and other elements */
+  font-size: 64px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: -1;
   transition: opacity 0.3s ease;
-  filter: brightness(0) saturate(100%) invert(93%); /* Adjust for desired colour */
+  filter: brightness(0) saturate(100%) invert(93%);
 }
 
 .formCard:hover .backdropIcon {
-  opacity: 1.0; /* Increase on hover, or adjust if you prefer leaving it at 0.5 */
+  opacity: 0.6;
 }
 /* Responsive adjustments */
 @media (max-width: 480px) {

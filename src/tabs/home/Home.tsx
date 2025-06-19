@@ -6,6 +6,8 @@ import React, {
   useMemo,
   ReactNode,
   useRef, // ADDED
+  lazy,
+  Suspense,
 } from 'react';
 import {
   mergeStyles,
@@ -41,9 +43,6 @@ import '../../app/styles/MetricCard.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
 
-import Tasking from '../../CustomForms/Tasking';
-import TelephoneAttendance from '../../CustomForms/TelephoneAttendance';
-
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
@@ -59,13 +58,6 @@ import { Context as TeamsContextType } from '@microsoft/teams-js';
 
 import BespokePanel from '../../app/functionality/BespokePanel';
 
-import CreateTimeEntryForm from '../../CustomForms/CreateTimeEntryForm';
-import AnnualLeaveForm from '../../CustomForms/AnnualLeaveForm';
-
-// NEW: Import placeholders for approvals & bookings
-import AnnualLeaveApprovals from '../../CustomForms/AnnualLeaveApprovals';
-import AnnualLeaveBookings from '../../CustomForms/AnnualLeaveBookings';
-
 import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
@@ -77,8 +69,6 @@ import QuickActionsCard from './QuickActionsCard';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
-import BookSpaceForm from '../../CustomForms/BookSpaceForm';
-
 import Attendance from './Attendance'; // Import the Attendance component
 
 import TransactionCard from '../transactions/TransactionCard';
@@ -86,7 +76,15 @@ import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 
 import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // Adjust the path if needed
 
-
+// Lazy-loaded form components
+const Tasking = lazy(() => import('../../CustomForms/Tasking'));
+const TelephoneAttendance = lazy(() => import('../../CustomForms/TelephoneAttendance'));
+const CreateTimeEntryForm = lazy(() => import('../../CustomForms/CreateTimeEntryForm'));
+const AnnualLeaveForm = lazy(() => import('../../CustomForms/AnnualLeaveForm'));
+// NEW: Import placeholders for approvals & bookings
+const AnnualLeaveApprovals = lazy(() => import('../../CustomForms/AnnualLeaveApprovals'));
+const AnnualLeaveBookings = lazy(() => import('../../CustomForms/AnnualLeaveBookings'));
+const BookSpaceForm = lazy(() => import('../../CustomForms/BookSpaceForm'));
 
 initializeIcons();
 
@@ -1948,33 +1946,35 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const handleApproveLeaveClick = () => {
     if (approvalsNeeded.length > 0) {
       setBespokePanelContent(
-        <AnnualLeaveApprovals
-          approvals={approvalsNeeded.map((item) => ({
-            id: item.id,
-            person: item.person,
-            start_date: item.start_date,
-            end_date: item.end_date,
-            reason: item.reason,
-            status: item.status,
-            hearing_confirmation: item.hearing_confirmation,
-            hearing_details: item.hearing_details,
-          }))}
-          futureLeave={futureLeaveRecords.map((item) => ({
-            id: item.id,
-            person: item.person,
-            start_date: item.start_date,
-            end_date: item.end_date,
-            reason: item.reason,
-            status: item.status,
-            hearing_confirmation: item.hearing_confirmation,
-            hearing_details: item.hearing_details,
-          }))}
-          onClose={() => setIsBespokePanelOpen(false)}
-          team={(teamData ?? []) as any}
-          totals={annualLeaveTotals}
-          allLeaveEntries={annualLeaveAllData}
-          onApprovalUpdate={handleApprovalUpdate}  // Pass the callback here
-        />
+        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <AnnualLeaveApprovals
+            approvals={approvalsNeeded.map((item) => ({
+              id: item.id,
+              person: item.person,
+              start_date: item.start_date,
+              end_date: item.end_date,
+              reason: item.reason,
+              status: item.status,
+              hearing_confirmation: item.hearing_confirmation,
+              hearing_details: item.hearing_details,
+            }))}
+            futureLeave={futureLeaveRecords.map((item) => ({
+              id: item.id,
+              person: item.person,
+              start_date: item.start_date,
+              end_date: item.end_date,
+              reason: item.reason,
+              status: item.status,
+              hearing_confirmation: item.hearing_confirmation,
+              hearing_details: item.hearing_details,
+            }))}
+            onClose={() => setIsBespokePanelOpen(false)}
+            team={(teamData ?? []) as any}
+            totals={annualLeaveTotals}
+            allLeaveEntries={annualLeaveAllData}
+            onApprovalUpdate={handleApprovalUpdate}  // Pass the callback here
+          />
+        </Suspense>
       );
       setBespokePanelTitle('Approve Annual Leave');
       setIsBespokePanelOpen(true);
@@ -1984,18 +1984,20 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const handleBookLeaveClick = () => {
     if (bookingsNeeded.length > 0) {
       setBespokePanelContent(
-        <AnnualLeaveBookings
-          bookings={bookingsNeeded.map((item) => ({
-            id: item.id,
-            person: item.person,
-            start_date: item.start_date,
-            end_date: item.end_date,
-            status: item.status,
-            rejection_notes: item.rejection_notes,
-          }))}
-          onClose={() => setIsBespokePanelOpen(false)}
-          team={transformedTeamData}
-        />
+        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <AnnualLeaveBookings
+            bookings={bookingsNeeded.map((item) => ({
+              id: item.id,
+              person: item.person,
+              start_date: item.start_date,
+              end_date: item.end_date,
+              status: item.status,
+              rejection_notes: item.rejection_notes,
+            }))}
+            onClose={() => setIsBespokePanelOpen(false)}
+            team={transformedTeamData}
+          />
+        </Suspense>
       );
       setBespokePanelTitle('Book Requested Leave');
       setIsBespokePanelOpen(true);
@@ -2061,13 +2063,21 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         }
         return; // Exit early, no panel needed
       case 'Create a Task':
-        content = <Tasking />;
+        content = (
+          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+            <Tasking />
+          </Suspense>
+        );
         break;
       case 'Request CollabSpace':
         content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="44" />;
         break;
       case 'Save Telephone Note':
-        content = <TelephoneAttendance />;
+        content = (
+          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+            <TelephoneAttendance />
+          </Suspense>
+        );
         break;
       case 'Save Attendance Note':
         content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="38" />;
@@ -2080,14 +2090,16 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         break;
       case 'Request Annual Leave':
         content = (
-          <AnnualLeaveForm
-            futureLeave={futureLeaveRecords}
-            team={transformedTeamData}
-            userData={userData}
-            totals={annualLeaveTotals}
-            bankHolidays={bankHolidays}
-            allLeaveRecords={annualLeaveAllData} // Added this prop
-          />
+          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+            <AnnualLeaveForm
+              futureLeave={futureLeaveRecords}
+              team={transformedTeamData}
+              userData={userData}
+              totals={annualLeaveTotals}
+              bankHolidays={bankHolidays}
+              allLeaveRecords={annualLeaveAllData} // Added this prop
+            />
+          </Suspense>
         );
         break;
       case 'Review Instructions':
@@ -2099,11 +2111,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           break;
       case 'Book Space':
         content = (
-          <BookSpaceForm
-            feeEarner={userData[0].Initials}
-            onCancel={() => setIsBespokePanelOpen(false)}
-            futureBookings={futureBookings}
-          />
+          <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+            <BookSpaceForm
+              feeEarner={userData[0].Initials}
+              onCancel={() => setIsBespokePanelOpen(false)}
+              futureBookings={futureBookings}
+            />
+          </Suspense>
         );
         break;
       default:
