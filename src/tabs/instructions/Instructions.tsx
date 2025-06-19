@@ -5,7 +5,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
-import localInstructionData from '../../sampleData/localInstructionData.json';
+import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
 
 interface InstructionsProps {

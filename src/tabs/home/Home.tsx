@@ -67,6 +67,9 @@ import AnnualLeaveBookings from '../../CustomForms/AnnualLeaveBookings';
 
 import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
+import { isInTeams } from '../../app/functionality/isInTeams';
+import localAttendance from '../../localData/localAttendance.json';
+import localAnnualLeave from '../../localData/localAnnualLeave.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -615,6 +618,8 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 
 const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched }) => {
   const { isDarkMode } = useTheme();
+  const inTeams = isInTeams();
+  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
@@ -966,7 +971,20 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       setIsLoadingAnnualLeave(false);
       setIsActionsLoading(false);
     }
-  
+
+    if (useLocalData) {
+      setAttendanceRecords((localAttendance as any).attendance || []);
+      setAttendanceTeam((localAttendance as any).team || []);
+      setAnnualLeaveRecords((localAnnualLeave as any).annual_leave || []);
+      setFutureLeaveRecords((localAnnualLeave as any).future_leave || []);
+      if ((localAnnualLeave as any).user_details?.totals) {
+        setAnnualLeaveTotals((localAnnualLeave as any).user_details.totals);
+      }
+      setIsLoadingAttendance(false);
+      setIsLoadingAnnualLeave(false);
+      setIsActionsLoading(false);
+      return;
+    }
     // Only fetch if no cached data exists
     if (!cachedAttendance && !cachedAttendanceError) {
       const fetchData = async () => {

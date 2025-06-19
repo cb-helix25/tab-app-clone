@@ -1,0 +1,22 @@
+{
+    "attendance": [
+        {
+            "name": "Lukasz Zemanek",
+            "level": "Partner",
+            "weeks": {
+                "Monday, 01/04/2024 - Sunday, 07/04/2024": {
+                    "iso": 14,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        }
+    ],
+    "team": [
+        {
+            "First": "Lukasz",
+            "Initials": "LZ",
+            "Entra ID": "1",
+            "Nickname": "Luke"
+        }
+    ]
+}

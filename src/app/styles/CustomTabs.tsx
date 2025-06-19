@@ -24,53 +24,34 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    borderRadius: '8px',
-    padding: '5px',
     display: 'flex',
     alignItems: 'center',
+    padding: '0 24px',
+    height: '48px',
+    borderBottom: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000,
     transition: 'background-color 0.3s',
   },
   link: {
     fontSize: '16px',
-    fontWeight: '600',
+    fontWeight: 600,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     backgroundColor: 'transparent',
-    padding: '10px 20px',
-    borderRadius: '4px',
-    transition: 'background-color 0.3s, color 0.3s',
+    padding: '0 12px',
+    lineHeight: '48px',
+    transition: 'color 0.2s',
     selectors: {
-      '::after': {
-        content: '"|"',
-        position: 'absolute',
-        right: '-10px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        color: isDarkMode ? '#555' : '#ccc',
-      },
-      ':last-child::after': {
-        content: '""',
-      },
       ':hover': {
-        backgroundColor: isDarkMode
-          ? colours.dark.cardHover
-          : colours.light.cardHover,
+        color: colours.highlight,
+        backgroundColor: 'transparent',
       },
     },
   },
   linkIsSelected: {
-    backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    transform: 'scale(1.05)',
-    boxShadow: isDarkMode
-      ? '0 4px 8px rgba(255,255,255,0.2)'
-      : '0 4px 8px rgba(0,0,0,0.2)',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    selectors: {
-      '::after': {
-        content: '""',
-      },
-    },
+    color: colours.highlight,
+    borderBottom: `2px solid ${colours.highlight}`,
   },
 });
 
