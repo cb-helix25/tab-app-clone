@@ -250,7 +250,7 @@ const RoadmapEntryItem: React.FC<RoadmapEntryItemProps> = ({ entry, isDarkMode, 
       tabIndex={0}
       aria-label={`View details for ${entry.label}`}
     >
-      <div className="entry-icon">
+      <div className="entry-icon icon-hover">
         <Icon iconName={iconName} className="icon-outline" />
         <Icon iconName={iconName} className="icon-filled" />
       </div>

@@ -140,7 +140,9 @@ export function replacePlaceholders(
         : block.placeholder;
     result = result.replace(
       regex,
-      `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${content}</span>`
+      `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">
+        <span class="option-bubble" data-block-title="${block.title}" onmouseenter="window.openInlineOptions(event, '${block.title}')" onclick="window.openInlineOptions(event, '${block.title}')">Choose ${block.title}</span>
+      </span>`
     );
   });
 

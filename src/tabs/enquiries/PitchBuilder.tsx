@@ -123,6 +123,20 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-label:active {
       color: ${colours.highlight};
     }
+    .option-bubble {
+      display: inline-block;
+      background: ${colours.highlightBlue};
+      color: ${colours.darkBlue};
+      padding: 2px 6px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    .option-bubble:hover {
+      transform: scale(1.05);
+      background: ${colours.blue};
+    }
     .options-toggle {
       display: none;
     }

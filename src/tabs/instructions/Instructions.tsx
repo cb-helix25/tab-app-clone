@@ -1,18 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { Stack, Text, mergeStyles } from '@fluentui/react';
+import { Stack, Text, mergeStyles, PrimaryButton } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
-import { InstructionData } from '../../app/functionality/types';
+import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../sampleData/localInstructionData.json';
+import NewMatters from './NewMatters';
 
 interface InstructionsProps {
   userInitials: string;
+  poidData: POID[];
+  setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+  teamData?: TeamData[] | null;
 }
-const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
+const Instructions: React.FC<InstructionsProps> = ({
+  userInitials,
+  poidData,
+  setPoidData,
+  teamData,
+}) => {
   const { isDarkMode } = useTheme();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+  const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
 
   const quickLinksStyle = (dark: boolean) =>
     mergeStyles({
@@ -72,6 +83,23 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
     color: isDarkMode ? colours.light.text : colours.dark.text,
   });
 
+  if (showNewMatterPage) {
+    return (
+      <Stack tokens={dashboardTokens} className={containerStyle}>
+        <PrimaryButton
+          text="Back"
+          onClick={() => setShowNewMatterPage(false)}
+          style={{ marginBottom: '16px' }}
+        />
+        <NewMatters
+          poidData={poidData}
+          setPoidData={setPoidData}
+          teamData={teamData}
+        />
+      </Stack>
+    );
+  }
+
   return (
     <Stack tokens={dashboardTokens} className={containerStyle}>
       <div className={quickLinksStyle(isDarkMode)}>
@@ -81,7 +109,7 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
           }
           icon="DocumentSearch"
           isDarkMode={isDarkMode}
-          onClick={() => { }}
+          onClick={() => setShowPreview(!showPreview)}
           style={{ '--card-index': 0 } as React.CSSProperties}
         />
         <QuickActionsCard
@@ -91,8 +119,20 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
           onClick={() => { }}
           style={{ '--card-index': 1 } as React.CSSProperties}
         />
+        <QuickActionsCard
+          title="New Matter"
+          icon="AddTo"
+          isDarkMode={isDarkMode}
+          onClick={() => setShowNewMatterPage(true)}
+          style={{ '--card-index': 2 } as React.CSSProperties}
+        />
       </div>
       <Text variant="xLarge">Instruction Dashboard</Text>
+      {showPreview && (
+        <pre style={{ whiteSpace: 'pre-wrap' }}>
+          {JSON.stringify(instructionData, null, 2)}
+        </pre>
+      )}
       {instructionData.map((inst, idx) => (
         <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
           <Text variant="large">Prospect {inst.prospectId}</Text>

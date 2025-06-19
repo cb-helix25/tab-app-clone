@@ -157,6 +157,9 @@ const App: React.FC<AppProps> = ({
         return (
           <Instructions
             userInitials={userInitials}
+            poidData={poidData}
+            setPoidData={setPoidData}
+            teamData={teamData}            
           />
         );
       case 'matters':

@@ -303,7 +303,7 @@ const headerStyle = mergeStyles({
 const greetingStyle = (isDarkMode: boolean) =>
   mergeStyles({
     fontWeight: '600',
-    fontSize: '32px',
+    fontSize: '24px',
     whiteSpace: 'nowrap',
     color: isDarkMode ? colours.dark.text : colours.light.text,
   });
@@ -2253,13 +2253,27 @@ const fadeInKeyframes = keyframes({
   to: { opacity: 1, transform: 'translateY(0)' },
 });
 
-// Define a style that uses the keyframes
+  // Define the tickPop keyframes for the completion icon
+  const tickPopKeyframes = keyframes({
+    '0%': { transform: 'scale(0)', opacity: 0 },
+    '70%': { transform: 'scale(1.3)', opacity: 1 },
+    '100%': { transform: 'scale(1)', opacity: 1 },
+  });
+
+  // Style for the "No actions" container
 const noActionsClass = mergeStyles({
   display: 'flex',
   alignItems: 'center',
   gap: '6px',
   animation: `${fadeInKeyframes} 0.3s ease-out`,
 });
+
+  // Style for the animated tick icon
+  const noActionsIconClass = mergeStyles({
+    fontSize: '16px',
+    color: colours.green,
+    animation: `${tickPopKeyframes} 0.3s ease`,
+  });
 
 // Extract mattersOpenedCount and compute conversion rate with two decimals
 const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
@@ -2318,10 +2332,7 @@ const conversionRate = enquiriesMonthToDate
           ) : immediateActionsList.length === 0 ? (
             // If there are no immediate actions: fadeIn + green check
             <div className={noActionsClass}>
-              <Icon
-                iconName="CompletedSolid"
-                styles={{ root: { fontSize: '16px', color: colours.green } }}
-              />
+                <Icon iconName="CompletedSolid" className={noActionsIconClass} />
               <Text>No immediate actions</Text>
             </div>
           ) : (
