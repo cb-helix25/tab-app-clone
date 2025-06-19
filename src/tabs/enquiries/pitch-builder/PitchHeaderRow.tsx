@@ -127,7 +127,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
   const [rowSpacing, setRowSpacing] = useState(0);
-  // Static spacing between the subject line and enquiry notes
+  // Static spacing below the enquiry notes
   const notesSpacing = 8;
   const [dealFormSaved, setDealFormSaved] = useState(false);
 
@@ -222,7 +222,24 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           styles={{ root: { width: "50%" } }}
           className={sideContainerStyle}
         >
-          {/* Row 1: To / CC / BCC */}
+        {/* Row 1: Enquiry Notes */}
+        {enquiry.Initial_first_call_notes && (
+          <Stack
+            style={{
+              marginBottom: notesSpacing,
+              transition: "margin 0.2s ease",
+            }}
+          >
+            <div className={enquiryNotesContainer}>
+              <div className={enquiryNotesHeader}>Enquiry Notes</div>
+              <div className={enquiryNotesContent}>
+                {enquiry.Initial_first_call_notes}
+              </div>
+            </div>
+          </Stack>
+        )}
+
+        {/* Row 2: To / CC / BCC */}
           <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
             <Stack tokens={{ childrenGap: 6 }}>
               <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
@@ -347,7 +364,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
               )}
             </Stack>
           </div>
-          {/* Row 2: Subject */}
+        {/* Row 3: Subject */}
           <Stack>
             <div ref={subjectRef} className={intakeContainer}>
               <div className={intakeHeader}>Subject</div>
@@ -366,22 +383,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
               />
           </div>
         </Stack>
-          {/* Row 3: Enquiry Notes */}
-          {enquiry.Initial_first_call_notes && (
-            <Stack
-              style={{
-                marginTop: notesSpacing,
-                transition: "margin 0.2s ease",
-              }}
-            >
-              <div className={enquiryNotesContainer}>
-                <div className={enquiryNotesHeader}>Enquiry Notes</div>
-                <div className={enquiryNotesContent}>
-                  {enquiry.Initial_first_call_notes}
-                </div>
-              </div>
-            </Stack>
-          )}
         </Stack>
         <Separator vertical className={verticalSeparatorStyle} />
         {/* RIGHT SIDE (Deal Form) */}

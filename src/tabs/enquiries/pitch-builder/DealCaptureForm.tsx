@@ -58,8 +58,12 @@ interface DealCaptureFormProps {
 // Service options, 'Other' triggers bespoke input
 const SERVICE_OPTIONS: IDropdownOption[] = [
   { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
-  { key: 'Debt Recovery', text: 'Debt Recovery' },
-  { key: 'Commercial Contract', text: 'Commercial Contract' },
+  { key: 'Debt Recovery (Pre-Litigation)', text: 'Debt Recovery (Pre-Litigation)' },
+  { key: 'Debt Recovery (Enforcement)', text: 'Debt Recovery (Enforcement)' },
+  { key: 'Commercial Contract Drafting', text: 'Commercial Contract Drafting' },
+  { key: 'Contract Negotiation Support', text: 'Contract Negotiation Support' },
+  { key: 'Regulatory Compliance Advisory', text: 'Regulatory Compliance Advisory' },
+  { key: 'Data Protection & GDPR Consultancy', text: 'Data Protection & GDPR Consultancy' },
   { key: 'Other', text: 'Other (bespoke)' },
 ];
 
@@ -460,7 +464,14 @@ useLayoutEffect(() => {
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
             <div className={amountContainerStyle}>
-              <span className={prefixStyle}>£</span>
+              <span
+                className={mergeStyles(prefixStyle, {
+                  border: 'none',
+                  background: 'transparent',
+                })}
+              >
+                £
+              </span>
               <TextField
                 required
                 type="text"
