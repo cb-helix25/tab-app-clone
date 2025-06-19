@@ -12,6 +12,7 @@ import { Matter, UserData, Enquiry, TeamData } from './app/functionality/types';
 // Local sample data used when REACT_APP_USE_LOCAL_DATA is set
 import localUserData from './localData/localUserData.json';
 import localEnquiries from './localData/localEnquiries.json';
+import localMatters from './localData/localMatters.json';
 
 // Define the custom Fluent UI theme
 const customTheme = createTheme({
@@ -204,7 +205,7 @@ const AppWithContext: React.FC = () => {
         setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
         setUserData(localUserData as UserData[]);
         setEnquiries(localEnquiries as Enquiry[]);
-        setMatters([]);
+        setMatters(localMatters as Matter[]);
         setTeamData(null);
         setLoading(false);
       }

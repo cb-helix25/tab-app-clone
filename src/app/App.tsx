@@ -90,12 +90,7 @@ const App: React.FC<AppProps> = ({
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  // Tabs visible to all users
-  const baseTabs: Tab[] = [
-    { key: 'forms', text: 'Forms' },
-    { key: 'resources', text: 'Resources' },
-    { key: 'enquiries', text: 'Enquiries' },
-  ];
+  // Tabs visible to all users start with the Enquiries tab.
 
   // Add the Instructions tab only for Luke (LZ) and Alex (AC).
   // Make it always visible when developing locally (hostname === 'localhost').
@@ -104,16 +99,17 @@ const App: React.FC<AppProps> = ({
   const showInstructionsTab =
     instructionsUsers.includes(userInitials) || isLocalhost;
 
-  const tabsWithInstructions = showInstructionsTab
-    ? [...baseTabs, { key: 'instructions', text: 'Instructions' }]
-    : baseTabs;
-
   const tabs: Tab[] = [
-    ...tabsWithInstructions,
+    { key: 'enquiries', text: 'Enquiries' },
+    ...(showInstructionsTab
+      ? [{ key: 'instructions', text: 'Instructions' }]
+      : []),
     { key: 'matters', text: 'Matters' },
+    { key: 'forms', text: 'Forms' },
+    { key: 'resources', text: 'Resources' },
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
-  ];
+    ];
 
   // Check if the user has authorized initials for the Reporting tab
   const authorizedInitials = ['AC', 'JW', 'LZ', 'BL'];
