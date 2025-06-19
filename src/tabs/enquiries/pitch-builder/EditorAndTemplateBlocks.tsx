@@ -229,8 +229,13 @@ boxShadow: isDarkMode
   const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
   const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
 
-  const openEditModal = (block: TemplateBlock) => {
+  const [initialOption, setInitialOption] = React.useState<string | undefined>(undefined);
+  const [initialLevel, setInitialLevel] = React.useState<'block' | 'option'>('block');
+
+  const openEditModal = (block: TemplateBlock, option?: string) => {
     setPreviewNode(renderPreview(block));
+    setInitialOption(option);
+    setInitialLevel(option ? 'option' : 'block');
     setBlockToEdit(block);
   };
 
@@ -239,6 +244,12 @@ boxShadow: isDarkMode
       const block = templateBlocks.find((b) => b.title === title);
       if (block) {
         openEditModal(block);
+      }
+    };
+    (window as any).openSnippetEdit = (title: string, option: string) => {
+      const block = templateBlocks.find((b) => b.title === title);
+      if (block) {
+        openEditModal(block, option);
       }
     };
   }, [templateBlocks]);
@@ -418,7 +429,11 @@ boxShadow: isDarkMode
       {blockToEdit && (
         <EditBlockModal
           isOpen={true}
-          onDismiss={() => setBlockToEdit(null)}
+          onDismiss={() => {
+            setBlockToEdit(null);
+            setInitialOption(undefined);
+            setInitialLevel('block');
+          }}
           blockTitle={blockToEdit.title}
           previewContent={previewNode}
           block={blockToEdit}
@@ -426,6 +441,8 @@ boxShadow: isDarkMode
           referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
           blockOptionsMap={blockOptionsMap}
           isDarkMode={isDarkMode}
+          initialOption={initialOption}
+          initialLevel={initialLevel}
         />
       )}
       <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>

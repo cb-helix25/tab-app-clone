@@ -325,21 +325,23 @@ function toggleBlockLock(blockTitle: string) {
   setLockedBlocks(prev => {
     const locked = !prev[blockTitle];
     const updated = { ...prev, [blockTitle]: locked };
-const span = bodyEditorRef.current?.querySelector(
-  `span[data-inserted="${blockTitle}"]`
-) as HTMLElement | null;
-if (span) {
+    const spans = bodyEditorRef.current?.querySelectorAll(
+      `span[data-inserted="${blockTitle}"]`
+    ) as NodeListOf<HTMLElement> | null;
+    if (spans) {
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-      span.setAttribute('contenteditable', (!locked).toString());
-      span.style.backgroundColor = locked
-        ? lockedBg
-        : editedBlocks[blockTitle]
-        ? colours.highlightBlue
-        : colours.highlightYellow;
-      const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
-      if (icon) {
-        icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
-      }
+      spans.forEach(span => {
+        span.setAttribute('contenteditable', (!locked).toString());
+        span.style.backgroundColor = locked
+          ? lockedBg
+          : editedBlocks[blockTitle]
+            ? colours.highlightBlue
+            : colours.highlightYellow;
+        const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
+        if (icon) {
+          icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
+        }
+      });
     }
     return updated;
   });
@@ -598,39 +600,55 @@ useEffect(() => {
     shouldFocus: boolean = true,
     append: boolean = false
   ) {
-    let replacementText = '';
+    const snippetHtml: string[] = [];
     if (block.isMultiSelect && isStringArray(selectedOption)) {
-      if (block.title === 'Required Documents') {
-        replacementText = `<ul>${selectedOption
-          .map((doc: string) => {
-            const option = block.options.find((o) => o.label === doc);
-            return `<li>${option ? option.previewText.trim() : doc}</li>`;
-          })
-          .join('')}</ul>`;
-      } else {
-        replacementText = selectedOption
-          .map((item: string) => {
-            const option = block.options.find((o) => o.label === item);
-            return option ? option.previewText.trim() : item;
-          })
-          .join('<br />');
-      }
-    } else if (!block.isMultiSelect && typeof selectedOption === 'string') {
+      selectedOption.forEach((opt) => {
+        const option = block.options.find((o) => o.label === opt);
+        if (!option) return;
+        let text = option.previewText.trim().replace(/\n/g, '<br />');
+        text = applyDynamicSubstitutions(
+          text,
+          userData,
+          enquiry,
+          amount,
+          dealPasscode,
+          dealPasscode
+            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+            : undefined
+        );
+        text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+        const escLabel = opt.replace(/'/g, "&#39;");
+        const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+        const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
+        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetEdit('${block.title}','${escLabel}')" title="Edit Snippet">${editIcon}</span>`;
+        snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
+      });
+    } else if (typeof selectedOption === 'string') {
+
       const option = block.options.find((o) => o.label === selectedOption);
-      replacementText = option ? option.previewText.trim() : '';
-      replacementText = replacementText.replace(/\n/g, '<br />');
+      if (option) {
+        let text = option.previewText.trim().replace(/\n/g, '<br />');
+        text = applyDynamicSubstitutions(
+          text,
+          userData,
+          enquiry,
+          amount,
+          dealPasscode,
+          dealPasscode
+            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+            : undefined
+        );
+        text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+        const escLabel = selectedOption.replace(/'/g, "&#39;");
+        const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+        const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
+        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetEdit('${block.title}','${escLabel}')" title="Edit Snippet">${editIcon}</span>`;
+        snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
+      }
+
     }
-  
-    replacementText = applyDynamicSubstitutions(
-      replacementText,
-      userData,
-      enquiry,
-      amount,
-      dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-        : undefined
-    );
+
+    const replacementText = snippetHtml.join('');
     let selectedLabel = '';
     if (block.isMultiSelect && isStringArray(selectedOption)) {
       selectedLabel = selectedOption.join(', ');

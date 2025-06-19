@@ -62,6 +62,10 @@ interface EditBlockModalProps {
   initialReferenceOption?: string;
   /** Initial notes about referencing */
   initialReferenceNotes?: string;
+  /** Option to edit initially */
+  initialOption?: string;
+  /** Initial editing level */
+  initialLevel?: 'block' | 'option';
   /** Blocks that can be referenced from this editor */
   referenceOptions: { key: string; text: string }[];
   /** Map of block titles to their option labels */
@@ -82,6 +86,8 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   initialReference,
   initialReferenceOption,
   initialReferenceNotes,
+  initialOption,
+  initialLevel,
   referenceOptions,
   blockOptionsMap,
   isDarkMode,
@@ -91,8 +97,8 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const [reference, setReference] = useState<string | undefined>(initialReference);
   const [referenceOption, setReferenceOption] = useState<string | undefined>(initialReferenceOption);
   const [referenceNotes, setReferenceNotes] = useState<string>(initialReferenceNotes || '');
-  const [level, setLevel] = useState<'block' | 'option'>('block');
-  const [optionToEdit, setOptionToEdit] = useState<string | undefined>(block.options[0]?.label);
+  const [level, setLevel] = useState<'block' | 'option'>(initialLevel || 'block');
+  const [optionToEdit, setOptionToEdit] = useState<string | undefined>(initialOption || block.options[0]?.label);
   const [step, setStep] = useState<'edit' | 'confirm'>('edit');
 
   const containerClass = mergeStyles({
