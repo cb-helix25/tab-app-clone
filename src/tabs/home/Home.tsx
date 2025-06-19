@@ -300,14 +300,6 @@ const headerStyle = mergeStyles({
   gap: '16px',
 });
 
-const greetingStyle = (isDarkMode: boolean) =>
-  mergeStyles({
-    fontWeight: '600',
-    fontSize: '24px',
-    whiteSpace: 'nowrap',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-  });
-
 const reviewMessageStyle = (isDarkMode: boolean) =>
   mergeStyles({
     fontWeight: '600',
@@ -717,8 +709,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null); // Add this line
 
   // State declarations...
-  const [greeting, setGreeting] = useState<string>('');
-  const [typedGreeting, setTypedGreeting] = useState<string>('');
   const [enquiriesToday, setEnquiriesToday] = useState<number>(0);
   const [enquiriesWeekToDate, setEnquiriesWeekToDate] = useState<number>(0);
   const [enquiriesMonthToDate, setEnquiriesMonthToDate] = useState<number>(0);
@@ -913,32 +903,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
   }, []);
 
   useEffect(() => {
-    if (
-      userData &&
-      Array.isArray(userData) &&
-      userData.length > 0 &&
-      (userData[0].First || userData[0].First_Name)
-    ) {
-      const firstName = userData[0].First || userData[0].First_Name || 'User';
-      setCurrentUserName(firstName);
-      const email = userData[0].Email || '';
-      setCurrentUserEmail(email);
-      const currentHour = new Date().getHours();
-      let timeOfDay = 'Hello';
-      if (currentHour < 12) {
-        timeOfDay = 'Good Morning';
-      } else if (currentHour < 18) {
-        timeOfDay = 'Good Afternoon';
-      } else {
-        timeOfDay = 'Good Evening';
-      }
-      setGreeting(`${timeOfDay}, ${firstName}.`);
-    } else {
-      setGreeting('Hello, User.');
-    }
-  }, [userData]);
-
-  useEffect(() => {
     if (enquiries && currentUserEmail) {
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -975,20 +939,6 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       setEnquiriesMonthToDate(monthToDateCount);
     }
   }, [enquiries, currentUserEmail]);
-
-  useEffect(() => {
-    let currentIndex = 0;
-    setTypedGreeting('');
-    const typingInterval = setInterval(() => {
-      if (currentIndex < greeting.length) {
-        setTypedGreeting((prev) => prev + greeting[currentIndex]);
-        currentIndex++;
-      } else {
-        clearInterval(typingInterval);
-      }
-    }, 25);
-    return () => clearInterval(typingInterval);
-  }, [greeting]);
 
   useEffect(() => {
     // Always restore from cache on mount if available
@@ -2295,7 +2245,6 @@ const conversionRate = enquiriesMonthToDate
         className={headerStyle}
       >
         <Stack verticalAlign="start" tokens={{ childrenGap: 8 }}>
-          <Text className={greetingStyle(isDarkMode)}>{typedGreeting}</Text>
           {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0) && (
             <Text className={`${reviewMessageStyle(isDarkMode)} ${fadeInAnimationStyle}`}>
               You have items to review
@@ -2584,7 +2533,6 @@ const conversionRate = enquiriesMonthToDate
             </div>
           </div>
         </CollapsibleSection>
-      </div>
 
       {/* Transactions Requiring Action */}
       <ActionSection
@@ -2696,20 +2644,22 @@ const conversionRate = enquiriesMonthToDate
         </div>
       )}
 
-      <Attendance
-        ref={attendanceRef}
-        isDarkMode={isDarkMode}
-        isLoadingAttendance={isLoadingAttendance}
-        isLoadingAnnualLeave={isLoadingAnnualLeave}
-        attendanceError={attendanceError}
-        annualLeaveError={annualLeaveError}
-        attendanceRecords={transformedAttendanceRecords}
-        teamData={transformedTeamData}
-        annualLeaveRecords={annualLeaveRecords}
-        futureLeaveRecords={futureLeaveRecords}
-        userData={userData}
-        onAttendanceUpdated={handleAttendanceUpdated}
-      />
+        <Attendance
+          ref={attendanceRef}
+          isDarkMode={isDarkMode}
+          isLoadingAttendance={isLoadingAttendance}
+          isLoadingAnnualLeave={isLoadingAnnualLeave}
+          attendanceError={attendanceError}
+          annualLeaveError={annualLeaveError}
+          attendanceRecords={transformedAttendanceRecords}
+          teamData={transformedTeamData}
+          annualLeaveRecords={annualLeaveRecords}
+          futureLeaveRecords={futureLeaveRecords}
+          userData={userData}
+          onAttendanceUpdated={handleAttendanceUpdated}
+        />
+
+      </div>
 
       {/* Contexts Panel */}
       <BespokePanel
