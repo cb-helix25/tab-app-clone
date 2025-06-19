@@ -5,6 +5,7 @@ import {
   mergeStyles,
   IconButton,
   Separator,
+  Text,
 } from "@fluentui/react";
 import { Enquiry } from "../../../app/functionality/types";
 import DealCaptureForm from "./DealCaptureForm";
@@ -222,22 +223,38 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           styles={{ root: { width: "50%" } }}
           className={sideContainerStyle}
         >
-        {/* Row 1: Enquiry Notes */}
-        {enquiry.Initial_first_call_notes && (
-          <Stack
-            style={{
-              marginBottom: notesSpacing,
-              transition: "margin 0.2s ease",
-            }}
-          >
-            <div className={enquiryNotesContainer}>
-              <div className={enquiryNotesHeader}>Enquiry Notes</div>
-              <div className={enquiryNotesContent}>
-                {enquiry.Initial_first_call_notes}
-              </div>
+        {/* Row 1: Enquiry Details */}
+        <Stack
+          style={{
+            marginBottom: notesSpacing,
+            transition: "margin 0.2s ease",
+          }}
+        >
+          <div className={enquiryNotesContainer}>
+            <div className={enquiryNotesHeader}>Enquiry Details</div>
+            <div className={enquiryNotesContent}>
+              <Stack tokens={{ childrenGap: 4 }}>
+                <Text>
+                  {enquiry.First_Name} {enquiry.Last_Name}
+                </Text>
+                {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
+                {enquiry.Phone_Number && (
+                  <Text>Phone: {enquiry.Phone_Number}</Text>
+                )}
+                {enquiry.Secondary_Phone && (
+                  <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
+                )}
+                {enquiry.Initial_first_call_notes && (
+                  <>
+                    <Separator style={{ margin: "8px 0" }} />
+                    <Text>{enquiry.Initial_first_call_notes}</Text>
+                  </>
+                )}
+              </Stack>
+
             </div>
-          </Stack>
-        )}
+          </div>
+        </Stack>
 
         {/* Row 2: To / CC / BCC */}
           <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
