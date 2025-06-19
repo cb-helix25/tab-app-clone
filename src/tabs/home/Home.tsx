@@ -63,6 +63,7 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
+import localMatters from '../../localData/localMatters.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -339,7 +340,7 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     gap: '8px',
     overflowX: 'auto',
     alignItems: 'center',
-    marginBottom: '16px',
+    paddingBottom: '16px',
     position: 'sticky',
     top: ACTION_BAR_HEIGHT,
     zIndex: 999,
@@ -1196,6 +1197,14 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     if (cachedAllMatters || cachedAllMattersError) {
       setAllMatters(cachedAllMatters || []);
       setAllMattersError(cachedAllMattersError);
+      setIsLoadingAllMatters(false);
+    } else if (useLocalData) {
+      const mappedMatters: Matter[] = (localMatters as any) as Matter[];
+      cachedAllMatters = mappedMatters;
+      setAllMatters(mappedMatters);
+      if (onAllMattersFetched) {
+        onAllMattersFetched(mappedMatters);
+      }
       setIsLoadingAllMatters(false);
     } else {
       const fetchAllMattersData = async () => {

@@ -40,7 +40,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       gap: '8px',
       overflowX: 'auto',
       alignItems: 'center',
-      marginBottom: '16px',
+      paddingBottom: '16px',
       position: 'sticky',
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
