@@ -472,9 +472,8 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
         ? isDarkMode
           ? colours.dark.highlight
           : colours.highlight
-        : isDarkMode
-        ? colours.dark.grey
-        : colours.light.grey,
+        : colours.greyText,
+      fontWeight: isSelected ? 600 : 400,
       borderBottom: isSelected ? `2px solid ${colours.highlight}` : 'none',
       transition: 'color 0.3s, border-bottom 0.3s',
       ':hover': {

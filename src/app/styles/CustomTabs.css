@@ -29,10 +29,15 @@
   animation: dropIn 0.3s ease forwards;
   position: relative;
   border-bottom: none;
-  }
-  
-  .customPivot .ms-Pivot-link[aria-selected='true'] {
-    border-bottom: none;
+}
+
+/* Remove Fluent UI's default underline */
+.customPivot .ms-Pivot-link::before {
+  display: none;
+}
+
+.customPivot .ms-Pivot-link[aria-selected='true'] {
+  border-bottom: none;
 }
 
 /* Apply staggered animation delays to each link */

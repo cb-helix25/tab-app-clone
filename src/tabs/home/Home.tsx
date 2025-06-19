@@ -27,6 +27,7 @@ import {
   Toggle,
   keyframes,
 } from '@fluentui/react';
+import { FaCheck } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { initializeIcons } from '@fluentui/react/lib/Icons';
 import MetricCard from './MetricCard';
@@ -983,8 +984,36 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     }
 
     if (useLocalData) {
-      setAttendanceRecords((localAttendance as any).attendance || []);
-      setAttendanceTeam((localAttendance as any).team || []);
+      const currentMonday = getMondayOfCurrentWeek();
+      const nextMonday = new Date(currentMonday);
+      nextMonday.setDate(currentMonday.getDate() + 7);
+
+      const currentKey = generateWeekKey(currentMonday);
+      const nextKey = generateWeekKey(nextMonday);
+
+      const localCopy: any = JSON.parse(JSON.stringify(localAttendance));
+      if (Array.isArray(localCopy.attendance)) {
+        localCopy.attendance.forEach((rec: any) => {
+          rec.weeks = rec.weeks || {};
+          if (!rec.weeks[currentKey]) {
+            rec.weeks[currentKey] = {
+              iso: getISOWeek(currentMonday),
+              attendance: 'Mon,Tue,Wed,Thu,Fri',
+              confirmed: true,
+            };
+          }
+          if (!rec.weeks[nextKey]) {
+            rec.weeks[nextKey] = {
+              iso: getISOWeek(nextMonday),
+              attendance: 'Mon,Tue,Wed,Thu,Fri',
+              confirmed: true,
+            };
+          }
+        });
+      }
+
+      setAttendanceRecords(localCopy.attendance || []);
+      setAttendanceTeam(localCopy.team || []);
       setAnnualLeaveRecords((localAnnualLeave as any).annual_leave || []);
       setFutureLeaveRecords((localAnnualLeave as any).future_leave || []);
       if ((localAnnualLeave as any).user_details?.totals) {
@@ -2242,14 +2271,21 @@ const fadeInKeyframes = keyframes({
 const noActionsClass = mergeStyles({
   display: 'flex',
   alignItems: 'center',
-  gap: '6px',
+  justifyContent: 'center',
   animation: `${fadeInKeyframes} 0.3s ease-out`,
 });
 
-  // Style for the animated tick icon
+  // Style for the animated tick icon container
   const noActionsIconClass = mergeStyles({
-    fontSize: '16px',
-    color: colours.green,
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    background: colours.highlight,
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
     animation: `${tickPopKeyframes} 0.3s ease`,
   });
 
@@ -2307,10 +2343,11 @@ const conversionRate = enquiriesMonthToDate
             // Just a spinner (no label) while loading
             <Spinner size={SpinnerSize.small} />
           ) : immediateActionsList.length === 0 ? (
-            // If there are no immediate actions: fadeIn + green check
+            // If there are no immediate actions: fadeIn + tick
             <div className={noActionsClass}>
-                <Icon iconName="CompletedSolid" className={noActionsIconClass} />
-              <Text>No immediate actions</Text>
+              <div className={noActionsIconClass}>
+                <FaCheck />
+              </div>
             </div>
           ) : (
             // Otherwise, render the immediate actions
