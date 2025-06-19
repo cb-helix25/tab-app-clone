@@ -62,12 +62,12 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
 
-  // If the selected key does not match any pivot item, unset it so no tab is
-  // highlighted. This prevents the first tab from appearing active when the
-  // Home icon is selected.
-  const pivotSelectedKey = tabs.some((tab) => tab.key === selectedKey)
-    ? selectedKey
-    : undefined;
+  // Include a hidden pivot item for the Home icon so that when the Home tab is
+  // active, no other tab appears selected. The Pivot component defaults to
+  // selecting the first item when the provided key is not found. By always
+  // supplying a matching key, we prevent the first visible tab ("Forms") from
+  // being highlighted when "Home" is selected.
+  const pivotSelectedKey = selectedKey;
 
   const handleLinkClick = (
     item?: PivotItem,
@@ -116,6 +116,12 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         styles={customPivotStyles(isDarkMode)}
         className="customPivot"
       >
+        {/* Hidden item to occupy selection when Home is active */}
+        <PivotItem
+          itemKey="home"
+          headerText="Home"
+          headerButtonProps={{ style: { display: 'none' } }}
+        />
         {tabs.map((tab, index) => (
           <PivotItem
             itemKey={tab.key}

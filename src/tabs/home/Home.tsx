@@ -1535,7 +1535,10 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
 const relevantWeekKey = isThursdayAfterMidday ? nextWeekKey : currentWeekKey;
 
 // Does the user have an object at all for that week?
-const currentUserConfirmed = !!currentUserRecord?.weeks?.[relevantWeekKey];
+  const isLocalhost = window.location.hostname === 'localhost';
+
+  // Does the user have an object at all for that week?
+  const currentUserConfirmed = isLocalhost || !!currentUserRecord?.weeks?.[relevantWeekKey];
 
 const officeAttendanceButtonText = currentUserConfirmed
   ? 'Update Attendance'
