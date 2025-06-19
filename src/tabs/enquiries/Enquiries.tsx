@@ -331,51 +331,34 @@ const CustomLabel: React.FC<CustomLabelProps> = ({
     return null;
   }
 
-  const color = areaColor(dataKey);
-  const bubbleWidth = 50;
-  const bubbleHeight = 25;
-  const bubbleX = x + width / 2 - bubbleWidth / 2;
-  const bubbleY = y + height / 2 - bubbleHeight / 2;
-
   const textFill = isDarkMode ? '#fff' : '#333';
 
   return (
-    <g>
-      <rect
-        x={bubbleX}
-        y={bubbleY}
-        width={bubbleWidth}
-        height={bubbleHeight}
-        fill="none"
-        stroke={color}
-        strokeWidth={2}
-        rx={8}
-        ry={8}
-      />
-      <text
-        x={x + width / 2}
-        y={y + height / 2 + 5}
-        textAnchor="middle"
-        fill={textFill}
-        fontSize="12"
-        fontFamily="Raleway, sans-serif"
-      >
-        {value}
-      </text>
-    </g>
+    <text
+      x={x + width / 2}
+      y={y + height / 2 + 5}
+      textAnchor="middle"
+      fill={textFill}
+      fontSize="12"
+      fontFamily="Raleway, sans-serif"
+    >
+      {value}
+    </text>
   );
 };
 
 const CustomBarShape: React.FC<any> = (props) => {
   const { x, y, width, height } = props;
+  const { isDarkMode } = useTheme();
+  const fillColor = isDarkMode ? colours.dark.border : '#d0d0d0';
   return (
     <rect
       x={x}
       y={y}
       width={width}
       height={height}
-      fill={colours.grey}
-      filter="url(#barShadow)"
+      rx={2}
+      fill={fillColor}
     />
   );
 };
@@ -1053,183 +1036,107 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             },
           }}
         >
-          {teamData && enquiriesCountPerMember.length > 0 && (
-            <>
+          <Stack
+            horizontalAlign="center"
+            tokens={{ childrenGap: 20 }}
+            style={{ marginBottom: '20px' }}
+          >
               <Stack
-                horizontalAlign="center"
-                tokens={{ childrenGap: 20 }}
-                style={{ marginBottom: '20px' }}
+              tokens={{ childrenGap: 5 }}
+              verticalAlign="center"
+              style={{ fontFamily: 'Raleway, sans-serif' }}
               >
-                <Stack
-                  tokens={{ childrenGap: 5 }}
-                  verticalAlign="center"
-                  style={{ fontFamily: 'Raleway, sans-serif' }}
+              <Text
+                variant="mediumPlus"
+                styles={{
+                  root: {
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                    fontFamily: 'Raleway, sans-serif',
+                    fontWeight: 600,
+                    textAlign: 'center',
+                    width: '100%',
+                  },
+                }}
                 >
-                  <Text
-                    variant="mediumPlus"
-                    styles={{
-                      root: {
-                        color: isDarkMode ? colours.dark.text : colours.light.text,
-                        fontFamily: 'Raleway, sans-serif',
-                        fontWeight: 600,
-                        textAlign: 'center',
-                        width: '100%',
-                      },
-                    }}
-                  >
-                    {sortedValidEnquiries[currentSliderEnd]?.Touchpoint_Date
-                      ? format(
-                          parseISO(sortedValidEnquiries[currentSliderEnd].Touchpoint_Date),
-                          'dd MMM yyyy'
-                        )
-                      : ''}
-                    {' - '}
-                    {sortedValidEnquiries[currentSliderStart]?.Touchpoint_Date
-                      ? format(
-                          parseISO(sortedValidEnquiries[currentSliderStart].Touchpoint_Date),
-                          'dd MMM yyyy'
-                        )
-                      : ''}
-                  </Text>
-                  <Slider
-                    range
-                    min={0}
-                    max={sortedValidEnquiries.length - 1}
-                    value={[
-                      sortedValidEnquiries.length - 1 - currentSliderEnd,
-                      sortedValidEnquiries.length - 1 - currentSliderStart,
-                    ]}
-                    onChange={(value) => {
-                      if (Array.isArray(value)) {
-                        setCurrentSliderStart(sortedValidEnquiries.length - 1 - value[1]);
-                        setCurrentSliderEnd(sortedValidEnquiries.length - 1 - value[0]);
-                      }
-                    }}
-                    trackStyle={[{ backgroundColor: colours.highlight, height: 8 }]}
-                    handleStyle={[
-                      {
-                        backgroundColor: colours.highlight,
-                        borderColor: colours.highlight,
-                        height: 20,
-                        width: 20,
-                        transform: 'translateX(-50%)',
-                      },
-                      {
-                        backgroundColor: colours.highlight,
-                        borderColor: colours.highlight,
-                        height: 20,
-                        width: 20,
-                        transform: 'translateX(-50%)',
-                      },
-                    ]}
-                    railStyle={{
-                      backgroundColor: isDarkMode
-                        ? colours.dark.border
-                        : colours.inactiveTrackLight,
-                      height: 8,
-                    }}
-                    style={{ width: 500, margin: '0 auto' }}
-                  />
-                </Stack>
-              </Stack>
-
-              <Stack
-                horizontal
-                horizontalAlign="stretch"
-                tokens={{ childrenGap: 20 }}
-                style={{ width: '100%', marginBottom: '20px' }}
-              >
-                {['Commercial', 'Property', 'Construction', 'Employment', 'Other/Unsure'].map(
-                  (area) => (
-                    <AreaCountCard
-                      key={area}
-                      area={area}
-                      count={enquiriesCountPerArea[area]}
-                      monthlyCounts={monthlyEnquiryCounts.map((m) => ({
-                        month: m.month,
-                        count: getMonthlyCountByArea(m, area),
-                      }))}
-                      icon={getAreaIcon(area)}
-                      color={getAreaColor(area)}
-                      animationDelay={0.2}
-                    />
+                {sortedValidEnquiries[currentSliderEnd]?.Touchpoint_Date
+                  ? format(
+                    parseISO(sortedValidEnquiries[currentSliderEnd].Touchpoint_Date),
+                    'dd MMM yyyy'
                   )
-                )}
-              </Stack>
+                  : ''}
+                {' - '}
+                {sortedValidEnquiries[currentSliderStart]?.Touchpoint_Date
+                  ? format(
+                    parseISO(sortedValidEnquiries[currentSliderStart].Touchpoint_Date),
+                    'dd MMM yyyy'
+                  )
+                  : ''}
+              </Text>
+              <Slider
+                range
+                min={0}
+                max={sortedValidEnquiries.length - 1}
+                value={[
+                  sortedValidEnquiries.length - 1 - currentSliderEnd,
+                  sortedValidEnquiries.length - 1 - currentSliderStart,
+                ]}
+                onChange={(value) => {
+                  if (Array.isArray(value)) {
+                    setCurrentSliderStart(sortedValidEnquiries.length - 1 - value[1]);
+                    setCurrentSliderEnd(sortedValidEnquiries.length - 1 - value[0]);
+                  }
+                }}
+                trackStyle={[{ backgroundColor: colours.highlight, height: 8 }]}
+                handleStyle={[
+                  {
+                    backgroundColor: colours.highlight,
+                    borderColor: colours.highlight,
+                    height: 20,
+                    width: 20,
+                    transform: 'translateX(-50%)',
+                  },
+                  {
+                    backgroundColor: colours.highlight,
+                    borderColor: colours.highlight,
+                    height: 20,
+                    width: 20,
+                    transform: 'translateX(-50%)',
+                  },
+                ]}
+                railStyle={{
+                  backgroundColor: isDarkMode
+                    ? colours.dark.border
+                    : colours.inactiveTrackLight,
+                  height: 8,
+                }}
+                style={{ width: 500, margin: '0 auto' }}
+              />
 
-              <Stack
-                horizontal
-                wrap
-                horizontalAlign="center"
-                verticalAlign="center"     // <-- Make sure to center vertically
-                styles={{ root: { width: '100%' } }}
-              >
-                {enquiriesCountPerMember.map((member, idx) => (
-                  <React.Fragment key={member.initials}>
-                    <Stack
-                      horizontalAlign="center"
-                      styles={{ root: { minWidth: '80px', textAlign: 'center' } }}
-                    >
-                      <Text
-                        variant="xLarge"
-                        styles={{
-                          root: {
-                            fontWeight: 600,
-                            color: colours.highlight,
-                            fontFamily: 'Raleway, sans-serif',
-                          },
-                        }}
-                      >
-                        {member.count}
-                      </Text>
-                      <Text
-                        variant="small"
-                        styles={{
-                          root: {
-                            fontWeight: 400,
-                            marginTop: '4px',
-                            color: isDarkMode ? colours.dark.text : colours.light.text,
-                            fontFamily: 'Raleway, sans-serif',
-                          },
-                        }}
-                      >
-                        {member.initials}
-                      </Text>
-                    </Stack>
-
-                    {/** Replace the vertical bar <div/> with a pipe in a <Text> */}
-                    {idx < enquiriesCountPerMember.length - 1 && (
-                      <Text
-                        styles={{
-                          root: {
-                            margin: '0 10px',
-                            color: isDarkMode ? '#fff' : '#333',
-                            // optional: force the pipe to center if needed
-                            alignSelf: 'center',
-                          },
-                        }}
-                      >
-                        |
-                      </Text>
-                    )}
-                  </React.Fragment>
-                ))}
-              </Stack>
-            </>
-          )}
-          {teamData && enquiriesCountPerMember.length === 0 && (
-            <Text
-              variant="medium"
-              styles={{
-                root: {
-                  color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                  fontFamily: 'Raleway, sans-serif',
-                },
-              }}
+            </Stack>
+          </Stack>
+          <Stack
+            horizontal
+            horizontalAlign="stretch"
+            tokens={{ childrenGap: 20 }}
+            style={{ width: '100%', marginBottom: '20px' }}
             >
-              No results found for any team member.
-            </Text>
-          )}
+            {['Commercial', 'Property', 'Construction', 'Employment', 'Other/Unsure'].map(
+              (area) => (
+                <AreaCountCard
+                  key={area}
+                  area={area}
+                  count={enquiriesCountPerArea[area]}
+                  monthlyCounts={monthlyEnquiryCounts.map((m) => ({
+                    month: m.month,
+                    count: getMonthlyCountByArea(m, area),
+                  }))}
+                  icon={getAreaIcon(area)}
+                  color={getAreaColor(area)}
+                  animationDelay={0.2}
+                />
+              )
+            )}
+          </Stack>
         </Stack>
       )}
 
@@ -1270,25 +1177,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
                 style={{ fontFamily: 'Raleway, sans-serif' }}
               >
-                <defs>
-                  <filter id="barShadow" x="-10%" y="-10%" width="130%" height="130%">
-                    <feOffset dx="0" dy="0" in="SourceAlpha" result="shadowOffsetOuter" />
-                    <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter" result="shadowBlurOuter" />
-                    <feComposite
-                      in="shadowBlurOuter"
-                      in2="SourceAlpha"
-                      operator="out"
-                      result="shadowBlurOuter"
-                    />
-                    <feColorMatrix
-                      in="shadowBlurOuter"
-                      type="matrix"
-                      values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0.3 0"
-                      result="shadowBlurOuter"
-                    />
-                    <feComposite in="shadowBlurOuter" in2="SourceGraphic" operator="over" />
-                  </filter>
-                </defs>
 
                 <CartesianGrid
                   strokeDasharray="3 3"
