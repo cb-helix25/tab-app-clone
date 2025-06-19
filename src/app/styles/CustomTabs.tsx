@@ -110,11 +110,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         <AiFillHome className="icon-filled" size={20} />
       </div>
       <Pivot
-        // Use the selected key as a React `key` to force the Pivot to
-        // re-mount whenever the active tab changes. This clears any
-        // lingering selection state from the previously active tab
-        // when navigating back to Home.
-        key={pivotSelectedKey}
+        // Keep the Pivot mounted so the tab drop-in animation only plays on
+        // first render. The selectedKey still controls which tab is active.
         selectedKey={pivotSelectedKey}
         onLinkClick={handleLinkClick}
         aria-label={ariaLabel || 'Custom Tabs'}

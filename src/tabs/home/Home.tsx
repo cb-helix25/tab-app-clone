@@ -339,8 +339,10 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     alignItems: 'center',
     marginBottom: '16px',
     /* Pull the bar upwards so it appears connected to the
-       top navigation tabs */
-    marginTop: '-24px',
+       top navigation tabs. The offset matches the top
+       padding so the buttons remain fully visible while the
+       bar itself tucks slightly behind the menu. */
+    marginTop: '-10px',
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
   });
@@ -2383,8 +2385,7 @@ const conversionRate = enquiriesMonthToDate
                 style={{
                   '--card-index': index,
                   fontSize: '16px',
-                  padding: '0 16px',
-                  minWidth: '120px',
+                  padding: '0 12px',
                   height: '48px',
                   display: 'flex',
                   alignItems: 'center',
@@ -2409,8 +2410,7 @@ const conversionRate = enquiriesMonthToDate
               style={{
                 '--card-index': index,
                 fontSize: '16px',
-                padding: '0 16px',
-                minWidth: '120px',
+                padding: '0 12px',
                 height: '48px',
                 display: 'flex',
                 alignItems: 'center',
