@@ -289,7 +289,7 @@ const quickActions: QuickLink[] = [
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    padding: (cardStyles.root as React.CSSProperties).padding,
+    padding: '16px',
     minHeight: '100vh',
     boxSizing: 'border-box',
   });
@@ -300,7 +300,7 @@ const headerStyle = mergeStyles({
   alignItems: 'flex-start',
   width: '100%',
   padding: '10px 0',
-  gap: '20px',
+  gap: '16px',
 });
 
 const greetingStyle = (isDarkMode: boolean) =>
@@ -314,7 +314,7 @@ const greetingStyle = (isDarkMode: boolean) =>
 const reviewMessageStyle = (isDarkMode: boolean) =>
   mergeStyles({
     fontWeight: '600',
-    fontSize: '24px',
+    fontSize: '18px',
     color: isDarkMode ? colours.cta : colours.cta,
     display: 'flex',
     alignItems: 'center',
@@ -334,10 +334,10 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     transition: 'background-color 0.3s, box-shadow 0.3s',
     display: 'flex',
     flexDirection: 'row',
-    gap: '10px',
+    gap: '8px',
     overflowX: 'auto',
     alignItems: 'center',
-    marginBottom: '20px',
+    marginBottom: '16px',
   });
 
 const tableAnimationStyle = mergeStyles({
@@ -356,14 +356,14 @@ const versionStyle = mergeStyles({
 const subLabelStyle = (isDarkMode: boolean) =>
   mergeStyles({
     fontWeight: '600',
-    fontSize: '20px',
+    fontSize: '16px',
     color: isDarkMode ? colours.dark.text : colours.light.text,
   });
 
 const favouritesGridStyle = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-  gap: '20px',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+  gap: '16px',
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
 });
 
@@ -371,7 +371,7 @@ const peopleGridStyle = mergeStyles({
   display: 'grid',
   paddingLeft: '80px',
   gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-  gap: '20px',
+  gap: '16px',
   alignItems: 'center',
   width: '100%',
 });
@@ -379,7 +379,7 @@ const peopleGridStyle = mergeStyles({
 const sectionContainerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    padding: '20px 20px 20px 20px',
+    padding: '16px',
     borderRadius: '12px',
     boxShadow: isDarkMode
       ? `0 4px 12px ${colours.dark.border}`
@@ -2202,7 +2202,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return (
       <Icon
         iconName={iconName}
-        styles={{ root: { fontSize: '24px', color: iconColor } }}
+        styles={{ root: { fontSize: '20px', color: iconColor } }}
       />
     );
   };
@@ -2394,21 +2394,21 @@ const conversionRate = enquiriesMonthToDate
       <div
         style={{
           backgroundColor: '#ffffff',
-          padding: '20px',
+          padding: '16px',
           borderRadius: '8px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-          marginBottom: '40px'
+          marginBottom: '24px'
         }}
       >
         {/* Time Metrics Section */}
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: '16px' }}>
             {/* Group for the three time-related metrics */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px',
                 flex: 1
               }}
             >
@@ -2443,8 +2443,8 @@ const conversionRate = enquiriesMonthToDate
               style={{
                 flex: 1,
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '20px'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px'
               }}
             >
               {timeMetrics.slice(3).map((metric, index) => {
@@ -2506,13 +2506,13 @@ const conversionRate = enquiriesMonthToDate
 
         {/* Conversion Metrics Section */}
         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
             {/* Group for the three enquiry-related metrics */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px',
                 flex: 1,
               }}
             >
@@ -2544,8 +2544,8 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px',
                 flex: 1,
               }}
             >
@@ -2597,7 +2597,7 @@ const conversionRate = enquiriesMonthToDate
             backgroundColor: isDarkMode
               ? colours.dark.sectionBackground
               : colours.light.sectionBackground,
-            padding: '20px',
+            padding: '16px',
             borderRadius: '12px',
             boxShadow: isDarkMode
               ? `0 4px 12px ${colours.dark.border}`
@@ -2606,13 +2606,13 @@ const conversionRate = enquiriesMonthToDate
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
+            gap: '16px',
           })}
         >
           <Text
             className={mergeStyles({
               fontWeight: '700',
-              fontSize: '24px',
+              fontSize: '20px',
               color: isDarkMode ? colours.dark.text : colours.light.text,
             })}
           >

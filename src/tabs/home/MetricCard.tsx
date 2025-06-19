@@ -31,8 +31,8 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    padding: '20px',
-    borderRadius: '12px',
+    padding: '12px',
+    borderRadius: '8px',
     boxShadow: isDarkMode
       ? `0 4px 12px ${colours.dark.border}`
       : `0 4px 12px ${colours.light.border}`,
@@ -41,10 +41,10 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '150px',
+    height: '120px',
     flex: '1 1 30%',
-    minWidth: '300px',
-    maxWidth: '500px',
+    minWidth: '250px',
+    maxWidth: '400px',
     cursor: 'pointer',
     border:
       isPositive !== null ? `2px solid ${isPositive ? 'green' : 'red'}` : '2px solid transparent',
@@ -58,33 +58,33 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
   });
 
 const metricTitleStyle = mergeStyles({
-  fontSize: '16px',
+  fontSize: '14px',
   fontWeight: '600',
-  marginBottom: '8px',
+  marginBottom: '6px',
 });
 
 const moneyStyle = mergeStyles({
-  fontSize: '24px',
+  fontSize: '20px',
   fontWeight: '700',
   color: colours.highlight,
 });
 
 const pipeStyle = mergeStyles({
-  fontSize: '24px',
+  fontSize: '20px',
   fontWeight: '500',
   color: colours.greyText,
-  margin: '0 10px',
+  margin: '0 8px',
 });
 
 const hoursStyle = mergeStyles({
-  fontSize: '24px',
+  fontSize: '20px',
   fontWeight: '500',
   color: colours.greyText,
 });
 
 const changeStyle = (isPositive: boolean) =>
   mergeStyles({
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '600',
     color: isPositive ? 'green' : 'red',
     marginTop: '8px',
@@ -111,16 +111,16 @@ const renderDialLayout = (
     >
       <div
         className={mergeStyles({
-          width: 80,
-          height: 80,
-          marginRight: 20,
+          width: 60,
+          height: 60,
+          marginRight: 12,
         })}
       >
         <CircularProgressbar
           value={progress}
           text={`${value !== undefined ? value.toFixed(2) : '0'}${dialSuffix ? dialSuffix : ''}`}
           styles={buildStyles({
-            textSize: '18px',
+            textSize: '16px',
             pathTransitionDuration: 0.5,
             pathColor: colours.highlight,
             textColor: isDarkMode ? colours.dark.text : colours.light.text,
@@ -136,7 +136,7 @@ const renderDialLayout = (
             className={mergeStyles({
               display: 'flex',
               alignItems: 'center',
-              fontSize: '24px',
+              fontSize: '20px',
               fontWeight: '700',
               color: colours.highlight,
             })}
@@ -323,11 +323,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <Text className={metricTitleStyle}>{title}</Text>
             {isMoneyOnly ? (
               typeof money === 'string' ? (
-                <Text className={mergeStyles({ fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
+                  <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
                   £{money}
                 </Text>
               ) : (
-                <Text className={mergeStyles({ fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
+                    <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
                   £{displayMoneyComponent}
                 </Text>
               )
@@ -356,7 +356,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 </span>
               </Text>
             ) : (
-              <Text className={mergeStyles({ fontSize: '24px', fontWeight: '700', color: colours.highlight })}>
+                    <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
                 {count !== undefined ? <CountUp start={0} end={Number(count)} duration={2.5} separator="," /> : ''}
               </Text>
             )}

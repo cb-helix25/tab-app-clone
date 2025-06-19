@@ -16,6 +16,9 @@ import {
   FocusZoneDirection,
   DirectionalHint,
   Separator,
+  Checkbox,
+  ChoiceGroup,
+  IChoiceGroupOption,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -118,6 +121,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .block-label:active {
       color: ${colours.highlight};
+    }
+    .options-toggle {
+      display: none;
+    }
+    [data-inserted]:hover .options-toggle {
+      display: inline-flex;
     }
     .inline-options-callout {
       border-radius: 8px;
@@ -606,11 +615,14 @@ useEffect(() => {
     const editButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
     const editButton = `<span class="edit-toggle" style="${editButtonStyle}" onclick="window.openBlockEdit('${block.title}')">${editIcon}</span>`;
+    const optionButtonStyle = `display:none;float:right;margin-left:4px;width:16px;height:16px;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+    const optionIcon = `<i class="ms-Icon ms-Icon--EditNote" aria-hidden="true" style="pointer-events:none;"></i>`;
+    const optionsButton = `<span class="options-toggle" style="${optionButtonStyle}" onclick="window.openInlineOptions(event, '${block.title}')" title="Choose template">${optionIcon}</span>`;
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${editButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${editButton}${optionsButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -1738,40 +1750,39 @@ function handleScrollToBlock(blockTitle: string) {
           }}
         >
           <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
-            <Stack tokens={{ childrenGap: 4 }}>
-              {inlineOptionsBlock.options.map((o: TemplateOption) => {
-                const isSelected = inlineOptionsBlock.isMultiSelect
-                  ? Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
-                  (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label)
-                  : selectedTemplateOptions[inlineOptionsBlock.title] === o.label;
+            {inlineOptionsBlock.isMultiSelect ? (
+              <Stack tokens={{ childrenGap: 4 }}>
+                {inlineOptionsBlock.options.map((o: TemplateOption) => {
+                  const isSelected = Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
+                    (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label);
 
-                const preview = applyDynamicSubstitutions(
-                  o.previewText.replace(/\n/g, '<br />'),
-                  userData,
-                  enquiry,
-                  amount,
-                  dealPasscode,
-                  dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                  const preview = applyDynamicSubstitutions(
+                    o.previewText.replace(/\n/g, '<br />'),
+                    userData,
+                    enquiry,
+                    amount,
+                    dealPasscode,
+                    dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
                   );
-                return (
-                  <Stack
-                    key={o.label}
-                    tokens={{ childrenGap: 2 }}
-                    onMouseEnter={() => setHoveredOption(o.label)}
-                    onMouseLeave={() => setHoveredOption(null)}
-                  >
-                    <DefaultButton
-                      text={o.label}
-                      onClick={() => {
-                        if (inlineOptionsBlock.isMultiSelect) {
+                  return (
+                    <Stack
+                      key={o.label}
+                      tokens={{ childrenGap: 2 }}
+                      onMouseEnter={() => setHoveredOption(o.label)}
+                      onMouseLeave={() => setHoveredOption(null)}
+                    >
+                      <Checkbox
+                        label={o.label}
+                        checked={isSelected}
+                        onChange={(_e, checked) => {
                           const currentSelections = Array.isArray(
                             selectedTemplateOptions[inlineOptionsBlock.title]
                           )
                             ? (selectedTemplateOptions[inlineOptionsBlock.title] as string[])
                             : [];
-                          const updated = currentSelections.includes(o.label)
-                            ? currentSelections.filter((k) => k !== o.label)
-                            : [...currentSelections, o.label];
+                          const updated = checked
+                            ? [...currentSelections, o.label]
+                            : currentSelections.filter((k) => k !== o.label);
                           handleMultiSelectChange(inlineOptionsBlock.title, updated);
                           let append = false;
                           if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
@@ -1781,33 +1792,74 @@ function handleScrollToBlock(blockTitle: string) {
                             append = !replace;
                           }
                           insertTemplateBlock(inlineOptionsBlock, updated, true, append);
-                        } else {
-                          let append = false;
-                          if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
-                            const replace = window.confirm(
-                              'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                            );
-                            append = !replace;
-                          }
-                          insertTemplateBlock(inlineOptionsBlock, o.label, true, append);
-                          handleSingleSelectChange(inlineOptionsBlock.title, o.label);
-                          closeInlineOptions();
-
-                        }
-                      }}
-                      styles={inlineOptionButtonStyles(isSelected, isDarkMode)}
-                    />
-                    {hoveredOption === o.label && <Separator />}
-                    {(hoveredOption === o.label || isSelected) && (
-                      <span
-                        className="option-preview"
-                        dangerouslySetInnerHTML={{ __html: preview }}
+                        }}
                       />
-                    )}
-                  </Stack>
-                );
-              })}
-            </Stack>
+                      {(hoveredOption === o.label || isSelected) && (
+                        <span
+                          className="option-preview"
+                          dangerouslySetInnerHTML={{ __html: preview }}
+                        />
+                      )}
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <ChoiceGroup
+                selectedKey={selectedTemplateOptions[inlineOptionsBlock.title] as string}
+                onChange={(_e, opt?: IChoiceGroupOption) => {
+                  if (!opt) return;
+                  let append = false;
+                  if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
+                    const replace = window.confirm(
+                      'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
+                    );
+                    append = !replace;
+                  }
+                  insertTemplateBlock(inlineOptionsBlock, opt.key as string, true, append);
+                  handleSingleSelectChange(inlineOptionsBlock.title, opt.key as string);
+                  closeInlineOptions();
+                }}
+                options={
+                  inlineOptionsBlock.options.map((o) => {
+                    const renderLabel = (
+                      option?: IChoiceGroupOption,
+                      defaultRender?: (option?: IChoiceGroupOption) => JSX.Element | null
+                    ) => {
+                      if (!option) return null;
+                      const preview = applyDynamicSubstitutions(
+                        inlineOptionsBlock.options.find((opt) => opt.label === option.key)?.previewText.replace(/\n/g, '<br />') || '',
+                        userData,
+                        enquiry,
+                        amount,
+                        dealPasscode,
+                        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                      );
+                      const isSelected = selectedTemplateOptions[inlineOptionsBlock.title] === option.key;
+                      return (
+                        <Stack
+                          tokens={{ childrenGap: 2 }}
+                          onMouseEnter={() => setHoveredOption(option.key as string)}
+                          onMouseLeave={() => setHoveredOption(null)}
+                        >
+                          {defaultRender ? defaultRender(option) : option.text}
+                          {(hoveredOption === option.key || isSelected) && (
+                            <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
+                          )}
+                        </Stack>
+                      );
+                    };
+
+                    return {
+                      key: o.label,
+                      text: o.label,
+                      onRenderLabel: renderLabel,
+                    } as IChoiceGroupOption;
+                  })
+                }
+                styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
+              />
+            )}  
           </FocusZone>
         </Callout>
       )}
