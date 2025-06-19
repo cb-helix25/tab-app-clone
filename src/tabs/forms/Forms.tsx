@@ -104,7 +104,7 @@ const sectionHeaderStyleCustom = (isDarkMode: boolean) =>
 
 const resourceGridStyle = mergeStyles({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
   gap: '24px',
   paddingTop: '15px',
 });

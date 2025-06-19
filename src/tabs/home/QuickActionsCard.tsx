@@ -33,7 +33,8 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       color: isDarkMode ? colours.dark.text : colours.light.text,
-      padding: '7px 12px',
+      // Match the tab menu size so the actions don't look more important
+      padding: '0 12px',
       borderRadius: componentTokens.card.base.borderRadius,
       display: 'flex',
       alignItems: 'center',

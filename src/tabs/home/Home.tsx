@@ -330,7 +330,8 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    padding: '10px',
+    // Extra top padding allows the bar to slide out from behind the menu
+    padding: '24px 10px 10px',
     transition: 'background-color 0.3s, box-shadow 0.3s',
     display: 'flex',
     flexDirection: 'row',
@@ -342,7 +343,8 @@ const quickLinksStyle = (isDarkMode: boolean) =>
        top navigation tabs. The offset matches the top
        padding so the buttons remain fully visible while the
        bar itself tucks slightly behind the menu. */
-    marginTop: '-10px',
+    // Pull upward so the background appears from under the menu
+    marginTop: '-24px',
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
   });
