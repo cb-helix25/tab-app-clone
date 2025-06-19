@@ -1,7 +1,13 @@
 // src/app/styles/CustomTabs.tsx
 
 import React from 'react';
-import { Pivot, PivotItem, IPivotStyles, initializeIcons } from '@fluentui/react';
+import {
+  Pivot,
+  PivotItem,
+  IPivotStyles,
+  initializeIcons,
+} from '@fluentui/react';
+import { AiOutlineHome, AiFillHome } from 'react-icons/ai';
 import { colours } from './colours';
 import './CustomTabs.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -17,22 +23,14 @@ interface CustomTabsProps {
   ) => void;
   tabs: Tab[];
   ariaLabel?: string;
+  onHomeClick: () => void;
 }
 
 const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
   root: {
-    backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
     display: 'flex',
     alignItems: 'center',
-    padding: '0 24px',
     height: '48px',
-    borderBottom: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
-    position: 'sticky',
-    top: 0,
-    zIndex: 1000,
-    transition: 'background-color 0.3s',
   },
   link: {
     fontSize: '16px',
@@ -41,6 +39,7 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
     backgroundColor: 'transparent',
     padding: '0 12px',
     lineHeight: '48px',
+    position: 'relative',
     transition: 'color 0.2s',
     selectors: {
       ':hover': {
@@ -51,7 +50,6 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
   },
   linkIsSelected: {
     color: colours.highlight,
-    borderBottom: `2px solid ${colours.highlight}`,
   },
 });
 
@@ -60,6 +58,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   onLinkClick,
   tabs,
   ariaLabel,
+  onHomeClick,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -76,27 +75,55 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   };
 
   return (
-    <Pivot
-      selectedKey={selectedKey}
-      onLinkClick={handleLinkClick}
-      aria-label={ariaLabel || 'Custom Tabs'}
-      styles={customPivotStyles(isDarkMode)}
-      className="customPivot"
+    <div
+      style={{
+        backgroundColor: isDarkMode
+          ? colours.dark.sectionBackground
+          : colours.light.sectionBackground,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 24px',
+        height: '48px',
+        borderBottom: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
+        transition: 'background-color 0.3s',
+      }}
     >
-      {tabs.map((tab, index) => (
-        <PivotItem
-          itemKey={tab.key}
-          key={tab.key}
-          headerText={tab.text}
-          itemIcon={tab.key === 'reporting' ? 'Lock' : undefined}
-          headerButtonProps={{
-            className: tab.disabled ? 'disabledTab' : '',
-            style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
-            'aria-disabled': tab.disabled ? 'true' : undefined,
-          }}
-        />
-      ))}
-    </Pivot>
+      <div
+        className={`home-icon icon-hover ${selectedKey === 'home' ? 'active' : ''}`}
+        onClick={onHomeClick}
+        role="button"
+        tabIndex={0}
+        aria-label="Home"
+        style={{ color: isDarkMode ? colours.dark.text : colours.light.text }}
+      >
+        <AiOutlineHome className="icon-outline" size={20} />
+        <AiFillHome className="icon-filled" size={20} />
+      </div>
+      <Pivot
+        selectedKey={selectedKey}
+        onLinkClick={handleLinkClick}
+        aria-label={ariaLabel || 'Custom Tabs'}
+        styles={customPivotStyles(isDarkMode)}
+        className="customPivot"
+      >
+        {tabs.map((tab, index) => (
+          <PivotItem
+            itemKey={tab.key}
+            key={tab.key}
+            headerText={tab.text}
+            itemIcon={tab.key === 'reporting' ? 'Lock' : undefined}
+            headerButtonProps={{
+              className: tab.disabled ? 'disabledTab' : '',
+              style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
+              'aria-disabled': tab.disabled ? 'true' : undefined,
+            }}
+          />
+        ))}
+      </Pivot>
+    </div>
   );
 };
 

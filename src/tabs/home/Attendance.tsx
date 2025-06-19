@@ -74,21 +74,23 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
       style={{
         marginBottom: '20px',
         boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
-        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
+        borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
         overflow: 'hidden',
       }}
     >
       <div
         onClick={toggleCollapse}
         style={{
-          backgroundColor: collapsed
-            ? componentTokens.stepHeader.base.backgroundColor
-            : componentTokens.stepHeader.active.backgroundColor,
-          color: collapsed
-            ? componentTokens.stepHeader.base.textColor
-            : componentTokens.stepHeader.active.textColor,
-          padding: '8px 12px',
-          minHeight: '36px',
+          backgroundColor: colours.light.sectionBackground,
+          color: colours.darkBlue,
+          border: `1px solid ${colours.light.border}`,
+          padding: '6px 10px',
+          minHeight: '30px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
@@ -109,18 +111,23 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
           }}
         />
       </div>
-      {!collapsed && (
-        <div
-          style={{
-            padding: componentTokens.summaryPane.base.padding,
-            backgroundColor: colours.light.sectionBackground,
-            boxShadow: componentTokens.summaryPane.base.boxShadow,
-            borderRadius: componentTokens.summaryPane.base.borderRadius,
-          }}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        style={{
+          padding: componentTokens.summaryPane.base.padding,
+          backgroundColor: colours.light.sectionBackground,
+          boxShadow: componentTokens.summaryPane.base.boxShadow,
+          borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          maxHeight: collapsed ? 0 : '2000px',
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.3s ease',
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };
@@ -151,6 +158,11 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const userInitials = userData?.[0]?.Initials || 'LZ';
+
+  const useLocalData =
+    process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
+    window.location.hostname === 'localhost';
+
 
   const combinedLeaveRecords = useMemo(() => [...annualLeaveRecords, ...futureLeaveRecords], [
     annualLeaveRecords,
@@ -308,6 +320,26 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
       return;
     }
 
+    if (useLocalData) {
+      const newRecords = payloads.map((p) => ({
+        Attendance_ID: 0,
+        Entry_ID: 0,
+        First_Name: p.firstName,
+        Initials: userInitials,
+        Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
+        Week_Start: p.weekStart,
+        Week_End: new Date(new Date(p.weekStart).setDate(new Date(p.weekStart).getDate() + 6)).toISOString().split('T')[0],
+        ISO_Week: getISOWeek(new Date(p.weekStart)),
+        Attendance_Days: p.attendanceDays,
+        Confirmed_At: new Date().toISOString(),
+      }));
+      if (onAttendanceUpdated) {
+        onAttendanceUpdated(newRecords);
+      }
+      setIsSaving(false);
+      return;
+    }
+  
     try {
       const response = await fetch(
         `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
@@ -556,12 +588,12 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
 
   const orderedWeekDays = useMemo(() => {
     const days = [...weekDays];
-    if (selectedWeek === 'current') {
+    if (selectedWeek === 'current' && !isTableExpanded) {
       const currentDay = days.splice(todayIndex, 1)[0];
       return [currentDay, ...days.slice(0, todayIndex), ...days.slice(todayIndex)];
     }
     return days;
-  }, [todayIndex, selectedWeek]);
+  }, [todayIndex, selectedWeek, isTableExpanded]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLTableElement>) => {
     if (tableRef.current && tableContainerRef.current) {

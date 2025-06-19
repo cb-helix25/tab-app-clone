@@ -41,3 +41,11 @@ body {
 .icon-hover:hover .icon-filled {
   display: inline-flex;
 }
+
+.icon-hover.active .icon-outline {
+  display: none;
+}
+
+.icon-hover.active .icon-filled {
+  display: inline-flex;
+}

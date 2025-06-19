@@ -47,27 +47,29 @@ const CollapsibleSection: React.FC<{
       style={{
         marginBottom: '20px',
         boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
-        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
+        borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
         overflow: 'hidden',
       }}
     >
       <div
         onClick={toggleCollapse}
         style={{
-          backgroundColor: collapsed
-            ? componentTokens.stepHeader.base.backgroundColor
-            : componentTokens.stepHeader.active.backgroundColor,
-          color: collapsed
-            ? componentTokens.stepHeader.base.textColor
-            : componentTokens.stepHeader.active.textColor,
-          padding: '8px 12px',
-          minHeight: '36px',
+          backgroundColor: colours.light.sectionBackground,
+          color: colours.darkBlue,
+          border: `1px solid ${colours.light.border}`,
+          padding: '6px 10px',
+          minHeight: '30px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '16px',
-          borderRadius: componentTokens.stepHeader.base.borderRadius,
+          fontSize: '14px',
+          borderRadius: 0,
         }}
       >
         <span style={{ fontWeight: 600 }}>{title}</span>
@@ -82,20 +84,25 @@ const CollapsibleSection: React.FC<{
           }}
         />
       </div>
-      {!collapsed && (
-        <div
-          style={{
-            padding: componentTokens.summaryPane.base.padding,
-            backgroundColor: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            boxShadow: componentTokens.summaryPane.base.boxShadow,
-            borderRadius: componentTokens.summaryPane.base.borderRadius,
-          }}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        style={{
+          padding: componentTokens.summaryPane.base.padding,
+          backgroundColor: isDarkMode
+            ? colours.dark.sectionBackground
+            : colours.light.sectionBackground,
+          boxShadow: componentTokens.summaryPane.base.boxShadow,
+          borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          maxHeight: collapsed ? 0 : '2000px',
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.3s ease',
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };

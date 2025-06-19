@@ -92,7 +92,6 @@ const App: React.FC<AppProps> = ({
 
   // Tabs visible to all users
   const baseTabs: Tab[] = [
-    { key: 'home', text: 'Home' },
     { key: 'forms', text: 'Forms' },
     { key: 'resources', text: 'Resources' },
     { key: 'enquiries', text: 'Enquiries' },
@@ -221,7 +220,8 @@ const App: React.FC<AppProps> = ({
       >
         <CustomTabs
           selectedKey={activeTab}
-          onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'home')}
+          onLinkClick={(item) => setActiveTab(item?.props.itemKey || activeTab)}
+          onHomeClick={() => setActiveTab('home')}
           tabs={tabs}
           ariaLabel="Main Navigation Tabs"
         />

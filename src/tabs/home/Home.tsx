@@ -198,7 +198,12 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       style={{
         marginBottom: '20px',
         boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
-        borderRadius: (cardStyles.root as React.CSSProperties).borderRadius,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
+        borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+          .borderRadius,
         overflow: 'hidden',
       }}
     >
@@ -215,7 +220,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '14px',
-          borderRadius: componentTokens.stepHeader.base.borderRadius,
+          borderRadius: 0,
         }}
       >
         <span style={{ fontWeight: 600 }}>
@@ -237,18 +242,23 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           }}
         />
       </div>
-      {!collapsed && (
-        <div
-          style={{
-            padding: componentTokens.summaryPane.base.padding,
-            backgroundColor: colours.light.sectionBackground,
-            boxShadow: componentTokens.summaryPane.base.boxShadow,
-            borderRadius: componentTokens.summaryPane.base.borderRadius,
-          }}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        style={{
+          padding: componentTokens.summaryPane.base.padding,
+          backgroundColor: colours.light.sectionBackground,
+          boxShadow: componentTokens.summaryPane.base.boxShadow,
+          borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
+            .borderRadius,
+          maxHeight: collapsed ? 0 : '2000px',
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease, opacity 0.3s ease',
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };

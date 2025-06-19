@@ -27,6 +27,7 @@
 .customPivot .ms-Pivot-link {
   opacity: 0;
   animation: dropIn 0.3s ease forwards;
+  position: relative;
 }
 
 /* Apply staggered animation delays to each link */
@@ -56,6 +57,44 @@
 
 .customPivot .ms-Pivot-link:nth-child(7) {
   animation-delay: 0.6s;
+}
+
+.home-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 48px;
+  line-height: 48px;
+  cursor: pointer;
+  position: relative;
+}
+
+.home-icon:hover,
+.home-icon.active {
+  color: var(--helix-highlight, #3690CE);
+}
+
+/* Animated underline for pivot links */
+.customPivot .ms-Pivot-link::after,
+.home-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background-color: var(--helix-highlight, #3690CE);
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  transition: transform 0.15s ease-out;
+}
+
+.customPivot .ms-Pivot-link:hover::after,
+.customPivot .ms-Pivot-link[aria-selected='true']::after,
+.home-icon:hover::after,
+.home-icon.active::after {
+  transform: translateX(-50%) scaleX(1);
 }
 
 /* If you have more than 6 tabs, just add more nth-child rules 
