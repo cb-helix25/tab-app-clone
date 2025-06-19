@@ -62,6 +62,13 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
 
+  // If the selected key does not match any pivot item, unset it so no tab is
+  // highlighted. This prevents the first tab from appearing active when the
+  // Home icon is selected.
+  const pivotSelectedKey = tabs.some((tab) => tab.key === selectedKey)
+    ? selectedKey
+    : undefined;
+
   const handleLinkClick = (
     item?: PivotItem,
     ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
@@ -103,7 +110,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         <AiFillHome className="icon-filled" size={20} />
       </div>
       <Pivot
-        selectedKey={selectedKey}
+        selectedKey={pivotSelectedKey}
         onLinkClick={handleLinkClick}
         aria-label={ariaLabel || 'Custom Tabs'}
         styles={customPivotStyles(isDarkMode)}

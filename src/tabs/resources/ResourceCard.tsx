@@ -4,11 +4,11 @@ import React from 'react';
 import {
   Text,
   Icon,
-  IconButton,
   TooltipHost,
   IButtonStyles,
   DefaultButton,
 } from '@fluentui/react';
+import ActionIconButton from '../../components/ActionIconButton';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
 import { Resource } from './Resources';
@@ -253,8 +253,9 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
               content={`Copy link for ${resource.title}`}
               id={`tooltip-copy-${resource.title}`}
             >
-              <IconButton
-                iconProps={{ iconName: 'Copy' }}
+              <ActionIconButton
+                outlineIcon="Copy"
+                filledIcon="Copy"
                 title="Copy Link"
                 ariaLabel="Copy Link"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -269,10 +270,9 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
               content={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               id={`tooltip-fav-${resource.title}`}
             >
-              <IconButton
-                iconProps={{
-                  iconName: isFavorite ? 'FavoriteStarFill' : 'FavoriteStar',
-                }}
+              <ActionIconButton
+                outlineIcon={isFavorite ? 'FavoriteStarFill' : 'FavoriteStar'}
+                filledIcon="FavoriteStarFill"
                 title="Toggle Favorite"
                 ariaLabel="Toggle Favorite"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -287,8 +287,9 @@ const ResourceCard: React.FC<ResourceCardProps> = React.memo(
               content={`Go to ${resource.title}`}
               id={`tooltip-go-${resource.title}`}
             >
-              <IconButton
-                iconProps={{ iconName: 'ChevronRight' }}
+              <ActionIconButton
+                outlineIcon="ChevronRight"
+                filledIcon="ChevronRight"
                 title="Go To"
                 ariaLabel="Go To"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {

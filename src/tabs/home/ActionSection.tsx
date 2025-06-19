@@ -38,9 +38,13 @@ const CollapsibleSection: React.FC<{
   children: React.ReactNode;
   isDarkMode: boolean;
   defaultCollapsed?: boolean;
-}> = ({ title, children, isDarkMode, defaultCollapsed = false }) => {
+  labels?: string[];
+}> = ({ title, children, isDarkMode, defaultCollapsed = false, labels = [] }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const toggleCollapse = () => setCollapsed(!collapsed);
+  const trayHeight = 32;
+  const labelString = labels.join(' | ');
+
 
   return (
     <div
@@ -86,7 +90,7 @@ const CollapsibleSection: React.FC<{
       </div>
       <div
         style={{
-          padding: componentTokens.summaryPane.base.padding,
+          padding: collapsed ? '6px 10px' : componentTokens.summaryPane.base.padding,
           backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
@@ -95,13 +99,16 @@ const CollapsibleSection: React.FC<{
             .borderRadius,
           borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
             .borderRadius,
-          maxHeight: collapsed ? 0 : '2000px',
-          opacity: collapsed ? 0 : 1,
+          maxHeight: collapsed ? trayHeight : '2000px',
           overflow: 'hidden',
           transition: 'max-height 0.3s ease, opacity 0.3s ease',
         }}
       >
-        {children}
+        {collapsed ? (
+          <span style={{ fontSize: '12px', fontWeight: 400 }}>{labelString}</span>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
@@ -165,9 +172,18 @@ const ActionSection: React.FC<ActionSectionProps> = ({
       return 'Due today';
     }
   };
+  const outerLabels = [
+    `${filteredTransactions.length} transfer${filteredTransactions.length === 1 ? '' : 's'}`,
+    `${outstandingBalances.length} balance${outstandingBalances.length === 1 ? '' : 's'}`,
+  ];
 
   return (
-    <CollapsibleSection title="Transfers and Outstanding Balances" isDarkMode={isDarkMode} defaultCollapsed={defaultCollapsed}>
+    <CollapsibleSection
+      title="Transfers and Outstanding Balances"
+      isDarkMode={isDarkMode}
+      defaultCollapsed={defaultCollapsed}
+      labels={outerLabels}
+    >
       {/* ---------- Transfers ---------- */}
       <Text variant="large" styles={{ root: { fontWeight: 600, marginBottom: '10px' } }}>
         Transfers
@@ -216,7 +232,12 @@ const ActionSection: React.FC<ActionSectionProps> = ({
       <Separator styles={{ root: { marginTop: 20, marginBottom: 20 } }} />
 
       {/* ---------- Outstanding Balances Sub-Section ---------- */}
-      <CollapsibleSection title="Outstanding Balances" isDarkMode={isDarkMode} defaultCollapsed={true}>
+      <CollapsibleSection
+        title="Outstanding Balances"
+        isDarkMode={isDarkMode}
+        defaultCollapsed={true}
+        labels={[`${outstandingBalances.length} record${outstandingBalances.length === 1 ? '' : 's'}`]}
+      >
         {outstandingBalances.length === 0 ? (
           <div className={noActionsClass}>
             <Icon iconName="CompletedSolid" styles={{ root: { fontSize: '16px', color: colours.green } }} />

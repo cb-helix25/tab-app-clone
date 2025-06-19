@@ -2,10 +2,10 @@ import React from 'react';
 import {
   Text,
   Icon,
-  IconButton,
   TooltipHost,
   Stack,
 } from '@fluentui/react';
+import ActionIconButton from '../../components/ActionIconButton';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -210,8 +210,9 @@ const FormCard: React.FC<FormCardProps> = React.memo(
               content={`Copy link for ${link.title}`}
               id={`tooltip-copy-${link.title}`}
             >
-              <IconButton
-                iconProps={{ iconName: 'Copy' }}
+              <ActionIconButton
+                outlineIcon="Copy"
+                filledIcon="Copy"
                 title="Copy Link"
                 ariaLabel="Copy Link"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -228,10 +229,9 @@ const FormCard: React.FC<FormCardProps> = React.memo(
               }
               id={`tooltip-fav-${link.title}`}
             >
-              <IconButton
-                iconProps={{
-                  iconName: isFavorite ? 'FavoriteStarFill' : 'FavoriteStar',
-                }}
+              <ActionIconButton
+                outlineIcon={isFavorite ? 'FavoriteStarFill' : 'FavoriteStar'}
+                filledIcon="FavoriteStarFill"
                 title="Toggle Favourite"
                 ariaLabel="Toggle Favourite"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -246,8 +246,9 @@ const FormCard: React.FC<FormCardProps> = React.memo(
               content={`Go to ${link.title}`}
               id={`tooltip-go-${link.title}`}
             >
-              <IconButton
-                iconProps={{ iconName: 'ChevronRight' }}
+              <ActionIconButton
+                outlineIcon="ChevronRight"
+                filledIcon="ChevronRight"
                 title="Go To"
                 ariaLabel="Go To"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {

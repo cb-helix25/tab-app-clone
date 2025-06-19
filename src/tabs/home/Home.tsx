@@ -194,6 +194,9 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
   // Build the metric labels string (only used when collapsed)
   const metricLabels = metrics.length > 0 ? metrics.map(m => m.title).join(' | ') : '';
 
+  // Height of the tray that remains visible when collapsed
+  const trayHeight = 32;
+
   return (
     <div
       style={{
@@ -224,14 +227,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           borderRadius: 0,
         }}
       >
-        <span style={{ fontWeight: 600 }}>
-          {title}
-          {collapsed && metricLabels && (
-            <span style={{ marginLeft: '10px', fontWeight: 400 }}>
-              {metricLabels}
-            </span>
-          )}
-        </span>
+        <span style={{ fontWeight: 600 }}>{title}</span>
         <Icon
           iconName="ChevronDown"
           styles={{
@@ -245,20 +241,23 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       </div>
       <div
         style={{
-          padding: componentTokens.summaryPane.base.padding,
+          padding: collapsed ? '6px 10px' : componentTokens.summaryPane.base.padding,
           backgroundColor: colours.light.sectionBackground,
           boxShadow: componentTokens.summaryPane.base.boxShadow,
           borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
             .borderRadius,
           borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
             .borderRadius,
-          maxHeight: collapsed ? 0 : '2000px',
-          opacity: collapsed ? 0 : 1,
+          maxHeight: collapsed ? trayHeight : '2000px',
           overflow: 'hidden',
           transition: 'max-height 0.3s ease, opacity 0.3s ease',
         }}
       >
-        {children}
+        {collapsed ? (
+          <span style={{ fontSize: '12px', fontWeight: 400 }}>{metricLabels}</span>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
