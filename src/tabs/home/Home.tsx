@@ -340,6 +340,11 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     overflowX: 'auto',
     alignItems: 'center',
     marginBottom: '16px',
+    /* Pull the bar upwards so it appears connected to the
+       top navigation tabs */
+    marginTop: '-24px',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   });
 
 const tableAnimationStyle = mergeStyles({
