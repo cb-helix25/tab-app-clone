@@ -26,19 +26,26 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
 
+  const ACTION_BAR_HEIGHT = 48;
+
   const quickLinksStyle = (dark: boolean) =>
     mergeStyles({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: '10px',
+      padding: '0 10px',
+      transition: 'background-color 0.3s, box-shadow 0.3s',
       display: 'flex',
       flexDirection: 'row',
       gap: '8px',
       overflowX: 'auto',
       alignItems: 'center',
       marginBottom: '16px',
-      transition: 'background-color 0.3s, box-shadow 0.3s',
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT,
+      zIndex: 999,
+      borderTopLeftRadius: 0,
+      borderTopRightRadius: 0,
     });
 
   const useLocalData =
@@ -78,8 +85,9 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [userInitials, useLocalData]);
 
   const containerStyle = mergeStyles({
-    width: '100%',
-    padding: '20px',
+    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    padding: '16px',
+    minHeight: '100vh',
     boxSizing: 'border-box',
     color: isDarkMode ? colours.light.text : colours.dark.text,
   });
