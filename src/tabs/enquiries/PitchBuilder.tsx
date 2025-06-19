@@ -89,15 +89,36 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
   const style = document.createElement('style');
   style.id = 'block-label-style';
   style.innerHTML = `
-    .block-label {
-      display: block;
-      position: relative;
+    .block-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       font-size: 10px;
       color: ${colours.greyText};
       margin-top: 8px;
-      text-align: right;
+    }
+    .block-controls .actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .block-controls .icon-btn {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: ${colours.grey};
+      color: ${colours.greyText};
       cursor: pointer;
-      transition: color 0.2s;
+      font-size: 10px;
+      user-select: none;
+    }
+    .block-label {
+      flex-grow: 1;
+      position: relative;
+      cursor: pointer;
     }
     .block-label:hover {
       text-decoration: underline;
@@ -106,7 +127,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-label:hover::after {
       content: attr(data-selected);
       position: absolute;
-      right: 0;
+      left: 0;
       top: 100%;
       background: ${colours.grey};
       color: ${colours.greyText};
@@ -119,9 +140,6 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       animation: fadeInBlockLabel 0.2s forwards;
       pointer-events: none;
       z-index: 10;
-    }
-    .block-label:active {
-      color: ${colours.highlight};
     }
     .option-bubble {
       display: inline-block;
@@ -136,12 +154,6 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .option-bubble:hover {
       transform: scale(1.05);
       background: ${colours.blue};
-    }
-    .options-toggle {
-      display: none;
-    }
-    [data-inserted]:hover .options-toggle {
-      display: inline-flex;
     }
     .inline-options-callout {
       border-radius: 8px;
@@ -333,10 +345,6 @@ if (span) {
   });
 }
 
-  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
-  const [selectedBlockTarget, setSelectedBlockTarget] =
-    useState<HTMLElement | null>(null);
-
   function openInlineOptions(e: MouseEvent, blockTitle: string) {
     e.stopPropagation();
     e.preventDefault();
@@ -352,100 +360,15 @@ if (span) {
     setInlineOptionsTarget(null);
   }
 
-  function clearSelectedBlock() {
-    if (selectedBlockTarget) {
-      selectedBlockTarget.classList.remove('selected-block');
-    }
-    if (selectedBlock) {
-      highlightBlock(selectedBlock, false);
-    }
-    setSelectedBlock(null);
-    setSelectedBlockTarget(null);
-  }
-
-  function selectBlock(e: MouseEvent, blockTitle: string) {
-    e.stopPropagation();
-    const target = e.currentTarget as HTMLElement;
-    if (selectedBlock === blockTitle) {
-      clearSelectedBlock();
-      return;
-    }
-    clearSelectedBlock();
-    setSelectedBlock(blockTitle);
-    setSelectedBlockTarget(target);
-    target.classList.add('selected-block');
-    highlightBlock(blockTitle, true, 'editor');
-  }
-
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
   (window as any).openInlineOptions = openInlineOptions;
-  (window as any).selectBlock = selectBlock;
-  (window as any).clearSelectedBlock = clearSelectedBlock;
-  (window as any).selectBlock = selectBlock;
-  (window as any).clearSelectedBlock = clearSelectedBlock;
-}, [toggleBlockLock, highlightBlock, openInlineOptions]);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (
-        selectedBlockTarget &&
-        !selectedBlockTarget.contains(e.target as Node) &&
-        !(e.target as HTMLElement).closest('.ms-Callout')
-      ) {
-        clearSelectedBlock();
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (!selectedBlock) return;
-      if (e.key === 'Escape') {
-        clearSelectedBlock();
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        const block = templateBlocks.find((b) => b.title === selectedBlock);
-        if (block) {
-          handleClearBlock(block);
-        }
-        clearSelectedBlock();
-      }
-    };
-    document.addEventListener('click', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('click', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [selectedBlock, selectedBlockTarget, templateBlocks]);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (
-        selectedBlockTarget &&
-        !selectedBlockTarget.contains(e.target as Node) &&
-        !(e.target as HTMLElement).closest('.ms-Callout')
-      ) {
-        clearSelectedBlock();
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (!selectedBlock) return;
-      if (e.key === 'Escape') {
-        clearSelectedBlock();
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        const block = templateBlocks.find((b) => b.title === selectedBlock);
-        if (block) {
-          handleClearBlock(block);
-        }
-        clearSelectedBlock();
-      }
-    };
-    document.addEventListener('click', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('click', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [selectedBlock, selectedBlockTarget, templateBlocks]);
+  (window as any).removeBlock = (title: string) => {
+    const block = templateBlocks.find((b) => b.title === title);
+    if (block) handleClearBlock(block);
+  };
+}, [toggleBlockLock, highlightBlock, openInlineOptions, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -693,34 +616,24 @@ useEffect(() => {
     } else if (typeof selectedOption === 'string') {
       selectedLabel = selectedOption;
     }
-    const labelHTML = `<span
-      class="block-label"
-      data-label-title="${block.title}"
-      data-selected="${selectedLabel}"
-      title="${selectedLabel}"
-      onclick="window.openInlineOptions(event, '${block.title}')"
-      >
-      ${block.title}
-    </span>`;
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
-    const lockButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+    const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const lockButton = `<span class="lock-toggle" style="${lockButtonStyle}" onclick="window.toggleBlockLock('${block.title}')">${lockIcon}</span>`;    // Add inline style to <p> tags to remove bottom margin
-    const editButtonStyle = `float:right;margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const editButton = `<span class="edit-toggle" style="${editButtonStyle}" onclick="window.openBlockEdit('${block.title}')">${editIcon}</span>`;
-    const optionButtonStyle = `display:none;float:right;margin-left:4px;width:16px;height:16px;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
-    const optionIcon = `<i class="ms-Icon ms-Icon--EditNote" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const optionsButton = `<span class="options-toggle" style="${optionButtonStyle}" onclick="window.openInlineOptions(event, '${block.title}')" title="Choose template">${optionIcon}</span>`;
+    const deleteIcon = `<i class="ms-Icon ms-Icon--Delete" aria-hidden="true" style="pointer-events:none;"></i>`;
+    const lockButton = `<span class="icon-btn lock-toggle" style="${iconStyle}" onclick="window.toggleBlockLock('${block.title}')" title="Toggle Lock">${lockIcon}</span>`;
+    const editButton = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openBlockEdit('${block.title}')" title="Edit Block">${editIcon}</span>`;
+    const removeButton = `<span class="icon-btn remove-toggle" style="${iconStyle}" onclick="window.removeBlock('${block.title}')" title="Remove Block">${deleteIcon}</span>`;
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${lockButton}${editButton}${optionsButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${editButton}${lockButton}${removeButton}</span></div>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
-    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onclick="window.selectBlock(event, '${block.title}')" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
+    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
     setBody((prevBody) => {
       const existingBlockRegex = new RegExp(
@@ -768,8 +681,8 @@ useEffect(() => {
     setOriginalBlockContent((prev) => ({
       ...prev,
       [block.title]: append
-        ? (prev[block.title] || '') + `${styledInnerHTML}${labelHTML}`
-        : `${styledInnerHTML}${labelHTML}`,
+        ? (prev[block.title] || '') + `${styledInnerHTML}${controlsHTML}`
+        : `${styledInnerHTML}${controlsHTML}`,
     }));
     setEditedBlocks((prev) => ({ ...prev, [block.title]: false }));
   
@@ -1343,9 +1256,6 @@ function handleInput() {
       });
       // Remove highlight right away so the user sees immediate feedback
       highlightBlock(block.title, false);
-      if (selectedBlock === block.title) {
-        clearSelectedBlock();
-      }
       }
   }
 
@@ -1369,7 +1279,6 @@ function handleInput() {
     setEditedBlocks({});
     setOriginalBlockContent({});
     templateBlocks.forEach((block) => highlightBlock(block.title, false));
-    clearSelectedBlock();
   }
 
 function reorderTemplateBlocks(start: number, end: number) {
@@ -1962,54 +1871,6 @@ function handleScrollToBlock(blockTitle: string) {
           </FocusZone>
         </Callout>
       )}
-
-      {selectedBlock && selectedBlockTarget && (
-        <Callout
-          target={selectedBlockTarget}
-          onDismiss={clearSelectedBlock}
-          setInitialFocus
-          directionalHint={DirectionalHint.bottomCenter}
-          styles={{ root: { padding: 8 } }}
-        >
-          <Stack horizontal tokens={{ childrenGap: 8 }}>
-            <IconButton
-              iconProps={{ iconName: 'Edit' }}
-              title="Edit Block"
-              ariaLabel="Edit Block"
-              onClick={() => {
-                (window as any).openBlockEdit(selectedBlock);
-                clearSelectedBlock();
-              }}
-            />
-            <IconButton
-              iconProps={{ iconName: 'EditNote' }}
-              title="Choose Template"
-              ariaLabel="Choose Template"
-              onClick={(e) => {
-                openInlineOptions(e as any, selectedBlock);
-                clearSelectedBlock();
-              }}
-            />
-            <IconButton
-              iconProps={{ iconName: lockedBlocks[selectedBlock] ? 'Unlock' : 'Lock' }}
-              title={lockedBlocks[selectedBlock] ? 'Unlock' : 'Lock'}
-              ariaLabel="Toggle Lock"
-              onClick={() => toggleBlockLock(selectedBlock)}
-            />
-            <IconButton
-              iconProps={{ iconName: 'Delete' }}
-              title="Remove Block"
-              ariaLabel="Remove Block"
-              onClick={() => {
-                const block = templateBlocks.find((b) => b.title === selectedBlock);
-                if (block) handleClearBlock(block);
-                clearSelectedBlock();
-              }}
-            />
-          </Stack>
-        </Callout>
-      )}
-
 
       {/* Row: Preview and Reset Buttons */}
       <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>

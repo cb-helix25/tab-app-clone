@@ -90,8 +90,6 @@ const getGroupColor = (group: string): string => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Extend the props to include an onNewMatter callback
 interface MattersCombinedMenuProps {
   activeGroupedArea: string | null;
   setActiveGroupedArea: React.Dispatch<React.SetStateAction<string | null>>;
@@ -109,7 +107,6 @@ interface MattersCombinedMenuProps {
   feeEarnerType: "Originating" | "Responsible" | null;
   setFeeEarnerType: React.Dispatch<React.SetStateAction<"Originating" | "Responsible" | null>>;
   teamData?: TeamData[] | null;
-  onNewMatter: () => void; // <-- NEW prop for handling "New Matter" actions
 }
 
 const containerStyle = (isDarkMode: boolean) =>
@@ -303,7 +300,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
   feeEarnerType,
   setFeeEarnerType,
   teamData,
-  onNewMatter, // <-- Destructure the new prop
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -359,7 +355,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
     <div className={containerStyle(isDarkMode)}>
       {/* Row 1: Main menu with two columns */}
       <div className={rowStyle} style={{ justifyContent: 'space-between' }}>
-        {/* Left column: Grouped Area Tabs plus New Matter button */}
+        {/* Left column: Grouped Area Tabs */}
         <div className={leftColumnStyle}>
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
             {groupedAreaTabs.map((g) => {
@@ -393,54 +389,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                 </div>
               );
             })}
-
-            {/* NEW: "New Matter" Button after the Miscellaneous tab */}
-            <div
-              key="new-matter"
-              className={mergeStyles({
-                display: 'flex',
-                alignItems: 'center',
-                padding: '8px 12px',
-                marginRight: '12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'background-color 0.3s, border 0.3s',
-                border: '2px solid transparent',
-                fontFamily: 'Raleway, sans-serif',
-                selectors: {
-                  ':hover': {
-                    backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
-                  },
-                },
-              })}
-              onClick={onNewMatter}
-              aria-label="New Matter"
-            >
-              <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
-                <Icon
-                  iconName="Add"
-                  styles={{
-                    root: {
-                      fontSize: '20px',
-                      color: colours.highlight,
-                      marginRight: '8px',
-                    },
-                  }}
-                />
-                <Text
-                  variant="mediumPlus"
-                  styles={{
-                    root: {
-                      fontWeight: 600,
-                      color: isDarkMode ? '#cccccc' : '#333333',
-                      fontFamily: 'Raleway, sans-serif',
-                    },
-                  }}
-                >
-                  New Matter (WIP)
-                </Text>
-              </Stack>
-            </div>
           </Stack>
         </div>
 

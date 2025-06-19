@@ -33,7 +33,6 @@ import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
-import NewMatters from './NewMatters';
 import MatterTransactions from './MatterTransactions';
 import Documents from './documents/Documents';
 
@@ -409,14 +408,6 @@ const Matters: React.FC<MattersProps> = ({
   const [activeFeeEarner, setActiveFeeEarner] = useState<string | null>(null);
   const [feeEarnerType, setFeeEarnerType] = useState<'Originating' | 'Responsible' | null>(null);
 
-  // Inside your Matters component
-  const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
-
-  const handleNewMatter = () => {
-    // Instead of logging to console, switch to the NewMatters component
-    setShowNewMatterPage(true);
-  };
-
   // (A) The base matter from SQL
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
 
@@ -703,17 +694,7 @@ const Matters: React.FC<MattersProps> = ({
   // ------------------------------------------------
   return (
     <div className={containerStyle(isDarkMode)}>
-    {showNewMatterPage ? (
-      allowedUsers.includes(userFirstName) ? (
-        <NewMatters poidData={poidData} setPoidData={setPoidData} teamData={teamData} />
-      ) : (
-        <MessageBar messageBarType={MessageBarType.error}>
-          This feature is under active development. Please check back soon.
-        </MessageBar>
-      )
-    ) : (
-        <>
-          <MattersCombinedMenu
+      <MattersCombinedMenu
             activeGroupedArea={activeGroupedArea}
             setActiveGroupedArea={setActiveGroupedArea}
             practiceAreas={Array.from(new Set(matters.map((m) => m.PracticeArea as string))).sort()}
@@ -730,10 +711,9 @@ const Matters: React.FC<MattersProps> = ({
             feeEarnerType={feeEarnerType}
             setFeeEarnerType={setFeeEarnerType}
             teamData={teamData}
-            onNewMatter={handleNewMatter} // Pass the new matter handler
-          />
-  
-          {isLoading ? (
+      />
+
+      {isLoading ? (
             <Spinner label="Loading matters..." size={SpinnerSize.medium} />
           ) : error ? (
             <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
@@ -882,11 +862,8 @@ const Matters: React.FC<MattersProps> = ({
               )}
             </>
           )}
-        </>
-      )}
     </div>
   );
-  
-  };
-  
-  export default Matters;
+};
+
+export default Matters;
