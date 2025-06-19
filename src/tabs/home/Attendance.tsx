@@ -87,8 +87,8 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
           color: collapsed
             ? componentTokens.stepHeader.base.textColor
             : componentTokens.stepHeader.active.textColor,
-          padding: '16px 12px',
-          minHeight: '48px',
+          padding: '8px 12px',
+          minHeight: '36px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',

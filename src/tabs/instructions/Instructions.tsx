@@ -95,9 +95,20 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
       <Text variant="xLarge">Instruction Dashboard</Text>
       {instructionData.map((inst, idx) => (
         <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {JSON.stringify(inst, null, 2)}
-          </pre>
+          <Text variant="large">Prospect {inst.prospectId}</Text>
+          {inst.instructions.map((instruction, jdx) => (
+            <Stack key={jdx} tokens={{ childrenGap: 4 }} style={{ marginTop: 8 }}>
+              <Text variant="mediumPlus">
+                {instruction.InstructionRef || `Instruction ${jdx + 1}`}
+              </Text>
+              {instruction.Stage && <Text>Status: {instruction.Stage}</Text>}
+              {instruction.FirstName && instruction.LastName && (
+                <Text>
+                  Client: {instruction.FirstName} {instruction.LastName}
+                </Text>
+              )}
+            </Stack>
+          ))}
         </Stack>
       ))}
     </Stack>

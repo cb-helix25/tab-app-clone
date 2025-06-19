@@ -202,10 +202,10 @@ const FormCard: React.FC<FormCardProps> = React.memo(
           </div>
 
           {/* Separator */}
-          <div className={separatorStyle(isDarkMode)} />
+          <div className={`separator ${separatorStyle(isDarkMode)}`} />
 
           {/* Right: Action Buttons */}
-          <div className={actionsContainerStyle}>
+          <div className={`actionsContainer ${actionsContainerStyle}`}>
             <TooltipHost
               content={`Copy link for ${link.title}`}
               id={`tooltip-copy-${link.title}`}

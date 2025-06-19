@@ -339,6 +339,7 @@ function longLockStart(blockTitle: string) {
 
   function openInlineOptions(e: MouseEvent, blockTitle: string) {
     e.stopPropagation();
+    e.preventDefault();
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (block) {
       setInlineOptionsTarget(e.currentTarget as HTMLElement);
@@ -699,7 +700,7 @@ useEffect(() => {
       data-label-title="${block.title}"
       data-selected="${selectedLabel}"
       title="${selectedLabel}"
-      onmousedown="event.preventDefault(); window.openInlineOptions(event, '${block.title}')"
+      onclick="window.openInlineOptions(event, '${block.title}')"
       >
       ${block.title}
     </span>`;

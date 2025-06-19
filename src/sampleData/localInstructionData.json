@@ -3,19 +3,123 @@
         "prospectId": 123,
         "deals": [
             {
-                "id": "deal1",
-                "status": "open"
+                "DealId": 1,
+                "InstructionRef": "HLX-1-001",
+                "ServiceDescription": "Share sale",
+                "Amount": 1500,
+                "AreaOfWork": "Corporate",
+                "PitchedBy": "LZ",
+                "PitchedDate": "2024-04-10",
+                "PitchedTime": "10:00",
+                "Status": "Open"
+            }
+        ],
+        "jointClients": [
+            {
+                "DealId": 1,
+                "ClientEmail": "joint@example.com",
+                "IsLeadClient": false
+            }
+        ],
+        "instructions": [
+            {
+                "InstructionRef": "HLX-1-001",
+                "Stage": "instruction",
+                "ClientType": "individual",
+                "HelixContact": "LZ",
+                "SubmissionDate": "2024-04-15",
+                "FirstName": "Alex",
+                "LastName": "Smith",
+                "Email": "alex@example.com"
+            }
+        ],
+        "documents": [
+            {
+                "FileName": "id.pdf",
+                "BlobUrl": "https://example.blob.core.windows.net/docs/id.pdf"
+            }
+        ],
+        "riskAssessments": [
+            {
+                "MatterId": "HLX-1-001",
+                "RiskAssessor": "LZ",
+                "RiskAssessmentResult": "low",
+                "RiskScore": 3
+            }
+        ],
+        "electronicIDChecks": [
+            {
+                "MatterId": "HLX-1-001",
+                "ClientEmail": "alex@example.com",
+                "EIDStatus": "completed"
+            }
+        ]
+    },
+    {
+        "prospectId": 456,
+        "deals": [
+            {
+                "DealId": 2,
+                "InstructionRef": "HLX-1-002",
+                "ServiceDescription": "Lease renewal",
+                "Amount": 800,
+                "AreaOfWork": "Property",
+                "PitchedBy": "AB",
+                "PitchedDate": "2024-05-01",
+                "PitchedTime": "15:30",
+                "Status": "Pending"
             }
         ],
         "jointClients": [],
         "instructions": [
             {
-                "id": 1,
-                "type": "instruction",
-                "details": "Sample instruction"
+                "InstructionRef": "HLX-1-002",
+                "Stage": "awaiting",
+                "ClientType": "company",
+                "HelixContact": "AB",
+                "SubmissionDate": "2024-05-03",
+                "CompanyName": "Example Ltd",
+                "Email": "info@example.com"
             }
         ],
         "documents": [],
+        "riskAssessments": [],
+        "electronicIDChecks": []
+    },
+    {
+        "prospectId": 789,
+        "deals": [
+            {
+                "DealId": 3,
+                "InstructionRef": "HLX-1-003",
+                "ServiceDescription": "Contract review",
+                "Amount": 500,
+                "AreaOfWork": "Commercial",
+                "PitchedBy": "CD",
+                "PitchedDate": "2024-06-20",
+                "PitchedTime": "09:15",
+                "Status": "Completed"
+            }
+        ],
+        "jointClients": [],
+        "instructions": [
+            {
+                "InstructionRef": "HLX-1-003",
+                "Stage": "completed",
+                "ClientType": "individual",
+                "HelixContact": "CD",
+                "SubmissionDate": "2024-06-22",
+                "FirstName": "Jamie",
+                "LastName": "Brown",
+                "Email": "jamie@example.com"
+            }
+        ],
+        "documents": [
+            {
+                "FileName": "contract.pdf",
+                "BlobUrl": "https://example.blob.core.windows.net/docs/contract.pdf"
+            }
+        ],
         "riskAssessments": [],
         "electronicIDChecks": []
     }
