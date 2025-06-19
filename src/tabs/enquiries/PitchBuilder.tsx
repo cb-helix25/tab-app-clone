@@ -11,6 +11,7 @@ import {
   IIconProps,
   Icon,
   Callout,
+  IconButton,
   Dropdown,
   FocusZone,
   FocusZoneDirection,
@@ -140,6 +141,10 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       margin-top: 2px;
       display: block;
       text-align: left;
+    }
+    .selected-block {
+      outline: 2px solid ${colours.cta};
+      outline-offset: 2px;
     }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
@@ -321,12 +326,16 @@ function longLockStart(blockTitle: string) {
   }, 600);
 }
 
-function longLockEnd() {
-  if (lockTimer) {
-    clearTimeout(lockTimer);
-    lockTimer = null;
+  function longLockEnd() {
+    if (lockTimer) {
+      clearTimeout(lockTimer);
+      lockTimer = null;
+    }
   }
-}
+
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+  const [selectedBlockTarget, setSelectedBlockTarget] =
+    useState<HTMLElement | null>(null);
 
   function openInlineOptions(e: MouseEvent, blockTitle: string) {
     e.stopPropagation();
@@ -342,6 +351,30 @@ function longLockEnd() {
     setInlineOptionsTarget(null);
   }
 
+  function clearSelectedBlock() {
+    if (selectedBlockTarget) {
+      selectedBlockTarget.classList.remove('selected-block');
+    }
+    if (selectedBlock) {
+      highlightBlock(selectedBlock, false);
+    }
+    setSelectedBlock(null);
+    setSelectedBlockTarget(null);
+  }
+
+  function selectBlock(e: MouseEvent, blockTitle: string) {
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    if (selectedBlock === blockTitle) {
+      clearSelectedBlock();
+      return;
+    }
+    clearSelectedBlock();
+    setSelectedBlock(blockTitle);
+    setSelectedBlockTarget(target);
+    target.classList.add('selected-block');
+    highlightBlock(blockTitle, true, 'editor');
+  }
 
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
@@ -349,7 +382,71 @@ useEffect(() => {
   (window as any).longLockStart = longLockStart;
   (window as any).longLockEnd = longLockEnd;
   (window as any).openInlineOptions = openInlineOptions;
+  (window as any).selectBlock = selectBlock;
+  (window as any).clearSelectedBlock = clearSelectedBlock;
+  (window as any).selectBlock = selectBlock;
+  (window as any).clearSelectedBlock = clearSelectedBlock;
 }, [toggleBlockLock, highlightBlock, longLockStart, longLockEnd, openInlineOptions]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        selectedBlockTarget &&
+        !selectedBlockTarget.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest('.ms-Callout')
+      ) {
+        clearSelectedBlock();
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (!selectedBlock) return;
+      if (e.key === 'Escape') {
+        clearSelectedBlock();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const block = templateBlocks.find((b) => b.title === selectedBlock);
+        if (block) {
+          handleClearBlock(block);
+        }
+        clearSelectedBlock();
+      }
+    };
+    document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [selectedBlock, selectedBlockTarget, templateBlocks]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        selectedBlockTarget &&
+        !selectedBlockTarget.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest('.ms-Callout')
+      ) {
+        clearSelectedBlock();
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (!selectedBlock) return;
+      if (e.key === 'Escape') {
+        clearSelectedBlock();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const block = templateBlocks.find((b) => b.title === selectedBlock);
+        if (block) {
+          handleClearBlock(block);
+        }
+        clearSelectedBlock();
+      }
+    };
+    document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [selectedBlock, selectedBlockTarget, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -624,7 +721,7 @@ useEffect(() => {
     );
     const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true" onmousedown="window.longLockStart('${block.title}')" onmouseup="window.longLockEnd()" onmouseleave="window.longLockEnd()">${lockButton}${editButton}${optionsButton}${styledInnerHTML}${labelHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
-    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
+    const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onclick="window.selectBlock(event, '${block.title}')" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
     setBody((prevBody) => {
       const existingBlockRegex = new RegExp(
@@ -1248,7 +1345,11 @@ function handleInput() {
         return newBody;
       });
       // Remove highlight right away so the user sees immediate feedback
-      highlightBlock(block.title, false);    }
+      highlightBlock(block.title, false);
+      if (selectedBlock === block.title) {
+        clearSelectedBlock();
+      }
+      }
   }
 
   function clearAllBlocks() {
@@ -1271,6 +1372,7 @@ function handleInput() {
     setEditedBlocks({});
     setOriginalBlockContent({});
     templateBlocks.forEach((block) => highlightBlock(block.title, false));
+    clearSelectedBlock();
   }
 
 function reorderTemplateBlocks(start: number, end: number) {
@@ -1863,6 +1965,54 @@ function handleScrollToBlock(blockTitle: string) {
           </FocusZone>
         </Callout>
       )}
+
+      {selectedBlock && selectedBlockTarget && (
+        <Callout
+          target={selectedBlockTarget}
+          onDismiss={clearSelectedBlock}
+          setInitialFocus
+          directionalHint={DirectionalHint.bottomCenter}
+          styles={{ root: { padding: 8 } }}
+        >
+          <Stack horizontal tokens={{ childrenGap: 8 }}>
+            <IconButton
+              iconProps={{ iconName: 'Edit' }}
+              title="Edit Block"
+              ariaLabel="Edit Block"
+              onClick={() => {
+                (window as any).openBlockEdit(selectedBlock);
+                clearSelectedBlock();
+              }}
+            />
+            <IconButton
+              iconProps={{ iconName: 'EditNote' }}
+              title="Choose Template"
+              ariaLabel="Choose Template"
+              onClick={(e) => {
+                openInlineOptions(e as any, selectedBlock);
+                clearSelectedBlock();
+              }}
+            />
+            <IconButton
+              iconProps={{ iconName: lockedBlocks[selectedBlock] ? 'Unlock' : 'Lock' }}
+              title={lockedBlocks[selectedBlock] ? 'Unlock' : 'Lock'}
+              ariaLabel="Toggle Lock"
+              onClick={() => toggleBlockLock(selectedBlock)}
+            />
+            <IconButton
+              iconProps={{ iconName: 'Delete' }}
+              title="Remove Block"
+              ariaLabel="Remove Block"
+              onClick={() => {
+                const block = templateBlocks.find((b) => b.title === selectedBlock);
+                if (block) handleClearBlock(block);
+                clearSelectedBlock();
+              }}
+            />
+          </Stack>
+        </Callout>
+      )}
+
 
       {/* Row: Preview and Reset Buttons */}
       <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>

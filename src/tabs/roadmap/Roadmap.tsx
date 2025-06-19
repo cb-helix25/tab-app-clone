@@ -142,7 +142,7 @@ const stackTokens: IStackTokens = { childrenGap: 20 };
  */
 const timelineRowStyle = mergeStyles({
   position: 'relative',
-  marginBottom: '40px',
+  marginBottom: '60px',
 });
 
 /**
@@ -187,7 +187,7 @@ const contentBoxStyle = (isDarkMode: boolean) =>
       : `0 4px 12px ${colours.light.border}`,
     transition: 'background-color 0.3s, box-shadow 0.3s, transform 0.3s',
     cursor: 'pointer',
-    marginTop: '10px',
+    marginTop: '20px',
     opacity: 0,
     transform: 'translateY(20px)',
     animation: 'fadeInUp 0.5s ease forwards',

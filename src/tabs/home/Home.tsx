@@ -185,7 +185,15 @@ interface MatterBalance {
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children }) => {
   // Start expanded by default
   const [collapsed, setCollapsed] = useState(false);
+  const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const toggleCollapse = () => setCollapsed(!collapsed);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
+    }
+  }, [children, collapsed]);
 
   // Build the metric labels string (only used when collapsed)
   const metricLabels = metrics.length > 0 ? metrics.map(m => m.title).join(' | ') : '';
@@ -208,8 +216,8 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           color: collapsed
             ? componentTokens.stepHeader.base.textColor
             : componentTokens.stepHeader.active.textColor,
-          padding: '16px 12px',
-          minHeight: '48px',
+          padding: '8px 12px',
+          minHeight: '36px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
@@ -237,18 +245,20 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           }}
         />
       </div>
-      {!collapsed && (
-        <div
-          style={{
-            padding: componentTokens.summaryPane.base.padding,
-            backgroundColor: colours.light.sectionBackground,
-            boxShadow: componentTokens.summaryPane.base.boxShadow,
-            borderRadius: componentTokens.summaryPane.base.borderRadius,
-          }}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        ref={contentRef}
+        style={{
+          padding: componentTokens.summaryPane.base.padding,
+          backgroundColor: colours.light.sectionBackground,
+          boxShadow: componentTokens.summaryPane.base.boxShadow,
+          borderRadius: componentTokens.summaryPane.base.borderRadius,
+          maxHeight: collapsed ? 0 : contentHeight,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease',
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };

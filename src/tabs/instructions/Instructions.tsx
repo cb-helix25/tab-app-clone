@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Stack, Text, mergeStyles } from '@fluentui/react';
+import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
@@ -12,6 +13,21 @@ interface InstructionsProps {
 const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
   const { isDarkMode } = useTheme();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+
+  const quickLinksStyle = (dark: boolean) =>
+    mergeStyles({
+      backgroundColor: dark
+        ? colours.dark.sectionBackground
+        : colours.light.sectionBackground,
+      padding: '10px',
+      display: 'flex',
+      flexDirection: 'row',
+      gap: '8px',
+      overflowX: 'auto',
+      alignItems: 'center',
+      marginBottom: '16px',
+      transition: 'background-color 0.3s, box-shadow 0.3s',
+    });
 
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
@@ -58,6 +74,24 @@ const Instructions: React.FC<InstructionsProps> = ({ userInitials }) => {
 
   return (
     <Stack tokens={dashboardTokens} className={containerStyle}>
+      <div className={quickLinksStyle(isDarkMode)}>
+        <QuickActionsCard
+          title={
+            instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
+          }
+          icon="DocumentSearch"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 0 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="New Instruction"
+          icon="Add"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 1 } as React.CSSProperties}
+        />
+      </div>
       <Text variant="xLarge">Instruction Dashboard</Text>
       {instructionData.map((inst, idx) => (
         <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
