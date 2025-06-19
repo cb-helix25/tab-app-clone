@@ -324,16 +324,15 @@ const mainContentStyle = mergeStyles({
   display: 'flex',
   flexDirection: 'column',
 });
-// Height of the top tab menu so the action bar can slide out from underneath
-const ACTION_BAR_OVERLAP = 48;
+// Height of the top tab menu so the quick action bar can align with it
+const ACTION_BAR_HEIGHT = 48;
 
 const quickLinksStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    // Extra top padding allows the bar to slide out from behind the menu
-    padding: `${ACTION_BAR_OVERLAP}px 10px 10px`,
+    padding: '0 10px',
     transition: 'background-color 0.3s, box-shadow 0.3s',
     display: 'flex',
     flexDirection: 'row',
@@ -341,12 +340,9 @@ const quickLinksStyle = (isDarkMode: boolean) =>
     overflowX: 'auto',
     alignItems: 'center',
     marginBottom: '16px',
-    /* Pull the bar upwards so it appears connected to the
-       top navigation tabs. The offset matches the top
-       padding so the buttons remain fully visible while the
-       bar itself tucks slightly behind the menu. */
-    // Pull upward so the background appears from under the menu
-    marginTop: `-${ACTION_BAR_OVERLAP}px`,
+    position: 'sticky',
+    top: ACTION_BAR_HEIGHT,
+    zIndex: 999,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
   });
