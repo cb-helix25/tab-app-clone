@@ -15,6 +15,7 @@ import PoidCard from './PoidCard';
 import POIDPreview from './POIDPreview';
 import StepHeader from './StepHeader';
 import StepProgress from './StepProgress';
+import StepOverview from './StepOverview';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
@@ -324,7 +325,11 @@ const NewMatters: React.FC<NewMattersProps> = ({
     'review',
   ];
 
-  const stepProgressSteps = stepsOrder.map((key) => ({ key, label: stepTitles[key] }));
+  const stepProgressSteps = stepsOrder.map((key) => ({
+    key,
+    label: stepTitles[key],
+    title: stepTitles[key],
+  }));
 
   const stepDetails = React.useMemo(() => ({
     clientInfo: (
@@ -557,26 +562,37 @@ const NewMatters: React.FC<NewMattersProps> = ({
         idVerified={false}
         matterRef={matterRef}
       />
-      <StepProgress
-        steps={stepProgressSteps}
-        current={stepsOrder[openStep]}
-        onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
-      />
-      {stepsOrder.map((stepKey, idx) => (
-        <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
-          <StepHeader
-            step={idx + 1}
-            title={stepTitles[stepKey]}
-            complete={isStepComplete(stepKey)}
-            open={openStep === idx}
-            onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
-            summary={stepDetails[stepKey]}
+      <div className="workflow-main">
+        <div className="steps-column">
+          <StepProgress
+            steps={stepProgressSteps}
+            current={stepsOrder[openStep]}
+            onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
           />
-          <div className="step-content">
-            {openStep === idx && renderStepContent(stepKey)}
-          </div>
+          {stepsOrder.map((stepKey, idx) => (
+            <div key={stepKey} className={`step-section${openStep === idx ? ' active' : ''}`}>
+              <StepHeader
+                step={idx + 1}
+                title={stepTitles[stepKey]}
+                complete={isStepComplete(stepKey)}
+                open={openStep === idx}
+                onToggle={() => setOpenStep(openStep === idx ? -1 : idx)}
+                summary={stepDetails[stepKey]}
+              />
+              <div className="step-content">
+                {openStep === idx && renderStepContent(stepKey)}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+        <StepOverview
+          steps={stepProgressSteps}
+          current={stepsOrder[openStep]}
+          isStepComplete={isStepComplete}
+          details={stepDetails}
+          onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
+        />
+      </div>
     </Stack>
   );
 };

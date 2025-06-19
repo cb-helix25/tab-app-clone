@@ -1,65 +1,63 @@
 import React from 'react';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { FaEdit } from 'react-icons/fa';
 import '../../app/styles/StepOverview.css';
 
+interface StepInfo<T extends string> {
+    key: T;
+    title: string;
+}
+
 interface StepOverviewProps<T extends string> {
-    steps: { key: T; label: string }[];
+    steps: StepInfo<T>[];
     current: T;
-    isComplete: (key: T) => boolean;
-    details?: Partial<Record<T, React.ReactNode>>;
+    isStepComplete: (key: T) => boolean;
+    details: Record<T, React.ReactNode>;
     onStepClick?: (key: T) => void;
 }
 
-function StepOverview<T extends string>({ steps, current, isComplete, details, onStepClick }: StepOverviewProps<T>) {
-    const [openMap, setOpenMap] = React.useState<Record<T, boolean>>(() => {
-        const obj: Record<string, boolean> = {};
-        steps.forEach(s => { obj[s.key] = false; });
-        return obj as Record<T, boolean>;
-    });
-
-    const toggle = (key: T) => {
-        setOpenMap(prev => ({ ...prev, [key]: !prev[key] }));
-    };
-
+function StepOverview<T extends string>({
+    steps,
+    current,
+    isStepComplete,
+    details,
+    onStepClick,
+}: StepOverviewProps<T>) {
     return (
-        <ul className="step-overview">
-            {steps.map((step, idx) => {
-                const done = isComplete(step.key);
-                const isCurrent = current === step.key;
-                const className = `${done ? 'done' : ''} ${isCurrent ? 'current' : ''}`.trim();
-                const open = openMap[step.key];
+        <div className="overview-column">
+            {steps.map((step) => {
+                const complete = isStepComplete(step.key);
+                const active = step.key === current;
                 return (
-                    <li key={step.key} className={className}>
+                    <section
+                        key={step.key}
+                        className={`overview-section${active ? ' active' : ''}${complete ? ' complete' : ''
+                            }`}
+                    >
                         <button
                             type="button"
                             className="overview-header"
-                            onClick={() => toggle(step.key)}
-                            aria-expanded={open}
+                            onClick={() => onStepClick?.(step.key)}
                         >
-                            <span className="step-marker">{done ? '✔' : idx + 1}</span>
-                            <span className="step-label">{step.label}</span>
-                            <span className="chevron">{open ? <FiChevronUp /> : <FiChevronDown />}</span>
-                        </button>
-                        <div
-                            className={`overview-content${open ? ' open' : ''}`}
-                            aria-hidden={open ? undefined : true}
-                        >
-                            {details?.[step.key] ?? null}
-                            {done && onStepClick && (
-                                <button
-                                    type="button"
-                                    className="edit-btn"
-                                    onClick={() => onStepClick(step.key)}
-                                >
-                                    <FaEdit /> Edit
-                                </button>
+                            <span className="overview-title">{step.title}</span>
+                            {complete && (
+                                <span className="overview-tick" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <polyline
+                                            points="5,13 10,18 19,7"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="3"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </svg>
+                                </span>
                             )}
-                        </div>
-                    </li>
+                        </button>
+                        <div className="overview-content">{details[step.key]}</div>
+                    </section>
                 );
             })}
-        </ul>
+        </div>
     );
 }
 

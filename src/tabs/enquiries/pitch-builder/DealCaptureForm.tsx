@@ -21,6 +21,7 @@ import {
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 import { Enquiry } from '../../../app/functionality/types';
+import PaymentPreview from './PaymentPreview';
 
 interface ClientInfo {
   firstName: string;
@@ -498,6 +499,8 @@ useLayoutEffect(() => {
           {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
         </div>
       </div>
+
+      <PaymentPreview serviceDescription={serviceDescription} amount={amount} />
 
       <Stack>
         <div className={toggleContainer} aria-label="Select ID type">

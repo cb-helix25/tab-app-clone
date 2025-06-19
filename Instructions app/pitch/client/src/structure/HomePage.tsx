@@ -317,7 +317,7 @@ const HomePage: React.FC<HomePageProps> = ({
               const fname = rest.FirstName || '';
               const hr = new Date().getHours();
               const greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
-              setCompletionGreeting(`${greet}, ${fname}.`);
+              setCompletionGreeting(`Thanks ${fname}.`);
             }
             setInstructionReady(true);
           } else {

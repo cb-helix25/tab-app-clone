@@ -5,6 +5,18 @@
     min-height: 100vh;
 }
 
+.workflow-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    gap: 32px;
+}
+
+.steps-column {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+
 .step-section {
     margin-bottom: 8px;
 }

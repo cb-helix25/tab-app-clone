@@ -1483,8 +1483,8 @@ function duplicateTemplateBlock(index: number) {
           'Issue Summary': 'The Dispute',
           'Scope of Work': 'Initial Review and Costs',
           'Scope & Cost': 'Initial Review & Advice',
-          'Next Steps to Instruct Helix Law': block.options[0]?.label,
-          'Next Steps': 'Confirm Instructions & Payment',
+          'Next Steps to Instruct Helix Law': 'Instruct Helix Law - Pitch',
+          'Next Steps': 'Instruct Helix Law - Pitch',
           Closing: 'Closing',
         };
 
