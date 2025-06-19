@@ -185,6 +185,7 @@ function AnnualLeaveForm({
   bankHolidays,
   allLeaveRecords,
 }: AnnualLeaveFormProps) {
+  const safeTotals = totals ?? { standard: 0, unpaid: 0, sale: 0 };
   const { isDarkMode } = useTheme();
   const [dateRanges, setDateRanges] = useState<DateRangeSelection[]>([]);
   const [totalDays, setTotalDays] = useState<number>(0);
@@ -234,11 +235,11 @@ function AnnualLeaveForm({
   const holidayEntitlement = Number(userData?.[0]?.holiday_entitlement ?? 0);
   let effectiveRemaining = 0;
   if (selectedLeaveType === 'standard') {
-    effectiveRemaining = holidayEntitlement - totals.standard - totalDays;
+    effectiveRemaining = holidayEntitlement - safeTotals.standard - totalDays;
   } else if (selectedLeaveType === 'purchase') {
-    effectiveRemaining = 5 - totals.unpaid - totalDays; // "Purchase" maps to "unpaid"
+    effectiveRemaining = 5 - safeTotals.unpaid - totalDays; // "Purchase" maps to "unpaid"
   } else if (selectedLeaveType === 'sale') {
-    effectiveRemaining = 5 - totals.sale - totalDays;   // "Sell" maps to "sale"
+    effectiveRemaining = 5 - safeTotals.sale - totalDays;   // "Sell" maps to "sale"
   }
 
   const groupedLeave = useMemo(() => {
@@ -355,7 +356,7 @@ function AnnualLeaveForm({
             )}
             <Text style={labelStyle}>Days taken so far this year</Text>
             <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {totals.standard} {totals.standard !== 1 ? 'days' : 'day'}
+              {safeTotals.standard} {safeTotals.standard !== 1 ? 'days' : 'day'}
             </Text>
             <Text style={labelStyle}>Days Remaining</Text>
             <Text style={{ ...valueStyle, color: effectiveRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
@@ -365,7 +366,7 @@ function AnnualLeaveForm({
         </Stack>
       );
     } else if (selectedLeaveType === 'purchase') {
-      const purchaseRemaining = 5 - totals.unpaid - totalDays; // "Purchase" uses "unpaid"
+      const purchaseRemaining = 5 - safeTotals.unpaid - totalDays; // "Purchase" uses "unpaid"
       return (
         <Stack
           tokens={{ childrenGap: 10 }}
@@ -391,7 +392,7 @@ function AnnualLeaveForm({
             </Text>
             <Text style={labelStyle}>Purchase Days Taken so far</Text>
             <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {totals.unpaid} {totals.unpaid !== 1 ? 'days' : 'day'}
+              {safeTotals.unpaid} {safeTotals.unpaid !== 1 ? 'days' : 'day'}
             </Text>
             <Text style={labelStyle}>Purchase Days Remaining</Text>
             <Text style={{ ...valueStyle, color: purchaseRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>
@@ -401,7 +402,7 @@ function AnnualLeaveForm({
         </Stack>
       );
     } else if (selectedLeaveType === 'sale') {
-      const saleRemaining = 5 - totals.sale - totalDays; // "Sell" uses "sale"
+      const saleRemaining = 5 - safeTotals.sale - totalDays; // "Sell" uses "sale"
       return (
         <Stack
           tokens={{ childrenGap: 10 }}
@@ -427,7 +428,7 @@ function AnnualLeaveForm({
             </Text>
             <Text style={labelStyle}>Sell Days Taken so far</Text>
             <Text style={{ ...valueStyle, color: isDarkMode ? colours.dark.text : colours.light.text }}>
-              {totals.sale} {totals.sale !== 1 ? 'days' : 'day'}
+              {safeTotals.sale} {safeTotals.sale !== 1 ? 'days' : 'day'}
             </Text>
             <Text style={labelStyle}>Sell Days Remaining</Text>
             <Text style={{ ...valueStyle, color: saleRemaining < 0 ? colours.cta : isDarkMode ? colours.dark.text : colours.light.text }}>

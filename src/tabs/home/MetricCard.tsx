@@ -41,11 +41,15 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
     justifyContent: 'center',
     alignItems: 'flex-start',
     height: 'auto',
+    minHeight: '75px',
     flex: '1 1 30%',
     minWidth: '180px',
     maxWidth: '220px',
     cursor: 'pointer',
-    border: isPositive !== null ? `2px solid ${isPositive ? 'green' : 'red'}` : '2px solid transparent',
+    outline: isPositive !== null
+      ? `2px solid ${isPositive ? 'green' : 'red'}`
+      : '2px solid transparent',
+    outlineOffset: '-2px',
     ':hover': {
       transform: 'translateY(-3px)',
       boxShadow: isDarkMode ? `0 4px 8px ${colours.dark.border}` : `0 4px 8px ${colours.light.border}`,

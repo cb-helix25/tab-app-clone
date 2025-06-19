@@ -185,15 +185,7 @@ interface MatterBalance {
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics, children }) => {
   // Start expanded by default
   const [collapsed, setCollapsed] = useState(false);
-  const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
-  const contentRef = useRef<HTMLDivElement | null>(null);
   const toggleCollapse = () => setCollapsed(!collapsed);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [children, collapsed]);
 
   // Build the metric labels string (only used when collapsed)
   const metricLabels = metrics.length > 0 ? metrics.map(m => m.title).join(' | ') : '';
@@ -210,19 +202,16 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       <div
         onClick={toggleCollapse}
         style={{
-          backgroundColor: collapsed
-            ? componentTokens.stepHeader.base.backgroundColor
-            : componentTokens.stepHeader.active.backgroundColor,
-          color: collapsed
-            ? componentTokens.stepHeader.base.textColor
-            : componentTokens.stepHeader.active.textColor,
-          padding: '8px 12px',
-          minHeight: '36px',
+          backgroundColor: colours.light.sectionBackground,
+          color: colours.darkBlue,
+          border: `1px solid ${colours.light.border}`,
+          padding: '6px 10px',
+          minHeight: '30px',
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '16px',
+          fontSize: '14px',
           borderRadius: componentTokens.stepHeader.base.borderRadius,
         }}
       >
@@ -245,20 +234,18 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
           }}
         />
       </div>
-      <div
-        ref={contentRef}
-        style={{
-          padding: componentTokens.summaryPane.base.padding,
-          backgroundColor: colours.light.sectionBackground,
-          boxShadow: componentTokens.summaryPane.base.boxShadow,
-          borderRadius: componentTokens.summaryPane.base.borderRadius,
-          maxHeight: collapsed ? 0 : contentHeight,
-          overflow: 'hidden',
-          transition: 'max-height 0.3s ease',
-        }}
-      >
-        {children}
-      </div>
+      {!collapsed && (
+        <div
+          style={{
+            padding: componentTokens.summaryPane.base.padding,
+            backgroundColor: colours.light.sectionBackground,
+            boxShadow: componentTokens.summaryPane.base.boxShadow,
+            borderRadius: componentTokens.summaryPane.base.borderRadius,
+          }}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 };
@@ -2389,17 +2376,6 @@ const conversionRate = enquiriesMonthToDate
         </div>
       </div>
 
-      {/* Transactions Requiring Action */}
-      <ActionSection
-        transactions={transactions}
-        userInitials={userInitials}
-        isDarkMode={isDarkMode}
-        onTransactionClick={handleTransactionClick}
-        matters={allMatters || []}
-        updateTransaction={updateTransaction}
-        outstandingBalances={myOutstandingBalances} // pass the pre-filtered data
-      />
-
       {/* Metrics Section Container */}
       <div
         style={{
@@ -2599,6 +2575,16 @@ const conversionRate = enquiriesMonthToDate
         </CollapsibleSection>
       </div>
 
+      {/* Transactions Requiring Action */}
+      <ActionSection
+        transactions={transactions}
+        userInitials={userInitials}
+        isDarkMode={isDarkMode}
+        onTransactionClick={handleTransactionClick}
+        matters={allMatters || []}
+        updateTransaction={updateTransaction}
+        outstandingBalances={myOutstandingBalances} // pass the pre-filtered data
+      />
 
       {/* Favourites Section */}
       {(formsFavorites.length > 0 || resourcesFavorites.length > 0) && (

@@ -55,6 +55,7 @@ export const inputFieldStyle = mergeStyles({
 });
 
 export const dropdownStyle = mergeStyles({
+  width: '300px',
   height: `${INPUT_HEIGHT}px`,
   border: `1px solid ${colours.light.border}`,
   borderRadius: componentTokens.stepHeader.base.borderRadius,
@@ -265,7 +266,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
           border: 'none',
         },
         callout: {
-          minWidth: '100%',
+          width: '300px',
         },
       }}
     />
@@ -399,7 +400,10 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       onChange={(_, option) => handleInputChange(field.name, option?.key || '')}
                       required={field.required}
                       disabled={isSubmitting}
-                      styles={{ dropdown: dropdownStyle }}
+                      styles={{
+                        dropdown: dropdownStyle,
+                        callout: { width: '300px' },
+                      }}
                     />
                     {field.name === 'Payment Type' &&
                       formValues['Payment Type'] === 'CHAPS (same day over £1m)' && (

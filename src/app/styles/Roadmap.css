@@ -73,6 +73,7 @@
           overflow: hidden;
           perspective: 600px;
           min-height: 2.5rem;
+          flex: 1;
         }
         
         .entry-text>span {

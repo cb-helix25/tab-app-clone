@@ -147,6 +147,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null); // Changed to container ref for scrolling
   const tableRef = useRef<HTMLTableElement>(null);
+  const cellDimensionsRef = useRef<{ width: number; height: number; header: number }>({ width: 100, height: 40, header: 48 });
   const collapseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const userInitials = userData?.[0]?.Initials || 'LZ';
@@ -526,6 +527,25 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     return () => void document.head.removeChild(styleSheet);
   }, []);
 
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (tableRef.current) {
+        const headerRow = tableRef.current.tHead?.rows[0];
+        const firstBodyRow = tableRef.current.tBodies[0]?.rows[0];
+        if (headerRow?.cells[1]) {
+          cellDimensionsRef.current.width = headerRow.cells[1].getBoundingClientRect().width;
+          cellDimensionsRef.current.header = headerRow.cells[0].getBoundingClientRect().height;
+        }
+        if (firstBodyRow?.cells[1]) {
+          cellDimensionsRef.current.height = firstBodyRow.cells[1].getBoundingClientRect().height;
+        }
+      }
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [attendancePersons.length]);
+
   const todayIndex = useMemo(() => {
     const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
     const diffDays = Math.floor(
@@ -592,9 +612,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   
     const dayIndex = orderedWeekDays.indexOf(day);
     const personIndex = attendancePersons.findIndex((p) => p.initials === person);
-    const cellWidth = 100; // Fixed width as per tableStyle
-    const cellHeight = 40; // Fixed height as per rowStyle
-    const headerHeight = 48; // Fixed header height
+    const { width: cellWidth, height: cellHeight, header: headerHeight } = cellDimensionsRef.current;
   
     // Calculate the center of the cell
     const cellCenterX = (personIndex + 1) * cellWidth + cellWidth / 2; // +1 to skip the day label column
