@@ -4,6 +4,7 @@ import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
+import InstructionCard from './InstructionCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
@@ -137,17 +138,11 @@ const Instructions: React.FC<InstructionsProps> = ({
         <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
           <Text variant="large">Prospect {inst.prospectId}</Text>
           {inst.instructions.map((instruction, jdx) => (
-            <Stack key={jdx} tokens={{ childrenGap: 4 }} style={{ marginTop: 8 }}>
-              <Text variant="mediumPlus">
-                {instruction.InstructionRef || `Instruction ${jdx + 1}`}
-              </Text>
-              {instruction.Stage && <Text>Status: {instruction.Stage}</Text>}
-              {instruction.FirstName && instruction.LastName && (
-                <Text>
-                  Client: {instruction.FirstName} {instruction.LastName}
-                </Text>
-              )}
-            </Stack>
+            <InstructionCard
+              key={jdx}
+              instruction={instruction}
+              animationDelay={jdx * 0.1}
+            />
           ))}
         </Stack>
       ))}

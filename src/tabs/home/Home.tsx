@@ -2350,16 +2350,26 @@ const conversionRate = enquiriesMonthToDate
         </Stack>
       )}
 
-      {/* Quick Actions Bar */}
+      {/* Actions & Metrics Container */}
       <div
-        className={quickLinksStyle(isDarkMode)}
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          // Removed: transform: 'scale(1.2)', transformOrigin: 'top left',
+          backgroundColor: '#ffffff',
+          padding: '16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          marginBottom: '24px',
         }}
       >
+        {/* Quick Actions Bar */}
+        <div
+          className={quickLinksStyle(isDarkMode)}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            // Removed: transform: 'scale(1.2)', transformOrigin: 'top left',
+          }}
+        >
         {/* LEFT SLOT: Immediate Actions (spinner, or "No immediate actions", or the list) */}
         <div style={{ display: 'flex', gap: '10px', minHeight: '40px' }}>
           {!immediateActionsReady ? (
@@ -2422,16 +2432,7 @@ const conversionRate = enquiriesMonthToDate
         </div>
       </div>
 
-      {/* Metrics Section Container */}
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          padding: '16px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-          marginBottom: '24px'
-        }}
-      >
+        {/* Metrics Section */}
         {/* Time Metrics Section */}
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: '16px' }}>
