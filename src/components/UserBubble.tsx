@@ -9,7 +9,7 @@ interface UserBubbleProps {
 
 const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
     const [open, setOpen] = useState(false);
-    const bubbleRef = useRef<HTMLDivElement | null>(null);
+    const bubbleRef = useRef<HTMLButtonElement | null>(null);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const [pos, setPos] = useState({ top: 0, left: 0 });
 
@@ -23,7 +23,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
                 const bubbleRect = bubbleRef.current.getBoundingClientRect();
                 const popRect = popoverRef.current.getBoundingClientRect();
 
-                let left = bubbleRect.right - popRect.width;
+                let left = bubbleRect.left;
                 if (left + popRect.width > window.innerWidth - 8) {
                     left = window.innerWidth - popRect.width - 8;
                 }
@@ -60,13 +60,18 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
     ].filter((d) => d.value);
 
     return (
-        <div
-            className="user-bubble-container persona-bubble"
-            ref={bubbleRef}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-        >
-            <div className="user-initials persona-icon-container">{initials}</div>
+        <div className="user-bubble-container">
+            <button
+                type="button"
+                className="user-bubble-button persona-bubble"
+                ref={bubbleRef}
+                onMouseEnter={() => setOpen(true)}
+                onMouseLeave={() => setOpen(false)}
+                onFocus={() => setOpen(true)}
+                onBlur={() => setOpen(false)}
+            >
+                <span className="user-initials">{initials}</span>
+            </button>
             {open && (
                 <div
                     ref={popoverRef}

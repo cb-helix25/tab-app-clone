@@ -29,7 +29,7 @@ const barStyle = (isDarkMode: boolean) =>
         borderTop: isDarkMode
             ? '1px solid rgba(255,255,255,0.1)'
             : '1px solid rgba(0,0,0,0.05)',
-        padding: '0',
+        padding: '0 24px',
         transition: 'background-color 0.3s',
         display: 'flex',
         flexDirection: 'row',
