@@ -8,7 +8,7 @@
     height: 36px;
     border-radius: 50%;
     background: var(--helix-highlight);
-    color: #fff;
+    color: var(--helix-highlight);
     display: flex;
     align-items: center;
     justify-content: center;

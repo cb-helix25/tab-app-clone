@@ -72,6 +72,8 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
                     ref={popoverRef}
                     className="user-popover"
                     style={{ top: pos.top, left: pos.left }}
+                    onMouseEnter={() => setOpen(true)}
+                    onMouseLeave={() => setOpen(false)}
                 >
                     {userDetails.map((d) => (
                         <div key={d.label} className="detail-row">
