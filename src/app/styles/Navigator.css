@@ -1,0 +1,6 @@
+.app-navigator {
+    padding: 8px 24px;
+    position: sticky;
+    top: 48px;
+    z-index: 900;
+}

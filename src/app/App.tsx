@@ -2,6 +2,8 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
+import Navigator from '../components/Navigator';
+import { NavigatorProvider } from './functionality/NavigatorContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
@@ -206,26 +208,29 @@ const App: React.FC<AppProps> = ({
   }
 
   return (
-    <ThemeProvider isDarkMode={isDarkMode || false}>
-      <div
-        style={{
-          backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-          minHeight: '100vh',
-          transition: 'background-color 0.3s',
-        }}
-      >
-        <CustomTabs
-          selectedKey={activeTab}
-          onLinkClick={(item) => setActiveTab(item?.props.itemKey || activeTab)}
-          onHomeClick={() => setActiveTab('home')}
-          tabs={tabs}
-          ariaLabel="Main Navigation Tabs"
-        />
-        <Suspense fallback={<div>Loading...</div>}>
-          {renderContent()}
-        </Suspense>
-      </div>
-    </ThemeProvider>
+    <NavigatorProvider>
+      <ThemeProvider isDarkMode={isDarkMode || false}>
+        <div
+          style={{
+            backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+            minHeight: '100vh',
+            transition: 'background-color 0.3s',
+          }}
+        >
+          <CustomTabs
+            selectedKey={activeTab}
+            onLinkClick={(item) => setActiveTab(item?.props.itemKey || activeTab)}
+            onHomeClick={() => setActiveTab('home')}
+            tabs={tabs}
+            ariaLabel="Main Navigation Tabs"
+          />
+          <Navigator />
+          <Suspense fallback={<div>Loading...</div>}>
+            {renderContent()}
+          </Suspense>
+        </div>
+      </ThemeProvider>
+    </NavigatorProvider>
   );
 };
 

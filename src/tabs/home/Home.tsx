@@ -39,6 +39,7 @@ import WfhImg from '../../assets/wfh.png';
 import OutImg from '../../assets/outv2.png';
 import '../../app/styles/VerticalLabelPanel.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigator } from '../../app/functionality/NavigatorContext';
 import '../../app/styles/MetricCard.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -634,8 +635,14 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 
 const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched }) => {
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigator();
   const inTeams = isInTeams();
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
+
+  useEffect(() => {
+    setContent(<div>Home navigator</div>);
+    return () => setContent(null);
+  }, [setContent]);
 
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
