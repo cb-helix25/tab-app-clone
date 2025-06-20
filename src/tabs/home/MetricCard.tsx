@@ -112,8 +112,10 @@ const renderDialLayout = (
       <div
         className={mergeStyles({
           width: 60,
+          minWidth: 60,
           height: 60,
           marginRight: 12,
+          flexShrink: 0, // prevent the dial from shrinking when the text grows
         })}
       >
         <CircularProgressbar
@@ -147,6 +149,7 @@ const renderDialLayout = (
               duration={2.5}
               separator=","
               decimals={2}
+              preserveValue
             />
             {dialSuffix}
           </Text>
@@ -160,6 +163,7 @@ const renderDialLayout = (
                 duration={2.5}
                 separator=","
                 decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
+                preserveValue
               />
             </span>
             <span className={pipeStyle}>|</span>
@@ -170,6 +174,7 @@ const renderDialLayout = (
                 duration={2.5}
                 separator=","
                 decimals={2}
+                preserveValue
               />{' '}
               hrs
             </span>
@@ -252,6 +257,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
       duration={2.5}
       decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
       separator=","
+      preserveValue
       suffix={typeof money === 'number' && money > 1000 ? "k" : ""}
     />
   ), [money, title]);
@@ -341,6 +347,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     duration={2.5}
                     separator=","
                     decimals={typeof money === 'number' && money > 1000 ? 2 : 0}
+                    preserveValue
                   />
                 </span>
                 <span className={pipeStyle}>|</span>
@@ -351,13 +358,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     duration={2.5}
                     separator=","
                     decimals={2}
+                    preserveValue
                   />{' '}
                   hrs
                 </span>
               </Text>
             ) : (
                     <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: colours.highlight })}>
-                {count !== undefined ? <CountUp start={0} end={Number(count)} duration={2.5} separator="," /> : ''}
+                      {count !== undefined ? (
+                        <CountUp
+                          start={0}
+                          end={Number(count)}
+                          duration={2.5}
+                          separator=","
+                          preserveValue
+                        />
+                      ) : ''}
               </Text>
             )}
           </>

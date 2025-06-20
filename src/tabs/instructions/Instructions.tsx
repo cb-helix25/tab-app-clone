@@ -192,7 +192,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const flattenedInstructions = useMemo(() => {
     return instructionData.flatMap((prospect) =>
-      prospect.instructions.map((inst) => {
+      (prospect.instructions ?? []).map((inst) => {
         const deal = prospect.deals.find(
           (d) => d.InstructionRef === inst.InstructionRef
         );
@@ -208,17 +208,17 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [instructionData]);
 
   const deals = useMemo(
-    () => instructionData.flatMap((p) => p.deals),
+    () => instructionData.flatMap((p) => p.deals ?? []),
     [instructionData]
   );
   const jointClients = useMemo(
-    () => instructionData.flatMap((p) => p.jointClients),
+    () => instructionData.flatMap((p) => p.jointClients ?? []),
     [instructionData]
   );
   const riskData = useMemo(
     () =>
       instructionData.flatMap((p) =>
-        p.riskAssessments.map((r) => {
+        (p.riskAssessments ?? []).map((r) => {
           const eid = p.electronicIDChecks?.find(
             (e) => e.MatterId === r.MatterId
           );
@@ -228,6 +228,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     [instructionData]
   );
 
+  const dealColumns = useMemo(() => (deals[0] ? Object.keys(deals[0]) : []), [deals]);
+  const jointColumns = useMemo(() => (jointClients[0] ? Object.keys(jointClients[0]) : []), [jointClients]);
+  const riskColumns = useMemo(() => (riskData[0] ? Object.keys(riskData[0]) : []), [riskData]);
+
+  const formatValue = (value: any) => {
+    if (value === null || value === undefined) return '';
+    if (value instanceof Date) return value.toLocaleString();
+    return String(value);
+  };
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
@@ -236,10 +245,12 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const gridContainerStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: '24px',
     maxWidth: '1200px',
+    width: '100%',
     margin: '0 auto',
+    boxSizing: 'border-box',
   });
 
   if (showNewMatterPage) {
@@ -297,19 +308,17 @@ const Instructions: React.FC<InstructionsProps> = ({
           <table className="simple-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Instruction</th>
-                <th>Service</th>
-                <th>Amount</th>
+                {dealColumns.map((col) => (
+                  <th key={col}>{col}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {deals.map((deal, idx) => (
                 <tr key={idx}>
-                  <td>{deal.DealId}</td>
-                  <td>{deal.InstructionRef}</td>
-                  <td>{deal.ServiceDescription}</td>
-                  <td>{deal.Amount}</td>
+                  {dealColumns.map((col) => (
+                    <td key={col}>{formatValue(deal[col])}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -321,17 +330,17 @@ const Instructions: React.FC<InstructionsProps> = ({
           <table className="simple-table">
             <thead>
               <tr>
-                <th>Deal ID</th>
-                <th>Email</th>
-                <th>Lead</th>
+                {jointColumns.map((col) => (
+                  <th key={col}>{col}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {jointClients.map((c, idx) => (
                 <tr key={idx}>
-                  <td>{c.DealId}</td>
-                  <td>{c.ClientEmail}</td>
-                  <td>{c.IsLeadClient ? 'Yes' : 'No'}</td>
+                  {jointColumns.map((col) => (
+                    <td key={col}>{formatValue(c[col])}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -343,17 +352,17 @@ const Instructions: React.FC<InstructionsProps> = ({
           <table className="simple-table">
             <thead>
               <tr>
-                <th>Matter</th>
-                <th>ID Check</th>
-                <th>Risk Result</th>
+                {riskColumns.map((col) => (
+                  <th key={col}>{col}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {riskData.map((r, idx) => (
                 <tr key={idx}>
-                  <td>{r.MatterId}</td>
-                  <td>{r.EIDStatus || 'Pending'}</td>
-                  <td>{r.RiskAssessmentResult || 'Pending'}</td>
+                  {riskColumns.map((col) => (
+                    <td key={col}>{formatValue(r[col])}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
