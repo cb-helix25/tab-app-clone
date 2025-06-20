@@ -412,10 +412,10 @@ function toggleBlockLock(blockTitle: string) {
         : [];
       const updated = [...current, optionLabel];
       handleMultiSelectChange(blockTitle, updated);
-      insertTemplateBlock(block, updated, true);
+      insertTemplateBlock(block, updated, true, true);
     } else {
       handleSingleSelectChange(blockTitle, optionLabel);
-      insertTemplateBlock(block, optionLabel, true);
+      insertTemplateBlock(block, optionLabel, true, true);
     }
   }
 
