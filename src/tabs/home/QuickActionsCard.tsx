@@ -1,10 +1,36 @@
 import React from 'react';
-import { mergeStyles, Icon, Text } from '@fluentui/react';
+import { mergeStyles, Text } from '@fluentui/react';
+import {
+  FaRegCheckSquare,
+  FaCheckSquare,
+  FaRegListAlt,
+  FaListAlt,
+  FaRegCommentDots,
+  FaCommentDots,
+  FaRegCalendarAlt,
+  FaCalendarAlt,
+  FaRegTimesCircle,
+  FaTimesCircle,
+  FaRegFileAlt,
+  FaFileAlt,
+} from 'react-icons/fa';
+import { MdOutlineWarning, MdWarning, MdOutlineMeetingRoom, MdMeetingRoom } from 'react-icons/md';
+import { IconType } from 'react-icons';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import '../../app/styles/QuickActionsCard.css';
 import { componentTokens } from '../../app/styles/componentTokens';
 
+const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
+  Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
+  Checklist: { outline: FaRegListAlt, filled: FaListAlt },
+  Comment: { outline: FaRegCommentDots, filled: FaCommentDots },
+  Calendar: { outline: FaRegCalendarAlt, filled: FaCalendarAlt },
+  Room: { outline: MdOutlineMeetingRoom, filled: MdMeetingRoom },
+  Warning: { outline: MdOutlineWarning, filled: MdWarning },
+  Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
+  OpenFile: { outline: FaRegFileAlt, filled: FaFileAlt },
+};
 
 interface QuickActionsCardProps {
   title: string;
@@ -118,8 +144,17 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       }}
     >
       <span>
-        <Icon iconName={attendanceIconName} className={`icon-outline ${attendanceIconStyle}`} />
-        <Icon iconName={attendanceIconName} className={`icon-filled ${attendanceIconStyle}`} />
+        {(() => {
+          const mapping = iconMap[attendanceIconName] || iconMap['Accept'];
+          const OutlineIcon = mapping.outline;
+          const FilledIcon = mapping.filled;
+          return (
+            <>
+              <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
+              <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
+            </>
+          );
+        })()}
       </span>
       <Text variant="small" styles={{ root: textStyle }}>
         {title}

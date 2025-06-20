@@ -37,6 +37,8 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         flexDirection: 'row',
         gap: '8px',
         overflowX: 'auto',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
         alignItems: 'center',
         height: ACTION_BAR_HEIGHT,
         paddingBottom: 0,
@@ -45,7 +47,12 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         zIndex: 999,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
-        });
+        selectors: {
+            '::-webkit-scrollbar': {
+                display: 'none',
+            },
+        },
+    });
 
 const fadeInKeyframes = keyframes({
     from: { opacity: 0, transform: 'translateY(5px)' },

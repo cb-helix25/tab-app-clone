@@ -85,6 +85,14 @@ export const dropdownStyle = mergeStyles({
       justifyContent: 'center',
       height: '100%',
     },
+    '.ms-ComboBox-CaretDown-button': {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      border: 'none',
+      backgroundColor: 'transparent',
+    },
   },
 });
 
