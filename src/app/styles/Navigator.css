@@ -1,10 +1,9 @@
 .app-navigator {
-    padding: 0px 32px;
     position: sticky;
     top: 48px;
     z-index: 900;
     min-height: 48px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
 }
