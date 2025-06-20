@@ -28,3 +28,9 @@
     flex-direction: column;
     gap: 2px;
 }
+
+.instruction-cta {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}

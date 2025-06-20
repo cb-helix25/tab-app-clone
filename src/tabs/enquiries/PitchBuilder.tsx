@@ -585,6 +585,28 @@ useEffect(() => {
   const bodyEditorRef = useRef<HTMLDivElement>(null);
   const savedSelection = useRef<Range | null>(null);
 
+  useEffect(() => {
+    const editor = bodyEditorRef.current;
+    if (!editor) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('option-choice')) {
+        const blockTitle = target.getAttribute('data-block-title');
+        if (!blockTitle) return;
+        if (target.classList.contains('reset-option')) {
+          resetBlockOption(blockTitle);
+          return;
+        }
+        const optionLabel = target.getAttribute('data-option-label');
+        if (optionLabel) {
+          insertBlockOption(blockTitle, optionLabel);
+        }
+      }
+    };
+    editor.addEventListener('click', handleClick);
+    return () => editor.removeEventListener('click', handleClick);
+  }, [insertBlockOption, resetBlockOption]);
+
   /**
    * Save the user's cursor selection in the contentEditable, so we can insert text at that exact spot.
    */
@@ -770,12 +792,12 @@ useEffect(() => {
       )
       .map((o) => {
         const safe = o.label.replace(/'/g, "&#39;");
-        return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+        return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
       })
       .join(' ');
     const resetHtml =
       editedBlocks[block.title] && selectedLabel
-        ? `<span class="option-choice" onclick="window.resetBlockOption('${block.title}')">Reset</span>`
+        ? `<span class="option-choice reset-option" data-block-title="${block.title}">Reset</span>`
         : '';
     const optionListContent = [optionsHtml, resetHtml]
       .filter(Boolean)
@@ -922,12 +944,12 @@ useEffect(() => {
         )
         .map((o) => {
           const safe = o.label.replace(/'/g, "&#39;");
-          return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+          return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
         })
         .join(' ');
       const resetHtml =
         editedBlocks[block.title] && newSelected
-          ? `<span class="option-choice" onclick="window.resetBlockOption('${block.title}')">Reset</span>`
+          ? `<span class="option-choice reset-option" data-block-title="${block.title}">Reset</span>`
           : '';
       const optionListContent = [optionsHtml, resetHtml]
         .filter(Boolean)

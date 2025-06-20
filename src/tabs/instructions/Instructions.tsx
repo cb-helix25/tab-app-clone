@@ -26,6 +26,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const { setContent } = useNavigator();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+  const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
 
   const ACTION_BAR_HEIGHT = 48;
@@ -164,9 +165,14 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
   }, [instructionData]);
 
+  const handleOpenMatter = (inst: any) => {
+    setSelectedInstruction(inst);
+    setShowNewMatterPage(true);
+  };
+
   const gridContainerStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
     gap: '24px',
     maxWidth: '1200px',
     margin: '0 auto',
@@ -184,6 +190,9 @@ const Instructions: React.FC<InstructionsProps> = ({
           poidData={poidData}
           setPoidData={setPoidData}
           teamData={teamData}
+          instructionRef={selectedInstruction?.InstructionRef}
+          stage={selectedInstruction?.Stage}
+          clientId={selectedInstruction?.prospectId?.toString()}
         />
       </Stack>
     );
@@ -210,6 +219,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               eid={instruction.eid}
               prospectId={instruction.prospectId}
               animationDelay={animationDelay}
+              onOpenMatter={() => handleOpenMatter(instruction)}
             />
           );
         })}

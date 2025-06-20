@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, mergeStyles } from '@fluentui/react';
+import { Text, mergeStyles, PrimaryButton } from '@fluentui/react';
+import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/InstructionCard.css';
@@ -33,14 +34,24 @@ interface InstructionCardProps {
         EIDStatus?: string;
     } | null;
     animationDelay?: number;
+    onOpenMatter?: () => void;
 }
 
-const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, prospectId, risk, eid, animationDelay = 0 }) => {
+const InstructionCard: React.FC<InstructionCardProps> = ({
+    instruction,
+    deal,
+    prospectId,
+    risk,
+    eid,
+    animationDelay = 0,
+    onOpenMatter,
+}) => {
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
         borderRadius: componentTokens.card.base.borderRadius,
         padding: componentTokens.card.base.padding,
         boxShadow: componentTokens.card.base.boxShadow,
+        color: colours.dark.text,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         selectors: {
             ':hover': {
@@ -134,7 +145,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, pr
                             : 'Pending'}
                     </li>
                 </ul>
-            </div>c
+            </div>
+            <div className="instruction-cta">
+                <PrimaryButton
+                    text="Open Matter"
+                    onClick={onOpenMatter}
+                    styles={sharedPrimaryButtonStyles}
+                />
+            </div>
         </div>
     );
 };

@@ -35,7 +35,7 @@ import MattersCombinedMenu from './MattersCombinedMenu';
 import AreaCountCard from '../enquiries/AreaCountCard';
 import MatterTransactions from './MatterTransactions';
 import Documents from './documents/Documents';
-
+import { useNavigator } from '../../app/functionality/NavigatorContext';
 
 
 // ----------------------------------------------
@@ -398,6 +398,7 @@ const Matters: React.FC<MattersProps> = ({
   transactions, // NEW: include transactions here
 }) => {
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigator();
 
   // ---------- Filter States ----------
   const [activeGroupedArea, setActiveGroupedArea] = useState<string | null>(null);
@@ -453,6 +454,11 @@ const Matters: React.FC<MattersProps> = ({
       .filter((d): d is string => typeof d === 'string' && isValid(parseISO(d)))
       .map((d) => parseISO(d));
   }, [mattersAfterMinDate]);
+
+  const practiceAreasList = useMemo(
+    () => Array.from(new Set(matters.map((m) => m.PracticeArea as string))).sort(),
+    [matters]
+  );
 
   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
@@ -587,6 +593,47 @@ const Matters: React.FC<MattersProps> = ({
     return found || null;
   }, [outstandingBalances, selectedMatter]);
 
+
+  useEffect(() => {
+    if (!selectedMatter) {
+      setContent(
+        <MattersCombinedMenu
+          activeGroupedArea={activeGroupedArea}
+          setActiveGroupedArea={setActiveGroupedArea}
+          practiceAreas={practiceAreasList}
+          activePracticeAreas={activePracticeAreas}
+          setActivePracticeAreas={setActivePracticeAreas}
+          activeState={activeState}
+          setActiveState={setActiveState}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          isSearchActive={isSearchActive}
+          setSearchActive={setSearchActive}
+          activeFeeEarner={activeFeeEarner}
+          setActiveFeeEarner={setActiveFeeEarner}
+          feeEarnerType={feeEarnerType}
+          setFeeEarnerType={setFeeEarnerType}
+          teamData={teamData}
+        />
+      );
+    } else {
+      setContent(null);
+    }
+    return () => setContent(null);
+  }, [
+    setContent,
+    selectedMatter,
+    activeGroupedArea,
+    activePracticeAreas,
+    activeState,
+    searchTerm,
+    isSearchActive,
+    activeFeeEarner,
+    feeEarnerType,
+    practiceAreasList,
+    teamData,
+  ]);
+
   // ------------------------------------------------
   // Fetch getMatterOverview, getComplianceData, and getMatterSpecificActivities whenever selectedMatter changes
   // ------------------------------------------------
@@ -694,24 +741,6 @@ const Matters: React.FC<MattersProps> = ({
   // ------------------------------------------------
   return (
     <div className={containerStyle(isDarkMode)}>
-      <MattersCombinedMenu
-            activeGroupedArea={activeGroupedArea}
-            setActiveGroupedArea={setActiveGroupedArea}
-            practiceAreas={Array.from(new Set(matters.map((m) => m.PracticeArea as string))).sort()}
-            activePracticeAreas={activePracticeAreas}
-            setActivePracticeAreas={setActivePracticeAreas}
-            activeState={activeState}
-            setActiveState={setActiveState}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            isSearchActive={isSearchActive}
-            setSearchActive={setSearchActive}
-            activeFeeEarner={activeFeeEarner}
-            setActiveFeeEarner={setActiveFeeEarner}
-            feeEarnerType={feeEarnerType}
-            setFeeEarnerType={setFeeEarnerType}
-            teamData={teamData}
-      />
 
       {isLoading ? (
             <Spinner label="Loading matters..." size={SpinnerSize.medium} />
