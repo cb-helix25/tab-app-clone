@@ -1,0 +1,70 @@
+.user-bubble-container {
+    margin-left: auto;
+    position: relative;
+}
+
+.user-initials {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--helix-highlight);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: default;
+}
+
+.user-popover {
+    position: fixed;
+    background: var(--helix-dark-blue);
+    color: #fff;
+    padding: 0.75rem;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    animation: fadeInUp 0.2s ease forwards;
+}
+
+.user-popover::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--helix-dark-blue);
+    transform: rotate(45deg);
+    top: -5px;
+    right: 20px;
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.detail-row .label {
+    font-weight: 600;
+}
+
+.detail-row .value {
+    flex-grow: 1;
+    overflow-wrap: anywhere;
+}
+
+.detail-row .copy-btn {
+    background: none;
+    border: none;
+    color: var(--helix-highlight);
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.detail-row .copy-btn:hover {
+    text-decoration: underline;
+}

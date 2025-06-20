@@ -12,6 +12,8 @@ import { colours } from './colours';
 import './CustomTabs.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { Tab } from '../functionality/types';
+import { UserData } from '../../app/functionality/types';
+import UserBubble from '../../components/UserBubble';
 
 initializeIcons();
 
@@ -24,6 +26,7 @@ interface CustomTabsProps {
   tabs: Tab[];
   ariaLabel?: string;
   onHomeClick: () => void;
+  user?: UserData;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -59,6 +62,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   tabs,
   ariaLabel,
   onHomeClick,
+  user,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -108,6 +112,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         <AiFillHome className="icon-filled" size={20} />
       </div>
       <Pivot
+        style={{ flexGrow: 1 }}
         // Keep the Pivot mounted so the tab drop-in animation only plays on
         // first render. The selectedKey still controls which tab is active.
         selectedKey={pivotSelectedKey}
@@ -136,6 +141,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
           />
         ))}
       </Pivot>
+      {user && <UserBubble user={user} />}
     </div>
   );
 };

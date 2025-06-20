@@ -69,6 +69,7 @@ import localMatters from '../../localData/localMatters.json';
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
 import QuickActionsBar from './QuickActionsBar';
+import ImmediateActionsBar from './ImmediateActionsBar';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
@@ -2176,14 +2177,19 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   useEffect(() => {
     setContent(
-      <QuickActionsBar
-        isDarkMode={isDarkMode}
-        immediateActionsReady={immediateActionsReady}
-        immediateActionsList={immediateActionsList}
-        normalQuickActions={normalQuickActions}
-        handleActionClick={handleActionClick}
-        currentUserConfirmed={currentUserConfirmed}
-      />
+      <>
+        <QuickActionsBar
+          isDarkMode={isDarkMode}
+          quickActions={normalQuickActions}
+          handleActionClick={handleActionClick}
+          currentUserConfirmed={currentUserConfirmed}
+        />
+        <ImmediateActionsBar
+          isDarkMode={isDarkMode}
+          immediateActionsReady={immediateActionsReady}
+          immediateActionsList={immediateActionsList}
+        />
+      </>
     );
     return () => setContent(null);
   }, [

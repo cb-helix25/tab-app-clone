@@ -223,6 +223,7 @@ const App: React.FC<AppProps> = ({
             onHomeClick={() => setActiveTab('home')}
             tabs={tabs}
             ariaLabel="Main Navigation Tabs"
+            user={userData[0]}
           />
           <Navigator />
           <Suspense fallback={<div>Loading...</div>}>
