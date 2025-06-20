@@ -1,10 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Stack, Text, mergeStyles, PrimaryButton } from '@fluentui/react';
+import {
+  Stack,
+  Text,
+  mergeStyles,
+  PrimaryButton,
+  Pivot,
+  PivotItem,
+} from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { colours } from '../../app/styles/colours';
-import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
+import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -28,6 +35,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [activePivot, setActivePivot] = useState<string>('instructions');
 
   const ACTION_BAR_HEIGHT = 48;
 
@@ -50,6 +58,24 @@ const Instructions: React.FC<InstructionsProps> = ({
       zIndex: 999,
       borderTopLeftRadius: 0,
       borderTopRightRadius: 0,
+    });
+
+  const pivotBarStyle = (dark: boolean) =>
+    mergeStyles({
+      backgroundColor: dark
+        ? colours.dark.sectionBackground
+        : colours.light.sectionBackground,
+      boxShadow: dark
+        ? '0 2px 4px rgba(0,0,0,0.4)'
+        : '0 2px 4px rgba(0,0,0,0.1)',
+      borderTop: dark
+        ? '1px solid rgba(255,255,255,0.1)'
+        : '1px solid rgba(0,0,0,0.05)',
+      padding: '0 24px',
+      transition: 'background-color 0.3s',
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT * 2,
+      zIndex: 998,
     });
 
   const useLocalData =
@@ -90,55 +116,71 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   useEffect(() => {
     setContent(
-      <div className={quickLinksStyle(isDarkMode)}>
-        <QuickActionsCard
-          title={
-            instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
-          }
-          icon="OpenFile"
-          isDarkMode={isDarkMode}
-          onClick={() => setShowPreview(!showPreview)}
-          style={{ '--card-index': 0 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="New Instruction"
-          icon="Checklist"
-          isDarkMode={isDarkMode}
-          onClick={() => { }}
-          style={{ '--card-index': 1 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="New Matter"
-          icon="Calendar"
-          isDarkMode={isDarkMode}
-          onClick={() => setShowNewMatterPage(true)}
-          style={{ '--card-index': 2 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="EID Check"
-          icon="IdCheck"
-          isDarkMode={isDarkMode}
-          onClick={() => { }}
-          style={{ '--card-index': 3 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="Risk Assessment"
-          icon="Assessment"
-          isDarkMode={isDarkMode}
-          onClick={() => { }}
-          style={{ '--card-index': 4 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="Draft CCL"
-          icon="OpenFile"
-          isDarkMode={isDarkMode}
-          onClick={() => { }}
-          style={{ '--card-index': 5 } as React.CSSProperties}
-        />
-      </div>
+      <>
+        <div className={quickLinksStyle(isDarkMode)}>
+          <QuickActionsCard
+            title={
+              instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
+            }
+            icon="OpenFile"
+            isDarkMode={isDarkMode}
+            onClick={() => setShowPreview(!showPreview)}
+            style={{ '--card-index': 0 } as React.CSSProperties}
+          />
+          <QuickActionsCard
+            title="New Instruction"
+            icon="Checklist"
+            isDarkMode={isDarkMode}
+            onClick={() => { }}
+            style={{ '--card-index': 1 } as React.CSSProperties}
+          />
+          <QuickActionsCard
+            title="New Matter"
+            icon="Calendar"
+            isDarkMode={isDarkMode}
+            onClick={() => setShowNewMatterPage(true)}
+            style={{ '--card-index': 2 } as React.CSSProperties}
+          />
+          <QuickActionsCard
+            title="EID Check"
+            icon="IdCheck"
+            isDarkMode={isDarkMode}
+            onClick={() => { }}
+            style={{ '--card-index': 3 } as React.CSSProperties}
+          />
+          <QuickActionsCard
+            title="Risk Assessment"
+            icon="Assessment"
+            isDarkMode={isDarkMode}
+            onClick={() => { }}
+            style={{ '--card-index': 4 } as React.CSSProperties}
+          />
+          <QuickActionsCard
+            title="Draft CCL"
+            icon="OpenFile"
+            isDarkMode={isDarkMode}
+            onClick={() => { }}
+            style={{ '--card-index': 5 } as React.CSSProperties}
+          />
+        </div>
+        <div className={pivotBarStyle(isDarkMode)}>
+          <Pivot
+            selectedKey={activePivot}
+            onLinkClick={(item) =>
+              setActivePivot(item?.props.itemKey || 'instructions')
+            }
+          >
+            <PivotItem headerText="Instructions" itemKey="instructions" />
+            <PivotItem headerText="Deals" itemKey="deals" />
+            <PivotItem headerText="Joint Clients" itemKey="clients" />
+            <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+          </Pivot>
+        </div>
+      </>
+
     );
     return () => setContent(null);
-  }, [setContent, isDarkMode, instructionData, showPreview]);
+  }, [setContent, isDarkMode, instructionData, showPreview, activePivot]);
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
@@ -164,6 +206,28 @@ const Instructions: React.FC<InstructionsProps> = ({
       })
     );
   }, [instructionData]);
+
+  const deals = useMemo(
+    () => instructionData.flatMap((p) => p.deals),
+    [instructionData]
+  );
+  const jointClients = useMemo(
+    () => instructionData.flatMap((p) => p.jointClients),
+    [instructionData]
+  );
+  const riskData = useMemo(
+    () =>
+      instructionData.flatMap((p) =>
+        p.riskAssessments.map((r) => {
+          const eid = p.electronicIDChecks?.find(
+            (e) => e.MatterId === r.MatterId
+          );
+          return { ...r, EIDStatus: eid?.EIDStatus };
+        })
+      ),
+    [instructionData]
+  );
+
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
@@ -199,32 +263,104 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   return (
-    <Stack tokens={dashboardTokens} className={containerStyle}>
-      {showPreview && (
-        <pre style={{ whiteSpace: 'pre-wrap' }}>
-          {JSON.stringify(instructionData, null, 2)}
-        </pre>
+    <section className="page-section">
+      {activePivot === 'instructions' && (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          {showPreview && (
+            <pre style={{ whiteSpace: 'pre-wrap' }}>
+              {JSON.stringify(instructionData, null, 2)}
+            </pre>
+          )}
+          <div className={gridContainerStyle}>
+            {flattenedInstructions.map((instruction, idx) => {
+              const row = Math.floor(idx / 4);
+              const col = idx % 4;
+              const animationDelay = row * 0.2 + col * 0.1;
+              return (
+                <InstructionCard
+                  key={idx}
+                  instruction={instruction}
+                  deal={instruction.deal}
+                  risk={instruction.risk}
+                  eid={instruction.eid}
+                  prospectId={instruction.prospectId}
+                  animationDelay={animationDelay}
+                  onOpenMatter={() => handleOpenMatter(instruction)}
+                />
+              );
+            })}
+          </div>
+        </Stack>
       )}
-      <div className={gridContainerStyle}>
-        {flattenedInstructions.map((instruction, idx) => {
-          const row = Math.floor(idx / 4);
-          const col = idx % 4;
-          const animationDelay = row * 0.2 + col * 0.1;
-          return (
-            <InstructionCard
-              key={idx}
-              instruction={instruction}
-              deal={instruction.deal}
-              risk={instruction.risk}
-              eid={instruction.eid}
-              prospectId={instruction.prospectId}
-              animationDelay={animationDelay}
-              onOpenMatter={() => handleOpenMatter(instruction)}
-            />
-          );
-        })}
-      </div>
-    </Stack>
+      {activePivot === 'deals' && (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <table className="simple-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Instruction</th>
+                <th>Service</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deals.map((deal, idx) => (
+                <tr key={idx}>
+                  <td>{deal.DealId}</td>
+                  <td>{deal.InstructionRef}</td>
+                  <td>{deal.ServiceDescription}</td>
+                  <td>{deal.Amount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Stack>
+      )}
+      {activePivot === 'clients' && (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <table className="simple-table">
+            <thead>
+              <tr>
+                <th>Deal ID</th>
+                <th>Email</th>
+                <th>Lead</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jointClients.map((c, idx) => (
+                <tr key={idx}>
+                  <td>{c.DealId}</td>
+                  <td>{c.ClientEmail}</td>
+                  <td>{c.IsLeadClient ? 'Yes' : 'No'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Stack>
+      )}
+      {activePivot === 'risk' && (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <table className="simple-table">
+            <thead>
+              <tr>
+                <th>Matter</th>
+                <th>ID Check</th>
+                <th>Risk Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {riskData.map((r, idx) => (
+                <tr key={idx}>
+                  <td>{r.MatterId}</td>
+                  <td>{r.EIDStatus || 'Pending'}</td>
+                  <td>{r.RiskAssessmentResult || 'Pending'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Stack>
+      )}
+    </section>
   );
 };
 

@@ -732,10 +732,9 @@ useEffect(() => {
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         const escLabel = opt.replace(/'/g, "&#39;");
-        const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
-        const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
-        snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
+        snippetHtml.push(
+          `<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}</div>`
+        );
       });
     } else if (typeof selectedOption === 'string') {
 
@@ -754,10 +753,9 @@ useEffect(() => {
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         const escLabel = selectedOption.replace(/'/g, "&#39;");
-        const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
-        const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
-        snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
+        snippetHtml.push(
+          `<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}</div>`
+        );
       }
 
     }
@@ -774,16 +772,14 @@ useEffect(() => {
     const innerHTML = cleanTemplateString(replacementText);
     const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
     const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
     const deleteIcon = `<i class="ms-Icon ms-Icon--Delete" aria-hidden="true" style="pointer-events:none;"></i>`;
     const lockButton = `<span class="icon-btn lock-toggle" style="${iconStyle}" onclick="window.toggleBlockLock('${block.title}')" title="Toggle Lock">${lockIcon}</span>`;
-    const editButton = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openBlockEdit('${block.title}')" title="Edit Block">${editIcon}</span>`;
     const removeButton = `<span class="icon-btn remove-toggle" style="${iconStyle}" onclick="window.removeBlock('${block.title}')" title="Remove Block">${deleteIcon}</span>`;
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${editButton}${lockButton}${removeButton}</span></div>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${lockButton}${removeButton}</span></div>`;
     const optionsHtml = block.options
       .filter((o) =>
         block.isMultiSelect && isStringArray(selectedOption)
@@ -919,12 +915,8 @@ useEffect(() => {
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-    const escLabel = replacement.replace(/'/g, "&#39;");
-    const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
-    const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
     targetEl.setAttribute('data-snippet', replacement);
-    targetEl.innerHTML = `${text}${editBtn}`;
+    targetEl.innerHTML = `${text}`;
 
     const optionDiv = span.querySelector('div.block-option-list');
     if (optionDiv) {
@@ -2071,7 +2063,7 @@ function handleScrollToBlock(blockTitle: string) {
                             ? [...currentSelections, o.label]
                             : currentSelections.filter((k) => k !== o.label);
                           handleMultiSelectChange(inlineOptionsBlock.title, updated);
-                          let append = false;
+                          let append = insertedBlocks[inlineOptionsBlock.title] ? true : false;
                           if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
                             const replace = window.confirm(
                               'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
@@ -2103,7 +2095,7 @@ function handleScrollToBlock(blockTitle: string) {
                 selectedKey={selectedTemplateOptions[inlineOptionsBlock.title] as string}
                 onChange={(_e, opt?: IChoiceGroupOption) => {
                   if (!opt) return;
-                  let append = false;
+                  let append = insertedBlocks[inlineOptionsBlock.title] ? true : false;
                   if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
                     const replace = window.confirm(
                       'This block has been edited. OK to replace with the selected template? Click Cancel to append.'

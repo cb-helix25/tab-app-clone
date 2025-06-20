@@ -64,20 +64,20 @@ const metricTitleStyle = mergeStyles({
 });
 
 const moneyStyle = mergeStyles({
-  fontSize: '18px',
+  fontSize: '16px',
   fontWeight: '700',
   color: colours.highlight,
 });
 
 const pipeStyle = mergeStyles({
-  fontSize: '18px',
+  fontSize: '16px',
   fontWeight: '500',
   color: colours.greyText,
   margin: '0 8px',
 });
 
 const hoursStyle = mergeStyles({
-  fontSize: '18px',
+  fontSize: '16px',
   fontWeight: '500',
   color: colours.greyText,
 });
@@ -136,7 +136,7 @@ const renderDialLayout = (
             className={mergeStyles({
               display: 'flex',
               alignItems: 'center',
-              fontSize: '20px',
+              fontSize: '18px',
               fontWeight: '700',
               color: colours.highlight,
             })}
@@ -323,11 +323,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <Text className={metricTitleStyle}>{title}</Text>
             {isMoneyOnly ? (
               typeof money === 'string' ? (
-                  <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
-                  £{money}
-                </Text>
-              ) : (
-                    <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
+                  <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: colours.highlight })}>
+                    £{money}
+                  </Text>
+                ) : (
+                  <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: colours.highlight })}>
                   £{displayMoneyComponent}
                 </Text>
               )
@@ -356,7 +356,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 </span>
               </Text>
             ) : (
-                    <Text className={mergeStyles({ fontSize: '20px', fontWeight: '700', color: colours.highlight })}>
+                    <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: colours.highlight })}>
                 {count !== undefined ? <CountUp start={0} end={Number(count)} duration={2.5} separator="," /> : ''}
               </Text>
             )}

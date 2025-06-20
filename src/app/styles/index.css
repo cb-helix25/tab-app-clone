@@ -59,3 +59,20 @@ body {
 .page-section {
   padding: 16px;
 }
+
+/* basic table styling for instruction data */
+.simple-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.simple-table th,
+.simple-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.simple-table th {
+  background-color: #f3f3f3;
+}
