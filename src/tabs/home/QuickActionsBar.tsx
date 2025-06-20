@@ -38,6 +38,7 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         gap: '8px',
         overflowX: 'auto',
         alignItems: 'center',
+        height: ACTION_BAR_HEIGHT,
         paddingBottom: 0,
         position: 'sticky',
         top: ACTION_BAR_HEIGHT,
@@ -92,9 +93,10 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                height: ACTION_BAR_HEIGHT,
             }}
         >
-            <div style={{ display: 'flex', gap: '10px', minHeight: '40px' }}>
+            <div style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
                 {!immediateActionsReady ? (
                     <Spinner size={SpinnerSize.small} />
                 ) : immediateActionsList.length === 0 ? (
@@ -126,7 +128,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                 )}
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
                 {normalQuickActions.map((action, index) => (
                     <QuickActionsCard
                         key={action.title}
