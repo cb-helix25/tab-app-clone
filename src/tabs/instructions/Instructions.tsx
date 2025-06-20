@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Stack, Text, mergeStyles, PrimaryButton } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -126,6 +126,26 @@ const Instructions: React.FC<InstructionsProps> = ({
     color: isDarkMode ? colours.light.text : colours.dark.text,
   });
 
+  const flattenedInstructions = useMemo(() => {
+    return instructionData.flatMap((prospect) =>
+      prospect.instructions.map((inst) => {
+        const deal = prospect.deals.find(
+          (d) => d.InstructionRef === inst.InstructionRef
+        );
+        return { ...inst, deal, prospectId: prospect.prospectId };
+      })
+    );
+  }, [instructionData]);
+
+  const gridContainerStyle = mergeStyles({
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '20px',
+    '@media (max-width: 1200px)': {
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    },
+  });
+
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
@@ -151,18 +171,22 @@ const Instructions: React.FC<InstructionsProps> = ({
           {JSON.stringify(instructionData, null, 2)}
         </pre>
       )}
-      {instructionData.map((inst, idx) => (
-        <Stack key={idx} tokens={cardTokens} styles={cardStyles}>
-          <Text variant="large">Prospect {inst.prospectId}</Text>
-          {inst.instructions.map((instruction, jdx) => (
+      <div className={gridContainerStyle}>
+        {flattenedInstructions.map((instruction, idx) => {
+          const row = Math.floor(idx / 4);
+          const col = idx % 4;
+          const animationDelay = row * 0.2 + col * 0.1;
+          return (
             <InstructionCard
-              key={jdx}
+              key={idx}
               instruction={instruction}
-              animationDelay={jdx * 0.1}
+              deal={instruction.deal}
+              prospectId={instruction.prospectId}
+              animationDelay={animationDelay}
             />
-          ))}
-        </Stack>
-      ))}
+          );
+        })}
+      </div>
     </Stack>
   );
 };

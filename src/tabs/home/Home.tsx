@@ -609,6 +609,22 @@ const ensureLZInApprovers = (approvers: string[] = []): string[] => {
 };
 
 //////////////////////
+// Helper: Map Lukasz/Luke (LZ) to Alex Cook (AC) for metrics
+//////////////////////
+
+const getMetricsAlias = (
+  fullName: string | undefined,
+  initials: string | undefined,
+  clioId: string | number | undefined
+) => {
+  const parsedId = clioId ? parseInt(String(clioId), 10) : undefined;
+  if (fullName?.trim() === 'Lukasz Zemanek' || initials?.toUpperCase() === 'LZ') {
+    return { name: 'Alex Cook', clioId: 142961 };
+  }
+  return { name: fullName?.trim() || '', clioId: parsedId };
+};
+
+//////////////////////
 // CognitoForm Component
 //////////////////////
 
@@ -1144,11 +1160,8 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingWipClio(true);
           setIsLoadingRecovered(true);
-          const clioIDForWip = parseInt(userData[0]['Clio ID'], 10);
-          const clioIDForRecovered =
-            userData?.[0]?.["Full Name"]?.trim() === "Lukasz Zemanek"
-              ? 142961
-              : clioIDForWip;
+          const clioIDForWip = metricsClioId || parseInt(userData[0]['Clio ID'], 10);
+          const clioIDForRecovered = metricsClioId || clioIDForWip;
           const [wipResponse, recoveredResponse] = await Promise.all([
             fetch(
               `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
@@ -1607,8 +1620,13 @@ const officeAttendanceButtonText = currentUserConfirmed
     return normalized;
   };
   
-  const userResponsibleName =
-  userData?.[0]?.["Full Name"]?.trim() === "Lukasz Zemanek" ? "Alex Cook" : userData?.[0]?.["Full Name"] || "";
+  const { name: metricsName, clioId: metricsClioId } = getMetricsAlias(
+    userData?.[0]?.["Full Name"],
+    userData?.[0]?.Initials,
+    userData?.[0]?.["Clio ID"]
+  );
+
+  const userResponsibleName = metricsName;
   
   const userMatterIDs = useMemo(() => {
     if (!allMatters || allMatters.length === 0) return [];
