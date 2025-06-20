@@ -37,6 +37,7 @@ import PitchBuilder from './PitchBuilder';
 import EnquiryData from './EnquiryData';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
@@ -382,6 +383,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 }) => {
   const [localEnquiries, setLocalEnquiries] = useState<Enquiry[]>(enquiries || []);
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   // Removed pagination states
@@ -699,6 +701,47 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
     };
   }, [filteredEnquiries, itemsToShow]);
+  const handleSetActiveState = useCallback(
+    (key: string) => {
+      setActiveMainTab(key);
+      setActiveSubTab('Overview');
+      setItemsToShow(20);
+      setTimeout(() => {
+        setItemsToShow((prev) =>
+          Math.min(prev + 40, filteredEnquiries.length)
+        );
+      }, 200);
+    },
+    [filteredEnquiries.length]
+  );
+
+  useEffect(() => {
+    if (!selectedEnquiry) {
+      setContent(
+        <RedesignedCombinedMenu
+          activeArea={selectedArea}
+          setActiveArea={setSelectedArea}
+          activeState={activeMainTab}
+          setActiveState={handleSetActiveState}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          isSearchActive={isSearchActive}
+          setSearchActive={setSearchActive}
+        />
+      );
+    } else {
+      setContent(null);
+    }
+    return () => setContent(null);
+  }, [
+    setContent,
+    selectedEnquiry,
+    selectedArea,
+    activeMainTab,
+    searchTerm,
+    isSearchActive,
+    handleSetActiveState,
+  ]);
 
   const ratingOptions = [
     {
@@ -990,29 +1033,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   return (
     <div className={containerStyle(isDarkMode)}>
-      <div className={mergeStyles({ width: '100%' })}>
-        {!selectedEnquiry && (
-          <RedesignedCombinedMenu
-            activeArea={selectedArea}
-            setActiveArea={setSelectedArea}
-            activeState={activeMainTab}
-            setActiveState={(key) => {
-              setActiveMainTab(key);
-              setActiveSubTab('Overview');
-              setItemsToShow(20); // Reset to initial batch
-            
-              // Ensure Intersection Observer starts fresh
-              setTimeout(() => {
-                setItemsToShow((prev) => Math.min(prev + 40, filteredEnquiries.length)); // Ensure enough items are loaded
-              }, 200);
-            }}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            isSearchActive={isSearchActive}
-            setSearchActive={setSearchActive}
-          />
-        )}
-      </div>
+      <div className={mergeStyles({ width: '100%' })}></div>
 
       {!selectedEnquiry && !selectedArea && !activeMainTab && (
         <Stack

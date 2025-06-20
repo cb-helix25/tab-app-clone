@@ -4,7 +4,7 @@ This document describes the small card component used to display a single instru
 
 ## Layout
 
-Each card shows the instruction reference as a heading followed by key details like status and client information. Cards appear in a vertical stack within a prospect section and animate into view using the same `dropIn` animation seen in other cards.
+Each card shows the instruction reference as a heading followed by a bullet list of important details such as status, service description and client information. Cards appear in a vertical stack within a prospect section and animate into view using the same `dropIn` animation seen in other cards.
 
 ```
 Prospect 123
@@ -29,7 +29,7 @@ By leveraging these tokens the instruction dashboard maintains a clean and high 
 
 ## Action Points
 
-Below the main instruction details each card now lists key action points. These
-show the current ID check and risk assessment status so solicitors can quickly
-see outstanding tasks. The action list appears under a subtle divider at the
-bottom of the card.
+Below the details list the card includes an "Action Points" section. This lists
+instruction‑specific tasks such as the electronic ID check status and the most
+recent risk assessment result so solicitors can quickly see what work remains.
+The action list sits beneath a divider at the bottom of the card.

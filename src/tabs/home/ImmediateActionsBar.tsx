@@ -66,7 +66,9 @@ const tickPopKeyframes = keyframes({
 const noActionsClass = mergeStyles({
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
+    // Align message with the quick action cards
+    justifyContent: 'flex-start',
+    paddingLeft: '12px',
     animation: `${fadeInKeyframes} 0.3s ease-out`,
 });
 

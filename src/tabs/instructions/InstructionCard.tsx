@@ -60,36 +60,67 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, pr
 
     return (
         <div className={cardClass} style={style}>
+            <Text
+                variant="mediumPlus"
+                styles={{ root: { fontWeight: 600, marginBottom: 4 } }}
+            >
+                {instruction.InstructionRef}
+            </Text>
             <div className="instruction-details">
-                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                    {instruction.InstructionRef}
-                </Text>
-                {prospectId !== undefined && (
-                    <Text variant="small">Prospect ID: {prospectId}</Text>
-                )}
-                {instruction.Stage && <Text>Status: {instruction.Stage}</Text>}
-                {deal?.ServiceDescription && (
-                    <Text>Service: {deal.ServiceDescription}</Text>
-                )}
-                {deal?.AreaOfWork && <Text>Area: {deal.AreaOfWork}</Text>}
-                {deal?.Amount !== undefined && <Text>Amount: £{deal.Amount}</Text>}
-                {formattedDate && <Text>Submitted: {formattedDate}</Text>}
-                {instruction.HelixContact && (
-                    <Text>Contact: {instruction.HelixContact}</Text>
-                )}
-                {instruction.FirstName && instruction.LastName && (
-                    <Text>
-                        Client: {instruction.FirstName} {instruction.LastName}
-                    </Text>
-                )}
-                {instruction.CompanyName && (
-                    <Text>Company: {instruction.CompanyName}</Text>
-                )}
-                {instruction.Email && <Text>{instruction.Email}</Text>}
+                <ul className="detail-list">
+                    {prospectId !== undefined && (
+                        <li>
+                            <strong>Prospect ID:</strong> {prospectId}
+                        </li>
+                    )}
+                    {instruction.Stage && (
+                        <li>
+                            <strong>Status:</strong> {instruction.Stage}
+                        </li>
+                    )}
+                    {deal?.ServiceDescription && (
+                        <li>
+                            <strong>Service:</strong> {deal.ServiceDescription}
+                        </li>
+                    )}
+                    {deal?.AreaOfWork && (
+                        <li>
+                            <strong>Area:</strong> {deal.AreaOfWork}
+                        </li>
+                    )}
+                    {deal?.Amount !== undefined && (
+                        <li>
+                            <strong>Amount:</strong> £{deal.Amount}
+                        </li>
+                    )}
+                    {formattedDate && (
+                        <li>
+                            <strong>Submitted:</strong> {formattedDate}
+                        </li>
+                    )}
+                    {instruction.HelixContact && (
+                        <li>
+                            <strong>Contact:</strong> {instruction.HelixContact}
+                        </li>
+                    )}
+                    {instruction.FirstName && instruction.LastName && (
+                        <li>
+                            <strong>Client:</strong> {instruction.FirstName}{' '}
+                            {instruction.LastName}
+                        </li>
+                    )}
+                    {instruction.CompanyName && (
+                        <li>
+                            <strong>Company:</strong> {instruction.CompanyName}
+                        </li>
+                    )}
+                    {instruction.Email && <li>{instruction.Email}</li>}
+                </ul>
+
             </div>
             <div className="instruction-actions">
                 <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
-                    Actions
+                    Action Points
                 </Text>
                 <ul className="action-list">
                     <li>
@@ -103,7 +134,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, pr
                             : 'Pending'}
                     </li>
                 </ul>
-            </div>
+            </div>c
         </div>
     );
 };

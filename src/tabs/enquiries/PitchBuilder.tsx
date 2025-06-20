@@ -371,10 +371,30 @@ function toggleBlockLock(blockTitle: string) {
     e.stopPropagation();
     e.preventDefault();
     const block = templateBlocks.find((b) => b.title === blockTitle);
-    if (block) {
-      setInlineOptionsTarget(e.currentTarget as HTMLElement);
-      setInlineOptionsBlock(block);
+    if (!block) return;
+
+    if (!insertedBlocks[block.title]) {
+      let optionToInsert = selectedTemplateOptions[block.title];
+
+      if (!optionToInsert) {
+        const first = block.options[0]?.label;
+        optionToInsert = block.isMultiSelect ? [first] : first;
+        if (first) {
+          if (block.isMultiSelect) {
+            handleMultiSelectChange(block.title, [first]);
+          } else {
+            handleSingleSelectChange(block.title, first);
+          }
+        }
+      }
+
+      if (optionToInsert) {
+        insertTemplateBlock(block, optionToInsert, true, true);
+        return;
+      }
     }
+    setInlineOptionsTarget(e.currentTarget as HTMLElement);
+    setInlineOptionsBlock(block);
   }
 
   function closeInlineOptions() {
