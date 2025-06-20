@@ -53,12 +53,19 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
         if (text) navigator.clipboard.writeText(text);
     };
 
-    // Dynamically build list of all available user properties
-    const userDetails = Object.entries(user as Record<string, any>)
-        .filter(([_, value]) => value !== undefined && value !== null && value !== '')
-        .map(([key, value]) => ({
-            label: key.replace(/_/g, ' '),
-            value: String(value),
+    // Only display email, Clio ID and Entra ID from the user data
+    const allowedFields = ['Email', 'ClioID', 'EntraID'] as const;
+    const labels: Record<typeof allowedFields[number], string> = {
+        Email: 'Email',
+        ClioID: 'Clio ID',
+        EntraID: 'Entra ID',
+    };
+
+    const userDetails = allowedFields
+        .filter((key) => user[key as keyof UserData])
+        .map((key) => ({
+            label: labels[key],
+            value: String(user[key as keyof UserData]),
         }));
 
     return (

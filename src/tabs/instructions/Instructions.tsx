@@ -253,6 +253,11 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: 'border-box',
   });
 
+  const tableContainerStyle = mergeStyles({
+    overflowX: 'auto',
+    width: '100%',
+  });
+
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
@@ -305,6 +310,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       )}
       {activePivot === 'deals' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
+          <div className={tableContainerStyle}>
           <table className="simple-table">
             <thead>
               <tr>
@@ -323,10 +329,12 @@ const Instructions: React.FC<InstructionsProps> = ({
               ))}
             </tbody>
           </table>
+          </div>
         </Stack>
       )}
       {activePivot === 'clients' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
+          <div className={tableContainerStyle}>
           <table className="simple-table">
             <thead>
               <tr>
@@ -345,10 +353,12 @@ const Instructions: React.FC<InstructionsProps> = ({
               ))}
             </tbody>
           </table>
+          </div>
         </Stack>
       )}
       {activePivot === 'risk' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
+          <div className={tableContainerStyle}>
           <table className="simple-table">
             <thead>
               <tr>
@@ -367,6 +377,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               ))}
             </tbody>
           </table>
+    </div>
         </Stack>
       )}
     </section>

@@ -779,7 +779,7 @@ useEffect(() => {
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${lockButton}${removeButton}</span></div>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span><span class="actions">${lockButton}${removeButton}</span></div>`;
     const optionsHtml = block.options
       .filter((o) =>
         block.isMultiSelect && isStringArray(selectedOption)

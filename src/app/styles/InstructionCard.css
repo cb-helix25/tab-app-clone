@@ -1,7 +1,8 @@
 .instructionCard {
     display: flex;
     flex-direction: column;
-        gap: 8px;
+    gap: 8px;
+    height: 100%;
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
@@ -11,10 +12,11 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    flex: 1 1 auto;
 }
 
 .instruction-actions {
-    margin-top: 8px;
+    margin-top: auto;
     padding-top: 4px;
     border-top: 1px solid #e1dfdd;
 }

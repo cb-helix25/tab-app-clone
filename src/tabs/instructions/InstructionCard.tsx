@@ -51,7 +51,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         borderRadius: componentTokens.card.base.borderRadius,
         padding: componentTokens.card.base.padding,
         boxShadow: componentTokens.card.base.boxShadow,
-        color: colours.dark.text,
+        color: colours.light.text,
+        height: '100%',
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         selectors: {
             ':hover': {

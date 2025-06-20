@@ -9,6 +9,7 @@ import {
   IDropdownOption,
   IStyle,
 } from '@fluentui/react';
+import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { TeamData } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -171,36 +172,6 @@ const rightColumnStyle = mergeStyles({
   display: 'flex',
   gap: '12px',
   alignItems: 'center',
-});
-
-// Grouped area tab style uses the group's own colour when selected.
-const groupTabStyle = (isSelected: boolean, isDarkMode: boolean, groupKey: string): string =>
-  mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 12px',
-    marginRight: '12px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s, border 0.3s',
-    border: '2px solid transparent',
-    fontFamily: 'Raleway, sans-serif',
-    selectors: {
-      ':hover': {
-        backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
-      },
-    },
-    ...(isSelected && {
-      border: `2px solid ${getGroupColor(groupKey)}`,
-      backgroundColor: `${getGroupColor(groupKey)}20`,
-    }),
-  });
-
-const groupTabTextStyle = (isSelected: boolean, isDarkMode: boolean): IStyle => ({
-  fontWeight: isSelected ? '600' : '400',
-  color: isDarkMode ? colours.dark.text : colours.light.text,
-  fontSize: '14px',
-  fontFamily: 'Raleway, sans-serif',
 });
 
 const stateButtonStyle = (isDarkMode: boolean) =>
@@ -388,35 +359,31 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
       {/* Row 1: Grouped Area Tabs */}
       <div className={mainMenuStyle(isDarkMode)}>
         <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-          {groupedAreaTabs.map((g) => {
+          {groupedAreaTabs.map((g, index) => {
             const isSelected = activeGroupedArea === g.key;
             return (
-              <div
+              <QuickActionsCard
                 key={g.key}
-                className={groupTabStyle(isSelected, isDarkMode, g.text)}
+                title={g.text}
+                icon={g.icon}
+                isDarkMode={isDarkMode}
                 onClick={() => {
                   setActiveGroupedArea(isSelected ? null : g.key);
                   setActivePracticeAreas([]);
                 }}
-                aria-label={g.text}
-              >
-                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
-                  <Icon
-                    iconName={g.icon}
-                    styles={{
-                      root: {
-                        fontSize: '20px',
-                        color: isSelected ? getGroupColor(g.text) : '#aaa',
-                        marginRight: '8px',
-                      },
-                    }}
-                  />
-                  <Text variant="small" styles={{ root: groupTabTextStyle(isSelected, isDarkMode) }}>
-                    {g.text}
-
-                  </Text>
-                </Stack>
-              </div>
+                iconColor={isSelected ? '#fff' : colours.cta}
+                style={{
+                  '--card-index': index,
+                  fontSize: '16px',
+                  padding: '0 12px',
+                  height: '48px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isSelected ? getGroupColor(g.text) : undefined,
+                  color: isSelected ? '#fff' : undefined,
+                } as React.CSSProperties}
+              />
             );
           })}
         </Stack>

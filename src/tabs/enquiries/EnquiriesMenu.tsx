@@ -1,5 +1,5 @@
 import React from 'react';
-import { mergeStyles, SearchBox, Icon } from '@fluentui/react';
+import { mergeStyles, SearchBox, Icon, Text } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
@@ -159,9 +159,9 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                             onClick={() => setActiveState(isSelected ? '' : state.key)}
                             aria-label={state.text}
                         >
-                            <span style={{ fontWeight: isSelected ? 600 : 400, color: isSelected ? '#ffffff' : undefined }}>
+                            <Text variant="medium" styles={{ root: { fontWeight: isSelected ? 600 : 400, color: isSelected ? '#ffffff' : undefined } }}>
                                 {state.text}
-                            </span>
+                            </Text>
                         </div>
                     );
                 })}
