@@ -419,17 +419,26 @@ function toggleBlockLock(blockTitle: string) {
     }
   }
 
+  function resetBlockOption(blockTitle: string) {
+    const block = templateBlocks.find((b) => b.title === blockTitle);
+    if (!block) return;
+    const selected = selectedTemplateOptions[blockTitle];
+    if (!selected) return;
+    insertTemplateBlock(block, selected, true, false);
+  }
+
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
   (window as any).openInlineOptions = openInlineOptions;
   (window as any).openSnippetOptions = openSnippetOptions;
   (window as any).insertBlockOption = insertBlockOption;
+  (window as any).resetBlockOption = resetBlockOption;
   (window as any).removeBlock = (title: string) => {
     const block = templateBlocks.find((b) => b.title === title);
     if (block) handleClearBlock(block);
   };
-}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, insertBlockOption, templateBlocks]);
+}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -734,12 +743,26 @@ useEffect(() => {
     );
     const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${editButton}${lockButton}${removeButton}</span></div>`;
     const optionsHtml = block.options
+      .filter((o) =>
+        block.isMultiSelect && isStringArray(selectedOption)
+          ? !selectedOption.includes(o.label)
+          : selectedOption !== o.label
+      )
       .map((o) => {
         const safe = o.label.replace(/'/g, "&#39;");
         return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
       })
       .join(' ');
-    const optionListHtml = `<div class="block-option-list">${optionsHtml}</div>`;
+    const resetHtml =
+      editedBlocks[block.title] && selectedLabel
+        ? `<span class="option-choice" onclick="window.resetBlockOption('${block.title}')">Reset</span>`
+        : '';
+    const optionListContent = [optionsHtml, resetHtml]
+      .filter(Boolean)
+      .join(' ');
+    const optionListHtml = optionListContent
+      ? `<div class="block-option-list">${optionListContent}</div>`
+      : '';
     const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}${optionListHtml}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
@@ -860,6 +883,37 @@ useEffect(() => {
     const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
     targetEl.setAttribute('data-snippet', replacement);
     targetEl.innerHTML = `${text}${editBtn}`;
+
+    const optionDiv = span.querySelector('div.block-option-list');
+    if (optionDiv) {
+      const currentSelected = block.isMultiSelect
+        ? (selectedTemplateOptions[block.title] as string[])
+        : selectedTemplateOptions[block.title];
+      const newSelected = block.isMultiSelect
+        ? (currentSelected as string[]).map((opt) =>
+          opt === previous ? replacement : opt
+        )
+        : replacement;
+      const optionsHtml = block.options
+        .filter((o) =>
+          block.isMultiSelect && Array.isArray(newSelected)
+            ? !(newSelected as string[]).includes(o.label)
+            : newSelected !== o.label
+        )
+        .map((o) => {
+          const safe = o.label.replace(/'/g, "&#39;");
+          return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+        })
+        .join(' ');
+      const resetHtml =
+        editedBlocks[block.title] && newSelected
+          ? `<span class="option-choice" onclick="window.resetBlockOption('${block.title}')">Reset</span>`
+          : '';
+      const optionListContent = [optionsHtml, resetHtml]
+        .filter(Boolean)
+        .join(' ');
+      optionDiv.innerHTML = optionListContent;
+    }
 
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
@@ -1415,14 +1469,7 @@ function handleInput() {
         'g'
       );
       // Build the original placeholder markup.
-      const optionHtml = block.options
-        .map((o) => {
-          const safe = o.label.replace(/'/g, "&#39;");
-          return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
-        })
-        .join(' ');
-      const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionHtml}</span>`;
-
+      const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`;
       const update = (prevBody: string) => prevBody.replace(regex, placeholderHTML);
       // Replace the block immediately in state and DOM
       setBody((prevBody) => {
@@ -1443,14 +1490,7 @@ function handleInput() {
           `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
           'g'
         );
-        const optionHtml = block.options
-          .map((o) => {
-            const safe = o.label.replace(/'/g, "&#39;");
-            return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
-          })
-          .join(' ');
-        const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionHtml}</span>`;
-        newBody = newBody.replace(regex, placeholderHTML);
+        const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`;        newBody = newBody.replace(regex, placeholderHTML);
       });
       bodyEditorRef.current.innerHTML = newBody;
       setBody(newBody);

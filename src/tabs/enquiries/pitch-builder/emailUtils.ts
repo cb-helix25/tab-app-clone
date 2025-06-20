@@ -138,15 +138,9 @@ export function replacePlaceholders(
       block.placeholder === '[FE Introduction Placeholder]' && intro
         ? intro
         : block.placeholder;
-    const optionsHtml = block.options
-      .map((o) => {
-        const safe = o.label.replace(/'/g, "&#39;");
-        return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
-      })
-      .join(' ');
     result = result.replace(
       regex,
-      `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionsHtml}</span>`
+      `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`
     );
   });
 
