@@ -60,33 +60,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, pr
 
     return (
         <div className={cardClass} style={style}>
-            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                {instruction.InstructionRef}
-            </Text>
-            {prospectId !== undefined && (
-                <Text variant="small">Prospect ID: {prospectId}</Text>
-            )}
-            {instruction.Stage && <Text>Status: {instruction.Stage}</Text>}
-            {deal?.ServiceDescription && (
-                <Text>Service: {deal.ServiceDescription}</Text>
-            )}
-            {deal?.AreaOfWork && <Text>Area: {deal.AreaOfWork}</Text>}
-            {deal?.Amount !== undefined && <Text>Amount: £{deal.Amount}</Text>}
-            {formattedDate && <Text>Submitted: {formattedDate}</Text>}
-            {instruction.HelixContact && (
-                <Text>Contact: {instruction.HelixContact}</Text>
-            )}
-            {instruction.FirstName && instruction.LastName && (
-                <Text>Client: {instruction.FirstName} {instruction.LastName}</Text>
-            )}
-            {instruction.CompanyName && <Text>Company: {instruction.CompanyName}</Text>}
-            {instruction.Email && <Text>{instruction.Email}</Text>}
-            {eid && eid.EIDStatus && (
-                <Text>ID Check: {eid.EIDStatus}</Text>
-            )}
-            {risk && risk.RiskAssessmentResult && (
-                <Text>Risk: {risk.RiskAssessmentResult}</Text>
-            )}
+            <div className="instruction-details">
+                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+                    {instruction.InstructionRef}
+                </Text>
+                {prospectId !== undefined && (
+                    <Text variant="small">Prospect ID: {prospectId}</Text>
+                )}
+                {instruction.Stage && <Text>Status: {instruction.Stage}</Text>}
+                {deal?.ServiceDescription && (
+                    <Text>Service: {deal.ServiceDescription}</Text>
+                )}
+                {deal?.AreaOfWork && <Text>Area: {deal.AreaOfWork}</Text>}
+                {deal?.Amount !== undefined && <Text>Amount: £{deal.Amount}</Text>}
+                {formattedDate && <Text>Submitted: {formattedDate}</Text>}
+                {instruction.HelixContact && (
+                    <Text>Contact: {instruction.HelixContact}</Text>
+                )}
+                {instruction.FirstName && instruction.LastName && (
+                    <Text>
+                        Client: {instruction.FirstName} {instruction.LastName}
+                    </Text>
+                )}
+                {instruction.CompanyName && (
+                    <Text>Company: {instruction.CompanyName}</Text>
+                )}
+                {instruction.Email && <Text>{instruction.Email}</Text>}
+            </div>
+            <div className="instruction-actions">
+                <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
+                    Actions
+                </Text>
+                <ul className="action-list">
+                    <li>
+                        ID Check:{' '}
+                        {eid?.EIDStatus ? eid.EIDStatus : 'Pending'}
+                    </li>
+                    <li>
+                        Risk:{' '}
+                        {risk?.RiskAssessmentResult
+                            ? risk.RiskAssessmentResult
+                            : 'Pending'}
+                    </li>
+                </ul>
+            </div>
         </div>
     );
 };

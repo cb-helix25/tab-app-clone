@@ -26,3 +26,10 @@ Important styles include:
 - `dropIn` keyframes so each card fades and slides into place
 
 By leveraging these tokens the instruction dashboard maintains a clean and high quality appearance that matches the existing design language.
+
+## Action Points
+
+Below the main instruction details each card now lists key action points. These
+show the current ID check and risk assessment status so solicitors can quickly
+see outstanding tasks. The action list appears under a subtle divider at the
+bottom of the card.
