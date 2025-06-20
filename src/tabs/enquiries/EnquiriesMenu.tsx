@@ -49,6 +49,28 @@ const stateBarStyle = (isDark: boolean) =>
         zIndex: 998,
     });
 
+const stateButtonStyle = (isDark: boolean) =>
+    mergeStyles({
+        padding: '8px 16px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s, color 0.3s',
+        border: `1px solid ${isDark ? '#444' : '#ccc'}`,
+        color: isDark ? '#333' : '#333',
+        fontFamily: 'Raleway, sans-serif',
+        selectors: {
+            ':hover': {
+                backgroundColor: isDark ? '#555' : '#f3f2f1',
+            },
+        },
+    });
+
+const activeStateButtonStyle = mergeStyles({
+    backgroundColor: colours.highlight,
+    color: '#ffffff !important',
+    border: 'none',
+});    
+
 const areaColor = (area?: string): string => {
     const normalizedArea = area?.toLowerCase() || '';
     switch (normalizedArea) {
@@ -128,27 +150,21 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                 ))}
             </div>
             <div className={stateBarStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
-                {stateTabs.map((state, index) => (
-                    <QuickActionsCard
-                        key={state.key}
-                        title={state.text}
-                        icon=""
-                        isDarkMode={isDarkMode}
-                        onClick={() => setActiveState(activeState === state.key ? '' : state.key)}
-                        iconColor={activeState === state.key ? '#fff' : colours.cta}
-                        style={{
-                            '--card-index': index,
-                            fontSize: '16px',
-                            padding: '0 12px',
-                            height: '48px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: activeState === state.key ? colours.highlight : undefined,
-                            color: activeState === state.key ? '#fff' : undefined,
-                        } as React.CSSProperties}
-                    />
-                ))}
+                {stateTabs.map((state) => {
+                    const isSelected = activeState === state.key;
+                    return (
+                        <div
+                            key={state.key}
+                            className={mergeStyles(stateButtonStyle(isDarkMode), isSelected && activeStateButtonStyle)}
+                            onClick={() => setActiveState(isSelected ? '' : state.key)}
+                            aria-label={state.text}
+                        >
+                            <span style={{ fontWeight: isSelected ? 600 : 400, color: isSelected ? '#ffffff' : undefined }}>
+                                {state.text}
+                            </span>
+                        </div>
+                    );
+                })}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className={searchIconContainer} onClick={() => setSearchActive(!isSearchActive)}>
                         {isSearchActive ? (

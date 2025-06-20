@@ -139,7 +139,7 @@ const mainMenuStyle = (isDarkMode: boolean) =>
     justifyContent: 'space-between',
   });
 
-const practiceAreaBarStyle = (isDarkMode: boolean) =>
+const stateBarStyle = (isDarkMode: boolean) =>
   mergeStyles({
     ...barBase(isDarkMode),
     borderTop: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
@@ -147,6 +147,15 @@ const practiceAreaBarStyle = (isDarkMode: boolean) =>
     top: ACTION_BAR_HEIGHT * 2,
     zIndex: 998,
   });
+
+const practiceAreaBarStyle = (isDarkMode: boolean) =>
+  mergeStyles({
+    ...barBase(isDarkMode),
+    borderTop: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+    position: 'sticky',
+    top: ACTION_BAR_HEIGHT * 3,
+    zIndex: 997,
+  });  
 
 const rowStyle = mergeStyles({
   display: 'flex',
@@ -189,7 +198,8 @@ const groupTabStyle = (isSelected: boolean, isDarkMode: boolean, groupKey: strin
 
 const groupTabTextStyle = (isSelected: boolean, isDarkMode: boolean): IStyle => ({
   fontWeight: isSelected ? '600' : '400',
-  color: isDarkMode ? '#cccccc' : '#333333',
+  color: isDarkMode ? colours.dark.text : colours.light.text,
+  fontSize: '14px',
   fontFamily: 'Raleway, sans-serif',
 });
 
@@ -375,97 +385,121 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
 
   return (
     <>
-      {/* Row 1: Main menu with two columns */}
+      {/* Row 1: Grouped Area Tabs */}
       <div className={mainMenuStyle(isDarkMode)}>
-        <div className={rowStyle} style={{ justifyContent: 'space-between', width: '100%' }}>
-        {/* Left column: Grouped Area Tabs */}
-        <div className={leftColumnStyle}>
-          <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-            {groupedAreaTabs.map((g) => {
-              const isSelected = activeGroupedArea === g.key;
-              return (
-                <div
-                  key={g.key}
-                  className={groupTabStyle(isSelected, isDarkMode, g.text)}
-                  onClick={() => {
-                    setActiveGroupedArea(isSelected ? null : g.key);
-                    // Reset selected practice areas when changing grouped areas
-                    setActivePracticeAreas([]);
-                  }}
-                  aria-label={g.text}
-                >
-                  <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
-                    <Icon
-                      iconName={g.icon}
-                      styles={{
-                        root: {
-                          fontSize: '20px',
-                          color: isSelected ? getGroupColor(g.text) : '#aaa',
-                          marginRight: '8px',
-                        },
-                      }}
-                    />
-                    <Text variant="mediumPlus" styles={{ root: groupTabTextStyle(isSelected, isDarkMode) }}>
-                      {g.text}
-                    </Text>
-                  </Stack>
-                </div>
-              );
-            })}
-          </Stack>
-        </div>
-
-        {/* Right column: All/Mine, Fee Earner Toggle + Dropdown, Search & Clear Icon */}
-        <div className={rightColumnStyle}>
-          <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-            {states.map((s) => {
-              const isSelected = activeState === s.key;
-              const onClickHandler = () => {
-                setActiveState(isSelected ? '' : s.key);
-                if (s.key === 'Mine') {
-                  setFeeEarnerType(null);
-                  setActiveFeeEarner(null);
-                }
-              };
-              return (
-                <div
-                  key={s.key}
-                  className={mergeStyles(stateButtonStyle(isDarkMode), isSelected && activeStateButtonStyle)}
-                  onClick={onClickHandler}
-                  aria-label={s.text}
-                >
-                  <Text variant="medium" styles={{ root: { fontWeight: isSelected ? '600' : '400', color: isSelected ? '#ffffff' : undefined } }}>
-                    {s.text}
-                  </Text>
-                </div>
-              );
-            })}
-
-            {activeState !== 'Mine' && (
-              <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                <FeeEarnerToggle
-                  feeEarnerType={feeEarnerType}
-                  setFeeEarnerType={setFeeEarnerType}
-                  isDarkMode={isDarkMode}
-                />
-                {feeEarnerType && (
-                  <Dropdown
-                    placeholder={feeEarnerType === "Originating" ? "Originating Fee Earner" : "Responsible Fee Earner"}
-                    options={feeEarnerOptions}
-                    selectedKey={activeFeeEarner || ''}
-                    onChange={(e, option) =>
-                      setActiveFeeEarner(option && option.key !== '' ? (option.key as string) : null)
-                    }
-                    styles={{ dropdown: dropdownStyles }}
+        <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+          {groupedAreaTabs.map((g) => {
+            const isSelected = activeGroupedArea === g.key;
+            return (
+              <div
+                key={g.key}
+                className={groupTabStyle(isSelected, isDarkMode, g.text)}
+                onClick={() => {
+                  setActiveGroupedArea(isSelected ? null : g.key);
+                  setActivePracticeAreas([]);
+                }}
+                aria-label={g.text}
+              >
+                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 0 }}>
+                  <Icon
+                    iconName={g.icon}
+                    styles={{
+                      root: {
+                        fontSize: '20px',
+                        color: isSelected ? getGroupColor(g.text) : '#aaa',
+                        marginRight: '8px',
+                      },
+                    }}
                   />
-                )}
-              </Stack>
+                  <Text variant="small" styles={{ root: groupTabTextStyle(isSelected, isDarkMode) }}>
+                    {g.text}
+
+                  </Text>
+                </Stack>
+              </div>
+            );
+          })}
+        </Stack>
+      </div>
+
+      {/* Row 2: Filters */}
+      <div className={stateBarStyle(isDarkMode)}>
+        <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center" className={rowStyle}>
+          {states.map((s) => {
+            const isSelected = activeState === s.key;
+            const onClickHandler = () => {
+              setActiveState(isSelected ? '' : s.key);
+              if (s.key === 'Mine') {
+                setFeeEarnerType(null);
+                setActiveFeeEarner(null);
+              }
+            };
+            return (
+              <div
+                key={s.key}
+                className={mergeStyles(stateButtonStyle(isDarkMode), isSelected && activeStateButtonStyle)}
+                onClick={onClickHandler}
+                aria-label={s.text}
+              >
+                <Text variant="medium" styles={{ root: { fontWeight: isSelected ? '600' : '400', color: isSelected ? '#ffffff' : undefined } }}>
+                  {s.text}
+                </Text>
+              </div>
+            );
+          })}
+
+
+          {activeState !== 'Mine' && (
+            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+              <FeeEarnerToggle
+                feeEarnerType={feeEarnerType}
+                setFeeEarnerType={setFeeEarnerType}
+                isDarkMode={isDarkMode}
+              />
+              {feeEarnerType && (
+                <Dropdown
+                  placeholder={feeEarnerType === "Originating" ? "Originating Fee Earner" : "Responsible Fee Earner"}
+                  options={feeEarnerOptions}
+                  selectedKey={activeFeeEarner || ''}
+                  onChange={(e, option) =>
+                    setActiveFeeEarner(option && option.key !== '' ? (option.key as string) : null)
+                  }
+                  styles={{ dropdown: dropdownStyles }}
+                />
+              )}
+            </Stack>
             )}
 
-            <div className={searchContainerStyle}>
-              <div className={searchIconStyle} onClick={() => setSearchActive(!isSearchActive)}>
+          <div className={searchContainerStyle} style={{ marginLeft: 'auto' }}>
+            <div className={searchIconStyle} onClick={() => setSearchActive(!isSearchActive)}>
+              <Icon
+                iconName={isSearchActive ? 'Cancel' : 'Search'}
+                styles={{
+                  root: {
+                    fontSize: '20px',
+                    color: isDarkMode ? '#ffffff' : '#333333',
+                  },
+                }}
+              />
+            </div>
+            <div className={searchBoxStyles(isSearchActive)}>
+              <SearchBox
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(_, newValue) => setSearchTerm(newValue || '')}
+                underlined
+                styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
+              />
+            </div>
+            {anyFiltersActive && (
+              <div
+                className={mergeStyles({ cursor: 'pointer', padding: '8px' })}
+                onClick={clearFilters}
+                aria-label="Clear all filters"
+              >
+
                 <Icon
-                  iconName={isSearchActive ? 'Cancel' : 'Search'}
+                  iconName="Clear"
                   styles={{
                     root: {
                       fontSize: '20px',
@@ -474,40 +508,12 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                   }}
                 />
               </div>
-              <div className={searchBoxStyles(isSearchActive)}>
-                <SearchBox
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(_, newValue) => setSearchTerm(newValue || '')}
-                  underlined
-                  styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
-                />
-              </div>
-              {anyFiltersActive && (
-                <div
-                  className={mergeStyles({ cursor: 'pointer', padding: '8px' })}
-                  onClick={clearFilters}
-                  aria-label="Clear all filters"
-                >
-                  <Icon
-                    iconName="Clear"
-                    styles={{
-                      root: {
-                        fontSize: '20px',
-                        color: isDarkMode ? '#ffffff' : '#333333',
-                      },
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </Stack>
-        </div>
-      </div>
-        {/* close mainMenuStyle */}
+            )}
+          </div>
+        </Stack>
       </div>
 
-      {/* Row 2: Practice Area Buttons */}
+      {/* Row 3: Practice Area Buttons */}
       {activeGroupedArea && practiceAreasForGroup.length > 0 && (
           <div className={practiceAreaBarStyle(isDarkMode)}>
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
