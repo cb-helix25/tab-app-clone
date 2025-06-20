@@ -11,18 +11,6 @@
   margin-right: 8px; /* Space between icon and text */
 }
 
-/* Keyframe animation for a 'drop-in' effect */
-@keyframes dropIn {
-  from {
-    transform: translateY(-10px); /* Drop in from above */
-    opacity: 0;                   /* Invisible */
-  }
-  to {
-    transform: translateY(0);     /* Back to position */
-    opacity: 1;                   /* Fully visible */
-  }
-}
-
 /* Target the links inside your custom pivot */
 .customPivot .ms-Pivot-link {
   opacity: 0;

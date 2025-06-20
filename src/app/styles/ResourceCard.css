@@ -1,16 +1,5 @@
 /* src/app/styles/ResourceCard.css */
 
-@keyframes dropIn {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
 .resourceCard {
   opacity: 0; /* Initially invisible */
   animation: dropIn 0.3s ease forwards;

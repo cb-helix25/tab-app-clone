@@ -53,16 +53,3 @@
     font-size: 14px;
     color: #333333; /* Replace or override based on theme/dark mode */
   }
-  
-  /* Keyframe for fadeInUp animation */
-  @keyframes fadeInUp {
-    0% {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  

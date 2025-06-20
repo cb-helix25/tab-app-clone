@@ -2407,7 +2407,7 @@ const conversionRate = enquiriesMonthToDate
                 icon={action.icon || ''}
                 isDarkMode={isDarkMode}
                 onClick={action.onClick}
-                iconColor={colours.highlight}
+                iconColor={colours.cta}
                 style={{
                   '--card-index': index,
                   fontSize: '16px',
@@ -2431,7 +2431,7 @@ const conversionRate = enquiriesMonthToDate
               icon={action.icon}
               isDarkMode={isDarkMode}
               onClick={() => handleActionClick(action)}
-              iconColor={colours.highlight}
+              iconColor={colours.cta}
               // Same per-button sizing:
               style={{
                 '--card-index': index,

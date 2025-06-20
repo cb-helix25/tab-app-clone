@@ -64,14 +64,14 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   let attendanceIconName = icon;
   let attendanceIconStyle = mergeStyles({
     fontSize: '19px',
-    color: iconColor || colours.highlight,
+    color: iconColor || colours.cta,
     marginRight: '4px',
   });
 
   if (title === 'Confirm Attendance') {
     if (confirmed) {
       attendanceIconName = 'Accept';
-      attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.highlight });
+      attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.cta });
     } else {
       attendanceIconName = 'Cancel';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, {
@@ -114,7 +114,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   return (
     <div
-      className={mergeStyles("quickActionCard", combinedCardStyle)}
+      className={mergeStyles("quickActionCard icon-hover", combinedCardStyle)}
       style={style}
       onClick={onClick}
       role="button"
@@ -125,7 +125,10 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         }
       }}
     >
-      <Icon iconName={attendanceIconName} className={attendanceIconStyle} />
+      <span>
+        <Icon iconName={attendanceIconName} className={`icon-outline ${attendanceIconStyle}`} />
+        <Icon iconName={attendanceIconName} className={`icon-filled ${attendanceIconStyle}`} />
+      </span>
       <Text variant="small" styles={{ root: textStyle }}>
         {title}
       </Text>

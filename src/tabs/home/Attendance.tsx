@@ -597,13 +597,12 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
   const handleMouseMove = (e: React.MouseEvent<HTMLTableElement>) => {
     if (tableRef.current && tableContainerRef.current) {
       const tableRect = tableRef.current.getBoundingClientRect();
-      const containerRect = tableContainerRef.current.getBoundingClientRect();
-      const scrollLeft = tableContainerRef.current.scrollLeft;
-      const scrollTop = tableContainerRef.current.scrollTop;
-  
-      // Calculate mouse position relative to the table's top-left corner
-      const x = e.clientX - tableRect.left + scrollLeft;
-      const y = e.clientY - tableRect.top + scrollTop;
+
+      // Calculate mouse position relative to the table's top-left corner.
+      // tableRect already accounts for the container's scroll position so
+      // we don't need to add scroll offsets again.
+      const x = e.clientX - tableRect.left;
+      const y = e.clientY - tableRect.top;
   
       // Ensure coordinates are within table bounds
       if (x >= 0 && y >= 0 && x <= tableRect.width && y <= tableRect.height) {

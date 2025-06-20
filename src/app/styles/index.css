@@ -3,6 +3,9 @@
 /* Import Raleway font from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap');
 
+/* Global animation keyframes */
+@import './animations.css';
+
 :root {
   --helix-dark-blue: rgb(6, 23, 51);
   --helix-blue: rgb(13, 47, 96);

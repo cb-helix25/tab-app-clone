@@ -15,7 +15,7 @@ const OperationStatusToast: React.FC<OperationStatusToastProps> = ({ visible, me
     type === 'success' ? MessageBarType.success : type === 'error' ? MessageBarType.error : MessageBarType.info;
 
   return (
-    <CSSTransition in={visible} timeout={200} classNames="toast" unmountOnExit>
+    <CSSTransition in={visible} timeout={300} classNames="toast" unmountOnExit>
       <MessageBar
         messageBarType={messageBarType}
         isMultiline={false}

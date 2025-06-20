@@ -362,15 +362,37 @@ function toggleBlockLock(blockTitle: string) {
     setInlineOptionsTarget(null);
   }
 
+  function openSnippetOptions(
+    e: MouseEvent,
+    blockTitle: string,
+    snippetLabel: string
+  ) {
+    e.stopPropagation();
+    e.preventDefault();
+    const block = templateBlocks.find((b) => b.title === blockTitle);
+    if (block) {
+      setSnippetOptionsTarget(e.currentTarget as HTMLElement);
+      setSnippetOptionsBlock(block);
+      setSnippetOptionsLabel(snippetLabel);
+    }
+  }
+
+  function closeSnippetOptions() {
+    setSnippetOptionsBlock(null);
+    setSnippetOptionsTarget(null);
+    setSnippetOptionsLabel('');
+  }
+
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
   (window as any).openInlineOptions = openInlineOptions;
+  (window as any).openSnippetOptions = openSnippetOptions;
   (window as any).removeBlock = (title: string) => {
     const block = templateBlocks.find((b) => b.title === title);
     if (block) handleClearBlock(block);
   };
-}, [toggleBlockLock, highlightBlock, openInlineOptions, templateBlocks]);
+}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -471,6 +493,10 @@ useEffect(() => {
   const [inlineOptionsBlock, setInlineOptionsBlock] = useState<TemplateBlock | null>(null);
   const [inlineOptionsTarget, setInlineOptionsTarget] = useState<HTMLElement | null>(null);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
+  const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
+  const [snippetOptionsTarget, setSnippetOptionsTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (inlineOptionsBlock) {
@@ -620,7 +646,7 @@ useEffect(() => {
         const escLabel = opt.replace(/'/g, "&#39;");
         const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
         const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetEdit('${block.title}','${escLabel}')" title="Edit Snippet">${editIcon}</span>`;
+        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
         snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
       });
     } else if (typeof selectedOption === 'string') {
@@ -642,7 +668,7 @@ useEffect(() => {
         const escLabel = selectedOption.replace(/'/g, "&#39;");
         const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
         const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
-        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetEdit('${block.title}','${escLabel}')" title="Edit Snippet">${editIcon}</span>`;
+        const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
         snippetHtml.push(`<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}${editBtn}</div>`);
       }
 
@@ -748,6 +774,66 @@ useEffect(() => {
           (window as any).toggleBlockLock = toggleBlockLock;
         }
       }, 0);
+    }
+  }
+
+  function replaceSnippetOption(
+    block: TemplateBlock,
+    previous: string,
+    replacement: string
+  ) {
+    if (!bodyEditorRef.current) return;
+    const span = bodyEditorRef.current.querySelector(
+      `span[data-inserted="${block.title}"]`
+    ) as HTMLElement | null;
+    if (!span) return;
+    const snippetEls = Array.from(
+      span.querySelectorAll('div[data-snippet]')
+    ) as HTMLElement[];
+    const targetEl = snippetEls.find(
+      (el) => el.getAttribute('data-snippet') === previous
+    );
+    if (!targetEl) return;
+
+    const option = block.options.find((o) => o.label === replacement);
+    if (!option) return;
+    let text = option.previewText.trim().replace(/\n/g, '<br />');
+    text = applyDynamicSubstitutions(
+      text,
+      userData,
+      enquiry,
+      amount,
+      dealPasscode,
+      dealPasscode
+        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        : undefined
+    );
+    text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+    const escLabel = replacement.replace(/'/g, "&#39;");
+    const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
+    const editIcon = `<i class="ms-Icon ms-Icon--Edit" aria-hidden="true" style="pointer-events:none;"></i>`;
+    const editBtn = `<span class="icon-btn edit-toggle" style="${iconStyle}" onclick="window.openSnippetOptions(event, '${block.title}','${escLabel}')" title="Change Snippet">${editIcon}</span>`;
+    targetEl.setAttribute('data-snippet', replacement);
+    targetEl.innerHTML = `${text}${editBtn}`;
+
+    const updatedHtml = span.innerHTML;
+    setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
+    setBody(bodyEditorRef.current.innerHTML);
+
+    if (block.isMultiSelect) {
+      setSelectedTemplateOptions((prev) => {
+        const arr = Array.isArray(prev[block.title])
+          ? ([...prev[block.title]] as string[])
+          : [];
+        const idx = arr.indexOf(previous);
+        if (idx !== -1) arr[idx] = replacement;
+        return { ...prev, [block.title]: arr };
+      });
+    } else {
+      setSelectedTemplateOptions((prev) => ({
+        ...prev,
+        [block.title]: replacement,
+      }));
     }
   }
 
@@ -1921,6 +2007,79 @@ function handleScrollToBlock(blockTitle: string) {
                 styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
               />
             )}  
+          </FocusZone>
+        </Callout>
+      )}
+
+      {snippetOptionsBlock && snippetOptionsTarget && (
+        <Callout
+          className="inline-options-callout"
+          target={snippetOptionsTarget}
+          onDismiss={closeSnippetOptions}
+          setInitialFocus={false}
+          directionalHint={DirectionalHint.bottomLeftEdge}
+          directionalHintFixed
+          styles={{
+            root: {
+              padding: 8,
+              borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+              animation: 'fadeInScale 0.2s ease',
+            },
+          }}
+        >
+          <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
+            <ChoiceGroup
+              selectedKey={snippetOptionsLabel}
+              onChange={(_e, opt?: IChoiceGroupOption) => {
+                if (!opt || !snippetOptionsBlock) return;
+                replaceSnippetOption(
+                  snippetOptionsBlock,
+                  snippetOptionsLabel,
+                  opt.key as string
+                );
+                closeSnippetOptions();
+              }}
+              options={
+                snippetOptionsBlock.options.map((o) => {
+                  const renderLabel = (
+                    option?: IChoiceGroupOption,
+                    defaultRender?: (option?: IChoiceGroupOption) => JSX.Element | null
+                  ) => {
+                    if (!option) return null;
+                    const preview = applyDynamicSubstitutions(
+                      snippetOptionsBlock.options.find((opt) => opt.label === option.key)?.previewText.replace(/\n/g, '<br />') || '',
+                      userData,
+                      enquiry,
+                      amount,
+                      dealPasscode,
+                      dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                    );
+                    const isSelected = snippetOptionsLabel === option.key;
+                    return (
+                      <Stack
+                        tokens={{ childrenGap: 2 }}
+                        onMouseEnter={() => setHoveredOption(option.key as string)}
+                        onMouseLeave={() => setHoveredOption(null)}
+                      >
+                        {defaultRender ? defaultRender(option) : option.text}
+                        {(hoveredOption === option.key || isSelected) && (
+                          <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
+                        )}
+                      </Stack>
+                    );
+                  };
+
+                  return {
+                    key: o.label,
+                    text: o.label,
+                    onRenderLabel: renderLabel,
+                  } as IChoiceGroupOption;
+                })
+              }
+              styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
+            />
           </FocusZone>
         </Callout>
       )}

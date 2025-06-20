@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigator } from '../app/functionality/NavigatorContext';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
-import '../styles/Navigator.css';
+import '../app/styles/Navigator.css';
 
 const Navigator: React.FC = () => {
     const { content } = useNavigator();

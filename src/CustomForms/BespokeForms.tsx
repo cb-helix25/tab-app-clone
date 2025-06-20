@@ -267,6 +267,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
         },
         callout: {
           width: '300px',
+          zIndex: 1100,
         },
       }}
     />
@@ -402,7 +403,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       disabled={isSubmitting}
                       styles={{
                         dropdown: dropdownStyle,
-                        callout: { width: '300px' },
+                        callout: { width: '300px', zIndex: 1100 },
                       }}
                     />
                     {field.name === 'Payment Type' &&

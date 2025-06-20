@@ -1,11 +1,6 @@
 /* HomePreview.css */
 
 /* Existing animation styles */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .home-preview-section .metric-card {
   animation: fadeIn 0.5s ease-in-out forwards;
 }

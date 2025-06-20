@@ -2,18 +2,6 @@
 
 /* Simplified metric card styling inspired by the ClientHub component */
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .metricCard {
   position: relative;
   background: #ffffff;
