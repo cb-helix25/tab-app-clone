@@ -141,7 +141,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    padding: '16px',
+    padding: '24px',
     minHeight: '100vh',
     boxSizing: 'border-box',
     color: isDarkMode ? colours.light.text : colours.dark.text,
@@ -166,11 +166,10 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const gridContainerStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '20px',
-    '@media (max-width: 1200px)': {
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    },
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+    gap: '24px',
+    maxWidth: '1200px',
+    margin: '0 auto',
   });
 
   if (showNewMatterPage) {
@@ -192,7 +191,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <Stack tokens={dashboardTokens} className={containerStyle}>
-      <Text variant="xLarge">Instruction Dashboard</Text>
       {showPreview && (
         <pre style={{ whiteSpace: 'pre-wrap' }}>
           {JSON.stringify(instructionData, null, 2)}

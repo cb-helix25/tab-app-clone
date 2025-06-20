@@ -18,8 +18,11 @@
   --helix-red: rgb(187, 62, 66);
 }
 
-* {
+*,
+*::before,
+*::after {
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 body {

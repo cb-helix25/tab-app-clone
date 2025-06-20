@@ -39,7 +39,8 @@
   opacity: 0.8;
 }
 
-/* Ensure buttons fit nicely */
-button {
-  min-width: 80px; /* Consistent with ManagementDashboard button sizes */
+/* Ensure buttons in this component fit nicely */
+.home-preview-section button {
+  min-width: 80px;
+  /* Consistent with ManagementDashboard button sizes */
 }

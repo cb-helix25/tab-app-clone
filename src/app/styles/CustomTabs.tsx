@@ -87,6 +87,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
 
   return (
     <div
+      className="customTabsContainer"
       style={{
         backgroundColor: colours.darkBlue,
         display: 'flex',

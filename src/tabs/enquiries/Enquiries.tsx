@@ -12,9 +12,6 @@ import {
   PrimaryButton,
   DefaultButton,
   Modal,
-  Icon,
-  SearchBox,
-  IStyle,
   initializeIcons,
 } from '@fluentui/react';
 import {
@@ -41,6 +38,7 @@ import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
+import EnquiriesMenu from './EnquiriesMenu';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 
@@ -70,238 +68,6 @@ interface MonthlyCount {
   property: number;
   otherUnsure: number;
 }
-
-interface RedesignedCombinedMenuProps {
-  activeArea: string | null;
-  setActiveArea: React.Dispatch<React.SetStateAction<string | null>>;
-  activeState: string;
-  setActiveState: (key: string) => void;
-  searchTerm: string;
-  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
-  isSearchActive: boolean;
-  setSearchActive: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-const areaColor = (area?: string): string => {
-  const normalizedArea = area?.toLowerCase() || '';
-  switch (normalizedArea) {
-    case 'commercial':
-      return colours.blue;
-    case 'construction':
-      return colours.orange;
-    case 'property':
-      return colours.green;
-    case 'employment':
-      return colours.yellow;
-    default:
-      return colours.cta;
-  }
-};
-
-const RedesignedCombinedMenu: React.FC<RedesignedCombinedMenuProps> = ({
-  activeArea,
-  setActiveArea,
-  activeState,
-  setActiveState,
-  searchTerm,
-  setSearchTerm,
-  isSearchActive,
-  setSearchActive,
-}) => {
-  const { isDarkMode } = useTheme();
-
-  const menuContainer = mergeStyles({
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    padding: '12px 20px',
-    borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? '0px 2px 8px rgba(0,0,0,0.6)'
-      : '0px 2px 8px rgba(0,0,0,0.1)',
-    backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    marginBottom: '20px',
-  });
-
-  const areaItem = mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    padding: '8px 12px',
-    marginRight: '12px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s, border 0.3s',
-    border: '2px solid transparent',
-    selectors: {
-      ':hover': {
-        backgroundColor: isDarkMode
-          ? `${colours.dark.subText}20`
-          : `${colours.light.subText}20`,
-      },
-    },
-  });
-
-  const activeAreaItem = mergeStyles({
-    border: `2px solid ${areaColor(activeArea || '')}`,
-    backgroundColor: `${areaColor(activeArea || '')}20`,
-  });
-
-  const areaIconStyle = {
-    marginRight: '8px',
-    fontSize: '20px',
-    color: '#aaa',
-  };
-
-  const areaTextStyle = (isSelected: boolean) => ({
-    fontWeight: isSelected ? 600 : 400,
-    color: isSelected
-      ? isDarkMode
-        ? colours.dark.text
-        : '#061733'
-      : isDarkMode
-      ? colours.dark.text
-      : colours.light.text,
-    fontFamily: 'Raleway, sans-serif',
-  });
-
-  const stateButton = mergeStyles({
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s, color 0.3s',
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    fontFamily: 'Raleway, sans-serif',
-
-    selectors: {
-      ':hover': {
-        backgroundColor: `${colours.light.subText}20`,
-        color: isDarkMode ? colours.dark.text : colours.light.text,
-      },
-      ':active, :active span': {
-        backgroundColor: colours.blue,
-        color: '#ffffff !important',
-      },
-    },
-  });
-  
-  const activeStateButton = mergeStyles({
-    backgroundColor: colours.highlight,
-    color: '#ffffff !important',
-    border: 'none',
-
-    selectors: {
-      'span': {
-        color: '#ffffff !important',
-      },
-    },
-  });
-
-  const searchBoxStyles = mergeStyles({
-    width: isSearchActive ? '180px' : '0px',
-    opacity: isSearchActive ? 1 : 0,
-    transition: 'width 0.3s, opacity 0.3s',
-    overflow: 'hidden',
-    marginLeft: '8px',
-  });
-
-  const searchIconContainer = mergeStyles({
-    cursor: 'pointer',
-  });
-
-  const areaTabs = [
-    { key: 'commercial', text: 'Commercial', icon: 'KnowledgeArticle' },
-    { key: 'property', text: 'Property', icon: 'CityNext' },
-    { key: 'construction', text: 'Construction', icon: 'ConstructionCone' },
-    { key: 'employment', text: 'Employment', icon: 'People' },
-  ];
-
-  const stateTabs = [
-    { key: 'All', text: 'All' },
-    { key: 'Claimed', text: 'Claimed' },
-    { key: 'Converted', text: 'Enquiry ID' },
-    { key: 'Claimable', text: 'Unclaimed' },
-    { key: 'Triaged', text: 'Triaged' },
-  ];
-
-  return (
-    <div className={menuContainer}>
-      <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-        {areaTabs.map((area) => {
-          const isSelected = activeArea === area.key;
-          return (
-            <div
-              key={area.key}
-              className={mergeStyles(areaItem, isSelected && activeAreaItem)}
-              onClick={() => setActiveArea(isSelected ? null : area.key)}
-              aria-label={area.text}
-            >
-              <Icon iconName={area.icon} styles={{ root: { ...areaIconStyle } }} />
-              <Text variant="mediumPlus" styles={{ root: areaTextStyle(isSelected) as IStyle }}>
-                {area.text}
-              </Text>
-            </div>
-          );
-        })}
-      </Stack>
-      <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-        {stateTabs.map((state) => {
-          const isSelected = activeState === state.key;
-          return (
-            <div
-              key={state.key}
-              className={mergeStyles(stateButton, isSelected && activeStateButton)}
-              onClick={() => setActiveState(isSelected ? '' : state.key)}
-              aria-label={state.text}
-            >
-              <Text variant="medium" styles={{ root: { fontWeight: isSelected ? 600 : 400 } }}>
-                {state.text}
-              </Text>
-            </div>
-          );
-        })}
-        <div
-          className={searchIconContainer}
-          onClick={() => setSearchActive(!isSearchActive)}
-        >
-          {isSearchActive ? (
-            <Icon
-              iconName="Cancel"
-              styles={{
-                root: {
-                  fontSize: '20px',
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                },
-              }}
-            />
-          ) : (
-            <Icon
-              iconName="Search"
-              styles={{
-                root: {
-                  fontSize: '20px',
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                },
-              }}
-            />
-          )}
-        </div>
-        <div className={searchBoxStyles}>
-          <SearchBox
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(_, newValue) => setSearchTerm(newValue || '')}
-            underlined
-            styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
-          />
-        </div>
-      </Stack>
-    </div>
-  );
-};
 
 interface CustomLabelProps {
   x?: number | string;
@@ -718,7 +484,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   useEffect(() => {
     if (!selectedEnquiry) {
       setContent(
-        <RedesignedCombinedMenu
+        <EnquiriesMenu
           activeArea={selectedArea}
           setActiveArea={setSelectedArea}
           activeState={activeMainTab}
@@ -1013,7 +779,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               style={{
                 width: 12,
                 height: 12,
-                backgroundColor: areaColor(entry.value),
+                backgroundColor: getAreaColor(entry.value),
                 marginRight: 8,
               }}
             />

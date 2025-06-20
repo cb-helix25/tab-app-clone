@@ -2023,6 +2023,21 @@ function handleScrollToBlock(blockTitle: string) {
                     >
                       <Checkbox
                         label={o.label}
+                        onRenderLabel={(props, defaultRender) => (
+                          <span
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              insertBlockOption(
+                                inlineOptionsBlock.title,
+                                o.label
+                              );
+                            }}
+                          >
+                            {defaultRender ? defaultRender(props) : props?.label}
+                          </span>
+                        )}
                         checked={isSelected}
                         onChange={(_e, checked) => {
                           const currentSelections = Array.isArray(
@@ -2092,14 +2107,27 @@ function handleScrollToBlock(blockTitle: string) {
                         dealPasscode,
                         dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
                       );
-                      const isSelected = selectedTemplateOptions[inlineOptionsBlock.title] === option.key;
+                      const isSelected =
+                        selectedTemplateOptions[inlineOptionsBlock.title] === option.key;
                       return (
                         <Stack
                           tokens={{ childrenGap: 2 }}
                           onMouseEnter={() => setHoveredOption(option.key as string)}
                           onMouseLeave={() => setHoveredOption(null)}
                         >
-                          {defaultRender ? defaultRender(option) : option.text}
+                          <span
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              insertBlockOption(
+                                inlineOptionsBlock.title,
+                                option.key as string
+                              );
+                            }}
+                          >
+                            {defaultRender ? defaultRender(option) : option.text}
+                          </span>
                           {(hoveredOption === option.key || isSelected) && (
                             <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
                           )}

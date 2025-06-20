@@ -99,5 +99,28 @@
   transform: translateX(-50%) scaleX(1);
 }
 
-/* If you have more than 6 tabs, just add more nth-child rules 
+/* If you have more than 6 tabs, just add more nth-child rules
    or use a different approach (like SCSS loops or JavaScript). */
+/* Mobile layout tweaks */
+@media (max-width: 600px) {
+  .customTabsContainer {
+    overflow-x: auto;
+  }
+
+  .customTabsContainer::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .customTabsContainer::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .customPivot .ms-Pivot-link {
+    font-size: 14px;
+    padding: 0 8px;
+  }
+
+  .home-icon {
+    padding: 0 8px;
+  }
+}
