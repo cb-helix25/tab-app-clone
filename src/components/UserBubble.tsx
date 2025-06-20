@@ -53,11 +53,13 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
         if (text) navigator.clipboard.writeText(text);
     };
 
-    const userDetails = [
-        { label: 'Name', value: user.FullName },
-        { label: 'Email', value: user.Email },
-        { label: 'Role', value: user.Role },
-    ].filter((d) => d.value);
+    // Dynamically build list of all available user properties
+    const userDetails = Object.entries(user as Record<string, any>)
+        .filter(([_, value]) => value !== undefined && value !== null && value !== '')
+        .map(([key, value]) => ({
+            label: key.replace(/_/g, ' '),
+            value: String(value),
+        }));
 
     return (
         <div className="user-bubble-container">

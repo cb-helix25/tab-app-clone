@@ -109,21 +109,43 @@ interface MattersCombinedMenuProps {
   teamData?: TeamData[] | null;
 }
 
-const containerStyle = (isDarkMode: boolean) =>
+const ACTION_BAR_HEIGHT = 48;
+
+const barBase = (isDarkMode: boolean) => ({
+  backgroundColor: isDarkMode
+    ? colours.dark.sectionBackground
+    : colours.light.sectionBackground,
+  boxShadow: isDarkMode
+    ? '0 2px 4px rgba(0,0,0,0.4)'
+    : '0 2px 4px rgba(0,0,0,0.1)',
+  padding: '0 24px',
+  display: 'flex',
+  flexDirection: 'row',
+  gap: '8px',
+  overflowX: 'auto',
+  msOverflowStyle: 'none',
+  scrollbarWidth: 'none',
+  alignItems: 'center',
+  height: ACTION_BAR_HEIGHT,
+  selectors: { '::-webkit-scrollbar': { display: 'none' } },
+});
+
+const mainMenuStyle = (isDarkMode: boolean) =>
   mergeStyles({
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    width: '100%',
-    padding: '12px 20px',
-    borderRadius: '8px',
-    boxShadow: isDarkMode
-      ? '0px 2px 8px rgba(0,0,0,0.6)'
-      : '0px 2px 8px rgba(0,0,0,0.1)',
-    backgroundColor: isDarkMode ? '#333' : '#fff',
-    marginBottom: '20px',
-    zIndex: 2,
+    ...barBase(isDarkMode),
+    position: 'sticky',
+    top: ACTION_BAR_HEIGHT,
+    zIndex: 999,
+    justifyContent: 'space-between',
+  });
+
+const practiceAreaBarStyle = (isDarkMode: boolean) =>
+  mergeStyles({
+    ...barBase(isDarkMode),
+    borderTop: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+    position: 'sticky',
+    top: ACTION_BAR_HEIGHT * 2,
+    zIndex: 998,
   });
 
 const rowStyle = mergeStyles({
@@ -352,9 +374,10 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
     feeEarnerType;
 
   return (
-    <div className={containerStyle(isDarkMode)}>
+    <>
       {/* Row 1: Main menu with two columns */}
-      <div className={rowStyle} style={{ justifyContent: 'space-between' }}>
+      <div className={mainMenuStyle(isDarkMode)}>
+        <div className={rowStyle} style={{ justifyContent: 'space-between', width: '100%' }}>
         {/* Left column: Grouped Area Tabs */}
         <div className={leftColumnStyle}>
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
@@ -481,10 +504,12 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
           </Stack>
         </div>
       </div>
+        {/* close mainMenuStyle */}
+      </div>
 
       {/* Row 2: Practice Area Buttons */}
       {activeGroupedArea && practiceAreasForGroup.length > 0 && (
-        <div className={practiceAreaContainerStyle(isDarkMode)}>
+          <div className={practiceAreaBarStyle(isDarkMode)}>
           <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
             {practiceAreasForGroup.map((pa) => {
               const isSelected = activePracticeAreas.includes(pa);
@@ -510,7 +535,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
           </Stack>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
