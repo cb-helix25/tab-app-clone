@@ -733,7 +733,14 @@ useEffect(() => {
       `<p style="margin: 0;">`
     );
     const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}" onclick="window.openInlineOptions(event, '${block.title}')">${block.title}</span><span class="actions">${editButton}${lockButton}${removeButton}</span></div>`;
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
+    const optionsHtml = block.options
+      .map((o) => {
+        const safe = o.label.replace(/'/g, "&#39;");
+        return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+      })
+      .join(' ');
+    const optionListHtml = `<div class="block-option-list">${optionsHtml}</div>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}${optionListHtml}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -1408,7 +1415,13 @@ function handleInput() {
         'g'
       );
       // Build the original placeholder markup.
-      const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
+      const optionHtml = block.options
+        .map((o) => {
+          const safe = o.label.replace(/'/g, "&#39;");
+          return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+        })
+        .join(' ');
+      const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionHtml}</span>`;
 
       const update = (prevBody: string) => prevBody.replace(regex, placeholderHTML);
       // Replace the block immediately in state and DOM
@@ -1430,7 +1443,13 @@ function handleInput() {
           `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
           'g'
         );
-        const placeholderHTML = `<span data-placeholder="${block.placeholder}" style="background-color: ${colours.grey}; padding: 1px 3px;">${block.placeholder}</span>`;
+        const optionHtml = block.options
+          .map((o) => {
+            const safe = o.label.replace(/'/g, "&#39;");
+            return `<span class="option-choice" onclick="window.insertBlockOption('${block.title}','${safe}')">${o.label}</span>`;
+          })
+          .join(' ');
+        const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionHtml}</span>`;
         newBody = newBody.replace(regex, placeholderHTML);
       });
       bodyEditorRef.current.innerHTML = newBody;

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Stack, Text, mergeStyles, PrimaryButton } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens, cardTokens, cardStyles } from './componentTokens';
 import InstructionCard from './InstructionCard';
@@ -22,6 +23,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   teamData,
 }) => {
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigator();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -33,14 +35,15 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: '0 10px',
-      transition: 'background-color 0.3s, box-shadow 0.3s',
+      padding: '0',
+      transition: 'background-color 0.3s',
       display: 'flex',
       flexDirection: 'row',
       gap: '8px',
       overflowX: 'auto',
       alignItems: 'center',
-      paddingBottom: '16px',
+      height: ACTION_BAR_HEIGHT,
+      paddingBottom: 0,
       position: 'sticky',
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
@@ -84,6 +87,37 @@ const Instructions: React.FC<InstructionsProps> = ({
     fetchData();
   }, [userInitials, useLocalData]);
 
+  useEffect(() => {
+    setContent(
+      <div className={quickLinksStyle(isDarkMode)}>
+        <QuickActionsCard
+          title={
+            instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
+          }
+          icon="DocumentSearch"
+          isDarkMode={isDarkMode}
+          onClick={() => setShowPreview(!showPreview)}
+          style={{ '--card-index': 0 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="New Instruction"
+          icon="Add"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 1 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="New Matter"
+          icon="AddTo"
+          isDarkMode={isDarkMode}
+          onClick={() => setShowNewMatterPage(true)}
+          style={{ '--card-index': 2 } as React.CSSProperties}
+        />
+      </div>
+    );
+    return () => setContent(null);
+  }, [setContent, isDarkMode, instructionData, showPreview]);
+
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
     padding: '16px',
@@ -111,31 +145,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <Stack tokens={dashboardTokens} className={containerStyle}>
-      <div className={quickLinksStyle(isDarkMode)}>
-        <QuickActionsCard
-          title={
-            instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
-          }
-          icon="DocumentSearch"
-          isDarkMode={isDarkMode}
-          onClick={() => setShowPreview(!showPreview)}
-          style={{ '--card-index': 0 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="New Instruction"
-          icon="Add"
-          isDarkMode={isDarkMode}
-          onClick={() => { }}
-          style={{ '--card-index': 1 } as React.CSSProperties}
-        />
-        <QuickActionsCard
-          title="New Matter"
-          icon="AddTo"
-          isDarkMode={isDarkMode}
-          onClick={() => setShowNewMatterPage(true)}
-          style={{ '--card-index': 2 } as React.CSSProperties}
-        />
-      </div>
       <Text variant="xLarge">Instruction Dashboard</Text>
       {showPreview && (
         <pre style={{ whiteSpace: 'pre-wrap' }}>

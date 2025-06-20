@@ -258,7 +258,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
       }}
       disabled={isSubmitting}
       styles={{
-        root: dropdownStyle,
+        root: [dropdownStyle, { width: '100%' }],
         input: {
           height: `${INPUT_HEIGHT}px`,
           lineHeight: `${INPUT_HEIGHT}px`,
@@ -266,7 +266,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
           border: 'none',
         },
         callout: {
-          width: '300px',
+          minWidth: '100%',
           zIndex: 1100,
         },
       }}
