@@ -52,3 +52,7 @@ body {
 .icon-hover.active .icon-filled {
   display: inline-flex;
 }
+
+.page-section {
+  padding: 16px;
+}

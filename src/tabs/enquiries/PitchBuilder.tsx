@@ -155,6 +155,26 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       transform: scale(1.05);
       background: ${colours.blue};
     }
+    .block-option-list {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      background: ${colours.grey};
+      padding: 2px 4px;
+      border-radius: 6px;
+    }
+    .option-choice {
+      background: ${colours.highlightBlue};
+      color: ${colours.darkBlue};
+      padding: 2px 6px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: background-color 0.2s;
+    }
+    .option-choice:hover {
+      background: ${colours.blue};
+    }
     .inline-options-callout {
       border-radius: 8px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.2);
@@ -383,16 +403,33 @@ function toggleBlockLock(blockTitle: string) {
     setSnippetOptionsLabel('');
   }
 
+  function insertBlockOption(blockTitle: string, optionLabel: string) {
+    const block = templateBlocks.find((b) => b.title === blockTitle);
+    if (!block) return;
+    if (block.isMultiSelect) {
+      const current = Array.isArray(selectedTemplateOptions[blockTitle])
+        ? ([...(selectedTemplateOptions[blockTitle] as string[])])
+        : [];
+      const updated = [...current, optionLabel];
+      handleMultiSelectChange(blockTitle, updated);
+      insertTemplateBlock(block, updated, true);
+    } else {
+      handleSingleSelectChange(blockTitle, optionLabel);
+      insertTemplateBlock(block, optionLabel, true);
+    }
+  }
+
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
   (window as any).openInlineOptions = openInlineOptions;
   (window as any).openSnippetOptions = openSnippetOptions;
+  (window as any).insertBlockOption = insertBlockOption;
   (window as any).removeBlock = (title: string) => {
     const block = templateBlocks.find((b) => b.title === title);
     if (block) handleClearBlock(block);
   };
-}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, templateBlocks]);
+}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, insertBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -772,6 +809,7 @@ useEffect(() => {
           // Attach helper functions to window for inline handlers
           (window as any).highlightBlock = highlightBlock;
           (window as any).toggleBlockLock = toggleBlockLock;
+          (window as any).insertBlockOption = insertBlockOption;
         }
       }, 0);
     }

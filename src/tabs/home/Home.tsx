@@ -68,6 +68,7 @@ import localMatters from '../../localData/localMatters.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
+import QuickActionsBar from './QuickActionsBar';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
@@ -638,11 +639,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const { setContent } = useNavigator();
   const inTeams = isInTeams();
   const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
-
-  useEffect(() => {
-    setContent(<div>Home navigator</div>);
-    return () => setContent(null);
-  }, [setContent]);
 
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
@@ -2044,7 +2040,9 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }, [isApprover, approvalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles]);
 
   // Build immediate actions list
-  let immediateActionsList: { title: string; onClick: () => void; icon?: string }[] = [];
+  // Ensure every action has an icon (never undefined)
+  type Action = { title: string; onClick: () => void; icon: string };
+  let immediateActionsList: Action[] = [];
   if (!isLoadingAttendance && !currentUserConfirmed) {
     immediateActionsList.push({
       title: 'Confirm Attendance',
@@ -2059,7 +2057,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
     });
   }
-  immediateActionsList = immediateActionsList.concat(immediateALActions);
+  // Map immediateALActions to always have an icon (fallback to empty string if missing)
+  immediateActionsList = immediateActionsList.concat(
+    immediateALActions.map(a => ({
+      ...a,
+      icon: a.icon || ''
+    }))
+  );
   // Sort immediate actions by the predefined order.
   immediateActionsList.sort(
     (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
@@ -2169,6 +2173,27 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   normalQuickActions.sort(
     (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
   );
+
+  useEffect(() => {
+    setContent(
+      <QuickActionsBar
+        isDarkMode={isDarkMode}
+        immediateActionsReady={immediateActionsReady}
+        immediateActionsList={immediateActionsList}
+        normalQuickActions={normalQuickActions}
+        handleActionClick={handleActionClick}
+        currentUserConfirmed={currentUserConfirmed}
+      />
+    );
+    return () => setContent(null);
+  }, [
+    setContent,
+    isDarkMode,
+    immediateActionsReady,
+    immediateActionsList,
+    normalQuickActions,
+    currentUserConfirmed,
+  ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
   const getShortDayLabel = (date: Date): string =>
@@ -2339,7 +2364,8 @@ const conversionRate = enquiriesMonthToDate
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
 
   return (
-    <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+    <section className="page-section">
+      <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
       {/* Header: Show the review message only when there is something to review */}
       {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0) && (
         <Stack
@@ -2376,77 +2402,6 @@ const conversionRate = enquiriesMonthToDate
           marginBottom: '24px',
         }}
       >
-        {/* Quick Actions Bar */}
-        <div
-          className={quickLinksStyle(isDarkMode)}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            // Removed: transform: 'scale(1.2)', transformOrigin: 'top left',
-          }}
-        >
-        {/* LEFT SLOT: Immediate Actions (spinner, or "No immediate actions", or the list) */}
-        <div style={{ display: 'flex', gap: '10px', minHeight: '40px' }}>
-          {!immediateActionsReady ? (
-            // Just a spinner (no label) while loading
-            <Spinner size={SpinnerSize.small} />
-          ) : immediateActionsList.length === 0 ? (
-            // If there are no immediate actions: fadeIn + tick
-            <div className={noActionsClass}>
-              <div className={noActionsIconClass}>
-                <FaCheck />
-              </div>
-            </div>
-          ) : (
-            // Otherwise, render the immediate actions
-            immediateActionsList.map((action, index) => (
-              <QuickActionsCard
-                key={action.title}
-                title={action.title}
-                icon={action.icon || ''}
-                isDarkMode={isDarkMode}
-                onClick={action.onClick}
-                iconColor={colours.cta}
-                style={{
-                  '--card-index': index,
-                  fontSize: '16px',
-                  padding: '0 12px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                } as React.CSSProperties}
-              />
-            ))
-          )}
-        </div>
-
-        {/* RIGHT SLOT: Normal Quick Actions (always shown) */}
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {normalQuickActions.map((action, index) => (
-            <QuickActionsCard
-              key={action.title}
-              title={action.title === 'Confirm Attendance' ? 'Update Attendance' : action.title}
-              icon={action.icon}
-              isDarkMode={isDarkMode}
-              onClick={() => handleActionClick(action)}
-              iconColor={colours.cta}
-              // Same per-button sizing:
-              style={{
-                '--card-index': index,
-                fontSize: '16px',
-                padding: '0 12px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              } as React.CSSProperties}
-              {...(action.title === 'Confirm Attendance' ? { confirmed: currentUserConfirmed } : {})}
-            />
-          ))}
-        </div>
-      </div>
 
         {/* Metrics Section */}
         {/* Time Metrics Section */}
@@ -2857,6 +2812,7 @@ const conversionRate = enquiriesMonthToDate
       </div>
 
     </Stack>
+    </section>
   );
 };
 
