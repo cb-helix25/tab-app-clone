@@ -26,7 +26,7 @@ interface CustomTabsProps {
   onHomeClick: () => void;
 }
 
-const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
+const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
   root: {
     display: 'flex',
     alignItems: 'center',
@@ -35,7 +35,7 @@ const customPivotStyles = (isDarkMode: boolean): Partial<IPivotStyles> => ({
   link: {
     fontSize: '16px',
     fontWeight: 600,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
+    color: '#ffffff',
     backgroundColor: 'transparent',
     padding: '0 12px',
     lineHeight: '48px',
@@ -84,14 +84,12 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   return (
     <div
       style={{
-        backgroundColor: isDarkMode
-          ? colours.dark.sectionBackground
-          : colours.light.sectionBackground,
+        backgroundColor: colours.darkBlue,
         display: 'flex',
         alignItems: 'center',
         padding: '0 24px',
         height: '48px',
-        borderBottom: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
+        borderBottom: `1px solid ${colours.darkBlue}`,
         position: 'sticky',
         top: 0,
         zIndex: 1000,
@@ -104,7 +102,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         role="button"
         tabIndex={0}
         aria-label="Home"
-        style={{ color: isDarkMode ? colours.dark.text : colours.light.text }}
+        style={{ color: '#ffffff' }}
       >
         <AiOutlineHome className="icon-outline" size={20} />
         <AiFillHome className="icon-filled" size={20} />
