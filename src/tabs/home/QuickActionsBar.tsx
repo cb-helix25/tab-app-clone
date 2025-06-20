@@ -31,20 +31,20 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
-        padding: '0 10px',
-        transition: 'background-color 0.3s, box-shadow 0.3s',
+        padding: '0',
+        transition: 'background-color 0.3s',
         display: 'flex',
         flexDirection: 'row',
         gap: '8px',
         overflowX: 'auto',
         alignItems: 'center',
-        paddingBottom: '16px',
+        paddingBottom: 0,
         position: 'sticky',
         top: ACTION_BAR_HEIGHT,
         zIndex: 999,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
-    });
+        });
 
 const fadeInKeyframes = keyframes({
     from: { opacity: 0, transform: 'translateY(5px)' },

@@ -26,35 +26,27 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   style,
 }) => {
   // Base card style
-  const baseCardStyle = mergeStyles(
-    cardStyles.root,
-    {
-      backgroundColor: isDarkMode
-        ? colours.dark.sectionBackground
-        : colours.light.sectionBackground,
-      color: isDarkMode ? colours.dark.text : colours.light.text,
-      // Match the tab menu size so the actions don't look more important
-      padding: '0 12px',
-      height: '48px',
-      lineHeight: '48px',
-      fontSize: '16px',
-      borderRadius: componentTokens.card.base.borderRadius,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '7px',
-      cursor: 'pointer',
-      transition: 'background-color 0.3s, box-shadow 0.3s, transform 0.3s',
-      selectors: {
-        ':hover': {
-          backgroundColor: colours.grey,
-          boxShadow: isDarkMode
-            ? `0 2px 4px ${colours.dark.border}`
-            : componentTokens.card.hover.boxShadow,
-          transform: componentTokens.card.hover.transform,
-        },
+  const baseCardStyle = mergeStyles({
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
+    color: isDarkMode ? colours.dark.text : colours.light.text,
+    padding: '0 12px',
+    height: '48px',
+    lineHeight: '48px',
+    fontSize: '16px',
+    borderRadius: componentTokens.card.base.borderRadius,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    selectors: {
+      ':hover': {
+        backgroundColor: colours.grey,
       },
-    } as any
-  );
+    },
+  } as any);
 
 
   const customStyle = {};
