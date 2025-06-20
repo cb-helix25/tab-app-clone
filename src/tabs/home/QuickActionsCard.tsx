@@ -13,8 +13,17 @@ import {
   FaTimesCircle,
   FaRegFileAlt,
   FaFileAlt,
+  FaRegIdBadge,
+  FaIdBadge,
 } from 'react-icons/fa';
-import { MdOutlineWarning, MdWarning, MdOutlineMeetingRoom, MdMeetingRoom } from 'react-icons/md';
+import {
+  MdOutlineWarning,
+  MdWarning,
+  MdOutlineMeetingRoom,
+  MdMeetingRoom,
+  MdOutlineAssessment,
+  MdAssessment,
+} from 'react-icons/md';
 import { IconType } from 'react-icons';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
@@ -30,6 +39,8 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Warning: { outline: MdOutlineWarning, filled: MdWarning },
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
   OpenFile: { outline: FaRegFileAlt, filled: FaFileAlt },
+  IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
+  Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
 };
 
 interface QuickActionsCardProps {

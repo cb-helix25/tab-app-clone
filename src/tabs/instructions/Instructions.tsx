@@ -35,7 +35,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: '0',
+      padding: '0 24px',
       transition: 'background-color 0.3s',
       display: 'flex',
       flexDirection: 'row',
@@ -94,24 +94,45 @@ const Instructions: React.FC<InstructionsProps> = ({
           title={
             instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
           }
-          icon="DocumentSearch"
+          icon="OpenFile"
           isDarkMode={isDarkMode}
           onClick={() => setShowPreview(!showPreview)}
           style={{ '--card-index': 0 } as React.CSSProperties}
         />
         <QuickActionsCard
           title="New Instruction"
-          icon="Add"
+          icon="Checklist"
           isDarkMode={isDarkMode}
           onClick={() => { }}
           style={{ '--card-index': 1 } as React.CSSProperties}
         />
         <QuickActionsCard
           title="New Matter"
-          icon="AddTo"
+          icon="Calendar"
           isDarkMode={isDarkMode}
           onClick={() => setShowNewMatterPage(true)}
           style={{ '--card-index': 2 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="EID Check"
+          icon="IdCheck"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 3 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="Risk Assessment"
+          icon="Assessment"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 4 } as React.CSSProperties}
+        />
+        <QuickActionsCard
+          title="Draft CCL"
+          icon="OpenFile"
+          isDarkMode={isDarkMode}
+          onClick={() => { }}
+          style={{ '--card-index': 5 } as React.CSSProperties}
         />
       </div>
     );
@@ -132,7 +153,13 @@ const Instructions: React.FC<InstructionsProps> = ({
         const deal = prospect.deals.find(
           (d) => d.InstructionRef === inst.InstructionRef
         );
-        return { ...inst, deal, prospectId: prospect.prospectId };
+        const risk = prospect.riskAssessments?.find(
+          (r) => r.MatterId === inst.InstructionRef
+        );
+        const eid = prospect.electronicIDChecks?.find(
+          (e) => e.MatterId === inst.InstructionRef
+        );
+        return { ...inst, deal, prospectId: prospect.prospectId, risk, eid };
       })
     );
   }, [instructionData]);
@@ -181,6 +208,8 @@ const Instructions: React.FC<InstructionsProps> = ({
               key={idx}
               instruction={instruction}
               deal={instruction.deal}
+              risk={instruction.risk}
+              eid={instruction.eid}
               prospectId={instruction.prospectId}
               animationDelay={animationDelay}
             />

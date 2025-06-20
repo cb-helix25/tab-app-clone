@@ -25,10 +25,17 @@ interface InstructionCardProps {
     instruction: InstructionInfo;
     deal?: DealInfo;
     prospectId?: number;
+    risk?: {
+        RiskAssessmentResult?: string;
+        RiskScore?: number;
+    } | null;
+    eid?: {
+        EIDStatus?: string;
+    } | null;
     animationDelay?: number;
 }
 
-const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, prospectId, animationDelay = 0 }) => {
+const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, prospectId, risk, eid, animationDelay = 0 }) => {
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
         borderRadius: componentTokens.card.base.borderRadius,
@@ -74,6 +81,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({ instruction, deal, pr
             )}
             {instruction.CompanyName && <Text>Company: {instruction.CompanyName}</Text>}
             {instruction.Email && <Text>{instruction.Email}</Text>}
+            {eid && eid.EIDStatus && (
+                <Text>ID Check: {eid.EIDStatus}</Text>
+            )}
+            {risk && risk.RiskAssessmentResult && (
+                <Text>Risk: {risk.RiskAssessmentResult}</Text>
+            )}
         </div>
     );
 };
