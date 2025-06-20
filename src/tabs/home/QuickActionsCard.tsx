@@ -1,5 +1,5 @@
 import React from 'react';
-import { mergeStyles, Text } from '@fluentui/react';
+import { mergeStyles, Text, Icon } from '@fluentui/react';
 import {
   FaRegCheckSquare,
   FaCheckSquare,
@@ -156,15 +156,22 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     >
       <span>
         {(() => {
-          const mapping = iconMap[attendanceIconName] || iconMap['Accept'];
-          const OutlineIcon = mapping.outline;
-          const FilledIcon = mapping.filled;
-          return (
-            <>
-              <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
-              <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
-            </>
-          );
+          if (!attendanceIconName) {
+            return null;
+          }
+          const mapping = iconMap[attendanceIconName];
+          if (mapping) {
+            const OutlineIcon = mapping.outline;
+            const FilledIcon = mapping.filled;
+            return (
+              <>
+                <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
+                <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
+              </>
+            );
+          }
+          // fallback to Fluent UI icons when no mapping exists
+          return <Icon iconName={attendanceIconName} className={attendanceIconStyle} />;
         })()}
       </span>
       <Text variant="small" styles={{ root: textStyle }}>

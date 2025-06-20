@@ -132,7 +132,7 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                     <QuickActionsCard
                         key={state.key}
                         title={state.text}
-                        icon="Checklist"
+                        icon=""
                         isDarkMode={isDarkMode}
                         onClick={() => setActiveState(activeState === state.key ? '' : state.key)}
                         iconColor={activeState === state.key ? '#fff' : colours.cta}
@@ -149,21 +149,23 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                         } as React.CSSProperties}
                     />
                 ))}
-                <div className={searchIconContainer} onClick={() => setSearchActive(!isSearchActive)}>
-                    {isSearchActive ? (
-                        <Icon iconName="Cancel" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />
-                    ) : (
-                        <Icon iconName="Search" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />
-                    )}
-                </div>
-                <div className={searchBoxStyles}>
-                    <SearchBox
-                        placeholder="Search..."
-                        value={searchTerm}
-                        onChange={(_, newValue) => setSearchTerm(newValue || '')}
-                        underlined
-                        styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
-                    />
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className={searchIconContainer} onClick={() => setSearchActive(!isSearchActive)}>
+                        {isSearchActive ? (
+                            <Icon iconName="Cancel" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />
+                        ) : (
+                            <Icon iconName="Search" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />
+                        )}
+                    </div>
+                    <div className={searchBoxStyles}>
+                        <SearchBox
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={(_, newValue) => setSearchTerm(newValue || '')}
+                            underlined
+                            styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
+                        />
+                    </div>
                 </div>
             </div>
         </>
