@@ -23,6 +23,12 @@ const barStyle = (isDarkMode: boolean) =>
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
+        boxShadow: isDarkMode
+            ? '0 2px 4px rgba(0,0,0,0.4)'
+            : '0 2px 4px rgba(0,0,0,0.1)',
+        borderTop: isDarkMode
+            ? '1px solid rgba(255,255,255,0.1)'
+            : '1px solid rgba(0,0,0,0.05)',
         padding: '0',
         transition: 'background-color 0.3s',
         display: 'flex',

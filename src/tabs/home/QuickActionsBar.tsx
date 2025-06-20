@@ -22,6 +22,9 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
+        boxShadow: isDarkMode
+            ? '0 2px 4px rgba(0,0,0,0.4)'
+            : '0 2px 4px rgba(0,0,0,0.1)',
         padding: '0',
         transition: 'background-color 0.3s',
         display: 'flex',
