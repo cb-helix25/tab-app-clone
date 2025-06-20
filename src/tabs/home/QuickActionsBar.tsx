@@ -54,6 +54,13 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     handleActionClick,
     currentUserConfirmed,
 }) => {
+    const [selected, setSelected] = React.useState<string | null>(null);
+
+    const onCardClick = (action: QuickAction) => {
+        setSelected(action.title);
+        handleActionClick(action);
+    };
+
     return (
         <div className={quickLinksStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
             {quickActions.map((action, index) => (
@@ -62,8 +69,9 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                     title={action.title}
                     icon={action.icon}
                     isDarkMode={isDarkMode}
-                    onClick={() => handleActionClick(action)}
+                    onClick={() => onCardClick(action)}
                     iconColor={colours.cta}
+                    selected={selected === action.title}
                     style={{
                         '--card-index': index,
                         fontSize: '16px',

@@ -51,6 +51,7 @@ interface QuickActionsCardProps {
   iconColor?: string;
   confirmed?: boolean;
   style?: React.CSSProperties;
+  selected?: boolean;
 }
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
@@ -61,6 +62,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   iconColor,
   confirmed,
   style,
+  selected,
 }) => {
   // Base card style
   const baseCardStyle = mergeStyles({
@@ -77,17 +79,25 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     alignItems: 'center',
     gap: '7px',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    selectors: {
-      ':hover': {
-        backgroundColor: colours.grey,
-      },
-    },
+    transition: 'background-color 0.2s, transform 0.1s, border-color 0.2s',
+    border: '2px solid transparent',
   } as any);
 
 
   const customStyle = {};
   const combinedCardStyle = mergeStyles(baseCardStyle, customStyle);
+
+  const cardVars: React.CSSProperties = {
+    '--card-bg': isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
+    '--card-hover': isDarkMode
+      ? colours.dark.cardHover
+      : colours.light.cardHover,
+    '--card-selected': isDarkMode
+      ? colours.dark.cardHover
+      : colours.light.cardHover,
+  } as React.CSSProperties;
 
   // Icon logic
   let attendanceIconName = icon;
@@ -143,8 +153,12 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   return (
     <div
-      className={mergeStyles("quickActionCard icon-hover", combinedCardStyle)}
-      style={style}
+      className={mergeStyles(
+        "quickActionCard icon-hover",
+        combinedCardStyle,
+        selected && 'selected'
+      )}
+      style={{ ...cardVars, ...style }}
       onClick={onClick}
       role="button"
       tabIndex={0}
