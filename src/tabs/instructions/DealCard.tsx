@@ -24,7 +24,7 @@ interface DealInfo {
     PitchedBy?: string;
     Status?: string;
     firstName?: string;
-    jointClients?: { ClientEmail?: string }[];
+    jointClients?: { ClientEmail?: string; HasSubmitted?: string }[];
 }
 
 interface DealCardProps {
@@ -46,6 +46,18 @@ const leftBorderColor = (area?: string) => {
             return colours.yellow;
         default:
             return colours.cta;
+    }
+};
+
+const statusColour = (status?: string) => {
+    const normalized = status?.toLowerCase();
+    switch (normalized) {
+        case 'closed':
+            return colours.green;
+        case 'pitched':
+            return colours.orange;
+        default:
+            return colours.greyText;
     }
 };
 
@@ -110,6 +122,13 @@ const DealCard: React.FC<DealCardProps> = ({
         },
     });
 
+    const bannerClass = mergeStyles('pitch-banner', {
+        background: componentTokens.infoBanner.background,
+        borderLeft: componentTokens.infoBanner.borderLeft,
+        padding: componentTokens.infoBanner.padding,
+        fontSize: '0.875rem',
+    });
+
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
     } as React.CSSProperties;
@@ -118,16 +137,16 @@ const DealCard: React.FC<DealCardProps> = ({
         ? new Date(deal.PitchedDate).toLocaleDateString()
         : undefined;
 
+    const status = deal.Status ? deal.Status.toLowerCase() : undefined;
+    const statusStyle: React.CSSProperties = {
+        color: statusColour(status),
+    };
+    
+
     return (
         <div className={cardClass} style={style}>
             {pitchInfo.text && (
-                <Text
-                    className={`pitch-info${pitchInfo.urgent ? ' pitch-alert' : ''}`}
-                    variant="small"
-                >
-                    {pitchInfo.text}
-                    {pitchInfo.urgent ? '!' : ''}
-                </Text>
+                <div className={bannerClass}>{pitchInfo.text}</div>
             )}
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {deal.ServiceDescription}
@@ -144,29 +163,57 @@ const DealCard: React.FC<DealCardProps> = ({
                             <strong>Area:</strong> {deal.AreaOfWork}
                         </li>
                     )}
-                    {deal.PitchedBy && (
-                        <li>
-                            <strong>Pitched By:</strong> {deal.PitchedBy}
-                        </li>
-                    )}
-                    {formattedDate && (
-                        <li>
-                            <strong>Pitched:</strong> {formattedDate}
-                        </li>
-                    )}
-                    {deal.Status && (
-                        <li>
-                            <strong>Status:</strong> {deal.Status}
-                        </li>
-                    )}
                 </ul>
+                {(formattedDate || deal.Status) && (
+                    <div className="deal-footer">
+                        {formattedDate && <span className="pitch-date">{formattedDate}</span>}
+                        {deal.Status && (
+                            <span className="status-info" style={statusStyle}>
+                                <span className="status-indicator" />
+                                {deal.Status}
+                                {status === 'closed' && (
+                                    <span className="completion-tick visible">
+                                        <svg viewBox="0 0 24 24">
+                                            <polyline
+                                                points="5,13 10,18 19,7"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="3"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    </span>
+                                )}
+                            </span>
+                        )}
+                    </div>
+                )}
                 {deal.jointClients && deal.jointClients.length > 0 && (
                     <div className="joint-container">
-                        {deal.jointClients.map((jc, idx) => (
-                            <div className="joint-banner" key={idx}>
-                                Joint client: {jc.ClientEmail} - Pending
-                            </div>
-                        ))}
+                        {deal.jointClients.map((jc, idx) => {
+                            const done = jc.HasSubmitted === '1';
+                            const jcStatus = done ? 'completed' : 'initialised';
+                            return (
+                                <div className="joint-banner" key={idx}>
+                                    Joint client: {jc.ClientEmail} - {jcStatus}
+                                    {done && (
+                                        <span className="completion-tick visible" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <polyline
+                                                    points="5,13 10,18 19,7"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="3"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

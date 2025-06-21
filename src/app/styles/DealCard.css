@@ -31,22 +31,72 @@
     gap: 8px;
     }
     
-    .pitch-info {
-        font-weight: 600;
-    }
+        .deal-amount {
+            font-weight: 600;
+        }
     
-    .pitch-alert {
-        color: #D65541;
-    }
+        .joint-banner {
+            background-color: #f3f2f1;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 4px;
+        }
     
-    .deal-amount {
-        font-weight: 600;
-    }
+        .pitch-banner {
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
     
-    .joint-banner {
-        background-color: #f3f2f1;
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-top: 4px;
+        .deal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+            font-size: 12px;
+        }
+    
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+    
+        .completion-tick {
+            margin-left: 4px;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            color: #20b26c;
+            opacity: 0;
+            transform: scale(0);
+        }
+    
+        .completion-tick.visible {
+            opacity: 1;
+            transform: scale(1);
+            animation: tickPop 0.3s ease;
+        }
+    
+        @keyframes tickPop {
+            from {
+                opacity: 0;
+                transform: scale(0);
     }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+        }

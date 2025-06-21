@@ -8,7 +8,6 @@ import {
   PivotItem,
 } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
-import FeedbackPrompt from '../../components/FeedbackPrompt';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { colours } from '../../app/styles/colours';
@@ -299,7 +298,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       {activePivot === 'instructions' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          <FeedbackPrompt userInitials={userInitials} />
           {showPreview && (
             <pre style={{ whiteSpace: 'pre-wrap' }}>
               {JSON.stringify(instructionData, null, 2)}

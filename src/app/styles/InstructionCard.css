@@ -68,7 +68,7 @@
 .action-list {
     list-style: none;
     margin: 4px 0 0;
-    padding: 0;
+    padding: 0 8px 8px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -97,7 +97,7 @@
 
 .bottom-tab {
     flex: 0 0 48px;
-        background-color: #f3f2f1;
+    background-color: #f3f2f1;
         border: 1px solid #e1dfdd;
         border-top: none;
         display: flex;
@@ -106,9 +106,9 @@
         font-weight: 600;
         cursor: pointer;
         gap: 4px;
-        color: #D65541;
-        transition: flex 0.2s ease, background-color 0.2s ease,
-            transform 0.2s ease; }
+        color: #061733;
+        transition: flex 0.2s ease, background-color 0.2s ease, transform 0.2s ease, color 0.2s;
+    }
     
     .bottom-tab .icon-filled {
         display: none;
@@ -129,6 +129,7 @@
     .bottom-tab:hover {
         background-color: #ecebea;
         transform: translateX(4px);
+        color: #3690CE;
     }
     
     .bottom-tab:active {
@@ -158,15 +159,14 @@
                 .bottom-tab:hover {
                     background-color: #f4f4f6;
                 }
-        
-                .bottom-tab:hover .icon-outline {
-                    display: none;
-                }
-        
-                .bottom-tab:hover .icon-filled {
-                    display: inline-block;
-                    transform: scale(1.2);
-                    background-color: #d6e8ff;
+.bottom-tab:hover .icon-outline {
+    display: none;
+}
+
+.bottom-tab:hover .icon-filled {
+    display: inline-block;
+    transform: scale(1.2);
+    color: #3690CE;
 }
 
 .bottom-tab:not(.active) span {

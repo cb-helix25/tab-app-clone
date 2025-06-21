@@ -117,9 +117,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     });
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
-    const formattedDate = instruction.SubmissionDate
-        ? new Date(instruction.SubmissionDate).toLocaleDateString()
-        : undefined;
+    const formatValue = (key: string, value: any) => {
+        if (!value) return null;
+        const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
+        if (dateKeys.includes(key) && typeof value === 'string') {
+            try {
+                return new Date(value).toLocaleDateString();
+            } catch {
+                return value;
+            }
+        }
+        return value;
+    };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
 
@@ -224,7 +233,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
-            <div className="instruction-banner">{instruction.InstructionRef}</div>
+            <header className="instruction-header">{instruction.InstructionRef}</header>
             <div className="bottom-tabs">
                 <button
                     type="button"
@@ -269,15 +278,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     const items: [string, string][] = section.fields as any;
                     const details = items
                         .map(([key, label]) => {
-                            const value = (instruction as any)[key];
-                            if (value === undefined || value === null || value === '') return null;
-                            if (key === 'SubmissionDate' && formattedDate) {
-                                return (
-                                    <li key={key}><strong>{label}:</strong> {formattedDate}</li>
-                                );
-                            }
+                            const raw = (instruction as any)[key];
+                            const val = formatValue(key, raw);
+                            if (val === null || val === undefined || val === '') return null;
                             return (
-                                <li key={key}><strong>{label}:</strong> {String(value)}</li>
+                                <li key={key}><strong>{label}:</strong> {String(val)}</li>
                             );
                         })
                         .filter(Boolean);

@@ -33,15 +33,15 @@ const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
   root: {
     display: 'flex',
     alignItems: 'center',
-    height: '48px',
+    height: '56px',
   },
   link: {
     fontSize: '16px',
-    fontWeight: 600,
+    fontWeight: 500,
     color: '#ffffff',
     backgroundColor: 'transparent',
-    padding: '0 12px',
-    lineHeight: '48px',
+    padding: '0 16px',
+    lineHeight: '56px',
     position: 'relative',
     transition: 'color 0.2s',
     selectors: {
@@ -93,7 +93,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
         display: 'flex',
         alignItems: 'center',
         padding: '0 24px',
-        height: '48px',
+        height: '56px',
         borderBottom: `1px solid ${colours.darkBlue}`,
         position: 'sticky',
         top: 0,
