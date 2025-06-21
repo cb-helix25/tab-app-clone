@@ -2433,7 +2433,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: '33% 33% 33%',
                 gap: '16px',
                 width: '100%'
               }}
@@ -2464,7 +2464,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: '50% 50%',
                 gap: '16px',
                 width: '100%',
                 marginTop: '16px'
@@ -2528,9 +2528,9 @@ const conversionRate = enquiriesMonthToDate
         {/* Conversion Metrics Section */}
         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
               <div
-                style={{
+              style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: '33% 33% 33%',
                   gap: '16px',
                   width: '100%'
                 }}
@@ -2560,7 +2560,7 @@ const conversionRate = enquiriesMonthToDate
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: '50% 50%',
                   gap: '16px',
                   width: '100%',
                   marginTop: '16px'
@@ -2586,7 +2586,7 @@ const conversionRate = enquiriesMonthToDate
                 // No dial props passed so this card just shows the count
               />
 
-              {/* Conversion Rate metric with dial (percentage, no £) */}
+              {/* Conversion Rate metric with dial (percentage, no £ */}
               <MetricCard
                 key="Conversion Rate"
                 title="Conversion Rate"

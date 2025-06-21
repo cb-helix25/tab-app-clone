@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconButton, Text, mergeStyles, Stack, Link } from '@fluentui/react';
+import { IconButton, Text, mergeStyles, Stack } from '@fluentui/react';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
 import { formSections } from '../tabs/forms/formsData';
@@ -15,23 +15,41 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
         top: 48,
-        right: isOpen ? 0 : -340,
+        left: isOpen ? 0 : -340,
         width: 340,
         height: 'calc(100vh - 48px)',
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-        boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
+        boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
         overflowY: 'auto',
-        transition: 'right 0.3s',
+        transition: 'left 0.3s',
         zIndex: 950,
     });
 
-const sectionHeader = (isDarkMode: boolean) =>
+const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
-        fontWeight: 600,
+        position: 'fixed',
+        top: 48,
+        left: isOpen ? 340 : 0,
+        height: 'calc(100vh - 48px)',
+        width: 24,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+        boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
+        transition: 'left 0.3s',
+        zIndex: 951,
+        });
+
+const sectionContainer = (isDarkMode: boolean) =>
+    mergeStyles({
+        border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+        borderRadius: 4,
+        padding: 8,
         marginTop: 16,
-        color: isDarkMode ? colours.dark.text : colours.light.text,
-    });
+            });
 
 const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
     const { isDarkMode } = useTheme();
@@ -56,27 +74,24 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
 
     return (
         <>
-            <IconButton
-                iconProps={{ iconName: isOpen ? 'ChevronRight' : 'ChevronLeft' }}
+            <div
+                className={handleStyle(isOpen, isDarkMode)}
                 onClick={() => setIsOpen(!isOpen)}
-                styles={{
-                    root: {
-                        position: 'fixed',
-                        top: 48,
-                        right: isOpen ? 340 : 0,
-                        zIndex: 951,
-                    },
-                }}
-                ariaLabel="Toggle Forms Sidebar"
-            />
+                aria-label="Toggle Forms Sidebar"
+            >
+                <IconButton
+                    iconProps={{ iconName: isOpen ? 'ChevronLeft' : 'ChevronRight' }}
+                    styles={{ root: { width: 24, height: 24 } }}
+                    ariaLabel="Toggle Forms Sidebar"
+                />
+            </div>
             <div className={sidebarContainer(isOpen, isDarkMode)}>
                 <Stack horizontalAlign="space-between" horizontal verticalAlign="center">
                     <Text variant="large">Forms</Text>
                     <IconButton iconProps={{ iconName: 'CollapseAll' }} onClick={collapseAll} ariaLabel="Collapse All" />
                 </Stack>
                 {Object.entries(formSections).map(([section, forms]) => (
-                    <div key={section}>
-                        <Text className={sectionHeader(isDarkMode)}>{section.replace('_', ' ')}</Text>
+                    <div key={section} className={sectionContainer(isDarkMode)}>
                         {forms.map((form) => (
                             <div key={form.title} style={{ marginBottom: 8 }}>
                                 <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
@@ -88,10 +103,18 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
                                     <Text styles={{ root: { cursor: 'pointer' } }} onClick={() => toggle(form.title)}>
                                         {form.title}
                                     </Text>
-                                    <IconButton iconProps={{ iconName: 'Copy' }} onClick={() => copyLink(form.url, form.title)} ariaLabel="Copy link" />
-                                    <Link href={form.url} target="_blank" styles={{ root: { marginLeft: 'auto' } }}>
-                                        open
-                                    </Link>
+                                    <Stack.Item grow />
+                                    <IconButton
+                                        iconProps={{ iconName: 'Copy' }}
+                                        onClick={() => copyLink(form.url, form.title)}
+                                        ariaLabel="Copy link"
+                                    />
+                                    <IconButton
+                                        iconProps={{ iconName: 'NavigateExternalInline' }}
+                                        href={form.url}
+                                        target="_blank"
+                                        ariaLabel="Open link"
+                                    />
                                 </Stack>
                                 {expanded[form.title] && <FormEmbed link={form} userData={userData} matters={matters} />}
                             </div>

@@ -494,7 +494,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
               )
             )}
           </div>
-        )
       </div>
     </TooltipHost>
   );
