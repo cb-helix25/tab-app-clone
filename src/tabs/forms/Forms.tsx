@@ -22,7 +22,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/FormCard.css';
 
 // Import Financial Forms
-import { financialForms } from './FinancialForms';
+import { formSections } from './formsData';
 // Import types – note that FormItem is imported from your types file now
 import { Matter, FormItem, UserData } from '../../app/functionality/types';
 
@@ -147,75 +147,16 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
   // Define number of columns per row for delay calculation
   const columnsPerRow = 5;
 
-  // Define embedded General Processes and Operations forms
+  // Define embedded form sections
   const formHubSections: { [key in SectionName]: FormItem[] } = useMemo(() => {
-    const generalProcesses: FormItem[] = [
-      {
-        title: 'Tel. Attendance Note',
-        url: 'https://www.cognitoforms.com/Helix1/TelephoneAttendanceNote',
-        icon: 'Phone',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '41' },
-      },
-      {
-        title: 'Tasks',
-        url: 'https://www.cognitoforms.com/Helix1/V2Tasks',
-        icon: 'BulletedList',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '90' },
-      },
-      {
-        title: 'Office Attendance',
-        url: 'https://www.cognitoforms.com/Helix1/OfficeAttendance',
-        icon: 'Calendar',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '109' },
-      },
-      {
-        title: 'Proof of Identity',
-        url: 'https://www.cognitoforms.com/Helix1/WebFormProofOfIdentityV2',
-        icon: 'Contact',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '60' },
-      },
-      {
-        title: 'Open a Matter',
-        url: 'https://www.cognitoforms.com/Helix1/OpenAMatter',
-        icon: 'FolderOpen',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '9' },
-      },
-      {
-        title: 'CollabSpace Requests',
-        url: 'https://www.cognitoforms.com/Helix1/CollabSpaceRequests',
-        icon: 'People',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '44' },
-      },
-    ];
-
-    const operations: FormItem[] = [
-      {
-        title: 'Call Handling',
-        url: 'https://www.cognitoforms.com/Helix1/V2CallHandling',
-        icon: 'Phone',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '98' },
-      },
-      {
-        title: 'Transaction Intake',
-        url: 'https://www.cognitoforms.com/Helix1/TransactionsIntakeV2',
-        icon: 'Bank',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '58' },
-      },
-      {
-        title: 'Incoming Post',
-        url: 'https://www.cognitoforms.com/Helix1/IncomingPost',
-        icon: 'Mail',
-        embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '108' },
-      },
-    ];
 
     return {
       Favorites: [], // Dynamically populated
-      General_Processes: generalProcesses, // Embedded forms
-      Operations: operations,              // Embedded forms
-      Financial: financialForms,           // Imported financial forms
+      General_Processes: formSections.General_Processes,
+      Operations: formSections.Operations,
+      Financial: formSections.Financial,
     };
-  }, [financialForms]);
+  }, []);
 
   // Load stored favorites from localStorage
   useEffect(() => {

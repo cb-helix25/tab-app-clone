@@ -6,6 +6,9 @@
 /* Global animation keyframes */
 @import './animations.css';
 
+/* Responsive helpers */
+@import './responsive.css';
+
 :root {
   --helix-dark-blue: rgb(6, 23, 51);
   --helix-blue: rgb(13, 47, 96);

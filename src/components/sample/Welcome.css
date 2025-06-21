@@ -9,6 +9,16 @@
   padding: 4rem;
 }
 
+@media (max-width: 1024px) {
+  .page-padding {
+    padding: 3rem;
+  }
+
+  .tabList {
+    padding: 25px 20px;
+  }
+}
+
 @media (max-width: 600px) {
   .page-padding {
     padding: 2rem;

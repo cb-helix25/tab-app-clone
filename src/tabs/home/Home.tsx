@@ -2430,17 +2430,77 @@ const conversionRate = enquiriesMonthToDate
         {/* Metrics Section */}
         {/* Time Metrics Section */}
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: '16px' }}>
-            {/* Group for the three time-related metrics */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '16px',
-                flex: 1
+                width: '100%'
               }}
             >
               {timeMetrics.slice(0, 3).map((metric, index) => (
+                <MetricCard
+                  key={metric.title}
+                  title={metric.title}
+                  {...(metric.isMoneyOnly
+                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                    : metric.isTimeMoney
+                      ? {
+                        money: metric.money,
+                        hours: metric.hours,
+                        prevMoney: metric.prevMoney,
+                        prevHours: metric.prevHours,
+                        isTimeMoney: metric.isTimeMoney,
+                        showDial: metric.showDial,
+                        dialTarget: metric.dialTarget,
+                      }
+                      : { count: metric.count, prevCount: metric.prevCount })}
+                  isDarkMode={isDarkMode}
+                  animationDelay={index * 0.1}
+                />
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '16px',
+                width: '100%',
+                marginTop: '16px'
+              }}
+            >
+              {timeMetrics.slice(3).map((metric, index) => {
+                if (metric.title === 'Outstanding Office Balances') {
+                  return (
+                    <div
+                      key={metric.title}
+                      onClick={() => setIsOutstandingPanelOpen(true)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <MetricCard
+                        title={metric.title}
+                        {...(metric.isMoneyOnly
+                          ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                          : metric.isTimeMoney
+                            ? {
+                              money: metric.money,
+                              hours: metric.hours,
+                              prevMoney: metric.prevMoney,
+                              prevHours: metric.prevHours,
+                              isTimeMoney: metric.isTimeMoney,
+                              showDial: metric.showDial,
+                              dialTarget: metric.dialTarget,
+                            }
+                            : { count: metric.count, prevCount: metric.prevCount })}
+                        isDarkMode={isDarkMode}
+                        animationDelay={index * 0.1}
+                      />
+                    </div>
+                  );
+                }
+                return (
+
                 <MetricCard
                   key={metric.title}
                   title={metric.title}
@@ -2460,123 +2520,52 @@ const conversionRate = enquiriesMonthToDate
                   isDarkMode={isDarkMode}
                   animationDelay={index * 0.1}
                 />
-              ))}
-            </div>
+                );
+              })}
 
-            {/* Vertical spacer: a subtle vertical divider */}
-            <div style={{ borderLeft: '1px solid #ccc', margin: '0 10px' }} />
-
-            {/* Group for the recovered fees and outstanding balances metrics */}
-            <div
-              style={{
-                flex: 1,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '16px'
-              }}
-            >
-              {timeMetrics.slice(3).map((metric, index) => {
-                if (metric.title === 'Outstanding Office Balances') {
-                  return (
-                    <div
-                      key={metric.title}
-                      onClick={() => setIsOutstandingPanelOpen(true)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <MetricCard
-                        title={metric.title}
-                        {...(metric.isMoneyOnly
-                          ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                          : metric.isTimeMoney
-                          ? {
-                              money: metric.money,
-                              hours: metric.hours,
-                              prevMoney: metric.prevMoney,
-                              prevHours: metric.prevHours,
-                              isTimeMoney: metric.isTimeMoney,
-                              showDial: metric.showDial,
-                              dialTarget: metric.dialTarget,
-                            }
-                          : { count: metric.count, prevCount: metric.prevCount })}
-                        isDarkMode={isDarkMode}
-                        animationDelay={index * 0.1}
-                      />
-                    </div>
-                  );
-                }
-                return (
+          </div>
+        </CollapsibleSection>
+        {/* Conversion Metrics Section */}
+        <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '16px',
+                  width: '100%'
+                }}
+              >
+                {enquiryMetrics.slice(0, 3).map((metric, index) => (
                   <MetricCard
                     key={metric.title}
                     title={metric.title}
                     {...(metric.isMoneyOnly
                       ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
                       : metric.isTimeMoney
-                      ? {
+                        ? {
                           money: metric.money,
                           hours: metric.hours,
                           prevMoney: metric.prevMoney,
                           prevHours: metric.prevHours,
                           isTimeMoney: metric.isTimeMoney,
-                          showDial: metric.showDial,
-                          dialTarget: metric.dialTarget,
                         }
-                      : { count: metric.count, prevCount: metric.prevCount })}
+                        : { count: metric.count, prevCount: metric.prevCount })}
                     isDarkMode={isDarkMode}
                     animationDelay={index * 0.1}
                   />
-                );
-              })}
-            </div>
-
-          </div>
-        </CollapsibleSection>
+                ))}
+              </div>
 
 
-        {/* Conversion Metrics Section */}
-        <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            {/* Group for the three enquiry-related metrics */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '16px',
-                flex: 1,
-              }}
-            >
-              {enquiryMetrics.slice(0, 3).map((metric, index) => (
-                <MetricCard
-                  key={metric.title}
-                  title={metric.title}
-                  {...(metric.isMoneyOnly
-                    ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                    : metric.isTimeMoney
-                    ? {
-                        money: metric.money,
-                        hours: metric.hours,
-                        prevMoney: metric.prevMoney,
-                        prevHours: metric.prevHours,
-                        isTimeMoney: metric.isTimeMoney,
-                      }
-                    : { count: metric.count, prevCount: metric.prevCount })}
-                  isDarkMode={isDarkMode}
-                  animationDelay={index * 0.1}
-                />
-              ))}
-            </div>
-
-            {/* Vertical spacer */}
-            <div style={{ borderLeft: '1px solid #ccc', margin: '0 10px' }} />
-
-            {/* Group for the Matters Opened and Conversion Rate metrics */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '16px',
-                flex: 1,
-              }}
-            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '16px',
+                  width: '100%',
+                  marginTop: '16px'
+                }}
+              >
               {/* Matters Opened metric without dial (basic count) */}
               <MetricCard
                 key={enquiryMetrics[3].title}
@@ -2610,10 +2599,9 @@ const conversionRate = enquiriesMonthToDate
                 showDial={true}
                 dialTarget={100}
                 dialValue={conversionRate}
-                dialSuffix="%"  // Displays the percentage symbol
+                dialSuffix="%" /* Displays the percentage symbol */
               />
             </div>
-          </div>
         </CollapsibleSection>
 
       {/* Transactions Requiring Action */}

@@ -3,6 +3,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
+import FormsSidebar from '../components/FormsSidebar';
 import { NavigatorProvider } from './functionality/NavigatorContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
@@ -227,6 +228,7 @@ const App: React.FC<AppProps> = ({
             user={userData[0]}
           />
           <Navigator />
+          <FormsSidebar userData={userData} matters={allMattersFromHome || []} />
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}
           </Suspense>
