@@ -2433,7 +2433,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '33% 33% 33%',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '16px',
                 width: '100%'
               }}
@@ -2464,7 +2464,7 @@ const conversionRate = enquiriesMonthToDate
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '50% 50%',
+                gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '16px',
                 width: '100%',
                 marginTop: '16px'
@@ -2530,7 +2530,7 @@ const conversionRate = enquiriesMonthToDate
               <div
               style={{
                   display: 'grid',
-                gridTemplateColumns: '33% 33% 33%',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '16px',
                   width: '100%'
                 }}
@@ -2560,7 +2560,7 @@ const conversionRate = enquiriesMonthToDate
               <div
                 style={{
                   display: 'grid',
-                gridTemplateColumns: '50% 50%',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
                   gap: '16px',
                   width: '100%',
                   marginTop: '16px'

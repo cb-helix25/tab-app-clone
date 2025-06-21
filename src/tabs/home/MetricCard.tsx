@@ -42,9 +42,9 @@ const cardStyle = (isDarkMode: boolean) =>
     alignItems: 'flex-start',
     height: 'auto',
     minHeight: '75px',
-    flex: '1 1 30%',
-    minWidth: '180px',
-    maxWidth: '220px',
+    width: '100%',
+    flex: '1 1 auto',
+    minWidth: 0,
     cursor: 'pointer',
     ':hover': {
       transform: 'translateY(-3px)',
