@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, mergeStyles } from '@fluentui/react';
+import { FaIdBadge } from 'react-icons/fa';
+import { MdAssessment } from 'react-icons/md';
+import { FaFileAlt } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/InstructionCard.css';
@@ -76,21 +79,41 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const openDisabled =
         !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
 
+    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+
     return (
         <div className={cardClass} style={style}>
-            <div className="vertical-tabs">
-                <button className="vertical-tab" onClick={onRiskAssessment}>
-                    Risk
-                </button>
-                <button className="vertical-tab" onClick={onEIDCheck}>
-                    ID Check
+            <div className="bottom-tabs">
+                <button
+                    className={`bottom-tab ${activeTab === 'eid' ? 'active' : ''}`}
+                    onClick={() => {
+                        setActiveTab('eid');
+                        onEIDCheck && onEIDCheck();
+                    }}
+                >
+                    <FaIdBadge />
+                    <span>EID Check</span>
                 </button>
                 <button
-                    className="vertical-tab"
-                    onClick={onOpenMatter}
+                    className={`bottom-tab ${activeTab === 'risk' ? 'active' : ''}`}
+                    onClick={() => {
+                        setActiveTab('risk');
+                        onRiskAssessment && onRiskAssessment();
+                    }}
+                >
+                    <MdAssessment />
+                    <span>Risk</span>
+                </button>
+                <button
+                    className={`bottom-tab ${activeTab === 'matter' ? 'active' : ''}`}
+                    onClick={() => {
+                        setActiveTab('matter');
+                        onOpenMatter && onOpenMatter();
+                    }}
                     disabled={openDisabled}
                 >
-                    Open Matter
+                    <FaFileAlt />
+                    <span>Open Matter</span>
                 </button>
             </div>
             <Text

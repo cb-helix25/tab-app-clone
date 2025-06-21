@@ -135,14 +135,14 @@ export function replacePlaceholders(
   blocks.forEach((block) => {
     const regex = new RegExp(escapeRegExp(block.placeholder), 'g');
     const optionBubbles = block.options
-      .map(
-        (o) =>
-          `<span class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</span>`
-      )
-      .join(' ');
+      .map((o) => {
+        const preview = cleanTemplateString(o.previewText).replace(/<p>/g, `<p style="margin: 0;">`);
+        return `<div class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}"><strong>${o.label}</strong><div class="option-preview">${preview}</div></div>`;
+      })
+      .join('');
     result = result.replace(
       regex,
-      `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionBubbles}</span>`
+      `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}</span>${optionBubbles}</span>`
     );
   });
 

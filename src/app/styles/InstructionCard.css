@@ -1,6 +1,7 @@
 .instructionCard {
     position: relative;
-    padding-left: 60px; /* space for vertical tabs */
+    padding-bottom: 48px;
+        /* space for bottom tabs */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -33,31 +34,37 @@
     gap: 2px;
 }
 
-.vertical-tabs {
+.bottom-tabs {
     position: absolute;
     left: 0;
-    top: 0;
+    right: 0;
     bottom: 0;
-    width: 60px;
+    height: 48px;
     display: flex;
-    flex-direction: column;
 }
 
-.vertical-tab {
-    flex: 1;
+.bottom-tab {
+    flex: 0 0 48px;
     background-color: #f3f2f1;
     border: 1px solid #e1dfdd;
-    border-right: none;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
+    border-top: none;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     cursor: pointer;
+    gap: 4px;
+    transition: flex 0.2s ease;
 }
 
-.vertical-tab:not(:last-child) {
-    border-bottom: none;
+.bottom-tab:not(:last-child) {
+    border-right: none;
+}
 
+.bottom-tab.active {
+    flex: 1 1 auto;
+}
+
+.bottom-tab:not(.active) span {
+    display: none;
 }

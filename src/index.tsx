@@ -37,6 +37,31 @@ const customTheme = createTheme({
 const inTeams = isInTeams();
 const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
+// Simple localStorage caching with a 15 minute TTL
+const CACHE_TTL = 15 * 60 * 1000;
+
+function getCachedData<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, timestamp } = JSON.parse(raw);
+    if (Date.now() - timestamp < CACHE_TTL) {
+      return data as T;
+    }
+  } catch {
+    /* ignore parsing errors */
+  }
+  return null;
+}
+
+function setCachedData(key: string, data: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch {
+    /* ignore write errors */
+  }
+}
+
 // Helper function to calculate the date range (6 months)
 const getDateRange = () => {
   const now = new Date();
@@ -53,6 +78,10 @@ const getDateRange = () => {
 
 // Fetch functions
 async function fetchUserData(objectId: string): Promise<UserData[]> {
+  const cacheKey = `userData-${objectId}`;
+  const cached = getCachedData<UserData[]>(cacheKey);
+  if (cached) return cached;
+
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
     {
@@ -62,10 +91,15 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
     }
   );
   if (!response.ok) throw new Error(`Failed to fetch user data: ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  setCachedData(cacheKey, data);
+  return data;
 }
 
 async function fetchEnquiries(email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> {
+  const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
+  const cached = getCachedData<Enquiry[]>(cacheKey);
+  if (cached) return cached;
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
     {
@@ -75,10 +109,16 @@ async function fetchEnquiries(email: string, dateFrom: string, dateTo: string): 
     }
   );
   if (!response.ok) throw new Error(`Failed to fetch enquiries: ${response.status}`);
-  return response.json();
+  const data = await response.json();
+  setCachedData(cacheKey, data);
+  return data;
 }
 
 async function fetchMatters(fullName: string): Promise<Matter[]> {
+  const cacheKey = `matters-${fullName}`;
+  const cached = getCachedData<Matter[]>(cacheKey);
+  if (cached) return cached;
+
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
     {
@@ -129,10 +169,14 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   } else {
     console.warn('Unexpected data format:', data);
   }
+  setCachedData(cacheKey, fetchedMatters);
   return fetchedMatters;
 }
 
 async function fetchTeamData(): Promise<TeamData[] | null> {
+  const cacheKey = 'teamData';
+  const cached = getCachedData<TeamData[]>(cacheKey);
+  if (cached) return cached;
   try {
     const response = await fetch(
       `${process.env.REACT_APP_PROXY_BASE_URL}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
@@ -145,6 +189,7 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
       throw new Error(`Failed to fetch team data: ${response.statusText}`);
     }
     const data: TeamData[] = await response.json();
+    setCachedData(cacheKey, data);
     return data;
   } catch (error) {
     console.error('Error fetching team data:', error);

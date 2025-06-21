@@ -179,13 +179,20 @@ const stateButtonStyle = (isDarkMode: boolean) =>
     padding: '8px 16px',
     borderRadius: '6px',
     cursor: 'pointer',
-    transition: 'background-color 0.3s, color 0.3s',
+    transition: 'background-color 0.3s, color 0.3s, transform 0.1s',
     border: `1px solid ${isDarkMode ? '#444' : '#ccc'}`,
     color: isDarkMode ? '#333' : '#333',
     fontFamily: 'Raleway, sans-serif',
     selectors: {
       ':hover': {
         backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
+      },
+      ':active': {
+        transform: 'scale(0.97)',
+      },
+      ':focus': {
+        outline: `2px solid ${colours.highlight}`,
+        outlineOffset: '2px',
       },
     },
   });
@@ -224,9 +231,17 @@ const practiceAreaButtonStyle = (isSelected: boolean, isDarkMode: boolean, group
     border: '1px solid #ccc',
     fontFamily: 'Raleway, sans-serif',
     whiteSpace: 'nowrap',
+    transition: 'background-color 0.3s, color 0.3s, transform 0.1s',
     selectors: {
       ':hover': {
         backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
+      },
+      ':active': {
+        transform: 'scale(0.97)',
+      },
+      ':focus': {
+        outline: `2px solid ${colours.highlight}`,
+        outlineOffset: '2px',
       },
     },
     ...(isSelected && {

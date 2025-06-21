@@ -119,6 +119,9 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       flex-grow: 1;
       position: relative;
       cursor: pointer;
+      display: inline-block;
+      font-weight: 600;
+      margin-bottom: 4px;
     }
     .block-label:hover {
       text-decoration: underline;
@@ -142,25 +145,24 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       z-index: 10;
     }
     .option-bubble {
-      display: inline-block;
+      display: block;
       background: ${colours.highlightBlue};
       color: ${colours.darkBlue};
-      padding: 2px 6px;
-      border-radius: 12px;
+      padding: 4px 6px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 11px;
-      transition: transform 0.2s, background-color 0.2s;
+      transition: background-color 0.2s;
+      margin-bottom: 4px;
     }
     .option-bubble:hover {
       transform: scale(1.05);
       background: ${colours.blue};
     }
     .block-option-list {
-      display: inline-flex;
-      flex-wrap: wrap;
-      gap: 4px;
+      display: block;
       background: ${colours.grey};
-      padding: 2px 4px;
+      padding: 6px;
       border-radius: 6px;
     }
     .option-choice {
@@ -181,7 +183,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       animation: fadeInScale 0.2s ease forwards;
       max-width: 280px;
     }
-    .inline-options-callout .option-preview {
+    .option-preview {
       font-size: 11px;
       padding: 0 4px;
       margin-top: 2px;
@@ -225,7 +227,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setLockedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
-    autoInsertDefaultBlocks(newBlocks);
   }
 
 // Service options
@@ -511,10 +512,20 @@ useEffect(() => {
       .join('\n');
   }
 
+  function buildPlaceholder(block: TemplateBlock): string {
+    const options = block.options
+      .map((o) => {
+        const preview = cleanTemplateString(o.previewText).replace(/<p>/g, `<p style="margin: 0;">`);
+        return `<div class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}"><strong>${o.label}</strong><div class="option-preview">${preview}</div></div>`;
+      })
+      .join('');
+    return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}</span>${options}</span>`;
+  }
+
   const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
 
   useEffect(() => {
-    autoInsertDefaultBlocks(templateBlocks);
+    // No automatic insertion of default options
   }, [enquiry.Area_of_Work]);
 
   // Attachments, followUp, preview, error states, etc...
@@ -595,9 +606,10 @@ useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      if (target.classList.contains('option-bubble')) {
-        const blockTitle = target.getAttribute('data-block-title');
-        const optionLabel = target.getAttribute('data-option-label');
+      const bubble = (target as HTMLElement).closest('.option-bubble');
+      if (bubble) {
+        const blockTitle = bubble.getAttribute('data-block-title');
+        const optionLabel = bubble.getAttribute('data-option-label');
         if (blockTitle && optionLabel) {
           insertBlockOption(blockTitle, optionLabel);
           return;
@@ -783,7 +795,7 @@ useEffect(() => {
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" style="display:none" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
     const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
@@ -1036,8 +1048,6 @@ useEffect(() => {
     setIsDraftConfirmed(false); // **Reset confirmation state**
     setDealId(null);
     setClientIds([]);
-
-    autoInsertDefaultBlocks(templateBlocks);
 
     // Immediately clear any highlight styles from the DOM
     templateBlocks.forEach((block) => {
@@ -1367,9 +1377,9 @@ function handleInput() {
 
         const label = span.querySelector('.block-label') as HTMLElement | null;
         if (label) {
-          label.style.display = changed ? 'inline' : 'none';
+          label.style.display = 'inline';
           if (changed) label.style.color = colours.highlightBlue;
-          }
+        }
 
         const headerElement = document.getElementById(
           `template-block-header-${title.replace(/\s+/g, '-')}`
@@ -1422,9 +1432,9 @@ function handleInput() {
               : colours.highlightYellow;
             const label = span.querySelector('.block-label') as HTMLElement | null;
             if (label) {
-              label.style.display = changed ? 'inline' : 'none';
+              label.style.display = 'inline';
               if (changed) label.style.color = colours.highlightBlue;
-              }
+            }
             if (changed) {
               const block = templateBlocks.find((b) => b.title === title);
               setSelectedTemplateOptions((prev) => ({
@@ -1499,7 +1509,7 @@ function handleInput() {
         'g'
       );
       // Build the original placeholder markup.
-      const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`;
+      const placeholderHTML = buildPlaceholder(block);
       const update = (prevBody: string) => prevBody.replace(regex, placeholderHTML);
       // Replace the block immediately in state and DOM
       setBody((prevBody) => {
@@ -1520,7 +1530,7 @@ function handleInput() {
           `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
           'g'
         );
-        const placeholderHTML = `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`;        newBody = newBody.replace(regex, placeholderHTML);
+        const placeholderHTML = buildPlaceholder(block); newBody = newBody.replace(regex, placeholderHTML);
       });
       bodyEditorRef.current.innerHTML = newBody;
       setBody(newBody);

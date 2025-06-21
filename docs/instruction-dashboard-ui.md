@@ -23,8 +23,9 @@ Each instruction card now shows two additional fields when available:
 
 This ensures solicitors can quickly see whether mandatory checks have been completed before opening a matter.
 
-Three vertical tabs now run down the left edge of each card to launch these
-actions. The order is **Risk Assessment**, **ID Check** and finally **Open
-Matter** so a user is guided through the required steps.
+Three action tabs now sit along the bottom edge of each card. Only the
+selected tab expands to show its label while the others collapse down to
+icons. They appear in the order **EID Check**, **Risk Assessment** and
+finally **Open Matter** so a user is guided through each step in turn.
 
 All functionality is currently non-operational but the UI is ready to hook into future services.

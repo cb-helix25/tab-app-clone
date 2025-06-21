@@ -34,8 +34,8 @@ instruction‑specific tasks such as the electronic ID check status and the most
 recent risk assessment result so solicitors can quickly see what work remains.
 The action list sits beneath a divider at the bottom of the card.
 
-Below the action list the card exposes three actions as vertical tabs that stick
-out from the left edge. The tabs launch the **Risk Assessment**, start the
-**Electronic ID Check**, and finally **Open Matter** once the prerequisites are
-satisfied. They fill the height of the card so users can quickly progress
-through each step in order.
+Below the action list the card exposes three actions as tabs positioned along
+the bottom edge. The currently selected tab expands to reveal its label while
+the other two shrink to just their icons. The tabs appear in the order
+**EID Check**, **Risk Assessment**, and finally **Open Matter** to guide users
+through each step in sequence.
