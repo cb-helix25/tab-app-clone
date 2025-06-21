@@ -12,11 +12,15 @@ block can be customised in a number of ways and removed entirely if needed.
    new option updates only that snippet.
 3. **Sentence** – inserted snippets are now split into sentences. Each sentence
    is wrapped in a `data-sentence` span which is `contenteditable`, allowing
-   quick tweaks without affecting the rest of the block.
+   quick tweaks without affecting the rest of the block. A small × icon before
+   each sentence lets you remove it entirely with one click if it is not
+   required.
 
 ## Scrapping content
 
 - Each block includes a delete icon to remove it from the editor.
+- The × icon on every sentence allows you to discard individual lines without
+  affecting the rest of the block.
 - The *Clear* button removes all inserted blocks and restores the original
   placeholders.
 

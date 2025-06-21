@@ -243,7 +243,7 @@ const addingClientRef = useRef(false);
 
   const intakeContainer = mergeStyles({
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,
+    borderRadius: 0,
     overflow: 'hidden',
   });
 
@@ -263,14 +263,14 @@ const addingClientRef = useRef(false);
   // full header bar.
   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
     borderLeft: `4px solid ${colours.darkBlue}`,
-    borderRadius: 4,
+    borderRadius: 0,
   });
 
 
 const toggleContainer = mergeStyles({
   display: 'flex',
   border: `2px solid ${colours.darkBlue}`,
-  borderRadius: 4,
+  borderRadius: 0,
   overflow: 'hidden',
   cursor: 'pointer',
   width: '100%',
@@ -377,7 +377,7 @@ useLayoutEffect(() => {
     height: '100%',
     border: '2px solid transparent',
     boxShadow: 'none',
-    borderRadius: 8,
+    borderRadius: 0,
     opacity: 1,
     transition: 'border 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
   });

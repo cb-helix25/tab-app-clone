@@ -172,7 +172,7 @@ function formatCurrency(val?: string): string {
             isMultiline={false}
             onDismiss={() => {}}
             dismissButtonAriaLabel="Close"
-            styles={{ root: { borderRadius: '4px', marginTop: '10px' } }}
+            styles={{ root: { borderRadius: 0, marginTop: '10px' } }}
           >
             Email drafted successfully!
           </MessageBar>

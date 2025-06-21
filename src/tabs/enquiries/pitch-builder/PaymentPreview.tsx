@@ -28,7 +28,7 @@ const PaymentPreview: React.FC<PaymentPreviewProps> = ({ serviceDescription, amo
     const containerClass = mergeStyles({
         background: '#ffffff',
         border: `1px solid ${colours.light.border}`,
-        borderRadius: 4,
+        borderRadius: 0,
         padding: 12,
         fontFamily: 'monospace',
         fontSize: 14,

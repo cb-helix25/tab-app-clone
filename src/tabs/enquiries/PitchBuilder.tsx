@@ -220,6 +220,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
       color: #ffffff;
     }
+    .sentence-delete {
+      font-weight: bold;
+      margin-right: 4px;
+      cursor: pointer;
+      user-select: none;
+      color: ${colours.red};
+    }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
@@ -582,6 +589,16 @@ useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
+      const del = (target as HTMLElement).closest('.sentence-delete');
+      if (del) {
+        const sentence = del.closest('[data-sentence]');
+        if (sentence && editor.contains(sentence)) {
+          sentence.remove();
+          setBody(editor.innerHTML);
+        }
+        return;
+      }
+
       const bubble = (target as HTMLElement).closest('.option-bubble');
       if (bubble) {
         const blockTitle = bubble.getAttribute('data-block-title');
@@ -734,7 +751,10 @@ useEffect(() => {
         const sentences = text
           .split(/(?<=[.!?])\s+/)
           .filter((s) => s.trim().length > 0)
-          .map((s) => `<span data-sentence contenteditable="true">${s.trim()}</span>`)
+          .map(
+            (s) =>
+              `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+          )
           .join(' ');
         snippetHtml.push(
           `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`
@@ -760,7 +780,10 @@ useEffect(() => {
         const sentences = text
           .split(/(?<=[.!?])\s+/)
           .filter((s) => s.trim().length > 0)
-          .map((s) => `<span data-sentence contenteditable="true">${s.trim()}</span>`)
+          .map(
+            (s) =>
+              `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+          )
           .join(' ');
         snippetHtml.push(
           `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`

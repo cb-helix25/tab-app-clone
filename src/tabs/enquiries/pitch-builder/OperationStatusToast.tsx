@@ -26,7 +26,7 @@ const OperationStatusToast: React.FC<OperationStatusToastProps> = ({ visible, me
             right: 20,
             maxWidth: 350,
             zIndex: 2000,
-            borderRadius: 8,
+            borderRadius: 0,
           },
         }}
       >

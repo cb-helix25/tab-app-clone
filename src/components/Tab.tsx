@@ -1,6 +1,8 @@
 import { useContext, lazy, Suspense } from "react";
 import { Spinner } from "@fluentui/react-components";
-const Welcome = lazy(() => import("./sample/Welcome").then(module => ({ default: module.Welcome })));
+const Welcome = lazy(() =>
+  import("./sample/Welcome").then((module) => ({ default: module.Welcome }))
+);
 import { TeamsFxContext } from "./Context";
 import config from "./sample/lib/config";
 
@@ -13,7 +15,9 @@ export default function Tab() {
       className={themeString === "default" ? "light" : themeString === "dark" ? "dark" : "contrast"}
     >
       <Suspense fallback={<Spinner style={{ margin: 100 }} />}>
-        <Welcome showFunction={showFunction} />
+        <Suspense fallback={<Spinner style={{ margin: 100 }} />}>
+          <Welcome showFunction={showFunction} />
+        </Suspense>
       </Suspense>
     </div>
   );

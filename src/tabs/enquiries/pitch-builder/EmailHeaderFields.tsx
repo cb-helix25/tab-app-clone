@@ -55,7 +55,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     background: isDarkMode
       ? `linear-gradient(135deg, ${colours.dark.cardBackground}, ${colours.dark.sectionBackground})`
       : `linear-gradient(135deg, ${colours.light.cardBackground}, ${colours.light.sectionBackground})`,
-    borderRadius: '8px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -86,7 +86,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
 
   // Style for the input fields with a subtle border and hover effect
   const inputFieldStyle = {
-    borderRadius: '8px',
+    borderRadius: 0,
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     transition: 'border-color 0.2s ease-in-out',
     ':hover': {
@@ -98,7 +98,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   const labeledFieldContainerStyle = {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: '8px',
-    borderRadius: '8px',
+    borderRadius: 0,
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     transition: 'border-color 0.2s ease-in-out',
     ':hover': {
@@ -110,7 +110,7 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   const notesContainerStyle = {
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: '12px',
-    borderRadius: '8px',
+    borderRadius: 0,
     border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
     overflowY: 'auto' as const,
     height: '100%',

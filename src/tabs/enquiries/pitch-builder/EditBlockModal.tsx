@@ -119,7 +119,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
 
   const containerClass = mergeStyles({
     padding: 0,
-    borderRadius: 8,
+    borderRadius: 0,
     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     transition: 'box-shadow 0.2s',
@@ -135,8 +135,8 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     padding: '12px 20px',
     borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     color: colours.highlight,
     fontWeight: 600,
     display: 'flex',
