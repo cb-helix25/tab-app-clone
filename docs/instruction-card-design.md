@@ -33,3 +33,9 @@ Below the details list the card includes an "Action Points" section. This lists
 instruction‑specific tasks such as the electronic ID check status and the most
 recent risk assessment result so solicitors can quickly see what work remains.
 The action list sits beneath a divider at the bottom of the card.
+
+Below the action list the card now displays three call to action buttons. These
+allow a solicitor to launch the **Risk Assessment**, start the **Electronic ID
+Check**, and finally **Open Matter** once the prerequisites are satisfied. The
+buttons appear in that order so the required checks can be completed before the
+matter is opened.

@@ -35,6 +35,8 @@ interface InstructionCardProps {
     } | null;
     animationDelay?: number;
     onOpenMatter?: () => void;
+    onRiskAssessment?: () => void;
+    onEIDCheck?: () => void;
 }
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
@@ -45,6 +47,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     eid,
     animationDelay = 0,
     onOpenMatter,
+    onRiskAssessment,
+    onEIDCheck,
 }) => {
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
@@ -151,6 +155,16 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 </ul>
             </div>
             <div className="instruction-cta">
+                <PrimaryButton
+                    text="Risk Assessment"
+                    onClick={onRiskAssessment}
+                    styles={sharedPrimaryButtonStyles}
+                />
+                <PrimaryButton
+                    text="ID Check"
+                    onClick={onEIDCheck}
+                    styles={sharedPrimaryButtonStyles}
+                />
                 <PrimaryButton
                     text="Open Matter"
                     onClick={onOpenMatter}

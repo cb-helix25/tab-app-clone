@@ -243,6 +243,14 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowNewMatterPage(true);
   };
 
+  const handleRiskAssessment = (inst: any) => {
+    console.log('Risk assessment for', inst.InstructionRef);
+  };
+
+  const handleEIDCheck = (inst: any) => {
+    console.log('EID check for', inst.InstructionRef);
+  };
+
   const gridContainerStyle = mergeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -302,6 +310,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                   prospectId={instruction.prospectId}
                   animationDelay={animationDelay}
                   onOpenMatter={() => handleOpenMatter(instruction)}
+                  onRiskAssessment={() => handleRiskAssessment(instruction)}
+                  onEIDCheck={() => handleEIDCheck(instruction)}
                 />
               );
             })}
