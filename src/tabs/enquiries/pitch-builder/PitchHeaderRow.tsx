@@ -256,10 +256,13 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           </div>
         </Stack>
 
-        {/* Row 2: To / CC / BCC */}
-          <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
-            <Stack tokens={{ childrenGap: 6 }}>
-              <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
+        {/* Row 2: Email Details */}
+        <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
+          <div className={enquiryNotesContainer}>
+            <div className={enquiryNotesHeader}>Email Details</div>
+            <div className={enquiryNotesContent}>
+              <Stack tokens={{ childrenGap: 6 }}>
+                <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
                 <Stack.Item grow>
                   <div className={intakeContainer}>
                     <div className={intakeHeader}>To</div>
@@ -358,48 +361,50 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                     </div>
                   </Stack.Item>
                 )}
-              </Stack>
-              {(!showCc || !showBcc) && (
-                <Stack horizontal tokens={{ childrenGap: 8 }}>
-                  {!showCc && (
-                    <span
-                      className={toggleCcBccStyle}
-                      onClick={() => setShowCc(true)}
-                    >
-                      CC
-                    </span>
-                  )}
-                  {!showBcc && (
-                    <span
-                      className={toggleCcBccStyle}
-                      onClick={() => setShowBcc(true)}
-                    >
-                      BCC
-                    </span>
-                  )}
                 </Stack>
-              )}
-            </Stack>
+                {(!showCc || !showBcc) && (
+                  <Stack horizontal tokens={{ childrenGap: 8 }}>
+                    {!showCc && (
+                      <span
+                        className={toggleCcBccStyle}
+                        onClick={() => setShowCc(true)}
+                      >
+                        CC
+                      </span>
+                    )}
+                    {!showBcc && (
+                      <span
+                        className={toggleCcBccStyle}
+                        onClick={() => setShowBcc(true)}
+                      >
+                        BCC
+                      </span>
+                    )}
+                  </Stack>
+                )}
+                <Stack>
+                  <div ref={subjectRef} className={intakeContainer}>
+                    <div className={intakeHeader}>Subject</div>
+                    <TextField
+                      value={subject}
+                      onChange={(_, val) => setSubject(val || "")}
+                      placeholder="Email subject"
+                      ariaLabel="Subject"
+                      styles={{
+                        root: { margin: 0 },
+                        fieldGroup: [
+                          inputFieldStyle,
+                          { border: "none", borderRadius: 0 },
+                        ],
+                      }}
+                    />
+                  </div>
+                </Stack>
+                </Stack>
+              </div>
+            </div>
+
           </div>
-        {/* Row 3: Subject */}
-          <Stack>
-            <div ref={subjectRef} className={intakeContainer}>
-              <div className={intakeHeader}>Subject</div>
-              <TextField
-                value={subject}
-                onChange={(_, val) => setSubject(val || "")}
-                placeholder="Email subject"
-                ariaLabel="Subject"
-                styles={{
-                  root: { margin: 0 },
-                  fieldGroup: [
-                    inputFieldStyle,
-                    { border: "none", borderRadius: 0 },
-                  ],
-                }}
-              />
-          </div>
-        </Stack>
         </Stack>
         <Separator vertical className={verticalSeparatorStyle} />
         {/* RIGHT SIDE (Deal Form) */}

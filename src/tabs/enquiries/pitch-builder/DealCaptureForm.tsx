@@ -143,12 +143,13 @@ const addingClientRef = useRef(false);
     isMultiClient &&
     clients.every((c) => c.firstName && c.lastName && c.email);
 
-  const paymentInfoWrapper = mergeStyles({
-    minHeight: 32,
-    marginTop: 4,
-    marginBottom: 4,
-    width: '100%',
-  });
+  const paymentInfoWrapper = (show: boolean) =>
+    mergeStyles({
+      minHeight: show ? 32 : 0,
+      marginTop: show ? 4 : 0,
+      marginBottom: show ? 4 : 0,
+      width: '100%',
+    });
 
   const paymentInfoClass = (show: boolean, error?: boolean) =>
     mergeStyles({
@@ -501,7 +502,7 @@ useLayoutEffect(() => {
           </div>
         </Stack>
       </Stack>
-      <div className={paymentInfoWrapper}>
+      <div className={paymentInfoWrapper(showPaymentInfo || !!amountError)}>
         <div className={paymentInfoClass(!!amountError, true)}>
           {amountError || ''}
         </div>
@@ -659,7 +660,7 @@ useLayoutEffect(() => {
         </Stack>
       )}
       {isMultiClient && (
-        <div className={paymentInfoWrapper}>
+        <div className={paymentInfoWrapper(showProofInfo)}>
           <div className={paymentInfoClass(showProofInfo)}>
             {(() => {
               const names = clients.map((c) => c.firstName).filter(Boolean);

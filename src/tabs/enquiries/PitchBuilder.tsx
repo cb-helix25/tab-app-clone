@@ -430,10 +430,14 @@ function toggleBlockLock(blockTitle: string) {
       const current = Array.isArray(selectedTemplateOptions[blockTitle])
         ? ([...(selectedTemplateOptions[blockTitle] as string[])])
         : [];
+      if (current.includes(optionLabel)) return;
       const updated = [...current, optionLabel];
       handleMultiSelectChange(blockTitle, updated);
       insertTemplateBlock(block, updated, true, true);
     } else {
+      if (selectedTemplateOptions[blockTitle] === optionLabel && insertedBlocks[blockTitle]) {
+        return;
+      }
       handleSingleSelectChange(blockTitle, optionLabel);
       insertTemplateBlock(block, optionLabel, true, true);
     }
@@ -591,6 +595,15 @@ useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
+      if (target.classList.contains('option-bubble')) {
+        const blockTitle = target.getAttribute('data-block-title');
+        const optionLabel = target.getAttribute('data-option-label');
+        if (blockTitle && optionLabel) {
+          insertBlockOption(blockTitle, optionLabel);
+          return;
+        }
+      }
+    
       if (target.classList.contains('block-label')) {
         const blockTitle = target.getAttribute('data-label-title');
         if (blockTitle) {
@@ -770,7 +783,7 @@ useEffect(() => {
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" style="display:none" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
     const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
@@ -1352,6 +1365,12 @@ function handleInput() {
           ? colours.highlightBlue
           : colours.highlightYellow;
 
+        const label = span.querySelector('.block-label') as HTMLElement | null;
+        if (label) {
+          label.style.display = changed ? 'inline' : 'none';
+          if (changed) label.style.color = colours.highlightBlue;
+          }
+
         const headerElement = document.getElementById(
           `template-block-header-${title.replace(/\s+/g, '-')}`
         );
@@ -1401,6 +1420,11 @@ function handleInput() {
               : changed
               ? colours.highlightBlue
               : colours.highlightYellow;
+            const label = span.querySelector('.block-label') as HTMLElement | null;
+            if (label) {
+              label.style.display = changed ? 'inline' : 'none';
+              if (changed) label.style.color = colours.highlightBlue;
+              }
             if (changed) {
               const block = templateBlocks.find((b) => b.title === title);
               setSelectedTemplateOptions((prev) => ({

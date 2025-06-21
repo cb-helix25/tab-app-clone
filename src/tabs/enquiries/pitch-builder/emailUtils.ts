@@ -134,13 +134,15 @@ export function replacePlaceholders(
   // Insert placeholders for each template block
   blocks.forEach((block) => {
     const regex = new RegExp(escapeRegExp(block.placeholder), 'g');
-    const content =
-      block.placeholder === '[FE Introduction Placeholder]' && intro
-        ? intro
-        : block.placeholder;
+    const optionBubbles = block.options
+      .map(
+        (o) =>
+          `<span class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</span>`
+      )
+      .join(' ');
     result = result.replace(
       regex,
-      `<span data-placeholder="${block.placeholder}" class="block-option-list"></span>`
+      `<span data-placeholder="${block.placeholder}" class="block-option-list">${optionBubbles}</span>`
     );
   });
 
