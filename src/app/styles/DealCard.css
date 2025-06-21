@@ -1,0 +1,31 @@
+.dealCard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    opacity: 0;
+    animation: dropIn 0.3s ease forwards;
+    animation-delay: var(--animation-delay, 0s);
+}
+
+.deal-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+}
+
+.detail-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.deal-cta {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px; }

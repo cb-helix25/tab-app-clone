@@ -13,6 +13,7 @@ import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { colours } from '../../app/styles/colours';
 import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
+import DealCard from './DealCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
@@ -253,7 +254,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const gridContainerStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
     gap: '24px',
     maxWidth: '1200px',
     width: '100%',
@@ -320,25 +321,23 @@ const Instructions: React.FC<InstructionsProps> = ({
       )}
       {activePivot === 'deals' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={tableContainerStyle}>
-          <table className="simple-table">
-            <thead>
-              <tr>
-                {dealColumns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {deals.map((deal, idx) => (
-                <tr key={idx}>
-                  {dealColumns.map((col) => (
-                    <td key={col}>{formatValue(deal[col])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className={gridContainerStyle}>
+            {deals.map((deal, idx) => {
+              const row = Math.floor(idx / 4);
+              const col = idx % 4;
+              const animationDelay = row * 0.2 + col * 0.1;
+              const isClosed = String(deal.Status).toLowerCase() === 'closed';
+              return (
+                <DealCard
+                  key={idx}
+                  deal={deal}
+                  animationDelay={animationDelay}
+                  onFollowUp={
+                    isClosed ? undefined : () => console.log('Follow up', deal.DealId)
+                  }
+                />
+              );
+            })}
           </div>
         </Stack>
       )}

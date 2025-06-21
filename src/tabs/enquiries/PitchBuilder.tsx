@@ -590,16 +590,12 @@ useEffect(() => {
     if (!editor) return;
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.classList.contains('option-choice')) {
-        const blockTitle = target.getAttribute('data-block-title');
-        if (!blockTitle) return;
-        if (target.classList.contains('reset-option')) {
-          resetBlockOption(blockTitle);
+
+      if (target.classList.contains('block-label')) {
+        const blockTitle = target.getAttribute('data-label-title');
+        if (blockTitle) {
+          openInlineOptions(e, blockTitle);
           return;
-        }
-        const optionLabel = target.getAttribute('data-option-label');
-        if (optionLabel) {
-          insertBlockOption(blockTitle, optionLabel);
         }
       }
     };
@@ -770,38 +766,12 @@ useEffect(() => {
     const containerTag = 'span';
     const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
-    const iconStyle = `margin-left:4px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${colours.grey};color:${colours.greyText};cursor:pointer;font-size:10px;user-select:none;`;
-    const lockIcon = `<i class="ms-Icon ms-Icon--Unlock" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const deleteIcon = `<i class="ms-Icon ms-Icon--Delete" aria-hidden="true" style="pointer-events:none;"></i>`;
-    const lockButton = `<span class="icon-btn lock-toggle" style="${iconStyle}" onclick="window.toggleBlockLock('${block.title}')" title="Toggle Lock">${lockIcon}</span>`;
-    const removeButton = `<span class="icon-btn remove-toggle" style="${iconStyle}" onclick="window.removeBlock('${block.title}')" title="Remove Block">${deleteIcon}</span>`;
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span><span class="actions">${lockButton}${removeButton}</span></div>`;
-    const optionsHtml = block.options
-      .filter((o) =>
-        block.isMultiSelect && isStringArray(selectedOption)
-          ? !selectedOption.includes(o.label)
-          : selectedOption !== o.label
-      )
-      .map((o) => {
-        const safe = o.label.replace(/'/g, "&#39;");
-        return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
-      })
-      .join(' ');
-    const resetHtml =
-      editedBlocks[block.title] && selectedLabel
-        ? `<span class="option-choice reset-option" data-block-title="${block.title}">Reset</span>`
-        : '';
-    const optionListContent = [optionsHtml, resetHtml]
-      .filter(Boolean)
-      .join(' ');
-    const optionListHtml = optionListContent
-      ? `<div class="block-option-list">${optionListContent}</div>`
-      : '';
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}${optionListHtml}</${containerTag}>`;
+    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
+    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -821,16 +791,18 @@ useEffect(() => {
         }
         return prevBody.replace(existingBlockRegex, wrappedHTML);
       }
-      return prevBody.replace(
-        new RegExp(
-          `(<span[^>]*data-placeholder="${block.placeholder.replace(
-            /[-[\]{}()*+?.,\\^$|#\s]/g,
-            '\\$&'
-          )}"[^>]*>)([\\s\\S]*?)(</span>)`,
-          'g'
-        ),
-        `$1${wrappedHTML}$3`
+      const placeholderEsc = block.placeholder.replace(
+        /[-[\]{}()*+?.,\\^$|#\s]/g,
+        '\\$&'
       );
+      const placeholderEscEncoded = block.placeholder
+        .replace(/&/g, '&amp;')
+        .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const placeholderRegex = new RegExp(
+        `(<span[^>]*data-placeholder="(?:${placeholderEsc}|${placeholderEscEncoded})"[^>]*>)([\\s\\S]*?)(</span>)`,
+        'g'
+      );
+      return prevBody.replace(placeholderRegex, `$1${wrappedHTML}$3`);
     });
 
     // Remove grey placeholder styling once the block is inserted
@@ -2013,45 +1985,35 @@ function handleScrollToBlock(blockTitle: string) {
             },
           }}
         >
-          <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
-            {inlineOptionsBlock.isMultiSelect ? (
-              <Stack tokens={{ childrenGap: 4 }}>
-                {inlineOptionsBlock.options.map((o: TemplateOption) => {
-                  const isSelected = Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
-                    (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label);
+          <Stack tokens={{ childrenGap: 8 }}>
+            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+              <Label styles={{ root: { fontSize: 12, fontWeight: 600 } }}>{inlineOptionsBlock.title}</Label>
+              <Stack horizontal tokens={{ childrenGap: 4 }}>
+                <IconButton
+                  iconProps={{ iconName: lockedBlocks[inlineOptionsBlock.title] ? 'Lock' : 'Unlock' }}
+                  title="Toggle Lock"
+                  ariaLabel="Toggle Lock"
+                  onClick={() => toggleBlockLock(inlineOptionsBlock.title)}
+                />
+                <IconButton
+                  iconProps={{ iconName: 'Delete' }}
+                  title="Remove Block"
+                  ariaLabel="Remove Block"
+                  onClick={() => handleClearBlock(inlineOptionsBlock)}
+                />
+              </Stack>
+            </Stack>
+            <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
+              {inlineOptionsBlock.isMultiSelect ? (
+                <Stack tokens={{ childrenGap: 4 }}>
+                  {inlineOptionsBlock.options.map((o: TemplateOption) => {
+                    const isSelected = Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
+                      (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label);
+                    return (
 
-                  const preview = applyDynamicSubstitutions(
-                    o.previewText.replace(/\n/g, '<br />'),
-                    userData,
-                    enquiry,
-                    amount,
-                    dealPasscode,
-                    dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
-                  );
-                  return (
-                    <Stack
-                      key={o.label}
-                      tokens={{ childrenGap: 2 }}
-                      onMouseEnter={() => setHoveredOption(o.label)}
-                      onMouseLeave={() => setHoveredOption(null)}
-                    >
                       <Checkbox
+                        key={o.label}
                         label={o.label}
-                        onRenderLabel={(props, defaultRender) => (
-                          <span
-                            style={{ cursor: 'pointer' }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              insertBlockOption(
-                                inlineOptionsBlock.title,
-                                o.label
-                              );
-                            }}
-                          >
-                            {defaultRender ? defaultRender(props) : props?.label}
-                          </span>
-                        )}
                         checked={isSelected}
                         onChange={(_e, checked) => {
                           const currentSelections = Array.isArray(
@@ -2063,110 +2025,33 @@ function handleScrollToBlock(blockTitle: string) {
                             ? [...currentSelections, o.label]
                             : currentSelections.filter((k) => k !== o.label);
                           handleMultiSelectChange(inlineOptionsBlock.title, updated);
-                          let append = insertedBlocks[inlineOptionsBlock.title] ? true : false;
-                          if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
-                            const replace = window.confirm(
-                              'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                            );
-                            append = !replace;
-                          }
-                          insertTemplateBlock(inlineOptionsBlock, updated, true, append);
+                          insertTemplateBlock(inlineOptionsBlock, updated, true, insertedBlocks[inlineOptionsBlock.title]);
                         }}
                       />
-                      {(hoveredOption === o.label || isSelected) && (
-                        <span
-                          className="option-preview"
-                          dangerouslySetInnerHTML={{ __html: preview }}
-                        />
-                      )}
-                      <IconButton
-                        iconProps={{ iconName: 'Add' }}
-                        title="Insert at cursor"
-                        ariaLabel="Insert at cursor"
-                        onClick={() => insertOptionAtCursor(inlineOptionsBlock, o.label)}
-                        styles={{ root: { marginTop: 2, alignSelf: 'flex-start' } }}
-                      />
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            ) : (
-              <ChoiceGroup
-                selectedKey={selectedTemplateOptions[inlineOptionsBlock.title] as string}
-                onChange={(_e, opt?: IChoiceGroupOption) => {
-                  if (!opt) return;
-                  let append = insertedBlocks[inlineOptionsBlock.title] ? true : false;
-                  if (insertedBlocks[inlineOptionsBlock.title] && editedBlocks[inlineOptionsBlock.title]) {
-                    const replace = window.confirm(
-                      'This block has been edited. OK to replace with the selected template? Click Cancel to append.'
-                    );
-                    append = !replace;
-                  }
-                  insertTemplateBlock(inlineOptionsBlock, opt.key as string, true, append);
-                  handleSingleSelectChange(inlineOptionsBlock.title, opt.key as string);
-                  closeInlineOptions();
-                }}
-                options={
-                  inlineOptionsBlock.options.map((o) => {
-                    const renderLabel = (
-                      option?: IChoiceGroupOption,
-                      defaultRender?: (option?: IChoiceGroupOption) => JSX.Element | null
-                    ) => {
-                      if (!option) return null;
-                      const preview = applyDynamicSubstitutions(
-                        inlineOptionsBlock.options.find((opt) => opt.label === option.key)?.previewText.replace(/\n/g, '<br />') || '',
-                        userData,
-                        enquiry,
-                        amount,
-                        dealPasscode,
-                        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
-                      );
-                      const isSelected =
-                        selectedTemplateOptions[inlineOptionsBlock.title] === option.key;
-                      return (
-                        <Stack
-                          tokens={{ childrenGap: 2 }}
-                          onMouseEnter={() => setHoveredOption(option.key as string)}
-                          onMouseLeave={() => setHoveredOption(null)}
-                        >
-                          <span
-                            style={{ cursor: 'pointer' }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              insertBlockOption(
-                                inlineOptionsBlock.title,
-                                option.key as string
-                              );
-                            }}
-                          >
-                            {defaultRender ? defaultRender(option) : option.text}
-                          </span>
-                          {(hoveredOption === option.key || isSelected) && (
-                            <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
-                          )}
-                          <IconButton
-                            iconProps={{ iconName: 'Add' }}
-                            title="Insert at cursor"
-                            ariaLabel="Insert at cursor"
-                            onClick={() => insertOptionAtCursor(inlineOptionsBlock, option.key as string)}
-                            styles={{ root: { marginTop: 2, alignSelf: 'flex-start' } }}
-                          />
-                        </Stack>
-                      );
-                    };
 
-                    return {
-                      key: o.label,
-                      text: o.label,
-                      onRenderLabel: renderLabel,
-                    } as IChoiceGroupOption;
-                  })
-                }
-                styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
-              />
-            )}  
-          </FocusZone>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <ChoiceGroup
+                  selectedKey={selectedTemplateOptions[inlineOptionsBlock.title] as string}
+                  onChange={(_e, opt?: IChoiceGroupOption) => {
+                    if (!opt) return;
+                    insertTemplateBlock(
+                      inlineOptionsBlock,
+                      opt.key as string,
+                      true,
+                      insertedBlocks[inlineOptionsBlock.title]
+                    );
+                    handleSingleSelectChange(inlineOptionsBlock.title, opt.key as string);
+                    closeInlineOptions();
+                  }}
+                  options={inlineOptionsBlock.options.map((o) => ({ key: o.label, text: o.label }))}
+                  styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
+                />
+              )}
+            </FocusZone>
+          </Stack>
         </Callout>
       )}
 

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Text, mergeStyles, PrimaryButton } from '@fluentui/react';
-import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
+import { Text, mergeStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/InstructionCard.css';
@@ -79,6 +78,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
+            <div className="vertical-tabs">
+                <button className="vertical-tab" onClick={onRiskAssessment}>
+                    Risk
+                </button>
+                <button className="vertical-tab" onClick={onEIDCheck}>
+                    ID Check
+                </button>
+                <button
+                    className="vertical-tab"
+                    onClick={onOpenMatter}
+                    disabled={openDisabled}
+                >
+                    Open Matter
+                </button>
+            </div>
             <Text
                 variant="mediumPlus"
                 styles={{ root: { fontWeight: 600, marginBottom: 4 } }}
@@ -153,24 +167,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             : 'Pending'}
                     </li>
                 </ul>
-            </div>
-            <div className="instruction-cta">
-                <PrimaryButton
-                    text="Risk Assessment"
-                    onClick={onRiskAssessment}
-                    styles={sharedPrimaryButtonStyles}
-                />
-                <PrimaryButton
-                    text="ID Check"
-                    onClick={onEIDCheck}
-                    styles={sharedPrimaryButtonStyles}
-                />
-                <PrimaryButton
-                    text="Open Matter"
-                    onClick={onOpenMatter}
-                    disabled={openDisabled}
-                    styles={sharedPrimaryButtonStyles}
-                />
             </div>
         </div>
     );

@@ -1,4 +1,6 @@
 .instructionCard {
+    position: relative;
+    padding-left: 60px; /* space for vertical tabs */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -31,9 +33,31 @@
     gap: 2px;
 }
 
-.instruction-cta {
-    margin-top: 8px;
+.vertical-tabs {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 60px;
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+    flex-direction: column;
+}
+
+.vertical-tab {
+    flex: 1;
+    background-color: #f3f2f1;
+    border: 1px solid #e1dfdd;
+    border-right: none;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vertical-tab:not(:last-child) {
+    border-bottom: none;
+
 }
