@@ -2736,7 +2736,7 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isContextPanelOpen}
         onClose={() => setIsContextPanelOpen(false)}
         title="Context Details"
-        width="1000px"
+          width="2000px"
       >
         {renderContextsPanelContent()}
       </BespokePanel>
@@ -2745,7 +2745,7 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isOutstandingPanelOpen}
         onClose={() => setIsOutstandingPanelOpen(false)}
         title="Outstanding Balances Details"
-        width="1000px"
+        width="2000px"
       >
         {/* Toggle between "Everyone" and "Only Mine" */}
         <Toggle
@@ -2765,17 +2765,17 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isBespokePanelOpen}
         onClose={() => setIsBespokePanelOpen(false)}
         title={bespokePanelTitle}
-        width="1000px"
-      >
-        {bespokePanelContent}
-      </BespokePanel>
+          width="2000px"
+        >
+          {bespokePanelContent}
+        </BespokePanel>
 
-      {/* Transaction Approval Popup */}
-      <BespokePanel
-        isOpen={isTransactionPopupOpen}
-        onClose={() => setIsTransactionPopupOpen(false)}
-        title="Approve Transaction"
-        width="1000px"
+        {/* Transaction Approval Popup */}
+        <BespokePanel
+          isOpen={isTransactionPopupOpen}
+          onClose={() => setIsTransactionPopupOpen(false)}
+          title="Approve Transaction"
+          width="2000px"
       >
         {selectedTransaction && (
           <TransactionApprovalPopup

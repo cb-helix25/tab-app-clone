@@ -14,10 +14,10 @@ interface FormsSidebarProps {
 const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: 48,
+        top: 80, // account for navigator and secondary tray
         left: isOpen ? 0 : -340,
         width: 340,
-        height: 'calc(100vh - 48px)',
+        height: 'calc(100vh - 80px)',
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
@@ -29,9 +29,9 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
 const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: 48,
+        top: 80, // align with sidebarContainer
         left: isOpen ? 340 : 0,
-        height: 'calc(100vh - 48px)',
+        height: 'calc(100vh - 80px)',
         width: 24,
         display: 'flex',
         alignItems: 'center',

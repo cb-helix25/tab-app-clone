@@ -197,7 +197,7 @@ const ResourceDetails: React.FC<ResourceDetailsProps> = ({ resource, onClose }) 
       isOpen={true}
       onClose={onClose}
       title={resource.title}
-      width="1000px" // Match the width used in Forms
+      width="2000px" // Match the width used in Forms
     >
       {/* Main container with flex layout */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

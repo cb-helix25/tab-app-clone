@@ -29,7 +29,7 @@ const overlayStyle = mergeStyles({
 const getPanelStyle = (width: string, closing: boolean) =>
   mergeStyles({
     backgroundColor: '#fff',
-    width: width || '800px', // Default width
+    width: width || '1600px', // Default width doubled
     maxWidth: '100%', // Responsive
     height: '100%',
     boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
@@ -77,7 +77,7 @@ const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, chi
   return (
     <div className={overlayStyle} onClick={handleClose} aria-modal="true" role="dialog">
       <div
-        className={getPanelStyle(width || '800px', closing)}
+        className={getPanelStyle(width || '1600px', closing)}
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the panel
         ref={panelRef}
         tabIndex={-1} // Make div focusable

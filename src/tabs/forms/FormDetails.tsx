@@ -201,7 +201,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
   );
 
   return (
-    <BespokePanel isOpen={isOpen} onClose={onClose} title={link.title} width="1000px">
+    <BespokePanel isOpen={isOpen} onClose={onClose} title={link.title} width="2000px">
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {submissionSuccess && (
           <MessageBar

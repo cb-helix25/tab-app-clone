@@ -212,7 +212,7 @@ const ActionSection: React.FC<ActionSectionProps> = ({
         isOpen={isTransactionPopupOpen}
         onClose={() => setIsTransactionPopupOpen(false)}
         title="Approve Transaction"
-        width="1000px"
+        width="2000px"
       >
         {selectedTransaction && (
           <TransactionApprovalPopup
