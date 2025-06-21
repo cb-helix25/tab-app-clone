@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { Text, mergeStyles } from '@fluentui/react';
-import { FaIdBadge, FaRegIdBadge, FaFileAlt, FaRegFileAlt } from 'react-icons/fa';
+import { mergeStyles } from '@fluentui/react';
+import {
+    FaIdBadge,
+    FaRegIdBadge,
+    FaFileAlt,
+    FaRegFileAlt,
+    FaUser,
+} from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -15,19 +21,20 @@ interface InstructionInfo {
     Email?: string;
     HelixContact?: string;
     SubmissionDate?: string;
-    [key: string]: any;
+}
+
+interface DealInfo {
+    ServiceDescription?: string;
+    Amount?: number;
+    AreaOfWork?: string;
 }
 
 interface InstructionCardProps {
     instruction: InstructionInfo;
+    deal?: DealInfo;
     prospectId?: number;
-    risk?: {
-        RiskAssessmentResult?: string;
-        RiskScore?: number;
-    } | null;
-    eid?: {
-        EIDStatus?: string;
-    } | null;
+    risk?: { RiskAssessmentResult?: string; RiskScore?: number } | null;
+    eid?: { EIDStatus?: string } | null;
     animationDelay?: number;
     onOpenMatter?: () => void;
     onRiskAssessment?: () => void;
@@ -42,6 +49,7 @@ const iconMap = {
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
     instruction,
+    deal,
     prospectId,
     risk,
     eid,
@@ -52,7 +60,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 }) => {
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
-        borderRadius: componentTokens.card.base.borderRadius,
         padding: componentTokens.card.base.padding,
         boxShadow: componentTokens.card.base.boxShadow,
         color: colours.light.text,
@@ -66,13 +73,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         },
     });
 
-    const style: React.CSSProperties = {
-        '--animation-delay': `${animationDelay}s`,
-    } as React.CSSProperties;
-
-    const openDisabled =
-        !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
-
+    const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
+    const formattedDate = instruction.SubmissionDate
+        ? new Date(instruction.SubmissionDate).toLocaleDateString()
+        : undefined;
+    const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
 
     return (
@@ -82,10 +87,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <button
                     type="button"
                     className={`bottom-tab ${activeTab === 'eid' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('eid');
-                        onEIDCheck && onEIDCheck();
-                    }}
+                    onClick={() => { setActiveTab('eid'); onEIDCheck?.(); }}
                     aria-label="EID Check"
                 >
                     <span className="icon-hover">
@@ -97,10 +99,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <button
                     type="button"
                     className={`bottom-tab ${activeTab === 'risk' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('risk');
-                        onRiskAssessment && onRiskAssessment();
-                    }}
+                    onClick={() => { setActiveTab('risk'); onRiskAssessment?.(); }}
                     aria-label="Risk"
                 >
                     <span className="icon-hover">
@@ -112,10 +111,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <button
                     type="button"
                     className={`bottom-tab ${activeTab === 'matter' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('matter');
-                        onOpenMatter && onOpenMatter();
-                    }}
+                    onClick={() => { setActiveTab('matter'); onOpenMatter?.(); }}
                     disabled={openDisabled}
                     aria-label="Open Matter"
                 >
@@ -127,37 +123,44 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 </button>
             </div>
             <div className="instruction-details">
-                <ul className="detail-list">
-                    {prospectId !== undefined && (
-                        <li>
-                            <strong>Prospect ID:</strong> {prospectId}
-                        </li>
-                    )}
-                    {Object.entries(instruction)
-                        .filter(
-                            ([key, value]) =>
-                                key !== 'InstructionRef' &&
-                                value !== undefined &&
-                                value !== null &&
-                                value !== ''
-                        )
-                        .map(([key, value]) => {
-                            const label = key
-                                .replace(/([A-Z])/g, ' $1')
-                                .replace(/^./, (s) => s.toUpperCase());
-                            const displayValue =
-                                key === 'SubmissionDate' && typeof value === 'string'
-                                    ? new Date(value).toLocaleDateString()
-                                    : String(value);
-                            return (
-                                <li key={key}>
-                                    <strong>{label}:</strong> {displayValue}
-                                </li>
-                            );
-                        })}
-
-                </ul>
-
+                <details className="detail-group">
+                    <summary><FaFileAlt className="group-icon" /> General</summary>
+                    <ul className="detail-list">
+                        {prospectId !== undefined && (
+                            <li><strong>Prospect ID:</strong> {prospectId}</li>
+                        )}
+                        {instruction.Stage && (
+                            <li><strong>Status:</strong> {instruction.Stage}</li>
+                        )}
+                        {deal?.ServiceDescription && (
+                            <li><strong>Service:</strong> {deal.ServiceDescription}</li>
+                        )}
+                        {deal?.AreaOfWork && (
+                            <li><strong>Area:</strong> {deal.AreaOfWork}</li>
+                        )}
+                        {deal?.Amount !== undefined && (
+                            <li><strong>Amount:</strong> £{deal.Amount}</li>
+                        )}
+                        {formattedDate && (
+                            <li><strong>Submitted:</strong> {formattedDate}</li>
+                        )}
+                        {instruction.HelixContact && (
+                            <li><strong>Contact:</strong> {instruction.HelixContact}</li>
+                        )}
+                    </ul>
+                </details>
+                <details className="detail-group">
+                    <summary><FaUser className="group-icon" /> Client</summary>
+                    <ul className="detail-list">
+                        {instruction.FirstName && instruction.LastName && (
+                            <li><strong>Client:</strong> {instruction.FirstName} {instruction.LastName}</li>
+                        )}
+                        {instruction.CompanyName && (
+                            <li><strong>Company:</strong> {instruction.CompanyName}</li>
+                        )}
+                        {instruction.Email && <li>{instruction.Email}</li>}
+                    </ul>
+                </details>
             </div>
         </div>
     );

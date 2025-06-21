@@ -1,7 +1,7 @@
 .instructionCard {
     position: relative;
     padding-bottom: 48px;
-        /* space for bottom tabs */
+    /* space for bottom tabs */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -10,20 +10,58 @@
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
     overflow: hidden;
-    }
-    
-        .instruction-banner {
-            background-color: #061733;
-            color: #ffffff;
-            padding: 4px 8px;
-            font-weight: 600;
-        }
+    border-radius: 0 0 6px 6px;
+}
+
+.instruction-header {
+    background-color: #061733;
+    color: #ffffff;
+    padding: 4px 8px;
+    font-weight: 600;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0; }
 
 .instruction-details {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1 1 auto;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1 1 auto;
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .detail-group {
+        border: 1px solid #e1dfdd;
+        border-radius: 4px;
+        background-color: #ffffff;
+        margin-bottom: 4px;
+    }
+    
+    .detail-group summary {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        list-style: none;
+        transition: background-color 0.2s;
+    }
+    
+    .detail-group summary:hover {
+        background-color: #d6e8ff;
+    }
+    
+    .detail-group[open] summary {
+        background-color: #e7f1ff;
+    }
+    
+    .detail-group summary::-webkit-details-marker {
+        display: none;
+    }
+    
+    .group-icon {
+        font-size: 16px;
 }
 
 .detail-list,
@@ -59,18 +97,18 @@
 
 .bottom-tab {
     flex: 0 0 48px;
-    background-color: #f3f2f1;
-    border: 1px solid #e1dfdd;
-    border-top: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    cursor: pointer;
-    gap: 4px;
-    color: #D65541;
-        transition: flex 0.2s ease, background-color 0.2s ease;
-    }
+        background-color: #f3f2f1;
+        border: 1px solid #e1dfdd;
+        border-top: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        cursor: pointer;
+        gap: 4px;
+        color: #D65541;
+        transition: flex 0.2s ease, background-color 0.2s ease,
+            transform 0.2s ease; }
     
     .bottom-tab .icon-filled {
         display: none;
@@ -90,6 +128,7 @@
     
     .bottom-tab:hover {
         background-color: #ecebea;
+        transform: translateX(4px);
     }
     
     .bottom-tab:active {
@@ -102,32 +141,34 @@
 
 .bottom-tab.active {
     flex: 1 1 auto;
-    background-color: #D65541;
+        background-color: #D65541;
         color: #ffffff;
-    }
+        border-top-right-radius: 6px;
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2);
+        z-index: 1; }
     
-    .bottom-tab.active .icon-outline {
-        display: none;
-    }
-    
-    .bottom-tab.active .icon-filled {
-        display: inline-block;
-    }
-    
-    .bottom-tab:hover {
-        background-color: #f4f4f6;
-    }
-    
-    .bottom-tab:hover .icon-outline {
-        display: none;
-    }
-    
-    .bottom-tab:hover .icon-filled {
-        display: inline-block;
-        transform: scale(1.2);
-    background-color: #d6e8ff;
+                .bottom-tab.active .icon-outline {
+                    display: none;
+                }
+        
+                .bottom-tab.active .icon-filled {
+                    display: inline-block;
+                }
+        
+                .bottom-tab:hover {
+                    background-color: #f4f4f6;
+                }
+        
+                .bottom-tab:hover .icon-outline {
+                    display: none;
+                }
+        
+                .bottom-tab:hover .icon-filled {
+                    display: inline-block;
+                    transform: scale(1.2);
+                    background-color: #d6e8ff;
 }
 
 .bottom-tab:not(.active) span {
     display: none;
-}
+    }

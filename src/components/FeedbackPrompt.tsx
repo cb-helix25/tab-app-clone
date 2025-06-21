@@ -9,32 +9,35 @@ interface FeedbackPromptProps {
 const allowedInitials = ['LZ', 'AC', 'JW'];
 
 const FeedbackPrompt: React.FC<FeedbackPromptProps> = ({ userInitials }) => {
-    const [file, setFile] = useState<File | null>(null);
+    const [text, setText] = useState('');
 
     if (!allowedInitials.includes(userInitials)) return null;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selected = e.target.files?.[0] || null;
-        setFile(selected);
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setText(e.target.value);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) return;
-        // Placeholder for real upload logic
-        alert('File submitted');
+        if (!text.trim()) return;
+        // Placeholder for real submit logic
+        alert('Feedback submitted');
     };
 
     return (
         <form className="feedback-prompt" onSubmit={handleSubmit}>
             <label>
-                <span>Upload feedback</span>
-                <input type="file" onChange={handleChange} />
+                <span>Your feedback</span>
+                <textarea
+                    rows={3}
+                    value={text}
+                    onChange={handleChange}
+                />
             </label>
-            <button type="submit" disabled={!file}>
+            <button type="submit" disabled={!text.trim()}>
                 Send
             </button>
-            <InfoPopover text="Files uploaded here are emailed to lz@helix-law.com" />
+            <InfoPopover text="Feedback entered here is emailed to lz@helix-law.com" />
         </form>
     );
 };
