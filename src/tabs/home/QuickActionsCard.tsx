@@ -74,7 +74,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     height: '48px',
     lineHeight: '48px',
     fontSize: '16px',
-    borderRadius: componentTokens.card.base.borderRadius,
+    borderRadius: 0,
     display: 'flex',
     alignItems: 'center',
     gap: '7px',

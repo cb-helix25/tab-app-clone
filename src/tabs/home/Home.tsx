@@ -391,7 +391,7 @@ const sectionContainerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     padding: '16px',
-    borderRadius: '12px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? `0 4px 12px ${colours.dark.border}`
       : `0 4px 12px ${colours.light.border}`,
@@ -508,7 +508,7 @@ const PersonBubble: React.FC<PersonBubbleProps> = ({
     top: '50%',
     transform: 'translateY(-50%)',
     backgroundColor: colours.grey,
-    borderRadius: '12px',
+    borderRadius: 0,
     padding: '0 10px 0 50px',
     height: '34px',
     display: 'flex',
@@ -2421,7 +2421,7 @@ const conversionRate = enquiriesMonthToDate
         style={{
           backgroundColor: '#ffffff',
           padding: '16px',
-          borderRadius: '8px',
+          borderRadius: 0,
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
           marginBottom: '24px',
         }}
@@ -2635,7 +2635,7 @@ const conversionRate = enquiriesMonthToDate
               ? colours.dark.sectionBackground
               : colours.light.sectionBackground,
             padding: '16px',
-            borderRadius: '12px',
+            borderRadius: 0,
             boxShadow: isDarkMode
               ? `0 4px 12px ${colours.dark.border}`
               : `0 4px 12px ${colours.light.border}`,

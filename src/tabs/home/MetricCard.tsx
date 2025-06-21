@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Text, mergeStyles, TooltipHost, DirectionalHint, Icon } from '@fluentui/react';
 import CountUp from 'react-countup';
 import { colours } from '../../app/styles/colours';
@@ -27,13 +27,13 @@ interface MetricCardProps {
   dialSuffix?: string;
 }
 
-const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
+const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     padding: '8px 12px 8px 16px',
     borderLeft: `4px solid ${colours.highlight}`,
-    borderRadius: '6px',
+    borderRadius: 0,
     boxShadow: isDarkMode ? `0 2px 6px ${colours.dark.border}` : `0 2px 6px ${colours.light.border}`,
     transition: 'background-color 0.2s, box-shadow 0.2s, transform 0.2s, border 0.2s',
     display: 'flex',
@@ -46,10 +46,6 @@ const cardStyle = (isDarkMode: boolean, isPositive: boolean | null) =>
     minWidth: '180px',
     maxWidth: '220px',
     cursor: 'pointer',
-    outline: isPositive !== null
-      ? `2px solid ${isPositive ? 'green' : 'red'}`
-      : '2px solid transparent',
-    outlineOffset: '-2px',
     ':hover': {
       transform: 'translateY(-3px)',
       boxShadow: isDarkMode ? `0 4px 8px ${colours.dark.border}` : `0 4px 8px ${colours.light.border}`,
@@ -203,7 +199,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
   highlightDial,
   dialSuffix,
 }) => {
-  const [isHovered, setIsHovered] = useState<boolean>(false);
 
   const calculateChange = (current: number, previous: number) => {
     const change = current - previous;
@@ -316,10 +311,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <TooltipHost content={tooltipContent()} directionalHint={DirectionalHint.topCenter}>
       <div
-        className={`metricCard ${mergeStyles(cardStyle(isDarkMode, isHovered ? overallChange : null))}`}
-        style={{ '--animation-delay': `${animationDelay}s` } as React.CSSProperties}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className={`metricCard ${mergeStyles(cardStyle(isDarkMode))}`}
+        style={{
+          '--animation-delay': `${animationDelay}s`,
+          '--outline-color': overallChange !== null ? (overallChange ? 'green' : 'red') : 'transparent',
+        } as React.CSSProperties}
         aria-label={`${title} metric card`}
       >
         {showDial ? (
@@ -379,38 +375,37 @@ const MetricCard: React.FC<MetricCardProps> = ({
           </>
         )}
 
-        {isHovered && (
-          <div
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: '12px', // 12px wide bar
-              backgroundColor: colours.grey, // grey bar
-              borderTopRightRadius: '10px', // slightly less than the card's 12px to avoid excessive rounding
-              borderBottomRightRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: title === 'Outstanding Client Balances' ? 1 : 0,
-              transition: 'opacity 0.3s'
-            }}
-          >
-            <Icon iconName="ChevronRight" style={{ color: colours.light.text, fontSize: '12px' }} />
-          </div>
-        )}
+        <div
+          className="hoverBar"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: '12px', // 12px wide bar
+            backgroundColor: colours.grey, // grey bar
+            borderTopRightRadius: '10px', // slightly less than the card's 12px to avoid excessive rounding
+            borderBottomRightRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: title === 'Outstanding Client Balances' ? 1 : 0,
+            transition: 'opacity 0.3s'
+          }}
+        >
+          <Icon iconName="ChevronRight" style={{ color: colours.light.text, fontSize: '12px' }} />
+        </div>
 
 
-        {isHovered && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: '10px',
-              justifyContent: 'space-between'
-            }}
-          >
+        <div
+          className="hoverDetails"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: '10px',
+            justifyContent: 'space-between'
+          }}
+        >
             {isMoneyOnly ? (
               <div
                 style={{
@@ -499,7 +494,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               )
             )}
           </div>
-        )}
+        )
       </div>
     </TooltipHost>
   );

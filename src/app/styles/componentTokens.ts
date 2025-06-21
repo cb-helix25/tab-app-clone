@@ -10,7 +10,7 @@ export const componentTokens = {
     base: {
       backgroundColor: colours.darkBlue,
       textColor: '#ffffff',
-      borderRadius: '4px',
+      borderRadius: '0px',
       boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
     },
     active: {
@@ -32,7 +32,7 @@ export const componentTokens = {
       backgroundColor: colours.grey,
       color: colours.darkBlue,
       border: `2px solid ${colours.blue}`,
-      borderRadius: '4px',
+      borderRadius: '0px',
       padding: '10px 16px',
     },
     hover: {
@@ -47,7 +47,7 @@ export const componentTokens = {
   summaryPane: {
     base: {
       backgroundColor: colours.grey,
-      borderRadius: '4px',
+      borderRadius: '0px',
       borderColor: '#e3e8ef',
       boxShadow: '0 2px 12px rgba(44,71,129,0.05)',
       padding: '1.5rem 1.2rem',
@@ -75,7 +75,7 @@ export const componentTokens = {
     body: {
       backgroundColor: colours.grey,
       padding: '0.75rem',
-      borderRadius: '4px',
+      borderRadius: '0px',
     },
   },
 
@@ -83,7 +83,7 @@ export const componentTokens = {
   card: {
     base: {
       padding: '20px',
-      borderRadius: '8px',
+      borderRadius: '0px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     },
     hover: {

@@ -53,10 +53,8 @@ const CollapsibleSection: React.FC<{
         boxShadow: (cardStyles.root as React.CSSProperties).boxShadow,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
-        borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
-          .borderRadius,
-        borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
-          .borderRadius,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
         overflow: 'hidden',
       }}
     >
@@ -95,10 +93,8 @@ const CollapsibleSection: React.FC<{
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
           boxShadow: componentTokens.summaryPane.base.boxShadow,
-          borderBottomLeftRadius: (cardStyles.root as React.CSSProperties)
-            .borderRadius,
-          borderBottomRightRadius: (cardStyles.root as React.CSSProperties)
-            .borderRadius,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
           maxHeight: collapsed ? trayHeight : '2000px',
           overflow: 'hidden',
           transition: 'max-height 0.3s ease, opacity 0.3s ease',

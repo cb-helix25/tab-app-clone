@@ -259,7 +259,7 @@ const HomePanel: React.FC<HomePanelProps> = ({
                         styles={{
                           fieldGroup: {
                             flex: 1,
-                            borderRadius: '8px',
+                            borderRadius: 0,
                             border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
                             backgroundColor: isDarkMode
                               ? colours.dark.inputBackground
@@ -286,7 +286,7 @@ const HomePanel: React.FC<HomePanelProps> = ({
                             rows={3}
                             styles={{
                               fieldGroup: {
-                                borderRadius: '8px',
+                                borderRadius: 0,
                                 border: `1px solid ${
                                   isDarkMode ? colours.dark.border : colours.light.border
                                 }`,
@@ -307,7 +307,7 @@ const HomePanel: React.FC<HomePanelProps> = ({
                             type={field.type}
                             styles={{
                               fieldGroup: {
-                                borderRadius: '8px',
+                                borderRadius: 0,
                                 border: `1px solid ${
                                   isDarkMode ? colours.dark.border : colours.light.border
                                 }`,
@@ -403,7 +403,7 @@ const HomePanel: React.FC<HomePanelProps> = ({
               right: 20,
               maxWidth: '300px',
               zIndex: 1000,
-              borderRadius: '8px',
+              borderRadius: 0,
               backgroundColor: colours.green,
               color: 'white',
             },
