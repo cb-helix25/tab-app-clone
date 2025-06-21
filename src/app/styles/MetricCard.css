@@ -23,13 +23,13 @@
   outline: 2px solid var(--outline-color, transparent);
     outline-offset: -2px;
   }
-  
-  .metricCard .hoverBar,
-  .metricCard .hoverDetails {
-    display: none;
-  }
-  
-  .metricCard:hover .hoverBar,
-  .metricCard:hover .hoverDetails {
-    display: flex;
+
+.metricCard .hoverBar,
+.metricCard .hoverDetails {
+  display: none;
+}
+
+.metricCard:hover .hoverBar,
+.metricCard:hover .hoverDetails {
+  display: flex;
 }

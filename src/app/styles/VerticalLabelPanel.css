@@ -32,4 +32,3 @@
     z-index: 1; /* Keep labels below metric cards */
     animation: slideInBounce 0.6s ease-out forwards; /* Apply the animation */
   }
-  
