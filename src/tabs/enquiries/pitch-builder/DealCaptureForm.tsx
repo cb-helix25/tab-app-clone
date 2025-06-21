@@ -428,10 +428,11 @@ useLayoutEffect(() => {
                 <TextField
                   multiline
                   required
+                  autoAdjustHeight
                   value={serviceDescription}
                   onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
                   styles={{
-                    fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }],
+                    fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
                     prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
                   }}
                   maxLength={200}

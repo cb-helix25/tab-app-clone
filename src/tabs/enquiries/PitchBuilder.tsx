@@ -731,8 +731,13 @@ useEffect(() => {
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         const escLabel = opt.replace(/'/g, "&#39;");
+        const sentences = text
+          .split(/(?<=[.!?])\s+/)
+          .filter((s) => s.trim().length > 0)
+          .map((s) => `<span data-sentence contenteditable="true">${s.trim()}</span>`)
+          .join(' ');
         snippetHtml.push(
-          `<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}</div>`
+          `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`
         );
       });
     } else if (typeof selectedOption === 'string') {
@@ -752,8 +757,13 @@ useEffect(() => {
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         const escLabel = selectedOption.replace(/'/g, "&#39;");
+        const sentences = text
+          .split(/(?<=[.!?])\s+/)
+          .filter((s) => s.trim().length > 0)
+          .map((s) => `<span data-sentence contenteditable="true">${s.trim()}</span>`)
+          .join(' ');
         snippetHtml.push(
-          `<div data-snippet="${escLabel}" contenteditable="true" style="margin-bottom:4px;">${text}</div>`
+          `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`
         );
       }
 
