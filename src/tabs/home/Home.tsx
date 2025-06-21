@@ -73,7 +73,7 @@ import ImmediateActionsBar from './ImmediateActionsBar';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
-import Attendance from './Attendance'; // Import the Attendance component
+import Attendance from './AttendanceCompact';
 
 import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
