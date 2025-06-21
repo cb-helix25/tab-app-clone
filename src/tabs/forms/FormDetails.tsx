@@ -207,7 +207,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={link.title}
-      width="2000px"
+      width="60%"
       offsetTop={offsetTop}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

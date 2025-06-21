@@ -2761,7 +2761,8 @@ const conversionRate = enquiriesMonthToDate
         isOpen={isBespokePanelOpen}
         onClose={() => setIsBespokePanelOpen(false)}
         title={bespokePanelTitle}
-          width="2000px"
+          width="60%"
+          offsetTop={96}
         >
           {bespokePanelContent}
         </BespokePanel>

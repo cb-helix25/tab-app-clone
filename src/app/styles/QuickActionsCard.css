@@ -10,7 +10,7 @@
   animation-delay: calc(var(--card-index, 0) * 0.1s);
 }
 
-.quickActionCard span {
+.quickActionCard .icon-wrapper {
   position: relative;
   display: inline-flex;
   width: 24px;

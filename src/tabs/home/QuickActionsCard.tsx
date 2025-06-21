@@ -168,7 +168,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         }
       }}
     >
-      <span>
+      <span className="icon-wrapper">
         {(() => {
           if (!attendanceIconName) {
             return null;
