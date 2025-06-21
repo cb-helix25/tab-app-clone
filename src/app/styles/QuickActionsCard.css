@@ -13,18 +13,20 @@
 .quickActionCard span {
   position: relative;
   display: inline-flex;
-  width: 20px;
+  width: 24px;
   justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .quickActionCard .icon-outline,
 .quickActionCard .icon-filled {
   position: absolute;
-  left: 0;
+  left: 50%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
   display: inline-flex;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
 .quickActionCard .icon-filled {
@@ -42,7 +44,7 @@
 .quickActionCard:hover .icon-filled {
   opacity: 1;
   color: var(--helix-cta, #D65541);
-  transform: translateY(-50%) scale(1.2);
+  transform: translate(-50%, -50%) scale(1.15);
 }
 
 .quickActionCard:active {

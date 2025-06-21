@@ -79,7 +79,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                         height: '48px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        justifyContent: 'flex-start',
                     } as React.CSSProperties}
                     {...(action.title === 'Confirm Attendance'
                         ? { confirmed: currentUserConfirmed }
