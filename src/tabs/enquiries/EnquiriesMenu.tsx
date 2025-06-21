@@ -54,13 +54,20 @@ const stateButtonStyle = (isDark: boolean) =>
         padding: '8px 16px',
         borderRadius: '6px',
         cursor: 'pointer',
-        transition: 'background-color 0.3s, color 0.3s',
+        transition: 'background-color 0.3s, color 0.3s, transform 0.1s',
         border: `1px solid ${isDark ? '#444' : '#ccc'}`,
         color: isDark ? '#333' : '#333',
         fontFamily: 'Raleway, sans-serif',
         selectors: {
             ':hover': {
                 backgroundColor: isDark ? '#555' : '#f3f2f1',
+            },
+            ':active': {
+                transform: 'scale(0.97)',
+            },
+            ':focus': {
+                outline: `2px solid ${colours.highlight}`,
+                outlineOffset: '2px',
             },
         },
     });

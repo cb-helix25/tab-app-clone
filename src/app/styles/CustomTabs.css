@@ -17,6 +17,7 @@
   animation: dropIn 0.3s ease forwards;
   position: relative;
   border-bottom: none;
+  transition: background-color 0.15s, transform 0.1s;
 }
 
 /* Remove Fluent UI's default underline */
@@ -70,6 +71,25 @@
   line-height: 48px;
   cursor: pointer;
   position: relative;
+  transition: background-color 0.15s, transform 0.1s;
+  }
+  
+  .home-icon:active {
+    transform: scale(0.97);
+  }
+  
+  .home-icon:focus {
+    outline: 2px solid var(--helix-highlight, #3690CE);
+    outline-offset: 2px;
+  }
+  
+  .customPivot .ms-Pivot-link:active {
+    transform: scale(0.97);
+  }
+  
+  .customPivot .ms-Pivot-link:focus {
+    outline: 2px solid var(--helix-highlight, #3690CE);
+    outline-offset: 2px;
 }
 
 .home-icon:hover,

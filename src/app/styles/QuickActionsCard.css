@@ -74,6 +74,11 @@
       transform: scale(0.97);
     }
   
+.quickActionCard:focus {
+  outline: 2px solid var(--helix-highlight, #3690CE);
+  outline-offset: 2px;
+}
+
     .quickActionCard.selected {
       background-color: var(--card-selected, var(--card-hover, #f4f4f6));
       border-color: var(--helix-highlight, #3690CE);
