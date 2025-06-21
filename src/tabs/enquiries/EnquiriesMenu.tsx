@@ -127,27 +127,33 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
     return (
         <>
             <div className={areaBarStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
-                {areaTabs.map((area, index) => (
-                    <QuickActionsCard
-                        key={area.key}
-                        title={area.text}
-                        icon={area.icon}
-                        isDarkMode={isDarkMode}
-                        onClick={() => setActiveArea(activeArea === area.key ? null : area.key)}
-                        iconColor={activeArea === area.key ? '#fff' : colours.cta}
-                        style={{
-                            '--card-index': index,
-                            fontSize: '16px',
-                            padding: '0 12px',
-                            height: '48px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: activeArea === area.key ? areaColor(area.key) : undefined,
-                            color: activeArea === area.key ? '#fff' : undefined,
-                        } as React.CSSProperties}
-                    />
-                ))}
+                {areaTabs.map((area, index) => {
+                    const isSelected = activeArea === area.key;
+                    return (
+                        <QuickActionsCard
+                            key={area.key}
+                            title={area.text}
+                            icon={area.icon}
+                            isDarkMode={isDarkMode}
+                            onClick={() => setActiveArea(isSelected ? null : area.key)}
+                            iconColor={isSelected ? areaColor(area.key) : colours.cta}
+                            style={{
+                                '--card-index': index,
+                                fontSize: '16px',
+                                padding: '0 12px',
+                                height: '48px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                ...(isSelected && {
+                                    backgroundColor: `${areaColor(area.key)}20`,
+                                    border: `2px solid ${areaColor(area.key)}`,
+                                }),
+                            } as React.CSSProperties}
+                        />
+                    );
+                })}
+
             </div>
             <div className={stateBarStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
                 {stateTabs.map((state) => {
