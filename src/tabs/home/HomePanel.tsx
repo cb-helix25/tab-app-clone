@@ -14,7 +14,6 @@ import {
   Icon,
   TextField,
 } from '@fluentui/react';
-import ActionIconButton from '../../components/ActionIconButton';
 import { colours } from '../../app/styles/colours';
 import { mergeStyles } from '@fluentui/react';
 import loaderIcon from '../../assets/grey helix mark.png';
@@ -42,7 +41,6 @@ const detailsContainerStyle = (isDarkMode: boolean) =>
 const headerContainerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: '16px 24px',
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -71,32 +69,6 @@ const leftButtonsStyle = () =>
     display: 'flex',
     gap: '10px',
   });
-
-const headerIconsContainerStyle = mergeStyles({
-  display: 'flex',
-  gap: '8px',
-});
-
-const headerIconButtonStyles = (isDarkMode: boolean) => ({
-  root: {
-    color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-    backgroundColor: 'transparent',
-    selectors: {
-      ':hover': {
-        backgroundColor: colours.cta,
-        color: '#ffffff',
-      },
-      ':focus': {
-        backgroundColor: colours.cta,
-        color: '#ffffff',
-      },
-    },
-    height: 24,
-    width: 24,
-    padding: 0,
-  },
-  icon: { fontSize: 16 },
-});
 
 const panelStyles = {
   main: {
@@ -248,24 +220,6 @@ const HomePanel: React.FC<HomePanelProps> = ({
           <Text variant="medium" className={titleStyle(isDarkMode)}>
             {title}
           </Text>
-          {displayUrl && (
-            <div className={headerIconsContainerStyle}>
-              <ActionIconButton
-                outlineIcon="Copy"
-                filledIcon="Copy"
-                ariaLabel="Copy Link"
-                onClick={copyToClipboard}
-                styles={headerIconButtonStyles(isDarkMode)}
-              />
-              <ActionIconButton
-                outlineIcon="NavigateExternalInline"
-                filledIcon="NavigateExternalInline"
-                ariaLabel="Open Link"
-                onClick={goToLink}
-                styles={headerIconButtonStyles(isDarkMode)}
-              />
-            </div>
-          )}
         </div>
       )}
     >

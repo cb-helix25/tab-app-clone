@@ -402,6 +402,7 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
           isFinancial={selectedLink?.tags?.includes('Financial')}
           userData={userData}
           matters={matters} // Pass the matters array to FormDetails
+          offsetTop={96}
         />
       )}
     </div>

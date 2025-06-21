@@ -11,20 +11,22 @@ interface BespokePanelProps {
   title: string;
   children: ReactNode;
   width?: string; // Optional: for dynamic width
+  offsetTop?: number; // Optional: offset from top to avoid overlapping nav
 }
 
-const overlayStyle = mergeStyles({
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  justifyContent: 'flex-end', // Align panel to the right
-  zIndex: 1000,
-  transition: 'opacity 0.3s ease',
-});
+const getOverlayStyle = (offsetTop: number) =>
+  mergeStyles({
+    position: 'fixed',
+    top: offsetTop,
+    left: 0,
+    width: '100vw',
+    height: `calc(100vh - ${offsetTop}px)`,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    justifyContent: 'flex-end', // Align panel to the right
+    zIndex: 1000,
+    transition: 'opacity 0.3s ease',
+  });
 
 const getPanelStyle = (width: string, closing: boolean) =>
   mergeStyles({
@@ -53,7 +55,7 @@ const contentStyle = mergeStyles({
   flexGrow: 1,
 });
 
-const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, children, width }) => {
+const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, children, width, offsetTop = 0 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState<boolean>(false);
 
@@ -75,7 +77,7 @@ const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, chi
   if (!isOpen && !closing) return null;
 
   return (
-    <div className={overlayStyle} onClick={handleClose} aria-modal="true" role="dialog">
+    <div className={getOverlayStyle(offsetTop)} onClick={handleClose} aria-modal="true" role="dialog">
       <div
         className={getPanelStyle(width || '1600px', closing)}
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the panel

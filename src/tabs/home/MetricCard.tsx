@@ -31,7 +31,7 @@ const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    padding: '8px 12px 8px 16px',
+    padding: '12px 16px 12px 20px',
     borderLeft: `4px solid ${colours.highlight}`,
     borderRadius: 0,
     boxShadow: isDarkMode ? `0 2px 6px ${colours.dark.border}` : `0 2px 6px ${colours.light.border}`,
@@ -41,7 +41,7 @@ const cardStyle = (isDarkMode: boolean) =>
     justifyContent: 'center',
     alignItems: 'flex-start',
     height: 'auto',
-    minHeight: '75px',
+    minHeight: '90px',
     width: '100%',
     flex: '1 1 auto',
     minWidth: 0,
@@ -54,9 +54,9 @@ const cardStyle = (isDarkMode: boolean) =>
   });
 
 const metricTitleStyle = mergeStyles({
-  fontSize: '12px',
+  fontSize: '14px',
   fontWeight: '600',
-  marginBottom: '4px',
+  marginBottom: '6px',
 });
 
 const moneyStyle = mergeStyles({
@@ -80,10 +80,10 @@ const hoursStyle = mergeStyles({
 
 const changeStyle = (isPositive: boolean) =>
   mergeStyles({
-    fontSize: '10px',
+    fontSize: '12px',
     fontWeight: '600',
     color: isPositive ? 'green' : 'red',
-    marginTop: '4px',
+    marginTop: '6px',
   });
 
 const renderDialLayout = (

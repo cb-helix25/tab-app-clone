@@ -29,6 +29,7 @@ interface FormDetailsProps {
   isFinancial?: boolean;
   userData: UserData[] | null;
   matters: Matter[]; // NEW: Added matters prop to receive the matter data
+  offsetTop?: number; // Offset to avoid overlapping navigator
 }
 
 const detailsContainerStyle = (isDarkMode: boolean) =>
@@ -68,6 +69,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
   isOpen,
   userData,
   matters,
+  offsetTop = 96,
 }) => {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   const [isCognitoLoaded, setIsCognitoLoaded] = useState<boolean>(false);
@@ -201,7 +203,13 @@ const FormDetails: React.FC<FormDetailsProps> = ({
   );
 
   return (
-    <BespokePanel isOpen={isOpen} onClose={onClose} title={link.title} width="2000px">
+    <BespokePanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title={link.title}
+      width="2000px"
+      offsetTop={offsetTop}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {submissionSuccess && (
           <MessageBar

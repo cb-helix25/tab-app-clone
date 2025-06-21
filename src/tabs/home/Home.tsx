@@ -2586,7 +2586,7 @@ const conversionRate = enquiriesMonthToDate
                 // No dial props passed so this card just shows the count
               />
 
-              {/* Conversion Rate metric with dial (percentage, no £ */}
+              {/* Conversion Rate metric */}
               <MetricCard
                 key="Conversion Rate"
                 title="Conversion Rate"
@@ -2596,10 +2596,6 @@ const conversionRate = enquiriesMonthToDate
                 }}
                 isDarkMode={isDarkMode}
                 animationDelay={0.1}
-                showDial={true}
-                dialTarget={100}
-                dialValue={conversionRate}
-                dialSuffix="%" /* Displays the percentage symbol */
               />
             </div>
         </CollapsibleSection>
@@ -2797,6 +2793,7 @@ const conversionRate = enquiriesMonthToDate
           isDarkMode={isDarkMode}
           userData={userData}
           matters={allMatters || []}
+          offsetTop={96}
         />
       )}
 
