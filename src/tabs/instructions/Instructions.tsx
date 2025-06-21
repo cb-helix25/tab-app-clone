@@ -85,7 +85,9 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   useEffect(() => {
     async function fetchData() {
-      if (!userInitials) return;
+      // Always fetch Lukasz's instructions during testing so all users see the
+      // same data regardless of their own initials.
+      const targetInitials = 'LZ';
 
       if (useLocalData) {
         setInstructionData(localInstructionData as InstructionData[]);
@@ -100,20 +102,20 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
 
       try {
-        const url = `${baseUrl}/${path}?code=${code}&initials=${userInitials}`;
+        const url = `${baseUrl}/${path}?code=${code}&initials=${targetInitials}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setInstructionData(Array.isArray(data) ? data : [data]);
         } else {
-          console.error('Failed to fetch instructions for user', userInitials);
+          console.error('Failed to fetch instructions for user', targetInitials);
         }
       } catch (err) {
-        console.error('Error fetching instructions for user', userInitials, err);
+        console.error('Error fetching instructions for user', targetInitials, err);
       }
     }
     fetchData();
-  }, [userInitials, useLocalData]);
+  }, [useLocalData]);
 
   useEffect(() => {
     setContent(

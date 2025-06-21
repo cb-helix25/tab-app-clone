@@ -224,7 +224,7 @@ boxShadow: isDarkMode
   const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
 
   const [initialOption, setInitialOption] = React.useState<string | undefined>(undefined);
-  const [initialLevel, setInitialLevel] = React.useState<'block' | 'option'>('block');
+  const [initialLevel, setInitialLevel] = React.useState<'block' | 'option' | 'sentence'>('block');
 
   const openEditModal = (block: TemplateBlock, option?: string) => {
     setPreviewNode(renderPreview(block));

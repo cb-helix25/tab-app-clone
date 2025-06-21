@@ -194,6 +194,32 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       outline: 2px solid ${colours.cta};
       outline-offset: 2px;
     }
+    .block-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .block-main {
+      flex: 1;
+    }
+    .block-sidebar {
+      border: 1px solid ${colours.grey};
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 120px;
+    }
+    .block-sidebar .option-choices {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .option-choice.selected {
+      background: ${colours.blue};
+      color: #ffffff;
+    }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
@@ -368,41 +394,6 @@ function toggleBlockLock(blockTitle: string) {
   });
 }
 
-  function openInlineOptions(e: MouseEvent, blockTitle: string) {
-    e.stopPropagation();
-    e.preventDefault();
-    const block = templateBlocks.find((b) => b.title === blockTitle);
-    if (!block) return;
-
-    if (!insertedBlocks[block.title]) {
-      let optionToInsert = selectedTemplateOptions[block.title];
-
-      if (!optionToInsert) {
-        const first = block.options[0]?.label;
-        optionToInsert = block.isMultiSelect ? [first] : first;
-        if (first) {
-          if (block.isMultiSelect) {
-            handleMultiSelectChange(block.title, [first]);
-          } else {
-            handleSingleSelectChange(block.title, first);
-          }
-        }
-      }
-
-      if (optionToInsert) {
-        insertTemplateBlock(block, optionToInsert, true, true);
-        return;
-      }
-    }
-    setInlineOptionsTarget(e.currentTarget as HTMLElement);
-    setInlineOptionsBlock(block);
-  }
-
-  function closeInlineOptions() {
-    setInlineOptionsBlock(null);
-    setInlineOptionsTarget(null);
-  }
-
   function openSnippetOptions(
     e: MouseEvent,
     blockTitle: string,
@@ -455,7 +446,6 @@ function toggleBlockLock(blockTitle: string) {
 useEffect(() => {
   (window as any).toggleBlockLock = toggleBlockLock;
   (window as any).highlightBlock = highlightBlock;
-  (window as any).openInlineOptions = openInlineOptions;
   (window as any).openSnippetOptions = openSnippetOptions;
   (window as any).insertBlockOption = insertBlockOption;
   (window as any).resetBlockOption = resetBlockOption;
@@ -463,7 +453,7 @@ useEffect(() => {
     const block = templateBlocks.find((b) => b.title === title);
     if (block) handleClearBlock(block);
   };
-}, [toggleBlockLock, highlightBlock, openInlineOptions, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
+}, [toggleBlockLock, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -570,25 +560,11 @@ useEffect(() => {
 
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
-
-  const [inlineOptionsBlock, setInlineOptionsBlock] = useState<TemplateBlock | null>(null);
-  const [inlineOptionsTarget, setInlineOptionsTarget] = useState<HTMLElement | null>(null);
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
   const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
   const [snippetOptionsTarget, setSnippetOptionsTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (inlineOptionsBlock) {
-      const newTarget = bodyEditorRef.current?.querySelector(
-        `span.block-label[data-label-title="${inlineOptionsBlock.title}"]`
-      ) as HTMLElement | null;
-      if (newTarget) {
-        setInlineOptionsTarget(newTarget);
-      }
-    }
-  }, [body, inlineOptionsBlock]);
 
   useEffect(() => {
     templateBlocks.forEach((block) => {
@@ -616,10 +592,12 @@ useEffect(() => {
         }
       }
     
-      if (target.classList.contains('block-label')) {
-        const blockTitle = target.getAttribute('data-label-title');
-        if (blockTitle) {
-          openInlineOptions(e, blockTitle);
+      const choice = (target as HTMLElement).closest('.option-choice');
+      if (choice) {
+        const blockTitle = choice.getAttribute('data-block-title');
+        const optionLabel = choice.getAttribute('data-option-label');
+        if (blockTitle && optionLabel) {
+          insertBlockOption(blockTitle, optionLabel);
           return;
         }
       }
@@ -789,14 +767,23 @@ useEffect(() => {
       selectedLabel = selectedOption;
     }
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 7px 7px; display: block; border-radius: 0px; font-weight: normal;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 7px; display: flex; align-items: flex-start; gap: 8px; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
       `<p style="margin: 0;">`
     );
-    const controlsHTML = `<div class="block-controls"><span class="block-label" data-label-title="${block.title}" data-selected="${selectedLabel}">${block.title}</span></div>`;
-    const highlightedReplacement = `<${containerTag} style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true">${styledInnerHTML}${controlsHTML}</${containerTag}>`;
+    const optionsHtml = block.options
+      .map(o => {
+        const isSel = block.isMultiSelect && Array.isArray(selectedOption)
+          ? (selectedOption as string[]).includes(o.label)
+          : selectedOption === o.label;
+        return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
+      })
+      .join('');
+    const controlsHTML = `<div class="block-sidebar"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;
+
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
     
@@ -930,7 +917,7 @@ useEffect(() => {
     targetEl.setAttribute('data-snippet', replacement);
     targetEl.innerHTML = `${text}`;
 
-    const optionDiv = span.querySelector('div.block-option-list');
+    const optionDiv = span.querySelector('div.option-choices');
     if (optionDiv) {
       const currentSelected = block.isMultiSelect
         ? (selectedTemplateOptions[block.title] as string[])
@@ -2015,94 +2002,6 @@ function handleScrollToBlock(blockTitle: string) {
           setTimeout(() => setToast(null), 3000);
         }}
       />
-  
-      {inlineOptionsBlock && inlineOptionsTarget && (
-        <Callout
-          className="inline-options-callout"
-          target={inlineOptionsTarget}
-          onDismiss={closeInlineOptions}
-          setInitialFocus={false}
-          directionalHint={DirectionalHint.bottomLeftEdge}
-          directionalHintFixed
-          styles={{
-            root: {
-              padding: 8,
-              borderRadius: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-              animation: 'fadeInScale 0.2s ease',
-            },
-          }}
-        >
-          <Stack tokens={{ childrenGap: 8 }}>
-            <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-              <Label styles={{ root: { fontSize: 12, fontWeight: 600 } }}>{inlineOptionsBlock.title}</Label>
-              <Stack horizontal tokens={{ childrenGap: 4 }}>
-                <IconButton
-                  iconProps={{ iconName: lockedBlocks[inlineOptionsBlock.title] ? 'Lock' : 'Unlock' }}
-                  title="Toggle Lock"
-                  ariaLabel="Toggle Lock"
-                  onClick={() => toggleBlockLock(inlineOptionsBlock.title)}
-                />
-                <IconButton
-                  iconProps={{ iconName: 'Delete' }}
-                  title="Remove Block"
-                  ariaLabel="Remove Block"
-                  onClick={() => handleClearBlock(inlineOptionsBlock)}
-                />
-              </Stack>
-            </Stack>
-            <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
-              {inlineOptionsBlock.isMultiSelect ? (
-                <Stack tokens={{ childrenGap: 4 }}>
-                  {inlineOptionsBlock.options.map((o: TemplateOption) => {
-                    const isSelected = Array.isArray(selectedTemplateOptions[inlineOptionsBlock.title]) &&
-                      (selectedTemplateOptions[inlineOptionsBlock.title] as string[]).includes(o.label);
-                    return (
-
-                      <Checkbox
-                        key={o.label}
-                        label={o.label}
-                        checked={isSelected}
-                        onChange={(_e, checked) => {
-                          const currentSelections = Array.isArray(
-                            selectedTemplateOptions[inlineOptionsBlock.title]
-                          )
-                            ? (selectedTemplateOptions[inlineOptionsBlock.title] as string[])
-                            : [];
-                          const updated = checked
-                            ? [...currentSelections, o.label]
-                            : currentSelections.filter((k) => k !== o.label);
-                          handleMultiSelectChange(inlineOptionsBlock.title, updated);
-                          insertTemplateBlock(inlineOptionsBlock, updated, true, insertedBlocks[inlineOptionsBlock.title]);
-                        }}
-                      />
-
-                    );
-                  })}
-                </Stack>
-              ) : (
-                <ChoiceGroup
-                  selectedKey={selectedTemplateOptions[inlineOptionsBlock.title] as string}
-                  onChange={(_e, opt?: IChoiceGroupOption) => {
-                    if (!opt) return;
-                    insertTemplateBlock(
-                      inlineOptionsBlock,
-                      opt.key as string,
-                      true,
-                      insertedBlocks[inlineOptionsBlock.title]
-                    );
-                    handleSingleSelectChange(inlineOptionsBlock.title, opt.key as string);
-                    closeInlineOptions();
-                  }}
-                  options={inlineOptionsBlock.options.map((o) => ({ key: o.label, text: o.label }))}
-                  styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
-                />
-              )}
-            </FocusZone>
-          </Stack>
-        </Callout>
-      )}
 
       {snippetOptionsBlock && snippetOptionsTarget && (
         <Callout

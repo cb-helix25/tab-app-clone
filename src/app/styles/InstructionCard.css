@@ -16,10 +16,11 @@
 .instruction-header {
     background-color: #061733;
     color: #ffffff;
-    padding: 4px 8px;
-    font-weight: 600;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0; }
+    padding: 6px 12px;
+        font-weight: 600;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
 
 .instruction-details {
     display: flex;
@@ -42,18 +43,26 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        list-style: none;
-        transition: background-color 0.2s;
-    }
-    
+        padding: 6px 12px;
+            cursor: pointer;
+            list-style: none;
+            color: #061733;
+            transition: background-color 0.2s, color 0.2s;
+        }
+    .detail-group summary .group-icon {
+    transition: color 0.2s;   }
+
     .detail-group summary:hover {
         background-color: #d6e8ff;
+        color: #3690CE;
     }
-    
+
+    .detail-group summary:hover .group-icon {
+    color: #3690CE;
+    }
     .detail-group[open] summary {
         background-color: #e7f1ff;
+        color: #3690CE;
     }
     
     .detail-group summary::-webkit-details-marker {
@@ -68,10 +77,10 @@
 .action-list {
     list-style: none;
     margin: 4px 0 0;
-    padding: 0 8px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    padding: 0 12px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
 }
 
 .instructionCard .detail-list li {
@@ -96,18 +105,18 @@
 }
 
 .bottom-tab {
-    flex: 0 0 48px;
-    background-color: #f3f2f1;
+    flex: 0 0 56px;
+        background-color: #ffffff;
         border: 1px solid #e1dfdd;
         border-top: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
         gap: 4px;
         color: #061733;
-        transition: flex 0.2s ease, background-color 0.2s ease, transform 0.2s ease, color 0.2s;
+        transition: flex 0.2s ease, background-color 0.2s ease, color 0.2s;
     }
     
     .bottom-tab .icon-filled {
@@ -126,15 +135,14 @@
         justify-content: center;
     }
     
-    .bottom-tab:hover {
-        background-color: #ecebea;
-        transform: translateX(4px);
-        color: #3690CE;
-    }
+        .bottom-tab:hover {
+            background-color: #f7f7f9;
+            color: #3690CE;
+        }
     
-    .bottom-tab:active {
-        transform: scale(0.95);
-}
+        .bottom-tab:active {
+            transform: scale(0.97);
+        }
 
 .bottom-tab:not(:last-child) {
     border-right: none;
@@ -142,11 +150,12 @@
 
 .bottom-tab.active {
     flex: 1 1 auto;
-        background-color: #D65541;
+    background-color: #3690CE;
         color: #ffffff;
         border-top-right-radius: 6px;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.2);
-        z-index: 1; }
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+    }
     
                 .bottom-tab.active .icon-outline {
                     display: none;
@@ -157,18 +166,19 @@
                 }
         
                 .bottom-tab:hover {
-                    background-color: #f4f4f6;
-                }
-.bottom-tab:hover .icon-outline {
-    display: none;
-}
-
-.bottom-tab:hover .icon-filled {
-    display: inline-block;
-    transform: scale(1.2);
-    color: #3690CE;
-}
-
-.bottom-tab:not(.active) span {
-    display: none;
-    }
+                    background-color: #f7f7f9;
+                    }
+                    
+                    .bottom-tab:hover .icon-outline {
+                        display: none;
+                    }
+                    
+                    .bottom-tab:hover .icon-filled {
+                        display: inline-block;
+                        transform: scale(1.1);
+                        color: #3690CE;
+                    }
+                    
+                    .bottom-tab:not(.active) span {
+                        display: none;
+                    }

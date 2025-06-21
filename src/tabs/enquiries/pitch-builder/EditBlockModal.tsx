@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Stack,
@@ -32,8 +32,9 @@ interface ReferenceBlockPayload {
 
 export interface EditRequestPayload {
   block: string;
-  level: 'block' | 'option';
+  level: 'block' | 'option' | 'sentence';
   option?: string;
+  sentence?: string;
   proposedContent: string;
   notes: string;
   referenceBlock?: ReferenceBlockPayload;
@@ -65,7 +66,7 @@ interface EditBlockModalProps {
   /** Option to edit initially */
   initialOption?: string;
   /** Initial editing level */
-  initialLevel?: 'block' | 'option';
+  initialLevel?: 'block' | 'option' | 'sentence';
   /** Blocks that can be referenced from this editor */
   referenceOptions: { key: string; text: string }[];
   /** Map of block titles to their option labels */
@@ -97,9 +98,24 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   const [reference, setReference] = useState<string | undefined>(initialReference);
   const [referenceOption, setReferenceOption] = useState<string | undefined>(initialReferenceOption);
   const [referenceNotes, setReferenceNotes] = useState<string>(initialReferenceNotes || '');
-  const [level, setLevel] = useState<'block' | 'option'>(initialLevel || 'block');
-  const [optionToEdit, setOptionToEdit] = useState<string | undefined>(initialOption || block.options[0]?.label);
+  const [level, setLevel] = useState<'block' | 'option' | 'sentence'>(initialLevel || 'block');
+  const [sentenceToEdit, setSentenceToEdit] = useState<string | undefined>(undefined);
+  const [optionToEdit, setOptionToEdit] = useState<string | undefined>(initialOption);
   const [step, setStep] = useState<'edit' | 'confirm'>('edit');
+
+  useEffect(() => {
+    if (level === 'sentence' && optionToEdit) {
+      const option = block.options.find((o) => o.label === optionToEdit);
+      if (option) {
+        const sentences = option.previewText
+          .split(/(?<=[.!?])\s+/)
+          .filter((s) => s.trim().length > 0);
+        const first = sentences[0] || '';
+        setSentenceToEdit((prev) => prev || first);
+        if (!content) setContent(first);
+      }
+    }
+  }, [level, optionToEdit]);
 
   const containerClass = mergeStyles({
     padding: 0,
@@ -139,15 +155,22 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     ? block.options.find((o) => o.label === optionToEdit)?.previewText || ''
     : '';
 
+  const originalSentenceText =
+    level === 'sentence' && optionToEdit && sentenceToEdit
+      ? sentenceToEdit
+      : '';
+
   const renderConfirm = (
     <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: 20 } }}>
       <Text variant="small">Please review your suggestion before submitting.</Text>
-      <Text variant="small">Change level: {level}{level === 'option' ? ` (${optionToEdit})` : ''}</Text>
+      <Text variant="small">Change level: {level}{level !== 'block' ? ` (${optionToEdit})` : ''}</Text>
       <Stack horizontal tokens={{ childrenGap: 20 }}>
         <Stack style={{ width: '50%' }} tokens={{ childrenGap: 8 }}>
           <Text variant="mediumPlus">Current</Text>
           {level === 'option' ? (
             <div style={{ whiteSpace: 'pre-wrap' }}>{originalOptionText}</div>
+          ) : level === 'sentence' ? (
+            <div style={{ whiteSpace: 'pre-wrap' }}>{originalSentenceText}</div>
           ) : (
             <div>{previewContent}</div>
           )}
@@ -175,7 +198,8 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             onSubmit({
               block: blockTitle,
               level,
-              option: level === 'option' ? optionToEdit : undefined,
+              option: level !== 'block' ? optionToEdit : undefined,
+              sentence: level === 'sentence' ? sentenceToEdit : undefined,
               proposedContent: content,
               notes,
               referenceBlock: reference
@@ -201,16 +225,17 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
         options={[
           { key: 'block', text: 'Block' },
           { key: 'option', text: 'Option' },
+          { key: 'sentence', text: 'Sentence' },
         ]}
         selectedKey={level}
         onChange={(
           _e?: React.FormEvent<HTMLElement | HTMLInputElement>,
           opt?: IChoiceGroupOption
         ) => {
-          if (opt) setLevel(opt.key as 'block' | 'option');
+          if (opt) setLevel(opt.key as 'block' | 'option' | 'sentence');
         }}
       />
-      {level === 'option' && (
+      {(level === 'option' || level === 'sentence') && (
         <Dropdown
           label="Option to change"
           selectedKey={optionToEdit}
@@ -219,6 +244,22 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
             _e: React.FormEvent<HTMLDivElement>,
             opt?: IDropdownOption
           ) => setOptionToEdit(opt?.key as string)}
+          styles={{ dropdown: dropdownStyle }}
+        />
+      )}
+      {level === 'sentence' && optionToEdit && (
+        <Dropdown
+          label="Sentence to change"
+          selectedKey={sentenceToEdit}
+          options={block.options
+            .find((o) => o.label === optionToEdit)!
+            .previewText.split(/(?<=[.!?])\s+/)
+            .filter((s) => s.trim().length > 0)
+            .map((s, idx) => ({ key: String(idx), text: s.trim() }))}
+          onChange={(
+            _e: React.FormEvent<HTMLDivElement>,
+            opt?: IDropdownOption
+          ) => setSentenceToEdit(opt?.text as string)}
           styles={{ dropdown: dropdownStyle }}
         />
       )}

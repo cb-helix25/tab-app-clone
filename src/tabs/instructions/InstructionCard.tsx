@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { mergeStyles } from '@fluentui/react';
+import { format } from 'date-fns';
 import {
     FaIdBadge,
     FaRegIdBadge,
@@ -122,7 +123,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
         if (dateKeys.includes(key) && typeof value === 'string') {
             try {
-                return new Date(value).toLocaleDateString();
+                return format(new Date(value), 'd MMM yyyy');
             } catch {
                 return value;
             }
