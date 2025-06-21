@@ -143,7 +143,8 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                             icon={area.icon}
                             isDarkMode={isDarkMode}
                             onClick={() => setActiveArea(isSelected ? null : area.key)}
-                            iconColor={isSelected ? areaColor(area.key) : colours.cta}
+                            iconColor={colours.cta}
+                            selected={isSelected}
                             style={{
                                 '--card-index': index,
                                 fontSize: '16px',
@@ -152,9 +153,6 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                ...(isSelected && {
-                                    backgroundColor: `${areaColor(area.key)}20`,
-                                }),
                             } as React.CSSProperties}
                         />
                     );

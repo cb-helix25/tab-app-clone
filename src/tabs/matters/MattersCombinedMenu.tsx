@@ -386,7 +386,8 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                   setActiveGroupedArea(isSelected ? null : g.key);
                   setActivePracticeAreas([]);
                 }}
-                iconColor={isSelected ? '#fff' : colours.cta}
+                iconColor={colours.cta}
+                selected={isSelected}
                 style={{
                   '--card-index': index,
                   fontSize: '16px',
@@ -395,8 +396,6 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: isSelected ? getGroupColor(g.text) : undefined,
-                  color: isSelected ? '#fff' : undefined,
                 } as React.CSSProperties}
               />
             );
