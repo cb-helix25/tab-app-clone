@@ -19,7 +19,7 @@ import FolderStructureStep from './MatterOpening/FolderStructureStep';
 import DisputeValueStep from './MatterOpening/DisputeValueStep';
 import SourceStep from './MatterOpening/SourceStep';
 import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
-import RiskAssessmentStep from './MatterOpening/RiskAssessmentStep';
+import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
 import ReviewStep from './MatterOpening/ReviewStep';
 
 const practiceAreasByArea: { [key: string]: string[] } = {
@@ -137,16 +137,6 @@ interface NewMattersProps {
     feeEarner?: string;
     stage?: string;
     matterRef?: string;
-}
-
-interface RiskCore {
-    clientType: string;
-    destinationOfFunds: string;
-    fundsType: string;
-    clientIntroduced: string;
-    limitation: string;
-    sourceOfFunds: string;
-    valueOfInstruction: string;
 }
 
 const NewMatters: React.FC<NewMattersProps> = ({
@@ -483,7 +473,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 );
             case 'riskAssessment':
                 return (
-                    <RiskAssessmentStep
+                    <RiskAssessment
                         riskCore={riskCore}
                         setRiskCore={setRiskCore}
                         consideredClientRisk={consideredClientRisk}
@@ -497,7 +487,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         consideredFirmWideAML={consideredFirmWideAML}
                         setConsideredFirmWideAML={setConsideredFirmWideAML}
                         onContinue={() => setOpenStep(11)}
-                        isStepComplete={() => isStepComplete('riskAssessment')}
+                        isComplete={() => isStepComplete('riskAssessment')}
                     />
                 );
             case 'review':

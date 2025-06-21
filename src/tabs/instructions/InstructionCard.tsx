@@ -70,6 +70,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         ? new Date(instruction.SubmissionDate).toLocaleDateString()
         : undefined;
 
+    const openDisabled =
+        !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
+
     return (
         <div className={cardClass} style={style}>
             <Text
@@ -151,6 +154,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <PrimaryButton
                     text="Open Matter"
                     onClick={onOpenMatter}
+                    disabled={openDisabled}
                     styles={sharedPrimaryButtonStyles}
                 />
             </div>
