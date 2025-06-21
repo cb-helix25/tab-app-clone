@@ -816,6 +816,18 @@ useEffect(() => {
         }
         return prevBody.replace(existingBlockRegex, wrappedHTML);
       }
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = prevBody;
+      const target = tempDiv.querySelector(
+        `span[data-placeholder="${block.placeholder}"]`
+      );
+      if (target) {
+        (target as HTMLElement).innerHTML = wrappedHTML;
+        const newHTML = tempDiv.innerHTML;
+        bodyEditorRef.current &&
+          (bodyEditorRef.current.innerHTML = newHTML);
+        return newHTML;
+      }
       const placeholderEsc = block.placeholder.replace(
         /[-[\]{}()*+?.,\\^$|#\s]/g,
         '\\$&'
@@ -827,7 +839,10 @@ useEffect(() => {
         `(<span[^>]*data-placeholder="(?:${placeholderEsc}|${placeholderEscEncoded})"[^>]*>)([\\s\\S]*?)(</span>)`,
         'g'
       );
-      return prevBody.replace(placeholderRegex, `$1${wrappedHTML}$3`);
+      const newBody = prevBody.replace(placeholderRegex, `$1${wrappedHTML}$3`);
+      bodyEditorRef.current &&
+        (bodyEditorRef.current.innerHTML = newBody);
+      return newBody;
     });
 
     // Remove grey placeholder styling once the block is inserted

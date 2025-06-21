@@ -8,6 +8,10 @@ const Navigator: React.FC = () => {
     const { content } = useNavigator();
     const { isDarkMode } = useTheme();
 
+    if (!content) {
+        return null;
+    }
+
     return (
         <div
             className="app-navigator"

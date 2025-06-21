@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Text, mergeStyles } from '@fluentui/react';
-import { FaIdBadge } from 'react-icons/fa';
-import { MdAssessment } from 'react-icons/md';
-import { FaFileAlt } from 'react-icons/fa';
+import { FaIdBadge, FaRegIdBadge, FaFileAlt, FaRegFileAlt } from 'react-icons/fa';
+import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/InstructionCard.css';
@@ -40,6 +39,12 @@ interface InstructionCardProps {
     onRiskAssessment?: () => void;
     onEIDCheck?: () => void;
 }
+
+const iconMap = {
+    eid: { outline: FaRegIdBadge, filled: FaIdBadge },
+    risk: { outline: MdOutlineAssessment, filled: MdAssessment },
+    matter: { outline: FaRegFileAlt, filled: FaFileAlt },
+};
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
     instruction,
@@ -83,45 +88,55 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
+            <div className="instruction-header">{instruction.InstructionRef}</div>
             <div className="bottom-tabs">
                 <button
+                    type="button"
                     className={`bottom-tab ${activeTab === 'eid' ? 'active' : ''}`}
                     onClick={() => {
                         setActiveTab('eid');
                         onEIDCheck && onEIDCheck();
                     }}
+                    aria-label="EID Check"
                 >
-                    <FaIdBadge />
+                    <span className="icon-hover">
+                        {React.createElement(iconMap.eid.outline, { className: 'icon-outline' })}
+                        {React.createElement(iconMap.eid.filled, { className: 'icon-filled' })}
+                    </span>
                     <span>EID Check</span>
                 </button>
                 <button
+                    type="button"
                     className={`bottom-tab ${activeTab === 'risk' ? 'active' : ''}`}
                     onClick={() => {
                         setActiveTab('risk');
                         onRiskAssessment && onRiskAssessment();
                     }}
+                    aria-label="Risk"
                 >
-                    <MdAssessment />
+                    <span className="icon-hover">
+                        {React.createElement(iconMap.risk.outline, { className: 'icon-outline' })}
+                        {React.createElement(iconMap.risk.filled, { className: 'icon-filled' })}
+                    </span>
                     <span>Risk</span>
                 </button>
                 <button
+                    type="button"
                     className={`bottom-tab ${activeTab === 'matter' ? 'active' : ''}`}
                     onClick={() => {
                         setActiveTab('matter');
                         onOpenMatter && onOpenMatter();
                     }}
                     disabled={openDisabled}
+                    aria-label="Open Matter"
                 >
-                    <FaFileAlt />
+                    <span className="icon-hover">
+                        {React.createElement(iconMap.matter.outline, { className: 'icon-outline' })}
+                        {React.createElement(iconMap.matter.filled, { className: 'icon-filled' })}
+                    </span>
                     <span>Open Matter</span>
                 </button>
             </div>
-            <Text
-                variant="mediumPlus"
-                styles={{ root: { fontWeight: 600, marginBottom: 4 } }}
-            >
-                {instruction.InstructionRef}
-            </Text>
             <div className="instruction-details">
                 <ul className="detail-list">
                     {prospectId !== undefined && (
@@ -173,23 +188,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     {instruction.Email && <li>{instruction.Email}</li>}
                 </ul>
 
-            </div>
-            <div className="instruction-actions">
-                <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
-                    Action Points
-                </Text>
-                <ul className="action-list">
-                    <li>
-                        ID Check:{' '}
-                        {eid?.EIDStatus ? eid.EIDStatus : 'Pending'}
-                    </li>
-                    <li>
-                        Risk:{' '}
-                        {risk?.RiskAssessmentResult
-                            ? risk.RiskAssessmentResult
-                            : 'Pending'}
-                    </li>
-                </ul>
             </div>
         </div>
     );

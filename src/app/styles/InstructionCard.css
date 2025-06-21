@@ -9,6 +9,14 @@
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
+    overflow: hidden;
+    }
+    
+    .instruction-header {
+        background-color: #061733;
+        color: #ffffff;
+        padding: 4px 8px;
+        font-weight: 600;
 }
 
 .instruction-details {
@@ -16,12 +24,6 @@
     flex-direction: column;
     gap: 2px;
     flex: 1 1 auto;
-}
-
-.instruction-actions {
-    margin-top: auto;
-    padding-top: 4px;
-    border-top: 1px solid #e1dfdd;
 }
 
 .detail-list,
@@ -32,6 +34,18 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.instructionCard .detail-list li {
+    display: flex;
+    justify-content: space-between;
+}
+
+.detail-list li,
+.action-list li {
+    opacity: 0;
+    animation: fadeIn 0.3s ease forwards;
+    animation-delay: calc(var(--animation-delay, 0s) + 0.1s);
 }
 
 .bottom-tabs {
@@ -54,7 +68,32 @@
     font-weight: 600;
     cursor: pointer;
     gap: 4px;
-    transition: flex 0.2s ease;
+    color: #D65541;
+        transition: flex 0.2s ease, background-color 0.2s ease;
+    }
+    
+    .bottom-tab .icon-filled {
+        display: none;
+        transition: transform 0.2s;
+    }
+    
+    .bottom-tab .icon-outline,
+    .bottom-tab .icon-filled {
+        font-size: 20px;
+    }
+    
+    .icon-hover {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bottom-tab:hover {
+        background-color: #ecebea;
+    }
+    
+    .bottom-tab:active {
+        transform: scale(0.95);
 }
 
 .bottom-tab:not(:last-child) {
@@ -63,6 +102,30 @@
 
 .bottom-tab.active {
     flex: 1 1 auto;
+    background-color: #D65541;
+        color: #ffffff;
+    }
+    
+    .bottom-tab.active .icon-outline {
+        display: none;
+    }
+    
+    .bottom-tab.active .icon-filled {
+        display: inline-block;
+    }
+    
+    .bottom-tab:hover {
+        background-color: #f4f4f6;
+    }
+    
+    .bottom-tab:hover .icon-outline {
+        display: none;
+    }
+    
+    .bottom-tab:hover .icon-filled {
+        display: inline-block;
+        transform: scale(1.2);
+    background-color: #d6e8ff;
 }
 
 .bottom-tab:not(.active) span {

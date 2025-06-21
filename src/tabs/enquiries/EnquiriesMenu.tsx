@@ -147,6 +147,7 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                             selected={isSelected}
                             style={{
                                 '--card-index': index,
+                                '--helix-cta': areaColor(area.key),
                                 fontSize: '16px',
                                 padding: '0 12px',
                                 height: '48px',
