@@ -6,6 +6,12 @@ import {
     FaFileAlt,
     FaRegFileAlt,
     FaUser,
+    FaPhone,
+    FaAddressCard,
+    FaBuilding,
+    FaIdCard,
+    FaMoneyBillWave,
+    FaInfoCircle,
 } from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
@@ -21,6 +27,43 @@ interface InstructionInfo {
     Email?: string;
     HelixContact?: string;
     SubmissionDate?: string;
+    ClientType?: string;
+    Title?: string;
+    Nationality?: string;
+    NationalityAlpha2?: string;
+    DOB?: string;
+    Gender?: string;
+    Phone?: string;
+    PassportNumber?: string;
+    DriversLicenseNumber?: string;
+    IdType?: string;
+    HouseNumber?: string;
+    Street?: string;
+    City?: string;
+    County?: string;
+    Postcode?: string;
+    Country?: string;
+    CountryCode?: string;
+    CompanyNumber?: string;
+    CompanyHouseNumber?: string;
+    CompanyStreet?: string;
+    CompanyCity?: string;
+    CompanyCounty?: string;
+    CompanyPostcode?: string;
+    CompanyCountry?: string;
+    CompanyCountryCode?: string;
+    PaymentMethod?: string;
+    PaymentResult?: string;
+    PaymentAmount?: number;
+    PaymentProduct?: string;
+    PaymentTimestamp?: string;
+    AliasId?: string;
+    OrderId?: string;
+    SHASign?: string;
+    Notes?: string;
+    ClientId?: number;
+    RelatedClientId?: number;
+    MatterId?: number;
 }
 
 interface DealInfo {
@@ -80,6 +123,105 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
 
+    const sections = [
+        {
+            title: 'General',
+            icon: <FaFileAlt className="group-icon" />,
+            fields: [
+                ['Stage', 'Status'],
+                ['ClientType', 'Client Type'],
+                ['HelixContact', 'Contact'],
+                ['InternalStatus', 'Internal Status'],
+                ['ConsentGiven', 'Consent'],
+                ['SubmissionDate', 'Submitted'],
+                ['SubmissionTime', 'Submission Time'],
+                ['LastUpdated', 'Last Updated'],
+            ],
+        },
+        {
+            title: 'Personal',
+            icon: <FaUser className="group-icon" />,
+            fields: [
+                ['Title', 'Title'],
+                ['FirstName', 'First Name'],
+                ['LastName', 'Last Name'],
+                ['Gender', 'Gender'],
+                ['DOB', 'DOB'],
+                ['Nationality', 'Nationality'],
+                ['NationalityAlpha2', 'ISO'],
+            ],
+        },
+        {
+            title: 'Contact',
+            icon: <FaPhone className="group-icon" />,
+            fields: [
+                ['Phone', 'Phone'],
+                ['Email', 'Email'],
+            ],
+        },
+        {
+            title: 'Documents',
+            icon: <FaIdCard className="group-icon" />,
+            fields: [
+                ['PassportNumber', 'Passport'],
+                ['DriversLicenseNumber', 'DL Number'],
+                ['IdType', 'ID Type'],
+            ],
+        },
+        {
+            title: 'Address',
+            icon: <FaAddressCard className="group-icon" />,
+            fields: [
+                ['HouseNumber', 'House'],
+                ['Street', 'Street'],
+                ['City', 'City'],
+                ['County', 'County'],
+                ['Postcode', 'Postcode'],
+                ['Country', 'Country'],
+                ['CountryCode', 'Country Code'],
+            ],
+        },
+        {
+            title: 'Company',
+            icon: <FaBuilding className="group-icon" />,
+            fields: [
+                ['CompanyName', 'Name'],
+                ['CompanyNumber', 'Number'],
+                ['CompanyHouseNumber', 'House'],
+                ['CompanyStreet', 'Street'],
+                ['CompanyCity', 'City'],
+                ['CompanyCounty', 'County'],
+                ['CompanyPostcode', 'Postcode'],
+                ['CompanyCountry', 'Country'],
+                ['CompanyCountryCode', 'Country Code'],
+            ],
+        },
+        {
+            title: 'Payment',
+            icon: <FaMoneyBillWave className="group-icon" />,
+            fields: [
+                ['PaymentMethod', 'Method'],
+                ['PaymentResult', 'Result'],
+                ['PaymentAmount', 'Amount'],
+                ['PaymentProduct', 'Product'],
+                ['PaymentTimestamp', 'Timestamp'],
+                ['AliasId', 'Alias ID'],
+                ['OrderId', 'Order ID'],
+                ['SHASign', 'SHA'],
+            ],
+        },
+        {
+            title: 'Other',
+            icon: <FaInfoCircle className="group-icon" />,
+            fields: [
+                ['Notes', 'Notes'],
+                ['ClientId', 'Client ID'],
+                ['RelatedClientId', 'Related Client'],
+                ['MatterId', 'Matter ID'],
+            ],
+        },
+    ];
+
     return (
         <div className={cardClass} style={style}>
             <div className="instruction-banner">{instruction.InstructionRef}</div>
@@ -123,44 +265,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 </button>
             </div>
             <div className="instruction-details">
-                <details className="detail-group">
-                    <summary><FaFileAlt className="group-icon" /> General</summary>
-                    <ul className="detail-list">
-                        {prospectId !== undefined && (
-                            <li><strong>Prospect ID:</strong> {prospectId}</li>
-                        )}
-                        {instruction.Stage && (
-                            <li><strong>Status:</strong> {instruction.Stage}</li>
-                        )}
-                        {deal?.ServiceDescription && (
-                            <li><strong>Service:</strong> {deal.ServiceDescription}</li>
-                        )}
-                        {deal?.AreaOfWork && (
-                            <li><strong>Area:</strong> {deal.AreaOfWork}</li>
-                        )}
-                        {deal?.Amount !== undefined && (
-                            <li><strong>Amount:</strong> £{deal.Amount}</li>
-                        )}
-                        {formattedDate && (
-                            <li><strong>Submitted:</strong> {formattedDate}</li>
-                        )}
-                        {instruction.HelixContact && (
-                            <li><strong>Contact:</strong> {instruction.HelixContact}</li>
-                        )}
-                    </ul>
-                </details>
-                <details className="detail-group">
-                    <summary><FaUser className="group-icon" /> Client</summary>
-                    <ul className="detail-list">
-                        {instruction.FirstName && instruction.LastName && (
-                            <li><strong>Client:</strong> {instruction.FirstName} {instruction.LastName}</li>
-                        )}
-                        {instruction.CompanyName && (
-                            <li><strong>Company:</strong> {instruction.CompanyName}</li>
-                        )}
-                        {instruction.Email && <li>{instruction.Email}</li>}
-                    </ul>
-                </details>
+                {sections.map((section) => {
+                    const items: [string, string][] = section.fields as any;
+                    const details = items
+                        .map(([key, label]) => {
+                            const value = (instruction as any)[key];
+                            if (value === undefined || value === null || value === '') return null;
+                            if (key === 'SubmissionDate' && formattedDate) {
+                                return (
+                                    <li key={key}><strong>{label}:</strong> {formattedDate}</li>
+                                );
+                            }
+                            return (
+                                <li key={key}><strong>{label}:</strong> {String(value)}</li>
+                            );
+                        })
+                        .filter(Boolean);
+
+                    // Append deal/prospect fields to General section
+                    if (section.title === 'General') {
+                        if (prospectId !== undefined) {
+                            details.unshift(<li key="prospect"><strong>Prospect ID:</strong> {prospectId}</li>);
+                        }
+                        if (deal?.ServiceDescription) {
+                            details.push(<li key="service"><strong>Service:</strong> {deal.ServiceDescription}</li>);
+                        }
+                        if (deal?.AreaOfWork) {
+                            details.push(<li key="area"><strong>Area:</strong> {deal.AreaOfWork}</li>);
+                        }
+                        if (deal?.Amount !== undefined) {
+                            details.push(<li key="amount"><strong>Amount:</strong> £{deal.Amount}</li>);
+                        }
+                    }
+
+                    if (details.length === 0) return null;
+
+                    return (
+                        <details className="detail-group" key={section.title} open={section.title === 'General'}>
+                            <summary>{section.icon} {section.title}</summary>
+                            <ul className="detail-list">
+                                {details}
+                            </ul>
+                        </details>
+                    );
+                })}
             </div>
         </div>
     );
