@@ -94,9 +94,9 @@ const App: React.FC<AppProps> = ({
 
   // Tabs visible to all users start with the Enquiries tab.
 
-  // Add the Instructions tab only for Luke (LZ) and Alex (AC).
+  // Add the Instructions tab only for Luke (LZ), Alex (AC) and Jonathan (JW).
   // Make it always visible when developing locally (hostname === 'localhost').
-  const instructionsUsers = ['LZ', 'AC'];
+  const instructionsUsers = ['LZ', 'AC', 'JW'];
   const isLocalhost = window.location.hostname === 'localhost';
   const showInstructionsTab =
     instructionsUsers.includes(userInitials) || isLocalhost;

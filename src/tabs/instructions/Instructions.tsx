@@ -8,6 +8,7 @@ import {
   PivotItem,
 } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
+import FeedbackPrompt from '../../components/FeedbackPrompt';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
 import { colours } from '../../app/styles/colours';
@@ -209,7 +210,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [instructionData]);
 
   const deals = useMemo(
-    () => instructionData.flatMap((p) => p.deals ?? []),
+    () =>
+      instructionData.flatMap((p) =>
+        (p.deals ?? []).map((d) => ({
+          ...d,
+          firstName: p.instructions?.[0]?.FirstName,
+          jointClients: p.jointClients ?? [],
+        }))
+      ),
     [instructionData]
   );
   const jointClients = useMemo(
@@ -291,6 +299,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       {activePivot === 'instructions' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
+          <FeedbackPrompt userInitials={userInitials} />
           {showPreview && (
             <pre style={{ whiteSpace: 'pre-wrap' }}>
               {JSON.stringify(instructionData, null, 2)}
@@ -305,7 +314,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                 <InstructionCard
                   key={idx}
                   instruction={instruction}
-                  deal={instruction.deal}
                   risk={instruction.risk}
                   eid={instruction.eid}
                   prospectId={instruction.prospectId}

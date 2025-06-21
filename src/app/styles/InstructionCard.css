@@ -12,12 +12,12 @@
     overflow: hidden;
     }
     
-    .instruction-header {
-        background-color: #061733;
-        color: #ffffff;
-        padding: 4px 8px;
-        font-weight: 600;
-}
+        .instruction-banner {
+            background-color: #061733;
+            color: #ffffff;
+            padding: 4px 8px;
+            font-weight: 600;
+        }
 
 .instruction-details {
     display: flex;

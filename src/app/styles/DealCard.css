@@ -28,4 +28,25 @@
     margin-top: 8px;
     display: flex;
     justify-content: flex-end;
-    gap: 8px; }
+    gap: 8px;
+    }
+    
+    .pitch-info {
+        font-weight: 600;
+    }
+    
+    .pitch-alert {
+        color: #D65541;
+    }
+    
+    .deal-amount {
+        font-weight: 600;
+    }
+    
+    .joint-banner {
+        background-color: #f3f2f1;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-top: 4px;
+    }

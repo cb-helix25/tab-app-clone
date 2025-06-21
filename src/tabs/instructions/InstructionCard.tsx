@@ -15,17 +15,11 @@ interface InstructionInfo {
     Email?: string;
     HelixContact?: string;
     SubmissionDate?: string;
-}
-
-interface DealInfo {
-    ServiceDescription?: string;
-    Amount?: number;
-    AreaOfWork?: string;
+    [key: string]: any;
 }
 
 interface InstructionCardProps {
     instruction: InstructionInfo;
-    deal?: DealInfo;
     prospectId?: number;
     risk?: {
         RiskAssessmentResult?: string;
@@ -48,7 +42,6 @@ const iconMap = {
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
     instruction,
-    deal,
     prospectId,
     risk,
     eid,
@@ -77,10 +70,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         '--animation-delay': `${animationDelay}s`,
     } as React.CSSProperties;
 
-    const formattedDate = instruction.SubmissionDate
-        ? new Date(instruction.SubmissionDate).toLocaleDateString()
-        : undefined;
-
     const openDisabled =
         !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
 
@@ -88,7 +77,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
-            <div className="instruction-header">{instruction.InstructionRef}</div>
+            <div className="instruction-banner">{instruction.InstructionRef}</div>
             <div className="bottom-tabs">
                 <button
                     type="button"
@@ -144,48 +133,29 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <strong>Prospect ID:</strong> {prospectId}
                         </li>
                     )}
-                    {instruction.Stage && (
-                        <li>
-                            <strong>Status:</strong> {instruction.Stage}
-                        </li>
-                    )}
-                    {deal?.ServiceDescription && (
-                        <li>
-                            <strong>Service:</strong> {deal.ServiceDescription}
-                        </li>
-                    )}
-                    {deal?.AreaOfWork && (
-                        <li>
-                            <strong>Area:</strong> {deal.AreaOfWork}
-                        </li>
-                    )}
-                    {deal?.Amount !== undefined && (
-                        <li>
-                            <strong>Amount:</strong> £{deal.Amount}
-                        </li>
-                    )}
-                    {formattedDate && (
-                        <li>
-                            <strong>Submitted:</strong> {formattedDate}
-                        </li>
-                    )}
-                    {instruction.HelixContact && (
-                        <li>
-                            <strong>Contact:</strong> {instruction.HelixContact}
-                        </li>
-                    )}
-                    {instruction.FirstName && instruction.LastName && (
-                        <li>
-                            <strong>Client:</strong> {instruction.FirstName}{' '}
-                            {instruction.LastName}
-                        </li>
-                    )}
-                    {instruction.CompanyName && (
-                        <li>
-                            <strong>Company:</strong> {instruction.CompanyName}
-                        </li>
-                    )}
-                    {instruction.Email && <li>{instruction.Email}</li>}
+                    {Object.entries(instruction)
+                        .filter(
+                            ([key, value]) =>
+                                key !== 'InstructionRef' &&
+                                value !== undefined &&
+                                value !== null &&
+                                value !== ''
+                        )
+                        .map(([key, value]) => {
+                            const label = key
+                                .replace(/([A-Z])/g, ' $1')
+                                .replace(/^./, (s) => s.toUpperCase());
+                            const displayValue =
+                                key === 'SubmissionDate' && typeof value === 'string'
+                                    ? new Date(value).toLocaleDateString()
+                                    : String(value);
+                            return (
+                                <li key={key}>
+                                    <strong>{label}:</strong> {displayValue}
+                                </li>
+                            );
+                        })}
+
                 </ul>
 
             </div>

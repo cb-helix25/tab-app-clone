@@ -1,6 +1,14 @@
 import React from 'react';
 import { Text, PrimaryButton } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';
+import {
+    parseISO,
+    differenceInMinutes,
+    differenceInHours,
+    differenceInCalendarDays,
+    isToday,
+    format,
+} from 'date-fns';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
@@ -12,8 +20,11 @@ interface DealInfo {
     Amount?: number;
     AreaOfWork?: string;
     PitchedDate?: string;
+    PitchedTime?: string;
     PitchedBy?: string;
     Status?: string;
+    firstName?: string;
+    jointClients?: { ClientEmail?: string }[];
 }
 
 interface DealCardProps {
@@ -45,6 +56,42 @@ const DealCard: React.FC<DealCardProps> = ({
 }) => {
     const { isDarkMode } = useTheme();
 
+    const getPeriod = (d: Date) => {
+        const h = d.getHours();
+        if (h < 12) return 'morning';
+        if (h < 17) return 'afternoon';
+        return 'evening';
+    };
+
+    const getPitchInfo = () => {
+        if (!deal.PitchedDate || !deal.PitchedTime) return { text: '', urgent: false };
+        const dt = parseISO(`${deal.PitchedDate.slice(0, 10)}T${deal.PitchedTime}`);
+        const now = new Date();
+        const diffMins = differenceInMinutes(now, dt);
+        const diffHours = differenceInHours(now, dt);
+        let descriptor = '';
+        const period = getPeriod(dt);
+
+        if (isToday(dt)) {
+            if (diffMins < 60) {
+                descriptor = `${diffMins} minutes ago`;
+            } else if (diffHours < 2) {
+                descriptor = `earlier this ${period}`;
+            } else {
+                descriptor = `at ${format(dt, 'haaa').toLowerCase()} this ${period}`;
+            }
+        } else if (differenceInCalendarDays(now, dt) < 7) {
+            descriptor = `on ${format(dt, 'EEEE')} ${period}`;
+        } else {
+            descriptor = `on ${format(dt, 'EEEE d MMM')}`;
+        }
+
+        const name = deal.firstName || 'the client';
+        return { text: `You pitched ${name} ${descriptor}`, urgent: diffHours >= 5 };
+    };
+
+    const pitchInfo = getPitchInfo();
+
     const cardClass = mergeStyles('dealCard', {
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
@@ -73,19 +120,28 @@ const DealCard: React.FC<DealCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
+            {pitchInfo.text && (
+                <Text
+                    className={`pitch-info${pitchInfo.urgent ? ' pitch-alert' : ''}`}
+                    variant="small"
+                >
+                    {pitchInfo.text}
+                    {pitchInfo.urgent ? '!' : ''}
+                </Text>
+            )}
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {deal.ServiceDescription}
             </Text>
+            {deal.Amount !== undefined && (
+                <Text className="deal-amount" variant="medium">
+                    £{deal.Amount}
+                </Text>
+            )}
             <div className="deal-details">
                 <ul className="detail-list">
                     {deal.AreaOfWork && (
                         <li>
                             <strong>Area:</strong> {deal.AreaOfWork}
-                        </li>
-                    )}
-                    {deal.Amount !== undefined && (
-                        <li>
-                            <strong>Amount:</strong> £{deal.Amount}
                         </li>
                     )}
                     {deal.PitchedBy && (
@@ -104,6 +160,15 @@ const DealCard: React.FC<DealCardProps> = ({
                         </li>
                     )}
                 </ul>
+                {deal.jointClients && deal.jointClients.length > 0 && (
+                    <div className="joint-container">
+                        {deal.jointClients.map((jc, idx) => (
+                            <div className="joint-banner" key={idx}>
+                                Joint client: {jc.ClientEmail} - Pending
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
             {onFollowUp && (
                 <div className="deal-cta">
