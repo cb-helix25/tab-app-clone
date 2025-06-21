@@ -154,7 +154,6 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                                 justifyContent: 'center',
                                 ...(isSelected && {
                                     backgroundColor: `${areaColor(area.key)}20`,
-                                    border: `2px solid ${areaColor(area.key)}`,
                                 }),
                             } as React.CSSProperties}
                         />

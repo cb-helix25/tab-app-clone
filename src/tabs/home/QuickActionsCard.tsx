@@ -97,6 +97,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     '--card-selected': isDarkMode
       ? colours.dark.cardHover
       : colours.light.cardHover,
+    '--card-active': colours.highlightBlue,
   } as React.CSSProperties;
 
   // Icon logic
