@@ -78,12 +78,17 @@ const hoursStyle = mergeStyles({
   color: colours.greyText,
 });
 
-const changeStyle = (isPositive: boolean) =>
+const changeStyle = mergeStyles({
+  fontSize: '12px',
+  fontWeight: '600',
+  color: colours.greyText,
+  marginTop: '6px',
+});
+
+const changeIndicatorStyle = (isPositive: boolean) =>
   mergeStyles({
-    fontSize: '12px',
-    fontWeight: '600',
     color: isPositive ? 'green' : 'red',
-    marginTop: '6px',
+    marginRight: '2px',
   });
 
 const renderDialLayout = (
@@ -283,17 +288,15 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
                 maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
               })}{' '}
-              (
               {moneyChange.change >= 0 ? '+' : '-'}
               {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%
-              )
             </div>
           )}
           {hoursChange && (
             <div>
-              <strong>Hours:</strong> {Math.abs(hoursChange.change).toFixed(2)} hrs (
+              <strong>Hours:</strong> {Math.abs(hoursChange.change).toFixed(2)} hrs{' '}
               {hoursChange.change >= 0 ? '+' : '-'}
-              {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%)
+              {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%
             </div>
           )}
         </>
@@ -301,9 +304,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
     } else if (countChange) {
       return (
         <div>
-          <strong>Change:</strong> {Math.abs(countChange.change).toLocaleString()} (
+          <strong>Change:</strong> {Math.abs(countChange.change).toLocaleString()} {' '}
           {countChange.change >= 0 ? '+' : '-'}
-          {Math.abs(Number(countChange.percentage.toFixed(2)))}%)
+          {Math.abs(Number(countChange.percentage.toFixed(2)))}%
         </div>
       );
     }
@@ -417,13 +420,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   alignItems: 'center'
                 }}
               >
-                <Text
-                  className={changeStyle(
-                    title === 'Outstanding Client Balances'
-                      ? false
-                      : moneyChange ? moneyChange.change >= 0 : true
-                  )}
-                >
+              <Text className={changeStyle}>
                   £
                   {typeof money === 'number'
                     ? money > 1000
@@ -444,16 +441,20 @@ const MetricCard: React.FC<MetricCardProps> = ({
                       alignItems: 'center'
                     }}
                   >
-                    <Text className={changeStyle(moneyChange.change >= 0)}>
-                      {moneyChange.change >= 0 ? '+' : '-'}£
-                      {Math.abs(moneyChange.change).toLocaleString(undefined, {
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(moneyChange.change >= 0)}>
+                        {moneyChange.change >= 0 ? '+' : '-'}
+                      </span>
+                      £{Math.abs(moneyChange.change).toLocaleString(undefined, {
                         minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
                         maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0
                       })}
                     </Text>
-                    <Text className={changeStyle(moneyChange.change >= 0)}>
-                      ({moneyChange.change >= 0 ? '+' : '-'}
-                      {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%)
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(moneyChange.change >= 0)}>
+                        {moneyChange.change >= 0 ? '+' : '-'}
+                      </span>
+                      {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%
                     </Text>
                   </div>
                 )}
@@ -466,13 +467,17 @@ const MetricCard: React.FC<MetricCardProps> = ({
                       alignItems: 'center'
                     }}
                   >
-                    <Text className={changeStyle(hoursChange.change >= 0)}>
-                      {hoursChange.change >= 0 ? '+' : '-'}
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(hoursChange.change >= 0)}>
+                        {hoursChange.change >= 0 ? '+' : '-'}
+                      </span>
                       {Math.abs(hoursChange.change).toFixed(2)} hrs
                     </Text>
-                    <Text className={changeStyle(hoursChange.change >= 0)}>
-                      ({hoursChange.change >= 0 ? '+' : '-'}
-                      {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%)
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(hoursChange.change >= 0)}>
+                        {hoursChange.change >= 0 ? '+' : '-'}
+                      </span>
+                      {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%
                     </Text>
                   </div>
                 )}
@@ -487,13 +492,17 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     alignItems: 'center'
                   }}
                 >
-                  <Text className={changeStyle(countChange.change >= 0)}>
-                    {countChange.change >= 0 ? '+' : '-'}
-                    {Math.abs(countChange.change).toLocaleString()}
-                  </Text>
-                  <Text className={changeStyle(countChange.change >= 0)}>
-                      ({countChange.change >= 0 ? '+' : '-'}
-                      {Math.abs(Number(countChange.percentage.toFixed(2)))}%)
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(countChange.change >= 0)}>
+                        {countChange.change >= 0 ? '+' : '-'}
+                      </span>
+                      {Math.abs(countChange.change).toLocaleString()}
+                    </Text>
+                    <Text className={changeStyle}>
+                      <span className={changeIndicatorStyle(countChange.change >= 0)}>
+                        {countChange.change >= 0 ? '+' : '-'}
+                      </span>
+                      {Math.abs(Number(countChange.percentage.toFixed(2)))}%
                   </Text>
                 </div>
               )
