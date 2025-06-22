@@ -1,8 +1,16 @@
-import React, { useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, {
+    useMemo,
+    forwardRef,
+    useImperativeHandle,
+    useState,
+    useRef,
+} from 'react';
 import { Icon, TooltipHost, mergeStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
+import AttendanceFull from './Attendance';
+import BespokePanel from '../../app/functionality/BespokePanel';
 
 interface AttendanceRecord {
     Attendance_ID: number;
@@ -131,6 +139,7 @@ const snakeGroup = (isDark: boolean) =>
         flexWrap: 'wrap',
         gap: '4px',
         alignItems: 'center',
+        minHeight: '40px',
         padding: '4px 8px',
         borderRadius: '20px',
         border: `1px solid ${isDark ? colours.dark.border : colours.light.border}`,
@@ -163,10 +172,18 @@ const AttendanceCompact = forwardRef<
         const todayStr = today.toISOString().split('T')[0];
 
         const nextDayLabel = weekDays[(today.getDay() + 1) % 7];
+        const [panelOpen, setPanelOpen] = useState(false);
+        const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null);
 
         useImperativeHandle(ref, () => ({
-            focusTable: () => { },
-            setWeek: () => { },
+            focusTable: () => {
+                setPanelOpen(true);
+                setTimeout(() => attendanceRef.current?.focusTable(), 0);
+            },
+            setWeek: (week: 'current' | 'next') => {
+                setPanelOpen(true);
+                setTimeout(() => attendanceRef.current?.setWeek(week), 0);
+            },
         }));
 
         const combinedLeaveRecords = useMemo(
@@ -261,6 +278,7 @@ const AttendanceCompact = forwardRef<
         );
 
         return (
+            <>
             <CollapsibleSection title="Attendance">
                 {isLoadingAttendance ? (
                     <div>Loading...</div>
@@ -279,6 +297,27 @@ const AttendanceCompact = forwardRef<
                             </>
                 )}
             </CollapsibleSection>
+            <BespokePanel
+            isOpen={panelOpen}
+            onClose={() => setPanelOpen(false)}
+            title="Confirm Attendance"
+        >
+            <AttendanceFull
+                ref={attendanceRef}
+                isDarkMode={isDarkMode}
+                isLoadingAttendance={isLoadingAttendance}
+                isLoadingAnnualLeave={isLoadingAnnualLeave}
+                attendanceError={attendanceError}
+                annualLeaveError={annualLeaveError}
+                attendanceRecords={attendanceRecords}
+                teamData={teamData}
+                annualLeaveRecords={annualLeaveRecords}
+                futureLeaveRecords={futureLeaveRecords}
+                userData={userData}
+                onAttendanceUpdated={onAttendanceUpdated}
+            />
+        </BespokePanel>
+        </>
         );
     });
 

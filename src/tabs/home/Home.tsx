@@ -195,11 +195,11 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
   const [collapsed, setCollapsed] = useState(false);
   const toggleCollapse = () => setCollapsed(!collapsed);
 
-  // Build the metric labels string (only used when collapsed)
-  const metricLabels = metrics.length > 0 ? metrics.map(m => m.title).join(' | ') : '';
+  // Build the metric labels array (only used when collapsed)
+  const metricLabels = metrics.map(m => m.title);
 
   // Height of the tray that remains visible when collapsed
-  const trayHeight = 32;
+  const trayHeight = 50;
 
   return (
     <div
@@ -258,7 +258,27 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
         }}
       >
         {collapsed ? (
-          <span style={{ fontSize: '12px', fontWeight: 400 }}>{metricLabels}</span>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              fontSize: '12px',
+            }}
+          >
+            {metricLabels.map((label, idx) => (
+              <span
+                key={idx}
+                style={{
+                  backgroundColor: colours.tagBackground,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
         ) : (
           children
         )}

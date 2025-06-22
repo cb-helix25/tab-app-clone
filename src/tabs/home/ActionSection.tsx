@@ -49,8 +49,8 @@ const CollapsibleSection: React.FC<{
 }> = ({ title, children, isDarkMode, defaultCollapsed = false, labels = [] }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const toggleCollapse = () => setCollapsed(!collapsed);
-  const trayHeight = 32;
-  const labelString = labels.join(' | ');
+  const trayHeight = 50;
+  const labelArray = labels;
 
 
   return (
@@ -108,7 +108,27 @@ const CollapsibleSection: React.FC<{
         }}
       >
         {collapsed ? (
-          <span style={{ fontSize: '12px', fontWeight: 400 }}>{labelString}</span>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              fontSize: '12px',
+            }}
+          >
+            {labelArray.map((label, idx) => (
+              <span
+                key={idx}
+                style={{
+                  backgroundColor: colours.tagBackground,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
         ) : (
           children
         )}
