@@ -1,7 +1,7 @@
 .instructionCard {
     position: relative;
     padding: 12px 16px 48px 20px;
-    /* include space for bottom tabs */
+    /* bottom space for tabs */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -10,8 +10,6 @@
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
     overflow: hidden;
-
-    /* accent bar like MetricCard */
     border-radius: 0;
 }
 
@@ -21,58 +19,60 @@
     padding: 6px 12px;
     font-weight: 600;
     margin: -12px -16px 8px -20px;
-    /* stretch across accent bar */
 }
 
 .instruction-details {
     display: flex;
-        flex-direction: column;
-        gap: 2px;
-        flex: 1 1 auto;
-        border-bottom-left-radius: 6px;
-        border-bottom-right-radius: 6px;
-        overflow: hidden;
-    }
-    
-    .detail-group {
-        border: 1px solid #e1dfdd;
-        border-radius: 4px;
-        background-color: #ffffff;
-        margin-bottom: 4px;
-    }
-    
-    .detail-group summary {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 6px 12px;
-            cursor: pointer;
-            list-style: none;
-            color: #061733;
-            transition: background-color 0.2s, color 0.2s;
-        }
-    .detail-group summary .group-icon {
-    transition: color 0.2s;   }
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    overflow: hidden;
+}
 
-    .detail-group summary:hover {
-        background-color: #d6e8ff;
-        color: #3690CE;
-    }
+.detail-group {
+    border: 1px solid #e1dfdd;
+    border-radius: 4px;
+    background-color: #ffffff;
+    margin-bottom: 4px;
+}
 
-    .detail-group summary:hover .group-icon {
+.detail-group summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    list-style: none;
+    color: #061733;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.detail-group summary .group-icon {
+    transition: color 0.2s;
+}
+
+.detail-group summary:hover {
+    background-color: #d6e8ff;
     color: #3690CE;
-    }
-    .detail-group[open] summary {
-        background-color: #e7f1ff;
-        color: #3690CE;
-    }
-    
-    .detail-group summary::-webkit-details-marker {
-        display: none;
-    }
-    
-    .group-icon {
-        font-size: 16px;
+}
+
+.detail-group summary:hover .group-icon {
+    color: #3690CE;
+}
+
+.detail-group[open] summary {
+    background-color: #e7f1ff;
+    color: #3690CE;
+}
+
+.detail-group summary::-webkit-details-marker {
+    display: none;
+}
+
+.group-icon {
+    font-size: 16px;
 }
 
 .detail-list,
@@ -80,9 +80,9 @@
     list-style: none;
     margin: 4px 0 0;
     padding: 0 12px 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .instructionCard .detail-list li {
@@ -105,114 +105,71 @@
     height: 48px;
     display: flex;
     border-top: 1px solid #e1dfdd;
-        overflow: hidden;
+    overflow: hidden;
 }
 
 .bottom-tab {
-    flex: 0 0 56px;
+    flex: 1 1 0;
     background-color: #F4F4F6;
-        color: #061733;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-        cursor: pointer;
-        gap: 4px;
-        position: relative;
-        transition: flex 0.2s ease, background-color 0.2s ease, color 0.2s, border-radius 0.2s;
-    }
-    
-    .bottom-tab+.bottom-tab {
-        margin-left: -8px;
-    }
-    
-    .bottom-tab .icon-filled {
-        display: none;
-        transition: transform 0.2s;
-    }
-    
-    .bottom-tab .icon-outline,
-    .bottom-tab .icon-filled {
-        font-size: 20px;
-    }
-    
-    .icon-hover {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-        .bottom-tab:hover {
-            background-color: #f7f7f9;
-            color: #3690CE;
-        }
-    
-        .bottom-tab:active {
-            transform: scale(0.97);
-        }
+    color: #061733;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    cursor: pointer;
+    gap: 4px;
+    position: relative;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.bottom-tab .icon-filled {
+    display: none;
+    transition: transform 0.2s;
+}
+
+.bottom-tab .icon-outline,
+.bottom-tab .icon-filled {
+    font-size: 20px;
+}
+
+.icon-hover {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bottom-tab:hover {
+    background-color: #f7f7f9;
+    color: #3690CE;
+}
+
+.bottom-tab:active {
+    transform: scale(0.97);
+}
 
 .bottom-tab.active {
-    flex: 1 1 auto;
     background-color: #D65541;
-    /* colours.cta */
     color: #ffffff;
-    border-top-right-radius: 16px;
-    /* More rounded on the right */
-    border-top-left-radius: 0;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-    z-index: 1;
-    transition: border-radius 0.2s, color 0.2s;
 }
 
-.bottom-tab.hovered {
-    flex: 1 1 auto;
-}
-
-.bottom-tab.collapsed {
-    flex: 0 0 56px;
-}
-
-.bottom-tab.collapsed span {
+.bottom-tab.active .icon-outline,
+.bottom-tab:hover .icon-outline {
     display: none;
 }
 
-.bottom-tab.hovered span,
-.bottom-tab.active span {
-    display: inline;
+.bottom-tab.active .icon-filled,
+.bottom-tab:hover .icon-filled {
+    display: inline-block;
+    transform: scale(1.1);
+    color: #3690CE;
 }
 
-.bottom-tab.active:hover {
-    border-top-right-radius: 32px;
-    /* Double the rounding on hover */
-    border-top-left-radius: 0;
-    color: #3690CE;
-    /* colours.highlightBlue */
+.bottom-tab .label {
+    display: none;
 }
-    
-                .bottom-tab.active .icon-outline {
-                    display: none;
-                }
-        
-                .bottom-tab.active .icon-filled {
-                    display: inline-block;
-                }
-        
-                .bottom-tab:hover {
-                    background-color: #f7f7f9;
-                    }
-                    
-                    .bottom-tab:hover .icon-outline {
-                        display: none;
-                    }
-                    
-                    .bottom-tab:hover .icon-filled {
-                        display: inline-block;
-                        transform: scale(1.1);
-                        color: #3690CE;
-                    }
-                    
-                                        .bottom-tab:not(.active):not(.hovered) span {
-                        display: none;
-                    }
-                    
+
+.bottom-tab.active .label,
+.bottom-tab:hover .label {
+    display: inline;
+}

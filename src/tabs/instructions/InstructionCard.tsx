@@ -132,7 +132,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
-    const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
     const sections = [
         {
@@ -257,14 +256,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
                         disabled: openDisabled,
                     },
-                ].map((tab, idx) => (
+                ].map((tab) => (
                     <button
                         key={tab.key}
                         type="button"
-                        className={`bottom-tab ${activeTab === tab.key ? 'active' : ''} ${hoverIndex !== null && idx < hoverIndex ? 'collapsed' : ''} ${hoverIndex === idx ? 'hovered' : ''}`}
+                        className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}`}
                         onClick={tab.onClick}
-                        onMouseEnter={() => setHoverIndex(idx)}
-                        onMouseLeave={() => setHoverIndex(null)}
                         aria-label={tab.label}
                         disabled={tab.disabled}
                     >
@@ -272,7 +269,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
                             {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
                         </span>
-                        <span>{tab.label}</span>
+                        <span className="label">{tab.label}</span>
                     </button>
                 ))}
             </div>
