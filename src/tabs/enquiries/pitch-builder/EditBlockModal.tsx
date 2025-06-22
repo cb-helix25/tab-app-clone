@@ -350,7 +350,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     <Modal isOpen={isOpen} onDismiss={onDismiss} isBlocking={false}>
       <div className={containerClass}>
         <div className={headerClass}>
-          {blockTitle}
+          {initialOption ? initialOption : blockTitle}
           <IconButton iconProps={{ iconName: 'Cancel' }} onClick={onDismiss} />
         </div>
         {step === 'edit' ? renderEdit : renderConfirm}

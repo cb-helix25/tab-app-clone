@@ -324,7 +324,7 @@ const AttendanceCompact = forwardRef<
                 ) : (
                             <>
                                 <div className={groupContainer}>
-                                    {renderGroup(groups.office, 'office', 'Building')}
+                                        {renderGroup(groups.office, 'office', 'CityNext')}
                                     {renderGroup(groups.home, 'home', 'Home')}
                                     {renderGroup(groups.away, 'away', 'Airplane')}
                                 </div>

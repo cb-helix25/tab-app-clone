@@ -239,13 +239,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 {[
                     {
                         key: 'eid' as const,
-                        label: 'EID Check',
+                        label: 'Verify ID',
                         icon: iconMap.eid,
                         onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
                     },
                     {
                         key: 'risk' as const,
-                        label: 'Risk',
+                        label: 'Assess Risk',
                         icon: iconMap.risk,
                         onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
                     },

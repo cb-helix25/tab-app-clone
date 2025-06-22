@@ -187,16 +187,10 @@
 
 /* hover: border, solid fill, scale up & pop */
 .instructionCard .bottom-tab:hover .icon-hover {
-    border-color: #3690CE;
-    background-color: #3690CE;
     transform: scale(1.2);
     animation: quickPop 0.3s ease-out;
 }
 
-/* make the filled SVG white on hover */
-.instructionCard .bottom-tab:hover .icon-hover svg {
-    color: #ffffff;
-}
 
 /* pop animation */
 @keyframes quickPop {

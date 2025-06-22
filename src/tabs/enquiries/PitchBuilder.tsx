@@ -20,6 +20,7 @@ import {
   Checkbox,
   ChoiceGroup,
   IChoiceGroupOption,
+  Text,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -580,6 +581,11 @@ useEffect(() => {
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
   const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
   const [snippetOptionsTarget, setSnippetOptionsTarget] = useState<HTMLElement | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<{
+    block: TemplateBlock;
+    option?: string;
+    target: HTMLElement | null;
+  } | null>(null);
 
   useEffect(() => {
     templateBlocks.forEach((block) => {
@@ -612,17 +618,49 @@ useEffect(() => {
         const blockTitle = bubble.getAttribute('data-block-title');
         const optionLabel = bubble.getAttribute('data-option-label');
         if (blockTitle && optionLabel) {
-          insertBlockOption(blockTitle, optionLabel);
+          const block = templateBlocks.find((b) => b.title === blockTitle);
+          if (!block) return;
+          const isSelected = block.isMultiSelect
+            ? Array.isArray(selectedTemplateOptions[blockTitle]) &&
+            (selectedTemplateOptions[blockTitle] as string[]).includes(optionLabel)
+            : selectedTemplateOptions[blockTitle] === optionLabel;
+          if (isSelected) {
+            if (editedBlocks[blockTitle]) {
+              setRemoveConfirm({ block, option: optionLabel, target: bubble as HTMLElement });
+            } else {
+              removeBlockOption(block, optionLabel);
+            }
+          } else {
+            insertBlockOption(blockTitle, optionLabel);
+          }
           return;
         }
       }
-    
+
       const choice = (target as HTMLElement).closest('.option-choice');
       if (choice) {
         const blockTitle = choice.getAttribute('data-block-title');
         const optionLabel = choice.getAttribute('data-option-label');
         if (blockTitle && optionLabel) {
-          insertBlockOption(blockTitle, optionLabel);
+          if (choice.classList.contains('reset-option')) {
+            resetBlockOption(blockTitle);
+            return;
+          }
+          const block = templateBlocks.find((b) => b.title === blockTitle);
+          if (!block) return;
+          const isSelected = block.isMultiSelect
+            ? Array.isArray(selectedTemplateOptions[blockTitle]) &&
+            (selectedTemplateOptions[blockTitle] as string[]).includes(optionLabel)
+            : selectedTemplateOptions[blockTitle] === optionLabel;
+          if (isSelected) {
+            if (editedBlocks[blockTitle]) {
+              setRemoveConfirm({ block, option: optionLabel, target: choice as HTMLElement });
+            } else {
+              removeBlockOption(block, optionLabel);
+            }
+          } else {
+            insertBlockOption(blockTitle, optionLabel);
+          }
           return;
         }
       }
@@ -1009,7 +1047,6 @@ useEffect(() => {
       }));
     }
   }
-
   function appendSnippetOption(block: TemplateBlock, optionLabel: string) {
     if (!bodyEditorRef.current) return;
     const span = bodyEditorRef.current.querySelector(
@@ -1074,6 +1111,64 @@ useEffect(() => {
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
     setBody(bodyEditorRef.current.innerHTML);
+  }
+
+  function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
+    if (!bodyEditorRef.current) return;
+    const span = bodyEditorRef.current.querySelector(
+      `span[data-inserted="${block.title}"]`
+    ) as HTMLElement | null;
+    if (!span) return;
+    const snippets = Array.from(
+      span.querySelectorAll('div[data-snippet]')
+    ) as HTMLElement[];
+    const target = snippets.find(
+      (el) => el.getAttribute('data-snippet') === optionLabel
+    );
+    if (target) target.remove();
+
+    const optionDiv = span.querySelector('div.option-choices');
+    if (optionDiv) {
+      const currentSelected = block.isMultiSelect
+        ? (selectedTemplateOptions[block.title] as string[])
+        : selectedTemplateOptions[block.title];
+      const newSelected = block.isMultiSelect
+        ? (currentSelected as string[]).filter((o) => o !== optionLabel)
+        : '';
+      const optionsHtml = block.options
+        .map((o) => {
+          const isSel = block.isMultiSelect && Array.isArray(newSelected)
+            ? (newSelected as string[]).includes(o.label)
+            : newSelected === o.label;
+          return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
+        })
+        .join('');
+      optionDiv.innerHTML = optionsHtml;
+    }
+
+    const updatedHtml = span.innerHTML;
+    setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
+    setBody(bodyEditorRef.current.innerHTML);
+  }
+
+  function removeBlockOption(block: TemplateBlock, optionLabel: string) {
+    if (block.isMultiSelect) {
+      const current = Array.isArray(selectedTemplateOptions[block.title])
+        ? ([...(selectedTemplateOptions[block.title] as string[])])
+        : [];
+      if (!current.includes(optionLabel)) return;
+      const updated = current.filter((o) => o !== optionLabel);
+      if (updated.length === 0) {
+        handleClearBlock(block);
+      } else {
+        handleMultiSelectChange(block.title, updated);
+        removeSnippetOption(block, optionLabel);
+      }
+    } else {
+      if (selectedTemplateOptions[block.title] === optionLabel) {
+        handleClearBlock(block);
+      }
+    }
   }
 
   /**
@@ -2180,6 +2275,39 @@ function handleScrollToBlock(blockTitle: string) {
               styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
             />
           </FocusZone>
+        </Callout>
+      )}
+
+      {removeConfirm && removeConfirm.target && (
+        <Callout
+          target={removeConfirm.target}
+          onDismiss={() => setRemoveConfirm(null)}
+          setInitialFocus
+          directionalHint={DirectionalHint.bottomLeftEdge}
+          directionalHintFixed
+        >
+          <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: 12 } }}>
+            <Text>Clear this content?</Text>
+            <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="end">
+              <PrimaryButton
+                text="Clear"
+                styles={sharedPrimaryButtonStyles}
+                onClick={() => {
+                  if (removeConfirm.option) {
+                    removeBlockOption(removeConfirm.block, removeConfirm.option);
+                  } else {
+                    handleClearBlock(removeConfirm.block);
+                  }
+                  setRemoveConfirm(null);
+                }}
+              />
+              <DefaultButton
+                text="Cancel"
+                styles={sharedDefaultButtonStyles}
+                onClick={() => setRemoveConfirm(null)}
+              />
+            </Stack>
+          </Stack>
         </Callout>
       )}
 
