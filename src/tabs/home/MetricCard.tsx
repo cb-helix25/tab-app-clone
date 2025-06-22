@@ -283,15 +283,17 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
                 maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
               })}{' '}
-              ({Math.abs(Number(moneyChange.percentage.toFixed(2)))}%{' '}
-              {moneyChange.change >= 0 ? '↑' : '↓'})
+              (
+              {moneyChange.change >= 0 ? '+' : '-'}
+              {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%
+              )
             </div>
           )}
           {hoursChange && (
             <div>
               <strong>Hours:</strong> {Math.abs(hoursChange.change).toFixed(2)} hrs (
-              {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%{' '}
-              {hoursChange.change >= 0 ? '↑' : '↓'})
+              {hoursChange.change >= 0 ? '+' : '-'}
+              {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%)
             </div>
           )}
         </>
@@ -300,8 +302,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
       return (
         <div>
           <strong>Change:</strong> {Math.abs(countChange.change).toLocaleString()} (
-          {Math.abs(Number(countChange.percentage.toFixed(2)))}%{' '}
-          {countChange.change >= 0 ? '↑' : '↓'})
+          {countChange.change >= 0 ? '+' : '-'}
+          {Math.abs(Number(countChange.percentage.toFixed(2)))}%)
         </div>
       );
     }
@@ -443,14 +445,15 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     }}
                   >
                     <Text className={changeStyle(moneyChange.change >= 0)}>
-                      £{Math.abs(moneyChange.change).toLocaleString(undefined, {
+                      {moneyChange.change >= 0 ? '+' : '-'}£
+                      {Math.abs(moneyChange.change).toLocaleString(undefined, {
                         minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
                         maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0
                       })}
                     </Text>
                     <Text className={changeStyle(moneyChange.change >= 0)}>
-                      ({Math.abs(Number(moneyChange.percentage.toFixed(2)))}%{' '}
-                      {moneyChange.change >= 0 ? '↑' : '↓'})
+                      ({moneyChange.change >= 0 ? '+' : '-'}
+                      {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%)
                     </Text>
                   </div>
                 )}
@@ -464,11 +467,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     }}
                   >
                     <Text className={changeStyle(hoursChange.change >= 0)}>
+                      {hoursChange.change >= 0 ? '+' : '-'}
                       {Math.abs(hoursChange.change).toFixed(2)} hrs
                     </Text>
                     <Text className={changeStyle(hoursChange.change >= 0)}>
-                      ({Math.abs(Number(hoursChange.percentage.toFixed(2)))}%{' '}
-                      {hoursChange.change >= 0 ? '↑' : '↓'})
+                      ({hoursChange.change >= 0 ? '+' : '-'}
+                      {Math.abs(Number(hoursChange.percentage.toFixed(2)))}%)
                     </Text>
                   </div>
                 )}
@@ -484,11 +488,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   }}
                 >
                   <Text className={changeStyle(countChange.change >= 0)}>
+                    {countChange.change >= 0 ? '+' : '-'}
                     {Math.abs(countChange.change).toLocaleString()}
                   </Text>
                   <Text className={changeStyle(countChange.change >= 0)}>
-                    ({Math.abs(Number(countChange.percentage.toFixed(2)))}%{' '}
-                    {countChange.change >= 0 ? '↑' : '↓'})
+                      ({countChange.change >= 0 ? '+' : '-'}
+                      {Math.abs(Number(countChange.percentage.toFixed(2)))}%)
                   </Text>
                 </div>
               )

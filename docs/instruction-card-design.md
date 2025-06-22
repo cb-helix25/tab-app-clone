@@ -4,7 +4,7 @@ This document describes the small card component used to display a single instru
 
 ## Layout
 
-Each card shows the instruction reference as a heading followed by a bullet list of important details such as status, service description and client information. Cards appear in a vertical stack within a prospect section and animate into view using the same `dropIn` animation seen in other cards.
+Each card shows the instruction reference as a heading followed by a bullet list of important details such as status, service description and client information. Cards appear in a vertical stack within a prospect section and animate into view using the same `dropIn` animation seen in other cards. New for this iteration is a coloured bar running down the left edge of every card to match the metric containers on the Home page. This accent provides a stronger visual anchor for the instruction reference at the top.
 
 ```
 Prospect 123

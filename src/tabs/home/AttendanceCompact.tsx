@@ -196,8 +196,17 @@ const AttendanceCompact = forwardRef<
                     todayStr <= leave.end_date
             );
             if (isOnLeave) return 'away';
+            const dayMap: Record<string, string> = {
+                Mon: 'Monday',
+                Tue: 'Tuesday',
+                Wed: 'Wednesday',
+                Thu: 'Thursday',
+                Fri: 'Friday',
+            };
             const attendedDays = personAttendance
-                ? personAttendance.split(',').map((s) => s.trim())
+                ? personAttendance
+                    .split(',')
+                    .map((s) => dayMap[s.trim()] || s.trim())
                 : [];
             return attendedDays.includes(todayLabel) ? 'office' : 'home';
         };

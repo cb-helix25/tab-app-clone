@@ -270,8 +270,17 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
         cellDateStr <= leave.end_date
     );
     if (isOnLeave) return 'out';
+    const dayMap: Record<string, string> = {
+      Mon: 'Monday',
+      Tue: 'Tuesday',
+      Wed: 'Wednesday',
+      Thu: 'Thursday',
+      Fri: 'Friday',
+    };
     const attendedDays = personAttendance
-      ? personAttendance.split(',').map((s: string) => s.trim())
+      ? personAttendance
+        .split(',')
+        .map((s: string) => dayMap[s.trim()] || s.trim())
       : [];
     return attendedDays.includes(day) ? 'in' : 'wfh';
   };

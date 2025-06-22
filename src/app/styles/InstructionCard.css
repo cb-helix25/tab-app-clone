@@ -1,7 +1,7 @@
 .instructionCard {
     position: relative;
-    padding-bottom: 48px;
-    /* space for bottom tabs */
+    padding: 12px 16px 48px 20px;
+    /* include space for bottom tabs */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -10,17 +10,19 @@
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
     overflow: hidden;
-    border-radius: 0 0 6px 6px;
+
+    /* accent bar like MetricCard */
+    border-radius: 0;
 }
 
 .instruction-header {
     background-color: #061733;
     color: #ffffff;
     padding: 6px 12px;
-        font-weight: 600;
-        border-top-left-radius: 0;
-        border-top-right-radius: 0;
-    }
+    font-weight: 600;
+    margin: -12px -16px 8px -20px;
+    /* stretch across accent bar */
+}
 
 .instruction-details {
     display: flex;
@@ -150,12 +152,24 @@
 
 .bottom-tab.active {
     flex: 1 1 auto;
-    background-color: #3690CE;
-        color: #ffffff;
-        border-top-right-radius: 6px;
-        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        z-index: 1;
-    }
+    background-color: #D65541;
+    /* colours.cta */
+    color: #ffffff;
+    border-top-right-radius: 16px;
+    /* More rounded on the right */
+    border-top-left-radius: 0;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+    transition: border-radius 0.2s, color 0.2s;
+}
+
+.bottom-tab.active:hover {
+    border-top-right-radius: 32px;
+    /* Double the rounding on hover */
+    border-top-left-radius: 0;
+    color: #3690CE;
+    /* colours.highlightBlue */
+}
     
                 .bottom-tab.active .icon-outline {
                     display: none;
@@ -182,3 +196,4 @@
                     .bottom-tab:not(.active) span {
                         display: none;
                     }
+                    
