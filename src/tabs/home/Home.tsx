@@ -65,6 +65,8 @@ import { isInTeams } from '../../app/functionality/isInTeams';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
+import localTransactions from '../../localData/localTransactions.json';
+import localOutstandingBalances from '../../localData/localOutstandingBalances.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -659,18 +661,21 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
     window.location.hostname === 'localhost';
 
+  const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
-    const data: TeamData[] = teamData ?? [];
+    const data: TeamData[] = teamData ?? attendanceTeam ?? [];
     return data
-      .filter((member) => member.status === 'active')
+      .filter(
+        (member) => member.status === 'active' || member.status === undefined
+      )
       .map((member: TeamData) => ({
         First: member.First ?? '',
         Initials: member.Initials ?? '',
         "Entra ID": member["Entra ID"] ?? '',
         Nickname: member.Nickname ?? member.First ?? '',
       }));
-  }, [teamData]);
+  }, [teamData, attendanceTeam]);
 
   const renderContextsPanelContent = () => (
     <Stack tokens={dashboardTokens} styles={cardStyles}>
@@ -816,8 +821,6 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
   const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
-
-  const [attendanceTeam, setAttendanceTeam] = useState<any[]>([]);
 
   const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
 
@@ -1365,6 +1368,15 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
 
   useEffect(() => {
     async function fetchTransactions() {
+      if (useLocalData) {
+        const data: Transaction[] = (localTransactions as any) as Transaction[];
+        cachedTransactions = data;
+        setTransactions(data);
+        if (onTransactionsFetched) {
+          onTransactionsFetched(data);
+        }
+        return;
+      }
       // Use cached data if available
       if (cachedTransactions) {
         console.log("Using cached transactions:", cachedTransactions);
@@ -1407,7 +1419,17 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       }
       setOutstandingBalancesData(parsedData);
     }
-  
+
+    if (useLocalData) {
+      const data = localOutstandingBalances as any;
+      cachedOutstandingBalances = data;
+      if (onOutstandingBalancesFetched) {
+        onOutstandingBalancesFetched(data);
+      }
+      setOutstandingBalancesData(data);
+      return;
+    }
+
     async function fetchOutstandingBalances() {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
       const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;

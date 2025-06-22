@@ -20,6 +20,7 @@ import {
   removeHighlightSpans,
   removeUnfilledPlaceholders,
   applyDynamicSubstitutions,
+  convertDoubleBreaksToParagraphs,
 } from './emailUtils'; // Adjusted path
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
@@ -77,7 +78,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     passcode,
     passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
   );
-const cleanBody = removeUnfilledPlaceholders(substituted, templateBlocks);
+  const cleanBody = removeUnfilledPlaceholders(substituted, templateBlocks);
+  const finalBody = convertDoubleBreaksToParagraphs(cleanBody);
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
@@ -101,13 +103,6 @@ const missingPlaceholders = cleanBody.match(/\[[^[\]]+]/g);
     '14_days': '14 days',
     '30_days': '30 days',
   };
-
-function highlightPlaceholders(html: string): string {
-  return html.replace(
-    /\[([^[\]]+)]/g,
-    `<span style="color: ${colours.cta}; font-weight: bold;">[$1]</span>`
-  );
-}
 
 function formatCurrency(val?: string): string {
   if (!val) return 'N/A';
@@ -227,7 +222,7 @@ function formatCurrency(val?: string): string {
           <div
             ref={previewRef}
             style={{ whiteSpace: 'pre-wrap', maxHeight: 350, overflowY: 'auto' }}
-            dangerouslySetInnerHTML={{ __html: highlightPlaceholders(cleanBody) }}
+            dangerouslySetInnerHTML={{ __html: finalBody }}
           />
         </Stack>
 
@@ -299,7 +294,7 @@ function formatCurrency(val?: string): string {
           styles={sharedDefaultButtonStyles}
           onClick={() => {
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = highlightPlaceholders(cleanBody);
+            tempDiv.innerHTML = finalBody;
             navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
           }}
           iconProps={{ iconName: 'Copy' }}
