@@ -18,7 +18,7 @@ interface ImmediateActionsBarProps {
 
 const ACTION_BAR_HEIGHT = 48;
 
-const barStyle = (isDarkMode: boolean) =>
+const barStyle = (isDarkMode: boolean, hasImmediateActions: boolean) =>
     mergeStyles({
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
@@ -40,9 +40,9 @@ const barStyle = (isDarkMode: boolean) =>
         alignItems: 'center',
         height: ACTION_BAR_HEIGHT,
         paddingBottom: 0,
-        position: 'sticky',
-        top: ACTION_BAR_HEIGHT * 2,
-        zIndex: 998,
+        position: hasImmediateActions ? 'sticky' : 'relative',
+        top: hasImmediateActions ? ACTION_BAR_HEIGHT * 2 : 'auto',
+        zIndex: hasImmediateActions ? 998 : 'auto',
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
         selectors: {
@@ -98,7 +98,7 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
 }) => {
     return (
         <div
-            className={barStyle(isDarkMode)}
+            className={barStyle(isDarkMode, immediateActionsList.length > 0)}
             style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}
         >
             {!immediateActionsReady ? (
