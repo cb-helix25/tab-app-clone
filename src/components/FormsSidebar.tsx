@@ -9,6 +9,7 @@ import FormEmbed from "./FormEmbed";
 interface FormsSidebarProps {
     userData: UserData[] | null;
     matters: Matter[];
+    activeTab: string;
 }
 
 const sidebarWidth = "60vw";
@@ -99,7 +100,7 @@ const sectionContainer = (isDarkMode: boolean) =>
         marginTop: 16,
       });
 
-const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
+const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTab }) => {
     const { isDarkMode } = useTheme();
     const [isOpen, setIsOpen] = React.useState(false);
     const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>(
@@ -123,6 +124,10 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
             updateTop();
         }
     }, [isOpen, updateTop]);
+
+    React.useEffect(() => {
+        setIsOpen(false);
+    }, [activeTab]);
 
     const toggle = (title: string) => {
         setExpanded((p) => ({ ...p, [title]: !p[title] }));

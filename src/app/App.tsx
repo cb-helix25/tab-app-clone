@@ -228,7 +228,11 @@ const App: React.FC<AppProps> = ({
             user={userData[0]}
           />
           <Navigator />
-          <FormsSidebar userData={userData} matters={allMattersFromHome || []} />
+          <FormsSidebar
+            userData={userData}
+            matters={allMattersFromHome || []}
+            activeTab={activeTab}
+          />
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}
           </Suspense>
