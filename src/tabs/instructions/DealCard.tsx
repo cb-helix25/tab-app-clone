@@ -104,16 +104,27 @@ const DealCard: React.FC<DealCardProps> = ({
 
     const pitchInfo = getPitchInfo();
 
+    const status = deal.Status ? deal.Status.toLowerCase() : undefined;
+    const isClosed = status === 'closed';
+
     const cardClass = mergeStyles('dealCard', {
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
             : colours.light.sectionBackground,
         borderRadius: componentTokens.card.base.borderRadius,
         padding: componentTokens.card.base.padding,
-        boxShadow: componentTokens.card.base.boxShadow,
         color: isDarkMode ? colours.dark.text : colours.light.text,
         borderLeft: `4px solid ${leftBorderColor(deal.AreaOfWork)}`,
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+        border: `2px solid ${isClosed ? colours.green : 'transparent'}`,
+        boxShadow: isClosed
+            ? `inset 0 0 8px ${colours.green}55, ${isDarkMode
+                ? '0 4px 12px ' + colours.dark.border
+                : '0 4px 12px ' + colours.light.border
+            }`
+            : componentTokens.card.base.boxShadow,
+        opacity: isClosed ? 0.6 : 1,
+        transition:
+            'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
         selectors: {
             ':hover': {
                 boxShadow: componentTokens.card.hover.boxShadow,
@@ -137,7 +148,6 @@ const DealCard: React.FC<DealCardProps> = ({
         ? new Date(deal.PitchedDate).toLocaleDateString()
         : undefined;
 
-    const status = deal.Status ? deal.Status.toLowerCase() : undefined;
     const statusStyle: React.CSSProperties = {
         color: statusColour(status),
     };
