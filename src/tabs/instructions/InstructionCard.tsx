@@ -132,6 +132,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+    const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
     const sections = [
         {
@@ -236,43 +237,44 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         <div className={cardClass} style={style}>
             <header className="instruction-header">{instruction.InstructionRef}</header>
             <div className="bottom-tabs">
-                <button
-                    type="button"
-                    className={`bottom-tab ${activeTab === 'eid' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('eid'); onEIDCheck?.(); }}
-                    aria-label="EID Check"
-                >
-                    <span className="icon-hover">
-                        {React.createElement(iconMap.eid.outline, { className: 'icon-outline' })}
-                        {React.createElement(iconMap.eid.filled, { className: 'icon-filled' })}
-                    </span>
-                    <span>EID Check</span>
-                </button>
-                <button
-                    type="button"
-                    className={`bottom-tab ${activeTab === 'risk' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('risk'); onRiskAssessment?.(); }}
-                    aria-label="Risk"
-                >
-                    <span className="icon-hover">
-                        {React.createElement(iconMap.risk.outline, { className: 'icon-outline' })}
-                        {React.createElement(iconMap.risk.filled, { className: 'icon-filled' })}
-                    </span>
-                    <span>Risk</span>
-                </button>
-                <button
-                    type="button"
-                    className={`bottom-tab ${activeTab === 'matter' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('matter'); onOpenMatter?.(); }}
-                    disabled={openDisabled}
-                    aria-label="Open Matter"
-                >
-                    <span className="icon-hover">
-                        {React.createElement(iconMap.matter.outline, { className: 'icon-outline' })}
-                        {React.createElement(iconMap.matter.filled, { className: 'icon-filled' })}
-                    </span>
-                    <span>Open Matter</span>
-                </button>
+                {[
+                    {
+                        key: 'eid' as const,
+                        label: 'EID Check',
+                        icon: iconMap.eid,
+                        onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
+                    },
+                    {
+                        key: 'risk' as const,
+                        label: 'Risk',
+                        icon: iconMap.risk,
+                        onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
+                    },
+                    {
+                        key: 'matter' as const,
+                        label: 'Open Matter',
+                        icon: iconMap.matter,
+                        onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
+                        disabled: openDisabled,
+                    },
+                ].map((tab, idx) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        className={`bottom-tab ${activeTab === tab.key ? 'active' : ''} ${hoverIndex !== null && idx < hoverIndex ? 'collapsed' : ''} ${hoverIndex === idx ? 'hovered' : ''}`}
+                        onClick={tab.onClick}
+                        onMouseEnter={() => setHoverIndex(idx)}
+                        onMouseLeave={() => setHoverIndex(null)}
+                        aria-label={tab.label}
+                        disabled={tab.disabled}
+                    >
+                        <span className="icon-hover">
+                            {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
+                            {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
+                        </span>
+                        <span>{tab.label}</span>
+                    </button>
+                ))}
             </div>
             <div className="instruction-details">
                 {sections.map((section) => {

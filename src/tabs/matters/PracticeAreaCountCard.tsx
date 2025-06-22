@@ -35,7 +35,8 @@ const chartContainerClass = mergeStyles({
 const cardStyle = (isDarkMode: boolean) =>
   mergeStyles({
     position: 'relative',
-    flex: '1 1 0',
+    flex: '1 1 220px',
+    minWidth: '180px',
     width: '100%',
     minHeight: '200px',
     padding: '20px',
@@ -49,6 +50,15 @@ const cardStyle = (isDarkMode: boolean) =>
     justifyContent: 'space-between',
     overflow: 'hidden',
     fontFamily: 'Raleway, sans-serif',
+    transition: 'transform 0.2s ease-in-out',
+    selectors: {
+      '@media (max-width: 480px)': {
+        transform: 'scale(0.95)',
+      },
+      '@media (max-width: 380px)': {
+        transform: 'scale(0.9)',
+      },
+    },
   });
 
 const iconStyle = mergeStyles({

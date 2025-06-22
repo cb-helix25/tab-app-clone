@@ -15,7 +15,10 @@ const sidebarWidth = '60vw';
 
 // Height offset so the sidebar appears entirely below the three stacked header
 // bars. Extra padding accounts for their drop shadows.
-const HEADER_OFFSET = 150;
+// Offset to position the sidebar just below the stacked header bars
+// (three bars, each 48px high). This value should line up exactly
+// so the sidebar hides seamlessly beneath the menus.
+const HEADER_OFFSET = 144;
 
 const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
@@ -45,10 +48,12 @@ const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
         cursor: 'pointer',
         backgroundColor: 'transparent',
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
-        transition: 'left 0.3s',
+        transition: 'left 0.3s, opacity 0.3s',
         zIndex: 951,
+        opacity: isOpen ? 1 : 0,
         selectors: {
             ':hover': {
+                opacity: 1,
                 backgroundColor: isDarkMode
                     ? colours.dark.sectionBackground
                     : colours.light.sectionBackground,

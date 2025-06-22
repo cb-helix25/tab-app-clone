@@ -47,7 +47,8 @@ const AreaCountCard: React.FC<AreaCountCardProps> = ({
 
   const cardStyle = mergeStyles({
     position: 'relative',
-    flex: '1 1 0',
+    flex: '1 1 220px',
+    minWidth: '180px',
     width: '100%',
     minHeight: '200px',
     padding: '20px',
@@ -61,9 +62,16 @@ const AreaCountCard: React.FC<AreaCountCardProps> = ({
     justifyContent: 'space-between',
     overflow: 'hidden',
     fontFamily: 'Raleway, sans-serif',
+    transition: 'transform 0.2s ease-in-out',
     selectors: {
       ':hover $chartContainer': {
         opacity: 1,
+      },
+      '@media (max-width: 480px)': {
+        transform: 'scale(0.95)',
+      },
+      '@media (max-width: 380px)': {
+        transform: 'scale(0.9)',
       },
     },
   });

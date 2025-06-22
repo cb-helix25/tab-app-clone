@@ -104,21 +104,27 @@
     bottom: 0;
     height: 48px;
     display: flex;
+    border-top: 1px solid #e1dfdd;
+        overflow: hidden;
 }
 
 .bottom-tab {
     flex: 0 0 56px;
-        background-color: #ffffff;
-        border: 1px solid #e1dfdd;
-        border-top: none;
+    background-color: #F4F4F6;
+        color: #061733;
+        border: none;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 500;
         cursor: pointer;
         gap: 4px;
-        color: #061733;
-        transition: flex 0.2s ease, background-color 0.2s ease, color 0.2s;
+        position: relative;
+        transition: flex 0.2s ease, background-color 0.2s ease, color 0.2s, border-radius 0.2s;
+    }
+    
+    .bottom-tab+.bottom-tab {
+        margin-left: -8px;
     }
     
     .bottom-tab .icon-filled {
@@ -146,10 +152,6 @@
             transform: scale(0.97);
         }
 
-.bottom-tab:not(:last-child) {
-    border-right: none;
-}
-
 .bottom-tab.active {
     flex: 1 1 auto;
     background-color: #D65541;
@@ -161,6 +163,23 @@
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
     z-index: 1;
     transition: border-radius 0.2s, color 0.2s;
+}
+
+.bottom-tab.hovered {
+    flex: 1 1 auto;
+}
+
+.bottom-tab.collapsed {
+    flex: 0 0 56px;
+}
+
+.bottom-tab.collapsed span {
+    display: none;
+}
+
+.bottom-tab.hovered span,
+.bottom-tab.active span {
+    display: inline;
 }
 
 .bottom-tab.active:hover {
@@ -193,7 +212,7 @@
                         color: #3690CE;
                     }
                     
-                    .bottom-tab:not(.active) span {
+                                        .bottom-tab:not(.active):not(.hovered) span {
                         display: none;
                     }
                     
