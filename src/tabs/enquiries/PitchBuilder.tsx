@@ -432,13 +432,21 @@ function toggleBlockLock(blockTitle: string) {
       if (current.includes(optionLabel)) return;
       const updated = [...current, optionLabel];
       handleMultiSelectChange(blockTitle, updated);
-      insertTemplateBlock(block, updated, true, true);
+      if (insertedBlocks[blockTitle]) {
+        appendSnippetOption(block, optionLabel);
+      } else {
+        insertTemplateBlock(block, updated, true, false);
+      }
     } else {
       if (selectedTemplateOptions[blockTitle] === optionLabel && insertedBlocks[blockTitle]) {
         return;
       }
       handleSingleSelectChange(blockTitle, optionLabel);
-      insertTemplateBlock(block, optionLabel, true, true);
+      if (insertedBlocks[blockTitle]) {
+        appendSnippetOption(block, optionLabel);
+      } else {
+        insertTemplateBlock(block, optionLabel, true);
+      }
     }
   }
 
@@ -1000,6 +1008,72 @@ useEffect(() => {
         [block.title]: replacement,
       }));
     }
+  }
+
+  function appendSnippetOption(block: TemplateBlock, optionLabel: string) {
+    if (!bodyEditorRef.current) return;
+    const span = bodyEditorRef.current.querySelector(
+      `span[data-inserted="${block.title}"]`
+    ) as HTMLElement | null;
+    if (!span) return;
+    const main = span.querySelector('.block-main') as HTMLElement | null;
+    if (!main) return;
+
+    const option = block.options.find((o) => o.label === optionLabel);
+    if (!option) return;
+
+    let text = option.previewText.trim().replace(/\n/g, '<br />');
+    text = applyDynamicSubstitutions(
+      text,
+      userData,
+      enquiry,
+      amount,
+      dealPasscode,
+      dealPasscode
+        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        : undefined
+    );
+    text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+    const escLabel = optionLabel.replace(/'/g, "&#39;");
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .filter((s) => s.trim().length > 0)
+      .map(
+        (s) =>
+          `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+      )
+      .join(' ');
+    const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+
+    main.insertAdjacentHTML('beforeend', snippetHtml);
+
+    const optionDiv = span.querySelector('div.option-choices');
+    if (optionDiv) {
+      const currentSelected = block.isMultiSelect
+        ? (selectedTemplateOptions[block.title] as string[])
+        : selectedTemplateOptions[block.title];
+      const newSelected = block.isMultiSelect
+        ? [
+          ...((Array.isArray(currentSelected)
+            ? currentSelected
+            : []) as string[]),
+          optionLabel,
+        ]
+        : optionLabel;
+      const optionsHtml = block.options
+        .map((o) => {
+          const isSel = block.isMultiSelect && Array.isArray(newSelected)
+            ? (newSelected as string[]).includes(o.label)
+            : newSelected === o.label;
+          return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
+        })
+        .join('');
+      optionDiv.innerHTML = optionsHtml;
+    }
+
+    const updatedHtml = span.innerHTML;
+    setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
+    setBody(bodyEditorRef.current.innerHTML);
   }
 
   /**

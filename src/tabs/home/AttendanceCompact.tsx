@@ -5,7 +5,7 @@ import React, {
     useState,
     useRef,
 } from 'react';
-import { Icon, TooltipHost, mergeStyles } from '@fluentui/react';
+import { Icon, TooltipHost, mergeStyles, DefaultButton } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -175,6 +175,40 @@ const AttendanceCompact = forwardRef<
         const [panelOpen, setPanelOpen] = useState(false);
         const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null);
 
+        const getMondayOfCurrentWeek = (): Date => {
+            const now = new Date();
+            const day = now.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diff);
+            return monday;
+        };
+
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+        const currentWeekStart = formatDate(getMondayOfCurrentWeek());
+        const nextWeekStart = formatDate(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
+
+        const isConfirmedForWeek = (weekStart: string) =>
+            attendanceRecords.some(
+                (rec) =>
+                    rec.Initials === (userData?.[0]?.Initials || '') &&
+                    rec.Week_Start === weekStart &&
+                    rec.Confirmed_At !== null
+            );
+
+        const currentConfirmed = isConfirmedForWeek(currentWeekStart);
+        const nextConfirmed = isConfirmedForWeek(nextWeekStart);
+
+        const openConfirmationPanel = () => {
+            const now = new Date();
+            const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
+            let week: 'current' | 'next' = isThursdayAfterMidday ? 'next' : 'current';
+            if (week === 'current' && currentConfirmed && !nextConfirmed) week = 'next';
+            setPanelOpen(true);
+            setTimeout(() => attendanceRef.current?.setWeek(week), 0);
+        };
+
         useImperativeHandle(ref, () => ({
             focusTable: () => {
                 setPanelOpen(true);
@@ -184,6 +218,7 @@ const AttendanceCompact = forwardRef<
                 setPanelOpen(true);
                 setTimeout(() => attendanceRef.current?.setWeek(week), 0);
             },
+            confirmRelevantWeek: openConfirmationPanel,
         }));
 
         const combinedLeaveRecords = useMemo(
@@ -232,7 +267,9 @@ const AttendanceCompact = forwardRef<
             const group = { office: [] as any[], home: [] as any[], away: [] as any[] };
             teamData.forEach((teamMember) => {
                 const records = attendanceRecords.filter(
-                    (rec) => rec.Initials === teamMember.Initials
+                    (rec) =>
+                        rec.Initials === teamMember.Initials &&
+                        rec.Week_Start === currentWeekStart
                 );
                 const attendanceDays = records
                     .map((rec) => rec.Attendance_Days || '')
@@ -244,7 +281,7 @@ const AttendanceCompact = forwardRef<
                 else group.away.push(teamMember);
             });
             return group;
-        }, [attendanceRecords, teamData, getStatus]);
+        }, [attendanceRecords, teamData, getStatus, currentWeekStart]);
 
         const renderAvatar = (member: any, status: 'office' | 'home' | 'away') => {
             let background = colours.grey;
@@ -294,6 +331,18 @@ const AttendanceCompact = forwardRef<
                                 <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
                                     Next: {nextDayLabel}
                                 </div>
+                                    {(!currentConfirmed || !nextConfirmed) && (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <DefaultButton text="Confirm Attendance" onClick={openConfirmationPanel} />
+                                            <div style={{ fontSize: '12px', color: colours.greyText, marginTop: '4px' }}>
+                                                {!currentConfirmed && !nextConfirmed
+                                                    ? 'Unconfirmed: This and Next Week'
+                                                    : !currentConfirmed
+                                                        ? 'Unconfirmed: This Week'
+                                                        : 'Unconfirmed: Next Week'}
+                                            </div>
+                                        </div>
+                                    )}
                             </>
                 )}
             </CollapsibleSection>
