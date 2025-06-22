@@ -1,22 +1,386 @@
 {
     "attendance": [
         {
-            "name": "Lukasz Zemanek",
+            "name": "Alex Cook",
             "level": "Partner",
             "weeks": {
-                "Monday, 01/04/2024 - Sunday, 07/04/2024": {
-                    "iso": 14,
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
                     "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Anouszka Taverna",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Wed,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Billy Leith",
+            "level": "Non-solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Bianca O'Donnell",
+            "level": "Solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Brendan Rimmer",
+            "level": "Partner",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Wed,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Christopher Smith",
+            "level": "Solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Thu"
+                }
+            }
+        },
+        {
+            "name": "Edwin Vass",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Fiona Wheeler",
+            "level": "Associate Solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue,Wed,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Imogen Loveridge",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Wed,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Jonathan Waters",
+            "level": "Partner",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Wed,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Tue,Wed,Thu"
+                }
+            }
+        },
+        {
+            "name": "Joshua Whitcombe",
+            "level": "Solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Fri"
+                }
+            }
+        },
+        {
+            "name": "Kanchel White",
+            "level": "Non-solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Laura Albon",
+            "level": "Partner",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Tue,Wed,Fri"
+                }
+            }
+        },
+        {
+            "name": "Lukasz Zemanek",
+            "level": "Non-solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu"
+                }
+            }
+        },
+        {
+            "name": "Richard Chapman",
+            "level": "Associate Solicitor",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Ryan Choi",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Sam Packwood",
+            "level": "Partner",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Mon,Tue,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Wed,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Sophie West",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue,Wed,Thu,Fri"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Thu,Fri"
+                }
+            }
+        },
+        {
+            "name": "Zoe-Ann Kelly",
+            "level": "Paralegal",
+            "weeks": {
+                "Monday, 16/06/2025 - Sunday, 22/06/2025": {
+                    "iso": 25,
+                    "attendance": "Tue,Wed,Thu"
+                },
+                "Monday, 23/06/2025 - Sunday, 29/06/2025": {
+                    "iso": 26,
+                    "attendance": "Mon,Tue,Wed,Fri"
                 }
             }
         }
     ],
     "team": [
         {
+            "First": "Alex",
+            "Initials": "AC",
+            "Entra ID": "f46fed2c-0775-49a7-9fb4-721b813c84ff",
+            "Nickname": "Alex"
+        },
+        {
+            "First": "Anouszka",
+            "Initials": "AT",
+            "Entra ID": "efb0d9cd-9d40-45ec-9426-474aaf0c174d",
+            "Nickname": "Nush"
+        },
+        {
+            "First": "Billy",
+            "Initials": "BL",
+            "Entra ID": "90f348e3-1679-4024-abd0-46aac6fe21e3",
+            "Nickname": "Billy"
+        },
+        {
+            "First": "Bianca",
+            "Initials": "BOD",
+            "Entra ID": "e419f631-ee7a-458b-bc68-00fabda6e8fb",
+            "Nickname": "Bianca"
+        },
+        {
+            "First": "Brendan",
+            "Initials": "BR",
+            "Entra ID": "f79e3226-0652-4eb5-8594-a48e7e8d253b",
+            "Nickname": "Brendan"
+        },
+        {
+            "First": "Christopher",
+            "Initials": "CS",
+            "Entra ID": "ba341208-aa5a-4f3c-92f1-00d1905e0425",
+            "Nickname": "Chris"
+        },
+        {
+            "First": "Edwin",
+            "Initials": "EV",
+            "Entra ID": "3a781ee5-61a2-463f-9535-973499f2783d",
+            "Nickname": "Edwin"
+        },
+        {
+            "First": "Fiona",
+            "Initials": "FW",
+            "Entra ID": "d39c29e1-6cfe-4376-8021-aebc873fd9e7",
+            "Nickname": "Fi"
+        },
+        {
+            "First": "Imogen",
+            "Initials": "IL",
+            "Entra ID": "bc78a8ad-e8bf-4067-89e2-5c800c356383",
+            "Nickname": "Immy"
+        },
+        {
+            "First": "Jonathan",
+            "Initials": "JW",
+            "Entra ID": "0abc0ceb-0268-448b-b497-25c8fd6ae0be",
+            "Nickname": "Jonathan"
+        },
+        {
+            "First": "Joshua",
+            "Initials": "JWH",
+            "Entra ID": "a4da04a0-a141-4dda-8cfa-9a781392b4e3",
+            "Nickname": "Josh"
+        },
+        {
+            "First": "Kanchel",
+            "Initials": "KW",
+            "Entra ID": "f85e514e-91a3-4d5f-a0e0-2122faa999bc",
+            "Nickname": "Kanchel"
+        },
+        {
+            "First": "Laura",
+            "Initials": "LA",
+            "Entra ID": "f4eded2f-8fb0-4c09-a5ea-31a3f4078709",
+            "Nickname": "Laura"
+        },
+        {
             "First": "Lukasz",
             "Initials": "LZ",
-            "Entra ID": "1",
+            "Entra ID": "8318a6fd-47aa-4792-855d-4d82a3a9ac7c",
             "Nickname": "Luke"
+        },
+        {
+            "First": "Richard",
+            "Initials": "RC",
+            "Entra ID": "17c48608-2fcc-4d37-9888-a01d39eab223",
+            "Nickname": "Richard"
+        },
+        {
+            "First": "Ryan",
+            "Initials": "RCH",
+            "Entra ID": "ca6a294d-ef76-4a09-868e-bfbe334011e7",
+            "Nickname": "Ryan"
+        },
+        {
+            "First": "Sam",
+            "Initials": "SP",
+            "Entra ID": "55354c77-72b9-4a0b-adcb-cc301112167a",
+            "Nickname": "Sam"
+        },
+        {
+            "First": "Sophie",
+            "Initials": "SW",
+            "Entra ID": "60cbd65f-c32d-4760-9d34-6c1c6a8b50d5",
+            "Nickname": "Sophie"
+        },
+        {
+            "First": "Zoe-Ann",
+            "Initials": "ZK",
+            "Entra ID": "e861eaac-3c1e-4125-a124-d818104c2003",
+            "Nickname": "Zoe-Ann"
         }
     ]
 }

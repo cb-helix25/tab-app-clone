@@ -13,13 +13,17 @@ interface FormsSidebarProps {
 
 const sidebarWidth = '60vw';
 
+// Height offset so the sidebar appears entirely below the three stacked header
+// bars. Extra padding accounts for their drop shadows.
+const HEADER_OFFSET = 150;
+
 const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: 80, // account for navigator and secondary tray
+        top: HEADER_OFFSET,
         left: isOpen ? 0 : `calc(-${sidebarWidth})`,
         width: sidebarWidth,
-        height: 'calc(100vh - 80px)',
+        height: `calc(100vh - ${HEADER_OFFSET}px)`,
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
@@ -31,19 +35,26 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
 const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: 80, // align with sidebarContainer
+        top: HEADER_OFFSET, // align with sidebarContainer
         left: isOpen ? sidebarWidth : 0,
-        height: 'calc(100vh - 80px)',
+        height: `calc(100vh - ${HEADER_OFFSET}px)`,
         width: 24,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+        backgroundColor: 'transparent',
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         transition: 'left 0.3s',
         zIndex: 951,
-        });
+        selectors: {
+            ':hover': {
+                backgroundColor: isDarkMode
+                    ? colours.dark.sectionBackground
+                    : colours.light.sectionBackground,
+            },
+        },
+    });
 
 const sectionContainer = (isDarkMode: boolean) =>
     mergeStyles({

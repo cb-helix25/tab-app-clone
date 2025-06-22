@@ -1,5 +1,5 @@
 import React, { useMemo, forwardRef, useImperativeHandle } from 'react';
-import { Icon, mergeStyles } from '@fluentui/react';
+import { Icon, TooltipHost, mergeStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -62,8 +62,8 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode }>
             <div
                 onClick={toggleCollapse}
                 style={{
-                    backgroundColor: colours.light.sectionBackground,
-                    color: colours.darkBlue,
+                    backgroundColor: colours.darkBlue,
+                    color: '#ffffff',
                     border: `1px solid ${colours.light.border}`,
                     padding: '6px 10px',
                     minHeight: '30px',
@@ -125,12 +125,17 @@ const groupContainer = mergeStyles({
     alignItems: 'flex-start',
 });
 
-const snakeGroup = mergeStyles({
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '4px',
-    alignItems: 'center',
-});
+const snakeGroup = (isDark: boolean) =>
+    mergeStyles({
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '4px',
+        alignItems: 'center',
+        padding: '4px 8px',
+        borderRadius: '20px',
+        border: `1px solid ${isDark ? colours.dark.border : colours.light.border}`,
+        backgroundColor: isDark ? 'rgba(54,144,206,0.2)' : colours.highlightBlue,
+    });
 
 const AttendanceCompact = forwardRef<
     { focusTable: () => void; setWeek: (week: 'current' | 'next') => void },
@@ -157,6 +162,8 @@ const AttendanceCompact = forwardRef<
         const todayLabel = weekDays[today.getDay()];
         const todayStr = today.toISOString().split('T')[0];
 
+        const nextDayLabel = weekDays[(today.getDay() + 1) % 7];
+
         useImperativeHandle(ref, () => ({
             focusTable: () => { },
             setWeek: () => { },
@@ -166,6 +173,16 @@ const AttendanceCompact = forwardRef<
             () => [...annualLeaveRecords, ...futureLeaveRecords],
             [annualLeaveRecords, futureLeaveRecords]
         );
+
+        const getMemberWeek = (initials: string): string => {
+            const records = attendanceRecords.filter(
+                (rec) => rec.Initials === initials
+            );
+            return records
+                .map((rec) => rec.Attendance_Days || '')
+                .filter(Boolean)
+                .join(',') || 'None';
+        };
 
         const getStatus = (
             personAttendance: string,
@@ -208,15 +225,18 @@ const AttendanceCompact = forwardRef<
             if (status === 'office') background = colours.blue;
             else if (status === 'home') background = colours.highlight;
             else background = colours.greyText;
+            const week = getMemberWeek(member.Initials);
             return (
-                <div
-                    key={member.Initials}
-                    className={avatarStyle}
-                    style={{ background }}
-                    title={member.Nickname || member.First}
-                >
-                    {member.Initials.toUpperCase()}
-                </div>
+                <TooltipHost content={week}>
+                    <div
+                        key={member.Initials}
+                        className={avatarStyle}
+                        style={{ background }}
+                        title={member.Nickname || member.First}
+                    >
+                        {member.Initials.toUpperCase()}
+                    </div>
+                </TooltipHost>
             );
         };
 
@@ -225,7 +245,7 @@ const AttendanceCompact = forwardRef<
             status: 'office' | 'home' | 'away',
             icon: string
         ) => (
-            <div className={snakeGroup}>
+            <div className={snakeGroup(isDarkMode)}>
                 <Icon iconName={icon} styles={{ root: { fontSize: 20, marginRight: 4 } }} />
                 {members.map((m) => renderAvatar(m, status))}
             </div>
@@ -238,11 +258,16 @@ const AttendanceCompact = forwardRef<
                 ) : attendanceError || annualLeaveError ? (
                     <div>{attendanceError || annualLeaveError}</div>
                 ) : (
-                    <div className={groupContainer}>
-                        {renderGroup(groups.office, 'office', 'Building')}
-                        {renderGroup(groups.home, 'home', 'Home')}
-                        {renderGroup(groups.away, 'away', 'Airplane')}
-                    </div>
+                            <>
+                                <div className={groupContainer}>
+                                    {renderGroup(groups.office, 'office', 'Building')}
+                                    {renderGroup(groups.home, 'home', 'Home')}
+                                    {renderGroup(groups.away, 'away', 'Airplane')}
+                                </div>
+                                <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
+                                    Next: {nextDayLabel}
+                                </div>
+                            </>
                 )}
             </CollapsibleSection>
         );

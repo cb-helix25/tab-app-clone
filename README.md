@@ -23,6 +23,7 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 3. Press F5 to start debugging which launches your app in Teams using a web browser. Select `Debug in Teams (Edge)` or `Debug in Teams (Chrome)`.
 4. When Teams launches in the browser, select the Add button in the dialog to install your app to Teams.
 5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
+6. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
 
 **Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.
 

@@ -216,8 +216,8 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
       <div
         onClick={toggleCollapse}
         style={{
-          backgroundColor: colours.light.sectionBackground,
-          color: colours.darkBlue,
+          backgroundColor: colours.darkBlue,
+          color: '#ffffff',
           border: `1px solid ${colours.light.border}`,
           padding: '6px 10px',
           minHeight: '30px',
