@@ -36,13 +36,14 @@
     border-radius: 4px;
     background-color: #ffffff;
     margin-bottom: 4px;
+    padding: 0;
 }
 
 .detail-group summary {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
+    padding: 10px 12px;
     cursor: pointer;
     list-style: none;
     color: #061733;
@@ -78,8 +79,8 @@
 .detail-list,
 .action-list {
     list-style: none;
-    margin: 4px 0 0;
-    padding: 0 12px 12px;
+    margin: 0;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -126,6 +127,10 @@
 .bottom-tab .icon-filled {
     display: none;
     transition: transform 0.2s;
+}
+
+.bottom-tab:last-child {
+    margin-right: 12px;
 }
 
 .bottom-tab .icon-outline,
