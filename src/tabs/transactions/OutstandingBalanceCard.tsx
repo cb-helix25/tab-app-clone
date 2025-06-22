@@ -16,15 +16,16 @@ interface OutstandingBalanceCardProps {
 const containerStyle = mergeStyles({
   padding: '10px',
   backgroundColor: colours.light.sectionBackground,
-  borderRadius: '8px',
+  borderRadius: 0,
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   marginBottom: '16px',
   position: 'relative',
   transition: 'all 0.3s ease',
+  fontSize: '13px',
 });
 
 const headerStyle = mergeStyles({
-  padding: '8px',
+  padding: '10px',
   borderBottom: `1px solid ${colours.light.border}`,
   display: 'flex',
   justifyContent: 'space-between',
@@ -39,7 +40,7 @@ const mattersContainerStyle = mergeStyles({
 
 const matterLinkStyle = mergeStyles({
   fontWeight: 400,
-  fontSize: '14px',
+  fontSize: '13px',
   textDecoration: 'none',
   color: colours.highlight,
 });
@@ -56,7 +57,7 @@ const getBillContainerStyle = (index: number) =>
     backgroundColor: index % 2 === 0 ? '#ffffff' : 'rgba(244,244,246,0.4)',
     padding: '8px',
     marginTop: '8px',
-    borderRadius: '4px',
+    borderRadius: 0,
   });
 
 const verticalEquationStyle = mergeStyles({
@@ -74,18 +75,18 @@ const horizontalSeparatorStyle = mergeStyles({
 
 const dateTextStyle: React.CSSProperties = {
   color: '#555',
-  fontSize: '14px',
+  fontSize: '13px',
 };
 
 const overdueStyle = mergeStyles({
   color: 'red',
   fontWeight: 600,
-  fontSize: '14px',
+  fontSize: '13px',
 });
 
 const paymentStyle = mergeStyles({
   fontWeight: 600,
-  fontSize: '14px',
+  fontSize: '13px',
 });
 
 const OutstandingBalanceCard: React.FC<OutstandingBalanceCardProps> = ({
@@ -119,10 +120,10 @@ const OutstandingBalanceCard: React.FC<OutstandingBalanceCardProps> = ({
     >
       {/* HEADER */}
       <div className={headerStyle}>
-        <Text style={{ fontWeight: 600 }}>
+        <Text style={{ fontWeight: 600, fontSize: '13px' }}>
           {balanceRecord.contact?.name || 'Unknown Client'}
         </Text>
-        <Text style={{ color: 'red', fontWeight: 700 }}>
+        <Text style={{ color: 'red', fontWeight: 700, fontSize: '13px' }}>
           £{balanceRecord.total_outstanding_balance.toFixed(2)}
         </Text>
       </div>

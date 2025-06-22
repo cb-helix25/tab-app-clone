@@ -14,7 +14,7 @@ const cardContainer = (isDarkMode: boolean, status?: string | null) =>
     backgroundColor: isDarkMode
       ? colours.dark.cardBackground
       : colours.light.cardBackground,
-    borderRadius: '8px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(0,0,0,0.6)'
       : '0 2px 8px rgba(0,0,0,0.1)',
@@ -28,6 +28,7 @@ const cardContainer = (isDarkMode: boolean, status?: string | null) =>
     transition: 'all 0.3s ease',
     position: 'relative',
     overflow: 'hidden',
+    fontSize: '13px',
     selectors: {
       ':hover': {
         transform: 'scale(1.02)',
@@ -47,12 +48,12 @@ const headerStyle = mergeStyles({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '8px 12px',
+  padding: '10px 12px',
 });
 
 const detailsStyle = mergeStyles({
   maxHeight: 0,
-  padding: 0,
+  padding: '0 12px',
   overflow: 'hidden',
   transition: 'max-height 0.4s ease-in-out, padding 0.4s ease-in-out',
   backgroundColor: 'inherit',
@@ -79,6 +80,7 @@ const rowStyle = mergeStyles({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  fontSize: '12px',
 });
 
 const formatDate = (dateStr: string): string =>
@@ -109,10 +111,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
       {/* Collapsed Header: Matter Ref & Amount */}
       <div className={headerStyle}>
         <Text
-          variant="mediumPlus"
+          variant="smallPlus"
           styles={{
             root: {
               fontWeight: 600,
+              fontSize: '13px',
               color: isDarkMode ? colours.dark.text : colours.light.text,
             },
           }}
@@ -120,10 +123,11 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
           {transaction.matter_ref}
         </Text>
         <Text
-          variant="mediumPlus"
+          variant="smallPlus"
           styles={{
             root: {
               fontWeight: 400,
+              fontSize: '13px',
               color: isDarkMode ? colours.dark.text : colours.light.text,
             },
           }}

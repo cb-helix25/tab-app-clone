@@ -20,7 +20,14 @@ interface ActionSectionProps {
   outstandingBalances: OutstandingClientBalance[];
 }
 
-const gridContainerStyle = mergeStyles({
+const transfersGridStyle = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, 1fr)',
+  gap: '20px',
+  width: '100%',
+});
+
+const balancesGridStyle = mergeStyles({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
   gap: '20px',
@@ -197,7 +204,7 @@ const ActionSection: React.FC<ActionSectionProps> = ({
           <Text>No transfers require action at this time.</Text>
         </div>
       ) : (
-        <div className={gridContainerStyle}>
+          <div className={transfersGridStyle}>
           {filteredTransactions.map((tx) => (
             <TransactionCard
               key={tx.transaction_id}
@@ -240,7 +247,7 @@ const ActionSection: React.FC<ActionSectionProps> = ({
             <Text>No outstanding balances found.</Text>
           </div>
         ) : (
-          <div className={gridContainerStyle}>
+            <div className={balancesGridStyle}>
             {outstandingBalances.map((bal) => (
               <OutstandingBalanceCard
                 key={bal.id}
