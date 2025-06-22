@@ -655,7 +655,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const inTeams = isInTeams();
-  const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
+  const useLocalData =
+    process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
+    window.location.hostname === 'localhost';
 
   // Transform teamData into our lite TeamMember type
   const transformedTeamData = useMemo<TeamMember[]>(() => {
