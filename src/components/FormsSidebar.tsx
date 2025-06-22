@@ -13,20 +13,20 @@ interface FormsSidebarProps {
 
 const sidebarWidth = '60vw';
 
-// Height offset so the sidebar appears entirely below the three stacked header
-// bars. Extra padding accounts for their drop shadows.
 // Offset to position the sidebar just below the stacked header bars
 // (three bars, each 48px high). This value should line up exactly
 // so the sidebar hides seamlessly beneath the menus.
-const HEADER_OFFSET = 144;
+// The main header stack totals 144px tall but has a slight drop shadow.
+// Raise the sidebar a few pixels so it sits behind the header, hiding the gap.
+const SIDEBAR_TOP = 140;
 
 const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: HEADER_OFFSET,
+        top: SIDEBAR_TOP,
         left: isOpen ? 0 : `calc(-${sidebarWidth})`,
         width: sidebarWidth,
-        height: `calc(100vh - ${HEADER_OFFSET}px)`,
+        height: `calc(100vh - ${SIDEBAR_TOP}px)`,
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
@@ -35,18 +35,18 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
         zIndex: 950,
     });
 
-const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
+const handleStyle = (isOpen: boolean) =>
     mergeStyles({
         position: 'fixed',
-        top: HEADER_OFFSET, // align with sidebarContainer
+        top: SIDEBAR_TOP, // align with sidebarContainer
         left: isOpen ? sidebarWidth : 0,
-        height: `calc(100vh - ${HEADER_OFFSET}px)`,
+        height: `calc(100vh - ${SIDEBAR_TOP}px)`,
         width: 24,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        backgroundColor: 'transparent',
+        backgroundColor: isOpen ? colours.red : 'transparent',
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         transition: 'left 0.3s, opacity 0.3s',
         zIndex: 951,
@@ -54,9 +54,7 @@ const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
         selectors: {
             ':hover': {
                 opacity: 1,
-                backgroundColor: isDarkMode
-                    ? colours.dark.sectionBackground
-                    : colours.light.sectionBackground,
+                backgroundColor: colours.red,
             },
         },
     });
@@ -93,7 +91,7 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
     return (
         <>
             <div
-                className={handleStyle(isOpen, isDarkMode)}
+                className={handleStyle(isOpen)}
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle Forms Sidebar"
             >
@@ -112,27 +110,30 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
                     <div key={section} className={sectionContainer(isDarkMode)}>
                         {forms.map((form) => (
                             <div key={form.title} style={{ marginBottom: 8 }}>
-                                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
-                                    <IconButton
-                                        iconProps={{ iconName: expanded[form.title] ? 'ChevronDown' : 'ChevronRight' }}
-                                        onClick={() => toggle(form.title)}
-                                        ariaLabel="Expand"
-                                    />
-                                    <Text styles={{ root: { cursor: 'pointer' } }} onClick={() => toggle(form.title)}>
-                                        {form.title}
-                                    </Text>
-                                    <Stack.Item grow />
-                                    <IconButton
-                                        iconProps={{ iconName: 'Copy' }}
-                                        onClick={() => copyLink(form.url, form.title)}
-                                        ariaLabel="Copy link"
-                                    />
-                                    <IconButton
-                                        iconProps={{ iconName: 'NavigateExternalInline' }}
-                                        href={form.url}
-                                        target="_blank"
-                                        ariaLabel="Open link"
-                                    />
+                                <Stack horizontal verticalAlign="center" styles={{ root: { width: '100%' } }}>
+                                    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
+                                        <IconButton
+                                            iconProps={{ iconName: expanded[form.title] ? 'ChevronDown' : 'ChevronRight' }}
+                                            onClick={() => toggle(form.title)}
+                                            ariaLabel="Expand"
+                                        />
+                                        <Text styles={{ root: { cursor: 'pointer' } }} onClick={() => toggle(form.title)}>
+                                            {form.title}
+                                        </Text>
+                                    </Stack>
+                                    <Stack horizontal tokens={{ childrenGap: 4 }} styles={{ root: { marginLeft: 'auto' } }}>
+                                        <IconButton
+                                            iconProps={{ iconName: 'Copy' }}
+                                            onClick={() => copyLink(form.url, form.title)}
+                                            ariaLabel="Copy link"
+                                        />
+                                        <IconButton
+                                            iconProps={{ iconName: 'NavigateExternalInline' }}
+                                            href={form.url}
+                                            target="_blank"
+                                            ariaLabel="Open link"
+                                        />
+                                    </Stack>
                                 </Stack>
                                 {expanded[form.title] && <FormEmbed link={form} userData={userData} matters={matters} />}
                             </div>
