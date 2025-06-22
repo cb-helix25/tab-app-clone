@@ -29,15 +29,16 @@
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     overflow: hidden;
+    margin-bottom: 16px;
 }
 
 .detail-group {
     border: 1px solid #e1dfdd;
-    border-radius: 0;
-    background-color: #ffffff;
+    border-radius: 4px;
+    background-color: #fff;
     margin-bottom: 4px;
     padding: 0;
-}
+    /* <- DO NOT add padding here */ }
 
 .detail-group summary {
     display: flex;
@@ -76,28 +77,19 @@
     font-size: 16px;
 }
 
-.detail-list,
-.action-list {
-    list-style: none;
-    margin: 0;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.instructionCard .detail-list li {
+.instructionCard .detail-list li,
+.instructionCard .action-list li {
     display: flex;
     justify-content: space-between;
-    /* No padding here */
+    padding: 0;
+    /* <--- keep this 0, NO padding here */
 }
 
 .detail-list,
 .action-list {
     list-style: none;
     margin: 0;
-    padding: 12px;
-    /* Padding at the block level */
+    padding: 12px !important;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -132,6 +124,7 @@
 .bottom-tab .icon-filled {
     display: none;
     transition: transform 0.2s;
+    
 }
 
 .bottom-tab .icon-outline,
@@ -164,7 +157,12 @@
     display: none;
 }
 
-.bottom-tab.active .icon-filled,
+.bottom-tab.active .icon-filled {
+    display: inline-block;
+    transform: scale(1.1);
+    color: #ffffff;
+}
+
 .bottom-tab:hover .icon-filled {
     display: inline-block;
     transform: scale(1.1);
@@ -178,4 +176,39 @@
 .bottom-tab.active .label,
 .bottom-tab:hover .label {
     display: inline;
+}
+
+/* make the icon container round & animatable */
+.instructionCard .bottom-tab .icon-hover {
+    border: 2px solid transparent;
+    border-radius: 50%;
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+/* hover: border, solid fill, scale up & pop */
+.instructionCard .bottom-tab:hover .icon-hover {
+    border-color: #3690CE;
+    background-color: #3690CE;
+    transform: scale(1.2);
+    animation: quickPop 0.3s ease-out;
+}
+
+/* make the filled SVG white on hover */
+.instructionCard .bottom-tab:hover .icon-hover svg {
+    color: #ffffff;
+}
+
+/* pop animation */
+@keyframes quickPop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.25);
+    }
+
+    100% {
+        transform: scale(1.2);
+    }
 }
