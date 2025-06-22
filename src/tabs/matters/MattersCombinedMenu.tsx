@@ -235,6 +235,7 @@ const practiceAreaButtonStyle = (isSelected: boolean, isDarkMode: boolean, group
     selectors: {
       ':hover': {
         backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
+        transform: 'scale(1.05)',
       },
       ':active': {
         transform: 'scale(0.97)',

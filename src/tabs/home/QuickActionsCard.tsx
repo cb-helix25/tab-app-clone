@@ -23,6 +23,16 @@ import {
   MdMeetingRoom,
   MdOutlineAssessment,
   MdAssessment,
+  MdOutlineArticle,
+  MdArticle,
+  MdOutlineLocationCity,
+  MdLocationCity,
+  MdOutlineConstruction,
+  MdConstruction,
+  MdOutlinePeople,
+  MdPeople,
+  MdHelp,
+  MdOutlineHelp,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 import { colours } from '../../app/styles/colours';
@@ -41,6 +51,11 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   OpenFile: { outline: FaRegFileAlt, filled: FaFileAlt },
   IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
   Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
+  KnowledgeArticle: { outline: MdOutlineArticle, filled: MdArticle },
+  CityNext: { outline: MdOutlineLocationCity, filled: MdLocationCity },
+  ConstructionCone: { outline: MdOutlineConstruction, filled: MdConstruction },
+  People: { outline: MdOutlinePeople, filled: MdPeople },
+  Help: { outline: MdOutlineHelp, filled: MdHelp },
 };
 
 interface QuickActionsCardProps {

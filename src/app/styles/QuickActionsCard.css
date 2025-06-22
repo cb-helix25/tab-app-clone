@@ -35,6 +35,7 @@
 
 .quickActionCard:hover {
   background-color: var(--card-hover, #f4f4f6);
+  transform: scale(1.05);
 }
 
 .quickActionCard:hover .icon-outline {
