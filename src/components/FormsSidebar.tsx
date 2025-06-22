@@ -31,11 +31,11 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean) =>
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
         overflowY: 'auto',
-        transition: 'left 0.3s',
-        zIndex: 950,
+        transition: 'left 0.3s ease',
+        zIndex: 850,
     });
 
-const handleStyle = (isOpen: boolean) =>
+const handleStyle = (isOpen: boolean, isDarkMode: boolean) =>
     mergeStyles({
         position: 'fixed',
         top: SIDEBAR_TOP, // align with sidebarContainer
@@ -46,15 +46,21 @@ const handleStyle = (isOpen: boolean) =>
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        backgroundColor: isOpen ? colours.red : 'transparent',
+        backgroundColor: isOpen
+            ? isDarkMode
+                ? colours.dark.cardHover
+                : colours.light.cardHover
+            : 'transparent',
         boxShadow: '2px 0 4px rgba(0,0,0,0.2)',
-        transition: 'left 0.3s, opacity 0.3s',
-        zIndex: 951,
+        transition: 'left 0.3s ease, opacity 0.3s ease',
+        zIndex: 851,
         opacity: isOpen ? 1 : 0,
         selectors: {
             ':hover': {
                 opacity: 1,
-                backgroundColor: colours.red,
+                backgroundColor: isDarkMode
+                    ? colours.dark.cardHover
+                    : colours.light.cardHover,
             },
         },
     });
@@ -91,7 +97,7 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters }) => {
     return (
         <>
             <div
-                className={handleStyle(isOpen)}
+                className={handleStyle(isOpen, isDarkMode)}
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Toggle Forms Sidebar"
             >
