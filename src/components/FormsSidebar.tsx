@@ -10,6 +10,7 @@ interface FormsSidebarProps {
     userData: UserData[] | null;
     matters: Matter[];
     activeTab: string;
+    hovered?: boolean;
 }
 
 const sidebarWidth = "60vw";
@@ -100,7 +101,7 @@ const sectionContainer = (isDarkMode: boolean) =>
         marginTop: 16,
       });
 
-const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTab }) => {
+const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTab, hovered }) => {
     const { isDarkMode } = useTheme();
     const [isOpen, setIsOpen] = React.useState(false);
     const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>(
@@ -128,6 +129,14 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTa
     React.useEffect(() => {
         setIsOpen(false);
     }, [activeTab]);
+
+    React.useEffect(() => {
+        if (hovered) {
+            setIsOpen(true);
+        } else {
+            setIsOpen(false);
+        }
+    }, [hovered]);
 
     const toggle = (title: string) => {
         setExpanded((p) => ({ ...p, [title]: !p[title] }));

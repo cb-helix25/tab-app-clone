@@ -16,6 +16,8 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/DealCard.css';
 
 interface DealInfo {
+    CloseTime: any;
+    CloseDate: any;
     ServiceDescription?: string;
     Amount?: number;
     AreaOfWork?: string;
@@ -102,7 +104,35 @@ const DealCard: React.FC<DealCardProps> = ({
         return { text: `You pitched ${name} ${descriptor}`, urgent: diffHours >= 5 };
     };
 
+    const getCloseInfo = () => {
+        if (!deal.CloseDate || !deal.CloseTime) return { text: '', urgent: false };
+        const dt = parseISO(`${deal.CloseDate.slice(0, 10)}T${deal.CloseTime}`);
+        const now = new Date();
+        const diffMins = differenceInMinutes(now, dt);
+        const diffHours = differenceInHours(now, dt);
+        let descriptor = '';
+        const period = getPeriod(dt);
+
+        if (isToday(dt)) {
+            if (diffMins < 60) {
+                descriptor = `${diffMins} minutes ago`;
+            } else if (diffHours < 2) {
+                descriptor = `earlier this ${period}`;
+            } else {
+                descriptor = `at ${format(dt, 'haaa').toLowerCase()} this ${period}`;
+            }
+        } else if (differenceInCalendarDays(now, dt) < 7) {
+            descriptor = `on ${format(dt, 'EEEE')} ${period}`;
+        } else {
+            descriptor = `on ${format(dt, 'EEEE d MMM')}`;
+        }
+
+        const name = deal.firstName || 'the client';
+        return { text: `You closed ${name} ${descriptor}`, urgent: false };
+    };
+
     const pitchInfo = getPitchInfo();
+    const closeInfo = getCloseInfo();
 
     const status = deal.Status ? deal.Status.toLowerCase() : undefined;
     const isClosed = status === 'closed';
@@ -134,8 +164,12 @@ const DealCard: React.FC<DealCardProps> = ({
     });
 
     const bannerClass = mergeStyles('pitch-banner', {
-        background: componentTokens.infoBanner.background,
-        borderLeft: componentTokens.infoBanner.borderLeft,
+        background: isClosed
+            ? componentTokens.successBanner.background
+            : componentTokens.infoBanner.background,
+        borderLeft: isClosed
+            ? componentTokens.successBanner.borderLeft
+            : componentTokens.infoBanner.borderLeft,
         padding: componentTokens.infoBanner.padding,
         fontSize: '0.875rem',
     });
@@ -155,8 +189,11 @@ const DealCard: React.FC<DealCardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
-            {pitchInfo.text && (
+            {!isClosed && pitchInfo.text && (
                 <div className={bannerClass}>{pitchInfo.text}</div>
+            )}
+            {isClosed && closeInfo.text && (
+                <div className={bannerClass}>{closeInfo.text}</div>
             )}
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {deal.ServiceDescription}

@@ -50,6 +50,7 @@ const App: React.FC<AppProps> = ({
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
   const [boardroomBookings, setBoardroomBookings] = useState<BoardroomBooking[] | null>(null);
   const [soundproofBookings, setSoundproofBookings] = useState<SoundproofPodBooking[] | null>(null);
+  const [formsTabHovered, setFormsTabHovered] = useState(false);
 
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
@@ -109,7 +110,7 @@ const App: React.FC<AppProps> = ({
       ? [{ key: 'instructions', text: 'Instructions' }]
       : []),
     { key: 'matters', text: 'Matters' },
-    { key: 'forms', text: 'Forms' },
+    { key: 'forms', text: 'Forms', disabled: true },
     { key: 'resources', text: 'Resources' },
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
@@ -137,8 +138,6 @@ const App: React.FC<AppProps> = ({
             teamData={teamData}
           />
         );
-      case 'forms':
-        return <Forms userData={userData} matters={allMattersFromHome || []} />;
       case 'resources':
         return <Resources />;
       case 'enquiries':
@@ -226,12 +225,14 @@ const App: React.FC<AppProps> = ({
             tabs={tabs}
             ariaLabel="Main Navigation Tabs"
             user={userData[0]}
+            onFormsHover={setFormsTabHovered}
           />
           <Navigator />
           <FormsSidebar
             userData={userData}
             matters={allMattersFromHome || []}
             activeTab={activeTab}
+            hovered={formsTabHovered}
           />
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}

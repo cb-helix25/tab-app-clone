@@ -27,6 +27,7 @@ interface CustomTabsProps {
   ariaLabel?: string;
   onHomeClick: () => void;
   user?: UserData;
+  onFormsHover?: (hover: boolean) => void;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -63,6 +64,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   ariaLabel,
   onHomeClick,
   user,
+  onFormsHover,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -138,6 +140,14 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
               className: tab.disabled ? 'disabledTab' : '',
               style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,
               'aria-disabled': tab.disabled ? 'true' : undefined,
+              onMouseEnter:
+                tab.key === 'forms' && onFormsHover
+                  ? () => onFormsHover(true)
+                  : undefined,
+              onMouseLeave:
+                tab.key === 'forms' && onFormsHover
+                  ? () => onFormsHover(false)
+                  : undefined,
             }}
           />
         ))}

@@ -65,6 +65,13 @@ export const componentTokens = {
     padding: '0.35rem 0.75rem',
   },
 
+  /** Banner used for confirming deal closure */
+  successBanner: {
+    background: `linear-gradient(to right, #ffffff, ${colours.grey})`,
+    borderLeft: `3px solid ${colours.green}`,
+    padding: '0.35rem 0.75rem',
+  },
+
   accordion: {
     header: {
       background: `linear-gradient(to right, #ffffff, ${colours.grey})`,
