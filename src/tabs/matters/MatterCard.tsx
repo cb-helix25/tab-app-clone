@@ -45,7 +45,7 @@ const cardStyle = (isDarkMode: boolean) =>
     padding: '20px',
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    borderRadius: '8px',
+    borderRadius: '0',
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(255,255,255,0.1)'
       : '0 2px 8px rgba(0,0,0,0.1)',

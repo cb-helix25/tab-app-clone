@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Spinner, SpinnerSize, mergeStyles, keyframes } from '@fluentui/react';
 import { FaCheck } from 'react-icons/fa';
 import QuickActionsCard from './QuickActionsCard';
@@ -96,10 +96,40 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
     immediateActionsReady,
     immediateActionsList,
 }) => {
+    const [visible, setVisible] = useState(true);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const threshold = ACTION_BAR_HEIGHT * 2;
+            if (window.scrollY > threshold) {
+                setVisible(false);
+            } else {
+                setVisible(true);
+            }
+        };
+
+        if (immediateActionsList.length === 0) {
+            window.addEventListener('scroll', handleScroll);
+        }
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [immediateActionsList]);
+
     return (
         <div
             className={barStyle(isDarkMode, immediateActionsList.length > 0)}
-            style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}
+            style={{
+                display: 'flex',
+                gap: '10px',
+                height: visible ? ACTION_BAR_HEIGHT : 0,
+                overflow: 'hidden',
+                opacity: visible ? 1 : 0,
+                transform: visible ? 'translateY(0)' : 'translateY(-10px)',
+                transition: 'height 0.3s ease, opacity 0.3s ease, transform 0.3s ease',
+                pointerEvents: visible ? 'auto' : 'none',
+            }}
         >
             {!immediateActionsReady ? (
                 <Spinner size={SpinnerSize.small} />

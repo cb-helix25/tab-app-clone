@@ -102,7 +102,7 @@ const cardStyle = (isDarkMode: boolean, areaOfWork: string) =>
     padding: '20px',
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    borderRadius: '8px',
+    borderRadius: '0',
     borderLeft: `4px solid ${leftBorderColor(areaOfWork)}`,
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(255,255,255,0.1)'

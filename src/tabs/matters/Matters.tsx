@@ -866,7 +866,7 @@ const Matters: React.FC<MattersProps> = ({
                     <div
                       className={mergeStyles({
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                         gap: '20px',
                         marginTop: '20px',
                       })}
