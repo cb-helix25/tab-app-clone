@@ -146,6 +146,12 @@ const snakeGroup = (isDark: boolean) =>
         backgroundColor: isDark ? 'rgba(54,144,206,0.2)' : colours.highlightBlue,
     });
 
+const snakeContainer = mergeStyles({
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    });
+
 const AttendanceCompact = forwardRef<
     { focusTable: () => void; setWeek: (week: 'current' | 'next') => void },
     AttendanceProps
@@ -166,12 +172,18 @@ const AttendanceCompact = forwardRef<
         },
         ref
     ) => {
-        const today = new Date();
         const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const todayLabel = weekDays[today.getDay()];
-        const todayStr = today.toISOString().split('T')[0];
 
-        const nextDayLabel = weekDays[(today.getDay() + 1) % 7];
+        const londonNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }));
+        const afterFiveThirty =
+            londonNow.getHours() > 17 || (londonNow.getHours() === 17 && londonNow.getMinutes() >= 30);
+        const nextDay = new Date(londonNow);
+        if (afterFiveThirty) nextDay.setDate(londonNow.getDate() + 1);
+
+        const targetDayLabel = weekDays[nextDay.getDay()];
+        const targetDayStr = nextDay.toISOString().split('T')[0];
+
+        const nextDayLabel = weekDays[(londonNow.getDay() + 1) % 7];
         const [panelOpen, setPanelOpen] = useState(false);
         const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null);
 
@@ -188,6 +200,11 @@ const AttendanceCompact = forwardRef<
 
         const currentWeekStart = formatDate(getMondayOfCurrentWeek());
         const nextWeekStart = formatDate(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
+        const useNextWeek =
+            (londonNow.getDay() === 5 && afterFiveThirty) ||
+            londonNow.getDay() === 6 ||
+            londonNow.getDay() === 0;
+        const weekStartToUse = useNextWeek ? nextWeekStart : currentWeekStart;
 
         const isConfirmedForWeek = (weekStart: string) =>
             attendanceRecords.some(
@@ -228,12 +245,14 @@ const AttendanceCompact = forwardRef<
 
         const getMemberWeek = (initials: string): string => {
             const records = attendanceRecords.filter(
-                (rec) => rec.Initials === initials
+                (rec) => rec.Initials === initials && rec.Week_Start === weekStartToUse
             );
-            return records
-                .map((rec) => rec.Attendance_Days || '')
-                .filter(Boolean)
-                .join(',') || 'None';
+            return (
+                records
+                    .map((rec) => rec.Attendance_Days || '')
+                    .filter(Boolean)
+                    .join(',') || 'None'
+            );
         };
 
         const getStatus = (
@@ -244,8 +263,8 @@ const AttendanceCompact = forwardRef<
                 (leave) =>
                     leave.status === 'booked' &&
                     leave.person.trim().toLowerCase() === initials.trim().toLowerCase() &&
-                    todayStr >= leave.start_date &&
-                    todayStr <= leave.end_date
+                    targetDayStr >= leave.start_date &&
+                    targetDayStr <= leave.end_date
             );
             if (isOnLeave) return 'away';
             const dayMap: Record<string, string> = {
@@ -260,7 +279,7 @@ const AttendanceCompact = forwardRef<
                     .split(',')
                     .map((s) => dayMap[s.trim()] || s.trim())
                 : [];
-            return attendedDays.includes(todayLabel) ? 'office' : 'home';
+            return attendedDays.includes(targetDayLabel) ? 'office' : 'home';
         };
 
         const groups = useMemo(() => {
@@ -269,7 +288,7 @@ const AttendanceCompact = forwardRef<
                 const records = attendanceRecords.filter(
                     (rec) =>
                         rec.Initials === teamMember.Initials &&
-                        rec.Week_Start === currentWeekStart
+                        rec.Week_Start === weekStartToUse
                 );
                 const attendanceDays = records
                     .map((rec) => rec.Attendance_Days || '')
@@ -281,7 +300,7 @@ const AttendanceCompact = forwardRef<
                 else group.away.push(teamMember);
             });
             return group;
-        }, [attendanceRecords, teamData, getStatus, currentWeekStart]);
+        }, [attendanceRecords, teamData, getStatus, weekStartToUse, targetDayLabel, targetDayStr]);
 
         const renderAvatar = (member: any, status: 'office' | 'home' | 'away') => {
             let background = colours.grey;
@@ -307,12 +326,28 @@ const AttendanceCompact = forwardRef<
             members: any[],
             status: 'office' | 'home' | 'away',
             icon: string
-        ) => (
-            <div className={snakeGroup(isDarkMode)}>
-                <Icon iconName={icon} styles={{ root: { fontSize: 20, marginRight: 4 } }} />
-                {members.map((m) => renderAvatar(m, status))}
-            </div>
-        );
+        ) => {
+            const perRow = 6;
+            const rows = [] as any[];
+            for (let i = 0; i < members.length; i += perRow) {
+                rows.push(members.slice(i, i + perRow));
+            }
+            return (
+                <div className={snakeGroup(isDarkMode)}>
+                    <Icon iconName={icon} styles={{ root: { fontSize: 20, marginRight: 4 } }} />
+                    <div className={snakeContainer}>
+                        {rows.map((row, idx) => (
+                            <div
+                                key={idx}
+                                style={{ display: 'flex', flexDirection: idx % 2 ? 'row-reverse' : 'row' }}
+                            >
+                                {row.map((m: any) => renderAvatar(m, status))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
 
         return (
             <>
@@ -329,7 +364,7 @@ const AttendanceCompact = forwardRef<
                                     {renderGroup(groups.away, 'away', 'Airplane')}
                                 </div>
                                 <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
-                                    Next: {nextDayLabel}
+                                        Showing: {targetDayLabel} | Next: {nextDayLabel}
                                 </div>
                                     {(!currentConfirmed || !nextConfirmed) && (
                                         <div style={{ marginTop: '8px' }}>

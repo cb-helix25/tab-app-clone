@@ -377,22 +377,12 @@ const EnquiryCard: React.FC<EnquiryCardProps> = ({
           {/* Claimed Badge: bottom center of the right actions area */}
           {claimer && (
             <div
+              className="claimer-badge"
               style={{
                 position: 'absolute',
                 bottom: '2px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '24px',
-                padding: '0 12px',
-                borderRadius: '4px',
-                backgroundColor: colours.darkBlue,
-                color: '#ffffff',
-                border: `1px solid ${colours.highlight}`,
-                fontSize: '0.75rem',
-                fontWeight: 400,
               }}
               aria-label={`Claimed by ${claimerInitials}`}
             >

@@ -1995,8 +1995,8 @@ function duplicateTemplateBlock(index: number) {
 
   // Some styling
   const containerStyle = mergeStyles({
-    padding: '30px',
-    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    padding: 0,
+    backgroundColor: 'transparent',
     borderRadius: '8px',
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
@@ -2008,8 +2008,25 @@ function duplicateTemplateBlock(index: number) {
     flexDirection: 'column',
     gap: '20px',
     boxSizing: 'border-box',
-    flex: 1,      // Let it fill the page if needed
-    minHeight: 0, // So it won't overflow
+    flex: 1,
+    minHeight: 0,
+  });
+
+  const headerWrapperStyle = mergeStyles({
+    backgroundColor: colours.darkBlue,
+    padding: '12px 24px',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  });
+
+  const bodyWrapperStyle = mergeStyles({
+    padding: '30px',
+    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
   });
 
   const formContainerStyle = mergeStyles({
@@ -2145,7 +2162,8 @@ function handleScrollToBlock(blockTitle: string) {
 
   return (
     <Stack className={containerStyle}>
-      <PitchHeaderRow
+      <div className={headerWrapperStyle}>
+        <PitchHeaderRow
         enquiry={enquiry}
         to={to}
         setTo={setTo}
@@ -2168,7 +2186,9 @@ function handleScrollToBlock(blockTitle: string) {
         clientIds={clientIds}
         isDarkMode={isDarkMode}
       />
-  
+      </div>
+
+      <div className={bodyWrapperStyle}>
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks
         isDarkMode={isDarkMode}
@@ -2357,6 +2377,7 @@ function handleScrollToBlock(blockTitle: string) {
         type={toast?.type || 'info'}
         loading={toast?.loading}
       />
+      </div>
     </Stack>
   );
   
