@@ -203,13 +203,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       transition: margin-right 0.2s ease;
     }
     .block-container:hover .block-main {
-      margin-right: 128px;
+      margin-right: 50%;
     }
     .block-sidebar {
       position: absolute;
       top: 0;
       right: 0;
-      width: 120px;
+      width: 50%;
       height: 100%;
       border: 1px solid ${colours.grey};
       padding: 4px;
@@ -231,7 +231,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       pointer-events: auto;
     }
     .block-container.pinned .block-main {
-      margin-right: 128px;
+      margin-right: 50%;
 
     }
     .block-sidebar .option-choices {
@@ -504,18 +504,50 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     insertTemplateBlock(block, selected, true, false);
   }
 
+  const openBlockPopout = (e: MouseEvent, blockTitle: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const btn = e.currentTarget as HTMLElement;
+    const container = btn.closest('.block-container') as HTMLElement | null;
+    const sidebar = container?.querySelector('.block-sidebar') as HTMLElement | null;
+    if (!container || !sidebar) return;
+    const temp = sidebar.cloneNode(true) as HTMLElement;
+    const label = temp.querySelector('.block-label') as HTMLElement | null;
+    let labelText = '';
+    if (label) {
+      labelText = label.textContent || '';
+      label.remove();
+    }
+    const subtle = `<div style="font-size:10px;color:${colours.greyText};text-align:right;margin-bottom:4px;">${labelText}</div>`;
+    setPopoutSidebarHtml(subtle + temp.innerHTML);
+    setPopoutTarget(container);
+    setPopoutSidebarEl(sidebar);
+    sidebar.style.display = 'none';
+  };
+
+  const closeBlockPopout = () => {
+    if (popoutSidebarEl) {
+      popoutSidebarEl.style.display = '';
+    }
+    setPopoutSidebarEl(null);
+    setPopoutSidebarHtml('');
+    setPopoutTarget(null);
+  };
+
   useEffect(() => {
     (window as any).toggleBlockLock = toggleBlockLock;
     (window as any).toggleBlockSidebar = toggleBlockSidebar;
     (window as any).highlightBlock = highlightBlock;
     (window as any).openSnippetOptions = openSnippetOptions;
+    (window as any).openBlockPopout = openBlockPopout;
+    (window as any).closeBlockPopout = closeBlockPopout;
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).removeBlock = (title: string) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openBlockPopout, closeBlockPopout, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -633,6 +665,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
   const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
   const [snippetOptionsTarget, setSnippetOptionsTarget] = useState<HTMLElement | null>(null);
+  const [popoutSidebarHtml, setPopoutSidebarHtml] = useState<string>('');
+  const [popoutTarget, setPopoutTarget] = useState<HTMLElement | null>(null);
+  const [popoutSidebarEl, setPopoutSidebarEl] = useState<HTMLElement | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<{
     block: TemplateBlock;
     option?: string;
@@ -966,7 +1001,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
       })
       .join('');
-    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;
 
     // Simplified hover handlers to directly call highlightBlock
@@ -2401,6 +2436,30 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
               />
             </FocusZone>
+          </Callout>
+        )}
+
+        {popoutTarget && popoutSidebarHtml && (
+          <Callout
+            className="inline-options-callout block-popout"
+            target={popoutTarget}
+            onDismiss={closeBlockPopout}
+            setInitialFocus={false}
+            directionalHint={DirectionalHint.rightCenter}
+            directionalHintFixed
+            styles={{
+              root: {
+                padding: 8,
+                borderRadius: 8,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+                maxWidth: '50%',
+                maxHeight: '100%',
+                overflowY: 'auto',
+              },
+            }}
+          >
+            <div dangerouslySetInnerHTML={{ __html: popoutSidebarHtml }} />
           </Callout>
         )}
 

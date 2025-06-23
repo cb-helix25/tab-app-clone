@@ -132,13 +132,9 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
   });
 
   const headerClass = mergeStyles({
-    padding: '12px 20px',
-    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    color: colours.highlight,
-    fontWeight: 600,
+    padding: '4px 8px',
+    color: colours.greyText,
+    fontSize: 12,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -350,7 +346,7 @@ const EditBlockModal: React.FC<EditBlockModalProps> = ({
     <Modal isOpen={isOpen} onDismiss={onDismiss} isBlocking={false}>
       <div className={containerClass}>
         <div className={headerClass}>
-          {initialOption ? initialOption : blockTitle}
+          <span>{initialOption ? `${blockTitle}: ${initialOption}` : blockTitle}</span>
           <IconButton iconProps={{ iconName: 'Cancel' }} onClick={onDismiss} />
         </div>
         {step === 'edit' ? renderEdit : renderConfirm}

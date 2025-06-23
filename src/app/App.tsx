@@ -84,7 +84,7 @@ const App: React.FC<AppProps> = ({
   };
 
   const handleFormsTabClick = () => {
-    setFormsSidebarPinned(true);
+    setFormsSidebarPinned((prev) => !prev);
   };
 
   useEffect(() => {
