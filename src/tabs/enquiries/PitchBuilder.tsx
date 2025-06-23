@@ -215,11 +215,8 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: inline-block;
     }
     .block-main {
-      transition: margin-right 0.2s ease;
       position: relative;
-    }
-    .block-container:hover .block-main {
-      margin-right: 260px;
+      padding-right: 24px;
     }
     .block-sidebar {
       position: absolute;
@@ -237,6 +234,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       transform: translateX(calc(100% - 24px));
       transition: transform 0.2s ease;
       pointer-events: none;
+      overflow: hidden;
     }
     .block-sidebar .sidebar-handle {
       position: absolute;
@@ -244,12 +242,14 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       left: 0;
       width: 24px;
       height: 100%;
-      background: ${colours.grey};
+      background: ${colours.darkBlue};
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       box-shadow: -2px 0 4px rgba(0,0,0,0.2);
+      border-radius: 4px 0 0 4px;
       pointer-events: auto;
     }
     .block-container:hover .block-sidebar {
@@ -259,10 +259,6 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-sidebar.pinned {
       transform: translateX(0);
       pointer-events: auto;
-    }
-    .block-container.pinned .block-main {
-      margin-right: 260px;
-
     }
     .block-sidebar .option-choices {
       display: flex;
