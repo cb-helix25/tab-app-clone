@@ -298,7 +298,73 @@
                 "Notes": null
             }
         ],
-        "riskAssessments": [],
-        "electronicIDChecks": []
+        "riskAssessments": [
+            {
+                "MatterId": "HLX-22338-3927",
+                "RiskAssessor": "Local Tester",
+                "ComplianceDate": "2025-06-21",
+                "RiskAssessmentResult": "Low",
+                "RiskScore": 5,
+                "TransactionRiskLevel": "Low Risk",
+                "ClientRiskFactorsConsidered": true,
+                "TransactionRiskFactorsConsidered": true,
+                "FirmWideAMLPolicyConsidered": true,
+                "FirmWideSanctionsRiskConsidered": true
+            },
+            {
+                "MatterId": "HLX-22338-4581",
+                "RiskAssessor": "Local Tester",
+                "ComplianceDate": "2025-06-21",
+                "RiskAssessmentResult": "Low",
+                "RiskScore": 10,
+                "TransactionRiskLevel": "Low Risk",
+                "ClientRiskFactorsConsidered": true,
+                "TransactionRiskFactorsConsidered": true,
+                "FirmWideAMLPolicyConsidered": true,
+                "FirmWideSanctionsRiskConsidered": true
+            },
+            {
+                "MatterId": "HLX-22338-4843",
+                "RiskAssessor": "Local Tester",
+                "ComplianceDate": "2025-06-21",
+                "RiskAssessmentResult": "Medium",
+                "RiskScore": 20,
+                "TransactionRiskLevel": "Medium Risk",
+                "ClientRiskFactorsConsidered": true,
+                "TransactionRiskFactorsConsidered": true,
+                "FirmWideAMLPolicyConsidered": true,
+                "FirmWideSanctionsRiskConsidered": true
+            },
+            {
+                "MatterId": "HLX-22338-7385",
+                "RiskAssessor": "Local Tester",
+                "ComplianceDate": "2025-06-21",
+                "RiskAssessmentResult": "High",
+                "RiskScore": 30,
+                "TransactionRiskLevel": "High Risk",
+                "ClientRiskFactorsConsidered": true,
+                "TransactionRiskFactorsConsidered": true,
+                "FirmWideAMLPolicyConsidered": true,
+                "FirmWideSanctionsRiskConsidered": true
+            }
+        ],
+        "electronicIDChecks": [
+            {
+                "MatterId": "HLX-22338-3927",
+                "EIDStatus": "verified"
+            },
+            {
+                "MatterId": "HLX-22338-4581",
+                "EIDStatus": "pending"
+            },
+            {
+                "MatterId": "HLX-22338-4843",
+                "EIDStatus": "verified"
+            },
+            {
+                "MatterId": "HLX-22338-7385",
+                "EIDStatus": "verified"
+            }
+        ]
     }
 ]

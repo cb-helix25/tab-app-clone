@@ -187,22 +187,23 @@
     gap: 4px;
     position: relative;
     padding: 0 4px;
-    transition:
-        background-color 0.2s,
-        color 0.2s,
-        flex-basis 0.4s ease,
-        padding-left 0.4s ease;
-}
-
-.bottom-tab .icon-filled {
-    display: none;
-    transition: transform 0.2s;
+    height: 100%;
+        transition:
+            background-color 0.2s ease-in-out,
+            color 0.2s ease-in-out,
+            flex-basis 0.4s ease-in-out,
+            padding-left 0.4s ease-in-out;
+    }
     
-}
-
-.bottom-tab .icon-outline,
-.bottom-tab .icon-filled {
-    font-size: 20px;
+    .bottom-tab .icon-filled {
+        display: none;
+        transition: transform 0.2s;
+    
+    }
+    
+    .bottom-tab .icon-outline,
+    .bottom-tab .icon-filled {
+        font-size: 16px;
 }
 
 .icon-hover {
@@ -249,27 +250,28 @@
 }
 
 .bottom-tab .label {
-    display: inline-block;
+    display: inline-flex;
+        align-items: center;
         overflow: hidden;
         max-width: 0;
         opacity: 0;
         margin-left: 0;
-        transition: max-width 0.4s ease, opacity 0.4s ease, margin-left 0.4s ease;
+        transition: max-width 0.4s ease-in-out, opacity 0.4s ease-in-out, margin-left 0.4s ease-in-out;
         white-space: nowrap;
-}
-
-.bottom-tab.active .label,
-.bottom-tab:hover .label {
-    max-width: 120px;
-    opacity: 1;
-    margin-left: 6px;
-}
-
-/* make the icon container round & animatable */
-.instructionCard .bottom-tab .icon-hover {
-    border: 2px solid transparent;
-    border-radius: 50%;
-    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+    
+    .bottom-tab.active .label,
+    .bottom-tab:hover .label {
+        max-width: 120px;
+        opacity: 1;
+        margin-left: 6px;
+    }
+    
+    /* make the icon container round & animatable */
+    .instructionCard .bottom-tab .icon-hover {
+        border: 2px solid transparent;
+        border-radius: 50%;
+        transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
 /* hover: border, solid fill, scale up & pop */

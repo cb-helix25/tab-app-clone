@@ -6,18 +6,32 @@ import { componentTokens } from '../../app/styles/componentTokens';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/JointClientCard.css';
 
+export interface DealSummary {
+    DealId?: number;
+    InstructionRef?: string | null;
+    ServiceDescription?: string;
+    Status?: string;
+}
+
+
 export interface ClientInfo {
     ClientEmail?: string;
     HasSubmitted?: string;
     Lead?: boolean;
+    deals?: DealSummary[];
 }
 
 interface JointClientCardProps {
     client: ClientInfo;
     animationDelay?: number;
+    onOpenInstruction?: (ref: string) => void;
 }
 
-const JointClientCard: React.FC<JointClientCardProps> = ({ client, animationDelay = 0 }) => {
+const JointClientCard: React.FC<JointClientCardProps> = ({
+    client,
+    animationDelay = 0,
+    onOpenInstruction,
+}) => {
     const { isDarkMode } = useTheme();
 
     const cardClass = mergeStyles('jointClientCard', {
@@ -54,8 +68,31 @@ const JointClientCard: React.FC<JointClientCardProps> = ({ client, animationDela
                     {statusText}
                 </Text>
             )}
+            {client.deals && client.deals.length > 0 && (
+                <ul className="detail-list">
+                    {client.deals.map((d) => (
+                        <li key={d.DealId}>
+                            {d.ServiceDescription}{' '}
+                            {d.Status && (
+                                <span style={{ color: colours.greyText }}>(
+                                    {d.Status})
+                                </span>
+                            )}
+                            {d.InstructionRef && onOpenInstruction && (
+                                <span
+                                    className="instruction-link"
+                                    onClick={() => onOpenInstruction(d.InstructionRef!)}
+                                >
+                                    {' '}- View
+                                </span>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
         </div>
     );
-};
+}; 
 
 export default JointClientCard;

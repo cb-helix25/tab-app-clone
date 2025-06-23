@@ -14,6 +14,7 @@ import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
+import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
@@ -218,17 +219,50 @@ const Instructions: React.FC<InstructionsProps> = ({
       ),
     [instructionData]
   );
-  const clients: ClientInfo[] = useMemo(
-    () =>
-      instructionData.flatMap((p) => {
-        const lead = (p.deals ?? [])
-          .filter((d) => d.LeadClientEmail)
-          .map((d) => ({ ClientEmail: d.LeadClientEmail, Lead: true }));
-        const joints = (p.jointClients ?? []).map((jc) => ({ ...jc, Lead: false }));
-        return [...lead, ...joints];
-      }),
-    [instructionData]
-  );
+  const clients: ClientInfo[] = useMemo(() => {
+    const map: Record<string, ClientInfo> = {};
+    instructionData.forEach((p) => {
+      const deals = p.deals ?? [];
+      deals.forEach((d) => {
+        if (d.LeadClientEmail) {
+          const key = d.LeadClientEmail;
+          const entry =
+            map[key] || { ClientEmail: key, Lead: true, deals: [] as DealSummary[] };
+          entry.Lead = true;
+          (entry.deals as DealSummary[]).push({
+            DealId: d.DealId,
+            InstructionRef: d.InstructionRef,
+            ServiceDescription: d.ServiceDescription,
+            Status: d.Status,
+          });
+          map[key] = entry;
+        }
+      });
+      (p.jointClients ?? []).forEach((jc) => {
+        const key = jc.ClientEmail;
+        const entry =
+          map[key] || {
+            ClientEmail: jc.ClientEmail,
+            HasSubmitted: jc.HasSubmitted,
+            Lead: false,
+            deals: [] as DealSummary[],
+          };
+        entry.HasSubmitted = jc.HasSubmitted;
+        const deal = deals.find((dd) => dd.DealId === jc.DealId);
+        if (deal) {
+          (entry.deals as DealSummary[]).push({
+            DealId: deal.DealId,
+            InstructionRef: deal.InstructionRef,
+            ServiceDescription: deal.ServiceDescription,
+            Status: deal.Status,
+          });
+        }
+        map[key] = entry;
+      });
+    });
+    return Object.values(map);
+  }, [instructionData]);
+
   const riskData = useMemo(
     () =>
       instructionData.flatMap((p) =>
@@ -387,7 +421,14 @@ const Instructions: React.FC<InstructionsProps> = ({
               const row = Math.floor(idx / 4);
               const col = idx % 4;
               const animationDelay = row * 0.2 + col * 0.1;
-              return <JointClientCard key={idx} client={c} animationDelay={animationDelay} />;
+              return (
+                <JointClientCard
+                  key={idx}
+                  client={c}
+                  animationDelay={animationDelay}
+                  onOpenInstruction={handleOpenInstruction}
+                />
+              );
             })}
           </div>
         </Stack>
