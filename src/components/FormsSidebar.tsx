@@ -11,6 +11,8 @@ interface FormsSidebarProps {
     matters: Matter[];
     activeTab: string;
     hovered?: boolean;
+    pinned: boolean;
+    setPinned: (pinned: boolean) => void;
 }
 
 const sidebarWidth = "60vw";
@@ -101,10 +103,16 @@ const sectionContainer = (isDarkMode: boolean) =>
         marginTop: 16,
       });
 
-const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTab, hovered }) => {
+const FormsSidebar: React.FC<FormsSidebarProps> = ({
+    userData,
+    matters,
+    activeTab,
+    hovered,
+    pinned,
+    setPinned,
+}) => {
     const { isDarkMode } = useTheme();
     const [isOpen, setIsOpen] = React.useState(false);
-    const [pinned, setPinned] = React.useState(false);
     const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>(
         {},
     );
@@ -131,21 +139,20 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTa
         if (activeTab === "forms") {
             setPinned(true);
             setIsOpen(true);
-        } else {
-            setPinned(false);
-            setIsOpen(false);
         }
-    }, [activeTab]);
+    }, [activeTab, setPinned]);
 
     React.useEffect(() => {
         if (!pinned) {
-            if (hovered) {
-                setIsOpen(true);
-            } else {
-                setIsOpen(false);
-            }
+            setIsOpen(hovered || false);
         }
     }, [hovered, pinned]);
+
+    React.useEffect(() => {
+        if (pinned) {
+            setIsOpen(true);
+        }
+    }, [pinned]);
 
     const toggle = (title: string) => {
         setExpanded((p) => ({ ...p, [title]: !p[title] }));

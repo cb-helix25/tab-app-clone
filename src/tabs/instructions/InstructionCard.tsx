@@ -108,7 +108,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
     const isInitialised = stage === 'initialised';
-    const cardClass = mergeStyles('instructionCard', {
+
+    const [collapsed, setCollapsed] = useState(false);
+
+    const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
         backgroundColor: colours.light.sectionBackground,
         padding: componentTokens.card.base.padding,
         boxShadow: isCompleted
@@ -143,8 +146,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
 
-    const [collapsed, setCollapsed] = useState(false);
-
     const bannerText = isCompleted
         ? 'Instructions received'
         : isInitialised
@@ -164,7 +165,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const sections = [
         {
             title: 'General',
-            icon: <FaFileAlt className="group-icon" />,
+            icon: <FaFileAlt className="group-icon" />, 
             fields: [
                 ['Stage', 'Status'],
                 ['ClientType', 'Client Type'],
@@ -260,6 +261,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         },
     ];
 
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+        const initial: Record<string, boolean> = {};
+        sections.forEach(sec => {
+            initial[sec.title] = sec.title === 'General';
+        });
+        return initial;
+    });
+
+    const toggleGroup = (title: string) => {
+        setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }));
+    };
+
     return (
         <div className={cardClass} style={style} ref={innerRef}>
             <header className="instruction-header" onClick={() => setCollapsed(!collapsed)}>
@@ -282,7 +295,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             </header>
             {bannerText && <div className={bannerClass}>{bannerText}</div>}
 
-            <div className={`card-content ${collapsed ? 'collapsed' : ''}`}>
+            <div className="card-content">
                 <div className="instruction-details">
                     {sections.map((section) => {
                         const items = section.fields as [string, string][];
@@ -303,11 +316,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         }
 
                         if (!details.length) return null;
+                        const open = openGroups[section.title];
                         return (
-                            <details className="detail-group" key={section.title} open={section.title === 'General'}>
-                                <summary>{section.icon} {section.title}</summary>
+                            <div className={`detail-group${open ? ' open' : ''}`} key={section.title}>
+                                <div className="detail-summary" onClick={() => toggleGroup(section.title)}>
+                                    {section.icon} {section.title}
+                                </div>
                                 <ul className="detail-list">{details}</ul>
-                            </details>
+                            </div>
                         );
                     })}
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Stack,
   TextField,
@@ -67,14 +67,22 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   isDarkMode,
 }) => {
 
-  const enquiryNotesContainer = mergeStyles({
+  const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
+
+  const sectionStyle = {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'column' as const,
     width: '100%',
-  });
+    padding: 12,
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: 4,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+  };
+
+  const enquiryNotesContainer = mergeStyles(sectionStyle);
 
   const enquiryNotesHeader = mergeStyles({
-    color: '#fff',
+    color: labelColour,
     fontWeight: 600,
     fontSize: 13,
     lineHeight: 1.2,
@@ -84,16 +92,13 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const enquiryNotesContent = mergeStyles({
     whiteSpace: 'pre-wrap',
     fontSize: 14,
-    color: '#fff',
+    color: labelColour,
   });
 
-  const intakeContainer = mergeStyles({
-    display: 'flex',
-    flexDirection: 'column',
-  });
+  const intakeContainer = mergeStyles(sectionStyle);
 
   const intakeHeader = mergeStyles({
-    color: '#fff',
+    color: labelColour,
     fontWeight: 600,
     fontSize: 13,
     marginBottom: 4,
@@ -104,11 +109,11 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const toggleCcBccStyle = mergeStyles({
     color: colours.greyText,
-    cursor: "pointer",
+    cursor: 'pointer',
     fontSize: 12,
     marginTop: 6,
     selectors: {
-      ":hover": { color: colours.darkBlue },
+      ':hover': { color: labelColour },
 
     },
   });
@@ -118,22 +123,14 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const toCcBccRef = useRef<HTMLDivElement>(null);
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
-  const [rowSpacing, setRowSpacing] = useState(0);
+  const rowSpacing = 12; // simple consistent spacing
   // Static spacing below the enquiry notes
   const notesSpacing = 8;
   const [dealFormSaved, setDealFormSaved] = useState(false);
 
-  useLayoutEffect(() => {
-    if (toCcBccRef.current) {
-      const leftHeight = toCcBccRef.current.getBoundingClientRect().height;
-      // Align the "Subject" field with the "Amount" field. The amount field is
-      // spaced 14px below the service description while the left column uses an
-      // 8px gap. Always offset by this 6px difference and account for any extra
-      // height from the description box.
-      const spacing = Math.max(descHeight - leftHeight, 0) + 6;
-      setRowSpacing(spacing);
-    }
-  }, [descHeight, showCc, showBcc]);
+  // Previously aligned the subject field with the amount input using
+  // calculated spacing. With the simplified layout we use static spacing
+  // so this effect is no longer required.
 
     useEffect(() => {
     if (cc && !showCc) {
@@ -272,7 +269,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                               backgroundColor: "transparent",
                               color: colours.highlight,
                             },
-                            icon: { fontSize: 12, color: "#fff" },
+                            icon: { fontSize: 12, color: labelColour },
                           }}
                         />
                       </div>
@@ -312,7 +309,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                               backgroundColor: "transparent",
                               color: colours.highlight,
                             },
-                            icon: { fontSize: 12, color: "#fff" },
+                            icon: { fontSize: 12, color: labelColour },
                           }}
                         />
                       </div>

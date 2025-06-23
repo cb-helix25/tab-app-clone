@@ -6,6 +6,7 @@ import React, {
     useRef,
 } from 'react';
 import { Icon, mergeStyles, DefaultButton } from '@fluentui/react';
+import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -194,7 +195,6 @@ const AttendanceCompact = forwardRef<
         const targetDayLabel = weekDays[nextDay.getDay()];
         const targetDayStr = nextDay.toISOString().split('T')[0];
 
-        const nextDayLabel = weekDays[(londonNow.getDay() + 1) % 7];
         const [panelOpen, setPanelOpen] = useState(false);
         const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null);
 
@@ -230,12 +230,8 @@ const AttendanceCompact = forwardRef<
         const nextConfirmed = isConfirmedForWeek(nextWeekStart);
 
         const openConfirmationPanel = () => {
-            const now = new Date();
-            const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
-            let week: 'current' | 'next' = isThursdayAfterMidday ? 'next' : 'current';
-            if (week === 'current' && currentConfirmed && !nextConfirmed) week = 'next';
             setPanelOpen(true);
-            setTimeout(() => attendanceRef.current?.setWeek(week), 0);
+            setTimeout(() => attendanceRef.current?.setWeek('current'), 0);
         };
 
         useImperativeHandle(ref, () => ({
@@ -446,18 +442,11 @@ const AttendanceCompact = forwardRef<
                         <>
                             <div className={groupContainer}>{renderSnake()}</div>
                             <div style={{ marginTop: '8px', fontSize: '12px', color: colours.greyText }}>
-                                Showing: {targetDayLabel} | Next: {nextDayLabel}
-                            </div>
-                            {(!currentConfirmed || !nextConfirmed) && (
-                                <div style={{ marginTop: '8px' }}>
-                                    <DefaultButton text="Confirm Attendance" onClick={openConfirmationPanel} />
-                                    <div style={{ fontSize: '12px', color: colours.greyText, marginTop: '4px' }}>
-                                        {!currentConfirmed && !nextConfirmed
-                                            ? 'Unconfirmed: This and Next Week'
-                                            : !currentConfirmed
-                                                ? 'Unconfirmed: This Week'
-                                                : 'Unconfirmed: Next Week'}
+                                        Showing: {targetDayLabel}
                                     </div>
+                                    {!currentConfirmed && (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <DefaultButton text="Confirm Attendance" onClick={openConfirmationPanel} styles={sharedDefaultButtonStyles} />
                                 </div>
                             )}
                         </>

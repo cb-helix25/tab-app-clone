@@ -51,6 +51,13 @@ const App: React.FC<AppProps> = ({
   const [boardroomBookings, setBoardroomBookings] = useState<BoardroomBooking[] | null>(null);
   const [soundproofBookings, setSoundproofBookings] = useState<SoundproofPodBooking[] | null>(null);
   const [formsTabHovered, setFormsTabHovered] = useState(false);
+  const [formsSidebarPinned, setFormsSidebarPinned] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'forms') {
+      setFormsSidebarPinned(true);
+    }
+  }, [activeTab]);
 
   const handleAllMattersFetched = (fetchedMatters: Matter[]) => {
     setAllMattersFromHome(fetchedMatters);
@@ -74,6 +81,10 @@ const App: React.FC<AppProps> = ({
 
   const handleSoundproofBookingsFetched = (data: SoundproofPodBooking[]) => {
     setSoundproofBookings(data);
+  };
+
+  const handleFormsTabClick = () => {
+    setFormsSidebarPinned(true);
   };
 
   useEffect(() => {
@@ -226,6 +237,7 @@ const App: React.FC<AppProps> = ({
             ariaLabel="Main Navigation Tabs"
             user={userData[0]}
             onFormsHover={setFormsTabHovered}
+            onFormsClick={handleFormsTabClick}
           />
           <Navigator />
           <FormsSidebar
@@ -233,6 +245,8 @@ const App: React.FC<AppProps> = ({
             matters={allMattersFromHome || []}
             activeTab={activeTab}
             hovered={formsTabHovered}
+            pinned={formsSidebarPinned}
+            setPinned={setFormsSidebarPinned}
           />
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}

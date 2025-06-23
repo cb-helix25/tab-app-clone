@@ -61,38 +61,33 @@
     padding: 0;
     /* <- DO NOT add padding here */ }
 
-.detail-group summary {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 10px;
-    cursor: pointer;
-    list-style: none;
-    color: #061733;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-.detail-group summary .group-icon {
-    transition: color 0.2s;
-}
-
-.detail-group summary:hover {
-    background-color: #d6e8ff;
-    color: #3690CE;
-}
-
-.detail-group summary:hover .group-icon {
-    color: #3690CE;
-}
-
-.detail-group[open] summary {
-    background-color: #e7f1ff;
-    color: #3690CE;
-}
-
-.detail-group summary::-webkit-details-marker {
-    display: none;
-}
+        .detail-summary {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 10px;
+            cursor: pointer;
+            list-style: none;
+            color: #061733;
+            transition: background-color 0.2s, color 0.2s;
+        }
+    
+        .detail-summary .group-icon {
+            transition: color 0.2s;
+        }
+    
+        .detail-summary:hover {
+            background-color: #d6e8ff;
+            color: #3690CE;
+        }
+    
+        .detail-summary:hover .group-icon {
+            color: #3690CE;
+        }
+    
+        .detail-group.open .detail-summary {
+            background-color: #e7f1ff;
+            color: #3690CE;   }
 
 .group-icon {
     font-size: 16px;
@@ -124,8 +119,8 @@
             transform 0.3s ease;
     }
     
-    .detail-group[open] .detail-list,
-    .detail-group[open] .action-list {
+        .detail-group.open .detail-list,
+        .detail-group.open .action-list {
         max-height: 500px;
         opacity: 1;
         transform: scaleY(1);

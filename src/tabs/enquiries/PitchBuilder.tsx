@@ -2014,7 +2014,6 @@ function duplicateTemplateBlock(index: number) {
 
   const headerWrapperStyle = mergeStyles({
     backgroundColor: colours.sectionBackground,
-    color: '#fff',
     padding: 16,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,

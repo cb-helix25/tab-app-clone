@@ -28,6 +28,7 @@ interface CustomTabsProps {
   onHomeClick: () => void;
   user?: UserData;
   onFormsHover?: (hover: boolean) => void;
+  onFormsClick?: () => void;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -65,6 +66,7 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   onHomeClick,
   user,
   onFormsHover,
+  onFormsClick,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -81,6 +83,9 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   ) => {
     const clickedTab = tabs.find((tab) => tab.key === item?.props.itemKey);
     if (clickedTab?.disabled) {
+      if (clickedTab.key === 'forms' && onFormsClick) {
+        onFormsClick();
+      }
       ev?.preventDefault();
       return;
     }
