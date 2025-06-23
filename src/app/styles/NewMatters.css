@@ -1,8 +1,10 @@
 /* Styles adapted from the reference checkout process */
 .workflow-container {
+    width: 100%;
     padding: 40px;
     background: var(--helix-grey);
     min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .workflow-main {
