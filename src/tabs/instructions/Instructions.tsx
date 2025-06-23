@@ -85,8 +85,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   useEffect(() => {
     async function fetchData() {
-      // Always fetch Lukasz's instructions during testing so all users see the
-      // same data regardless of their own initials.
+      // During the pilot we always pull Lukasz's instructions so everyone
+      // sees populated data regardless of their own initials.
       const targetInitials = 'LZ';
 
       if (useLocalData) {
