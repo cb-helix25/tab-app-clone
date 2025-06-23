@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Stack,
   Text,
@@ -35,7 +35,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
   const [activePivot, setActivePivot] = useState<string>('instructions');
 
   const ACTION_BAR_HEIGHT = 48;
@@ -122,48 +121,39 @@ const Instructions: React.FC<InstructionsProps> = ({
       <>
         <div className={quickLinksStyle(isDarkMode)}>
           <QuickActionsCard
-            title={
-              instructionData[0]?.instructions?.[0]?.InstructionRef || 'No Data'
-            }
-            icon="OpenFile"
-            isDarkMode={isDarkMode}
-            onClick={() => setShowPreview(!showPreview)}
-            style={{ '--card-index': 0 } as React.CSSProperties}
-          />
-          <QuickActionsCard
             title="New Instruction"
             icon="Checklist"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 1 } as React.CSSProperties}
+            style={{ '--card-index': 0 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="New Matter"
             icon="Calendar"
             isDarkMode={isDarkMode}
             onClick={() => setShowNewMatterPage(true)}
-            style={{ '--card-index': 2 } as React.CSSProperties}
+            style={{ '--card-index': 1 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="EID Check"
             icon="IdCheck"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 3 } as React.CSSProperties}
+            style={{ '--card-index': 2 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="Risk Assessment"
             icon="Assessment"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 4 } as React.CSSProperties}
+            style={{ '--card-index': 3 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="Draft CCL"
             icon="OpenFile"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 5 } as React.CSSProperties}
+            style={{ '--card-index': 4 } as React.CSSProperties}
           />
         </div>
         <div className={pivotBarStyle(isDarkMode)}>
@@ -183,7 +173,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
     );
     return () => setContent(null);
-  }, [setContent, isDarkMode, instructionData, showPreview, activePivot]);
+  }, [setContent, isDarkMode, instructionData, activePivot]);
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
@@ -209,6 +199,8 @@ const Instructions: React.FC<InstructionsProps> = ({
       })
     );
   }, [instructionData]);
+
+  const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const deals = useMemo(
     () =>
@@ -261,6 +253,14 @@ const Instructions: React.FC<InstructionsProps> = ({
     console.log('EID check for', inst.InstructionRef);
   };
 
+  const handleOpenInstruction = (ref: string) => {
+    setActivePivot('instructions');
+    setTimeout(() => {
+      const el = instructionRefs.current[ref];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
+
   const gridContainerStyle = mergeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
@@ -300,11 +300,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       {activePivot === 'instructions' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          {showPreview && (
-            <pre style={{ whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(instructionData, null, 2)}
-            </pre>
-          )}
           <div className={gridContainerStyle}>
             {flattenedInstructions.map((instruction, idx) => {
               const row = Math.floor(idx / 4);
@@ -321,6 +316,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                   onOpenMatter={() => handleOpenMatter(instruction)}
                   onRiskAssessment={() => handleRiskAssessment(instruction)}
                   onEIDCheck={() => handleEIDCheck(instruction)}
+                  innerRef={(el) => {
+                    instructionRefs.current[instruction.InstructionRef] = el;
+                  }}
                 />
               );
             })}
@@ -342,6 +340,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                   animationDelay={animationDelay}
                   onFollowUp={
                     isClosed ? undefined : () => console.log('Follow up', deal.DealId)
+                  }
+                  onOpenInstruction={
+                    deal.InstructionRef ? () => handleOpenInstruction(deal.InstructionRef) : undefined
                   }
                 />
               );

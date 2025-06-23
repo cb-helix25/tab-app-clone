@@ -83,6 +83,7 @@ interface InstructionCardProps {
     onOpenMatter?: () => void;
     onRiskAssessment?: () => void;
     onEIDCheck?: () => void;
+    innerRef?: React.Ref<HTMLDivElement>;
 }
 
 const iconMap = {
@@ -101,13 +102,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     onOpenMatter,
     onRiskAssessment,
     onEIDCheck,
+    innerRef,
 }) => {
+    const stage = instruction.Stage?.toLowerCase();
+    const isCompleted = stage === 'completed';
+    const isInitialised = stage === 'initialised';
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
         padding: componentTokens.card.base.padding,
-        boxShadow: componentTokens.card.base.boxShadow,
+        boxShadow: isCompleted
+            ? `inset 0 0 8px ${colours.green}55, ${componentTokens.card.base.boxShadow}`
+            : componentTokens.card.base.boxShadow,
         color: colours.light.text,
         height: '100%',
+        border: `2px solid ${isCompleted ? colours.green : 'transparent'}`,
+        opacity: isCompleted ? 0.6 : 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         selectors: {
             ':hover': {
@@ -132,6 +141,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+
+    const bannerText = isCompleted
+        ? 'Instructions received'
+        : isInitialised
+            ? 'Pending Instructions'
+            : null;
+    const bannerClass = mergeStyles('instruction-banner', {
+        background: isCompleted
+            ? componentTokens.successBanner.background
+            : componentTokens.infoBanner.background,
+        borderLeft: isCompleted
+            ? componentTokens.successBanner.borderLeft
+            : componentTokens.infoBanner.borderLeft,
+        padding: componentTokens.infoBanner.padding,
+        fontSize: '0.875rem',
+    });
 
     const sections = [
         {
@@ -233,8 +258,25 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     ];
 
     return (
-        <div className={cardClass} style={style}>
-            <header className="instruction-header">{instruction.InstructionRef}</header>
+        <div className={cardClass} style={style} ref={innerRef}>
+            {bannerText && <div className={bannerClass}>{bannerText}</div>}
+            <header className="instruction-header">
+                {isCompleted && (
+                    <span className="completion-tick visible" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <polyline
+                                points="5,13 10,18 19,7"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
+                    </span>
+                )}
+                {instruction.InstructionRef}
+            </header>
             <div className="bottom-tabs">
                 {[
                     {

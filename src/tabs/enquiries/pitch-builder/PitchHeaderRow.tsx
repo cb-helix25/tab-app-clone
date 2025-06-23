@@ -68,47 +68,38 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 }) => {
 
   const enquiryNotesContainer = mergeStyles({
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    width: "100%",
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
   });
 
   const enquiryNotesHeader = mergeStyles({
-    background: colours.grey,
-    color: colours.darkBlue,
-    padding: '4px 8px',
+    color: '#fff',
     fontWeight: 600,
     fontSize: 13,
+    lineHeight: 1.2,
+    marginBottom: 4,
   });
 
   const enquiryNotesContent = mergeStyles({
-    background: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    padding: 12,
-    color: colours.darkBlue,
-    whiteSpace: "pre-wrap",
+    whiteSpace: 'pre-wrap',
     fontSize: 14,
+    color: '#fff',
   });
 
   const intakeContainer = mergeStyles({
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
-    overflow: "hidden",
+    display: 'flex',
+    flexDirection: 'column',
   });
 
   const intakeHeader = mergeStyles({
-    background: colours.darkBlue,
-    color: "#fff",
-    padding: "4px 8px",
+    color: '#fff',
     fontWeight: 600,
     fontSize: 13,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    marginBottom: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   });
 
   const toggleCcBccStyle = mergeStyles({
@@ -158,40 +149,27 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
 
   const sideContainerStyle = mergeStyles({
-    backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-    borderRadius: 0,
-    boxShadow: isDarkMode
-      ? "0 4px 12px " + colours.dark.border
-      : "0 4px 12px " + colours.light.border,
-    padding: 24,
-    width: "100%",
-    transition: "background 0.3s, box-shadow 0.3s",
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    gap: 8,
   });
 
   const dealSideContainerStyle = (saved: boolean) =>
     mergeStyles(sideContainerStyle, {
-      border: `2px solid ${saved ? colours.green : "transparent"}`,
-      boxShadow: saved
-        ? `inset 0 0 8px ${colours.green}55, ${
-            isDarkMode
-              ? "0 4px 12px " + colours.dark.border
-              : "0 4px 12px " + colours.light.border
-          }`
-        : isDarkMode
-        ? "0 4px 12px " + colours.dark.border
-        : "0 4px 12px " + colours.light.border,
+      border: saved ? `2px solid ${colours.green}` : 'none',
       opacity: saved ? 0.6 : 1,
-      transition:
-        "background 0.3s, box-shadow 0.3s, border 0.3s ease, opacity 0.3s ease",
     });
 
   const verticalSeparatorStyle = mergeStyles({
-    margin: "0 0px",
-    alignSelf: "stretch",
+    margin: '0',
+    alignSelf: 'stretch',
+    display: 'none',
+    '@media (min-width: 768px)': {
+      display: 'block',
+    },
     selectors: {
-      "::before": {
+      '::before': {
         backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
         width: 2,
       },
@@ -200,29 +178,21 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   return (
     <Stack
-      horizontal
-      tokens={{ childrenGap: 20 }}
-      verticalAlign="start"
+      tokens={{ childrenGap: 16 }}
       styles={{
         root: {
-          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          borderRadius: 0,
-          boxShadow: isDarkMode
-            ? '0 4px 12px ' + colours.dark.border
-            : '0 4px 12px ' + colours.light.border,
-          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
           width: '100%',
-          position: 'relative',
-          transition: 'background 0.3s, box-shadow 0.3s',
+          gap: 16,
+          '@media (min-width: 768px)': {
+            flexDirection: 'row',
+          },
         },
       }}
     >
         {/* LEFT SIDE (Details) */}
-        <Stack
-          tokens={{ childrenGap: 8 }}
-          styles={{ root: { width: "50%" } }}
-          className={sideContainerStyle}
-        >
+      <Stack className={sideContainerStyle}>
         {/* Row 1: Enquiry Details */}
         <Stack
           style={{
@@ -408,11 +378,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </Stack>
         <Separator vertical className={verticalSeparatorStyle} />
         {/* RIGHT SIDE (Deal Form) */}
-        <Stack
-          styles={{ root: { width: "50%", display: "flex" } }}
-          verticalAlign="stretch"
-          className={dealSideContainerStyle(dealFormSaved)}
-        >
+      <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
           <DealCaptureForm
             enquiry={enquiry}
             onSubmit={handleDealFormSubmit}

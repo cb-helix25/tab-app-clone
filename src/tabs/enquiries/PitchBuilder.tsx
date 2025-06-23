@@ -2013,15 +2013,16 @@ function duplicateTemplateBlock(index: number) {
   });
 
   const headerWrapperStyle = mergeStyles({
-    backgroundColor: colours.darkBlue,
-    padding: '12px 24px',
+    backgroundColor: colours.sectionBackground,
+    color: '#fff',
+    padding: 16,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   });
 
   const bodyWrapperStyle = mergeStyles({
-    padding: '30px',
-    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+    padding: 24,
+    backgroundColor: '#fff',
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
     display: 'flex',
@@ -2162,7 +2163,7 @@ function handleScrollToBlock(blockTitle: string) {
 
   return (
     <Stack className={containerStyle}>
-      <div className={headerWrapperStyle}>
+      <header className={headerWrapperStyle}>
         <PitchHeaderRow
         enquiry={enquiry}
         to={to}
@@ -2185,10 +2186,10 @@ function handleScrollToBlock(blockTitle: string) {
         dealId={dealId}
         clientIds={clientIds}
         isDarkMode={isDarkMode}
-      />
-      </div>
+        />
+      </header>
 
-      <div className={bodyWrapperStyle}>
+      <main className={bodyWrapperStyle}>
       {/* Row: Combined Email Editor and Template Blocks */}
       <EditorAndTemplateBlocks
         isDarkMode={isDarkMode}
@@ -2377,7 +2378,7 @@ function handleScrollToBlock(blockTitle: string) {
         type={toast?.type || 'info'}
         loading={toast?.loading}
       />
-      </div>
+      </main>
     </Stack>
   );
   

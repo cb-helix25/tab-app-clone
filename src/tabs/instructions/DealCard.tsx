@@ -33,6 +33,7 @@ interface DealCardProps {
     deal: DealInfo;
     onFollowUp?: () => void;
     animationDelay?: number;
+    onOpenInstruction?: () => void;
 }
 
 const leftBorderColor = (area?: string) => {
@@ -67,6 +68,7 @@ const DealCard: React.FC<DealCardProps> = ({
     deal,
     onFollowUp,
     animationDelay = 0,
+    onOpenInstruction,
 }) => {
     const { isDarkMode } = useTheme();
 
@@ -144,6 +146,7 @@ const DealCard: React.FC<DealCardProps> = ({
         borderRadius: componentTokens.card.base.borderRadius,
         padding: componentTokens.card.base.padding,
         color: isDarkMode ? colours.dark.text : colours.light.text,
+        cursor: onOpenInstruction ? 'pointer' : 'default',
         borderLeft: `4px solid ${leftBorderColor(deal.AreaOfWork)}`,
         border: `2px solid ${isClosed ? colours.green : 'transparent'}`,
         boxShadow: isClosed
@@ -188,7 +191,7 @@ const DealCard: React.FC<DealCardProps> = ({
     
 
     return (
-        <div className={cardClass} style={style}>
+        <div className={cardClass} style={style} onClick={onOpenInstruction}>
             {!isClosed && pitchInfo.text && (
                 <div className={bannerClass}>{pitchInfo.text}</div>
             )}
@@ -265,7 +268,7 @@ const DealCard: React.FC<DealCardProps> = ({
                 )}
             </div>
             {onFollowUp && (
-                <div className="deal-cta">
+                <div className="deal-cta" onClick={(e) => e.stopPropagation()}>
                     <PrimaryButton
                         text="Follow Up"
                         onClick={onFollowUp}
