@@ -166,13 +166,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     animation: 'subtlePulse 1.5s infinite ease-in-out', // Subtle animation
   });
 
+  const dynamicClasses = mergeStyles(combinedCardStyle, selected && 'selected');
+
   return (
     <div
-      className={mergeStyles(
-        "quickActionCard icon-hover",
-        combinedCardStyle,
-        selected && 'selected'
-      )}
+      className={`quickActionCard icon-hover ${dynamicClasses}`}
       style={{ ...cardVars, ...style }}
       onClick={onClick}
       role="button"

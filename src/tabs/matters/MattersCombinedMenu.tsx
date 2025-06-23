@@ -228,13 +228,14 @@ const practiceAreaButtonStyle = (isSelected: boolean, isDarkMode: boolean, group
     padding: '4px 8px',
     borderRadius: '4px',
     cursor: 'pointer',
-    border: '1px solid #ccc',
+    border: '2px solid transparent',
     fontFamily: 'Raleway, sans-serif',
     whiteSpace: 'nowrap',
-    transition: 'background-color 0.3s, color 0.3s, transform 0.1s',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
+    transition: 'background-color 0.2s, transform 0.1s',
     selectors: {
       ':hover': {
-        backgroundColor: isDarkMode ? '#555' : '#f3f2f1',
+        backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
         transform: 'scale(1.05)',
       },
       ':active': {
@@ -246,8 +247,8 @@ const practiceAreaButtonStyle = (isSelected: boolean, isDarkMode: boolean, group
       },
     },
     ...(isSelected && {
-      border: `1px solid ${groupColor}`,
-      backgroundColor: `${groupColor}20`,
+      borderColor: groupColor,
+      backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
     }),
   });
 
