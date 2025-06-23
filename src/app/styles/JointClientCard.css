@@ -1,0 +1,8 @@
+.jointClientCard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: 100%;
+    opacity: 0;
+    animation: dropIn 0.3s ease forwards;
+    animation-delay: var(--animation-delay, 0s); }

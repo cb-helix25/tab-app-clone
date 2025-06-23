@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Stack,
-  Text,
   mergeStyles,
   PrimaryButton,
   Pivot,
@@ -14,6 +13,7 @@ import { colours } from '../../app/styles/colours';
 import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
+import JointClientCard, { ClientInfo } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
@@ -158,7 +158,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           >
             <PivotItem headerText="Instructions" itemKey="instructions" />
             <PivotItem headerText="Deals" itemKey="deals" />
-            <PivotItem headerText="Joint Clients" itemKey="clients" />
+            <PivotItem headerText="Clients" itemKey="clients" />
             <PivotItem headerText="Risk & Compliance" itemKey="risk" />
           </Pivot>
         </div>
@@ -188,7 +188,17 @@ const Instructions: React.FC<InstructionsProps> = ({
         const eid = prospect.electronicIDChecks?.find(
           (e) => e.MatterId === inst.InstructionRef
         );
-        return { ...inst, deal, prospectId: prospect.prospectId, risk, eid };
+        const docs = prospect.documents?.filter(
+          (d) => d.InstructionRef === inst.InstructionRef
+        );
+        return {
+          ...inst,
+          deal,
+          prospectId: prospect.prospectId,
+          risk,
+          eid,
+          documentCount: docs ? docs.length : 0,
+        };
       })
     );
   }, [instructionData]);
@@ -206,8 +216,15 @@ const Instructions: React.FC<InstructionsProps> = ({
       ),
     [instructionData]
   );
-  const jointClients = useMemo(
-    () => instructionData.flatMap((p) => p.jointClients ?? []),
+  const clients: ClientInfo[] = useMemo(
+    () =>
+      instructionData.flatMap((p) => {
+        const lead = (p.deals ?? [])
+          .filter((d) => d.LeadClientEmail)
+          .map((d) => ({ ClientEmail: d.LeadClientEmail, Lead: true }));
+        const joints = (p.jointClients ?? []).map((jc) => ({ ...jc, Lead: false }));
+        return [...lead, ...joints];
+      }),
     [instructionData]
   );
   const riskData = useMemo(
@@ -223,8 +240,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     [instructionData]
   );
 
-  const dealColumns = useMemo(() => (deals[0] ? Object.keys(deals[0]) : []), [deals]);
-  const jointColumns = useMemo(() => (jointClients[0] ? Object.keys(jointClients[0]) : []), [jointClients]);
   const riskColumns = useMemo(() => (riskData[0] ? Object.keys(riskData[0]) : []), [riskData]);
 
   const formatValue = (value: any) => {
@@ -313,6 +328,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   instruction={instruction}
                   risk={instruction.risk}
                   eid={instruction.eid}
+                  documentCount={instruction.documentCount}
                   prospectId={instruction.prospectId}
                   animationDelay={animationDelay}
                   onOpenMatter={() => handleOpenMatter(instruction)}
@@ -354,25 +370,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       )}
       {activePivot === 'clients' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={tableContainerStyle}>
-          <table className="simple-table">
-            <thead>
-              <tr>
-                {jointColumns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {jointClients.map((c, idx) => (
-                <tr key={idx}>
-                  {jointColumns.map((col) => (
-                    <td key={col}>{formatValue(c[col])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className={gridContainerStyle}>
+            {clients.map((c, idx) => {
+              const row = Math.floor(idx / 4);
+              const col = idx % 4;
+              const animationDelay = row * 0.2 + col * 0.1;
+              return <JointClientCard key={idx} client={c} animationDelay={animationDelay} />;
+            })}
           </div>
         </Stack>
       )}

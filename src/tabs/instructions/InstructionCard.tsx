@@ -80,6 +80,7 @@ interface InstructionCardProps {
     prospectId?: number;
     risk?: { RiskAssessmentResult?: string; RiskScore?: number } | null;
     eid?: { EIDStatus?: string } | null;
+    documentCount?: number;
     animationDelay?: number;
     onOpenMatter?: () => void;
     onRiskAssessment?: () => void;
@@ -99,6 +100,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     prospectId,
     risk,
     eid,
+    documentCount,
     animationDelay = 0,
     onOpenMatter,
     onRiskAssessment,
@@ -277,6 +279,32 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }));
     };
 
+    const proofOfIdComplete = Boolean(
+        instruction.PassportNumber || instruction.DriversLicenseNumber
+    );
+    const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
+    const paymentComplete = paymentStatusRaw === 'successful';
+    const paymentFailed = paymentStatusRaw === 'failed';
+    const documentsComplete = (documentCount ?? 0) > 0;
+
+    const statusData = [
+        {
+            key: 'id',
+            label: 'ID',
+            status: proofOfIdComplete ? 'complete' : 'pending',
+        },
+        {
+            key: 'payment',
+            label: 'Payment',
+            status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
+        },
+        {
+            key: 'docs',
+            label: 'Docs',
+            status: documentsComplete ? 'complete' : 'pending',
+        },
+    ];
+
     return (
         <div className={cardClass} style={style} ref={innerRef}>
             <header className="instruction-header" onClick={() => setCollapsed(!collapsed)}>
@@ -298,6 +326,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <FaChevronDown className="chevron-icon" />
             </header>
             {bannerText && <div className={bannerClass}>{bannerText}</div>}
+
+            <div className="status-preview">
+                {statusData.map((stat) => (
+                    <div key={stat.key} className={`status-box ${stat.status}`}>
+                        <span className="status-label">{stat.label}</span>
+                        <span className="status-icon">
+                            {stat.status === 'complete'
+                                ? '✔'
+                                : stat.status === 'failed'
+                                    ? '✖'
+                                    : '…'}
+                        </span>
+                    </div>
+                ))}
+            </div>
 
             <div className="card-content">
                 <div className="instruction-details">
