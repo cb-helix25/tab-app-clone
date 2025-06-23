@@ -14,20 +14,20 @@ export interface RiskCore {
 
 export interface RiskAssessmentProps {
     riskCore: RiskCore;
-    setRiskCore: (v: RiskCore) => void;
+    setRiskCore: React.Dispatch<React.SetStateAction<RiskCore>>;
     consideredClientRisk: boolean;
-    setConsideredClientRisk: (v: boolean) => void;
+    setConsideredClientRisk: React.Dispatch<React.SetStateAction<boolean>>;
     consideredTransactionRisk: boolean;
-    setConsideredTransactionRisk: (v: boolean) => void;
+    setConsideredTransactionRisk: React.Dispatch<React.SetStateAction<boolean>>;
     transactionRiskLevel: string;
-    setTransactionRiskLevel: (v: string) => void;
+    setTransactionRiskLevel: React.Dispatch<React.SetStateAction<string>>;
     consideredFirmWideSanctions: boolean;
-    setConsideredFirmWideSanctions: (v: boolean) => void;
+    setConsideredFirmWideSanctions: React.Dispatch<React.SetStateAction<boolean>>;
     consideredFirmWideAML: boolean;
-    setConsideredFirmWideAML: (v: boolean) => void;
+    setConsideredFirmWideAML: React.Dispatch<React.SetStateAction<boolean>>;
     onContinue: () => void;
     isComplete: () => boolean;
-}
+  }
 
 const riskOptions = [
     { key: 'Low', text: 'Low' },

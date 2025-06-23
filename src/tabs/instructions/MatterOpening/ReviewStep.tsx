@@ -23,20 +23,6 @@ interface ReviewStepProps {
     opponentSolicitorCompany: string;
     opponentSolicitorEmail: string;
     noConflict: boolean;
-    riskCore: {
-        clientType: string;
-        destinationOfFunds: string;
-        fundsType: string;
-        clientIntroduced: string;
-        limitation: string;
-        sourceOfFunds: string;
-        valueOfInstruction: string;
-    };
-    consideredClientRisk: boolean;
-    consideredTransactionRisk: boolean;
-    transactionRiskLevel: string;
-    consideredFirmWideSanctions: boolean;
-    consideredFirmWideAML: boolean;
     onBuild: () => void;
 }
 
@@ -60,12 +46,6 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
     opponentSolicitorCompany,
     opponentSolicitorEmail,
     noConflict,
-    riskCore,
-    consideredClientRisk,
-    consideredTransactionRisk,
-    transactionRiskLevel,
-    consideredFirmWideSanctions,
-    consideredFirmWideAML,
     onBuild,
 }) => (
     <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
@@ -87,13 +67,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
             <strong>Opponent Details</strong>: <br />
             Opponent: {opponentName || 'N/A'} ({opponentEmail || 'N/A'}) <br />
             Opponent Solicitor: {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'}) <br />
-            <strong>Conflict of Interest</strong>: {noConflict ? 'There is no Conflict of Interest' : 'There is a Conflict of Interest'} <br /><br />
-            <strong>Risk Assessment</strong>:<br />
-            Core Risk Factors: {JSON.stringify(riskCore)} <br />
-            Client Risk: {consideredClientRisk ? 'Yes' : 'No'} <br />
-            Transaction Risk: {consideredTransactionRisk ? transactionRiskLevel : 'No'} <br />
-            Firm Wide Sanctions: {consideredFirmWideSanctions ? 'Yes' : 'No'}<br />
-            AML: {consideredFirmWideAML ? 'Yes' : 'No'} <br />
+            <strong>Conflict of Interest</strong>: {noConflict ? 'There is no Conflict of Interest' : 'There is a Conflict of Interest'} <br />
         </Text>
         <PrimaryButton text="Build Matter" onClick={onBuild} styles={sharedPrimaryButtonStyles} />
     </Stack>

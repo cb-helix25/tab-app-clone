@@ -281,6 +281,16 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
           minWidth: '100%',
           zIndex: 1100,
         },
+        optionsContainer: {
+          selectors: {
+            '.ms-ComboBox-option': {
+              height: '32px',
+              lineHeight: '32px',
+              paddingTop: '4px',
+              paddingBottom: '4px',
+            },
+          },
+        },
       }}
     />
   );

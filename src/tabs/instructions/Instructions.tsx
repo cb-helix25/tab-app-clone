@@ -17,6 +17,7 @@ import JointClientCard, { ClientInfo } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
 import NewMatters from './NewMatters';
+import RiskAssessmentPage from './RiskAssessmentPage';
 
 interface InstructionsProps {
   userInitials: string;
@@ -34,6 +35,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const { setContent } = useNavigator();
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+  const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('instructions');
 
@@ -145,7 +147,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             title="Draft CCL"
             icon="OpenFile"
             isDarkMode={isDarkMode}
-            onClick={() => { }}
+            onClick={() => setShowRiskPage(true)}
             style={{ '--card-index': 3 } as React.CSSProperties}
           />
         </div>
@@ -254,7 +256,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   };
 
   const handleRiskAssessment = (inst: any) => {
-    console.log('Risk assessment for', inst.InstructionRef);
+    setSelectedInstruction(inst);
+    setShowRiskPage(true);
   };
 
   const handleEIDCheck = (inst: any) => {
@@ -309,6 +312,14 @@ const Instructions: React.FC<InstructionsProps> = ({
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
         />
+      </Stack>
+    );
+  }
+
+  if (showRiskPage) {
+    return (
+      <Stack tokens={dashboardTokens} className={containerStyle}>
+        <RiskAssessmentPage onBack={() => setShowRiskPage(false)} />
       </Stack>
     );
   }

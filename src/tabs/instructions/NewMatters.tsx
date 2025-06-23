@@ -19,7 +19,7 @@ import FolderStructureStep from './MatterOpening/FolderStructureStep';
 import DisputeValueStep from './MatterOpening/DisputeValueStep';
 import SourceStep from './MatterOpening/SourceStep';
 import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
-import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
+
 import ReviewStep from './MatterOpening/ReviewStep';
 
 const practiceAreasByArea: { [key: string]: string[] } = {
@@ -110,7 +110,6 @@ type StepKey =
     | 'disputeValue'
     | 'source'
     | 'opponentDetails'
-    | 'riskAssessment'
     | 'review';
 
 const stepTitles: { [key in StepKey]: string } = {
@@ -124,7 +123,6 @@ const stepTitles: { [key in StepKey]: string } = {
     disputeValue: 'Select Value of the Dispute',
     source: 'Select Source & Confirm Referrer (if applicable)',
     opponentDetails: 'Confirm Opponent Details',
-    riskAssessment: 'Risk Assessment',
     review: 'Review & Build Matter',
 };
 
@@ -183,21 +181,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
     const [noConflict, setNoConflict] = useState(false);
-
-    const [riskCore, setRiskCore] = useState<RiskCore>({
-        clientType: '',
-        destinationOfFunds: '',
-        fundsType: '',
-        clientIntroduced: '',
-        limitation: '',
-        sourceOfFunds: '',
-        valueOfInstruction: '',
-    });
-    const [consideredClientRisk, setConsideredClientRisk] = useState(false);
-    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(false);
-    const [transactionRiskLevel, setTransactionRiskLevel] = useState('');
-    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(false);
-    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(false);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12);
     const [poidSearchTerm, setPoidSearchTerm] = useState('');
@@ -269,15 +252,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     opponentSolicitorEmail &&
                     noConflict
                 );
-            case 'riskAssessment':
-                return (
-                    Object.values(riskCore).every((v) => v !== '') &&
-                    consideredClientRisk &&
-                    consideredTransactionRisk &&
-                    transactionRiskLevel !== '' &&
-                    consideredFirmWideSanctions &&
-                    consideredFirmWideAML
-                );
             case 'review':
                 return false;
             default:
@@ -296,7 +270,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
         'disputeValue',
         'source',
         'opponentDetails',
-        'riskAssessment',
         'review',
     ];
 
@@ -334,7 +307,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 <div>Solicitor: {opponentSolicitorName || '-'}</div>
             </div>
         ),
-        riskAssessment: <div>Risk: {transactionRiskLevel || '-'}</div>,
         review: null,
     }), [
         selectedDate,
@@ -352,7 +324,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
         referrerName,
         opponentName,
         opponentSolicitorName,
-        transactionRiskLevel,
     ]);
 
     const renderStepContent = (step: StepKey) => {
@@ -471,25 +442,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         onContinue={() => setOpenStep(10)}
                     />
                 );
-            case 'riskAssessment':
-                return (
-                    <RiskAssessment
-                        riskCore={riskCore}
-                        setRiskCore={setRiskCore}
-                        consideredClientRisk={consideredClientRisk}
-                        setConsideredClientRisk={setConsideredClientRisk}
-                        consideredTransactionRisk={consideredTransactionRisk}
-                        setConsideredTransactionRisk={setConsideredTransactionRisk}
-                        transactionRiskLevel={transactionRiskLevel}
-                        setTransactionRiskLevel={setTransactionRiskLevel}
-                        consideredFirmWideSanctions={consideredFirmWideSanctions}
-                        setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
-                        consideredFirmWideAML={consideredFirmWideAML}
-                        setConsideredFirmWideAML={setConsideredFirmWideAML}
-                        onContinue={() => setOpenStep(11)}
-                        isComplete={() => isStepComplete('riskAssessment')}
-                    />
-                );
             case 'review':
                 return (
                     <ReviewStep
@@ -512,12 +464,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         opponentSolicitorCompany={opponentSolicitorCompany}
                         opponentSolicitorEmail={opponentSolicitorEmail}
                         noConflict={noConflict}
-                        riskCore={riskCore}
-                        consideredClientRisk={consideredClientRisk}
-                        consideredTransactionRisk={consideredTransactionRisk}
-                        transactionRiskLevel={transactionRiskLevel}
-                        consideredFirmWideSanctions={consideredFirmWideSanctions}
-                        consideredFirmWideAML={consideredFirmWideAML}
                         onBuild={() => console.log('Matter built')}
                     />
                 );
