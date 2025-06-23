@@ -104,6 +104,7 @@ const sectionContainer = (isDarkMode: boolean) =>
 const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTab, hovered }) => {
     const { isDarkMode } = useTheme();
     const [isOpen, setIsOpen] = React.useState(false);
+    const [pinned, setPinned] = React.useState(false);
     const [expanded, setExpanded] = React.useState<{ [title: string]: boolean }>(
         {},
     );
@@ -127,16 +128,24 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTa
     }, [isOpen, updateTop]);
 
     React.useEffect(() => {
-        setIsOpen(false);
+        if (activeTab === "forms") {
+            setPinned(true);
+            setIsOpen(true);
+        } else {
+            setPinned(false);
+            setIsOpen(false);
+        }
     }, [activeTab]);
 
     React.useEffect(() => {
-        if (hovered) {
-            setIsOpen(true);
-        } else {
-            setIsOpen(false);
+        if (!pinned) {
+            if (hovered) {
+                setIsOpen(true);
+            } else {
+                setIsOpen(false);
+            }
         }
-    }, [hovered]);
+    }, [hovered, pinned]);
 
     const toggle = (title: string) => {
         setExpanded((p) => ({ ...p, [title]: !p[title] }));
@@ -158,7 +167,15 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({ userData, matters, activeTa
       <>
             <div
                 className={handleStyle(isOpen, isDarkMode, sidebarTop)}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => {
+                    if (pinned) {
+                        setPinned(false);
+                        setIsOpen(false);
+                    } else {
+                        setPinned(true);
+                        setIsOpen(true);
+                    }
+                }}
                 aria-label="Toggle Forms Sidebar"
             >
                 <IconButton
