@@ -271,6 +271,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: 'border-box',
   });
 
+  const instructionColumnStyle = mergeStyles({
+    columnCount: 2,
+    columnGap: '24px',
+    maxWidth: '1200px',
+    width: '100%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
+  });
+
   const tableContainerStyle = mergeStyles({
     overflowX: 'auto',
     width: '100%',
@@ -300,10 +309,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       {activePivot === 'instructions' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={gridContainerStyle}>
+          <div className={instructionColumnStyle}>
             {flattenedInstructions.map((instruction, idx) => {
-              const row = Math.floor(idx / 4);
-              const col = idx % 4;
+              const row = Math.floor(idx / 2);
+              const col = idx % 2;
               const animationDelay = row * 0.2 + col * 0.1;
               return (
                 <InstructionCard
@@ -316,7 +325,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   onOpenMatter={() => handleOpenMatter(instruction)}
                   onRiskAssessment={() => handleRiskAssessment(instruction)}
                   onEIDCheck={() => handleEIDCheck(instruction)}
-                  innerRef={(el) => {
+                  innerRef={(el: HTMLDivElement | null) => {
                     instructionRefs.current[instruction.InstructionRef] = el;
                   }}
                 />

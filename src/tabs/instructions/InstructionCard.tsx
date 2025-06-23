@@ -13,6 +13,7 @@ import {
     FaIdCard,
     FaMoneyBillWave,
     FaInfoCircle,
+    FaChevronDown,
 } from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
@@ -114,7 +115,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             ? `inset 0 0 8px ${colours.green}55, ${componentTokens.card.base.boxShadow}`
             : componentTokens.card.base.boxShadow,
         color: colours.light.text,
-        height: '100%',
+        height: 'auto',
         border: `2px solid ${isCompleted ? colours.green : 'transparent'}`,
         opacity: isCompleted ? 0.6 : 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
@@ -141,6 +142,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+
+    const [collapsed, setCollapsed] = useState(false);
 
     const bannerText = isCompleted
         ? 'Instructions received'
@@ -259,8 +262,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style} ref={innerRef}>
-            {bannerText && <div className={bannerClass}>{bannerText}</div>}
-            <header className="instruction-header">
+            <header className="instruction-header" onClick={() => setCollapsed(!collapsed)}>
                 {isCompleted && (
                     <span className="completion-tick visible" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
@@ -275,90 +277,66 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         </svg>
                     </span>
                 )}
-                {instruction.InstructionRef}
+                <span className="header-title">{instruction.InstructionRef}</span>
+                <FaChevronDown className="chevron-icon" />
             </header>
-            <div className="bottom-tabs">
-                {[
-                    {
-                        key: 'eid' as const,
-                        label: 'Verify ID',
-                        icon: iconMap.eid,
-                        onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                    },
-                    {
-                        key: 'risk' as const,
-                        label: 'Assess Risk',
-                        icon: iconMap.risk,
-                        onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
-                    },
-                    {
-                        key: 'matter' as const,
-                        label: 'Open Matter',
-                        icon: iconMap.matter,
-                        onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
-                        disabled: openDisabled,
-                    },
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        type="button"
-                        className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}`}
-                        onClick={tab.onClick}
-                        aria-label={tab.label}
-                        disabled={tab.disabled}
-                    >
-                        <span className="icon-hover">
-                            {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
-                            {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
-                        </span>
-                        <span className="label">{tab.label}</span>
-                    </button>
-                ))}
-            </div>
-            <div className="instruction-details">
-                {sections.map((section) => {
-                    const items: [string, string][] = section.fields as any;
-                    const details = items
-                        .map(([key, label]) => {
-                            const raw = (instruction as any)[key];
-                            const val = formatValue(key, raw);
-                            if (val === null || val === undefined || val === '') return null;
-                            return (
-                                <li key={key}><strong>{label}:</strong> {String(val)}</li>
-                            );
-                        })
-                        .filter(Boolean);
+            {bannerText && <div className={bannerClass}>{bannerText}</div>}
 
-                    // Append deal/prospect fields to General section
-                    if (section.title === 'General') {
-                        if (prospectId !== undefined) {
-                            details.unshift(<li key="prospect"><strong>Prospect ID:</strong> {prospectId}</li>);
-                        }
-                        if (deal?.ServiceDescription) {
-                            details.push(<li key="service"><strong>Service:</strong> {deal.ServiceDescription}</li>);
-                        }
-                        if (deal?.AreaOfWork) {
-                            details.push(<li key="area"><strong>Area:</strong> {deal.AreaOfWork}</li>);
-                        }
-                        if (deal?.Amount !== undefined) {
-                            details.push(<li key="amount"><strong>Amount:</strong> £{deal.Amount}</li>);
-                        }
-                    }
+            <div className={`card-content ${collapsed ? 'collapsed' : ''}`}>
+                <div className="instruction-details">
+                    {sections.map((section) => {
+                        const items = section.fields as [string, string][];
+                        const details = items
+                            .map(([key, label]) => {
+                                const raw = (instruction as any)[key];
+                                const val = formatValue(key, raw);
+                                if (val == null || val === '') return null;
+                                return <li key={key}><strong>{label}:</strong> {String(val)}</li>;
+                            })
+                            .filter(Boolean);
 
-                    if (details.length === 0) return null;
+                        if (section.title === 'General') {
+                            if (prospectId != null) details.unshift(<li key="prospect"><strong>Prospect ID:</strong> {prospectId}</li>);
+                            if (deal?.ServiceDescription) details.push(<li key="service"><strong>Service:</strong> {deal.ServiceDescription}</li>);
+                            if (deal?.AreaOfWork) details.push(<li key="area"><strong>Area:</strong> {deal.AreaOfWork}</li>);
+                            if (deal?.Amount != null) details.push(<li key="amount"><strong>Amount:</strong> £{deal.Amount}</li>);
+                        }
 
-                    return (
-                        <details className="detail-group" key={section.title} open={section.title === 'General'}>
-                            <summary>{section.icon} {section.title}</summary>
-                            <ul className="detail-list">
-                                {details}
-                            </ul>
-                        </details>
-                    );
-                })}
+                        if (!details.length) return null;
+                        return (
+                            <details className="detail-group" key={section.title} open={section.title === 'General'}>
+                                <summary>{section.icon} {section.title}</summary>
+                                <ul className="detail-list">{details}</ul>
+                            </details>
+                        );
+                    })}
+                </div>
+
+                <div className="bottom-tabs">
+                    {[
+                        { key: 'eid', label: 'Verify ID', icon: iconMap.eid, onClick: () => { setActiveTab('eid'); onEIDCheck?.(); } },
+                        { key: 'risk', label: 'Assess Risk', icon: iconMap.risk, onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); } },
+                        { key: 'matter', label: 'Open Matter', icon: iconMap.matter, onClick: () => { setActiveTab('matter'); onOpenMatter?.(); }, disabled: openDisabled },
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}`}
+                            onClick={tab.onClick}
+                            aria-label={tab.label}
+                            disabled={tab.disabled}
+                        >
+                            <span className="icon-hover">
+                                {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
+                                {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
+                            </span>
+                            <span className="label">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
-    );
+);
 };
 
 export default InstructionCard;

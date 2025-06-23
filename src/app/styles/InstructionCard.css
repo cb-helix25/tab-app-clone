@@ -5,21 +5,41 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    height: 100%;
+    width: 100%;
+        margin-bottom: 24px;
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
     overflow: hidden;
     border-radius: 0;
+    break-inside: avoid;
 }
 
 .instruction-header {
     background-color: #061733;
     color: #ffffff;
     padding: 12px 12px;
-        font-size: 16px;
+    font-size: 16px;
     font-weight: 600;
     margin: -12px -16px 8px -20px;
+    display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+    
+    .header-title {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .chevron-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .instructionCard.collapsed .chevron-icon {
+        transform: rotate(-90deg);
 }
 
 .instruction-details {
@@ -247,6 +267,16 @@
     opacity: 1;
     transform: scale(1);
     animation: tickPop 0.3s ease;
+}
+
+.card-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    max-height: 1000px;
+}
+
+.instructionCard.collapsed .card-content {
+    max-height: 0;
 }
 
 @keyframes tickPop {
