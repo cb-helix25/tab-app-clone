@@ -76,7 +76,7 @@ export function removeHighlightSpans(html: string): string {
     el.removeAttribute('data-link');
     el.removeAttribute('contenteditable');
   });
-  const labels = tempDiv.querySelectorAll('.block-label');
+  const labels = tempDiv.querySelectorAll('.block-label, .block-label-display');
   labels.forEach(el => el.remove());
   return tempDiv.innerHTML;
 }

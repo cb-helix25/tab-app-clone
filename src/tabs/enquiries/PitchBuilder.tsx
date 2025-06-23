@@ -145,6 +145,16 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       pointer-events: none;
       z-index: 10;
     }
+    .block-label-display {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      font-size: 10px;
+      color: ${colours.greyText};
+      opacity: 0.7;
+      pointer-events: none;
+      user-select: none;
+    }
     .option-bubble {
       display: block;
       background: ${colours.highlightBlue};
@@ -201,15 +211,16 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .block-main {
       transition: margin-right 0.2s ease;
+      position: relative;
     }
     .block-container:hover .block-main {
-      margin-right: 50%;
+      margin-right: 45%;
     }
     .block-sidebar {
       position: absolute;
       top: 0;
       right: 0;
-      width: 50%;
+      width: 45%;
       height: 100%;
       border: 1px solid ${colours.grey};
       padding: 4px;
@@ -217,7 +228,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: flex;
       flex-direction: column;
       gap: 4px;
-      background: ${colours.grey};
+      background: rgba(255,255,255,0.95);
       transform: translateX(100%);
       transition: transform 0.2s ease;
       pointer-events: none;
@@ -231,7 +242,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       pointer-events: auto;
     }
     .block-container.pinned .block-main {
-      margin-right: 50%;
+      margin-right: 45%;
 
     }
     .block-sidebar .option-choices {
@@ -512,12 +523,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const sidebar = container?.querySelector('.block-sidebar') as HTMLElement | null;
     if (!container || !sidebar) return;
     const temp = sidebar.cloneNode(true) as HTMLElement;
-    const label = temp.querySelector('.block-label') as HTMLElement | null;
-    let labelText = '';
-    if (label) {
-      labelText = label.textContent || '';
-      label.remove();
-    }
+    const labelText = sidebar.getAttribute('data-label') || '';
     const subtle = `<div style="font-size:10px;color:${colours.greyText};text-align:right;margin-bottom:4px;">${labelText}</div>`;
     setPopoutSidebarHtml(subtle + temp.innerHTML);
     setPopoutTarget(container);
@@ -1001,8 +1007,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
       })
       .join('');
-    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
-    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;
+    const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
+    const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
+    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}" data-label="${labelText}"><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${labelHTML}${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;  
 
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
