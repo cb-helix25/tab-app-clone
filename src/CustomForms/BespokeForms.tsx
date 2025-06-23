@@ -225,6 +225,7 @@ interface MatterReferenceDropdownProps {
   matters: Matter[];
   handleInputChange: (fieldName: string, value: any) => void;
   isSubmitting: boolean;
+  value: string;
 }
 
 const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
@@ -232,6 +233,7 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   matters,
   handleInputChange,
   isSubmitting,
+  value,
 }) => {
   const [filter, setFilter] = React.useState<string>('');
 
@@ -253,10 +255,12 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
       options={sortedOptions}
       allowFreeform
       autoComplete="on"
-      onInputValueChange={(value: string) => setFilter(value)}
-      onChange={(_, option, __, value) => {
-        const selectedValue = option ? option.key : value;
+      selectedKey={value}
+      onInputValueChange={(val: string) => setFilter(val)}
+      onChange={(_, option, __, val) => {
+        const selectedValue = option ? option.key : val;
         handleInputChange(field.name, selectedValue);
+        setFilter('');
       }}
       onResolveOptions={(): IComboBoxOption[] => {
         if (!filter) return sortedOptions;
@@ -368,6 +372,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   matters={matters}
                   handleInputChange={handleInputChange}
                   isSubmitting={isSubmitting}
+                  value={formValues[field.name]?.toString() || ''}
                 />
               );
             }

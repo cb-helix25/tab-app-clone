@@ -146,16 +146,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
 
+    const isPoid = stage === 'poid';
+
     const bannerText = isCompleted
-        ? 'Instructions received'
+        ? 'Instructions Received'
         : isInitialised
             ? 'Pending Instructions'
-            : null;
+            : isPoid
+                ? 'Proof of Identity Received'
+                : null;
     const bannerClass = mergeStyles('instruction-banner', {
-        background: isCompleted
+        background: isCompleted || isPoid
             ? componentTokens.successBanner.background
             : componentTokens.infoBanner.background,
-        borderLeft: isCompleted
+        borderLeft: isCompleted || isPoid
             ? componentTokens.successBanner.borderLeft
             : componentTokens.infoBanner.borderLeft,
         padding: componentTokens.infoBanner.padding,

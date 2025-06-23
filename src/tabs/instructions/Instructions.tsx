@@ -121,39 +121,32 @@ const Instructions: React.FC<InstructionsProps> = ({
       <>
         <div className={quickLinksStyle(isDarkMode)}>
           <QuickActionsCard
-            title="New Instruction"
-            icon="Checklist"
-            isDarkMode={isDarkMode}
-            onClick={() => { }}
-            style={{ '--card-index': 0 } as React.CSSProperties}
-          />
-          <QuickActionsCard
             title="New Matter"
             icon="Calendar"
             isDarkMode={isDarkMode}
             onClick={() => setShowNewMatterPage(true)}
-            style={{ '--card-index': 1 } as React.CSSProperties}
+            style={{ '--card-index': 0 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="EID Check"
             icon="IdCheck"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 2 } as React.CSSProperties}
+            style={{ '--card-index': 1 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="Risk Assessment"
             icon="Assessment"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 3 } as React.CSSProperties}
+            style={{ '--card-index': 2 } as React.CSSProperties}
           />
           <QuickActionsCard
             title="Draft CCL"
             icon="OpenFile"
             isDarkMode={isDarkMode}
             onClick={() => { }}
-            style={{ '--card-index': 4 } as React.CSSProperties}
+            style={{ '--card-index': 3 } as React.CSSProperties}
           />
         </div>
         <div className={pivotBarStyle(isDarkMode)}>
