@@ -14,6 +14,10 @@
     border-radius: 0;
     break-inside: avoid;
     transition: margin-bottom 0.4s ease;
+    }
+    
+    .instructionCard.collapsed {
+        margin-bottom: 8px;
 }
 
 .instructionCard.collapsed {
@@ -154,7 +158,12 @@
     cursor: pointer;
     gap: 4px;
     position: relative;
-    transition: background-color 0.2s, color 0.2s, flex-basis 0.4s ease;
+    padding: 0 4px;
+    transition:
+        background-color 0.2s,
+        color 0.2s,
+        flex-basis 0.4s ease,
+        padding-left 0.4s ease;
 }
 
 .bottom-tab .icon-filled {
@@ -178,6 +187,8 @@
     background-color: #f7f7f9;
     color: #3690CE;
     flex-basis: 60%;
+        padding-left: 12px;
+        justify-content: flex-start;
 }
 
 .bottom-tab:active {
@@ -188,6 +199,8 @@
     background-color: #D65541;
     color: #ffffff;
     flex-basis: 60%;
+        padding-left: 12px;
+        justify-content: flex-start;
 }
 
 .bottom-tab.active .icon-outline,
@@ -208,12 +221,20 @@
 }
 
 .bottom-tab .label {
-    display: none;
+    display: inline-block;
+        overflow: hidden;
+        max-width: 0;
+        opacity: 0;
+        margin-left: 0;
+        transition: max-width 0.4s ease, opacity 0.4s ease, margin-left 0.4s ease;
+        white-space: nowrap;
 }
 
 .bottom-tab.active .label,
 .bottom-tab:hover .label {
-    display: inline;
+    max-width: 120px;
+    opacity: 1;
+    margin-left: 6px;
 }
 
 /* make the icon container round & animatable */
