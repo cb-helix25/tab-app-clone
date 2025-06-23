@@ -311,6 +311,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           instructionRef={selectedInstruction?.InstructionRef}
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
+          hideClientSections={!selectedInstruction}
         />
       </Stack>
     );

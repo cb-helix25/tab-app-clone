@@ -135,6 +135,7 @@ interface NewMattersProps {
     feeEarner?: string;
     stage?: string;
     matterRef?: string;
+    hideClientSections?: boolean;
 }
 
 const NewMatters: React.FC<NewMattersProps> = ({
@@ -146,6 +147,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     feeEarner,
     stage = 'New Matter',
     matterRef,
+    hideClientSections = false,
 }) => {
     const [openStep, setOpenStep] = useState<number>(0);
 
@@ -474,15 +476,19 @@ const NewMatters: React.FC<NewMattersProps> = ({
 
     return (
         <Stack className="workflow-container">
-            <ClientDetails stage={stage} instructionRef={instructionRef} />
-            <ClientHub
-                instructionRef={instructionRef}
-                clientId={clientId}
-                feeEarner={feeEarner}
-                idExpiry={idExpiry}
-                idVerified={false}
-                matterRef={matterRef}
-            />
+            {!hideClientSections && (
+                <>
+                    <ClientDetails stage={stage} instructionRef={instructionRef} />
+                    <ClientHub
+                        instructionRef={instructionRef}
+                        clientId={clientId}
+                        feeEarner={feeEarner}
+                        idExpiry={idExpiry}
+                        idVerified={false}
+                        matterRef={matterRef}
+                    />
+                </>
+            )}
             <div className="workflow-main">
                 <div className="steps-column">
                     {stepsOrder.map((stepKey, idx) => (
