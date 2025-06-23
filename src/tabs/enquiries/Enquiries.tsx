@@ -1119,9 +1119,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                     gap: '20px',
-                    '@media (max-width: 1200px)': {
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    },
                   })}
                 >
                   {displayedEnquiries.map((enquiry, index) => {
