@@ -84,6 +84,7 @@ const changeStyle = mergeStyles({
   fontWeight: '600',
   color: colours.greyText,
   marginTop: '6px',
+  whiteSpace: 'nowrap',
 });
 
 const changeTextStyle = (_change: number) =>
@@ -485,6 +486,10 @@ const MetricCard: React.FC<MetricCardProps> = ({
                     minimumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0,
                     maximumFractionDigits: typeof money === 'number' && money > 1000 ? 2 : 0
                   })}
+                </Text>
+                <Text className={changeTextStyle(moneyChange.change)}>
+                  {moneyChange.change > 0 ? '+' : moneyChange.change < 0 ? '-' : ''}
+                  {Math.abs(Number(moneyChange.percentage.toFixed(2)))}%
                 </Text>
               </div>
             )
