@@ -1526,8 +1526,8 @@ const currentUserRecord = attendanceRecords.find(
 //////////////////////////////
 const now = new Date();
 const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
-const currentWeekKey = getCurrentWeekKey();
-const nextWeekKey = getNextWeekKey();
+  const currentKey = generateWeekKey(getMondayOfCurrentWeek());
+  const nextKey = getNextWeekKey();
 
 const transformedAttendanceRecords = useMemo(() => {
   if (!cachedAttendance && !attendanceRecords.length) return [];
@@ -1607,7 +1607,7 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
 };
 
 // Decide which week we consider "the relevant week"
-const relevantWeekKey = isThursdayAfterMidday ? nextWeekKey : currentWeekKey;
+  const relevantWeekKey = isThursdayAfterMidday ? nextKey : currentKey;
 
 // Does the user have an object at all for that week?
   const isLocalhost = window.location.hostname === 'localhost';
@@ -2142,8 +2142,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         if (attendanceRef.current) {
           const now = new Date();
           const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
-          // Set the week based on whether it's Thursday after midday
-          attendanceRef.current.setWeek(isThursdayAfterMidday ? 'next' : 'current');
+          const week = isThursdayAfterMidday ? 'next' : 'current';
+          attendanceRef.current.setWeek(week);
           attendanceRef.current.focusTable();
         }
         return; // Exit early, no panel needed
@@ -2291,13 +2291,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           initials: member.Initials,
           nickname: member.Nickname,
           attendance:
-            record && record.weeks && record.weeks[currentWeekKey]
-              ? record.weeks[currentWeekKey].attendance
+            record && record.weeks && record.weeks[relevantWeekKey]
+              ? record.weeks[relevantWeekKey].attendance
               : '',
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [transformedTeamData, attendanceRecords, currentWeekKey]);
+  }, [transformedTeamData, attendanceRecords, relevantWeekKey]);
 
   const getCellStatus = (
     personAttendance: string,

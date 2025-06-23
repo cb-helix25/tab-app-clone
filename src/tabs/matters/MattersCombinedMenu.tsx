@@ -392,6 +392,7 @@ const MattersCombinedMenu: React.FC<MattersCombinedMenuProps> = ({
                 selected={isSelected}
                 style={{
                   '--card-index': index,
+                  '--helix-cta': getGroupColor(g.text),
                   fontSize: '16px',
                   padding: '0 12px',
                   height: '48px',

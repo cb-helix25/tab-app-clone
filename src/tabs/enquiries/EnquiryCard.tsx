@@ -335,7 +335,7 @@ const EnquiryCard: React.FC<EnquiryCardProps> = ({
               alignItems: 'center',
               height: '100%',
               position: 'relative',
-              paddingBottom: '30px', // extra space so the badge doesn't overlap icons
+              paddingBottom: '26px', // leave room for slimmer badge
             },
           }}
         >
@@ -379,17 +379,20 @@ const EnquiryCard: React.FC<EnquiryCardProps> = ({
             <div
               style={{
                 position: 'absolute',
-                bottom: '0px',
+                bottom: '2px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                backgroundColor: colours.green,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '24px',
+                padding: '0 12px',
+                borderRadius: '4px',
+                backgroundColor: colours.darkBlue,
                 color: '#ffffff',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                fontFamily: 'Raleway, sans-serif',
-                opacity: 0.5, // 50% opacity
+                border: `1px solid ${colours.highlight}`,
+                fontSize: '0.75rem',
+                fontWeight: 400,
               }}
               aria-label={`Claimed by ${claimerInitials}`}
             >
