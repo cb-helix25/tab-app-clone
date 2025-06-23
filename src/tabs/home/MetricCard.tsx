@@ -521,6 +521,10 @@ const MetricCard: React.FC<MetricCardProps> = ({
                       {countChange.change > 0 ? '+' : countChange.change < 0 ? '-' : ''}
                       {Math.abs(countChange.change).toLocaleString()}
                     </Text>
+                    <Text className={changeTextStyle(countChange.change)}>
+                      {countChange.change > 0 ? '+' : countChange.change < 0 ? '-' : ''}
+                      {Math.abs(Number(countChange.percentage.toFixed(2)))}%
+                    </Text>
                 </div>
               )
             )}
