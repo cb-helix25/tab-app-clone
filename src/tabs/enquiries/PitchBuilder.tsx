@@ -194,6 +194,11 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       animation: fadeInScale 0.2s ease forwards;
       max-width: 280px;
     }
+    .block-popout {
+      position: absolute;
+      z-index: 1000;
+      cursor: move;
+    }
     .option-preview {
       font-size: 11px;
       padding: 0 4px;
@@ -279,6 +284,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Simplified');
   const templateBlocks = getTemplateBlocks(templateSet);
+
+  // Refs and state for the movable block popout
+  const bodyEditorRef = useRef<HTMLDivElement>(null);
+  const popoutRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef<boolean>(false);
+  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const [popoutSidebarHtml, setPopoutSidebarHtml] = useState<string>('');
+  const [popoutSidebarEl, setPopoutSidebarEl] = useState<HTMLElement | null>(null);
+  const [popoutPinned, setPopoutPinned] = useState<boolean>(false);
+  const [popoutPosition, setPopoutPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
@@ -521,14 +537,24 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const btn = e.currentTarget as HTMLElement;
     const container = btn.closest('.block-container') as HTMLElement | null;
     const sidebar = container?.querySelector('.block-sidebar') as HTMLElement | null;
-    if (!container || !sidebar) return;
+    if (!container || !sidebar || !bodyEditorRef.current) return;
     const temp = sidebar.cloneNode(true) as HTMLElement;
+    const pin = temp.querySelector('.pin-toggle');
+    if (pin) pin.setAttribute('onclick', 'window.togglePopoutPin()');
+    const pop = temp.querySelector('.icon-btn[onclick^="window.openBlockPopout"]');
+    if (pop) pop.remove();
     const labelText = sidebar.getAttribute('data-label') || '';
     const subtle = `<div style="font-size:10px;color:${colours.greyText};text-align:right;margin-bottom:4px;">${labelText}</div>`;
     setPopoutSidebarHtml(subtle + temp.innerHTML);
-    setPopoutTarget(container);
     setPopoutSidebarEl(sidebar);
     sidebar.style.display = 'none';
+    const editorRect = bodyEditorRef.current.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    setPopoutPosition({
+      top: containerRect.top - editorRect.top,
+      left: containerRect.right - editorRect.left + 8,
+    });
+    setPopoutPinned(false);
   };
 
   const closeBlockPopout = () => {
@@ -537,8 +563,56 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
     setPopoutSidebarEl(null);
     setPopoutSidebarHtml('');
-    setPopoutTarget(null);
+    setPopoutPinned(false);
   };
+
+  const togglePopoutPin = () => {
+    setPopoutPinned(prev => !prev);
+  };
+
+  function startDrag(e: React.MouseEvent<HTMLDivElement>) {
+    if (!popoutRef.current) return;
+    dragging.current = true;
+    const rect = popoutRef.current.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  useEffect(() => {
+    function onMove(ev: MouseEvent) {
+      if (!dragging.current || !popoutRef.current || !bodyEditorRef.current) return;
+      const editorRect = bodyEditorRef.current.getBoundingClientRect();
+      const popEl = popoutRef.current;
+      const maxLeft = editorRect.width - popEl.offsetWidth;
+      const maxTop = editorRect.height - popEl.offsetHeight;
+      let newLeft = ev.clientX - dragOffset.current.x - editorRect.left;
+      let newTop = ev.clientY - dragOffset.current.y - editorRect.top;
+      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      newTop = Math.max(0, Math.min(newTop, maxTop));
+      setPopoutPosition({ top: newTop, left: newLeft });
+    }
+    function onUp() {
+      dragging.current = false;
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (popoutPinned) return;
+      if (popoutRef.current && !popoutRef.current.contains(e.target as Node)) {
+        closeBlockPopout();
+      }
+    }
+    if (popoutSidebarHtml) {
+      document.addEventListener('mousedown', handleOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [popoutSidebarHtml, popoutPinned]);
 
   useEffect(() => {
     (window as any).toggleBlockLock = toggleBlockLock;
@@ -547,13 +621,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     (window as any).openSnippetOptions = openSnippetOptions;
     (window as any).openBlockPopout = openBlockPopout;
     (window as any).closeBlockPopout = closeBlockPopout;
+    (window as any).togglePopoutPin = togglePopoutPin;
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).removeBlock = (title: string) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openBlockPopout, closeBlockPopout, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openBlockPopout, closeBlockPopout, togglePopoutPin, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -671,9 +746,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
   const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
   const [snippetOptionsTarget, setSnippetOptionsTarget] = useState<HTMLElement | null>(null);
-  const [popoutSidebarHtml, setPopoutSidebarHtml] = useState<string>('');
-  const [popoutTarget, setPopoutTarget] = useState<HTMLElement | null>(null);
-  const [popoutSidebarEl, setPopoutSidebarEl] = useState<HTMLElement | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<{
     block: TemplateBlock;
     option?: string;
@@ -687,7 +759,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }, [insertedBlocks, lockedBlocks, editedBlocks, isDarkMode, body]);
 
   // For the body editor
-  const bodyEditorRef = useRef<HTMLDivElement>(null);
   const savedSelection = useRef<Range | null>(null);
 
   useEffect(() => {
@@ -2177,6 +2248,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    position: 'relative',
   });
 
   const formContainerStyle = mergeStyles({
@@ -2447,28 +2519,25 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           </Callout>
         )}
 
-        {popoutTarget && popoutSidebarHtml && (
-          <Callout
+        {popoutSidebarHtml && (
+          <div
+            ref={popoutRef}
             className="inline-options-callout block-popout"
-            target={popoutTarget}
-            onDismiss={closeBlockPopout}
-            setInitialFocus={false}
-            directionalHint={DirectionalHint.rightCenter}
-            directionalHintFixed
-            styles={{
-              root: {
-                padding: 8,
-                borderRadius: 0,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-                maxWidth: '50%',
-                maxHeight: '100%',
-                overflowY: 'auto',
-              },
+            style={{
+              top: popoutPosition.top,
+              left: popoutPosition.left,
+              padding: 8,
+              borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+              maxWidth: '50%',
+              maxHeight: '100%',
+              overflowY: 'auto',
             }}
+            onMouseDown={startDrag}
           >
             <div dangerouslySetInnerHTML={{ __html: popoutSidebarHtml }} />
-          </Callout>
+          </div>
         )}
 
         {removeConfirm && removeConfirm.target && (
