@@ -196,21 +196,43 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       outline-offset: 2px;
     }
     .block-container {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      position: relative;
+      display: block;
     }
     .block-main {
-      flex: 1;
+      transition: margin-right 0.2s ease;
+    }
+    .block-container:hover .block-main {
+      margin-right: 128px;
     }
     .block-sidebar {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 120px;
+      height: 100%;
       border: 1px solid ${colours.grey};
       padding: 4px;
       border-radius: 4px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      min-width: 120px;
+      background: ${colours.grey};
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+      pointer-events: none;
+    }
+    .block-container:hover .block-sidebar {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .block-sidebar.pinned {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .block-container.pinned .block-main {
+      margin-right: 128px;
+
     }
     .block-sidebar .option-choices {
       display: flex;
@@ -407,6 +429,24 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     });
   }
 
+  function toggleBlockSidebar(blockTitle: string) {
+    const spans = bodyEditorRef.current?.querySelectorAll(
+      `span[data-inserted="${blockTitle}"]`
+    ) as NodeListOf<HTMLElement> | null;
+    if (!spans) return;
+    spans.forEach(span => {
+      const container = span.querySelector('.block-container') as HTMLElement | null;
+      const sidebar = span.querySelector('.block-sidebar') as HTMLElement | null;
+      if (!sidebar || !container) return;
+      const pinned = sidebar.classList.toggle('pinned');
+      if (pinned) {
+        container.classList.add('pinned');
+      } else {
+        container.classList.remove('pinned');
+      }
+    });
+  }
+
   function openSnippetOptions(
     e: MouseEvent,
     blockTitle: string,
@@ -466,6 +506,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     (window as any).toggleBlockLock = toggleBlockLock;
+    (window as any).toggleBlockSidebar = toggleBlockSidebar;
     (window as any).highlightBlock = highlightBlock;
     (window as any).openSnippetOptions = openSnippetOptions;
     (window as any).insertBlockOption = insertBlockOption;
@@ -474,7 +515,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -911,7 +952,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       selectedLabel = selectedOption;
     }
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 7px; display: flex; align-items: flex-start; gap: 8px; border-radius: 0px; font-weight: normal;`;
+    const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
@@ -925,7 +966,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
       })
       .join('');
-    const controlsHTML = `<div class="block-sidebar"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}"><span class="block-label" data-label-title="${block.title}" data-set="${templateSet}" data-selected="${selectedLabel}">${block.title} (${templateSet}: ${selectedLabel})</span><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;
 
     // Simplified hover handlers to directly call highlightBlock
