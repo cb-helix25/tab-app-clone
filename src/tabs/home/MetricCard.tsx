@@ -92,6 +92,12 @@ const changeTextStyle = (_change: number) =>
     color: colours.red,
   });
 
+const changeContainerStyle = mergeStyles({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '5px',
+});
+
 const percentageStyle = mergeStyles({
   fontSize: '12px',
   fontWeight: '600',
@@ -472,14 +478,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
         >
             {isMoneyOnly ? (
             moneyChange && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: '5px',
-                  alignItems: 'center'
-                }}
-              >
+              <div className={changeContainerStyle}>
                 <Text className={changeTextStyle(moneyChange.change)}>
                   {moneyChange.change > 0 ? '+' : moneyChange.change < 0 ? '-' : ''}
                   £{Math.abs(moneyChange.change).toLocaleString(undefined, {
@@ -496,14 +495,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             ) : isTimeMoney ? (
               <>
                 {moneyChange && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      gap: '5px',
-                      alignItems: 'center'
-                    }}
-                  >
+                  <div className={changeContainerStyle}>
                     <Text className={changeTextStyle(moneyChange.change)}>
                       {moneyChange.change > 0 ? '+' : moneyChange.change < 0 ? '-' : ''}
                       £{Math.abs(moneyChange.change).toLocaleString(undefined, {
@@ -514,14 +506,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   </div>
                 )}
                 {hoursChange && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      gap: '5px',
-                      alignItems: 'center'
-                    }}
-                  >
+                  <div className={changeContainerStyle}>
                     <Text className={changeTextStyle(hoursChange.change)}>
                       {hoursChange.change > 0 ? '+' : hoursChange.change < 0 ? '-' : ''}
                       {Math.abs(hoursChange.change).toFixed(2)} hrs
@@ -531,14 +516,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               </>
             ) : (
               countChange && (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    gap: '5px',
-                    alignItems: 'center'
-                  }}
-                >
+                  <div className={changeContainerStyle}>
                     <Text className={changeTextStyle(countChange.change)}>
                       {countChange.change > 0 ? '+' : countChange.change < 0 ? '-' : ''}
                       {Math.abs(countChange.change).toLocaleString()}
