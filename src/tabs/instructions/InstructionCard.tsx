@@ -111,7 +111,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const isCompleted = stage === 'completed';
     const isInitialised = stage === 'initialised';
 
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
 
     const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
         backgroundColor: colours.light.sectionBackground,

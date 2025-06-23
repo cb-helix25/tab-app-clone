@@ -75,7 +75,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     width: '100%',
     padding: 12,
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,
+    borderRadius: 0,
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
   };
 

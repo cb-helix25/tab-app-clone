@@ -109,7 +109,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 50%;
+      border-radius: 0;
       background: ${colours.grey};
       color: ${colours.greyText};
       cursor: pointer;
@@ -136,7 +136,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.grey};
       color: ${colours.greyText};
       padding: 2px 6px;
-      border-radius: 4px;
+      border-radius: 0;
       white-space: nowrap;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       transform: translateY(4px);
@@ -160,7 +160,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.highlightBlue};
       color: ${colours.darkBlue};
       padding: 4px 6px;
-      border-radius: 6px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 11px;
       transition: background-color 0.2s;
@@ -174,13 +174,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: block;
       background: ${colours.grey};
       padding: 6px;
-      border-radius: 6px;
+      border-radius: 0;
     }
     .option-choice {
       background: ${colours.highlightBlue};
       color: ${colours.darkBlue};
       padding: 2px 6px;
-      border-radius: 12px;
+      border-radius: 0;
       cursor: pointer;
       font-size: 11px;
       transition: background-color 0.2s;
@@ -189,7 +189,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
     }
     .inline-options-callout {
-      border-radius: 8px;
+      border-radius: 0;
       box-shadow: 0 4px 16px rgba(0,0,0,0.2);
       animation: fadeInScale 0.2s ease forwards;
       max-width: 280px;
@@ -224,7 +224,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       height: 100%;
       border: 1px solid ${colours.grey};
       padding: 4px;
-      border-radius: 4px;
+      border-radius: 0;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -1951,7 +1951,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 border: `1px solid ${isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea'
                   }`,
                 padding: '4px 6px',
-                borderRadius: '4px',
+                borderRadius: 0,
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -1972,7 +1972,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 marginTop: '6px',
                 border: `1px solid ${colours.highlightBlue}`,
                 padding: '4px 6px',
-                borderRadius: '4px',
+                borderRadius: 0,
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
@@ -2010,7 +2010,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
-            borderRadius: '4px',
+            borderRadius: 0,
             fontSize: '13px',
           })}
         >
@@ -2069,7 +2069,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
-            borderRadius: '4px',
+            borderRadius: 0,
             fontSize: '13px',
           })}
         >
@@ -2147,7 +2147,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const containerStyle = mergeStyles({
     padding: 0,
     backgroundColor: 'transparent',
-    borderRadius: '8px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -2212,7 +2212,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const enquiryDetailsStyle = mergeStyles({
     background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderRadius: 8,
+    borderRadius: 0,
     padding: 16,
     boxShadow: isDarkMode
       ? `0 0 0 1px ${colours.dark.border}`
@@ -2241,7 +2241,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const bubbleStyle = mergeStyles({
     padding: '8px 12px',
-    borderRadius: '12px',
+    borderRadius: 0,
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
     cursor: 'pointer',
@@ -2265,7 +2265,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // New style for greyed-out attachment bubbles
   const attachmentBubbleStyle = mergeStyles({
     padding: '8px 12px',
-    borderRadius: '12px',
+    borderRadius: 0,
     backgroundColor: isDarkMode
       ? colours.dark.disabledBackground
       : colours.light.disabledBackground,
@@ -2385,7 +2385,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             styles={{
               root: {
                 padding: 8,
-                borderRadius: 8,
+                borderRadius: 0,
                 boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                 backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
                 animation: 'fadeInScale 0.2s ease',
@@ -2458,7 +2458,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             styles={{
               root: {
                 padding: 8,
-                borderRadius: 8,
+                borderRadius: 0,
                 boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                 backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
                 maxWidth: '50%',
