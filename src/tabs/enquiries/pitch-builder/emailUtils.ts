@@ -70,11 +70,11 @@ export function removeHighlightSpans(html: string): string {
       el.remove();
       return;
     }
-    el.removeAttribute('style');
-    el.removeAttribute('data-placeholder');
-    el.removeAttribute('data-inserted');
-    el.removeAttribute('data-link');
-    el.removeAttribute('contenteditable');
+    const parent = el.parentNode;
+    while (el.firstChild) {
+      parent?.insertBefore(el.firstChild, el);
+    }
+    el.remove();
   });
   const labels = tempDiv.querySelectorAll('.block-label, .block-label-display');
   labels.forEach(el => el.remove());

@@ -384,11 +384,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {valueEl}
-                      {percentageChange !== null && (
-                        <Text className={percentageStyle}>
-                          {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
-                        </Text>
-                      )}
                     </div>
                   );
                 }
@@ -433,11 +428,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
                         <CountUp start={0} end={Number(count)} duration={2.5} separator="," preserveValue />
                       ) : ''}
                     </Text>
-                    {percentageChange !== null && (
-                      <Text className={percentageStyle}>
-                        {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
-                      </Text>
-                    )}
                   </div>
                 );
               })()}
