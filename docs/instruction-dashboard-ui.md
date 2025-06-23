@@ -6,7 +6,6 @@ This document outlines the new placeholders added to the instruction dashboard. 
 
 A sticky action bar now appears at the top of the Instructions tab. It contains buttons for:
 
-- **New Instruction** – start capturing a fresh instruction.
 - **New Matter** – open a matter against the selected instruction.
 - **EID Check** – placeholder for launching an electronic ID verification.
 - **Risk Assessment** – placeholder for performing a matter risk review.

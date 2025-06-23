@@ -263,144 +263,149 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setOriginalBlockContent({});
   }
 
-// Service options
-const SERVICE_OPTIONS: IDropdownOption[] = [
-  { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
-  { key: 'Debt Recovery', text: 'Debt Recovery' },
-  { key: 'Commercial Contract', text: 'Commercial Contract' },
-  { key: 'Other', text: 'Other (bespoke)' },
-];
+  // Service options
+  const SERVICE_OPTIONS: IDropdownOption[] = [
+    { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
+    { key: 'Debt Recovery', text: 'Debt Recovery' },
+    { key: 'Commercial Contract', text: 'Commercial Contract' },
+    { key: 'Other', text: 'Other (bespoke)' },
+  ];
 
-const initialOption = SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work);
-const [serviceDescription, setServiceDescription] = useState<string>(initialOption?.text || '');
-const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(initialOption);
-const [amount, setAmount] = useState<string>('');
-function handleAmountChange(val?: string) {
-  setAmount(val ?? '');
-}
-function handleAmountBlur() {
-  if (!amount) return;
-  const numeric = parseFloat(amount.replace(/[^0-9.]/g, ''));
-  if (!isNaN(numeric)) {
-    setAmount(numeric.toFixed(2));
+  const initialOption = SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work);
+  const [serviceDescription, setServiceDescription] = useState<string>(initialOption?.text || '');
+  const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(initialOption);
+  const [amount, setAmount] = useState<string>('');
+  function handleAmountChange(val?: string) {
+    setAmount(val ?? '');
   }
-}
-
-function highlightBlock(
-  blockTitle: string,
-  highlight: boolean,
-  source?: 'editor' | 'template'
-) {
-  const isLocked = lockedBlocks[blockTitle];
-  const headerElement = document.getElementById(
-    `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
-  );
-  const baseScale = 0.03;
-  const hoveredScale = 1 + baseScale * 0.25; // 75% less
-  const otherScale = 1 + baseScale * 0.5; // 50% less
-  const defaultScale = 1 + baseScale;
-  let headerScale = 1;
-  let editorScale = 1;
-
-  if (highlight) {
-    if (source === 'editor') {
-      headerScale = otherScale;
-      editorScale = hoveredScale;
-    } else if (source === 'template') {
-      headerScale = hoveredScale;
-      editorScale = otherScale;
-    } else {
-      headerScale = defaultScale;
-      editorScale = defaultScale;
+  function handleAmountBlur() {
+    if (!amount) return;
+    const numeric = parseFloat(amount.replace(/[^0-9.]/g, ''));
+    if (!isNaN(numeric)) {
+      setAmount(numeric.toFixed(2));
     }
   }
-  
-  if (headerElement) {
-    const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-    const blueBg = colours.highlightBlue;
-    headerElement.style.transition = 'background-color 0.2s, transform 0.2s, font-weight 0.2s';
-    let bg = 'transparent';
 
-    const isInserted =
-      insertedBlocks[blockTitle] ||
-      document.querySelector(`span[data-inserted="${blockTitle}"]`);
+  function highlightBlock(
+    blockTitle: string,
+    highlight: boolean,
+    source?: 'editor' | 'template'
+  ) {
+    const isLocked = lockedBlocks[blockTitle];
+    const headerElement = document.getElementById(
+      `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
+    );
+    const baseScale = 0.03;
+    const hoveredScale = 1 + baseScale * 0.25; // 75% less
+    const otherScale = 1 + baseScale * 0.5; // 50% less
+    const defaultScale = 1 + baseScale;
+    let headerScale = 1;
+    let editorScale = 1;
 
-    if (highlight || isInserted) {
-      if (lockedBlocks[blockTitle]) {
-        bg = lockedBg;
-      } else if (editedBlocks[blockTitle]) {
-        bg = blueBg;
+    if (highlight) {
+      if (source === 'editor') {
+        headerScale = otherScale;
+        editorScale = hoveredScale;
+      } else if (source === 'template') {
+        headerScale = hoveredScale;
+        editorScale = otherScale;
       } else {
-        bg = colours.highlightYellow;
+        headerScale = defaultScale;
+        editorScale = defaultScale;
       }
     }
-    headerElement.style.backgroundColor = bg;
-    const active = highlight && !isLocked;
-    headerElement.style.fontWeight = active ? '600' : 'normal';
-    headerElement.style.transform = `scale(${headerScale})`;
-  }
 
-  const insertedSpans = document.querySelectorAll(
-    `span[data-inserted="${blockTitle}"]`
-  );
-  insertedSpans.forEach((span) => {
-    if (span instanceof HTMLElement) {
+    if (headerElement) {
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
       const blueBg = colours.highlightBlue;
-      span.style.transition = 'background-color 0.2s, outline 0.2s, transform 0.2s, font-weight 0.2s';
-      let bg = colours.highlightYellow;
-      if (lockedBlocks[blockTitle]) {
-        bg = lockedBg;
-      } else if (editedBlocks[blockTitle]) {
-        bg = blueBg;
+      headerElement.style.transition = 'background-color 0.2s, transform 0.2s, font-weight 0.2s';
+      let bg = 'transparent';
+
+      const isInserted =
+        insertedBlocks[blockTitle] ||
+        document.querySelector(`span[data-inserted="${blockTitle}"]`);
+
+      if (highlight || isInserted) {
+        if (lockedBlocks[blockTitle]) {
+          bg = lockedBg;
+        } else if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
+          bg = blueBg;
+        } else {
+          bg = colours.highlightYellow;
+        }
       }
-      span.style.backgroundColor = bg;
+      headerElement.style.backgroundColor = bg;
+      const active = highlight && !isLocked;
+      headerElement.style.fontWeight = active ? '600' : 'normal';
+      headerElement.style.transform = `scale(${headerScale})`;
+    }
+
+    const insertedSpans = document.querySelectorAll(`span[data-inserted="${blockTitle}"]`);
+    insertedSpans.forEach((span) => {
+      if (!(span instanceof HTMLElement)) return;
+
+      // pull lockedBg into scope here
+      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+
+      span.style.transition = 'background-color 0.2s, outline 0.2s, transform 0.2s, font-weight 0.2s';
       span.style.outline = highlight && !isLocked ? `1px dotted ${colours.cta}` : 'none';
       span.style.borderRadius = '0px';
       span.style.fontWeight = 'normal';
       span.style.transform = `scale(${editorScale})`;
-    }
-  });
 
-  const block = templateBlocks.find((b) => b.title === blockTitle);
-  if (block) {
-    const placeholders = document.querySelectorAll(
-      `span[data-placeholder="${block.placeholder}"]`
-    );
-    placeholders.forEach((ph) => {
-      if (ph instanceof HTMLElement) {
-        ph.style.transition = 'transform 0.2s, font-weight 0.2s';
-        ph.style.transform = `scale(${editorScale})`;
-      }
+      span.querySelectorAll('div[data-snippet]').forEach((snip) => {
+        if (!(snip instanceof HTMLElement)) return;
+        const label = snip.getAttribute('data-snippet') || '';
+        let bg = colours.highlightYellow;
+        if (lockedBlocks[blockTitle]) {
+          bg = lockedBg;
+        } else if (editedSnippets[blockTitle]?.[label]) {
+          bg = colours.highlightBlue;
+        }
+        snip.style.backgroundColor = bg;
+      });
+
+      // now lockedBg is in scope here
+      span.style.backgroundColor = lockedBlocks[blockTitle]
+        ? lockedBg
+        : colours.highlightYellow;
     });
-  }
-}
 
-function toggleBlockLock(blockTitle: string) {
-  setLockedBlocks(prev => {
-    const locked = !prev[blockTitle];
-    const updated = { ...prev, [blockTitle]: locked };
-    const spans = bodyEditorRef.current?.querySelectorAll(
-      `span[data-inserted="${blockTitle}"]`
-    ) as NodeListOf<HTMLElement> | null;
-    if (spans) {
-      const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-      spans.forEach(span => {
-        span.setAttribute('contenteditable', (!locked).toString());
-        span.style.backgroundColor = locked
-          ? lockedBg
-          : editedBlocks[blockTitle]
-            ? colours.highlightBlue
-            : colours.highlightYellow;
-        const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
-        if (icon) {
-          icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
+    const block = templateBlocks.find((b) => b.title === blockTitle);
+    if (block) {
+      const placeholders = document.querySelectorAll(
+        `span[data-placeholder="${block.placeholder}"]`
+      );
+      placeholders.forEach((ph) => {
+        if (ph instanceof HTMLElement) {
+          ph.style.transition = 'transform 0.2s, font-weight 0.2s';
+          ph.style.transform = `scale(${editorScale})`;
         }
       });
     }
-    return updated;
-  });
-}
+  }
+
+  function toggleBlockLock(blockTitle: string) {
+    setLockedBlocks(prev => {
+      const locked = !prev[blockTitle];
+      const updated = { ...prev, [blockTitle]: locked };
+      const spans = bodyEditorRef.current?.querySelectorAll(
+        `span[data-inserted="${blockTitle}"]`
+      ) as NodeListOf<HTMLElement> | null;
+      if (spans) {
+        const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+        spans.forEach(span => {
+          span.setAttribute('contenteditable', (!locked).toString());
+          const icon = span.querySelector('.lock-toggle i') as HTMLElement | null;
+          if (icon) {
+            icon.className = `ms-Icon ms-Icon--${locked ? 'Lock' : 'Unlock'}`;
+          }
+        });
+        highlightBlock(blockTitle, false);
+      }
+      return updated;
+    });
+  }
 
   function openSnippetOptions(
     e: MouseEvent,
@@ -459,17 +464,17 @@ function toggleBlockLock(blockTitle: string) {
     insertTemplateBlock(block, selected, true, false);
   }
 
-useEffect(() => {
-  (window as any).toggleBlockLock = toggleBlockLock;
-  (window as any).highlightBlock = highlightBlock;
-  (window as any).openSnippetOptions = openSnippetOptions;
-  (window as any).insertBlockOption = insertBlockOption;
-  (window as any).resetBlockOption = resetBlockOption;
-  (window as any).removeBlock = (title: string) => {
-    const block = templateBlocks.find((b) => b.title === title);
-    if (block) handleClearBlock(block);
-  };
-}, [toggleBlockLock, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
+  useEffect(() => {
+    (window as any).toggleBlockLock = toggleBlockLock;
+    (window as any).highlightBlock = highlightBlock;
+    (window as any).openSnippetOptions = openSnippetOptions;
+    (window as any).insertBlockOption = insertBlockOption;
+    (window as any).resetBlockOption = resetBlockOption;
+    (window as any).removeBlock = (title: string) => {
+      const block = templateBlocks.find((b) => b.title === title);
+      if (block) handleClearBlock(block);
+    };
+  }, [toggleBlockLock, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -575,7 +580,13 @@ useEffect(() => {
   const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
 
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
+  const [editedSnippets, setEditedSnippets] = useState<{
+    [key: string]: { [label: string]: boolean };
+  }>({});
   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
+  const [originalSnippetContent, setOriginalSnippetContent] = useState<{
+    [key: string]: { [label: string]: string };
+  }>({});
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
@@ -625,7 +636,7 @@ useEffect(() => {
             (selectedTemplateOptions[blockTitle] as string[]).includes(optionLabel)
             : selectedTemplateOptions[blockTitle] === optionLabel;
           if (isSelected) {
-            if (editedBlocks[blockTitle]) {
+            if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
               setRemoveConfirm({ block, option: optionLabel, target: bubble as HTMLElement });
             } else {
               removeBlockOption(block, optionLabel);
@@ -653,7 +664,7 @@ useEffect(() => {
             (selectedTemplateOptions[blockTitle] as string[]).includes(optionLabel)
             : selectedTemplateOptions[blockTitle] === optionLabel;
           if (isSelected) {
-            if (editedBlocks[blockTitle]) {
+            if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
               setRemoveConfirm({ block, option: optionLabel, target: choice as HTMLElement });
             } else {
               removeBlockOption(block, optionLabel);
@@ -709,6 +720,59 @@ useEffect(() => {
     return normalizeHtml(clean(current)) !== normalizeHtml(clean(original));
   }
 
+  function computeSnippetChanges() {
+    if (!bodyEditorRef.current) return { blocks: {}, snippets: {} };
+    const updatedBlocks: { [key: string]: boolean } = {};
+    const updatedSnippets: { [key: string]: { [label: string]: boolean } } = {};
+
+    const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+
+    Object.keys(insertedBlocks).forEach((title) => {
+      if (!insertedBlocks[title]) return;
+      const span = bodyEditorRef.current!.querySelector(
+        `span[data-inserted="${title}"]`
+      ) as HTMLElement | null;
+      if (!span) return;
+
+      const snippetEls = Array.from(
+        span.querySelectorAll('div[data-snippet]')
+      ) as HTMLElement[];
+      snippetEls.forEach((el) => {
+        const label = el.getAttribute('data-snippet') || '';
+        const original = originalSnippetContent[title]?.[label];
+        if (original === undefined) return;
+        const changed = isContentChanged(el.innerHTML, original);
+        if (!updatedSnippets[title]) updatedSnippets[title] = {};
+        updatedSnippets[title][label] = changed;
+        if (changed) updatedBlocks[title] = true;
+
+        el.style.backgroundColor = lockedBlocks[title]
+          ? lockedBg
+          : changed
+            ? colours.highlightBlue
+            : colours.highlightYellow;
+      });
+
+      const headerElement = document.getElementById(
+        `template-block-header-${title.replace(/\s+/g, '-')}`
+      );
+      if (headerElement) {
+        let bg = 'transparent';
+        if (lockedBlocks[title]) {
+          bg = lockedBg;
+        } else if (Object.values(updatedSnippets[title] || {}).some(Boolean)) {
+          bg = colours.highlightBlue;
+        } else if (insertedBlocks[title]) {
+          bg = colours.highlightYellow;
+        }
+        headerElement.style.backgroundColor = bg;
+      }
+
+      if (!updatedBlocks[title]) updatedBlocks[title] = false;
+    });
+
+    return { blocks: updatedBlocks, snippets: updatedSnippets };
+  }
 
   /**
    * Insert some HTML at the cursor. If there's no selection, we append at the end.
@@ -777,6 +841,7 @@ useEffect(() => {
     append: boolean = false
   ) {
     const snippetHtml: string[] = [];
+    const snippetMap: { [label: string]: string } = {};
     if (block.isMultiSelect && isStringArray(selectedOption)) {
       selectedOption.forEach((opt) => {
         const option = block.options.find((o) => o.label === opt);
@@ -802,9 +867,9 @@ useEffect(() => {
               `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
-        snippetHtml.push(
-          `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`
-        );
+        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+        snippetHtml.push(html);
+        snippetMap[opt] = html;
       });
     } else if (typeof selectedOption === 'string') {
 
@@ -831,9 +896,9 @@ useEffect(() => {
               `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
-        snippetHtml.push(
-          `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`
-        );
+        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+        snippetHtml.push(html);
+        snippetMap[selectedOption] = html;
       }
 
     }
@@ -865,7 +930,7 @@ useEffect(() => {
 
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
-    
+
     setBody((prevBody) => {
       const existingBlockRegex = new RegExp(
         `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
@@ -932,8 +997,19 @@ useEffect(() => {
         ? (prev[block.title] || '') + `${styledInnerHTML}${controlsHTML}`
         : `${styledInnerHTML}${controlsHTML}`,
     }));
+    setOriginalSnippetContent((prev) => ({
+      ...prev,
+      [block.title]: { ...(prev[block.title] || {}), ...snippetMap },
+    }));
+    setEditedSnippets((prev) => ({
+      ...prev,
+      [block.title]: {
+        ...(prev[block.title] || {}),
+        ...Object.fromEntries(Object.keys(snippetMap).map((k) => [k, false])),
+      },
+    }));
     setEditedBlocks((prev) => ({ ...prev, [block.title]: false }));
-  
+
     if (shouldFocus) {
       setTimeout(() => {
         if (bodyEditorRef.current) {
@@ -996,6 +1072,31 @@ useEffect(() => {
     targetEl.setAttribute('data-snippet', replacement);
     targetEl.innerHTML = `${text}`;
 
+    setOriginalSnippetContent((prev) => {
+      const blockMap = { ...(prev[block.title] || {}) };
+      delete blockMap[previous];
+      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`;
+      return { ...prev, [block.title]: blockMap };
+    });
+    setEditedSnippets((prev) => {
+      const blockMap = { ...(prev[block.title] || {}) } as { [label: string]: boolean };
+      delete blockMap[previous];
+      blockMap[replacement] = false;
+      return { ...prev, [block.title]: blockMap };
+    });
+
+    setOriginalSnippetContent((prev) => ({
+      ...prev,
+      [block.title]: {
+        ...(prev[block.title] || {}),
+        [replacement]: `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`,
+      },
+    }));
+    setEditedSnippets((prev) => ({
+      ...prev,
+      [block.title]: { ...(prev[block.title] || {}), [replacement]: false },
+    }));
+
     const optionDiv = span.querySelector('div.option-choices');
     if (optionDiv) {
       const currentSelected = block.isMultiSelect
@@ -1018,7 +1119,7 @@ useEffect(() => {
         })
         .join(' ');
       const resetHtml =
-        editedBlocks[block.title] && newSelected
+        Object.values(editedSnippets[block.title] || {}).some(Boolean) && newSelected
           ? `<span class="option-choice reset-option" data-block-title="${block.title}">Reset</span>`
           : '';
       const optionListContent = [optionsHtml, resetHtml]
@@ -1029,6 +1130,7 @@ useEffect(() => {
 
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
+    setBody(bodyEditorRef.current.innerHTML);
     setBody(bodyEditorRef.current.innerHTML);
 
     if (block.isMultiSelect) {
@@ -1084,6 +1186,18 @@ useEffect(() => {
 
     main.insertAdjacentHTML('beforeend', snippetHtml);
 
+    setOriginalSnippetContent((prev) => ({
+      ...prev,
+      [block.title]: {
+        ...(prev[block.title] || {}),
+        [optionLabel]: snippetHtml,
+      },
+    }));
+    setEditedSnippets((prev) => ({
+      ...prev,
+      [block.title]: { ...(prev[block.title] || {}), [optionLabel]: false },
+    }));
+
     const optionDiv = span.querySelector('div.option-choices');
     if (optionDiv) {
       const currentSelected = block.isMultiSelect
@@ -1111,6 +1225,7 @@ useEffect(() => {
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
     setBody(bodyEditorRef.current.innerHTML);
+    setBody(bodyEditorRef.current.innerHTML);
   }
 
   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
@@ -1126,6 +1241,16 @@ useEffect(() => {
       (el) => el.getAttribute('data-snippet') === optionLabel
     );
     if (target) target.remove();
+    setOriginalSnippetContent((prev) => {
+      const blockMap = { ...(prev[block.title] || {}) };
+      delete blockMap[optionLabel];
+      return { ...prev, [block.title]: blockMap };
+    });
+    setEditedSnippets((prev) => {
+      const blockMap = { ...(prev[block.title] || {}) };
+      delete blockMap[optionLabel];
+      return { ...prev, [block.title]: blockMap };
+    });
 
     const optionDiv = span.querySelector('div.option-choices');
     if (optionDiv) {
@@ -1283,45 +1408,45 @@ useEffect(() => {
     return true;
   }
 
-async function insertDealIfNeeded() {
-  try {
-    const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
-    const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
-    const payload = {
-      serviceDescription,
-      amount: numericAmount,
-      areaOfWork: enquiry.Area_of_Work,
-      prospectId: enquiry.ID,
-      pitchedBy: userInitials,
-      isMultiClient: isMultiClientFlag,
-      leadClientEmail: enquiry.Email,
-      ...(isMultiClientFlag && {
-        clients: dealClients.map((c) => ({ clientEmail: c.email })),
-      }),
-    };
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+  async function insertDealIfNeeded() {
+    try {
+      const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
+      const payload = {
+        serviceDescription,
+        amount: numericAmount,
+        areaOfWork: enquiry.Area_of_Work,
+        prospectId: enquiry.ID,
+        pitchedBy: userInitials,
+        isMultiClient: isMultiClientFlag,
+        leadClientEmail: enquiry.Email,
+        ...(isMultiClientFlag && {
+          clients: dealClients.map((c) => ({ clientEmail: c.email })),
+        }),
+      };
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data?.passcode) {
-        setDealPasscode(data.passcode);
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.passcode) {
+          setDealPasscode(data.passcode);
+        }
       }
+
+      // ✅ Trigger same confirmation message as draft/send
+      setIsDraftConfirmed(true);
+      setTimeout(() => setIsDraftConfirmed(false), 3000);
+
+      return true;
+    } catch (e) {
+      console.error('Failed to insert deal:', e);
+      return false;
     }
-
-    // ✅ Trigger same confirmation message as draft/send
-    setIsDraftConfirmed(true);
-    setTimeout(() => setIsDraftConfirmed(false), 3000);
-
-    return true;
-  } catch (e) {
-    console.error('Failed to insert deal:', e);
-    return false;
   }
-}
 
   /**
    * If user hits "Send Email" in the preview, we might do something else.
@@ -1555,55 +1680,22 @@ async function insertDealIfNeeded() {
     }
   }
 
-function handleInput() {
+  function handleInput() {
     if (!bodyEditorRef.current) return;
     setBody(bodyEditorRef.current.innerHTML);
 
-    const updated: { [key: string]: boolean } = {};
-
-    Object.keys(insertedBlocks).forEach((title) => {
-      if (!insertedBlocks[title]) return;
-
-      const span = bodyEditorRef.current!.querySelector(
-        `span[data-inserted="${title}"]`
-      ) as HTMLElement | null;
-
-      if (span && originalBlockContent[title] !== undefined) {
-        const changed = isContentChanged(span.innerHTML, originalBlockContent[title]);
-        updated[title] = changed;
-
-        const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-        span.style.backgroundColor = lockedBlocks[title]
-          ? lockedBg
-          : changed
-          ? colours.highlightBlue
-          : colours.highlightYellow;
-
-        const label = span.querySelector('.block-label') as HTMLElement | null;
-        if (label) {
-          label.style.display = 'inline';
-          if (changed) label.style.color = colours.highlightBlue;
-        }
-
-        const headerElement = document.getElementById(
-          `template-block-header-${title.replace(/\s+/g, '-')}`
-        );
-        if (headerElement) {
-          let bg = 'transparent';
-          if (lockedBlocks[title]) {
-            bg = lockedBg;
-          } else if (changed) {
-            bg = colours.highlightBlue;
-          } else if (insertedBlocks[title]) {
-            bg = colours.highlightYellow;
-          }
-          headerElement.style.backgroundColor = bg;
-        }
-      }
-    });
-
-    if (Object.keys(updated).length > 0) {
-      setEditedBlocks((prev) => ({ ...prev, ...updated }));
+    const { blocks, snippets } = computeSnippetChanges();
+    if (Object.keys(blocks).length > 0) {
+      setEditedBlocks((prev) => ({ ...prev, ...blocks }));
+    }
+    if (Object.keys(snippets).length > 0) {
+      setEditedSnippets((prev) => {
+        const copy = { ...prev } as { [key: string]: { [label: string]: boolean } };
+        Object.entries(snippets).forEach(([title, map]) => {
+          copy[title] = { ...(copy[title] || {}), ...map };
+        });
+        return copy;
+      });
     }
   }
 
@@ -1611,66 +1703,30 @@ function handleInput() {
     if (bodyEditorRef.current) {
       setBody(bodyEditorRef.current.innerHTML);
 
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        let node: Node | null = sel.getRangeAt(0).startContainer;
-        if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-        const span =
-          node && node instanceof Element
-            ? (node.closest('span[data-inserted]') as HTMLElement | null)
-            : null;
+      const { blocks, snippets } = computeSnippetChanges();
 
-        if (span) {
-          const title = span.getAttribute('data-inserted');
-          if (title && originalBlockContent[title] !== undefined) {
-            const changed = isContentChanged(
-              span.innerHTML,
-              originalBlockContent[title]
-            );
-            setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
-            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-            span.style.backgroundColor = lockedBlocks[title]
-              ? lockedBg
-              : changed
-              ? colours.highlightBlue
-              : colours.highlightYellow;
-            const label = span.querySelector('.block-label') as HTMLElement | null;
-            if (label) {
-              label.style.display = 'inline';
-              if (changed) label.style.color = colours.highlightBlue;
-            }
-            if (changed) {
-              const block = templateBlocks.find((b) => b.title === title);
-              setSelectedTemplateOptions((prev) => ({
-                ...prev,
-                [title]: block?.isMultiSelect ? [] : '',
-              }));
-            }
-          }
-          return;
-        }
+      if (Object.keys(snippets).length > 0) {
+        setEditedSnippets((prev) => {
+          const copy = { ...prev } as { [key: string]: { [label: string]: boolean } };
+          Object.entries(snippets).forEach(([title, map]) => {
+            copy[title] = { ...(copy[title] || {}), ...map };
+          });
+          return copy;
+        });
       }
 
-      Object.keys(insertedBlocks).forEach((title) => {
-        if (insertedBlocks[title]) {
-          const span = bodyEditorRef.current!.querySelector(
-            `span[data-inserted="${title}"]`
-          ) as HTMLElement | null;
-          if (span && originalBlockContent[title] !== undefined) {
-            const changed = isContentChanged(
-              span.innerHTML,
-              originalBlockContent[title]
-            );
-            setEditedBlocks((prev) => ({ ...prev, [title]: changed }));
-            const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
-            span.style.backgroundColor = lockedBlocks[title]
-              ? lockedBg
-              : changed
-              ? colours.highlightBlue
-              : colours.highlightYellow;
+      if (Object.keys(blocks).length > 0) {
+        setEditedBlocks((prev) => ({ ...prev, ...blocks }));
+        Object.entries(blocks).forEach(([title, changed]) => {
+          if (changed) {
+            const block = templateBlocks.find((b) => b.title === title);
+            setSelectedTemplateOptions((prev) => ({
+              ...prev,
+              [title]: block?.isMultiSelect ? [] : '',
+            }));
           }
-        }
-      });
+        });
+      }
     }
   }
 
@@ -1706,6 +1762,17 @@ function handleInput() {
       return copy;
     });
 
+    setOriginalSnippetContent((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
+    setEditedSnippets((prev) => {
+      const copy = { ...prev };
+      delete copy[block.title];
+      return copy;
+    });
+
     if (bodyEditorRef.current) {
       // Build a regex to capture everything between the markers.
       const regex = new RegExp(
@@ -1723,7 +1790,7 @@ function handleInput() {
       });
       // Remove highlight right away so the user sees immediate feedback
       highlightBlock(block.title, false);
-      }
+    }
   }
 
   function clearAllBlocks() {
@@ -1744,35 +1811,37 @@ function handleInput() {
     setLockedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
+    setOriginalSnippetContent({});
+    setEditedSnippets({});
     templateBlocks.forEach((block) => highlightBlock(block.title, false));
   }
 
-function reorderTemplateBlocks(start: number, end: number) {
-  setBlocks((prev) => {
-    const updated = Array.from(prev);
-    const [moved] = updated.splice(start, 1);
-    updated.splice(end, 0, moved);
-    return updated;
-  });
-}
+  function reorderTemplateBlocks(start: number, end: number) {
+    setBlocks((prev) => {
+      const updated = Array.from(prev);
+      const [moved] = updated.splice(start, 1);
+      updated.splice(end, 0, moved);
+      return updated;
+    });
+  }
 
-function duplicateTemplateBlock(index: number) {
-  setBlocks((prev) => {
-    const copy = [...prev];
-    const block = { ...copy[index] };
-    let base = block.title;
-    let suffix = 1;
-    let newTitle = `${base} Copy`;
-    const titles = new Set(copy.map((b) => b.title));
-    while (titles.has(newTitle)) {
-      suffix += 1;
-      newTitle = `${base} Copy ${suffix}`;
-    }
-    block.title = newTitle;
-    copy.splice(index + 1, 0, block);
-    return copy;
-  });
-}
+  function duplicateTemplateBlock(index: number) {
+    setBlocks((prev) => {
+      const copy = [...prev];
+      const block = { ...copy[index] };
+      let base = block.title;
+      let suffix = 1;
+      let newTitle = `${base} Copy`;
+      const titles = new Set(copy.map((b) => b.title));
+      while (titles.has(newTitle)) {
+        suffix += 1;
+        newTitle = `${base} Copy ${suffix}`;
+      }
+      block.title = newTitle;
+      copy.splice(index + 1, 0, block);
+      return copy;
+    });
+  }
 
   /**
    * Renders the "preview" text for a selected block in the UI
@@ -1781,7 +1850,7 @@ function duplicateTemplateBlock(index: number) {
     const selectedOptions = selectedTemplateOptions[block.title];
     const isInserted = insertedBlocks[block.title] || false;
 
-    const isEdited = editedBlocks[block.title] || false;
+    const isEdited = Object.values(editedSnippets[block.title] || {}).some(Boolean);
 
     if (
       !selectedOptions ||
@@ -1795,9 +1864,8 @@ function duplicateTemplateBlock(index: number) {
             <div
               className={mergeStyles({
                 marginTop: '6px',
-                border: `1px solid ${
-                  isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea'
-                }`,
+                border: `1px solid ${isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea'
+                  }`,
                 padding: '4px 6px',
                 borderRadius: '4px',
                 fontSize: '12px',
@@ -1847,16 +1915,15 @@ function duplicateTemplateBlock(index: number) {
         <div
           className={mergeStyles({
             marginTop: '6px',
-              border: isInserted
-              ? `1px solid ${
-                  lockedBlocks[block.title]
-                    ? isDarkMode
-                      ? 'rgba(16,124,16,0.1)'
-                      : '#eafaea'
-                    : isEdited
-                    ? colours.highlightBlue
-                    : colours.highlightYellow
-                }`
+            border: isInserted
+              ? `1px solid ${lockedBlocks[block.title]
+                ? isDarkMode
+                  ? 'rgba(16,124,16,0.1)'
+                  : '#eafaea'
+                : isEdited
+                  ? colours.highlightBlue
+                  : colours.highlightYellow
+              }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
             borderRadius: '4px',
@@ -1908,15 +1975,14 @@ function duplicateTemplateBlock(index: number) {
           className={mergeStyles({
             marginTop: '6px',
             border: isInserted
-              ? `1px solid ${
-                  lockedBlocks[block.title]
-                    ? isDarkMode
-                      ? 'rgba(16,124,16,0.1)'
-                      : '#eafaea'
-                    : isEdited
-                    ? colours.highlightBlue
-                    : colours.highlightYellow
-                }`
+              ? `1px solid ${lockedBlocks[block.title]
+                ? isDarkMode
+                  ? 'rgba(16,124,16,0.1)'
+                  : '#eafaea'
+                : isEdited
+                  ? colours.highlightBlue
+                  : colours.highlightYellow
+              }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
             borderRadius: '4px',
@@ -2126,9 +2192,8 @@ function duplicateTemplateBlock(index: number) {
     userSelect: 'none',
     flexShrink: 0,
     width: 'auto',
-    border: `1px solid ${
-      isDarkMode ? colours.dark.borderColor : colours.light.borderColor
-    }`,
+    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor
+      }`,
     ':hover': {
       backgroundColor: isDarkMode
         ? colours.dark.disabledBackground
@@ -2138,18 +2203,18 @@ function duplicateTemplateBlock(index: number) {
 
   const fullName = `${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim();
 
-function handleScrollToBlock(blockTitle: string) {
-  const headerElement = document.getElementById(
-    `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
-  ) as HTMLElement | null;
+  function handleScrollToBlock(blockTitle: string) {
+    const headerElement = document.getElementById(
+      `template-block-header-${blockTitle.replace(/\s+/g, '-')}`
+    ) as HTMLElement | null;
     if (headerElement) {
       headerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
       const startColor = lockedBlocks[blockTitle]
         ? lockedBg
-        : editedBlocks[blockTitle]
-        ? colours.highlightBlue
-        : colours.highlightYellow;
+        : Object.values(editedSnippets[blockTitle] || {}).some(Boolean)
+          ? colours.highlightBlue
+          : colours.highlightYellow;
       headerElement.style.transition = 'background-color 0.5s';
       headerElement.style.backgroundColor = startColor;
       setTimeout(() => {
@@ -2164,223 +2229,223 @@ function handleScrollToBlock(blockTitle: string) {
     <Stack className={containerStyle}>
       <header className={headerWrapperStyle}>
         <PitchHeaderRow
-        enquiry={enquiry}
-        to={to}
-        setTo={setTo}
-        cc={cc}
-        setCc={setCc}
-        bcc={bcc}
-        setBcc={setBcc}
-        subject={subject}
-        setSubject={setSubject}
-        serviceDescription={serviceDescription}
-        setServiceDescription={setServiceDescription}
-        selectedOption={selectedOption}
-        setSelectedOption={setSelectedOption}
-        SERVICE_OPTIONS={SERVICE_OPTIONS}
-        amount={amount}
-        handleAmountChange={handleAmountChange}
-        handleAmountBlur={handleAmountBlur}
-        handleDealFormSubmit={handleDealFormSubmit}
-        dealId={dealId}
-        clientIds={clientIds}
-        isDarkMode={isDarkMode}
+          enquiry={enquiry}
+          to={to}
+          setTo={setTo}
+          cc={cc}
+          setCc={setCc}
+          bcc={bcc}
+          setBcc={setBcc}
+          subject={subject}
+          setSubject={setSubject}
+          serviceDescription={serviceDescription}
+          setServiceDescription={setServiceDescription}
+          selectedOption={selectedOption}
+          setSelectedOption={setSelectedOption}
+          SERVICE_OPTIONS={SERVICE_OPTIONS}
+          amount={amount}
+          handleAmountChange={handleAmountChange}
+          handleAmountBlur={handleAmountBlur}
+          handleDealFormSubmit={handleDealFormSubmit}
+          dealId={dealId}
+          clientIds={clientIds}
+          isDarkMode={isDarkMode}
         />
       </header>
 
       <main className={bodyWrapperStyle}>
-      {/* Row: Combined Email Editor and Template Blocks */}
-      <EditorAndTemplateBlocks
-        isDarkMode={isDarkMode}
-        body={body}
-        setBody={setBody}
-        templateBlocks={blocks}
-        templateSet={templateSet}
-        onTemplateSetChange={handleTemplateSetChange}
-        selectedTemplateOptions={selectedTemplateOptions}
-        insertedBlocks={insertedBlocks}
-        lockedBlocks={lockedBlocks}
-        editedBlocks={editedBlocks}
-        handleMultiSelectChange={handleMultiSelectChange}
-        handleSingleSelectChange={handleSingleSelectChange}
-        insertTemplateBlock={insertTemplateBlock}
-        renderPreview={renderPreview}
-        applyFormat={applyFormat}
-        saveSelection={saveSelection}
-        handleInput={handleInput}
-        handleBlur={handleBlur}
-        handleClearBlock={handleClearBlock}
-        bodyEditorRef={bodyEditorRef}
-        toolbarStyle={toolbarStyle}
-        bubblesContainerStyle={bubblesContainerStyle}
-        bubbleStyle={bubbleStyle}
-        filteredAttachments={filteredAttachments.map(att => ({ key: att.key, text: att.text }))}
-        highlightBlock={highlightBlock}
-        onReorderBlocks={reorderTemplateBlocks}
-        onDuplicateBlock={duplicateTemplateBlock}
-        onClearAllBlocks={clearAllBlocks}
-        showToast={(msg, type) => {
-          setToast({ message: msg, type });
-          setTimeout(() => setToast(null), 3000);
-        }}
-      />
-
-      {snippetOptionsBlock && snippetOptionsTarget && (
-        <Callout
-          className="inline-options-callout"
-          target={snippetOptionsTarget}
-          onDismiss={closeSnippetOptions}
-          setInitialFocus={false}
-          directionalHint={DirectionalHint.bottomLeftEdge}
-          directionalHintFixed
-          styles={{
-            root: {
-              padding: 8,
-              borderRadius: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-              animation: 'fadeInScale 0.2s ease',
-            },
+        {/* Row: Combined Email Editor and Template Blocks */}
+        <EditorAndTemplateBlocks
+          isDarkMode={isDarkMode}
+          body={body}
+          setBody={setBody}
+          templateBlocks={blocks}
+          templateSet={templateSet}
+          onTemplateSetChange={handleTemplateSetChange}
+          selectedTemplateOptions={selectedTemplateOptions}
+          insertedBlocks={insertedBlocks}
+          lockedBlocks={lockedBlocks}
+          editedBlocks={editedBlocks}
+          handleMultiSelectChange={handleMultiSelectChange}
+          handleSingleSelectChange={handleSingleSelectChange}
+          insertTemplateBlock={insertTemplateBlock}
+          renderPreview={renderPreview}
+          applyFormat={applyFormat}
+          saveSelection={saveSelection}
+          handleInput={handleInput}
+          handleBlur={handleBlur}
+          handleClearBlock={handleClearBlock}
+          bodyEditorRef={bodyEditorRef}
+          toolbarStyle={toolbarStyle}
+          bubblesContainerStyle={bubblesContainerStyle}
+          bubbleStyle={bubbleStyle}
+          filteredAttachments={filteredAttachments.map(att => ({ key: att.key, text: att.text }))}
+          highlightBlock={highlightBlock}
+          onReorderBlocks={reorderTemplateBlocks}
+          onDuplicateBlock={duplicateTemplateBlock}
+          onClearAllBlocks={clearAllBlocks}
+          showToast={(msg, type) => {
+            setToast({ message: msg, type });
+            setTimeout(() => setToast(null), 3000);
           }}
-        >
-          <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
-            <ChoiceGroup
-              selectedKey={snippetOptionsLabel}
-              onChange={(_e, opt?: IChoiceGroupOption) => {
-                if (!opt || !snippetOptionsBlock) return;
-                replaceSnippetOption(
-                  snippetOptionsBlock,
-                  snippetOptionsLabel,
-                  opt.key as string
-                );
-                closeSnippetOptions();
-              }}
-              options={
-                snippetOptionsBlock.options.map((o) => {
-                  const renderLabel = (
-                    option?: IChoiceGroupOption,
-                    defaultRender?: (option?: IChoiceGroupOption) => JSX.Element | null
-                  ) => {
-                    if (!option) return null;
-                    const preview = applyDynamicSubstitutions(
-                      snippetOptionsBlock.options.find((opt) => opt.label === option.key)?.previewText.replace(/\n/g, '<br />') || '',
-                      userData,
-                      enquiry,
-                      amount,
-                      dealPasscode,
-                      dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
-                    );
-                    const isSelected = snippetOptionsLabel === option.key;
-                    return (
-                      <Stack
-                        tokens={{ childrenGap: 2 }}
-                        onMouseEnter={() => setHoveredOption(option.key as string)}
-                        onMouseLeave={() => setHoveredOption(null)}
-                      >
-                        {defaultRender ? defaultRender(option) : option.text}
-                        {(hoveredOption === option.key || isSelected) && (
-                          <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
-                        )}
-                      </Stack>
-                    );
-                  };
+        />
 
-                  return {
-                    key: o.label,
-                    text: o.label,
-                    onRenderLabel: renderLabel,
-                  } as IChoiceGroupOption;
-                })
-              }
-              styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
-            />
-          </FocusZone>
-        </Callout>
-      )}
-
-      {removeConfirm && removeConfirm.target && (
-        <Callout
-          target={removeConfirm.target}
-          onDismiss={() => setRemoveConfirm(null)}
-          setInitialFocus
-          directionalHint={DirectionalHint.bottomLeftEdge}
-          directionalHintFixed
-        >
-          <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: 12 } }}>
-            <Text>Clear this content?</Text>
-            <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="end">
-              <PrimaryButton
-                text="Clear"
-                styles={sharedPrimaryButtonStyles}
-                onClick={() => {
-                  if (removeConfirm.option) {
-                    removeBlockOption(removeConfirm.block, removeConfirm.option);
-                  } else {
-                    handleClearBlock(removeConfirm.block);
-                  }
-                  setRemoveConfirm(null);
+        {snippetOptionsBlock && snippetOptionsTarget && (
+          <Callout
+            className="inline-options-callout"
+            target={snippetOptionsTarget}
+            onDismiss={closeSnippetOptions}
+            setInitialFocus={false}
+            directionalHint={DirectionalHint.bottomLeftEdge}
+            directionalHintFixed
+            styles={{
+              root: {
+                padding: 8,
+                borderRadius: 8,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+                animation: 'fadeInScale 0.2s ease',
+              },
+            }}
+          >
+            <FocusZone direction={FocusZoneDirection.vertical} isCircularNavigation>
+              <ChoiceGroup
+                selectedKey={snippetOptionsLabel}
+                onChange={(_e, opt?: IChoiceGroupOption) => {
+                  if (!opt || !snippetOptionsBlock) return;
+                  replaceSnippetOption(
+                    snippetOptionsBlock,
+                    snippetOptionsLabel,
+                    opt.key as string
+                  );
+                  closeSnippetOptions();
                 }}
-              />
-              <DefaultButton
-                text="Cancel"
-                styles={sharedDefaultButtonStyles}
-                onClick={() => setRemoveConfirm(null)}
-              />
-            </Stack>
-          </Stack>
-        </Callout>
-      )}
+                options={
+                  snippetOptionsBlock.options.map((o) => {
+                    const renderLabel = (
+                      option?: IChoiceGroupOption,
+                      defaultRender?: (option?: IChoiceGroupOption) => JSX.Element | null
+                    ) => {
+                      if (!option) return null;
+                      const preview = applyDynamicSubstitutions(
+                        snippetOptionsBlock.options.find((opt) => opt.label === option.key)?.previewText.replace(/\n/g, '<br />') || '',
+                        userData,
+                        enquiry,
+                        amount,
+                        dealPasscode,
+                        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                      );
+                      const isSelected = snippetOptionsLabel === option.key;
+                      return (
+                        <Stack
+                          tokens={{ childrenGap: 2 }}
+                          onMouseEnter={() => setHoveredOption(option.key as string)}
+                          onMouseLeave={() => setHoveredOption(null)}
+                        >
+                          {defaultRender ? defaultRender(option) : option.text}
+                          {(hoveredOption === option.key || isSelected) && (
+                            <span className="option-preview" dangerouslySetInnerHTML={{ __html: preview }} />
+                          )}
+                        </Stack>
+                      );
+                    };
 
-      {/* Row: Preview and Reset Buttons */}
-      <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
-        <PrimaryButton
-          text="Preview Email"
-          onClick={togglePreview}
-          styles={sharedPrimaryButtonStyles}
-          ariaLabel="Preview Email"
-          iconProps={{ iconName: 'Preview' }}
+                    return {
+                      key: o.label,
+                      text: o.label,
+                      onRenderLabel: renderLabel,
+                    } as IChoiceGroupOption;
+                  })
+                }
+                styles={{ flexContainer: { display: 'flex', flexDirection: 'column' } }}
+              />
+            </FocusZone>
+          </Callout>
+        )}
+
+        {removeConfirm && removeConfirm.target && (
+          <Callout
+            target={removeConfirm.target}
+            onDismiss={() => setRemoveConfirm(null)}
+            setInitialFocus
+            directionalHint={DirectionalHint.bottomLeftEdge}
+            directionalHintFixed
+          >
+            <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: 12 } }}>
+              <Text>Clear this content?</Text>
+              <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="end">
+                <PrimaryButton
+                  text="Clear"
+                  styles={sharedPrimaryButtonStyles}
+                  onClick={() => {
+                    if (removeConfirm.option) {
+                      removeBlockOption(removeConfirm.block, removeConfirm.option);
+                    } else {
+                      handleClearBlock(removeConfirm.block);
+                    }
+                    setRemoveConfirm(null);
+                  }}
+                />
+                <DefaultButton
+                  text="Cancel"
+                  styles={sharedDefaultButtonStyles}
+                  onClick={() => setRemoveConfirm(null)}
+                />
+              </Stack>
+            </Stack>
+          </Callout>
+        )}
+
+        {/* Row: Preview and Reset Buttons */}
+        <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
+          <PrimaryButton
+            text="Preview Email"
+            onClick={togglePreview}
+            styles={sharedPrimaryButtonStyles}
+            ariaLabel="Preview Email"
+            iconProps={{ iconName: 'Preview' }}
+          />
+          <DefaultButton
+            text="Reset"
+            onClick={resetForm}
+            styles={sharedDefaultButtonStyles}
+            ariaLabel="Reset Form"
+            iconProps={{ iconName: 'Refresh' }}
+          />
+        </Stack>
+
+        {/* Preview Panel */}
+        <EmailPreview
+          isPreviewOpen={isPreviewOpen}
+          onDismiss={togglePreview}
+          enquiry={enquiry}
+          subject={subject}
+          body={body}
+          templateBlocks={templateBlocks}
+          attachments={attachments}
+          followUp={followUp}
+          fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
+          userData={userData}
+          serviceDescription={serviceDescription}
+          clients={dealClients}
+          to={to}
+          amount={amount}
+          sendEmail={sendEmail}
+          handleDraftEmail={handleDraftEmail}
+          isSuccessVisible={isSuccessVisible}
+          isDraftConfirmed={isDraftConfirmed}
+          passcode={dealPasscode}
         />
-        <DefaultButton
-          text="Reset"
-          onClick={resetForm}
-          styles={sharedDefaultButtonStyles}
-          ariaLabel="Reset Form"
-          iconProps={{ iconName: 'Refresh' }}
+        <OperationStatusToast
+          visible={toast !== null}
+          message={toast?.message || ''}
+          type={toast?.type || 'info'}
+          loading={toast?.loading}
         />
-      </Stack>
-  
-      {/* Preview Panel */}
-      <EmailPreview
-        isPreviewOpen={isPreviewOpen}
-        onDismiss={togglePreview}
-        enquiry={enquiry}
-        subject={subject}
-        body={body}
-        templateBlocks={templateBlocks}
-        attachments={attachments}
-        followUp={followUp}
-        fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
-        userData={userData}
-        serviceDescription={serviceDescription}
-        clients={dealClients}
-        to={to}
-        amount={amount}
-        sendEmail={sendEmail}
-        handleDraftEmail={handleDraftEmail}
-        isSuccessVisible={isSuccessVisible}
-        isDraftConfirmed={isDraftConfirmed}
-        passcode={dealPasscode}
-      />
-      <OperationStatusToast
-        visible={toast !== null}
-        message={toast?.message || ''}
-        type={toast?.type || 'info'}
-        loading={toast?.loading}
-      />
       </main>
     </Stack>
   );
-  
+
 };
 
 export default PitchBuilder;
