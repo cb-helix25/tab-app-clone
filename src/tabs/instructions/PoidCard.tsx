@@ -4,6 +4,7 @@ import { Stack, Text, mergeStyles, Icon } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
+import { componentTokens } from '../../app/styles/componentTokens';
 
 // Helper to calculate age from a date string
 const calculateAge = (dob: string): number => {
@@ -164,6 +165,17 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     );
     const badgeInitials = teamMember?.Initials;
 
+    const stage = poid.stage?.toLowerCase();
+    const isCompleted = stage === 'completed';
+
+    const bannerText = isCompleted ? 'Proof of Identity Received' : null;
+    const bannerClass = mergeStyles('instruction-banner', {
+        background: componentTokens.successBanner.background,
+        borderLeft: componentTokens.successBanner.borderLeft,
+        padding: componentTokens.infoBanner.padding,
+        fontSize: '0.875rem',
+    });
+
     const dobDisplay = poid.date_of_birth
         ? `${new Date(poid.date_of_birth).toLocaleDateString()} (${calculateAge(poid.date_of_birth)})`
         : null;
@@ -172,6 +184,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
         <div onClick={onClick} className={cardStyles}>
             {/* Background icon */}
             <Icon iconName={backgroundIconName} className={backgroundIconStyle} />
+            {bannerText && <div className={bannerClass}>{bannerText}</div>}
 
             <div className={contentStyle}>
                 <Stack tokens={{ childrenGap: 6 }}>
