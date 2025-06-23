@@ -95,7 +95,7 @@ const percentageStyle = mergeStyles({
   fontSize: '12px',
   fontWeight: '600',
   color: colours.red,
-  marginTop: '4px',
+  marginLeft: '4px',
   textAlign: 'center',
 });
   
@@ -371,24 +371,23 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 if (isMoneyOnly) {
                   const valueEl = typeof money === 'string' ? (
                     <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>£{money}</Text>
-                ) : (
-                  <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>£{displayMoneyComponent}</Text>
-                );
-                return (
-                  <>
-                    {valueEl}
-                    {percentageChange !== null && (
-                      <Text className={percentageStyle}>
-                        {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
-                      </Text>
-                    )}
-                  </>
-                );
-              }
-              if (isTimeMoney) {
-                return (
-                  <>
-                    <Text className={mergeStyles({ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' })}>
+                  ) : (
+                    <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>£{displayMoneyComponent}</Text>
+                  );
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {valueEl}
+                      {percentageChange !== null && (
+                        <Text className={percentageStyle}>
+                          {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
+                        </Text>
+                      )}
+                    </div>
+                  );
+                }
+                if (isTimeMoney) {
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span className={moneyStyle(isDarkMode)}>
                         £
                         <CountUp
@@ -412,30 +411,29 @@ const MetricCard: React.FC<MetricCardProps> = ({
                         />{' '}
                         hrs
                       </span>
+                      {percentageChange !== null && (
+                        <Text className={percentageStyle}>
+                          {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
+                        </Text>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>
+                      {count !== undefined ? (
+                        <CountUp start={0} end={Number(count)} duration={2.5} separator="," preserveValue />
+                      ) : ''}
                     </Text>
                     {percentageChange !== null && (
                       <Text className={percentageStyle}>
                         {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
                       </Text>
                     )}
-                  </>
+                  </div>
                 );
-              }
-              return (
-                <>
-                  <Text className={mergeStyles({ fontSize: '18px', fontWeight: '700', color: isDarkMode ? colours.dark.text : colours.light.text })}>
-                    {count !== undefined ? (
-                      <CountUp start={0} end={Number(count)} duration={2.5} separator="," preserveValue />
-                    ) : ''}
-                  </Text>
-                  {percentageChange !== null && (
-                    <Text className={percentageStyle}>
-                      {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
-                    </Text>
-                  )}
-                </>
-              );
-            })()}
+              })()}
           </>
         )}
 
