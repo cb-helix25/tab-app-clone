@@ -897,10 +897,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           </Stack>
           <Stack
             horizontal
+            wrap
             horizontalAlign="stretch"
             tokens={{ childrenGap: 20 }}
             style={{ width: '100%', marginBottom: '20px' }}
-            >
+          >
             {['Commercial', 'Property', 'Construction', 'Employment', 'Other/Unsure'].map(
               (area) => (
                 <AreaCountCard
