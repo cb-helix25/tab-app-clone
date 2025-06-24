@@ -105,8 +105,8 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       gap: 4px;
     }
     .block-controls .icon-btn {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -114,19 +114,20 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.grey};
       color: ${colours.greyText};
       cursor: pointer;
-      font-size: 12px;
+      font-size: 14px;
       user-select: none;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
     }
     .block-controls .icon-btn:hover {
       background: ${colours.blue};
       color: #ffffff;
-    }
+      transform: scale(1.05);
+      }
     .block-label {
       flex-grow: 1;
       position: relative;
       cursor: pointer;
-      display: inline-block;
+      display: block;
       font-weight: 600;
       margin-bottom: 4px;
     }
@@ -180,6 +181,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.grey};
       padding: 6px;
       border-radius: 0;
+    }
+    .block-option-list .block-label {
+      display: block;
+      font-size: 11px;
+      margin-bottom: 4px;
+      color: ${colours.greyText};
     }
     .option-choice {
       background: ${colours.highlightBlue};
@@ -236,7 +243,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       flex-direction: column;
       gap: 4px;
       background: rgba(255,255,255,0.95);
-      transform: translateX(calc(100% - 16px));
+      transform: translateX(calc(100% - 12px));
       transition: transform 0.2s ease;
       pointer-events: none;
       overflow: hidden;
@@ -244,8 +251,8 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-sidebar .sidebar-handle {
       position: absolute;
       top: 0;
-      left: 0;
-      width: 16px;
+      left: -1px;
+      width: 12px;
       height: 100%;
       background: ${colours.grey};
       color: #ffffff;
@@ -255,7 +262,6 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       cursor: pointer;
       box-shadow: -2px 0 4px rgba(0,0,0,0.2);
       border-radius: 4px 0 0 4px;
-      overflow: hidden;
       pointer-events: auto;
     }
     .block-container:hover .block-sidebar {
@@ -1953,43 +1959,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return false;
   }
   function handleClearBlock(block: TemplateBlock) {
-    // Update state for the selected options and inserted block flag.
-    setSelectedTemplateOptions((prev) => ({
-      ...prev,
-      [block.title]: block.isMultiSelect ? [] : '',
-    }));
-    setInsertedBlocks((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
-    setLockedBlocks((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
-
-    setEditedBlocks((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
-    setOriginalBlockContent((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
-
-    setOriginalSnippetContent((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
-    setEditedSnippets((prev) => {
-      const copy = { ...prev };
-      delete copy[block.title];
-      return copy;
-    });
 
     if (bodyEditorRef.current) {
       // Build a regex to capture everything between the markers.
@@ -2003,13 +1972,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       // Replace via regex. If no match is found (comments removed during edit),
       // fall back to querying the inserted span in the DOM.
       let updatedBody = bodyEditorRef.current.innerHTML;
+      let removed = false;
       if (regex.test(updatedBody)) {
         updatedBody = updatedBody.replace(regex, placeholderHTML);
         bodyEditorRef.current.innerHTML = updatedBody;
+        removed = true;
       } else if (
         removeBlockByMarkers(bodyEditorRef.current, block.title, placeholderHTML)
       ) {
         updatedBody = bodyEditorRef.current.innerHTML;
+        removed = true;
       } else {
         let inserted = bodyEditorRef.current.querySelector(
           `[data-inserted="${block.title}"]`
@@ -2029,12 +2001,54 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           temp.innerHTML = placeholderHTML;
           inserted.replaceWith(temp.firstChild as Node);
           updatedBody = bodyEditorRef.current.innerHTML;
+          removed = true;
         }
       }
+      if (removed) {
+        setBody(updatedBody);
+        // Remove highlight right away so the user sees immediate feedback
+        highlightBlock(block.title, false);
 
-      setBody(updatedBody);
-      // Remove highlight right away so the user sees immediate feedback
-      highlightBlock(block.title, false);
+        // Update state for the selected options and inserted block flag.
+        setSelectedTemplateOptions((prev) => ({
+          ...prev,
+          [block.title]: block.isMultiSelect ? [] : '',
+        }));
+        setInsertedBlocks((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+        setLockedBlocks((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+
+        setEditedBlocks((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+        setOriginalBlockContent((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+
+        setOriginalSnippetContent((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+        setEditedSnippets((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+      } else {
+        console.warn('Failed to clear block:', block.title);
+      }
     }
   }
 
