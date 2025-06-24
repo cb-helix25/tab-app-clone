@@ -105,17 +105,22 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       gap: 4px;
     }
     .block-controls .icon-btn {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 0;
+      border-radius: 4px;
       background: ${colours.grey};
       color: ${colours.greyText};
       cursor: pointer;
-      font-size: 10px;
+      font-size: 12px;
       user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .block-controls .icon-btn:hover {
+      background: ${colours.blue};
+      color: #ffffff;
     }
     .block-label {
       flex-grow: 1;
@@ -147,9 +152,8 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       z-index: 10;
     }
     .block-label-display {
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
+      display: block;
+      margin-top: 4px;
       font-size: 10px;
       color: ${colours.greyText};
       opacity: 0.7;
@@ -217,7 +221,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .block-main {
       position: relative;
-      padding-right: 24px;
+      padding-right: 16px;
     }
     .block-sidebar {
       position: absolute;
@@ -226,13 +230,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       width: 260px;
       height: 100%;
       border: 1px solid ${colours.grey};
-      padding: 4px 4px 4px 28px;
+      padding: 4px 4px 4px 20px;
       border-radius: 0;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      background: rgba(255,255,255,1);
-      transform: translateX(calc(100% - 24px));
+      background: rgba(255,255,255,0.95);
+      transform: translateX(calc(100% - 16px));
       transition: transform 0.2s ease;
       pointer-events: none;
       overflow: hidden;
@@ -241,7 +245,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       position: absolute;
       top: 0;
       left: 0;
-      width: 24px;
+      width: 16px;
       height: 100%;
       background: ${colours.grey};
       color: #ffffff;
@@ -251,6 +255,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       cursor: pointer;
       box-shadow: -2px 0 4px rgba(0,0,0,0.2);
       border-radius: 4px 0 0 4px;
+      overflow: hidden;
       pointer-events: auto;
     }
     .block-container:hover .block-sidebar {
@@ -1105,7 +1110,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
-    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${labelHTML}${styledInnerHTML}</div>${controlsHTML}</${containerTag}>`;  
+    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
