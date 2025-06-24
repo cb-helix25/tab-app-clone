@@ -621,7 +621,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             selectedKey={activeSubTab}
             onLinkClick={handleSubTabChange}
             styles={{
-              root: { marginBottom: '12px', borderBottom: 'none' },
+              root: { marginBottom: '12px', borderBottom: 'none', flexGrow: 1 },
               link: {
                 fontSize: '16px',
                 fontWeight: 600,

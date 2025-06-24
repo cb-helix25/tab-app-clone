@@ -13,6 +13,10 @@ export interface RiskComplianceInfo {
     RiskScore?: number;
     TransactionRiskLevel?: string;
     EIDStatus?: string;
+    ClientRiskFactorsConsidered?: boolean;
+    TransactionRiskFactorsConsidered?: boolean;
+    FirmWideAMLPolicyConsidered?: boolean;
+    FirmWideSanctionsRiskConsidered?: boolean;
 }
 
 interface RiskComplianceCardProps {
@@ -75,6 +79,26 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({ data, animation
                 {data.EIDStatus && (
                     <li>
                         <strong>EID:</strong> {data.EIDStatus}
+                    </li>
+                )}
+                {data.ClientRiskFactorsConsidered !== undefined && (
+                    <li>
+                        <strong>Client Factors:</strong> {data.ClientRiskFactorsConsidered ? 'Yes' : 'No'}
+                    </li>
+                )}
+                {data.TransactionRiskFactorsConsidered !== undefined && (
+                    <li>
+                        <strong>Transaction Factors:</strong> {data.TransactionRiskFactorsConsidered ? 'Yes' : 'No'}
+                    </li>
+                )}
+                {data.FirmWideAMLPolicyConsidered !== undefined && (
+                    <li>
+                        <strong>Firm AML Policy:</strong> {data.FirmWideAMLPolicyConsidered ? 'Yes' : 'No'}
+                    </li>
+                )}
+                {data.FirmWideSanctionsRiskConsidered !== undefined && (
+                    <li>
+                        <strong>FW Sanctions:</strong> {data.FirmWideSanctionsRiskConsidered ? 'Yes' : 'No'}
                     </li>
                 )}
             </ul>

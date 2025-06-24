@@ -705,7 +705,11 @@ const Matters: React.FC<MattersProps> = ({
             <Pivot
               aria-label="Matter Detail Tabs"
               styles={{
-                root: { marginBottom: '20px', borderBottom: 'none' },
+                root: {
+                  marginBottom: '20px',
+                  borderBottom: 'none',
+                  flexGrow: 1,
+                },
                 link: { fontSize: '16px', fontWeight: 600 },
               }}
             >
