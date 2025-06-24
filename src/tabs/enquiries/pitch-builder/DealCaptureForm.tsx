@@ -235,27 +235,33 @@ const addingClientRef = useRef(false);
     setIsSaved(true);
   };
 
+  const sectionStyle = {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    width: '100%',
+    padding: 16,
+    gap: 8,
+    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+    borderRadius: 4,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+  };
+
   const labelStyle = mergeStyles({
     fontWeight: '600',
     color: isDarkMode ? colours.dark.text : colours.light.text,
     paddingBottom: '5px',
   });
 
-  const intakeContainer = mergeStyles({
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
-    overflow: 'hidden',
-  });
+  const intakeContainer = mergeStyles(sectionStyle);
 
   const intakeHeader = mergeStyles({
-    background: colours.darkBlue,
-    color: "#fff",
-    padding: "4px 8px",
+    color: isDarkMode ? '#fff' : colours.darkBlue,
     fontWeight: 600,
     fontSize: 13,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    marginBottom: 8,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   });
 
   // Input fields for client details have a subtle left accent using the
@@ -263,14 +269,14 @@ const addingClientRef = useRef(false);
   // full header bar.
   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
     borderLeft: `4px solid ${colours.darkBlue}`,
-    borderRadius: 0,
+    borderRadius: 4,
   });
 
 
-const toggleContainer = mergeStyles({
-  display: 'flex',
-  border: `2px solid ${colours.darkBlue}`,
-  borderRadius: 0,
+  const toggleContainer = mergeStyles({
+    display: 'flex',
+    border: `1px solid ${colours.darkBlue}`,
+    borderRadius: 4,
   overflow: 'hidden',
   cursor: 'pointer',
   width: '100%',
@@ -371,15 +377,16 @@ useLayoutEffect(() => {
   isSaved,
 ]);
 
-  const rootStackStyle = mergeStyles({
-    display: 'flex',
-    flexDirection: 'column',
+  const rootStackStyle = mergeStyles(sectionStyle, {
     height: '100%',
-    border: '2px solid transparent',
-    boxShadow: 'none',
-    borderRadius: 0,
-    opacity: 1,
-    transition: 'border 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
+    transition: 'box-shadow 0.2s ease',
+    selectors: {
+      ':hover': {
+        boxShadow: isDarkMode
+          ? '0 2px 6px rgba(0,0,0,0.3)'
+          : '0 2px 6px rgba(0,0,0,0.15)',
+      },
+    },
   });
 
   return (
