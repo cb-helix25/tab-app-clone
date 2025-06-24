@@ -708,18 +708,18 @@ const Matters: React.FC<MattersProps> = ({
                 root: { marginBottom: '20px', borderBottom: 'none' },
                 link: { fontSize: '16px', fontWeight: 600 },
               }}
-              >
-            <PivotItem headerText="Overview" itemKey="Overview">
-              <MatterOverview
-                matter={selectedMatter}
-                overviewData={matterOverview}
-                outstandingData={matterOutstandingData}
-                complianceData={complianceData}
-                matterSpecificActivitiesData={matterSpecificActivities}
-                onEdit={() => {}}
-                transactions={transactions}
-              />
-            </PivotItem>
+            >
+              <PivotItem headerText="Overview" itemKey="Overview">
+                <MatterOverview
+                  matter={selectedMatter}
+                  overviewData={matterOverview}
+                  outstandingData={matterOutstandingData}
+                  complianceData={complianceData}
+                  matterSpecificActivitiesData={matterSpecificActivities}
+                  onEdit={() => { }}
+                  transactions={transactions}
+                />
+              </PivotItem>
 
             <PivotItem headerText="Transactions" itemKey="Transactions">
               <MatterTransactions matter={selectedMatter} transactions={transactions} />

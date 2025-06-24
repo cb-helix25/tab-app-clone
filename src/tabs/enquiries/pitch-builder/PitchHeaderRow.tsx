@@ -73,11 +73,14 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 12,
+    padding: 16,           // more padding
+    gap: 8,                // consistent gap
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-  };
+    borderRadius: 4,       // slight rounding
+    backgroundColor: isDarkMode
+      ? colours.dark.sectionBackground
+      : colours.light.sectionBackground,
+  };;
 
   const enquiryNotesContainer = mergeStyles(sectionStyle);
 
@@ -86,13 +89,16 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     fontWeight: 600,
     fontSize: 13,
     lineHeight: 1.2,
-    marginBottom: 4,
+    marginBottom: 8,    // ↑ more breathing room under the title
   });
 
   const enquiryNotesContent = mergeStyles({
     whiteSpace: 'pre-wrap',
     fontSize: 14,
     color: labelColour,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
   });
 
   const intakeContainer = mergeStyles(sectionStyle);
@@ -101,7 +107,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     color: labelColour,
     fontWeight: 600,
     fontSize: 13,
-    marginBottom: 4,
+    marginBottom: 8,    // ↑ match the enquiry title spacing
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -199,27 +205,24 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         >
           <div className={enquiryNotesContainer}>
             <div className={enquiryNotesHeader}>Enquiry Details</div>
-            <div className={enquiryNotesContent}>
-              <Stack tokens={{ childrenGap: 4 }}>
-                <Text>
-                  {enquiry.First_Name} {enquiry.Last_Name}
-                </Text>
-                {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
-                {enquiry.Phone_Number && (
-                  <Text>Phone: {enquiry.Phone_Number}</Text>
-                )}
-                {enquiry.Secondary_Phone && (
-                  <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
-                )}
-                {enquiry.Initial_first_call_notes && (
-                  <>
-                    <Separator style={{ margin: "8px 0" }} />
-                    <Text>{enquiry.Initial_first_call_notes}</Text>
-                  </>
-                )}
-              </Stack>
-
-            </div>
+            <Stack className={enquiryNotesContent}>
+              <Text>
+                {enquiry.First_Name} {enquiry.Last_Name}
+              </Text>
+              {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
+              {enquiry.Phone_Number && (
+                <Text>Phone: {enquiry.Phone_Number}</Text>
+              )}
+              {enquiry.Secondary_Phone && (
+                <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
+              )}
+              {enquiry.Initial_first_call_notes && (
+                <>
+                  <Separator style={{ margin: "8px 0" }} />
+                  <Text>{enquiry.Initial_first_call_notes}</Text>
+                </>
+              )}
+            </Stack>
           </div>
         </Stack>
 

@@ -31,7 +31,6 @@ import CustomPagination from '../../app/styles/CustomPagination';
 import EnquiryCard from './EnquiryCard';
 import EnquiryOverview from './EnquiryOverview';
 import PitchBuilder from './PitchBuilder';
-import EnquiryData from './EnquiryData';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
@@ -583,7 +582,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         styles={{
           root: {
             backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-            borderRadius: '12px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
             padding: '20px',
             position: 'relative',
@@ -593,8 +591,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       >
         <Stack
           horizontal
-          horizontalAlign="space-between"
           verticalAlign="center"
+          tokens={{ childrenGap: 10 }}
           className={mergeStyles({ marginBottom: '12px' })}
         >
           <IconButton
@@ -619,35 +617,31 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               },
             }}
           />
-          <div style={{ width: '40px' }} />
-        </Stack>
-        <Pivot
-          selectedKey={activeSubTab}
-          onLinkClick={handleSubTabChange}
-          styles={{
-            root: { marginBottom: '12px', borderBottom: 'none' },
-            link: {
-              fontSize: '16px',
-              fontWeight: 600,
-              padding: '6px 8px',
-              margin: '0 5px',
-              color: isDarkMode ? colours.dark.text : colours.light.text,
-              fontFamily: 'Raleway, sans-serif',
-            },
-            linkIsSelected: { borderBottom: 'none' },
-          }}
-          aria-label="Detail Sub-Tabs"
-        >
+          <Pivot
+            selectedKey={activeSubTab}
+            onLinkClick={handleSubTabChange}
+            styles={{
+              root: { marginBottom: '12px', borderBottom: 'none' },
+              link: {
+                fontSize: '16px',
+                fontWeight: 600,
+                padding: '6px 8px',
+                margin: '0 5px',
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                fontFamily: 'Raleway, sans-serif',
+              },
+              linkIsSelected: { borderBottom: 'none' },
+            }}
+            aria-label="Detail Sub-Tabs"
+          >
           <PivotItem headerText="Overview" itemKey="Overview">
             <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => {}} />
           </PivotItem>
           <PivotItem headerText="Pitch Builder" itemKey="Pitch">
             <PitchBuilder enquiry={enquiry} userData={userData} />
           </PivotItem>
-          <PivotItem headerText="Data" itemKey="Data">
-            <EnquiryData enquiry={enquiry} />
-          </PivotItem>
         </Pivot>
+      </Stack>
       </Stack>
     ),
     [handleBackToList, handleSubTabChange, handleRate, isDarkMode, activeSubTab, userData]
