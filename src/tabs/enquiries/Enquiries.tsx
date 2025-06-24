@@ -579,7 +579,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
       <Stack
-        tokens={{ childrenGap: 20 }}
+        tokens={{ childrenGap: 12 }}
         styles={{
           root: {
             backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -595,7 +595,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           horizontal
           horizontalAlign="space-between"
           verticalAlign="center"
-          className={mergeStyles({ marginBottom: '20px' })}
+          className={mergeStyles({ marginBottom: '12px' })}
         >
           <IconButton
             iconProps={{ iconName: 'Back' }}
@@ -625,11 +625,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           selectedKey={activeSubTab}
           onLinkClick={handleSubTabChange}
           styles={{
-            root: { marginBottom: '20px', borderBottom: 'none' },
+            root: { marginBottom: '12px', borderBottom: 'none' },
             link: {
               fontSize: '16px',
               fontWeight: 600,
-              padding: '10px',
+              padding: '6px 8px',
               margin: '0 5px',
               color: isDarkMode ? colours.dark.text : colours.light.text,
               fontFamily: 'Raleway, sans-serif',

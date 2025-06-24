@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Stack,
   mergeStyles,
-  PrimaryButton,
+  IconButton,
   Pivot,
   PivotItem,
 } from '@fluentui/react';
@@ -13,6 +13,7 @@ import { colours } from '../../app/styles/colours';
 import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
+import RiskComplianceCard from './RiskComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
@@ -181,6 +182,22 @@ const Instructions: React.FC<InstructionsProps> = ({
     color: isDarkMode ? colours.light.text : colours.dark.text,
   });
 
+  const newMatterContainerStyle = mergeStyles(containerStyle, {
+    padding: '12px',
+  });
+
+  const backButtonStyle = mergeStyles({
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    marginBottom: 12,
+  });
+
   const flattenedInstructions = useMemo(() => {
     return instructionData.flatMap((prospect) =>
       (prospect.instructions ?? []).map((inst) => {
@@ -278,14 +295,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     [instructionData]
   );
 
-  const riskColumns = useMemo(() => (riskData[0] ? Object.keys(riskData[0]) : []), [riskData]);
-
-  const formatValue = (value: any) => {
-    if (value === null || value === undefined) return '';
-    if (value instanceof Date) return value.toLocaleString();
-    return String(value);
-  };
-
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
     setShowNewMatterPage(true);
@@ -328,18 +337,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: 'border-box',
   });
 
-  const tableContainerStyle = mergeStyles({
-    overflowX: 'auto',
-    width: '100%',
-  });
-
   if (showNewMatterPage) {
     return (
-      <Stack tokens={dashboardTokens} className={containerStyle}>
-        <PrimaryButton
-          text="Back"
+      <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+        <IconButton
+          iconProps={{ iconName: 'ChevronLeft' }}
           onClick={() => setShowNewMatterPage(false)}
-          style={{ marginBottom: '16px' }}
+          className={backButtonStyle}
+          title="Back"
+          ariaLabel="Back"
         />
         <NewMatters
           poidData={poidData}
@@ -439,26 +445,16 @@ const Instructions: React.FC<InstructionsProps> = ({
       )}
       {activePivot === 'risk' && (
         <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={tableContainerStyle}>
-          <table className="simple-table">
-            <thead>
-              <tr>
-                {riskColumns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {riskData.map((r, idx) => (
-                <tr key={idx}>
-                  {riskColumns.map((col) => (
-                    <td key={col}>{formatValue(r[col])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-    </div>
+          <div className={gridContainerStyle}>
+            {riskData.map((r, idx) => {
+              const row = Math.floor(idx / 4);
+              const col = idx % 4;
+              const animationDelay = row * 0.2 + col * 0.1;
+              return (
+                <RiskComplianceCard key={idx} data={r} animationDelay={animationDelay} />
+              );
+            })}
+          </div>
         </Stack>
       )}
     </section>

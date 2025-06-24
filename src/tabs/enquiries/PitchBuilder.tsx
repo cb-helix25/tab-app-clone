@@ -86,6 +86,14 @@ const lockedSvg =
 const unlockedSvg =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
 
+// Escape attribute values for use within querySelector
+function escapeForSelector(value: string): string {
+  if (typeof (window as any).CSS !== 'undefined' && (CSS as any).escape) {
+    return (CSS as any).escape(value);
+  }
+  return value.replace(/(["'\\\[\]\.#:>+~*^$|?{}()])/g, '\\$1');
+}
+
 // Inject styles for inline block labels and option callout
 if (typeof window !== 'undefined' && !document.getElementById('block-label-style')) {
   const style = document.createElement('style');
@@ -225,6 +233,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-container {
       position: relative;
       display: inline-block;
+      width: 100%;
     }
     .block-main {
       position: relative;
@@ -445,7 +454,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (block) {
       const placeholders = document.querySelectorAll(
-        `span[data-placeholder="${block.placeholder}"]`
+        `span[data-placeholder="${escapeForSelector(block.placeholder)}"]`
       );
       placeholders.forEach((ph) => {
         if (ph instanceof HTMLElement) {
@@ -1140,7 +1149,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = prevBody;
       const target = tempDiv.querySelector(
-        `span[data-placeholder="${block.placeholder}"]`
+        `span[data-placeholder="${escapeForSelector(block.placeholder)}"]`
       );
       if (target) {
         (target as HTMLElement).innerHTML = wrappedHTML;
@@ -1992,9 +2001,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           ) as HTMLElement | null;
         }
         if (!inserted) {
-          inserted = bodyEditorRef.current.querySelector(
-            `.block-container[data-placeholder="${block.placeholder}"]`
-          ) as HTMLElement | null;
+          try {
+            inserted = bodyEditorRef.current.querySelector(
+              `.block-container[data-placeholder="${escapeForSelector(block.placeholder)}"]`
+            ) as HTMLElement | null;
+          } catch {
+            inserted = null;
+          }
         }
         if (inserted) {
           const temp = document.createElement('div');
@@ -2339,7 +2352,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const headerWrapperStyle = mergeStyles({
     backgroundColor: colours.sectionBackground,
-    padding: 16,
+    padding: 8,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   });

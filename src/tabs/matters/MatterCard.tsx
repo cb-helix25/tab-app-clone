@@ -191,28 +191,8 @@ const DetailRow: React.FC<DetailRowProps> = ({ label, value, isDarkMode }) => (
   </Stack>
 );
 
-// --- Badge Styles ---
-const badgeStyle: React.CSSProperties = {
-  padding: '4px 12px',
-  borderRadius: '20px',
-  backgroundColor: colours.green,
-  color: '#ffffff',
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  fontFamily: 'Raleway, sans-serif',
-  opacity: 0.5,
-};
-
-const badgeStyleResponsible: React.CSSProperties = {
-  padding: '4px 12px',
-  borderRadius: '20px',
-  backgroundColor: '#ffffff',
-  border: `1px solid ${colours.green}`,
-  color: colours.green,
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  fontFamily: 'Raleway, sans-serif',
-};
+// --- Badge Style ---
+const solicitorBadgeClass = mergeStyles('solicitor-badge');
 
 const MatterCard: React.FC<MatterCardProps> = ({ matter, onSelect, animationDelay = 0 }) => {
   const { isDarkMode } = useTheme();
@@ -236,30 +216,17 @@ const MatterCard: React.FC<MatterCardProps> = ({ matter, onSelect, animationDela
   const respInitials = responsible ? getInitials(responsible) : '';
 
   // Prepare badge(s): if both exist and are different, show two badges; otherwise, a single badge.
-  let badges: { content: JSX.Element; style: React.CSSProperties; aria: string }[] = [];
+  let badges: { text: string; aria: string }[] = [];
   if (orgInitials && respInitials) {
     if (orgInitials.toLowerCase() === respInitials.toLowerCase()) {
-      badges.push({
-        content: <span>{orgInitials}</span>,
-        style: badgeStyle,
-        aria: `Solicitor: ${orgInitials}`,
-      });
+      badges.push({ text: orgInitials, aria: `Solicitor: ${orgInitials}` });
     } else {
-      badges.push({
-        content: <span>{orgInitials}</span>,
-        style: badgeStyle,
-        aria: `Originating: ${orgInitials}`,
-      });
-      badges.push({
-        content: <span>{respInitials}</span>,
-        style: badgeStyleResponsible,
-        aria: `Responsible: ${respInitials}`,
-      });
+      badges.push({ text: orgInitials, aria: `Originating: ${orgInitials}` });
+      badges.push({ text: respInitials, aria: `Responsible: ${respInitials}` });
     }
   } else if (orgInitials || respInitials) {
     badges.push({
-      content: <span>{orgInitials || respInitials}</span>,
-      style: badgeStyle,
+      text: orgInitials || respInitials,
       aria: `Solicitor: ${orgInitials || respInitials}`,
     });
   }
@@ -394,8 +361,8 @@ const MatterCard: React.FC<MatterCardProps> = ({ matter, onSelect, animationDela
               }}
             >
               {badges.map((badge, idx) => (
-                <div key={idx} style={badge.style} aria-label={badge.aria}>
-                  {badge.content}
+                <div key={idx} className={solicitorBadgeClass} aria-label={badge.aria}>
+                  {badge.text}
                 </div>
               ))}
             </div>
