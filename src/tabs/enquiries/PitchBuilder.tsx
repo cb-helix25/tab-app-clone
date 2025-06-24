@@ -20,6 +20,7 @@ import {
   Checkbox,
   ChoiceGroup,
   IChoiceGroupOption,
+  IPoint,
   Text,
 } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
@@ -760,6 +761,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     block: TemplateBlock;
     option?: string;
     target: HTMLElement | null;
+    point: IPoint | null;
   } | null>(null);
 
   useEffect(() => {
@@ -800,7 +802,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             : selectedTemplateOptions[blockTitle] === optionLabel;
           if (isSelected) {
             if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
-              setRemoveConfirm({ block, option: optionLabel, target: bubble as HTMLElement });
+              const rect = (bubble as HTMLElement).getBoundingClientRect();
+              setRemoveConfirm({
+                block,
+                option: optionLabel,
+                target: bubble as HTMLElement,
+                point: { x: rect.left + rect.width / 2, y: rect.bottom },
+              });
             } else {
               removeBlockOption(block, optionLabel);
             }
@@ -828,7 +836,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             : selectedTemplateOptions[blockTitle] === optionLabel;
           if (isSelected) {
             if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
-              setRemoveConfirm({ block, option: optionLabel, target: choice as HTMLElement });
+              const rect = (choice as HTMLElement).getBoundingClientRect();
+              setRemoveConfirm({
+                block,
+                option: optionLabel,
+                target: choice as HTMLElement,
+                point: { x: rect.left + rect.width / 2, y: rect.bottom },
+              });
             } else {
               removeBlockOption(block, optionLabel);
             }
@@ -2550,9 +2564,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           </div>
         )}
 
-        {removeConfirm && removeConfirm.target && (
+        {removeConfirm && (
           <Callout
-            target={removeConfirm.target}
+            target={removeConfirm.target ?? removeConfirm.point ?? undefined}
             onDismiss={() => setRemoveConfirm(null)}
             setInitialFocus
             directionalHint={DirectionalHint.bottomLeftEdge}
@@ -2564,7 +2578,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 <PrimaryButton
                   text="Clear"
                   styles={sharedPrimaryButtonStyles}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (removeConfirm.option) {
                       removeBlockOption(removeConfirm.block, removeConfirm.option);
                     } else {
@@ -2576,7 +2591,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 <DefaultButton
                   text="Cancel"
                   styles={sharedDefaultButtonStyles}
-                  onClick={() => setRemoveConfirm(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRemoveConfirm(null);
+                  }}
                 />
               </Stack>
             </Stack>
