@@ -435,6 +435,8 @@ const Matters: React.FC<MattersProps> = ({
   const [itemsToShow, setItemsToShow] = useState<number>(20);
   const loader = useRef<HTMLDivElement | null>(null);
 
+  const [activeTab, setActiveTab] = useState('Overview'); // Add this near your other state
+
   // ---------- Date Slider Setup ----------
   const sortedMatters = useMemo(() => {
     return [...matters].sort((a, b) => {
@@ -671,82 +673,84 @@ const Matters: React.FC<MattersProps> = ({
   // If a matter is selected, render the detail pivot
   // ------------------------------------------------
   if (selectedMatter) {
+
     return (
       <div className={outerDetailContainerStyle(isDarkMode)}>
-        <div className={innerDetailCardStyle(isDarkMode)}>
-          <Stack
-            horizontal
-            verticalAlign="center"
-            tokens={{ childrenGap: 10 }}
-            className={mergeStyles({ marginBottom: '20px' })}
-          >
-            <IconButton
-              iconProps={{ iconName: 'Back' }}
-              title="Back"
-              ariaLabel="Back"
-              onClick={() => setSelectedMatter(null)}
-              styles={{
-                root: {
-                  backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                  color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-                  borderRadius: '50%',
-                  width: '40px',
-                  height: '40px',
-                  selectors: {
-                    ':hover': {
-                      backgroundColor: isDarkMode
-                        ? colours.dark.background
-                        : colours.light.background,
-                    },
+        {/* Nav Row (Back + Tabs) */}
+        <Stack
+          horizontal
+          verticalAlign="center"
+          tokens={{ childrenGap: 10 }}
+          className={mergeStyles({ marginBottom: '20px' })}
+        >
+          <IconButton
+            iconProps={{ iconName: 'Back' }}
+            title="Back"
+            ariaLabel="Back"
+            onClick={() => setSelectedMatter(null)}
+            styles={{
+              root: {
+                backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+                color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
+                borderRadius: '50%',
+                width: 40,
+                height: 40,
+                selectors: {
+                  ':hover': {
+                    backgroundColor: isDarkMode
+                      ? colours.dark.background
+                      : colours.light.background,
                   },
                 },
-              }}
+              },
+            }}
+          />
+          <Pivot
+            selectedKey={activeTab}
+            onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'Overview')}
+            aria-label="Matter Detail Tabs"
+            styles={{
+              root: { marginBottom: 0, borderBottom: 'none' },
+              link: { fontSize: 16, fontWeight: 600 },
+            }}
+          >
+            <PivotItem headerText="Overview" itemKey="Overview" />
+            <PivotItem headerText="Transactions" itemKey="Transactions" />
+            <PivotItem headerText="Documents" itemKey="Documents" />
+          </Pivot>
+        </Stack>
+
+        {/* Card Content */}
+        <div className={innerDetailCardStyle(isDarkMode)}>
+          {activeTab === 'Overview' && (
+            <MatterOverview
+              matter={selectedMatter}
+              overviewData={matterOverview}
+              outstandingData={matterOutstandingData}
+              complianceData={complianceData}
+              matterSpecificActivitiesData={matterSpecificActivities}
+              onEdit={() => { }}
+              transactions={transactions}
             />
-            <Stack.Item grow>
-              <Pivot
-                aria-label="Matter Detail Tabs"
-                styles={{
-                  root: { marginBottom: '20px', borderBottom: 'none' },
-                  link: { fontSize: '16px', fontWeight: 600 },
-                }}
-              >
-                <PivotItem headerText="Overview" itemKey="Overview">
-                  <MatterOverview
-                    matter={selectedMatter}
-                    overviewData={matterOverview}
-                    outstandingData={matterOutstandingData}
-                    complianceData={complianceData}
-                    matterSpecificActivitiesData={matterSpecificActivities}
-                    onEdit={() => { }}
-                    transactions={transactions}
-                  />
-                </PivotItem>
-
-                <PivotItem headerText="Transactions" itemKey="Transactions">
-                  <MatterTransactions matter={selectedMatter} transactions={transactions} />
-                </PivotItem>
-
-                {canViewDocuments ? (
-                  <PivotItem headerText="Documents" itemKey="Documents">
-                    <Documents
-                      matter={selectedMatter}
-                      category={groupPracticeArea(selectedMatter.PracticeArea)}
-                    />
-                  </PivotItem>
-                ) : (
-                  <PivotItem headerText="Documents" itemKey="Documents">
-                    <MessageBar messageBarType={MessageBarType.error}>
-                      Access Denied: You do not have permission to view Documents.
-                    </MessageBar>
-                  </PivotItem>
-                )}
-              </Pivot>
-            </Stack.Item>
-          </Stack>
+          )}
+          {activeTab === 'Transactions' && (
+            <MatterTransactions matter={selectedMatter} transactions={transactions} />
+          )}
+          {activeTab === 'Documents' &&
+            (canViewDocuments ? (
+              <Documents
+                matter={selectedMatter}
+                category={groupPracticeArea(selectedMatter.PracticeArea)}
+              />
+            ) : (
+              <MessageBar messageBarType={MessageBarType.error}>
+                Access Denied: You do not have permission to view Documents.
+              </MessageBar>
+            ))}
         </div>
       </div>
     );
-  }  
+  }   
 
   // ------------------------------------------------
   // Otherwise, render the grid (overview or matter list)

@@ -19,3 +19,9 @@ This document records known response structures from external systems like Tille
 | `*`         | `*`     | `error`   | Log error and surface to 365    |
 
 Add further mappings below as they become available.
+## Additional Mapping
+| checkTypeId | result | status    | Action                              |
+|-------------|-------|-----------|-------------------------------------|
+| `2`         | `pass`| `complete`| Log info that check 2 succeeded     |
+| `2`         | `fail`| `complete`| Notify operations of failed check   |
+| `2`         | `*`   | `error`   | Log error and alert on-call team    |

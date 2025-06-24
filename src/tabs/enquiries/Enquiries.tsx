@@ -577,23 +577,12 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
-      <Stack
-        tokens={{ childrenGap: 12 }}
-        styles={{
-          root: {
-            backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            padding: '20px',
-            position: 'relative',
-            fontFamily: 'Raleway, sans-serif',
-          },
-        }}
-      >
+      <>
         <Stack
           horizontal
           verticalAlign="center"
           tokens={{ childrenGap: 10 }}
-          className={mergeStyles({ marginBottom: '12px' })}
+          styles={{ root: { marginBottom: 12 } }}
         >
           <IconButton
             iconProps={{ iconName: 'Back' }}
@@ -605,8 +594,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
                 color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
                 borderRadius: '50%',
-                width: '40px',
-                height: '40px',
+                width: 40,
+                height: 40,
                 selectors: {
                   ':hover': {
                     backgroundColor: isDarkMode
@@ -617,37 +606,50 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               },
             }}
           />
-          <Stack.Item grow>
-            <Pivot
-              selectedKey={activeSubTab}
-              onLinkClick={handleSubTabChange}
-              styles={{
-                root: { marginBottom: '12px', borderBottom: 'none' },
-                link: {
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  padding: '6px 8px',
-                  margin: '0 5px',
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  fontFamily: 'Raleway, sans-serif',
-                },
-                linkIsSelected: { borderBottom: 'none' },
-              }}
-              aria-label="Detail Sub-Tabs"
-            >
-              <PivotItem headerText="Overview" itemKey="Overview">
-                <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
-              </PivotItem>
-              <PivotItem headerText="Pitch Builder" itemKey="Pitch">
-                <PitchBuilder enquiry={enquiry} userData={userData} />
-              </PivotItem>
-            </Pivot>
-          </Stack.Item>
+          <Pivot
+            selectedKey={activeSubTab}
+            onLinkClick={handleSubTabChange}
+            styles={{
+              root: { borderBottom: 'none' },
+              link: {
+                fontSize: 16,
+                fontWeight: 600,
+                padding: '6px 8px',
+                margin: '0 5px',
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                fontFamily: 'Raleway, sans-serif',
+              },
+              linkIsSelected: { borderBottom: 'none' },
+            }}
+            aria-label="Detail Sub-Tabs"
+          >
+            <PivotItem headerText="Overview" itemKey="Overview" />
+            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+          </Pivot>
         </Stack>
-      </Stack>
+
+        <Stack
+          tokens={{ childrenGap: 12 }}
+          styles={{
+            root: {
+              backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              padding: 20,
+              fontFamily: 'Raleway, sans-serif',
+            },
+          }}
+        >
+          {activeSubTab === 'Overview' && (
+            <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
+          )}
+          {activeSubTab === 'Pitch' && (
+            <PitchBuilder enquiry={enquiry} userData={userData} />
+          )}
+        </Stack>
+      </>
     ),
     [handleBackToList, handleSubTabChange, handleRate, isDarkMode, activeSubTab, userData]
-  );
+  );  
 
   const calculateAnimationDelay = (row: number, col: number) => {
     const delayPerRow = 0.2;
