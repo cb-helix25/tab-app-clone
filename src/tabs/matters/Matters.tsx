@@ -250,7 +250,6 @@ const outerDetailContainerStyle = (isDarkMode: boolean) =>
 const innerDetailCardStyle = (isDarkMode: boolean) =>
   mergeStyles({
     padding: '30px',
-    borderRadius: '12px',
     boxShadow: isDarkMode
       ? '0 4px 16px rgba(0,0,0,0.6)'
       : '0 4px 16px rgba(0,0,0,0.1)',
@@ -412,8 +411,13 @@ const Matters: React.FC<MattersProps> = ({
   // (A) The base matter from SQL
   const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
 
-  const allowedUsers = ['Lukasz', 'Alex'];
-  const userFirstName = userData && userData.length > 0 ? userData[0].First.trim() : '';
+  const allowedUsers = ['LZ', 'LUKE', 'LUKASZ'];
+  const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+  const userFirstName =
+    userData && userData.length > 0 ? userData[0].First.trim().toUpperCase() : '';
+  const isLocalhost = window.location.hostname === 'localhost';
+  const canViewDocuments =
+    allowedUsers.includes(userInitials) || allowedUsers.includes(userFirstName) || isLocalhost;
 
   // (B) The structured extra data from getMatterOverview
   const [matterOverview, setMatterOverview] = useState<any>(null);
@@ -670,36 +674,41 @@ const Matters: React.FC<MattersProps> = ({
     return (
       <div className={outerDetailContainerStyle(isDarkMode)}>
         <div className={innerDetailCardStyle(isDarkMode)}>
-          <IconButton
-            iconProps={{ iconName: 'Back' }}
-            title="Back"
-            ariaLabel="Back"
-            onClick={() => setSelectedMatter(null)}
-            styles={{
-              root: {
-                backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-                borderRadius: '50%',
-                width: '40px',
-                height: '40px',
-                marginBottom: '20px', // keep any margin you need
-                selectors: {
-                  ':hover': {
-                    backgroundColor: isDarkMode
-                      ? colours.dark.background
-                      : colours.light.background,
+          <Stack
+            horizontal
+            verticalAlign="center"
+            tokens={{ childrenGap: 10 }}
+            className={mergeStyles({ marginBottom: '20px' })}
+          >
+            <IconButton
+              iconProps={{ iconName: 'Back' }}
+              title="Back"
+              ariaLabel="Back"
+              onClick={() => setSelectedMatter(null)}
+              styles={{
+                root: {
+                  backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+                  color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  selectors: {
+                    ':hover': {
+                      backgroundColor: isDarkMode
+                        ? colours.dark.background
+                        : colours.light.background,
+                    },
                   },
                 },
-              },
-            }}
-          />
-          <Pivot
-            aria-label="Matter Detail Tabs"
-            styles={{
-              root: { marginBottom: '20px', borderBottom: 'none' },
-              link: { fontSize: '16px', fontWeight: 600 },
-            }}
-          >
+              }}
+            />
+            <Pivot
+              aria-label="Matter Detail Tabs"
+              styles={{
+                root: { marginBottom: '20px', borderBottom: 'none' },
+                link: { fontSize: '16px', fontWeight: 600 },
+              }}
+              >
             <PivotItem headerText="Overview" itemKey="Overview">
               <MatterOverview
                 matter={selectedMatter}
@@ -716,7 +725,7 @@ const Matters: React.FC<MattersProps> = ({
               <MatterTransactions matter={selectedMatter} transactions={transactions} />
             </PivotItem>
 
-            {allowedUsers.includes(userFirstName) ? (
+              {canViewDocuments ? (
               <PivotItem headerText="Documents" itemKey="Documents">
                 <Documents
                   matter={selectedMatter}
@@ -731,6 +740,7 @@ const Matters: React.FC<MattersProps> = ({
               </PivotItem>
             )}
           </Pivot>
+          </Stack>
         </div>
       </div>
     );

@@ -252,7 +252,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       flex-direction: column;
       gap: 4px;
       background: rgba(255,255,255,0.95);
-      transform: translateX(calc(100% - 12px));
+      transform: translateX(calc(100% - 11px));
       transition: transform 0.2s ease;
       pointer-events: none;
       overflow: hidden;
@@ -315,6 +315,10 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+    .block-container:hover .block-main,
+    .block-container.pinned .block-main {
+      margin-right: 260px;
     }
     .option-choice.selected {
       background: ${colours.blue};
