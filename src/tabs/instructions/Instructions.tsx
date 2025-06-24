@@ -176,7 +176,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    padding: '24px',
     minHeight: '100vh',
     boxSizing: 'border-box',
     color: isDarkMode ? colours.light.text : colours.dark.text,
@@ -197,6 +196,17 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
     marginBottom: 12,
   });
+
+  const sectionContainerStyle = (dark: boolean) =>
+    mergeStyles({
+      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      padding: '16px',
+      borderRadius: 0,
+      boxShadow: dark
+        ? `0 4px 12px ${colours.dark.border}`
+        : `0 4px 12px ${colours.light.border}`,
+      width: '100%',
+    });
 
   const flattenedInstructions = useMemo(() => {
     return instructionData.flatMap((prospect) =>
@@ -370,93 +380,89 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <section className="page-section">
-      {activePivot === 'instructions' && (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={instructionColumnStyle}>
-            {flattenedInstructions.map((instruction, idx) => {
-              const row = Math.floor(idx / 2);
-              const col = idx % 2;
-              const animationDelay = row * 0.2 + col * 0.1;
-              return (
-                <InstructionCard
-                  key={idx}
-                  instruction={instruction}
-                  risk={instruction.risk}
-                  eid={instruction.eid}
-                  documentCount={instruction.documentCount}
-                  prospectId={instruction.prospectId}
-                  animationDelay={animationDelay}
-                  expanded={expandedInstructionRef === instruction.InstructionRef}
-                  onOpenMatter={() => handleOpenMatter(instruction)}
-                  onRiskAssessment={() => handleRiskAssessment(instruction)}
-                  onEIDCheck={() => handleEIDCheck(instruction)}
-                  innerRef={(el: HTMLDivElement | null) => {
-                    instructionRefs.current[instruction.InstructionRef] = el;
-                  }}
-                />
-              );
-            })}
-          </div>
-        </Stack>
-      )}
-      {activePivot === 'deals' && (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={gridContainerStyle}>
-            {deals.map((deal, idx) => {
-              const row = Math.floor(idx / 4);
-              const col = idx % 4;
-              const animationDelay = row * 0.2 + col * 0.1;
-              const isClosed = String(deal.Status).toLowerCase() === 'closed';
-              return (
-                <DealCard
-                  key={idx}
-                  deal={deal}
-                  animationDelay={animationDelay}
-                  onFollowUp={
-                    isClosed ? undefined : () => console.log('Follow up', deal.DealId)
-                  }
-                  onOpenInstruction={
-                    deal.InstructionRef ? () => handleOpenInstruction(deal.InstructionRef) : undefined
-                  }
-                />
-              );
-            })}
-          </div>
-        </Stack>
-      )}
-      {activePivot === 'clients' && (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={gridContainerStyle}>
-            {clients.map((c, idx) => {
-              const row = Math.floor(idx / 4);
-              const col = idx % 4;
-              const animationDelay = row * 0.2 + col * 0.1;
-              return (
-                <JointClientCard
-                  key={idx}
-                  client={c}
-                  animationDelay={animationDelay}
-                  onOpenInstruction={handleOpenInstruction}
-                />
-              );
-            })}
-          </div>
-        </Stack>
-      )}
-      {activePivot === 'risk' && (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <div className={gridContainerStyle}>
-            {riskData.map((r, idx) => {
-              const row = Math.floor(idx / 4);
-              const col = idx % 4;
-              const animationDelay = row * 0.2 + col * 0.1;
-              return (
-                <RiskComplianceCard key={idx} data={r} animationDelay={animationDelay} />
-              );
-            })}
-          </div>
-        </Stack>
-      )}
+      <Stack tokens={dashboardTokens} className={containerStyle}>
+        <div className={sectionContainerStyle(isDarkMode)}>
+          {activePivot === 'instructions' && (
+            <div className={instructionColumnStyle}>
+              {flattenedInstructions.map((instruction, idx) => {
+                const row = Math.floor(idx / 2);
+                const col = idx % 2;
+                const animationDelay = row * 0.2 + col * 0.1;
+                return (
+                  <InstructionCard
+                    key={idx}
+                    instruction={instruction}
+                    risk={instruction.risk}
+                    eid={instruction.eid}
+                    documentCount={instruction.documentCount}
+                    prospectId={instruction.prospectId}
+                    animationDelay={animationDelay}
+                    expanded={expandedInstructionRef === instruction.InstructionRef}
+                    onOpenMatter={() => handleOpenMatter(instruction)}
+                    onRiskAssessment={() => handleRiskAssessment(instruction)}
+                    onEIDCheck={() => handleEIDCheck(instruction)}
+                    innerRef={(el: HTMLDivElement | null) => {
+                      instructionRefs.current[instruction.InstructionRef] = el;
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {activePivot === 'deals' && (
+            <div className={gridContainerStyle}>
+              {deals.map((deal, idx) => {
+                const row = Math.floor(idx / 4);
+                const col = idx % 4;
+                const animationDelay = row * 0.2 + col * 0.1;
+                const isClosed = String(deal.Status).toLowerCase() === 'closed';
+                return (
+                  <DealCard
+                    key={idx}
+                    deal={deal}
+                    animationDelay={animationDelay}
+                    onFollowUp={
+                      isClosed ? undefined : () => console.log('Follow up', deal.DealId)
+                    }
+                    onOpenInstruction={
+                      deal.InstructionRef ? () => handleOpenInstruction(deal.InstructionRef) : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+          {activePivot === 'clients' && (
+            <div className={gridContainerStyle}>
+              {clients.map((c, idx) => {
+                const row = Math.floor(idx / 4);
+                const col = idx % 4;
+                const animationDelay = row * 0.2 + col * 0.1;
+                return (
+                  <JointClientCard
+                    key={idx}
+                    client={c}
+                    animationDelay={animationDelay}
+                    onOpenInstruction={handleOpenInstruction}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {activePivot === 'risk' && (
+            <div className={gridContainerStyle}>
+              {riskData.map((r, idx) => {
+                const row = Math.floor(idx / 4);
+                const col = idx % 4;
+                const animationDelay = row * 0.2 + col * 0.1;
+                return (
+                  <RiskComplianceCard key={idx} data={r} animationDelay={animationDelay} />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Stack>
     </section>
   );
 };

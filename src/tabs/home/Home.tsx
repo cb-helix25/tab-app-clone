@@ -323,7 +323,6 @@ const quickActions: QuickLink[] = [
 const containerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    padding: '16px',
     minHeight: '100vh',
     boxSizing: 'border-box',
   });
