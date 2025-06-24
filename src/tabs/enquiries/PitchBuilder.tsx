@@ -1976,6 +1976,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             `[data-block-title="${block.title}"]`
           ) as HTMLElement | null;
         }
+        if (!inserted) {
+          inserted = bodyEditorRef.current.querySelector(
+            `.block-container[data-placeholder="${block.placeholder}"]`
+          ) as HTMLElement | null;
+        }
         if (inserted) {
           const temp = document.createElement('div');
           temp.innerHTML = placeholderHTML;
