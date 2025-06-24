@@ -702,48 +702,46 @@ const Matters: React.FC<MattersProps> = ({
                 },
               }}
             />
-            <Pivot
-              aria-label="Matter Detail Tabs"
-              styles={{
-                root: {
-                  marginBottom: '20px',
-                  borderBottom: 'none',
-                  flexGrow: 1,
-                },
-                link: { fontSize: '16px', fontWeight: 600 },
-              }}
-            >
-              <PivotItem headerText="Overview" itemKey="Overview">
-                <MatterOverview
-                  matter={selectedMatter}
-                  overviewData={matterOverview}
-                  outstandingData={matterOutstandingData}
-                  complianceData={complianceData}
-                  matterSpecificActivitiesData={matterSpecificActivities}
-                  onEdit={() => { }}
-                  transactions={transactions}
-                />
-              </PivotItem>
+            <Stack.Item grow>
+              <Pivot
+                aria-label="Matter Detail Tabs"
+                styles={{
+                  root: { marginBottom: '20px', borderBottom: 'none' },
+                  link: { fontSize: '16px', fontWeight: 600 },
+                }}
+              >
+                <PivotItem headerText="Overview" itemKey="Overview">
+                  <MatterOverview
+                    matter={selectedMatter}
+                    overviewData={matterOverview}
+                    outstandingData={matterOutstandingData}
+                    complianceData={complianceData}
+                    matterSpecificActivitiesData={matterSpecificActivities}
+                    onEdit={() => { }}
+                    transactions={transactions}
+                  />
+                </PivotItem>
 
-            <PivotItem headerText="Transactions" itemKey="Transactions">
-              <MatterTransactions matter={selectedMatter} transactions={transactions} />
-            </PivotItem>
+                <PivotItem headerText="Transactions" itemKey="Transactions">
+                  <MatterTransactions matter={selectedMatter} transactions={transactions} />
+                </PivotItem>
 
-              {canViewDocuments ? (
-              <PivotItem headerText="Documents" itemKey="Documents">
-                <Documents
-                  matter={selectedMatter}
-                  category={groupPracticeArea(selectedMatter.PracticeArea)}
-                />
-              </PivotItem>
-            ) : (
-              <PivotItem headerText="Documents" itemKey="Documents">
-                <MessageBar messageBarType={MessageBarType.error}>
-                  Access Denied: You do not have permission to view Documents.
-                </MessageBar>
-              </PivotItem>
-            )}
-          </Pivot>
+                {canViewDocuments ? (
+                  <PivotItem headerText="Documents" itemKey="Documents">
+                    <Documents
+                      matter={selectedMatter}
+                      category={groupPracticeArea(selectedMatter.PracticeArea)}
+                    />
+                  </PivotItem>
+                ) : (
+                  <PivotItem headerText="Documents" itemKey="Documents">
+                    <MessageBar messageBarType={MessageBarType.error}>
+                      Access Denied: You do not have permission to view Documents.
+                    </MessageBar>
+                  </PivotItem>
+                )}
+              </Pivot>
+            </Stack.Item>
           </Stack>
         </div>
       </div>

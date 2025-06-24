@@ -617,31 +617,33 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               },
             }}
           />
-          <Pivot
-            selectedKey={activeSubTab}
-            onLinkClick={handleSubTabChange}
-            styles={{
-              root: { marginBottom: '12px', borderBottom: 'none', flexGrow: 1 },
-              link: {
-                fontSize: '16px',
-                fontWeight: 600,
-                padding: '6px 8px',
-                margin: '0 5px',
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                fontFamily: 'Raleway, sans-serif',
-              },
-              linkIsSelected: { borderBottom: 'none' },
-            }}
-            aria-label="Detail Sub-Tabs"
-          >
-          <PivotItem headerText="Overview" itemKey="Overview">
-            <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => {}} />
-          </PivotItem>
-          <PivotItem headerText="Pitch Builder" itemKey="Pitch">
-            <PitchBuilder enquiry={enquiry} userData={userData} />
-          </PivotItem>
-        </Pivot>
-      </Stack>
+          <Stack.Item grow>
+            <Pivot
+              selectedKey={activeSubTab}
+              onLinkClick={handleSubTabChange}
+              styles={{
+                root: { marginBottom: '12px', borderBottom: 'none' },
+                link: {
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  padding: '6px 8px',
+                  margin: '0 5px',
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  fontFamily: 'Raleway, sans-serif',
+                },
+                linkIsSelected: { borderBottom: 'none' },
+              }}
+              aria-label="Detail Sub-Tabs"
+            >
+              <PivotItem headerText="Overview" itemKey="Overview">
+                <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
+              </PivotItem>
+              <PivotItem headerText="Pitch Builder" itemKey="Pitch">
+                <PitchBuilder enquiry={enquiry} userData={userData} />
+              </PivotItem>
+            </Pivot>
+          </Stack.Item>
+        </Stack>
       </Stack>
     ),
     [handleBackToList, handleSubTabChange, handleRate, isDarkMode, activeSubTab, userData]
