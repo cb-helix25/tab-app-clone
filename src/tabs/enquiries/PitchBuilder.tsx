@@ -281,6 +281,36 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       transform: translateX(0);
       pointer-events: auto;
     }
+    .block-sidebar .actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .block-sidebar .icon-btn {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: ${colours.grey};
+      color: ${colours.greyText};
+      cursor: pointer;
+      font-size: 16px;
+      user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+    }
+    .block-sidebar .icon-btn:hover {
+      background: ${colours.blue};
+      color: #ffffff;
+      transform: scale(1.05);
+    }
+    .block-sidebar .icon-btn:active {
+      background: ${colours.darkBlue};
+      color: #ffffff;
+      transform: scale(0.95);
+    }
     .block-sidebar .option-choices {
       display: flex;
       flex-direction: column;
@@ -1916,15 +1946,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
       if (Object.keys(blocks).length > 0) {
         setEditedBlocks((prev) => ({ ...prev, ...blocks }));
-        Object.entries(blocks).forEach(([title, changed]) => {
-          if (changed) {
-            const block = templateBlocks.find((b) => b.title === title);
-            setSelectedTemplateOptions((prev) => ({
-              ...prev,
-              [title]: block?.isMultiSelect ? [] : '',
-            }));
-          }
-        });
       }
     }
   }
