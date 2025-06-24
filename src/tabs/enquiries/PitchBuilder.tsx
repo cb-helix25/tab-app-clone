@@ -1915,9 +1915,43 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   /**
-   * When you click "clear" on a block, we remove its inserted text, 
+   * When you click "clear" on a block, we remove its inserted text,
    * restoring the original placeholder <span>.
    */
+  function removeBlockByMarkers(
+    container: HTMLElement,
+    title: string,
+    placeholderHTML: string
+  ): boolean {
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_COMMENT,
+      null
+    );
+    let start: Comment | null = null;
+    let end: Comment | null = null;
+    while (walker.nextNode()) {
+      const comment = walker.currentNode as Comment;
+      if (comment.nodeValue === `START_BLOCK:${title}`) {
+        start = comment;
+      } else if (comment.nodeValue === `END_BLOCK:${title}`) {
+        end = comment;
+        break;
+      }
+    }
+    if (start && end) {
+      const range = document.createRange();
+      range.setStartBefore(start);
+      range.setEndAfter(end);
+      range.deleteContents();
+      const temp = document.createElement('div');
+      temp.innerHTML = placeholderHTML;
+      const node = temp.firstChild as Node;
+      range.insertNode(node);
+      return true;
+    }
+    return false;
+  }
   function handleClearBlock(block: TemplateBlock) {
     // Update state for the selected options and inserted block flag.
     setSelectedTemplateOptions((prev) => ({
@@ -1972,6 +2006,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (regex.test(updatedBody)) {
         updatedBody = updatedBody.replace(regex, placeholderHTML);
         bodyEditorRef.current.innerHTML = updatedBody;
+      } else if (
+        removeBlockByMarkers(bodyEditorRef.current, block.title, placeholderHTML)
+      ) {
+        updatedBody = bodyEditorRef.current.innerHTML;
       } else {
         let inserted = bodyEditorRef.current.querySelector(
           `[data-inserted="${block.title}"]`
