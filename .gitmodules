@@ -1,0 +1,3 @@
+[submodule "Instructions app/instructions/instructions"]
+	path = Instructions app/instructions/instructions
+	url = git@github.com:HelixAutomations/instruct-pitch.git
