@@ -1,0 +1,32 @@
+[
+    {
+        "matterRef": "HLX-22338-3927",
+        "checkTypeId": 1,
+        "result": "pass",
+        "status": "complete"
+    },
+    {
+        "matterRef": "HLX-22338-3927",
+        "checkTypeId": 2,
+        "result": "fail",
+        "status": "complete"
+    },
+    {
+        "matterRef": "HLX-22338-3927",
+        "checkTypeId": 3,
+        "result": "pass",
+        "status": "complete"
+    },
+    {
+        "matterRef": "HLX-22338-4843",
+        "checkTypeId": 1,
+        "result": "fail",
+        "status": "error"
+    },
+    {
+        "matterRef": "HLX-22338-4843",
+        "checkTypeId": 2,
+        "result": "pass",
+        "status": "complete"
+    }
+]

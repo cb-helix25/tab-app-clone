@@ -25,3 +25,17 @@ Add further mappings below as they become available.
 | `2`         | `pass`| `complete`| Log info that check 2 succeeded     |
 | `2`         | `fail`| `complete`| Notify operations of failed check   |
 | `2`         | `*`   | `error`   | Log error and alert on-call team    |
+
+### checkType 3 – Risk & Compliance
+| checkTypeId | result | status    | Action                                      |
+|-------------|-------|-----------|---------------------------------------------|
+| `3`         | `pass`| `complete`| Update local risk register                  |
+| `3`         | `fail`| `complete`| Notify risk & compliance team               |
+| `3`         | `*`   | `error`   | Log error and escalate via incident channel |
+
+## Additional Mapping
+| checkTypeId | result | status    | Action                              |
+|-------------|-------|-----------|-------------------------------------|
+| `2`         | `pass`| `complete`| Log info that check 2 succeeded     |
+| `2`         | `fail`| `complete`| Notify operations of failed check   |
+| `2`         | `*`   | `error`   | Log error and alert on-call team    |
