@@ -1960,13 +1960,25 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       );
       // Build the original placeholder markup.
       const placeholderHTML = buildPlaceholder(block);
-      const update = (prevBody: string) => prevBody.replace(regex, placeholderHTML);
-      // Replace the block immediately in state and DOM
-      setBody((prevBody) => {
-        const newBody = update(prevBody);
-        bodyEditorRef.current!.innerHTML = newBody;
-        return newBody;
-      });
+      // Replace via regex. If no match is found (comments removed during edit),
+      // fall back to querying the inserted span in the DOM.
+      let updatedBody = bodyEditorRef.current.innerHTML;
+      if (regex.test(updatedBody)) {
+        updatedBody = updatedBody.replace(regex, placeholderHTML);
+        bodyEditorRef.current.innerHTML = updatedBody;
+      } else {
+        const inserted = bodyEditorRef.current.querySelector(
+          `span[data-inserted="${block.title}"]`
+        ) as HTMLElement | null;
+        if (inserted) {
+          const temp = document.createElement('div');
+          temp.innerHTML = placeholderHTML;
+          inserted.replaceWith(temp.firstChild as Node);
+          updatedBody = bodyEditorRef.current.innerHTML;
+        }
+      }
+
+      setBody(updatedBody);
       // Remove highlight right away so the user sees immediate feedback
       highlightBlock(block.title, false);
     }

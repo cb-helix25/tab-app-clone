@@ -39,6 +39,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('instructions');
+  const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
 
@@ -155,9 +156,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         <div className={pivotBarStyle(isDarkMode)}>
           <Pivot
             selectedKey={activePivot}
-            onLinkClick={(item) =>
-              setActivePivot(item?.props.itemKey || 'instructions')
-            }
+            onLinkClick={(item) => {
+              setExpandedInstructionRef(null);
+              setActivePivot(item?.props.itemKey || 'instructions');
+            }}
           >
             <PivotItem headerText="Instructions" itemKey="instructions" />
             <PivotItem headerText="Deals" itemKey="deals" />
@@ -300,6 +302,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenInstruction = (ref: string) => {
     setActivePivot('instructions');
+    setExpandedInstructionRef(ref);
     setTimeout(() => {
       const el = instructionRefs.current[ref];
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -377,6 +380,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   documentCount={instruction.documentCount}
                   prospectId={instruction.prospectId}
                   animationDelay={animationDelay}
+                  expanded={expandedInstructionRef === instruction.InstructionRef}
                   onOpenMatter={() => handleOpenMatter(instruction)}
                   onRiskAssessment={() => handleRiskAssessment(instruction)}
                   onEIDCheck={() => handleEIDCheck(instruction)}

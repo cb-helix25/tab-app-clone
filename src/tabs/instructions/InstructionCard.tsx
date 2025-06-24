@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { mergeStyles } from '@fluentui/react';
 import { format } from 'date-fns';
 import {
@@ -86,6 +86,7 @@ interface InstructionCardProps {
     onRiskAssessment?: () => void;
     onEIDCheck?: () => void;
     innerRef?: React.Ref<HTMLDivElement>;
+    expanded?: boolean;
 }
 
 const iconMap = {
@@ -106,12 +107,17 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     onRiskAssessment,
     onEIDCheck,
     innerRef,
+    expanded = false,
 }) => {
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
     const isInitialised = stage === 'initialised';
 
-    const [collapsed, setCollapsed] = useState(true);
+    const [collapsed, setCollapsed] = useState(!expanded);
+
+    useEffect(() => {
+        setCollapsed(!expanded);
+    }, [expanded]);
 
     const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
         backgroundColor: colours.light.sectionBackground,
