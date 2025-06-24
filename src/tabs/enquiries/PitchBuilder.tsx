@@ -234,6 +234,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       position: relative;
       display: inline-block;
       width: 100%;
+      overflow: hidden;
     }
     .block-main {
       position: relative;
@@ -276,6 +277,10 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-container:hover .block-sidebar {
       transform: translateX(0);
       pointer-events: auto;
+    }
+    .block-container:hover,
+    .block-container.pinned {
+      overflow: visible;
     }
     .block-sidebar.pinned {
       transform: translateX(0);

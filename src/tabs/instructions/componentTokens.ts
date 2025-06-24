@@ -2,7 +2,8 @@ import { IStackTokens, IStackStyles } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 
 export const dashboardTokens: IStackTokens = {
-  childrenGap: 20,
+  // Reduce vertical gap between stacked sections to reclaim space
+  childrenGap: 12,
 };
 
 export const cardTokens: IStackTokens = {

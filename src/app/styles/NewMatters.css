@@ -1,7 +1,8 @@
 /* Styles adapted from the reference checkout process */
 .workflow-container {
     width: 100%;
-    padding: 20px;
+    /* Tighter outer padding to reclaim vertical space */
+        padding: 10px;
         background: var(--helix-grey);
         min-height: 100vh;
         box-sizing: border-box;
@@ -10,34 +11,35 @@
     .workflow-main {
         width: 100%;
         max-width: none;
-        margin: 0 0 1rem 0;
+        margin: 0;
         display: flex;
-        gap: 16px;
+        gap: 12px;
         flex-wrap: wrap;
         min-width: 0;
         box-sizing: border-box;
         background: #fff;
         border-radius: 0;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-        padding: 1.5rem 1.25rem 1.25rem 1.25rem;
-    position: relative;
-    z-index: 2;
-}
-
-.steps-column {
-    flex: 1 1 0%;
-    min-width: 0;
-}
-
-.step-section {
-    margin-bottom: 8px;
-}
-
-.step-header {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    padding: 8px 12px;
+        padding: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .steps-column {
+        flex: 1 1 0%;
+        min-width: 0;
+    }
+    
+    .step-section {
+        margin-bottom: 4px;
+    }
+    
+    .step-header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        /* Slightly tighter padding for headers */
+        padding: 6px 10px;
         background-color: var(--helix-grey);
         color: var(--helix-dark-blue);
         border: 1px solid transparent;
@@ -166,7 +168,7 @@
         padding 0.34s cubic-bezier(0.42, 0, 0.25, 1),
         border-color 0.35s,
         transform 0.36s cubic-bezier(0.4, 0, 0.2, 1);
-        padding: 0 8px;
+        padding: 0 6px;
             border: 2px solid rgba(211, 211, 211, 0.5);
             box-shadow: 0 4px 18px rgba(0, 0, 0, 0.09);
             border-top: none;
@@ -176,7 +178,7 @@
         .step-section.active .step-content,
         .step-header.active+.step-content {
             max-height: none;
-            padding: 8px;
+            padding: 6px;
             opacity: 1;
             transform: scaleY(1);
         }
