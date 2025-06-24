@@ -231,7 +231,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: flex;
       flex-direction: column;
       gap: 4px;
-      background: rgba(255,255,255,0.95);
+      background: rgba(255,255,255,1);
       transform: translateX(calc(100% - 24px));
       transition: transform 0.2s ease;
       pointer-events: none;
@@ -243,7 +243,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       left: 0;
       width: 24px;
       height: 100%;
-      background: ${colours.darkBlue};
+      background: ${colours.grey};
       color: #ffffff;
       display: flex;
       align-items: center;
@@ -1954,8 +1954,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     if (bodyEditorRef.current) {
       // Build a regex to capture everything between the markers.
+      const safeTitle = block.title.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
       const regex = new RegExp(
-        `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
+        `<!--START_BLOCK:${safeTitle}-->[\\s\\S]*?<!--END_BLOCK:${safeTitle}-->`,
         'g'
       );
       // Build the original placeholder markup.
@@ -1967,9 +1968,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         updatedBody = updatedBody.replace(regex, placeholderHTML);
         bodyEditorRef.current.innerHTML = updatedBody;
       } else {
-        const inserted = bodyEditorRef.current.querySelector(
-          `span[data-inserted="${block.title}"]`
+        let inserted = bodyEditorRef.current.querySelector(
+          `[data-inserted="${block.title}"]`
         ) as HTMLElement | null;
+        if (!inserted) {
+          inserted = bodyEditorRef.current.querySelector(
+            `[data-block-title="${block.title}"]`
+          ) as HTMLElement | null;
+        }
         if (inserted) {
           const temp = document.createElement('div');
           temp.innerHTML = placeholderHTML;
