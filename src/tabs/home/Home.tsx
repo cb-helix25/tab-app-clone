@@ -850,6 +850,14 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
+  // Populate current user details once user data is available
+  useEffect(() => {
+    if (userData && userData[0]) {
+      setCurrentUserEmail(userData[0].Email || '');
+      setCurrentUserName(userData[0].FullName || '');
+    }
+  }, [userData]);
+
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
     const sunday = new Date(monday);
@@ -1808,8 +1816,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
-          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-          { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null, prevMoney: 0 },
+          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0 },
+          { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
@@ -1897,13 +1905,11 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Fees Recovered This Month',
         isMoneyOnly: true,
         money: recoveredData ? recoveredData : 0,
-        prevMoney: 0,
       },
       {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
         money: outstandingTotal,
-        prevMoney: 0,
       },
       {
         title: 'Enquiries Today',
