@@ -26,19 +26,27 @@ import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function removeAutoInsertedBlocks(
   html: string,
   autoBlocks: { [key: string]: boolean },
   editedBlocks: { [key: string]: boolean }
 ): string {
-  const div = document.createElement('div');
-  div.innerHTML = html;
+  let result = html;
   Object.keys(autoBlocks).forEach((title) => {
     if (!autoBlocks[title]) return;
     if (editedBlocks[title]) return;
-    div.querySelectorAll(`[data-inserted="${title}"]`).forEach((el) => el.remove());
+    const escaped = escapeRegExp(title);
+    const regex = new RegExp(
+      `<!--START_BLOCK:${escaped}-->[\\s\\S]*?<!--END_BLOCK:${escaped}-->`,
+      'g'
+    );
+    result = result.replace(regex, '');
   });
-  return div.innerHTML;
+  return result;
 }
 
 interface EmailPreviewProps {
