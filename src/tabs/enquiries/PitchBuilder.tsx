@@ -377,6 +377,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
+    setAutoInsertedBlocks({});
     setLockedBlocks({});
     setPinnedBlocks({});
     setEditedBlocks({});
@@ -822,6 +823,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   // Tracks which blocks have been inserted
   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
+  const [autoInsertedBlocks, setAutoInsertedBlocks] = useState<{ [key: string]: boolean }>({});
 
   const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
 
@@ -1635,6 +1637,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setErrorMessage('');
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
+    setAutoInsertedBlocks({});
     setLockedBlocks({});
     setPinnedBlocks({});
     setEditedBlocks({});
@@ -2122,6 +2125,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           delete copy[block.title];
           return copy;
         });
+        setAutoInsertedBlocks((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
       } else {
         console.warn('Failed to clear block:', block.title);
       }
@@ -2143,6 +2151,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
+    setAutoInsertedBlocks({});
     setLockedBlocks({});
     setPinnedBlocks({});
     setEditedBlocks({});
@@ -2358,6 +2367,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           block,
           block.isMultiSelect ? [autoOption] : autoOption
         );
+        setAutoInsertedBlocks(prev => ({ ...prev, [block.title]: true }));
       }
 
       if (
@@ -2390,6 +2400,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             block,
             block.isMultiSelect ? [autoOptionLabel] : autoOptionLabel
           );
+          setAutoInsertedBlocks(prev => ({ ...prev, [block.title]: true }));
         }
       }
     });
@@ -2791,6 +2802,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           serviceDescription={serviceDescription}
           clients={dealClients}
           to={to}
+          autoInsertedBlocks={autoInsertedBlocks}
+          editedBlocks={editedBlocks}
           amount={amount}
           sendEmail={sendEmail}
           handleDraftEmail={handleDraftEmail}

@@ -21,10 +21,25 @@ import {
   removeUnfilledPlaceholders,
   applyDynamicSubstitutions,
   convertDoubleBreaksToParagraphs,
-} from './emailUtils'; // Adjusted path
+} from './emailUtils';
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+
+function removeAutoInsertedBlocks(
+  html: string,
+  autoBlocks: { [key: string]: boolean },
+  editedBlocks: { [key: string]: boolean }
+): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  Object.keys(autoBlocks).forEach((title) => {
+    if (!autoBlocks[title]) return;
+    if (editedBlocks[title]) return;
+    div.querySelectorAll(`[data-inserted="${title}"]`).forEach((el) => el.remove());
+  });
+  return div.innerHTML;
+}
 
 interface EmailPreviewProps {
   isPreviewOpen: boolean;
@@ -40,6 +55,8 @@ interface EmailPreviewProps {
   serviceDescription?: string;
   clients?: { firstName: string; lastName: string; email: string }[];
   to: string;
+  autoInsertedBlocks: { [key: string]: boolean };
+  editedBlocks: { [key: string]: boolean };
   sendEmail: () => void;
   handleDraftEmail: () => void;
   isSuccessVisible: boolean;
@@ -62,6 +79,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   serviceDescription,
   clients,
   to,
+  autoInsertedBlocks,
+  editedBlocks,
   sendEmail,
   handleDraftEmail,
   isSuccessVisible,
@@ -69,9 +88,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   amount,
   passcode,
 }) => {
+  // Strip blocks auto inserted by the system unless edited
+  const withoutAutoBlocks = removeAutoInsertedBlocks(
+    body,
+    autoInsertedBlocks,
+    editedBlocks
+  );
+  
   // Process body HTML using imported functions
   const substituted = applyDynamicSubstitutions(
-    removeHighlightSpans(body),
+    removeHighlightSpans(withoutAutoBlocks),
     userData,
     enquiry,
     amount,
