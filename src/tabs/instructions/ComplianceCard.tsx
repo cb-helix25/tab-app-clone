@@ -17,14 +17,17 @@ export interface ComplianceInfo {
     TransactionRiskFactorsConsidered?: boolean;
     FirmWideAMLPolicyConsidered?: boolean;
     FirmWideSanctionsRiskConsidered?: boolean;
+    ServiceDescription?: string;
+    Stage?: string;
 }
 
 interface ComplianceCardProps {
     data: ComplianceInfo;
     animationDelay?: number;
+    onOpenInstruction?: () => void;
 }
 
-const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 0 }) => {
+const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 0, onOpenInstruction }) => {
     const { isDarkMode } = useTheme();
 
     const cardClass = mergeStyles('riskComplianceCard', {
@@ -33,6 +36,7 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
         padding: componentTokens.card.base.padding,
         borderRadius: componentTokens.card.base.borderRadius,
         boxShadow: componentTokens.card.base.boxShadow,
+        cursor: onOpenInstruction ? 'pointer' : 'default',
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         selectors: {
             ':hover': {
@@ -46,10 +50,14 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
     const date = data.ComplianceDate ? new Date(data.ComplianceDate).toLocaleDateString() : undefined;
 
     return (
-        <div className={cardClass} style={style}>
+        <div className={cardClass} style={style} onClick={onOpenInstruction}>
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {data.MatterId}
             </Text>
+            {data.ServiceDescription && (
+                <Text variant="small">{data.ServiceDescription}</Text>
+            )}
+            {data.Stage && <Text variant="small">Stage: {data.Stage}</Text>}
             <ul className="detail-list">
                 {data.RiskAssessor && (
                     <li>

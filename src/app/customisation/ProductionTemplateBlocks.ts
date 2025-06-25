@@ -214,7 +214,7 @@ export const templateBlocks: TemplateBlock[] = [
     "options": [
       {
         "label": "Instruct Helix Law - Pitch",
-        "previewText": `Please confirm your instructions by clicking <a href="https://instruct.helix-law.com/pitch/?pid=22388" target="_blank" style='color:#3690CE; text-decoration:none;'>here</a>. Your passcode is [Passcode]. You can make payment using the packaged checkout link: [CheckoutLink]. This single link will verify your identity, request the key documents and take funds on account so we can open a file without delay. I will then send you my Client Care Letter setting out the terms of our retainer. If you have any queries I'm very happy to discuss them without charge.`
+        "previewText": `Please confirm your instructions by clicking <b style='background-color:#FFF4CC;padding:2px 4px;'><a href="https://instruct.helix-law.com/pitch/?pid=22388" target="_blank" style='color:#D65541;text-decoration:none;font-weight:bold;'>INSTRUCT HELIX LAW</a></b>. Your passcode is [Passcode]. Our packaged checkout link, [CheckoutLink], makes it quick and transparent to verify your identity, supply the key documents and pay funds on account in one step so we can open a file without delay. I will then send you my Client Care Letter setting out the terms of our retainer. If you have any queries I'm very happy to discuss them without charge.`
       }
     ]
   },

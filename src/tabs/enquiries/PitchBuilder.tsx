@@ -603,6 +603,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       } else {
         insertTemplateBlock(block, updated, true, false);
       }
+      if (autoInsertedBlocks[blockTitle]) {
+        setAutoInsertedBlocks((prev) => ({ ...prev, [blockTitle]: false }));
+      }
     } else {
       if (selectedTemplateOptions[blockTitle] === optionLabel && insertedBlocks[blockTitle]) {
         return;
@@ -612,6 +615,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         appendSnippetOption(block, optionLabel);
       } else {
         insertTemplateBlock(block, optionLabel, true);
+      }
+      if (autoInsertedBlocks[blockTitle]) {
+        setAutoInsertedBlocks((prev) => ({ ...prev, [blockTitle]: false }));
       }
     }
   }

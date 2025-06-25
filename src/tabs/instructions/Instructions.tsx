@@ -301,13 +301,15 @@ const Instructions: React.FC<InstructionsProps> = ({
   const complianceData = useMemo(
     () =>
       instructionData.flatMap((p) => {
+        const instructions = p.instructions ?? [];
+        const deals = p.deals ?? [];
         const riskSource: any[] = [
           ...(p.riskAssessments ?? p.compliance ?? []),
         ];
         const eidSource: any[] = [
           ...(p.electronicIDChecks ?? p.idVerifications ?? []),
         ];
-        (p.instructions ?? []).forEach((inst: any) => {
+        instructions.forEach((inst: any) => {
           riskSource.push(...((inst.riskAssessments ?? inst.compliance) ?? []));
           eidSource.push(
             ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
@@ -315,13 +317,58 @@ const Instructions: React.FC<InstructionsProps> = ({
         });
         return riskSource.map((r: any) => {
           const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
-          return { ...r, EIDStatus: eid?.EIDStatus };
+          const instruction = instructions.find(
+            (i: any) => i.InstructionRef === r.MatterId
+          );
+          const deal = deals.find((d: any) => d.InstructionRef === r.MatterId);
+          return {
+            ...r,
+            EIDStatus: eid?.EIDStatus,
+            instruction,
+            deal,
+            ServiceDescription: deal?.ServiceDescription,
+            Stage: instruction?.Stage,
+          };
         });
       }),
     [instructionData]
   );
 
-  const riskData: any[] = []; // placeholder until risk data available
+  const riskData = useMemo(
+    () =>
+      instructionData.flatMap((p) => {
+        const instructions = p.instructions ?? [];
+        const deals = p.deals ?? [];
+        const riskSource: any[] = [
+          ...(p.riskAssessments ?? p.compliance ?? []),
+        ];
+        const eidSource: any[] = [
+          ...(p.electronicIDChecks ?? p.idVerifications ?? []),
+        ];
+        instructions.forEach((inst: any) => {
+          riskSource.push(...((inst.riskAssessments ?? inst.compliance) ?? []));
+          eidSource.push(
+            ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
+          );
+        });
+        return riskSource.map((r: any) => {
+          const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
+          const instruction = instructions.find(
+            (i: any) => i.InstructionRef === r.MatterId
+          );
+          const deal = deals.find((d: any) => d.InstructionRef === r.MatterId);
+          return {
+            ...r,
+            EIDStatus: eid?.EIDStatus,
+            instruction,
+            deal,
+            ServiceDescription: deal?.ServiceDescription,
+            Stage: instruction?.Stage,
+          };
+        });
+      }),
+    [instructionData]
+  );
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
@@ -481,7 +528,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
                   return (
-                    <RiskCard key={idx} data={r} animationDelay={animationDelay} />
+                    <RiskCard
+                      key={idx}
+                      data={r}
+                      animationDelay={animationDelay}
+                      onOpenInstruction={() => handleOpenInstruction(r.MatterId)}
+                    />
                   );
                 })}
               </div>
@@ -494,7 +546,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
                   return (
-                    <ComplianceCard key={idx} data={c} animationDelay={animationDelay} />
+                    <ComplianceCard
+                      key={idx}
+                      data={c}
+                      animationDelay={animationDelay}
+                      onOpenInstruction={() => handleOpenInstruction(c.MatterId)}
+                    />
                   );
                 })}
               </div>
