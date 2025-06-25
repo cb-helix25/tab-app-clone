@@ -71,8 +71,16 @@ export function removeHighlightSpans(html: string): string {
 
   // Elements that should be fully removed
   const removeSelectors =
-    '.lock-toggle, .block-sidebar, .sentence-delete, .block-option-list, .option-bubble';
+    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble';
   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
+
+  // Unwrap any remaining placeholder containers but keep their content
+  tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  });
 
   // Remove highlight attributes/classes but keep user content
   const cleanupSelectors =
