@@ -1,3 +1,3 @@
 [submodule "app/instructions/instructions"]
-  path = app/instructions/instructions
-  url = https://github.com/HelixAutomations/instruct-pitch.git
+	path = app/instructions/instructions
+	url = https://github.com/HelixAutomations/instruct-pitch.git
