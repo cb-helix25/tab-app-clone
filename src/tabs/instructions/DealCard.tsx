@@ -8,6 +8,7 @@ import {
     differenceInCalendarDays,
     isToday,
     format,
+    isValid,
 } from 'date-fns';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -82,6 +83,7 @@ const DealCard: React.FC<DealCardProps> = ({
     const getPitchInfo = () => {
         if (!deal.PitchedDate || !deal.PitchedTime) return { text: '', urgent: false };
         const dt = parseISO(`${deal.PitchedDate.slice(0, 10)}T${deal.PitchedTime}`);
+        if (!isValid(dt)) return { text: '', urgent: false };
         const now = new Date();
         const diffMins = differenceInMinutes(now, dt);
         const diffHours = differenceInHours(now, dt);
@@ -109,6 +111,7 @@ const DealCard: React.FC<DealCardProps> = ({
     const getCloseInfo = () => {
         if (!deal.CloseDate || !deal.CloseTime) return { text: '', urgent: false };
         const dt = parseISO(`${deal.CloseDate.slice(0, 10)}T${deal.CloseTime}`);
+        if (!isValid(dt)) return { text: '', urgent: false };
         const now = new Date();
         const diffMins = differenceInMinutes(now, dt);
         const diffHours = differenceInHours(now, dt);
