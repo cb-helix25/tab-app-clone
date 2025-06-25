@@ -612,6 +612,8 @@ let cachedWipClio: any | null = null;
 let cachedWipClioError: string | null = null;
 let cachedRecovered: number | null = null;
 let cachedRecoveredError: string | null = null;
+let cachedPrevRecovered: number | null = null;
+let cachedPrevRecoveredError: string | null = null;
 
 let cachedAllMatters: Matter[] | null = null;
 let cachedAllMattersError: string | null = null;
@@ -818,8 +820,10 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [wipClioData, setWipClioData] = useState<any | null>(null);
   const [wipClioError, setWipClioError] = useState<string | null>(null);
   const [recoveredData, setRecoveredData] = useState<number | null>(null);
+  const [prevRecoveredData, setPrevRecoveredData] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recoveredError, setRecoveredError] = useState<string | null>(null);
+  const [prevRecoveredError, setPrevRecoveredError] = useState<string | null>(null);
   const [isLoadingWipClio, setIsLoadingWipClio] = useState<boolean>(false);
   const [isLoadingRecovered, setIsLoadingRecovered] = useState<boolean>(false);
   const [futureLeaveRecords, setFutureLeaveRecords] = useState<AnnualLeaveRecord[]>([]);
@@ -981,6 +985,13 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay());
+      const prevToday = new Date(today);
+      prevToday.setDate(prevToday.getDate() - 7);
+      const prevWeekStart = new Date(startOfWeek);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+      const prevWeekEnd = new Date(prevToday);
+      const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
       const todayCount = enquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
@@ -1007,9 +1018,41 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           enquiry.Point_of_Contact === currentUserEmail
         );
       }).length;
+
+      const prevTodayCount = enquiries.filter((enquiry: any) => {
+        if (!enquiry.Touchpoint_Date) return false;
+        const enquiryDate = new Date(enquiry.Touchpoint_Date);
+        return (
+          enquiryDate.toDateString() === prevToday.toDateString() &&
+          enquiry.Point_of_Contact === currentUserEmail
+        );
+      }).length;
+
+      const prevWeekCount = enquiries.filter((enquiry: any) => {
+        if (!enquiry.Touchpoint_Date) return false;
+        const enquiryDate = new Date(enquiry.Touchpoint_Date);
+        return (
+          enquiryDate >= prevWeekStart &&
+          enquiryDate <= prevWeekEnd &&
+          enquiry.Point_of_Contact === currentUserEmail
+        );
+      }).length;
+
+      const prevMonthCount = enquiries.filter((enquiry: any) => {
+        if (!enquiry.Touchpoint_Date) return false;
+        const enquiryDate = new Date(enquiry.Touchpoint_Date);
+        return (
+          enquiryDate >= prevMonthStart &&
+          enquiryDate <= prevMonthEnd &&
+          enquiry.Point_of_Contact === currentUserEmail
+        );
+      }).length;
       setEnquiriesToday(todayCount);
       setEnquiriesWeekToDate(weekToDateCount);
       setEnquiriesMonthToDate(monthToDateCount);
+      setPrevEnquiriesToday(prevTodayCount);
+      setPrevEnquiriesWeekToDate(prevWeekCount);
+      setPrevEnquiriesMonthToDate(prevMonthCount);
     }
   }, [enquiries, currentUserEmail]);
 
@@ -1180,11 +1223,20 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
   }, [userData]);
 
   useEffect(() => {
-    if (cachedWipClio || cachedWipClioError || cachedRecovered || cachedRecoveredError) {
+    if (
+      cachedWipClio ||
+      cachedWipClioError ||
+      cachedRecovered ||
+      cachedRecoveredError ||
+      cachedPrevRecovered ||
+      cachedPrevRecoveredError
+    ) {
       setWipClioData(cachedWipClio);
       setWipClioError(cachedWipClioError);
       setRecoveredData(cachedRecovered);
       setRecoveredError(cachedRecoveredError);
+      setPrevRecoveredData(cachedPrevRecovered);
+      setPrevRecoveredError(cachedPrevRecoveredError);
       setIsLoadingWipClio(false);
       setIsLoadingRecovered(false);
     } else {
@@ -1194,7 +1246,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           setIsLoadingRecovered(true);
           const clioIDForWip = metricsClioId || parseInt(userData[0]['Clio ID'], 10);
           const clioIDForRecovered = metricsClioId || clioIDForWip;
-          const [wipResponse, recoveredResponse] = await Promise.all([
+          const [wipResponse, recoveredResponse, prevRecoveredResponse] = await Promise.all([
             fetch(
               `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
               {
@@ -1211,6 +1263,14 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
                 body: JSON.stringify({ ClioID: clioIDForRecovered }),
               }
             ),
+            fetch(
+              `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ClioID: clioIDForRecovered, MonthOffset: -1 }),
+              }
+            ),
           ]);
           if (!wipResponse.ok)
             throw new Error(`Failed to fetch WIP Clio: ${wipResponse.status}`);
@@ -1219,9 +1279,14 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           setWipClioData(wipData);
           if (!recoveredResponse.ok)
             throw new Error(`Failed to fetch Recovered: ${recoveredResponse.status}`);
+          if (!prevRecoveredResponse.ok)
+            throw new Error(`Failed to fetch Previous Recovered: ${prevRecoveredResponse.status}`);
           const recoveredData = await recoveredResponse.json();
           cachedRecovered = recoveredData.totalPaymentAllocated;
           setRecoveredData(recoveredData.totalPaymentAllocated);
+          const prevRecData = await prevRecoveredResponse.json();
+          cachedPrevRecovered = prevRecData.totalPaymentAllocated;
+          setPrevRecoveredData(prevRecData.totalPaymentAllocated);
         } catch (error: any) {
           console.error('Error fetching WIP Clio or Recovered:', error);
           if (error.message.includes('WIP Clio')) {
@@ -1232,6 +1297,9 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
             cachedRecoveredError = error.message || 'Unknown error occurred.';
             setRecoveredError(error.message || 'Unknown error occurred.');
             setRecoveredData(null);
+            cachedPrevRecoveredError = error.message || 'Unknown error occurred.';
+            setPrevRecoveredError(error.message || 'Unknown error occurred.');
+            setPrevRecoveredData(null);
           }
         } finally {
           setIsLoadingWipClio(false);
@@ -1816,7 +1884,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
-          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0 },
+          { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
           { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
@@ -1830,11 +1898,58 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     lastWeekDate.setDate(today.getDate() - 7);
     const formattedLastWeekDate = lastWeekDate.toISOString().split('T')[0];
     const lastWeekData = wipClioData.last_week?.daily_data[formattedLastWeekDate];
+    const startOfCurrentWeek = new Date(today);
+    startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+    startOfCurrentWeek.setHours(0, 0, 0, 0);
+    const startOfLastWeek = new Date(startOfCurrentWeek);
+    startOfLastWeek.setDate(startOfCurrentWeek.getDate() - 7);
+
+    const computeAverageUpTo = (
+      dailyData: Record<string, { total_hours: number; total_amount: number }>,
+      start: Date,
+      end: Date
+    ) => {
+      let hours = 0;
+      let amount = 0;
+      let count = 0;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const data = dailyData[dateStr];
+        if (data) {
+          hours += data.total_hours;
+          amount += data.total_amount;
+        }
+        const day = d.getDay();
+        if (day >= 1 && day <= 5) count += 1;
+      }
+      return {
+        avgHours: count ? parseFloat((hours / count).toFixed(2)) : 0,
+        avgAmount: count ? parseFloat((amount / count).toFixed(2)) : 0,
+      };
+    };
+
+    const currentAvg = computeAverageUpTo(
+      wipClioData.current_week.daily_data,
+      startOfCurrentWeek,
+      today
+    );
+    const prevAvg = computeAverageUpTo(
+      wipClioData.last_week.daily_data,
+      startOfLastWeek,
+      lastWeekDate
+    );
+
 
     let totalTimeThisWeek = 0;
     if (wipClioData.current_week && wipClioData.current_week.daily_data) {
       Object.values(wipClioData.current_week.daily_data).forEach((dayData: any) => {
         totalTimeThisWeek += dayData.total_hours || 0;
+      });
+    }
+    let totalTimeLastWeek = 0;
+    if (wipClioData.last_week && wipClioData.last_week.daily_data) {
+      Object.values(wipClioData.last_week.daily_data).forEach((dayData: any) => {
+        totalTimeLastWeek += dayData.total_hours || 0;
       });
     }
 
@@ -1884,10 +1999,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       {
         title: 'Av. Time This Week',
         isTimeMoney: true,
-        money: wipClioData.current_week.daily_average_amount,
-        hours: wipClioData.current_week.daily_average_hours,
-        prevMoney: wipClioData.last_week.daily_average_amount,
-        prevHours: wipClioData.last_week.daily_average_hours,
+        money: currentAvg.avgAmount,
+        hours: currentAvg.avgHours,
+        prevMoney: prevAvg.avgAmount,
+        prevHours: prevAvg.avgHours,
         showDial: true,
         dialTarget: 6,
       },
@@ -1897,7 +2012,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         money: 0,
         hours: totalTimeThisWeek,
         prevMoney: 0,
-        prevHours: 0,
+        prevHours: totalTimeLastWeek,
         showDial: true,
         dialTarget: adjustedTarget,
       },
@@ -1905,6 +2020,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Fees Recovered This Month',
         isMoneyOnly: true,
         money: recoveredData ? recoveredData : 0,
+        prevMoney: prevRecoveredData ? prevRecoveredData : 0,
       },
       {
         title: 'Outstanding Office Balances',
@@ -1939,6 +2055,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }, [
     wipClioData,
     recoveredData,
+    prevRecoveredData,
     formattedToday,
     enquiriesToday,
     prevEnquiriesToday,

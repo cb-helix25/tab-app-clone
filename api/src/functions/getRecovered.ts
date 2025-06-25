@@ -11,6 +11,7 @@ interface CollectedTimeData {
 // Define the interface for the request body
 interface RequestBody {
     ClioID: number;  // Ensure the correct casing for ClioID
+    MonthOffset?: number; // Optional month offset relative to current month
 }
 
 // Define the handler function
@@ -30,7 +31,7 @@ export async function getRecoveredHandler(req: HttpRequest, context: InvocationC
         };
     }
 
-    const { ClioID } = body;
+    const { ClioID, MonthOffset = 0 } = body;
 
     if (!ClioID) {
         context.warn("Missing 'ClioID' in request body.");
@@ -42,7 +43,7 @@ export async function getRecoveredHandler(req: HttpRequest, context: InvocationC
 
     try {
         context.log("Initiating SQL query to retrieve collected time records.");
-        const { totalPaymentAllocated } = await queryCollectedTimeFromSQL(ClioID, context);
+        const { totalPaymentAllocated } = await queryCollectedTimeFromSQL(ClioID, MonthOffset, context);
         context.log("Successfully retrieved collected time data from SQL database.", { totalPaymentAllocated });
 
         return {
@@ -68,7 +69,11 @@ app.http("getRecovered", {
 });
 
 // Implement the SQL query function
-async function queryCollectedTimeFromSQL(ClioID: number, context: InvocationContext): Promise<{ totalPaymentAllocated: number }> {
+async function queryCollectedTimeFromSQL(
+    ClioID: number,
+    MonthOffset: number,
+    context: InvocationContext
+): Promise<{ totalPaymentAllocated: number }> {
     const kvUri = "https://helix-keys.vault.azure.net/";
     const passwordSecretName = "sql-databaseserver-password";
     const sqlServer = "helix-database-server.database.windows.net";
@@ -97,9 +102,15 @@ async function queryCollectedTimeFromSQL(ClioID: number, context: InvocationCont
             }
 
             // Determine the SQL query to retrieve the total payment_allocated value
-            const startDate = new Date();
-            const startOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-            const endDate = new Date(startDate);
+            const reference = new Date();
+            reference.setMonth(reference.getMonth() + MonthOffset);
+            const startOfMonth = new Date(reference.getFullYear(), reference.getMonth(), 1);
+            let endDate: Date;
+            if (MonthOffset === 0) {
+                endDate = new Date();
+            } else {
+                endDate = new Date(reference.getFullYear(), reference.getMonth() + 1, 0);
+            }
             const formattedStartDate = startOfMonth.toISOString().split('T')[0]; // Get YYYY-MM-DD format
             const formattedEndDate = endDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
 
