@@ -214,10 +214,14 @@ const Instructions: React.FC<InstructionsProps> = ({
         const deal = prospect.deals.find(
           (d) => d.InstructionRef === inst.InstructionRef
         );
-        const riskSource =
-          prospect.riskAssessments ?? prospect.compliance ?? [];
-        const eidSource =
-          prospect.electronicIDChecks ?? prospect.idVerifications ?? [];
+        const riskSource = [
+          ...(prospect.riskAssessments ?? prospect.compliance ?? []),
+          ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
+        ];
+        const eidSource = [
+          ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
+          ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
+        ];
         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
         const docs = prospect.documents?.filter(
@@ -295,8 +299,18 @@ const Instructions: React.FC<InstructionsProps> = ({
   const riskData = useMemo(
     () =>
       instructionData.flatMap((p) => {
-        const riskSource = p.riskAssessments ?? p.compliance ?? [];
-        const eidSource = p.electronicIDChecks ?? p.idVerifications ?? [];
+        const riskSource: any[] = [
+          ...(p.riskAssessments ?? p.compliance ?? []),
+        ];
+        const eidSource: any[] = [
+          ...(p.electronicIDChecks ?? p.idVerifications ?? []),
+        ];
+        (p.instructions ?? []).forEach((inst: any) => {
+          riskSource.push(...((inst.riskAssessments ?? inst.compliance) ?? []));
+          eidSource.push(
+            ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
+          );
+        });
         return riskSource.map((r: any) => {
           const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
           return { ...r, EIDStatus: eid?.EIDStatus };
