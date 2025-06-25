@@ -62,22 +62,24 @@ export function removeUnfilledPlaceholders(
 export function removeHighlightSpans(html: string): string {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
-  const elements = tempDiv.querySelectorAll(
-    'span[data-placeholder], span[data-inserted], span[data-link], .lock-toggle'
-  );
-  elements.forEach((el) => {
-    if (el.classList.contains('lock-toggle')) {
-      el.remove();
-      return;
-    }
+
+  // Elements that should be fully removed
+  const removeSelectors = '.lock-toggle, .block-sidebar, .sentence-delete';
+  tempDiv.querySelectorAll(removeSelectors).forEach(el => el.remove());
+
+  // Elements to unwrap while keeping inner content
+  const unwrapSelectors =
+    'span[data-placeholder], span[data-inserted], span[data-link], span[data-sentence], .block-main';
+  tempDiv.querySelectorAll(unwrapSelectors).forEach(el => {
     const parent = el.parentNode;
     while (el.firstChild) {
       parent?.insertBefore(el.firstChild, el);
     }
     el.remove();
   });
-  const labels = tempDiv.querySelectorAll('.block-label, .block-label-display');
-  labels.forEach(el => el.remove());
+
+  // Remove label helpers
+  tempDiv.querySelectorAll('.block-label, .block-label-display').forEach(el => el.remove());
   return tempDiv.innerHTML;
 }
 
