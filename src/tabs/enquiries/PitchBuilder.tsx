@@ -1923,6 +1923,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       ...prev,
       [blockTitle]: selectedOptions,
     }));
+    setAutoInsertedBlocks((prev) => ({ ...prev, [blockTitle]: false }));
   }
 
   useEffect(() => {
@@ -1942,6 +1943,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       ...prev,
       [blockTitle]: selectedOption,
     }));
+    setAutoInsertedBlocks((prev) => ({ ...prev, [blockTitle]: false }));
   }
 
   /**

@@ -17,6 +17,7 @@ import DealCard from './DealCard';
 import RiskCard from './RiskCard';
 import ComplianceCard from './ComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
+import InstructionOverviewCard from './InstructionOverviewCard';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -41,7 +42,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
-  const [activePivot, setActivePivot] = useState<string>('instructions');
+  const [activePivot, setActivePivot] = useState<string>('overview');
   const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
@@ -164,6 +165,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               setActivePivot(item?.props.itemKey || 'instructions');
             }}
           >
+            <PivotItem headerText="Overview" itemKey="overview" />
             <PivotItem headerText="Instructions" itemKey="instructions" />
             <PivotItem headerText="Deals" itemKey="deals" />
             <PivotItem headerText="Clients" itemKey="clients" />
@@ -235,6 +237,74 @@ const Instructions: React.FC<InstructionsProps> = ({
           prospectId: prospect.prospectId,
           risk,
           eid,
+          documentCount: docs ? docs.length : 0,
+        };
+      })
+    );
+  }, [instructionData]);
+
+  const overviewItems = useMemo(() => {
+    return instructionData.flatMap((prospect) =>
+      (prospect.instructions ?? []).map((inst) => {
+        const dealsForInst = (prospect.deals ?? []).filter(
+          (d) => d.InstructionRef === inst.InstructionRef
+        );
+        const clientsForInst: ClientInfo[] = [];
+        (prospect.jointClients ?? prospect.joinedClients ?? []).forEach((jc) => {
+          if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+            clientsForInst.push({
+              ClientEmail: jc.ClientEmail,
+              HasSubmitted: jc.HasSubmitted,
+              Lead: false,
+              deals: [
+                {
+                  DealId: jc.DealId,
+                  InstructionRef: inst.InstructionRef,
+                  ServiceDescription:
+                    dealsForInst.find((d) => d.DealId === jc.DealId)?.ServiceDescription,
+                  Status: dealsForInst.find((d) => d.DealId === jc.DealId)?.Status,
+                },
+              ],
+            });
+          }
+        });
+        dealsForInst.forEach((d) => {
+          if (d.LeadClientEmail) {
+            clientsForInst.push({
+              ClientEmail: d.LeadClientEmail,
+              Lead: true,
+              deals: [
+                {
+                  DealId: d.DealId,
+                  InstructionRef: d.InstructionRef,
+                  ServiceDescription: d.ServiceDescription,
+                  Status: d.Status,
+                },
+              ],
+            });
+          }
+        });
+
+        const riskSource = [
+          ...(prospect.riskAssessments ?? prospect.compliance ?? []),
+          ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
+        ];
+        const eidSource = [
+          ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
+          ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
+        ];
+        const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
+        const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
+        const docs = prospect.documents?.filter(
+          (d) => d.InstructionRef === inst.InstructionRef
+        );
+        return {
+          instruction: inst,
+          deals: dealsForInst,
+          clients: clientsForInst,
+          risk,
+          eid,
+          prospectId: prospect.prospectId,
           documentCount: docs ? docs.length : 0,
         };
       })
@@ -412,6 +482,16 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: 'border-box',
   });
 
+  const overviewColumnStyle = mergeStyles({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '24px',
+    maxWidth: '1200px',
+    width: '100%',
+    margin: '0 auto',
+    boxSizing: 'border-box',
+  });
+
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
@@ -447,6 +527,30 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
+          {activePivot === 'overview' && (
+            <div className={overviewColumnStyle}>
+              {overviewItems.map((item, idx) => {
+                const row = Math.floor(idx / 2);
+                const col = idx % 2;
+                const animationDelay = row * 0.2 + col * 0.1;
+                return (
+                  <InstructionOverviewCard
+                    key={idx}
+                    instruction={item.instruction}
+                    deals={item.deals}
+                    clients={item.clients}
+                    risk={item.risk}
+                    compliance={undefined}
+                    prospectId={item.prospectId}
+                    animationDelay={animationDelay}
+                    onOpenMatter={() => handleOpenMatter(item.instruction)}
+                    onRiskAssessment={() => handleRiskAssessment(item.instruction)}
+                    onEIDCheck={() => handleEIDCheck(item.instruction)}
+                  />
+                );
+              })}
+            </div>
+          )}
           {activePivot === 'instructions' && (
             <div className={instructionColumnStyle}>
               {flattenedInstructions.map((instruction, idx) => {

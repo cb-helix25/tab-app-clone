@@ -29,6 +29,78 @@ interface DealRequest {
 
 import axios from "axios";
 
+async function sendTestDealEmail(
+  context: InvocationContext,
+  serviceDescription: string,
+  amount: number,
+  passcode: string
+) {
+  try {
+    const tenantId = "7fbc252f-3ce5-460f-9740-4e1cb8bf78b8";
+    const kvUri = "https://helix-keys.vault.azure.net/";
+    const credential = new DefaultAzureCredential();
+    const secretClient = new SecretClient(kvUri, credential);
+
+    const clientId = (await secretClient.getSecret(
+      "graph-pitchbuilderemailprovider-clientid"
+    )).value;
+    const clientSecret = (await secretClient.getSecret(
+      "graph-pitchbuilderemailprovider-clientsecret"
+    )).value;
+
+    const tokenResponse = await axios.post(
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+      new URLSearchParams({
+        client_id: clientId ?? "",
+        client_secret: clientSecret ?? "",
+        scope: "https://graph.microsoft.com/.default",
+        grant_type: "client_credentials",
+      }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    const checkoutUrl = process.env.DEAL_CHECKOUT_URL
+      ? `${process.env.DEAL_CHECKOUT_URL}?passcode=${passcode}`
+      : `https://example.com/checkout?passcode=${passcode}`;
+
+    const emailContent = {
+      message: {
+        subject: `Test: Deal captured for ${serviceDescription}`,
+        body: {
+          contentType: "HTML",
+          content: `<p>This is a preview of the email a client will receive when a deal is created.</p><p><a href="${checkoutUrl}">Enter the workflow</a> to get started.</p><p><strong>Service:</strong> ${serviceDescription}<br/><strong>Amount:</strong> ${amount}</p>`,
+        },
+        toRecipients: [
+          {
+            emailAddress: { address: "lz@helix-law.com" },
+          },
+        ],
+        from: {
+          emailAddress: { address: "automations@helix-law.com" },
+        },
+      },
+      saveToSentItems: "false",
+    };
+
+    await axios.post(
+      `https://graph.microsoft.com/v1.0/users/automations@helix-law.com/sendMail`,
+      emailContent,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    context.error("Failed to send test email", err);
+  }
+}
+
 export async function insertDealHandler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   context.log("insertDealHandler invoked");
 
@@ -100,6 +172,7 @@ const {
     const response = await axios.post(url, payload);
     if (response.status >= 200 && response.status < 300) {
       const result = typeof response.data === 'object' ? response.data : {};
+      await sendTestDealEmail(context, serviceDescription, amount, passcode);
       return {
         status: 200,
         body: JSON.stringify({
