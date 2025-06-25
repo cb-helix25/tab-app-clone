@@ -87,3 +87,47 @@
 .overview-section.complete .step-label {
     text-decoration: line-through;
 }
+
+/* New summary container styles */
+.summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--helix-grey);
+    border-radius: 4px;
+    border: 1px solid #e3e8ef;
+    cursor: pointer;
+}
+
+.summary-title {
+    font-weight: 600;
+    color: var(--helix-dark-blue);
+}
+
+.summary-toggle {
+    margin-left: auto;
+}
+
+.summary-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.summary-label {
+    background: #fff;
+    border: 1px solid #e3e8ef;
+    border-radius: 2px;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    color: var(--helix-dark-blue);
+}
+
+.overview-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}

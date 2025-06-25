@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../../app/styles/StepOverview.css';
 
 interface StepInfo<T extends string> {
@@ -21,42 +21,47 @@ function StepOverview<T extends string>({
     details,
     onStepClick,
 }: StepOverviewProps<T>) {
+    const [open, setOpen] = useState(true);
     return (
         <div className="overview-column">
-            {steps.map((step) => {
-                const complete = isStepComplete(step.key);
-                const active = step.key === current;
-                return (
-                    <section
-                        key={step.key}
-                        className={`overview-section${active ? ' active' : ''}${complete ? ' complete' : ''
-                            }`}
-                    >
-                        <button
-                            type="button"
-                            className="overview-header"
-                            onClick={() => onStepClick?.(step.key)}
-                        >
-                            <span className="overview-title">{step.title}</span>
-                            {complete && (
-                                <span className="overview-tick" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24">
-                                        <polyline
-                                            points="5,13 10,18 19,7"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="3"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </svg>
-                                </span>
-                            )}
-                        </button>
-                        <div className="overview-content">{details[step.key]}</div>
-                    </section>
-                );
-            })}
+            <button
+                type="button"
+                className="summary-header"
+                onClick={() => setOpen(!open)}
+            >
+                <span className="summary-title">Workflow Summary</span>
+                <div className="summary-labels">
+                    {steps.map((s) => (
+                        <span key={s.key} className="summary-label">
+                            {s.title}
+                        </span>
+                    ))}
+                </div>
+                <span className="summary-toggle">{open ? '−' : '+'}</span>
+            </button>
+            {open && (
+                <div className="overview-body">
+                    {steps.map((step) => {
+                        const complete = isStepComplete(step.key);
+                        const active = step.key === current;
+                        return (
+                            <div
+                                key={step.key}
+                                className={`overview-section${active ? ' active' : ''}${complete ? ' complete' : ''
+                                    }`}
+                                onClick={() => onStepClick?.(step.key)}
+                                role="button"
+                                tabIndex={0}
+                            >
+                                <div className="overview-content">
+                                    {details[step.key]}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
         </div>
     );
 }
