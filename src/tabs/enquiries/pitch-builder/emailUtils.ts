@@ -35,21 +35,27 @@ export function removeUnfilledPlaceholders(
   blocks: TemplateBlock[] = templateBlocks
 ): string {
   const placeholders = getLeftoverPlaceholders(blocks);
-  const lines = text.split('\n');
-  const filteredLines = lines.filter(
-    (line) => !placeholders.some((placeholder) => line.includes(placeholder))
-  );
+
+  // Remove placeholder tokens but keep surrounding copy
+  let cleaned = text;
+  placeholders.forEach((placeholder) => {
+    const regex = new RegExp(escapeRegExp(placeholder), 'g');
+    cleaned = cleaned.replace(regex, '');
+  });
+
+  const lines = cleaned.split('\n');
 
   const consolidated: string[] = [];
-  for (const line of filteredLines) {
+  for (const line of lines) {
+    const trimmed = line.trim();
     if (
-      line.trim() === '' &&
+      trimmed === '' &&
       consolidated.length > 0 &&
       consolidated[consolidated.length - 1].trim() === ''
     ) {
       continue;
     }
-    consolidated.push(line);
+    consolidated.push(trimmed);
   }
 
   return consolidated.join('\n').trim();
