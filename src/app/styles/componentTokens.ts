@@ -89,7 +89,7 @@ export const componentTokens = {
   /** Generic card styles used for form tiles and quick actions */
   card: {
     base: {
-      padding: '20px',
+      padding: '12px',
       borderRadius: '0px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     },

@@ -344,8 +344,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const gridContainerStyle = mergeStyles({
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-    gap: '24px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '16px',
     maxWidth: '1200px',
     width: '100%',
     margin: '0 auto',

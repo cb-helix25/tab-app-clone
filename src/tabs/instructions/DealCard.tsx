@@ -25,6 +25,9 @@ interface DealInfo {
     PitchedDate?: string;
     PitchedTime?: string;
     PitchedBy?: string;
+    Passcode?: string;
+    LeadClientEmail?: string;
+    PitchValidUntil?: string;
     Status?: string;
     firstName?: string;
     jointClients?: { ClientEmail?: string; HasSubmitted?: string }[];
@@ -214,6 +217,27 @@ const DealCard: React.FC<DealCardProps> = ({
                     {deal.AreaOfWork && (
                         <li>
                             <strong>Area:</strong> {deal.AreaOfWork}
+                        </li>
+                    )}
+                    {deal.PitchedBy && (
+                        <li>
+                            <strong>Pitched By:</strong> {deal.PitchedBy}
+                        </li>
+                    )}
+                    {deal.Passcode && (
+                        <li>
+                            <strong>Passcode:</strong> {deal.Passcode}
+                        </li>
+                    )}
+                    {deal.LeadClientEmail && (
+                        <li>
+                            <strong>Lead Client:</strong> {deal.LeadClientEmail}
+                        </li>
+                    )}
+                    {deal.PitchValidUntil && (
+                        <li>
+                            <strong>Valid Until:</strong>{' '}
+                            {new Date(deal.PitchValidUntil).toLocaleDateString()}
                         </li>
                     )}
                 </ul>

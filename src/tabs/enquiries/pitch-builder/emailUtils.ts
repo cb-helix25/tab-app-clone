@@ -68,15 +68,19 @@ export function removeHighlightSpans(html: string): string {
     '.lock-toggle, .block-sidebar, .sentence-delete, .block-option-list, .option-bubble';
   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
 
-  // Elements to unwrap while keeping inner content
-  const unwrapSelectors =
-    'span[data-placeholder], span[data-inserted], span[data-link], span[data-sentence], .block-main';
-  tempDiv.querySelectorAll(unwrapSelectors).forEach((el) => {
-    const parent = el.parentNode;
-    while (el.firstChild) {
-      parent?.insertBefore(el.firstChild, el);
+  // Remove highlight attributes/classes but keep user content
+  const cleanupSelectors =
+    '[data-placeholder], [data-inserted], [data-link], [data-sentence], .block-main';
+  tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
+    el.removeAttribute('data-placeholder');
+    el.removeAttribute('data-inserted');
+    el.removeAttribute('data-link');
+    el.removeAttribute('data-sentence');
+    el.removeAttribute('style');
+    el.removeAttribute('contenteditable');
+    if ((el as HTMLElement).classList.contains('block-main')) {
+      (el as HTMLElement).classList.remove('block-main');
     }
-    el.remove();
   });
 
   // Remove label helpers
