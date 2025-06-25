@@ -378,6 +378,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
     setLockedBlocks({});
+    setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
   }
@@ -531,17 +532,38 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       `span[data-inserted="${blockTitle}"]`
     ) as NodeListOf<HTMLElement> | null;
     if (!spans) return;
+
+    const currentlyPinned = !!pinnedBlocks[blockTitle];
+    const newPinned = !currentlyPinned;
+
     spans.forEach(span => {
       const container = span.querySelector('.block-container') as HTMLElement | null;
       const sidebar = span.querySelector('.block-sidebar') as HTMLElement | null;
       if (!sidebar || !container) return;
-      const pinned = sidebar.classList.toggle('pinned');
-      if (pinned) {
+
+      if (newPinned) {
+        sidebar.classList.add('pinned');
         container.classList.add('pinned');
       } else {
+        sidebar.classList.remove('pinned');
         container.classList.remove('pinned');
       }
+
+      const icon = sidebar.querySelector('.pin-toggle i') as HTMLElement | null;
+      if (icon) {
+        icon.className = `ms-Icon ms-Icon--${newPinned ? 'Pinned' : 'Pin'}`;
+      }
     });
+
+    setPinnedBlocks(prev => {
+      const updated = { ...prev, [blockTitle]: newPinned };
+      if (!newPinned) delete updated[blockTitle];
+      return updated;
+    });
+
+    if (bodyEditorRef.current) {
+      setBody(bodyEditorRef.current.innerHTML);
+    }
   }
 
   function openSnippetOptions(
@@ -802,6 +824,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
 
   const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
+
+  const [pinnedBlocks, setPinnedBlocks] = useState<{ [key: string]: boolean }>({});
 
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [editedSnippets, setEditedSnippets] = useState<{
@@ -1163,8 +1187,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       .join('');
     const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
-    const controlsHTML = `<div class="block-sidebar" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
-    const highlightedReplacement = `<${containerTag} class="block-container" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
+    const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
+
 
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
@@ -1610,6 +1636,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
     setLockedBlocks({});
+    setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
     setIsDraftConfirmed(false); // **Reset confirmation state**
@@ -2068,6 +2095,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           return copy;
         });
 
+        setPinnedBlocks((prev) => {
+          const copy = { ...prev };
+          delete copy[block.title];
+          return copy;
+        });
+
         setEditedBlocks((prev) => {
           const copy = { ...prev };
           delete copy[block.title];
@@ -2111,6 +2144,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
     setLockedBlocks({});
+    setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
     setOriginalSnippetContent({});
