@@ -20,6 +20,29 @@
         border: 1px solid #e3e8ef;
     }
 
+        .step-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    
+        .step-marker {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--helix-grey);
+            color: var(--helix-dark-blue);
+            font-size: 0.8rem;
+        }
+    
+        .step-label {
+            font-size: 14px;
+            color: var(--helix-dark-blue);
+        }
+
 .overview-header {
     background: none;
         border: none;

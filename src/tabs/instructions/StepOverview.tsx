@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import '../../app/styles/StepOverview.css';
+import { componentTokens } from '../../app/styles/componentTokens';
 
 interface StepInfo<T extends string> {
     key: T;
@@ -22,8 +23,22 @@ function StepOverview<T extends string>({
     onStepClick,
 }: StepOverviewProps<T>) {
     const [open, setOpen] = useState(true);
+    const baseStyle: React.CSSProperties = {
+        backgroundColor: componentTokens.summaryPane.base.backgroundColor,
+        borderRadius: componentTokens.summaryPane.base.borderRadius,
+        border: `1px solid ${componentTokens.summaryPane.base.borderColor}`,
+        boxShadow: componentTokens.summaryPane.base.boxShadow,
+        padding: componentTokens.summaryPane.base.padding,
+    };
+    const collapsedStyle: React.CSSProperties = !open
+        ? {
+            backgroundColor: componentTokens.summaryPane.collapsed.backgroundColor,
+            borderColor: componentTokens.summaryPane.collapsed.borderColor,
+            padding: componentTokens.summaryPane.collapsed.padding,
+        }
+        : {};
     return (
-        <div className="overview-column">
+        <div className="overview-column" style={{ ...baseStyle, ...collapsedStyle }}>
             <button
                 type="button"
                 className="summary-header"
@@ -47,12 +62,17 @@ function StepOverview<T extends string>({
                         return (
                             <div
                                 key={step.key}
-                                className={`overview-section${active ? ' active' : ''}${complete ? ' complete' : ''
-                                    }`}
+                                className={`overview-section${active ? ' active' : ''}${complete ? ' complete' : ''}`}
                                 onClick={() => onStepClick?.(step.key)}
                                 role="button"
                                 tabIndex={0}
                             >
+                                <div className="step-row">
+                                    <span className="step-marker">
+                                        {complete ? '✔' : steps.findIndex(s => s.key === step.key) + 1}
+                                    </span>
+                                    <span className="step-label">{step.title}</span>
+                                </div>
                                 <div className="overview-content">
                                     {details[step.key]}
                                 </div>
