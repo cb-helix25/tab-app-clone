@@ -64,13 +64,14 @@ export function removeHighlightSpans(html: string): string {
   tempDiv.innerHTML = html;
 
   // Elements that should be fully removed
-  const removeSelectors = '.lock-toggle, .block-sidebar, .sentence-delete';
-  tempDiv.querySelectorAll(removeSelectors).forEach(el => el.remove());
+  const removeSelectors =
+    '.lock-toggle, .block-sidebar, .sentence-delete, .block-option-list, .option-bubble';
+  tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
 
   // Elements to unwrap while keeping inner content
   const unwrapSelectors =
     'span[data-placeholder], span[data-inserted], span[data-link], span[data-sentence], .block-main';
-  tempDiv.querySelectorAll(unwrapSelectors).forEach(el => {
+  tempDiv.querySelectorAll(unwrapSelectors).forEach((el) => {
     const parent = el.parentNode;
     while (el.firstChild) {
       parent?.insertBefore(el.firstChild, el);
@@ -79,7 +80,10 @@ export function removeHighlightSpans(html: string): string {
   });
 
   // Remove label helpers
-  tempDiv.querySelectorAll('.block-label, .block-label-display').forEach(el => el.remove());
+  tempDiv
+    .querySelectorAll('.block-label, .block-label-display')
+    .forEach((el) => el.remove());
+
   return tempDiv.innerHTML;
 }
 

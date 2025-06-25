@@ -232,8 +232,14 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
             <div className={enquiryNotesHeader}>Email Details</div>
             <div className={enquiryNotesContent}>
               <Stack tokens={{ childrenGap: 6 }}>
-                <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
-                <Stack.Item grow>
+                <Stack
+                  horizontal
+                  wrap
+                  tokens={{ childrenGap: 12 }}
+                  verticalAlign="end"
+                  styles={{ root: { width: '100%' } }}
+                >
+                  <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
                   <div className={intakeContainer}>
                     <div className={intakeHeader}>To</div>
                     <TextField
@@ -252,7 +258,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                   </div>
                 </Stack.Item>
                 {showCc && (
-                  <Stack.Item grow>
+                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
                     <div className={intakeContainer}>
                       <div className={intakeHeader}>
                         CC
@@ -292,7 +298,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                   </Stack.Item>
                 )}
                 {showBcc && (
-                  <Stack.Item grow>
+                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
                     <div className={intakeContainer}>
                       <div className={intakeHeader}>
                         BCC
