@@ -540,12 +540,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                     deals={item.deals}
                     clients={item.clients}
                     risk={item.risk}
+                    eid={item.eid}
                     compliance={undefined}
                     prospectId={item.prospectId}
                     animationDelay={animationDelay}
-                    onOpenMatter={() => handleOpenMatter(item.instruction)}
-                    onRiskAssessment={() => handleRiskAssessment(item.instruction)}
-                    onEIDCheck={() => handleEIDCheck(item.instruction)}
                   />
                 );
               })}
