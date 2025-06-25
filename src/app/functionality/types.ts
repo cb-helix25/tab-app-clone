@@ -452,9 +452,27 @@ export interface AnnualLeaveRecord {
 export interface InstructionData {
   prospectId: number;
   deals: any[];
+  /**
+   * Joint clients associated with the prospect.  Older implementations
+   * used the `jointClients` field while newer ones may expose this data
+   * via `joinedClients`.  Both shapes are captured here.
+   */
   jointClients: any[];
+  joinedClients?: any[];
   instructions: any[];
   documents: any[];
+  /**
+   * Compliance/risk assessment details.  Depending on the backend
+   * version this may be returned under `riskAssessments` or
+   * `compliance`.  Consumers should handle either form.
+   */
   riskAssessments: any[];
+  compliance?: any[];
+
+  /**
+   * Electronic ID verification results.  May be returned as
+   * `electronicIDChecks` or `idVerifications`.
+   */
   electronicIDChecks: any[];
+  idVerifications?: any[];
 }

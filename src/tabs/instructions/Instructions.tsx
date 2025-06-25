@@ -214,12 +214,12 @@ const Instructions: React.FC<InstructionsProps> = ({
         const deal = prospect.deals.find(
           (d) => d.InstructionRef === inst.InstructionRef
         );
-        const risk = prospect.riskAssessments?.find(
-          (r) => r.MatterId === inst.InstructionRef
-        );
-        const eid = prospect.electronicIDChecks?.find(
-          (e) => e.MatterId === inst.InstructionRef
-        );
+        const riskSource =
+          prospect.riskAssessments ?? prospect.compliance ?? [];
+        const eidSource =
+          prospect.electronicIDChecks ?? prospect.idVerifications ?? [];
+        const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
+        const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
         const docs = prospect.documents?.filter(
           (d) => d.InstructionRef === inst.InstructionRef
         );
@@ -243,7 +243,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         (p.deals ?? []).map((d) => ({
           ...d,
           firstName: p.instructions?.[0]?.FirstName,
-          jointClients: p.jointClients ?? [],
+          jointClients: p.jointClients ?? p.joinedClients ?? [],
         }))
       ),
     [instructionData]
@@ -267,7 +267,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           map[key] = entry;
         }
       });
-      (p.jointClients ?? []).forEach((jc) => {
+      (p.jointClients ?? p.joinedClients ?? []).forEach((jc) => {
         const key = jc.ClientEmail;
         const entry =
           map[key] || {
@@ -294,14 +294,14 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const riskData = useMemo(
     () =>
-      instructionData.flatMap((p) =>
-        (p.riskAssessments ?? []).map((r) => {
-          const eid = p.electronicIDChecks?.find(
-            (e) => e.MatterId === r.MatterId
-          );
+      instructionData.flatMap((p) => {
+        const riskSource = p.riskAssessments ?? p.compliance ?? [];
+        const eidSource = p.electronicIDChecks ?? p.idVerifications ?? [];
+        return riskSource.map((r: any) => {
+          const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
           return { ...r, EIDStatus: eid?.EIDStatus };
-        })
-      ),
+        });
+      }),
     [instructionData]
   );
 
