@@ -17,7 +17,7 @@ import DealCard from './DealCard';
 import RiskCard from './RiskCard';
 import ComplianceCard from './ComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
-import InstructionOverviewCard from './InstructionOverviewCard';
+import InstructionDashboard from './InstructionDashboard';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -534,7 +534,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const col = idx % 2;
                 const animationDelay = row * 0.2 + col * 0.1;
                 return (
-                  <InstructionOverviewCard
+                  <InstructionDashboard
                     key={idx}
                     instruction={item.instruction}
                     deals={item.deals}
@@ -542,7 +542,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     risk={item.risk}
                     eid={item.eid}
                     compliance={undefined}
-                    prospectId={item.prospectId}
+                    documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
                   />
                 );
