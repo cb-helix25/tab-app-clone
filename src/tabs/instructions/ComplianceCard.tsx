@@ -5,7 +5,7 @@ import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/RiskComplianceCard.css';
 
-export interface RiskComplianceInfo {
+export interface ComplianceInfo {
     MatterId: string;
     RiskAssessor?: string;
     ComplianceDate?: string;
@@ -19,12 +19,12 @@ export interface RiskComplianceInfo {
     FirmWideSanctionsRiskConsidered?: boolean;
 }
 
-interface RiskComplianceCardProps {
-    data: RiskComplianceInfo;
+interface ComplianceCardProps {
+    data: ComplianceInfo;
     animationDelay?: number;
 }
 
-const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({ data, animationDelay = 0 }) => {
+const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 0 }) => {
     const { isDarkMode } = useTheme();
 
     const cardClass = mergeStyles('riskComplianceCard', {
@@ -106,4 +106,4 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({ data, animation
     );
 };
 
-export default RiskComplianceCard;
+export default ComplianceCard;

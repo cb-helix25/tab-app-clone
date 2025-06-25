@@ -5,6 +5,7 @@ import {
   IconButton,
   Pivot,
   PivotItem,
+  Text,
 } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -13,7 +14,8 @@ import { colours } from '../../app/styles/colours';
 import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
-import RiskComplianceCard from './RiskComplianceCard';
+import RiskCard from './RiskCard';
+import ComplianceCard from './ComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
@@ -296,7 +298,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     return Object.values(map);
   }, [instructionData]);
 
-  const riskData = useMemo(
+  const complianceData = useMemo(
     () =>
       instructionData.flatMap((p) => {
         const riskSource: any[] = [
@@ -318,6 +320,8 @@ const Instructions: React.FC<InstructionsProps> = ({
       }),
     [instructionData]
   );
+
+  const riskData: any[] = []; // placeholder until risk data available
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
@@ -464,16 +468,37 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
           )}
           {activePivot === 'risk' && (
-            <div className={gridContainerStyle}>
-              {riskData.map((r, idx) => {
-                const row = Math.floor(idx / 4);
-                const col = idx % 4;
-                const animationDelay = row * 0.2 + col * 0.1;
-                return (
-                  <RiskComplianceCard key={idx} data={r} animationDelay={animationDelay} />
-                );
-              })}
-            </div>
+            <>
+              <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: 8 } }}>
+                Risk Assessments
+              </Text>
+              <div className={gridContainerStyle}>
+                {riskData.length === 0 && (
+                  <Text>No risk data available.</Text>
+                )}
+                {riskData.map((r, idx) => {
+                  const row = Math.floor(idx / 4);
+                  const col = idx % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  return (
+                    <RiskCard key={idx} data={r} animationDelay={animationDelay} />
+                  );
+                })}
+              </div>
+              <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, margin: '16px 0 8px' } }}>
+                Compliance
+              </Text>
+              <div className={gridContainerStyle}>
+                {complianceData.map((c, idx) => {
+                  const row = Math.floor(idx / 4);
+                  const col = idx % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  return (
+                    <ComplianceCard key={idx} data={c} animationDelay={animationDelay} />
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </Stack>
