@@ -14,17 +14,23 @@
 .dashboard-header {
     font-weight: 600;
     color: var(--helix-dark-blue, #061733);
-        display: flex;
+    display: flex;
         align-items: center;
         gap: 6px;
     }
     
-    .instruction-stage {
-        font-size: 0.75rem;
-        background: var(--helix-light, #f4f4f6);
-        padding: 2px 6px;
-        border-radius: 4px;
+    .lead-client {
+        font-size: 0.875rem;
         color: var(--helix-dark-blue, #061733);
+        margin-top: 2px;
+    }
+
+        .instruction-stage {
+            font-size: 0.75rem;
+            background: var(--helix-light, #f4f4f6);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--helix-dark-blue, #061733);
 }
 
 .status-row {
@@ -41,12 +47,17 @@
     border: 1px solid #e3e8ef;
 }
 
+.status-item.clients .status-value,
+.status-item.risk .status-value {
+    color: var(--helix-dark-blue, #061733);
+}
+
 .status-value.complete {
     color: var(--helix-green, #107c10);
 }
 
 .status-value.pending {
-    color: var(--helix-orange, #ff8c00);
+    color: var(--helix-highlight, #3690CE);
 }
 
 .status-value.failed {

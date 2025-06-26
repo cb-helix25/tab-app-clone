@@ -129,7 +129,12 @@ export interface SnippetEdit {
   id: number;
   blockTitle: string;
   proposedText: string;
+  proposedLabel?: string;
+  proposedSortOrder?: number;
+  proposedBlockId?: number;
+  isNew?: boolean;
   submittedBy: string;
+  reviewNotes?: string;
   status?: string;
 }
 
@@ -2630,7 +2635,7 @@ const conversionRate = enquiriesMonthToDate
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
       {/* Header: Show the review message only when there is something to review */}
-        {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0 || snippetApprovalsNeeded.length > 0) && (
+      {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0 || snippetApprovalsNeeded.length > 0) && (
         <Stack
           horizontal
           horizontalAlign="space-between"

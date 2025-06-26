@@ -73,6 +73,11 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
         { key: 'risk', label: 'Risk', value: riskStatus },
     ];
 
+    const leadName =
+        (instruction.FirstName || instruction.LastName)
+            ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
+            : instruction.CompanyName ?? clients.find(c => c.Lead)?.ClientEmail ?? '';
+
     return (
         <div className={cardClass} style={style}>
             <header
@@ -83,6 +88,7 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
                 {instruction.InstructionRef}
                 <span className="instruction-stage">{stage}</span>
             </header>
+            {leadName && <div className="lead-client">{leadName}</div>}
             <div className="status-row">
                 {summaryData.map((d, i) => {
                     const status = (d.status ?? '').toString().toLowerCase();
@@ -95,7 +101,7 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
                                 : <FaClock />
                         : null;
                     return (
-                        <div key={i} className="status-item">
+                        <div key={i} className={`status-item ${d.key}`}>
                             <span className="status-label">{d.label}</span>
                             {icon ? (
                                 <span className={`status-value ${status}`}>{icon}</span>

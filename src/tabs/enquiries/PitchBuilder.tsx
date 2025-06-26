@@ -60,6 +60,7 @@ import {
   wrapInsertPlaceholders,
 } from './pitch-builder/emailUtils';
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
+import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
 
 interface PitchBuilderProps {
   enquiry: Enquiry;
@@ -1976,7 +1977,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         isMultiClient: isMultiClientFlag,
         leadClientEmail: enquiry.Email,
         ...(isMultiClientFlag && {
-          clients: dealClients.map((c) => ({ clientEmail: c.email })),
+          clients: dealClients.map((c) => ({
+            clientEmail: c.email,
+            prospectId: ADDITIONAL_CLIENT_PLACEHOLDER_ID,
+          })),
         }),
       };
       const response = await fetch(url, {
