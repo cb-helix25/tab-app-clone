@@ -1,35 +1,57 @@
-diff --git a/src/app/customisation/TemplateBlockSets.ts b/src/app/customisation/TemplateBlockSets.ts
-index 2473726b2f4ab74a781377811fddf3fcef58ecde..62e28985ea3d1de81150d0a3fbb4839ece54d659 100644
---- a/src/app/customisation/TemplateBlockSets.ts
-+++ b/src/app/customisation/TemplateBlockSets.ts
-@@ -1,24 +1,28 @@
- import {
-   templateBlocks as productionTemplateBlocks,
-   TemplateBlock,
-   TemplateOption,
- } from './ProductionTemplateBlocks';
- import simplifiedTemplateBlocks from './SimplifiedTemplateBlocks';
+diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+index ecf8793ac425e36604af4e32db7945e619419dc3..90c1eb039eddcf6c463d784476677b30e9803073 100644
+--- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
++++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+@@ -54,51 +54,51 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
+   subject,
+   setSubject,
+   serviceDescription,
+   setServiceDescription,
+   selectedOption,
+   setSelectedOption,
+   SERVICE_OPTIONS,
+   amount,
+   handleAmountChange,
+   handleAmountBlur,
+   handleDealFormSubmit,
+   dealId,
+   clientIds,
+   isDarkMode,
+ }) => {
  
- export type TemplateSet = 'Production' | 'Simplified';
+   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
  
- export const templateBlockSets: Record<TemplateSet, TemplateBlock[]> = {
-   Production: productionTemplateBlocks,
-   Simplified: simplifiedTemplateBlocks,
- };
+   const sectionStyle = {
+     display: 'flex',
+     flexDirection: 'column' as const,
+     width: '100%',
+     padding: 16,           // more padding
+     gap: 8,                // consistent gap
+     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+-    borderRadius: 4,       // slight rounding
++    borderRadius: 0,
+     backgroundColor: isDarkMode
+       ? colours.dark.sectionBackground
+       : colours.light.sectionBackground,
+   };;
  
- export const templateSetOptions = [
--  { key: 'Production', text: 'Production' },
--  { key: 'Simplified', text: 'Simplified' },
-+  { key: 'Production', text: 'v1' },
-+  { key: 'Simplified', text: 'v2' },
- ];
+   const enquiryNotesContainer = mergeStyles(sectionStyle);
  
-+export function getTemplateSetLabel(set: TemplateSet): string {
-+  return set === 'Simplified' ? 'v2' : 'v1';
-+}
-+
- export function getTemplateBlocks(set: TemplateSet = 'Simplified'): TemplateBlock[] {
-   return templateBlockSets[set];
- }
+   const enquiryNotesHeader = mergeStyles({
+     color: labelColour,
+     fontWeight: 600,
+     fontSize: 13,
+     lineHeight: 1.2,
+     marginBottom: 8,    // ↑ more breathing room under the title
+   });
  
- export type { TemplateBlock, TemplateOption };
+   const enquiryNotesContent = mergeStyles({
+     whiteSpace: 'pre-wrap',
+     fontSize: 14,
+     color: labelColour,
+     display: 'flex',
+     flexDirection: 'column',
+     gap: 4,
+   });
+ 
+   const notesContainerStyle = mergeStyles({

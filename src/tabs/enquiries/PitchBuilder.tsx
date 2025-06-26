@@ -230,7 +230,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .selected-block {
       outline: 2px solid ${colours.cta};
-      outline-offset: 2px;
+      outline-offset: -2px;
     }
     .block-container {
       position: relative;
@@ -2639,6 +2639,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     padding: 8,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+    border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
+    borderBottom: 'none',
   });
 
   const bodyWrapperStyle = mergeStyles({
@@ -2699,8 +2701,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     marginBottom: '0',
     backgroundColor: colours.darkBlue,
     padding: '8px',
-    borderTopLeftRadius: '8px',
-    borderTopRightRadius: '8px',
+    borderTopLeftRadius: '0',
+    borderTopRightRadius: '0',
     border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
     borderBottom: 'none',
   });

@@ -137,6 +137,8 @@ interface NewMattersProps {
     stage?: string;
     matterRef?: string;
     hideClientSections?: boolean;
+    /** Sets the initial client type when launching the workflow */
+    initialClientType?: string;
 }
 
 const NewMatters: React.FC<NewMattersProps> = ({
@@ -149,6 +151,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     stage = 'New Matter',
     matterRef,
     hideClientSections = false,
+    initialClientType = '',
 }) => {
     const [openStep, setOpenStep] = useState<number>(0);
 
@@ -167,7 +170,11 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
 
     // Workflow
-    const [clientType, setClientType] = useState('');
+    const [clientType, setClientType] = useState(initialClientType);
+
+    useEffect(() => {
+        setClientType(initialClientType);
+    }, [initialClientType]);
     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
     const [areaOfWork, setAreaOfWork] = useState('');
     const [practiceArea, setPracticeArea] = useState('');

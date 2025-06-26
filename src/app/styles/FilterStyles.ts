@@ -214,7 +214,7 @@ export const sharedEditorStyle = (isDarkMode: boolean) =>
   mergeStyles({
     minHeight: '150px',
     padding: '20px 20px 110px 20px',
-    borderRadius: '0 0 8px 8px',
+    borderRadius: '0',
     border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
     color: isDarkMode ? colours.dark.text : colours.light.text,

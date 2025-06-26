@@ -76,7 +76,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     padding: 16,           // more padding
     gap: 8,                // consistent gap
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,       // slight rounding
+    borderRadius: 0,
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,

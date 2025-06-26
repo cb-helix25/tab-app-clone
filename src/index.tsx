@@ -250,7 +250,7 @@ const AppWithContext: React.FC = () => {
         setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
         setUserData(localUserData as UserData[]);
         setEnquiries(localEnquiries as Enquiry[]);
-        setMatters(localMatters as Matter[]);
+        setMatters(localMatters as unknown as Matter[]);
         setTeamData(null);
         setLoading(false);
       }

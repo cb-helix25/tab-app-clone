@@ -40,11 +40,20 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+  /** Client type selection for the matter opening workflow */
+  const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('overview');
   const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
+
+  const CLIENT_TYPE_OPTIONS = [
+    'Individual',
+    'Company',
+    'Multiple Clients',
+    'Existing Client',
+  ];
 
   const quickLinksStyle = (dark: boolean) =>
     mergeStyles({
@@ -124,29 +133,48 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [useLocalData]);
 
   const handleBack = () => {
-    if (showNewMatterPage) setShowNewMatterPage(false);
-    else if (showRiskPage) setShowRiskPage(false);
+    if (showNewMatterPage) {
+      setShowNewMatterPage(false);
+      setSelectedInstruction(null);
+    } else if (showRiskPage) {
+      setShowRiskPage(false);
+    }
   };
 
   useEffect(() => {
     setContent(
       <>
         <div className={quickLinksStyle(isDarkMode)}>
-          {showNewMatterPage || showRiskPage ? (
-            <IconButton
-              iconProps={{ iconName: 'ChevronLeft' }}
-              onClick={handleBack}
-              className={backButtonStyle}
-              title="Back"
-              ariaLabel="Back"
-            />
-          ) : (
+          <IconButton
+            iconProps={{ iconName: 'ChevronLeft' }}
+            onClick={handleBack}
+            className={backButtonStyle}
+            title="Back"
+            ariaLabel="Back"
+          />
+          {showNewMatterPage ? (
+            CLIENT_TYPE_OPTIONS.map((opt) => (
+              <QuickActionsCard
+                key={opt}
+                title={opt}
+                icon=""
+                isDarkMode={isDarkMode}
+                onClick={() => setNewMatterClientType(opt)}
+                selected={newMatterClientType === opt}
+                style={{ '--card-index': 0 } as React.CSSProperties}
+              />
+            ))
+          ) : !showRiskPage ? (
             <>
               <QuickActionsCard
                 title="New Matter"
                 icon="Calendar"
                 isDarkMode={isDarkMode}
-                onClick={() => setShowNewMatterPage(true)}
+                onClick={() => {
+                  setSelectedInstruction(null);
+                  setNewMatterClientType('Individual');
+                  setShowNewMatterPage(true);
+                }}
                 style={{ '--card-index': 0 } as React.CSSProperties}
               />
               <QuickActionsCard
@@ -171,28 +199,38 @@ const Instructions: React.FC<InstructionsProps> = ({
                 style={{ '--card-index': 3 } as React.CSSProperties}
               />
             </>
-          )}
+          ) : null}
         </div>
-        <div className={pivotBarStyle(isDarkMode)}>
-          <Pivot
-            selectedKey={activePivot}
-            onLinkClick={(item) => {
-              setExpandedInstructionRef(null);
-              setActivePivot(item?.props.itemKey || 'instructions');
-            }}
-          >
-            <PivotItem headerText="Overview" itemKey="overview" />
-            <PivotItem headerText="Instructions" itemKey="instructions" />
-            <PivotItem headerText="Deals" itemKey="deals" />
-            <PivotItem headerText="Clients" itemKey="clients" />
-            <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-          </Pivot>
-        </div>
+        {!showNewMatterPage && (
+          <div className={pivotBarStyle(isDarkMode)}>
+            <Pivot
+              selectedKey={activePivot}
+              onLinkClick={(item) => {
+                setExpandedInstructionRef(null);
+                setActivePivot(item?.props.itemKey || 'instructions');
+              }}
+            >
+              <PivotItem headerText="Overview" itemKey="overview" />
+              <PivotItem headerText="Instructions" itemKey="instructions" />
+              <PivotItem headerText="Deals" itemKey="deals" />
+              <PivotItem headerText="Clients" itemKey="clients" />
+              <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+            </Pivot>
+          </div>
+        )}
       </>
 
     );
     return () => setContent(null);
-  }, [setContent, isDarkMode, instructionData, activePivot, showNewMatterPage, showRiskPage]);
+  }, [
+    setContent,
+    isDarkMode,
+    instructionData,
+    activePivot,
+    showNewMatterPage,
+    showRiskPage,
+    newMatterClientType,
+  ]);
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
@@ -208,13 +246,13 @@ const Instructions: React.FC<InstructionsProps> = ({
   const backButtonStyle = mergeStyles({
     width: 32,
     height: 32,
-    borderRadius: '50%',
+    borderRadius: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#ffffff',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    marginBottom: 12,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    marginRight: 8,
   });
 
   const sectionContainerStyle = (dark: boolean) =>
@@ -480,6 +518,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
+    setNewMatterClientType(inst?.ClientType || 'Individual');
     setShowNewMatterPage(true);
   };
 
@@ -541,6 +580,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
           hideClientSections={!selectedInstruction}
+          initialClientType={newMatterClientType}
         />
       </Stack>
     );
