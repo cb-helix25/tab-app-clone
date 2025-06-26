@@ -6,12 +6,15 @@ import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionDashboard.css';
 
 interface InstructionDashboardProps {
-    instruction: any;
+    instruction?: any;
+    deal?: any;
     deals: any[];
     clients: ClientInfo[];
     risk?: any;
     eid?: any;
     compliance?: any;
+    prospectId?: number;
+    passcode?: string;
     documentCount?: number;
     animationDelay?: number;
     onOpenInstruction?: (ref: string) => void;
@@ -19,11 +22,14 @@ interface InstructionDashboardProps {
 
 const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     instruction,
+    deal,
     deals,
     clients,
     risk,
     eid,
     compliance,
+    prospectId,
+    passcode,
     documentCount = 0,
     animationDelay = 0,
     onOpenInstruction,
@@ -38,15 +44,15 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
         border: '1px solid #ccc',
     });
 
-    const stage = instruction.Stage ?? '-';
+    const stage = instruction?.Stage ?? 'deal pending';
     const riskStatus = risk?.RiskAssessmentResult ?? '-';
     const eidStatus = eid?.EIDStatus ?? '-';
     const complianceStatus = compliance?.Status ?? '-';
 
     const proofOfIdComplete = Boolean(
-        instruction.PassportNumber || instruction.DriversLicenseNumber
+        instruction?.PassportNumber || instruction?.DriversLicenseNumber
     );
-    const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
+    const paymentStatusRaw = instruction?.PaymentResult?.toLowerCase();
     const paymentComplete = paymentStatusRaw === 'successful';
     const paymentFailed = paymentStatusRaw === 'failed';
     const documentsComplete = documentCount > 0;
@@ -73,22 +79,31 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
         { key: 'risk', label: 'Risk', value: riskStatus },
     ];
 
-    const leadName =
-        (instruction.FirstName || instruction.LastName)
+    const primaryDeal = deal ?? deals[0];
+    const leadName = instruction
+        ? (instruction.FirstName || instruction.LastName)
             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
-            : instruction.CompanyName ?? clients.find(c => c.Lead)?.ClientEmail ?? '';
+            : instruction.CompanyName ?? clients.find(c => c.Lead)?.ClientEmail ?? ''
+        : primaryDeal?.ServiceDescription ?? '';
 
     return (
         <div className={cardClass} style={style}>
             <header
                 className="dashboard-header"
-                onClick={() => onOpenInstruction?.(instruction.InstructionRef)}
-                style={{ cursor: onOpenInstruction ? 'pointer' : 'default' }}
+                onClick={instruction ? () => onOpenInstruction?.(instruction.InstructionRef) : undefined}
+                style={{ cursor: instruction && onOpenInstruction ? 'pointer' : 'default' }}
             >
-                {instruction.InstructionRef}
+                {instruction ? instruction.InstructionRef : 'Deal Pending'}
                 <span className="instruction-stage">{stage}</span>
             </header>
             {leadName && <div className="lead-client">{leadName}</div>}
+            {!instruction && (prospectId || passcode) && (
+                <div className="lead-client">
+                    {prospectId && <>Prospect {prospectId}</>}
+                    {prospectId && passcode && ' · '}
+                    {passcode && <>Passcode {passcode}</>}
+                </div>
+            )}
             <div className="status-row">
                 {summaryData.map((d, i) => {
                     const status = (d.status ?? '').toString().toLowerCase();

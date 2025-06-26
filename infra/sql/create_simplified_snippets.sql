@@ -87,3 +87,39 @@ Status NVARCHAR
 CREATE INDEX IX_SnippetEdits_SnippetId ON dbo.SnippetEdits(SnippetId);
 
 GO
+
+-- ---------------------------------------------------------------
+-- Sample data to support local development and testing
+-- ---------------------------------------------------------------
+
+INSERT INTO dbo.SimplifiedBlocks
+    (Title, Description, Placeholder, CreatedBy)
+VALUES
+    ('Opening', 'Introductory lines', 'intro', 'seed'),
+    ('Closing', 'Sign-off lines', 'closing', 'seed');
+
+INSERT INTO dbo.SimplifiedBlockSnippets
+    (BlockId, Label, Content, SortOrder, IsApproved, CreatedBy)
+VALUES
+    (1, 'Friendly intro', 'Hi there, hope you are well.', 1, 1, 'seed'),
+    (1, 'Formal intro', 'Dear [Name], we appreciate your interest.', 2, 1, 'seed'),
+    (2, 'Thanks', 'Thanks for your time.', 1, 1, 'seed'),
+    (2, 'Looking forward', 'I look forward to hearing from you.', 2, 1, 'seed');
+
+INSERT INTO dbo.SimplifiedBlockSnippetVersions
+    (SnippetId, VersionNumber, Label, Content, SortOrder, BlockId, ApprovedBy, ApprovedAt)
+SELECT
+    SnippetId,
+    Version,
+    Label,
+    Content,
+    SortOrder,
+    BlockId,
+    'seed' AS ApprovedBy,
+    SYSUTCDATETIME() AS ApprovedAt
+FROM dbo.SimplifiedBlockSnippets;
+
+INSERT INTO dbo.SnippetEdits
+    (SnippetId, ProposedContent, ProposedLabel, ProposedBy)
+VALUES
+    (1, 'Hi {name}, hope all is well!', 'Friendly intro v2', 'tester');

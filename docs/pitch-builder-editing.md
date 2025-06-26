@@ -37,3 +37,7 @@ The snippet library now supports a more robust editing process:
 * Every time a snippet is approved the prior version is stored in `SimplifiedBlockSnippetVersions` along with its version number.
 
 These upgrades make it easier to refine the library over time while preserving a full history of changes.
+
+## UI prompts for edits
+
+The editor surfaces editing tools directly within each block. Selecting the block label opens an edit modal where snippet text, label and sort order can be modified. Pending changes appear in the **Snippet Edits** pane and approvers see a notification badge when new edits require review. Proposed snippets flagged with `IsNew` are highlighted so reviewers know they will create additional library entries once approved.

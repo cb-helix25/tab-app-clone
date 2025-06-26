@@ -1,131 +1,36 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 213735417c4dadeb5d70e3cebe469d59846cd179..ca11f508ac1741ee6c6243649ad106c4de2759a5 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -288,50 +288,58 @@ const Instructions: React.FC<InstructionsProps> = ({
-           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
-           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
-         ];
-         const eidSource = [
-           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-           ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
-         ];
-         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
-         const docs = prospect.documents?.filter(
-           (d) => d.InstructionRef === inst.InstructionRef
-         );
-         return {
-           instruction: inst,
-           deals: dealsForInst,
-           clients: clientsForInst,
-           risk,
-           eid,
-           prospectId: prospect.prospectId,
-           documentCount: docs ? docs.length : 0,
-         };
-       })
-     );
-   }, [instructionData]);
+diff --git a/docs/pitch-builder-editing.md b/docs/pitch-builder-editing.md
+index b3108640de6b48fc51b727b7c72b6d5bae062c23..3648ee323e385fb74a9f846be487961fc4d43a97 100644
+--- a/docs/pitch-builder-editing.md
++++ b/docs/pitch-builder-editing.md
+@@ -14,26 +14,30 @@ block can be customised in a number of ways and removed entirely if needed.
+    is wrapped in a `data-sentence` span which is `contenteditable`, allowing
+    quick tweaks without affecting the rest of the block. A small × icon before
+    each sentence lets you remove it entirely with one click if it is not
+    required.
  
-+  const unlinkedDeals = useMemo(
-+    () =>
-+      instructionData.flatMap((p) =>
-+        (p.deals ?? []).filter((d) => !d.InstructionRef)
-+      ),
-+    [instructionData]
-+  );
+ ## Scrapping content
+ 
+ - Each block includes a delete icon to remove it from the editor.
+ - The × icon on every sentence allows you to discard individual lines without
+   affecting the rest of the block.
+ - The *Clear* button removes all inserted blocks and restores the original
+   placeholders.
+ 
+ These controls make it easy to experiment with different blocks or remove them
+ completely before sending the final email.
+ 
+ ## Snippet edit workflow
+ 
+ The snippet library now supports a more robust editing process:
+ 
+ * Each proposed change may include updated label, sort order or even a new block assignment. Setting `IsNew` allows a brand new snippet to be added for review.
+ * Allowed edit statuses (`pending`, `approved`, `rejected`) are enforced via a lookup table so typos cannot slip into the database.
+ * Approvers can capture reasons in a `ReviewNotes` column when accepting or rejecting an edit.
+ * Every time a snippet is approved the prior version is stored in `SimplifiedBlockSnippetVersions` along with its version number.
+ 
+-These upgrades make it easier to refine the library over time while preserving a full history of changes.
++These upgrades make it easier to refine the library over time while preserving a full history of changes.
 +
-   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
- 
-   const deals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).map((d) => ({
-           ...d,
-           firstName: p.instructions?.[0]?.FirstName,
-           jointClients: p.jointClients ?? p.joinedClients ?? [],
-         }))
-       ),
-     [instructionData]
-   );
-   const clients: ClientInfo[] = useMemo(() => {
-     const map: Record<string, ClientInfo> = {};
-     instructionData.forEach((p) => {
-       const deals = p.deals ?? [];
-       deals.forEach((d) => {
-         if (d.LeadClientEmail) {
-           const key = d.LeadClientEmail;
-           const entry =
-             map[key] || { ClientEmail: key, Lead: true, deals: [] as DealSummary[] };
-           entry.Lead = true;
-           (entry.deals as DealSummary[]).push({
-             DealId: d.DealId,
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 213735417c4dadeb5d70e3cebe469d59846cd179..ca11f508ac1741ee6c6243649ad106c4de2759a5 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -489,50 +497,63 @@ const Instructions: React.FC<InstructionsProps> = ({
-   return (
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === 'overview' && (
-             <div className={overviewColumnStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionDashboard
-                     key={idx}
-                     instruction={item.instruction}
-                     deals={item.deals}
-                     clients={item.clients}
-                     risk={item.risk}
-                     eid={item.eid}
-                     compliance={undefined}
-                     documentCount={item.documentCount ?? 0}
-                     animationDelay={animationDelay}
-                     onOpenInstruction={handleOpenInstruction}
-                   />
-                 );
-               })}
-+              {unlinkedDeals.map((deal, idx) => {
-+                const base = overviewItems.length + idx;
-+                const row = Math.floor(base / 2);
-+                const col = base % 2;
-+                const animationDelay = row * 0.2 + col * 0.1;
-+                return (
-+                  <DealCard
-+                    key={`unlinked-${idx}`}
-+                    deal={deal}
-+                    animationDelay={animationDelay}
-+                  />
-+                );
-+              })}
-             </div>
-           )}
-           {activePivot === 'instructions' && (
-             <div className={instructionColumnStyle}>
-               {flattenedInstructions.map((instruction, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionCard
-                     key={idx}
-                     instruction={instruction}
-                     risk={instruction.risk}
-                     eid={instruction.eid}
-                     documentCount={instruction.documentCount}
-                     prospectId={instruction.prospectId}
-                     animationDelay={animationDelay}
-                     expanded={expandedInstructionRef === instruction.InstructionRef}
-                     onOpenMatter={() => handleOpenMatter(instruction)}
-                     onRiskAssessment={() => handleRiskAssessment(instruction)}
-                     onEIDCheck={() => handleEIDCheck(instruction)}
-                     innerRef={(el: HTMLDivElement | null) => {
-                       instructionRefs.current[instruction.InstructionRef] = el;
-                     }}
-                   />
++## UI prompts for edits
++
++The editor surfaces editing tools directly within each block. Selecting the block label opens an edit modal where snippet text, label and sort order can be modified. Pending changes appear in the **Snippet Edits** pane and approvers see a notification badge when new edits require review. Proposed snippets flagged with `IsNew` are highlighted so reviewers know they will create additional library entries once approved.

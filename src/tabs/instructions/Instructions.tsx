@@ -243,8 +243,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [instructionData]);
 
   const overviewItems = useMemo(() => {
-    return instructionData.flatMap((prospect) =>
-      (prospect.instructions ?? []).map((inst) => {
+    return instructionData.flatMap((prospect) => {
+      const instructionItems = (prospect.instructions ?? []).map((inst) => {
         const dealsForInst = (prospect.deals ?? []).filter(
           (d) => d.InstructionRef === inst.InstructionRef
         );
@@ -306,8 +306,58 @@ const Instructions: React.FC<InstructionsProps> = ({
           prospectId: prospect.prospectId,
           documentCount: docs ? docs.length : 0,
         };
-      })
-    );
+      });
+
+      const dealOnlyItems = (prospect.deals ?? [])
+        .filter((d) => !d.InstructionRef)
+        .map((d) => {
+          const clientsForDeal: ClientInfo[] = [];
+          (prospect.jointClients ?? prospect.joinedClients ?? []).forEach((jc) => {
+            if (jc.DealId === d.DealId) {
+              clientsForDeal.push({
+                ClientEmail: jc.ClientEmail,
+                HasSubmitted: jc.HasSubmitted,
+                Lead: false,
+                deals: [
+                  {
+                    DealId: jc.DealId,
+                    InstructionRef: null,
+                    ServiceDescription: d.ServiceDescription,
+                    Status: d.Status,
+                  },
+                ],
+              });
+            }
+          });
+          if (d.LeadClientEmail) {
+            clientsForDeal.push({
+              ClientEmail: d.LeadClientEmail,
+              Lead: true,
+              deals: [
+                {
+                  DealId: d.DealId,
+                  InstructionRef: null,
+                  ServiceDescription: d.ServiceDescription,
+                  Status: d.Status,
+                },
+              ],
+            });
+          }
+          return {
+            instruction: null,
+            deal: d,
+            deals: [d],
+            clients: clientsForDeal,
+            risk: undefined,
+            eid: undefined,
+            prospectId: prospect.prospectId,
+            passcode: d.Passcode,
+            documentCount: 0,
+          };
+        });
+
+      return [...instructionItems, ...dealOnlyItems];
+    });
   }, [instructionData]);
 
   const unlinkedDeals = useMemo(
@@ -508,11 +558,14 @@ const Instructions: React.FC<InstructionsProps> = ({
                   <InstructionDashboard
                     key={idx}
                     instruction={item.instruction}
+                    deal={(item as any).deal}
                     deals={item.deals}
                     clients={item.clients}
-                    risk={item.risk}
-                    eid={item.eid}
+                    risk={(item as any).risk}
+                    eid={(item as any).eid}
                     compliance={undefined}
+                    prospectId={item.prospectId}
+                    passcode={(item as any).passcode}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
                     onOpenInstruction={handleOpenInstruction}
