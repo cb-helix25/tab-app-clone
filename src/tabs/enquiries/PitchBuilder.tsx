@@ -217,11 +217,6 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       animation: fadeInScale 0.2s ease forwards;
       max-width: 280px;
     }
-    .block-popout {
-      position: absolute;
-      z-index: 1000;
-      cursor: move;
-    }
     .option-preview {
       font-size: 11px;
       padding: 0 4px;
@@ -404,18 +399,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Simplified');
   const templateBlocks = getTemplateBlocks(templateSet);
-
-  // Refs and state for the movable block popout
+  // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
-  const popoutRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef<boolean>(false);
-  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
-
-  const [popoutSidebarHtml, setPopoutSidebarHtml] = useState<string>('');
-  const [popoutSidebarEl, setPopoutSidebarEl] = useState<HTMLElement | null>(null);
-  const [popoutPinned, setPopoutPinned] = useState<boolean>(false);
-  const [popoutPosition, setPopoutPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
@@ -713,97 +699,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     insertTemplateBlock(block, selected, true, false);
   }
 
-  const openBlockPopout = (e: MouseEvent, blockTitle: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const btn = e.currentTarget as HTMLElement;
-    const container = btn.closest('.block-container') as HTMLElement | null;
-    const sidebar = container?.querySelector('.block-sidebar') as HTMLElement | null;
-    if (!container || !sidebar || !bodyEditorRef.current) return;
-    const temp = sidebar.cloneNode(true) as HTMLElement;
-    const pin = temp.querySelector('.pin-toggle');
-    if (pin) pin.setAttribute('onclick', 'window.togglePopoutPin()');
-    const pop = temp.querySelector('.icon-btn[onclick^="window.openBlockPopout"]');
-    if (pop) pop.remove();
-    const labelText = sidebar.getAttribute('data-label') || '';
-    const subtle = `<div style="font-size:10px;color:${colours.greyText};text-align:right;margin-bottom:4px;">${labelText}</div>`;
-    setPopoutSidebarHtml(subtle + temp.innerHTML);
-    setPopoutSidebarEl(sidebar);
-    sidebar.style.display = 'none';
-    const editorRect = bodyEditorRef.current.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    setPopoutPosition({
-      top: containerRect.top - editorRect.top,
-      left: containerRect.right - editorRect.left + 8,
-    });
-    setPopoutPinned(false);
-  };
-
-  const closeBlockPopout = () => {
-    if (popoutSidebarEl) {
-      popoutSidebarEl.style.display = '';
-    }
-    setPopoutSidebarEl(null);
-    setPopoutSidebarHtml('');
-    setPopoutPinned(false);
-  };
-
-  const togglePopoutPin = () => {
-    setPopoutPinned(prev => !prev);
-  };
-
-  function startDrag(e: React.MouseEvent<HTMLDivElement>) {
-    if (!popoutRef.current) return;
-    dragging.current = true;
-    const rect = popoutRef.current.getBoundingClientRect();
-    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-
-  useEffect(() => {
-    function onMove(ev: MouseEvent) {
-      if (!dragging.current || !popoutRef.current || !bodyEditorRef.current) return;
-      const editorRect = bodyEditorRef.current.getBoundingClientRect();
-      const popEl = popoutRef.current;
-      const maxLeft = editorRect.width - popEl.offsetWidth;
-      const maxTop = editorRect.height - popEl.offsetHeight;
-      let newLeft = ev.clientX - dragOffset.current.x - editorRect.left;
-      let newTop = ev.clientY - dragOffset.current.y - editorRect.top;
-      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-      newTop = Math.max(0, Math.min(newTop, maxTop));
-      setPopoutPosition({ top: newTop, left: newLeft });
-    }
-    function onUp() {
-      dragging.current = false;
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleOutside(e: MouseEvent) {
-      if (popoutPinned) return;
-      if (popoutRef.current && !popoutRef.current.contains(e.target as Node)) {
-        closeBlockPopout();
-      }
-    }
-    if (popoutSidebarHtml) {
-      document.addEventListener('mousedown', handleOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, [popoutSidebarHtml, popoutPinned]);
-
   useEffect(() => {
     (window as any).toggleBlockLock = toggleBlockLock;
     (window as any).toggleBlockSidebar = toggleBlockSidebar;
     (window as any).highlightBlock = highlightBlock;
     (window as any).openSnippetOptions = openSnippetOptions;
-    (window as any).openBlockPopout = openBlockPopout;
-    (window as any).closeBlockPopout = closeBlockPopout;
-    (window as any).togglePopoutPin = togglePopoutPin;
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).saveCustomSnippet = saveCustomSnippet;
@@ -811,7 +711,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openBlockPopout, closeBlockPopout, togglePopoutPin, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -1479,7 +1379,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn" onclick="window.saveCustomSnippet('${block.title}')"><i class="ms-Icon ms-Icon--Save"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.saveCustomSnippet('${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 
@@ -3026,27 +2926,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               />
             </FocusZone>
           </Callout>
-        )}
-
-        {popoutSidebarHtml && (
-          <div
-            ref={popoutRef}
-            className="inline-options-callout block-popout"
-            style={{
-              top: popoutPosition.top,
-              left: popoutPosition.left,
-              padding: 8,
-              borderRadius: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
-              maxWidth: '50%',
-              maxHeight: '100%',
-              overflowY: 'auto',
-            }}
-            onMouseDown={startDrag}
-          >
-            <div dangerouslySetInnerHTML={{ __html: popoutSidebarHtml }} />
-          </div>
         )}
 
         {removeConfirm && (

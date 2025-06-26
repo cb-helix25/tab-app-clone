@@ -1,110 +1,131 @@
-diff --git a/src/tabs/instructions/DealCard.tsx b/src/tabs/instructions/DealCard.tsx
-index 585d04c4614ae6087e1ea861f226c6fd37a0e049..9581a89017351bcde6a718316192597504e2f418 100644
---- a/src/tabs/instructions/DealCard.tsx
-+++ b/src/tabs/instructions/DealCard.tsx
-@@ -1,46 +1,47 @@
- import React from 'react';
- import { Text, PrimaryButton } from '@fluentui/react';
- import { mergeStyles } from '@fluentui/react';
- import {
-     parseISO,
-     differenceInMinutes,
-     differenceInHours,
-     differenceInCalendarDays,
-     isToday,
-     format,
-     isValid,
- } from 'date-fns';
- import { colours } from '../../app/styles/colours';
- import { componentTokens } from '../../app/styles/componentTokens';
- import { sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
- import { useTheme } from '../../app/functionality/ThemeContext';
- import '../../app/styles/DealCard.css';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 213735417c4dadeb5d70e3cebe469d59846cd179..ca11f508ac1741ee6c6243649ad106c4de2759a5 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -288,50 +288,58 @@ const Instructions: React.FC<InstructionsProps> = ({
+           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
+           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
+         ];
+         const eidSource = [
+           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
+           ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
+         ];
+         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
+         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
+         const docs = prospect.documents?.filter(
+           (d) => d.InstructionRef === inst.InstructionRef
+         );
+         return {
+           instruction: inst,
+           deals: dealsForInst,
+           clients: clientsForInst,
+           risk,
+           eid,
+           prospectId: prospect.prospectId,
+           documentCount: docs ? docs.length : 0,
+         };
+       })
+     );
+   }, [instructionData]);
  
- interface DealInfo {
-     CloseTime: any;
-     CloseDate: any;
-+    InstructionRef?: string | null;
-     ServiceDescription?: string;
-     Amount?: number;
-     AreaOfWork?: string;
-     PitchedDate?: string;
-     PitchedTime?: string;
-     PitchedBy?: string;
-     Passcode?: string;
-     LeadClientEmail?: string;
-     PitchValidUntil?: string;
-     Status?: string;
-     firstName?: string;
-     jointClients?: { ClientEmail?: string; HasSubmitted?: string }[];
- }
++  const unlinkedDeals = useMemo(
++    () =>
++      instructionData.flatMap((p) =>
++        (p.deals ?? []).filter((d) => !d.InstructionRef)
++      ),
++    [instructionData]
++  );
++
+   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
  
- interface DealCardProps {
-     deal: DealInfo;
-     onFollowUp?: () => void;
-     animationDelay?: number;
-     onOpenInstruction?: () => void;
- }
- 
- const leftBorderColor = (area?: string) => {
-     const normalized = area?.toLowerCase();
-     switch (normalized) {
-         case 'commercial':
-diff --git a/src/tabs/instructions/DealCard.tsx b/src/tabs/instructions/DealCard.tsx
-index 585d04c4614ae6087e1ea861f226c6fd37a0e049..9581a89017351bcde6a718316192597504e2f418 100644
---- a/src/tabs/instructions/DealCard.tsx
-+++ b/src/tabs/instructions/DealCard.tsx
-@@ -182,50 +183,53 @@ const DealCard: React.FC<DealCardProps> = ({
-         padding: componentTokens.infoBanner.padding,
-         fontSize: '0.875rem',
-     });
- 
-     const style: React.CSSProperties = {
-         '--animation-delay': `${animationDelay}s`,
-     } as React.CSSProperties;
- 
-     const formattedDate = deal.PitchedDate
-         ? new Date(deal.PitchedDate).toLocaleDateString()
-         : undefined;
- 
-     const statusStyle: React.CSSProperties = {
-         color: statusColour(status),
-     };
-     
- 
-     return (
-         <div className={cardClass} style={style} onClick={onOpenInstruction}>
-             {!isClosed && pitchInfo.text && (
-                 <div className={bannerClass}>{pitchInfo.text}</div>
-             )}
-             {isClosed && closeInfo.text && (
-                 <div className={bannerClass}>{closeInfo.text}</div>
-             )}
-+            {!deal.InstructionRef && (
-+                <div className={bannerClass}>No instruction</div>
-+            )}
-             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                 {deal.ServiceDescription}
-             </Text>
-             {deal.Amount !== undefined && (
-                 <Text className="deal-amount" variant="medium">
-                     £{deal.Amount}
-                 </Text>
-             )}
-             <div className="deal-details">
-                 <ul className="detail-list">
-                     {deal.AreaOfWork && (
-                         <li>
-                             <strong>Area:</strong> {deal.AreaOfWork}
-                         </li>
-                     )}
-                     {deal.PitchedBy && (
-                         <li>
-                             <strong>Pitched By:</strong> {deal.PitchedBy}
-                         </li>
-                     )}
-                     {deal.Passcode && (
-                         <li>
-                             <strong>Passcode:</strong> {deal.Passcode}
-                         </li>
-                     )}
+   const deals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).map((d) => ({
+           ...d,
+           firstName: p.instructions?.[0]?.FirstName,
+           jointClients: p.jointClients ?? p.joinedClients ?? [],
+         }))
+       ),
+     [instructionData]
+   );
+   const clients: ClientInfo[] = useMemo(() => {
+     const map: Record<string, ClientInfo> = {};
+     instructionData.forEach((p) => {
+       const deals = p.deals ?? [];
+       deals.forEach((d) => {
+         if (d.LeadClientEmail) {
+           const key = d.LeadClientEmail;
+           const entry =
+             map[key] || { ClientEmail: key, Lead: true, deals: [] as DealSummary[] };
+           entry.Lead = true;
+           (entry.deals as DealSummary[]).push({
+             DealId: d.DealId,
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 213735417c4dadeb5d70e3cebe469d59846cd179..ca11f508ac1741ee6c6243649ad106c4de2759a5 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -489,50 +497,63 @@ const Instructions: React.FC<InstructionsProps> = ({
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === 'overview' && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionDashboard
+                     key={idx}
+                     instruction={item.instruction}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={item.risk}
+                     eid={item.eid}
+                     compliance={undefined}
+                     documentCount={item.documentCount ?? 0}
+                     animationDelay={animationDelay}
+                     onOpenInstruction={handleOpenInstruction}
+                   />
+                 );
+               })}
++              {unlinkedDeals.map((deal, idx) => {
++                const base = overviewItems.length + idx;
++                const row = Math.floor(base / 2);
++                const col = base % 2;
++                const animationDelay = row * 0.2 + col * 0.1;
++                return (
++                  <DealCard
++                    key={`unlinked-${idx}`}
++                    deal={deal}
++                    animationDelay={animationDelay}
++                  />
++                );
++              })}
+             </div>
+           )}
+           {activePivot === 'instructions' && (
+             <div className={instructionColumnStyle}>
+               {flattenedInstructions.map((instruction, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard
+                     key={idx}
+                     instruction={instruction}
+                     risk={instruction.risk}
+                     eid={instruction.eid}
+                     documentCount={instruction.documentCount}
+                     prospectId={instruction.prospectId}
+                     animationDelay={animationDelay}
+                     expanded={expandedInstructionRef === instruction.InstructionRef}
+                     onOpenMatter={() => handleOpenMatter(instruction)}
+                     onRiskAssessment={() => handleRiskAssessment(instruction)}
+                     onEIDCheck={() => handleEIDCheck(instruction)}
+                     innerRef={(el: HTMLDivElement | null) => {
+                       instructionRefs.current[instruction.InstructionRef] = el;
+                     }}
+                   />

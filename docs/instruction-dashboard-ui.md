@@ -30,7 +30,17 @@ selected tab expands to show its label while the others collapse down to
 icons. They appear in the order **EID Check**, **Risk Assessment** and
 finally **Open Matter** so a user is guided through each step in turn.
 
-All functionality is currently non-operational but the UI is ready to hook into future services.
+All functionality is currently non-operational but the UI is ready to hook into
+future services.
+
 ## Additional Clients Placeholder ID
 
-Deals can include extra client contacts that do not yet exist in the CRM. These clients are sent to the API with a `prospectId` of `-1`. The backend treats this as a placeholder value until a real prospect record is created.
+Deals can include extra client contacts that do not yet exist in the CRM. These
+clients are sent to the API with a `prospectId` of `-1`. The backend treats this
+as a placeholder value until a real prospect record is created.
+
+## Deals Without Instructions
+
+The overview now also lists any deals that do not have an instruction reference.
+When running locally the sample data contains at least one of these deals so
+developers can see how they appear in the dashboard.

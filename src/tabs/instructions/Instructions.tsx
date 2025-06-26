@@ -310,6 +310,14 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
   }, [instructionData]);
 
+  const unlinkedDeals = useMemo(
+    () =>
+      instructionData.flatMap((p) =>
+        (p.deals ?? []).filter((d) => !d.InstructionRef)
+      ),
+    [instructionData]
+  );
+
   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const deals = useMemo(
@@ -508,6 +516,19 @@ const Instructions: React.FC<InstructionsProps> = ({
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
                     onOpenInstruction={handleOpenInstruction}
+                  />
+                );
+              })}
+              {unlinkedDeals.map((deal, idx) => {
+                const base = overviewItems.length + idx;
+                const row = Math.floor(base / 2);
+                const col = base % 2;
+                const animationDelay = row * 0.2 + col * 0.1;
+                return (
+                  <DealCard
+                    key={`unlinked-${idx}`}
+                    deal={deal}
+                    animationDelay={animationDelay}
                   />
                 );
               })}
