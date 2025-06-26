@@ -316,6 +316,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       color: #ffffff;
       transform: scale(0.95);
     }
+    .block-sidebar .pin-toggle i {
+      transition: transform 0.2s ease;
+    }
+    .block-sidebar .pin-toggle.pinned i {
+      transform: rotate(45deg);
+    }
     .block-sidebar .option-choices {
       display: flex;
       flex-direction: column;
@@ -360,6 +366,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const popoutRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<boolean>(false);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
 
   const [popoutSidebarHtml, setPopoutSidebarHtml] = useState<string>('');
   const [popoutSidebarEl, setPopoutSidebarEl] = useState<HTMLElement | null>(null);
@@ -538,9 +545,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const newPinned = !currentlyPinned;
 
     spans.forEach(span => {
-      const container = span.querySelector('.block-container') as HTMLElement | null;
+      const container = span as HTMLElement;
       const sidebar = span.querySelector('.block-sidebar') as HTMLElement | null;
-      if (!sidebar || !container) return;
+      if (!sidebar) return;
 
       if (newPinned) {
         sidebar.classList.add('pinned');
@@ -551,8 +558,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       }
 
       const icon = sidebar.querySelector('.pin-toggle i') as HTMLElement | null;
+      const pinBtn = sidebar.querySelector('.pin-toggle') as HTMLElement | null;
+      const handleIcon = sidebar.querySelector('.sidebar-handle i') as HTMLElement | null;
       if (icon) {
         icon.className = `ms-Icon ms-Icon--${newPinned ? 'Pinned' : 'Pin'}`;
+      }
+      if (handleIcon) {
+        handleIcon.className = `ms-Icon ms-Icon--${newPinned ? 'ChevronRight' : 'ChevronLeft'}`;
+      }
+      if (pinBtn) {
+        if (newPinned) pinBtn.classList.add('pinned');
+        else pinBtn.classList.remove('pinned');
       }
     });
 
@@ -948,6 +964,74 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return () => editor.removeEventListener('click', handleClick);
   }, [insertBlockOption, resetBlockOption]);
 
+  useEffect(() => {
+    const editor = bodyEditorRef.current;
+    if (!editor) return;
+
+    const handleDragStart = (e: DragEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-sentence]') as HTMLElement | null;
+      if (target) {
+        setDragSentence(target);
+        e.dataTransfer?.setData('text/plain', '');
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-sentence]');
+      if (target && dragSentence) {
+        e.preventDefault();
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-sentence]') as HTMLElement | null;
+      if (target && dragSentence && target !== dragSentence) {
+        e.preventDefault();
+        const parent = target.parentElement;
+        if (parent && parent === dragSentence.parentElement) {
+          const before = e.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
+          if (before) {
+            parent.insertBefore(dragSentence, target);
+          } else {
+            parent.insertBefore(dragSentence, target.nextSibling);
+          }
+          setBody(editor.innerHTML);
+        }
+      }
+      setDragSentence(null);
+    };
+
+    editor.addEventListener('dragstart', handleDragStart);
+    editor.addEventListener('dragover', handleDragOver);
+    editor.addEventListener('drop', handleDrop);
+    return () => {
+      editor.removeEventListener('dragstart', handleDragStart);
+      editor.removeEventListener('dragover', handleDragOver);
+      editor.removeEventListener('drop', handleDrop);
+    };
+  }, [dragSentence]);
+
+  useEffect(() => {
+    const editor = bodyEditorRef.current;
+    if (!editor) return;
+
+    const handleDblClick = (e: MouseEvent) => {
+      const ph = (e.target as HTMLElement).closest('[data-placeholder]') as HTMLElement | null;
+      if (ph) {
+        e.preventDefault();
+        const current = ph.textContent || '';
+        const newText = window.prompt('Edit placeholder text', current);
+        if (newText !== null) {
+          ph.textContent = newText;
+          setBody(editor.innerHTML);
+        }
+      }
+    };
+
+    editor.addEventListener('dblclick', handleDblClick);
+    return () => editor.removeEventListener('dblclick', handleDblClick);
+  }, []);
+
   /**
    * Save the user's cursor selection in the contentEditable, so we can insert text at that exact spot.
    */
@@ -1132,7 +1216,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1161,7 +1245,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1451,7 +1535,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       .filter((s) => s.trim().length > 0)
       .map(
         (s) =>
-          `<span data-sentence contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+          `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
       )
       .join(' ');
     const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
