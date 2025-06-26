@@ -39,6 +39,25 @@
                 "LeadClientEmail": "lz@helix-law.com",
                 "CloseDate": "2025-06-20T00:00:00",
                 "CloseTime": "14:00:00"
+            },
+            {
+                "DealId": 9,
+                "InstructionRef": null,
+                "ProspectId": 22338,
+                "Passcode": "99999",
+                "ServiceDescription": "draft property contract",
+                "Amount": 1.00,
+                "AreaOfWork": "property",
+                "PitchedBy": "LZ",
+                "PitchedDate": "2025-07-01T00:00:00",
+                "PitchedTime": "10:00:00",
+                "PitchValidUntil": "2025-07-15T00:00:00",
+                "Status": "pitched",
+                "IsMultiClient": "1",
+                "LeadClientId": 22338,
+                "LeadClientEmail": "lz@helix-law.com",
+                "CloseDate": null,
+                "CloseTime": null
             }
         ],
         "jointClients": [

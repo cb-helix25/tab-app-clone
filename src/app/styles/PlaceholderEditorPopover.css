@@ -1,8 +1,8 @@
 .placeholder-editor-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(2px);
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(1px);
     z-index: 1000;
     animation: fadeInOverlay 0.2s ease;
 }
@@ -14,20 +14,21 @@
 
 .placeholder-editor-callout .ms-Callout {
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-    padding: 16px;
-    width: 380px;
-    max-width: 90vw;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    padding: 24px;
+    width: 520px;
+    max-width: 95vw;
 }
 
 .placeholder-context {
     font-size: 12px;
     color: var(--helix-grey-dark, #666);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    opacity: 0.8;
 }
 
 .placeholder-editor-callout .ms-TextField {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 @keyframes fadeInOverlay {

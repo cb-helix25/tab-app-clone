@@ -357,20 +357,34 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       outline: none;
     }
     .sentence-delete {
-      font-weight: bold;
       margin-right: 4px;
       cursor: pointer;
       user-select: none;
       color: ${colours.red};
+      display: inline-flex;
+      align-items: center;
     }
     .sentence-handle {
       cursor: grab;
-      margin-right: 4px;
+      margin-right: 6px;
       user-select: none;
       color: ${colours.greyText};
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 18px;
     }
     .sentence-handle:active {
       cursor: grabbing;
+    }
+    .sentence-handle i,
+    .sentence-delete i {
+      pointer-events: none;
+    }
+    .drag-over {
+      outline: 2px dashed ${colours.highlightBlue};
+      border-radius: 4px;
     }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
@@ -1112,6 +1126,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const target = (e.target as HTMLElement).closest('[data-sentence]');
       if (target && dragSentence) {
         e.preventDefault();
+        target.classList.add('drag-over');
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-sentence]');
+      if (target) {
+        target.classList.remove('drag-over');
       }
     };
 
@@ -1127,18 +1149,23 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           } else {
             parent.insertBefore(dragSentence, target.nextSibling);
           }
+          dragSentence.classList.add('drop-in');
+          setTimeout(() => dragSentence.classList.remove('drop-in'), 300);
           setBody(editor.innerHTML);
         }
       }
+      target && target.classList.remove('drag-over');
       setDragSentence(null);
     };
 
     editor.addEventListener('dragstart', handleDragStart);
     editor.addEventListener('dragover', handleDragOver);
+    editor.addEventListener('dragleave', handleDragLeave);
     editor.addEventListener('drop', handleDrop);
     return () => {
       editor.removeEventListener('dragstart', handleDragStart);
       editor.removeEventListener('dragover', handleDragOver);
+      editor.removeEventListener('dragleave', handleDragLeave);
       editor.removeEventListener('drop', handleDrop);
     };
   }, [dragSentence]);
@@ -1375,7 +1402,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1412,7 +1439,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1707,7 +1734,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       .filter((s) => s.trim().length > 0)
       .map(
         (s) =>
-          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
       )
       .join(' ');
     const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;

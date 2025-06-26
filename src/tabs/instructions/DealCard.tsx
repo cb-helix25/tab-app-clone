@@ -19,6 +19,7 @@ import '../../app/styles/DealCard.css';
 interface DealInfo {
     CloseTime: any;
     CloseDate: any;
+    InstructionRef?: string | null;
     ServiceDescription?: string;
     Amount?: number;
     AreaOfWork?: string;
@@ -203,6 +204,9 @@ const DealCard: React.FC<DealCardProps> = ({
             )}
             {isClosed && closeInfo.text && (
                 <div className={bannerClass}>{closeInfo.text}</div>
+            )}
+            {!deal.InstructionRef && (
+                <div className={bannerClass}>No instruction</div>
             )}
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {deal.ServiceDescription}
