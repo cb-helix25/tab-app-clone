@@ -47,6 +47,7 @@ import EmailPreview from './pitch-builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 import PitchHeaderRow from './pitch-builder/PitchHeaderRow';
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
+import PlaceholderEditorPopover from './pitch-builder/PlaceholderEditorPopover';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -56,6 +57,7 @@ import {
   isStringArray,
   replacePlaceholders,
   applyDynamicSubstitutions,
+  wrapInsertPlaceholders,
 } from './pitch-builder/emailUtils';
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 
@@ -335,6 +337,18 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
       color: #ffffff;
     }
+    .insert-placeholder {
+      background: ${colours.highlightBlue};
+      color: ${colours.darkBlue};
+      padding: 2px 4px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .insert-placeholder:hover {
+      background: ${colours.blue};
+      transform: scale(1.05);
+    }
     .sentence-delete {
       font-weight: bold;
       margin-right: 4px;
@@ -384,13 +398,36 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
-    const newBlocks = getTemplateBlocks(newSet);
-    setBlocks(newBlocks);
-    const newBody = generateInitialBody(newBlocks);
-    setBody(newBody);
-    if (bodyEditorRef.current) {
-      bodyEditorRef.current.innerHTML = newBody;
-    }
+    const loadBlocks = async (): Promise<TemplateBlock[]> => {
+      if (newSet === 'Simplified') {
+        try {
+          const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            setBlocks(data.blocks || []);
+            setSavedSnippets(data.savedSnippets || {});
+            return data.blocks || [];
+          }
+        } catch (err) {
+          console.error('Failed to load blocks', err);
+        }
+        const fallback = getTemplateBlocks('Simplified');
+        setBlocks(fallback);
+        return fallback;
+      } else {
+        const result = getTemplateBlocks(newSet);
+        setBlocks(result);
+        return result;
+      }
+    };
+    loadBlocks().then((newBlocks) => {
+      const blocksToUse = newBlocks || getTemplateBlocks(newSet);
+      setBody(generateInitialBody(blocksToUse));
+      if (bodyEditorRef.current) {
+        bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
+      }
+    });
     setSelectedTemplateOptions({});
     setInsertedBlocks({});
     setAutoInsertedBlocks({});
@@ -764,7 +801,28 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       .join(' ');
   }
 
-  const [blocks, setBlocks] = useState<TemplateBlock[]>(getTemplateBlocks('Simplified'));
+  const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
+  const [savedSnippets, setSavedSnippets] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    const fetchBlocks = async () => {
+      try {
+        const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setBlocks(data.blocks || []);
+          setSavedSnippets(data.savedSnippets || {});
+        } else {
+          setBlocks(getTemplateBlocks('Simplified'));
+        }
+      } catch (err) {
+        console.error('Failed to load blocks', err);
+        setBlocks(getTemplateBlocks('Simplified'));
+      }
+    };
+    fetchBlocks();
+  }, []);
 
   // Default subject
   const [subject, setSubject] = useState<string>(
@@ -790,13 +848,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   );
 
   function generateInitialBody(blocks: TemplateBlock[]): string {
-    return replacePlaceholders(
+    const replaced = replacePlaceholders(
       generateBaseTemplate(blocks),
       '',
       enquiry,
       userData,
       blocks
-    )
+    );
+    const withInserts = wrapInsertPlaceholders(replaced);
+    return withInserts
       .split('\n')
       .map((line) => line.trim())
       .join('\n');
@@ -809,7 +869,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}"><strong>${o.label}</strong><div class="option-preview">${preview}</div></div>`;
       })
       .join('');
-    const saved = localStorage.getItem(`customSnippet_${block.title}`);
+    const saved = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
     const savedHtml = saved
       ? `<div class="option-bubble" data-block-title="${block.title}" data-option-label="__saved"><strong>Saved Snippet</strong><div class="option-preview">${saved}</div></div>`
       : '';
@@ -882,6 +942,47 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     [key: string]: { [label: string]: string };
   }>({});
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  // Placeholder editing popover state
+  const [placeholderEdit, setPlaceholderEdit] = useState<{
+    span: HTMLElement;
+    target: HTMLElement;
+    before: string;
+    after: string;
+    text: string;
+  } | null>(null);
+
+  function getNeighboringWords(span: HTMLElement, count: number = 3) {
+    const gather = (node: Node | null, words: string[], dir: 'prev' | 'next') => {
+      while (node && words.length < count) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const parts = (node.textContent || '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+          if (dir === 'prev') {
+            for (let i = parts.length - 1; i >= 0 && words.length < count; i--) {
+              words.unshift(parts[i]);
+            }
+          } else {
+            for (let i = 0; i < parts.length && words.length < count; i++) {
+              words.push(parts[i]);
+            }
+          }
+        }
+        node = dir === 'prev' ? node.previousSibling : node.nextSibling;
+      }
+    };
+
+    const before: string[] = [];
+    const after: string[] = [];
+    gather(span.previousSibling, before, 'prev');
+    gather(span.nextSibling, after, 'next');
+    return {
+      before: before.slice(-count).join(' '),
+      after: after.slice(0, count).join(' '),
+    };
+  }
 
   const [snippetOptionsBlock, setSnippetOptionsBlock] = useState<TemplateBlock | null>(null);
   const [snippetOptionsLabel, setSnippetOptionsLabel] = useState<string>('');
@@ -1040,15 +1141,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (!editor) return;
 
     const handleDblClick = (e: MouseEvent) => {
-      const ph = (e.target as HTMLElement).closest('[data-placeholder]') as HTMLElement | null;
+      const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
       if (ph) {
         e.preventDefault();
-        const current = ph.textContent || '';
-        const newText = window.prompt('Edit placeholder text', current);
-        if (newText !== null) {
-          ph.textContent = newText;
-          setBody(editor.innerHTML);
-        }
+        const { before, after } = getNeighboringWords(ph);
+        setPlaceholderEdit({
+          span: ph,
+          target: ph,
+          before,
+          after,
+          text: ph.textContent || '',
+        });
       }
     };
 
@@ -1222,7 +1325,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       selectedOption.forEach((opt) => {
         let text: string | null = null;
         if (opt === '__saved') {
-          text = localStorage.getItem(`customSnippet_${block.title}`);
+          text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
         } else {
           const option = block.options.find((o) => o.label === opt);
           if (!option) return;
@@ -1240,6 +1343,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+        text = wrapInsertPlaceholders(text);
         const escLabel = opt.replace(/'/g, "&#39;");
         const sentences = text
           .split(/(?<=[.!?])\s+/)
@@ -1257,7 +1361,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
       let text: string | null = null;
       if (selectedOption === '__saved') {
-        text = localStorage.getItem(`customSnippet_${block.title}`);
+        text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
       } else {
         const option = block.options.find((o) => o.label === selectedOption);
         if (option) {
@@ -1276,6 +1380,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+        text = wrapInsertPlaceholders(text);
         const escLabel = selectedOption.replace(/'/g, "&#39;");
         const sentences = text
           .split(/(?<=[.!?])\s+/)
@@ -1314,7 +1419,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
       })
       .join('');
-    const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+    const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
     const savedChoice = savedSnippet
       ? `<div class="option-choice${selectedOption === '__saved' ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>`
       : '';
@@ -1467,6 +1572,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+    text = wrapInsertPlaceholders(text);
     targetEl.setAttribute('data-snippet', replacement);
     targetEl.innerHTML = `${text}`;
 
@@ -1516,7 +1622,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
         })
         .join(' ');
-      const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+      const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
       const savedChoice = savedSnippet ? `<span class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</span>` : '';
       const optionListContent = [optionsHtml, savedChoice]
         .filter(Boolean)
@@ -1569,6 +1675,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+    text = wrapInsertPlaceholders(text);
     const escLabel = optionLabel.replace(/'/g, "&#39;");
     const sentences = text
       .split(/(?<=[.!?])\s+/)
@@ -1615,7 +1722,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
         })
         .join('');
-      const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+      const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
       const savedChoice = savedSnippet ? `<div class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>` : '';
       optionDiv.innerHTML = optionsHtml + savedChoice;
     }
@@ -1626,7 +1733,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setBody(bodyEditorRef.current.innerHTML);
   }
 
-  function saveCustomSnippet(blockTitle: string) {
+  async function saveCustomSnippet(blockTitle: string) {
     if (!bodyEditorRef.current) return;
     const span = bodyEditorRef.current.querySelector(
       `span[data-inserted="${blockTitle}"]`
@@ -1634,8 +1741,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (!span) return;
     const main = span.querySelector('.block-main') as HTMLElement | null;
     if (!main) return;
-    localStorage.setItem(`customSnippet_${blockTitle}`, main.innerHTML);
-    showToast('Snippet saved', 'success');
+    const snippetHtml = main.innerHTML;
+    try {
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockTitle, html: snippetHtml })
+      });
+      setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
+      showToast('Snippet saved', 'success');
+    } catch (err) {
+      console.error('Failed to save snippet', err);
+      showToast('Save failed', 'error');
+    }
   }
 
   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
@@ -2910,6 +3029,21 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               </Stack>
             </Stack>
           </Callout>
+        )}
+
+        {placeholderEdit && (
+          <PlaceholderEditorPopover
+            target={placeholderEdit.target}
+            initialText={placeholderEdit.text}
+            before={placeholderEdit.before}
+            after={placeholderEdit.after}
+            onDismiss={() => setPlaceholderEdit(null)}
+            onSave={(val) => {
+              placeholderEdit.span.textContent = val;
+              setBody(bodyEditorRef.current?.innerHTML || '');
+              setPlaceholderEdit(null);
+            }}
+          />
         )}
 
         {/* Row: Preview and Reset Buttons */}

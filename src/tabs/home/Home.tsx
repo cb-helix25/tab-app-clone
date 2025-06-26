@@ -91,6 +91,7 @@ const AnnualLeaveForm = lazy(() => import('../../CustomForms/AnnualLeaveForm'));
 const AnnualLeaveApprovals = lazy(() => import('../../CustomForms/AnnualLeaveApprovals'));
 const AnnualLeaveBookings = lazy(() => import('../../CustomForms/AnnualLeaveBookings'));
 const BookSpaceForm = lazy(() => import('../../CustomForms/BookSpaceForm'));
+const SnippetEditsApproval = lazy(() => import('../../CustomForms/SnippetEditsApproval'));
 
 initializeIcons();
 
@@ -122,6 +123,14 @@ interface AnnualLeaveRecord {
   approvers?: string[];
   hearing_confirmation?: string; // "yes" or "no"
   hearing_details?: string;      // Additional details when hearing_confirmation is "no"
+}
+
+export interface SnippetEdit {
+  id: number;
+  blockTitle: string;
+  proposedText: string;
+  submittedBy: string;
+  status?: string;
 }
 
 interface HomeProps {
@@ -851,6 +860,26 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     boardroomBookings: [],
     soundproofBookings: []
   });
+
+  // Pending snippet edits for approval
+  const [snippetEdits, setSnippetEdits] = useState<SnippetEdit[]>([]);
+
+  // Fetch pending snippet edits
+  useEffect(() => {
+    const fetchEdits = async () => {
+      try {
+        const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          setSnippetEdits(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch snippet edits', err);
+      }
+    };
+    fetchEdits();
+  }, []);
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
@@ -2093,6 +2122,11 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     [combinedLeaveRecords, isApprover, userInitials]
   );
 
+  const snippetApprovalsNeeded = useMemo(
+    () => (isApprover ? snippetEdits.filter(e => e.status === 'pending') : []),
+    [snippetEdits, isApprover]
+  );
+
   // Merge annualLeaveRecords and futureLeaveRecords for bookings
   const bookingsNeeded = useMemo(
     () =>
@@ -2203,6 +2237,37 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     }
   };
 
+  const approveSnippet = async (id: number, approve: boolean) => {
+    try {
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_CODE}`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, approve })
+      });
+      setSnippetEdits(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      console.error('Failed to approve snippet', err);
+    }
+  };
+
+  const handleSnippetApprovalClick = () => {
+    if (snippetApprovalsNeeded.length > 0) {
+      setBespokePanelContent(
+        <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
+          <SnippetEditsApproval
+            edits={snippetApprovalsNeeded}
+            onApprove={(id) => approveSnippet(id, true)}
+            onReject={(id) => approveSnippet(id, false)}
+            onClose={() => setIsBespokePanelOpen(false)}
+          />
+        </Suspense>
+      );
+      setBespokePanelTitle('Approve Snippet Edits');
+      setIsBespokePanelOpen(true);
+    }
+  };
+
   const immediateALActions = useMemo(() => {
     const actions: { title: string; onClick: () => void; icon?: string; styles?: any }[] = [];
     if (isApprover && approvalsNeeded.length > 0) {
@@ -2210,6 +2275,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         title: 'Approve Annual Leave',
         onClick: handleApproveLeaveClick,
         icon: 'Warning',
+        styles: approveButtonStyles,
+      });
+    }
+    if (isApprover && snippetApprovalsNeeded.length > 0) {
+      actions.push({
+        title: 'Approve Snippet Edits',
+        onClick: handleSnippetApprovalClick,
+        icon: 'Edit',
         styles: approveButtonStyles,
       });
     }
@@ -2222,7 +2295,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       });
     }
     return actions;
-  }, [isApprover, approvalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles]);
+  }, [isApprover, approvalsNeeded, snippetApprovalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles]);
 
   // Build immediate actions list
   // Ensure every action has an icon (never undefined)
@@ -2557,7 +2630,7 @@ const conversionRate = enquiriesMonthToDate
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
       {/* Header: Show the review message only when there is something to review */}
-      {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0) && (
+        {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0 || snippetApprovalsNeeded.length > 0) && (
         <Stack
           horizontal
           horizontalAlign="space-between"

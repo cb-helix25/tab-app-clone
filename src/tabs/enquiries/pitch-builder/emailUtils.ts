@@ -84,12 +84,13 @@ export function removeHighlightSpans(html: string): string {
 
   // Remove highlight attributes/classes but keep user content
   const cleanupSelectors =
-    '[data-placeholder], [data-inserted], [data-link], [data-sentence], .block-main';
+    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], .insert-placeholder, .block-main';
   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
     el.removeAttribute('data-placeholder');
     el.removeAttribute('data-inserted');
     el.removeAttribute('data-link');
     el.removeAttribute('data-sentence');
+    el.removeAttribute('data-insert');
     el.removeAttribute('style');
     el.removeAttribute('contenteditable');
     if ((el as HTMLElement).classList.contains('block-main')) {
@@ -116,6 +117,15 @@ export function cleanTemplateString(template: string): string {
     .map(line => line.trim())
     .join('<br />')
     .replace(/(<br \/>)+$/, '');
+}
+
+/**
+ * Wrap all [INSERT ...] placeholders in a span so we can detect them easily.
+ */
+export function wrapInsertPlaceholders(text: string): string {
+  return text.replace(/\[INSERT[^\]]*\]/gi, (m) => {
+    return `<span class="insert-placeholder" data-insert>${m}</span>`;
+  });
 }
 
 /**
