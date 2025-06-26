@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../../../app/instructions/instructions/apps/pitch/client/src/styles/SummaryComplete.css';
+import '../../../app/styles/SummaryComplete.css';
 
 const SummaryCompleteOverlay: React.FC = () => (
     <div className="summary-complete-overlay">

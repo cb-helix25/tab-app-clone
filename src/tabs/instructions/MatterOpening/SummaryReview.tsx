@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { useCompletion } from './CompletionContext';
-import '../../../../app/instructions/instructions/apps/pitch/client/src/styles/SummaryReview.css';
+import '../../../app/styles/SummaryReview.css';
 
 interface SummaryReviewProps {
     proofContent: React.ReactNode;

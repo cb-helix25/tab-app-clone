@@ -1,0 +1,117 @@
+.summary-pane {
+    border: 1px solid var(--helix-grey);
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 12px;
+}
+
+.summary-pane-complete {
+    background: var(--helix-grey);
+}
+
+.summary-pane-edited {
+    border-color: var(--helix-cta);
+}
+
+.summary-title-main {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.summary-toggle {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: var(--helix-grey);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.summary-complete-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    background: var(--helix-green);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.summary-complete-header-open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.summary-complete-small {
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.chevron {
+    margin-left: auto;
+    display: inline-flex;
+}
+
+.summary-collapse {
+    padding: 8px;
+}
+
+.summary-collapse.open {
+    display: block;
+}
+
+.summary-subsection {
+    margin-bottom: 8px;
+}
+
+.summary-content {
+    margin-bottom: 8px;
+}
+
+.summary-empty {
+    color: var(--helix-greyText, #6b6b6b);
+}
+
+.summary-confirmation {
+    margin-top: 12px;
+}
+
+.modern-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.modern-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.modern-checkbox-custom {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--helix-dark-blue);
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modern-checkbox-input:checked+.modern-checkbox-custom {
+    background: var(--helix-dark-blue);
+    color: #fff;
+}
+
+.checkbox-tick {
+    width: 16px;
+    height: 16px;
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../../../app/instructions/instructions/apps/pitch/client/src/styles/ReviewConfirm.css';
+import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 
 interface ReviewConfirmProps {
