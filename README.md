@@ -24,7 +24,7 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 4. When Teams launches in the browser, select the Add button in the dialog to install your app to Teams.
 5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
 6. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
-7. To create sample risk assessment records for local testing, run `npm run generate:risk`.
+7. To refresh risk and compliance data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
 8. Sample transactions and outstanding balances are provided when using local data.
 
 **Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.

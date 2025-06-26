@@ -87,9 +87,14 @@ const changeStyle = mergeStyles({
   whiteSpace: 'nowrap',
 });
 
-const changeTextStyle = (_change: number) =>
+const changeTextStyle = (change: number) =>
   mergeStyles(changeStyle, {
-    color: colours.red,
+    color:
+      change > 0
+        ? colours.green
+        : change < 0
+        ? colours.red
+        : colours.greyText,
   });
 
 const changeContainerStyle = mergeStyles({
@@ -98,13 +103,19 @@ const changeContainerStyle = mergeStyles({
   gap: '5px',
 });
 
-const percentageStyle = mergeStyles({
-  fontSize: '12px',
-  fontWeight: '600',
-  color: colours.red,
-  marginLeft: '4px',
-  textAlign: 'center',
-});
+const percentageStyle = (percentage: number) =>
+  mergeStyles({
+    fontSize: '12px',
+    fontWeight: '600',
+    color:
+      percentage > 0
+        ? colours.green
+        : percentage < 0
+        ? colours.red
+        : colours.greyText,
+    marginLeft: '4px',
+    textAlign: 'center',
+  });
   
 const renderDialLayout = (
   title: string,
@@ -414,7 +425,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                         hrs
                       </span>
                       {percentageChange !== null && (
-                        <Text className={percentageStyle}>
+                        <Text className={percentageStyle(percentageChange)}>
                           {percentageChange > 0 ? '+' : percentageChange < 0 ? '-' : ''}{Math.abs(Number(percentageChange.toFixed(2)))}%
                         </Text>
                       )}

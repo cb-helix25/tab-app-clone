@@ -480,6 +480,47 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     [filteredEnquiries.length]
   );
 
+  const ACTION_BAR_HEIGHT = 48;
+
+  const backButtonStyle = mergeStyles({
+    width: 32,
+    height: 32,
+    borderRadius: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    marginRight: 8,
+  });
+
+  function detailNavStyle(dark: boolean) {
+    return mergeStyles({
+      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      padding: '0 24px',
+      display: 'flex',
+      flexDirection: 'row',
+      gap: '8px',
+      alignItems: 'center',
+      height: ACTION_BAR_HEIGHT,
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT,
+      zIndex: 999,
+    });
+  }
+
+  function pivotBarStyle(dark: boolean) {
+    return mergeStyles({
+      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
+      borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+      padding: '0 24px',
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT * 2,
+      zIndex: 998,
+    });
+  }
+
   useEffect(() => {
     if (!selectedEnquiry) {
       setContent(
@@ -495,7 +536,25 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         />
       );
     } else {
-      setContent(null);
+      setContent(
+        <>
+          <div className={detailNavStyle(isDarkMode)}>
+            <IconButton
+              iconProps={{ iconName: 'ChevronLeft' }}
+              onClick={handleBackToList}
+              className={backButtonStyle}
+              title="Back"
+              ariaLabel="Back"
+            />
+          </div>
+          <div className={pivotBarStyle(isDarkMode)}>
+            <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
+              <PivotItem headerText="Overview" itemKey="Overview" />
+              <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+            </Pivot>
+          </div>
+        </>
+      );
     }
     return () => setContent(null);
   }, [
@@ -506,6 +565,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     searchTerm,
     isSearchActive,
     handleSetActiveState,
+    isDarkMode,
+    activeSubTab,
+    handleSubTabChange,
+    handleBackToList,
   ]);
 
   const ratingOptions = [
@@ -577,79 +640,29 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
-      <>
-        <Stack
-          horizontal
-          verticalAlign="center"
-          tokens={{ childrenGap: 10 }}
-          styles={{ root: { marginBottom: 12 } }}
-        >
-          <IconButton
-            iconProps={{ iconName: 'Back' }}
-            title="Back"
-            ariaLabel="Back"
-            onClick={handleBackToList}
-            styles={{
-              root: {
-                backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-                borderRadius: '50%',
-                width: 40,
-                height: 40,
-                selectors: {
-                  ':hover': {
-                    backgroundColor: isDarkMode
-                      ? colours.dark.background
-                      : colours.light.background,
-                  },
-                },
-              },
-            }}
-          />
-          <Pivot
-            selectedKey={activeSubTab}
-            onLinkClick={handleSubTabChange}
-            styles={{
-              root: { borderBottom: 'none' },
-              link: {
-                fontSize: 16,
-                fontWeight: 600,
-                padding: '6px 8px',
-                margin: '0 5px',
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                fontFamily: 'Raleway, sans-serif',
-              },
-              linkIsSelected: { borderBottom: 'none' },
-            }}
-            aria-label="Detail Sub-Tabs"
-          >
-            <PivotItem headerText="Overview" itemKey="Overview" />
-            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-          </Pivot>
-        </Stack>
-
-        <Stack
-          tokens={{ childrenGap: 12 }}
-          styles={{
-            root: {
-              backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              padding: 20,
-              fontFamily: 'Raleway, sans-serif',
-            },
-          }}
-        >
-          {activeSubTab === 'Overview' && (
-            <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
-          )}
-          {activeSubTab === 'Pitch' && (
-            <PitchBuilder enquiry={enquiry} userData={userData} />
-          )}
-        </Stack>
-      </>
+      <Stack
+        tokens={{ childrenGap: 12 }}
+        styles={{
+          root: {
+            backgroundColor: isDarkMode
+              ? colours.dark.sectionBackground
+              : colours.light.sectionBackground,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+            padding: 20,
+            fontFamily: 'Raleway, sans-serif',
+          },
+        }}
+      >
+        {activeSubTab === 'Overview' && (
+          <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
+        )}
+        {activeSubTab === 'Pitch' && (
+          <PitchBuilder enquiry={enquiry} userData={userData} />
+        )}
+      </Stack>
     ),
-    [handleBackToList, handleSubTabChange, handleRate, isDarkMode, activeSubTab, userData]
-  );  
+    [handleRate, isDarkMode, activeSubTab, userData]
+  );
 
   const calculateAnimationDelay = (row: number, col: number) => {
     const delayPerRow = 0.2;

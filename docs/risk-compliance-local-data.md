@@ -7,7 +7,12 @@ It pairs with the Tiller response generator to provide realistic status informat
 - `src/localData/localTillerResponses.json` – Tiller style responses used by the parser.
 - `src/localData/localInstructionData.json` – base instruction records the responses reference.
 
-Use `npm run generate:tiller` whenever instruction refs change to refresh the sample data.# Tiller Integration Overview
+Use `npm run generate:tiller` whenever instruction refs change to refresh the sample data.
+Run `npm run generate:risk` to populate `localInstructionData.json` with example
+risk assessments, electronic ID checks and basic compliance results so the
+dashboard cards show realistic statuses.
+
+# Tiller Integration Overview
 
 This note summarises how the application uses shared parsing logic for Tiller responses and where API calls are made.
 

@@ -49,10 +49,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   const ACTION_BAR_HEIGHT = 48;
 
   const CLIENT_TYPE_OPTIONS = [
-    'Individual',
-    'Company',
-    'Multiple Clients',
-    'Existing Client',
+    { label: 'Individual', icon: 'Contact' },
+    { label: 'Company', icon: 'CityNext' },
+    { label: 'Multiple Clients', icon: 'People' },
+    { label: 'Existing Client', icon: 'Folder' },
   ];
 
   const quickLinksStyle = (dark: boolean) =>
@@ -145,23 +145,26 @@ const Instructions: React.FC<InstructionsProps> = ({
     setContent(
       <>
         <div className={quickLinksStyle(isDarkMode)}>
-          <IconButton
-            iconProps={{ iconName: 'ChevronLeft' }}
-            onClick={handleBack}
-            className={backButtonStyle}
-            title="Back"
-            ariaLabel="Back"
-          />
+          {(showNewMatterPage || showRiskPage) && (
+            <IconButton
+              iconProps={{ iconName: 'ChevronLeft' }}
+              onClick={handleBack}
+              className={backButtonStyle}
+              title="Back"
+              ariaLabel="Back"
+            />
+          )}
           {showNewMatterPage ? (
-            CLIENT_TYPE_OPTIONS.map((opt) => (
+            CLIENT_TYPE_OPTIONS.map((opt, idx) => (
               <QuickActionsCard
-                key={opt}
-                title={opt}
-                icon=""
+                key={opt.label}
+                title={opt.label}
+                icon={opt.icon}
                 isDarkMode={isDarkMode}
-                onClick={() => setNewMatterClientType(opt)}
-                selected={newMatterClientType === opt}
-                style={{ '--card-index': 0 } as React.CSSProperties}
+                onClick={() => setNewMatterClientType(opt.label)}
+                selected={newMatterClientType === opt.label}
+                orientation="column"
+                style={{ '--card-index': idx } as React.CSSProperties}
               />
             ))
           ) : !showRiskPage ? (

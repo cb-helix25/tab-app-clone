@@ -4,7 +4,6 @@ import {
   TextField,
   mergeStyles,
   IconButton,
-  Separator,
   Text,
 } from "@fluentui/react";
 import { Enquiry } from "../../../app/functionality/types";
@@ -76,7 +75,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     padding: 16,           // more padding
     gap: 8,                // consistent gap
     border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
+    borderRadius: 4,       // slight rounding
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
@@ -140,7 +139,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const toCcBccRef = useRef<HTMLDivElement>(null);
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
-  const rowSpacing = 12; // simple consistent spacing
   // Static spacing below the enquiry notes
   const notesSpacing = 8;
   const [dealFormSaved, setDealFormSaved] = useState(false);
@@ -149,7 +147,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   // calculated spacing. With the simplified layout we use static spacing
   // so this effect is no longer required.
 
-    useEffect(() => {
+  useEffect(() => {
     if (cc && !showCc) {
       setShowCc(true);
     }
@@ -162,148 +160,65 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   }, [bcc, showBcc]);
 
 
-  const sideContainerStyle = mergeStyles({
+  const headerRowStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
-    flex: 1,
-    gap: 8,
+    width: '100%',
+    gap: 16,
+    '@media (min-width: 768px)': {
+      flexDirection: 'row',
+    },
   });
 
   const dealSideContainerStyle = (saved: boolean) =>
-    mergeStyles(sideContainerStyle, {
+    mergeStyles({
+      width: '100%',
       border: saved ? `2px solid ${colours.green}` : 'none',
       opacity: saved ? 0.6 : 1,
     });
 
-  const verticalSeparatorStyle = mergeStyles({
-    margin: '0',
-    alignSelf: 'stretch',
-    display: 'none',
-    '@media (min-width: 768px)': {
-      display: 'block',
-    },
-    selectors: {
-      '::before': {
-        backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
-        width: 2,
-      },
-    },
-  });
-
   return (
-    <Stack
-      tokens={{ childrenGap: 16 }}
-      styles={{
-        root: {
-          display: 'flex',
-          flexDirection: 'column',
-          width: '100%',
-          gap: 16,
-          '@media (min-width: 768px)': {
-            flexDirection: 'row',
-          },
-        },
-      }}
-    >
-        {/* LEFT SIDE (Details) */}
-      <Stack className={sideContainerStyle}>
-        {/* Row 1: Enquiry Details */}
-        <Stack
-          style={{
-            marginBottom: notesSpacing,
-            transition: "margin 0.2s ease",
-          }}
-        >
-          <div className={enquiryNotesContainer}>
-            <div className={enquiryNotesHeader}>Enquiry Details</div>
-            <Stack className={enquiryNotesContent}>
-              <Text>
-                {enquiry.First_Name} {enquiry.Last_Name}
-              </Text>
-              {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
-              {enquiry.Phone_Number && (
-                <Text>Phone: {enquiry.Phone_Number}</Text>
-              )}
-              {enquiry.Secondary_Phone && (
-                <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
-              )}
-            </Stack>
-          </div>
-        </Stack>
-
-        {enquiry.Initial_first_call_notes && (
-          <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
-            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-              Initial Notes
+    <Stack tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
+      <div className={headerRowStyle}>
+        {/* Enquiry Details */}
+        <div className={enquiryNotesContainer}>
+          <div className={enquiryNotesHeader}>Enquiry Details</div>
+          <Stack className={enquiryNotesContent}>
+            <Text>
+              {enquiry.First_Name} {enquiry.Last_Name}
             </Text>
-            <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-              {enquiry.Initial_first_call_notes}
-            </Text>
-          </div>
-        )}
+            {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
+            {enquiry.Phone_Number && (
+              <Text>Phone: {enquiry.Phone_Number}</Text>
+            )}
+            {enquiry.Secondary_Phone && (
+              <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
+            )}
+          </Stack>
+        </div>
 
-        {/* Row 2: Email Details */}
-        <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
-          <div className={enquiryNotesContainer}>
-            <div className={enquiryNotesHeader}>Email Details</div>
-            <div className={enquiryNotesContent}>
-              <Stack tokens={{ childrenGap: 6 }}>
-                <Stack
-                  horizontal
-                  wrap
+        {/* Email Details */}
+        <div ref={toCcBccRef} className={enquiryNotesContainer}>
+          <div className={enquiryNotesHeader}>Email Details</div>
+          <div className={enquiryNotesContent}>
+            <Stack tokens={{ childrenGap: 6 }}>
+              <Stack
+                horizontal
+                wrap
                   tokens={{ childrenGap: 12 }}
                   verticalAlign="end"
                   styles={{ root: { width: '100%' } }}
                 >
                   <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                  <div className={intakeContainer}>
-                    <div className={intakeHeader}>To</div>
-                    <TextField
-                      value={to}
-                      onChange={(_, val) => setTo(val || "")}
-                      placeholder="Recipient email"
-                      ariaLabel="To"
-                      styles={{
-                        root: { margin: 0 },
-                        fieldGroup: [
-                          inputFieldStyle,
-                          { border: "none", borderRadius: 0 },
-                        ],
-                      }}
-                    />
-                  </div>
-                </Stack.Item>
-                {showCc && (
-                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
                     <div className={intakeContainer}>
-                      <div className={intakeHeader}>
-                        CC
-                        <IconButton
-                          iconProps={{ iconName: "Cancel" }}
-                          ariaLabel="Hide CC"
-                          onClick={() => setShowCc(false)}
-                          styles={{
-                            root: {
-                              backgroundColor: "transparent",
-                              padding: 0,
-                              marginLeft: 4,
-                              height: 16,
-                              width: 16,
-                            },
-                            rootHovered: {
-                              backgroundColor: "transparent",
-                              color: colours.highlight,
-                            },
-                            icon: { fontSize: 12, color: labelColour },
-                          }}
-                        />
-                      </div>
+                      <div className={intakeHeader}>To</div>
                       <TextField
-                        value={cc}
-                        onChange={(_, val) => setCc(val || "")}
-                        placeholder="CC emails"
-                        ariaLabel="CC"
+                        value={to}
+                        onChange={(_, val) => setTo(val || "")}
+                        placeholder="Recipient email"
+                        ariaLabel="To"
                         styles={{
+                          root: { margin: 0 },
                           fieldGroup: [
                             inputFieldStyle,
                             { border: "none", borderRadius: 0 },
@@ -312,47 +227,86 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                       />
                     </div>
                   </Stack.Item>
-                )}
-                {showBcc && (
+                  {showCc && (
                     <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                    <div className={intakeContainer}>
-                      <div className={intakeHeader}>
-                        BCC
-                        <IconButton
-                          iconProps={{ iconName: "Cancel" }}
-                          ariaLabel="Hide BCC"
-                          onClick={() => setShowBcc(false)}
+                      <div className={intakeContainer}>
+                        <div className={intakeHeader}>
+                          CC
+                          <IconButton
+                            iconProps={{ iconName: "Cancel" }}
+                            ariaLabel="Hide CC"
+                            onClick={() => setShowCc(false)}
+                            styles={{
+                              root: {
+                                backgroundColor: "transparent",
+                                padding: 0,
+                                marginLeft: 4,
+                                height: 16,
+                                width: 16,
+                              },
+                              rootHovered: {
+                                backgroundColor: "transparent",
+                                color: colours.highlight,
+                              },
+                              icon: { fontSize: 12, color: labelColour },
+                            }}
+                          />
+                        </div>
+                        <TextField
+                          value={cc}
+                          onChange={(_, val) => setCc(val || "")}
+                          placeholder="CC emails"
+                          ariaLabel="CC"
                           styles={{
-                            root: {
-                              backgroundColor: "transparent",
-                              padding: 0,
-                              marginLeft: 4,
-                              height: 16,
-                              width: 16,
-                            },
-                            rootHovered: {
-                              backgroundColor: "transparent",
-                              color: colours.highlight,
-                            },
-                            icon: { fontSize: 12, color: labelColour },
+                            fieldGroup: [
+                              inputFieldStyle,
+                              { border: "none", borderRadius: 0 },
+                            ],
                           }}
                         />
                       </div>
-                      <TextField
-                        value={bcc}
-                        onChange={(_, val) => setBcc(val || "")}
-                        placeholder="BCC emails"
-                        ariaLabel="BCC"
-                        styles={{
-                          fieldGroup: [
-                            inputFieldStyle,
-                            { border: "none", borderRadius: 0 },
-                          ],
-                        }}
-                      />
-                    </div>
-                  </Stack.Item>
-                )}
+                    </Stack.Item>
+                  )}
+                  {showBcc && (
+                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
+                      <div className={intakeContainer}>
+                        <div className={intakeHeader}>
+                          BCC
+                          <IconButton
+                            iconProps={{ iconName: "Cancel" }}
+                            ariaLabel="Hide BCC"
+                            onClick={() => setShowBcc(false)}
+                            styles={{
+                              root: {
+                                backgroundColor: "transparent",
+                                padding: 0,
+                                marginLeft: 4,
+                                height: 16,
+                                width: 16,
+                              },
+                              rootHovered: {
+                                backgroundColor: "transparent",
+                                color: colours.highlight,
+                              },
+                              icon: { fontSize: 12, color: labelColour },
+                            }}
+                          />
+                        </div>
+                        <TextField
+                          value={bcc}
+                          onChange={(_, val) => setBcc(val || "")}
+                          placeholder="BCC emails"
+                          ariaLabel="BCC"
+                          styles={{
+                            fieldGroup: [
+                              inputFieldStyle,
+                              { border: "none", borderRadius: 0 },
+                            ],
+                          }}
+                        />
+                      </div>
+                    </Stack.Item>
+                  )}
                 </Stack>
                 {(!showCc || !showBcc) && (
                   <Stack horizontal tokens={{ childrenGap: 8 }}>
@@ -392,33 +346,41 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                     />
                   </div>
                 </Stack>
-                </Stack>
-              </div>
+              </Stack>
             </div>
-
           </div>
-        </Stack>
-        <Separator vertical className={verticalSeparatorStyle} />
-        {/* RIGHT SIDE (Deal Form) */}
+
+        </div>
+
+      {enquiry.Initial_first_call_notes && (
+        <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
+          <div className={enquiryNotesHeader}>Initial Notes</div>
+          <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+            {enquiry.Initial_first_call_notes}
+          </Text>
+        </div>
+      )}
+
+      {/* Deal Capture Form */}
       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
-          <DealCaptureForm
-            enquiry={enquiry}
-            onSubmit={handleDealFormSubmit}
-            areaOfWork={enquiry.Area_of_Work}
-            enquiryId={enquiry.ID}
-            dealId={dealId}
-            clientIds={clientIds}
-            onAmountChange={handleAmountChange}
-            onAmountBlur={handleAmountBlur}
-            serviceDescription={serviceDescription}
-            setServiceDescription={setServiceDescription}
-            selectedOption={selectedOption}
-            setSelectedOption={setSelectedOption}
-            onDescriptionHeightChange={setDescHeight}
-            onSavedChange={setDealFormSaved}
-          />
-        </Stack>
-  </Stack>
+        <DealCaptureForm
+          enquiry={enquiry}
+          onSubmit={handleDealFormSubmit}
+          areaOfWork={enquiry.Area_of_Work}
+          enquiryId={enquiry.ID}
+          dealId={dealId}
+          clientIds={clientIds}
+          onAmountChange={handleAmountChange}
+          onAmountBlur={handleAmountBlur}
+          serviceDescription={serviceDescription}
+          setServiceDescription={setServiceDescription}
+          selectedOption={selectedOption}
+          setSelectedOption={setSelectedOption}
+          onDescriptionHeightChange={setDescHeight}
+          onSavedChange={setDealFormSaved}
+        />
+      </Stack>
+    </Stack>
   );
 };
 

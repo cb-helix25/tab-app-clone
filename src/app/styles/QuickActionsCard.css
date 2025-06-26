@@ -68,6 +68,19 @@
 
 .quickActionCard.selected {
   background-color: var(--card-selected, var(--card-hover, #f4f4f6));
+  border-color: var(--helix-highlight, #3690CE);
+  }
+  
+  .quickActionCard.vertical {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    line-height: normal;
+    padding: 8px 12px;
+  }
+  
+  .quickActionCard.vertical .icon-wrapper {
+    margin-bottom: 4px;
 }
 
 .quickActionCard:active .icon-outline {

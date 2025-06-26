@@ -67,6 +67,8 @@ interface QuickActionsCardProps {
   confirmed?: boolean;
   style?: React.CSSProperties;
   selected?: boolean;
+  /** Layout direction. Use 'column' for client type buttons */
+  orientation?: 'row' | 'column';
 }
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
@@ -78,6 +80,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   confirmed,
   style,
   selected,
+  orientation = 'row',
 }) => {
   // Base card style
   const baseCardStyle = mergeStyles({
@@ -85,14 +88,16 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    padding: '0 12px',
-    height: '48px',
-    lineHeight: '48px',
+    padding: orientation === 'column' ? '8px 12px' : '0 12px',
+    height: orientation === 'column' ? 'auto' : '48px',
+    lineHeight: orientation === 'column' ? 'normal' : '48px',
     fontSize: '16px',
     borderRadius: 0,
     display: 'flex',
+    flexDirection: orientation,
     alignItems: 'center',
-    gap: '7px',
+    justifyContent: 'center',
+    gap: orientation === 'column' ? '4px' : '7px',
     cursor: 'pointer',
     transition: 'background-color 0.2s, transform 0.1s, border-color 0.2s',
     border: '2px solid transparent',
@@ -155,6 +160,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     fontWeight: 600,
     fontSize: '14px',
     whiteSpace: 'nowrap',
+    textAlign: 'center',
   });
 
   const pulsingDotStyle = mergeStyles({
@@ -166,7 +172,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     animation: 'subtlePulse 1.5s infinite ease-in-out', // Subtle animation
   });
 
-  const dynamicClasses = mergeStyles(combinedCardStyle, selected && 'selected');
+  const dynamicClasses = mergeStyles(
+    combinedCardStyle,
+    selected && 'selected',
+    orientation === 'column' && 'vertical'
+  );
 
   return (
     <div

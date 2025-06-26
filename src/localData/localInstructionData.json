@@ -8,7 +8,7 @@
         "ProspectId": 22338,
         "Passcode": "54321",
         "ServiceDescription": "bespoke contract  review and letter",
-        "Amount": 1.00,
+        "Amount": 1,
         "AreaOfWork": "commercial",
         "PitchedBy": "LZ",
         "PitchedDate": "2025-06-20T00:00:00",
@@ -27,7 +27,7 @@
         "ProspectId": 22338,
         "Passcode": "12345",
         "ServiceDescription": "bespoke contract  review and letter",
-        "Amount": 1.00,
+        "Amount": 1,
         "AreaOfWork": "commercial",
         "PitchedBy": "LZ",
         "PitchedDate": "2025-06-20T00:00:00",
@@ -46,7 +46,7 @@
         "ProspectId": 22338,
         "Passcode": "99999",
         "ServiceDescription": "draft property contract",
-        "Amount": 1.00,
+        "Amount": 1,
         "AreaOfWork": "property",
         "PitchedBy": "LZ",
         "PitchedDate": "2025-07-01T00:00:00",
@@ -65,7 +65,7 @@
         "ProspectId": 22338,
         "Passcode": "88888",
         "ServiceDescription": "employment contract review",
-        "Amount": 2.0,
+        "Amount": 2,
         "AreaOfWork": "employment",
         "PitchedBy": "LZ",
         "PitchedDate": "2025-07-02T00:00:00",
@@ -140,7 +140,7 @@
         "Notes": null,
         "PaymentMethod": null,
         "PaymentResult": null,
-        "PaymentAmount": 0.50,
+        "PaymentAmount": 0.5,
         "PaymentProduct": "Test service description",
         "AliasId": null,
         "OrderId": null,
@@ -191,7 +191,7 @@
         "Notes": null,
         "PaymentMethod": null,
         "PaymentResult": null,
-        "PaymentAmount": 1.00,
+        "PaymentAmount": 1,
         "PaymentProduct": "bespoke contract  review and letter",
         "AliasId": null,
         "OrderId": null,
@@ -242,7 +242,7 @@
         "Notes": null,
         "PaymentMethod": "card",
         "PaymentResult": "successful",
-        "PaymentAmount": 0.50,
+        "PaymentAmount": 0.5,
         "PaymentProduct": "Test service description",
         "AliasId": "E913B740-D2DF-4459-AD69-FAE03654599F",
         "OrderId": "HLX-22338-4843",
@@ -293,7 +293,7 @@
         "Notes": null,
         "PaymentMethod": "card",
         "PaymentResult": "failed",
-        "PaymentAmount": 0.50,
+        "PaymentAmount": 0.5,
         "PaymentProduct": "Test service description",
         "AliasId": "E913B740-D2DF-4459-AD69-FAE03654599F",
         "OrderId": "HLX-22338-4843",
@@ -340,7 +340,7 @@
       {
         "MatterId": "HLX-22338-3927",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-21",
+        "ComplianceDate": "2025-06-26",
         "RiskAssessmentResult": "Low",
         "RiskScore": 5,
         "TransactionRiskLevel": "Low Risk",
@@ -352,7 +352,7 @@
       {
         "MatterId": "HLX-22338-4581",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-21",
+        "ComplianceDate": "2025-06-26",
         "RiskAssessmentResult": "Low",
         "RiskScore": 10,
         "TransactionRiskLevel": "Low Risk",
@@ -364,9 +364,9 @@
       {
         "MatterId": "HLX-22338-4843",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-21",
+        "ComplianceDate": "2025-06-26",
         "RiskAssessmentResult": "Medium",
-        "RiskScore": 20,
+        "RiskScore": 15,
         "TransactionRiskLevel": "Medium Risk",
         "ClientRiskFactorsConsidered": true,
         "TransactionRiskFactorsConsidered": true,
@@ -376,9 +376,9 @@
       {
         "MatterId": "HLX-22338-7385",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-21",
+        "ComplianceDate": "2025-06-26",
         "RiskAssessmentResult": "High",
-        "RiskScore": 30,
+        "RiskScore": 20,
         "TransactionRiskLevel": "High Risk",
         "ClientRiskFactorsConsidered": true,
         "TransactionRiskFactorsConsidered": true,
@@ -402,6 +402,24 @@
       {
         "MatterId": "HLX-22338-7385",
         "EIDStatus": "verified"
+      }
+    ],
+    "compliance": [
+      {
+        "MatterId": "HLX-22338-3927",
+        "Status": "pass"
+      },
+      {
+        "MatterId": "HLX-22338-4581",
+        "Status": "pass"
+      },
+      {
+        "MatterId": "HLX-22338-4843",
+        "Status": "pending"
+      },
+      {
+        "MatterId": "HLX-22338-7385",
+        "Status": "fail"
       }
     ]
   }

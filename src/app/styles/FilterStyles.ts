@@ -225,8 +225,10 @@ export const sharedEditorStyle = (isDarkMode: boolean) =>
     position: 'relative',
     selectors: {
       ':focus-visible': {
-        border: `1px solid ${colours.cta}`,
-        boxShadow: `inset 0 0 6px 3px ${colours.grey}`,
+        borderColor: isDarkMode
+          ? colours.dark.cardHover
+          : colours.light.cardHover,
+        boxShadow: `inset 0 0 0 2px ${colours.cta}, inset 0 0 6px 3px ${colours.grey}`,
       },
       ':after': {
         content: '""',
