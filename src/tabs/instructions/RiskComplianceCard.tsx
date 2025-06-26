@@ -1,33 +1,21 @@
 import React from 'react';
-import { mergeStyles, Text } from '@fluentui/react';
+import { mergeStyles, Text, Separator } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/RiskComplianceCard.css';
 
-export interface ComplianceInfo {
-    MatterId: string;
-    RiskAssessor?: string;
-    ComplianceDate?: string;
-    RiskAssessmentResult?: string;
-    RiskScore?: number;
-    TransactionRiskLevel?: string;
-    EIDStatus?: string;
-    ClientRiskFactorsConsidered?: boolean;
-    TransactionRiskFactorsConsidered?: boolean;
-    FirmWideAMLPolicyConsidered?: boolean;
-    FirmWideSanctionsRiskConsidered?: boolean;
-    ServiceDescription?: string;
-    Stage?: string;
-}
-
-interface ComplianceCardProps {
-    data: ComplianceInfo;
+interface RiskComplianceCardProps {
+    data: any;
     animationDelay?: number;
     onOpenInstruction?: () => void;
 }
 
-const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 0, onOpenInstruction }) => {
+const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
+    data,
+    animationDelay = 0,
+    onOpenInstruction,
+}) => {
     const { isDarkMode } = useTheme();
 
     const cardClass = mergeStyles('riskComplianceCard', {
@@ -47,6 +35,7 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
     });
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
+
     const date = data.ComplianceDate ? new Date(data.ComplianceDate).toLocaleDateString() : undefined;
 
     return (
@@ -54,19 +43,25 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 {data.MatterId}
             </Text>
-            {data.ServiceDescription && (
-                <Text variant="small">{data.ServiceDescription}</Text>
-            )}
+            {data.ServiceDescription && <Text variant="small">{data.ServiceDescription}</Text>}
             {data.Stage && <Text variant="small">Stage: {data.Stage}</Text>}
+            <ul className="detail-list">
+                {date && (
+                    <li>
+                        <strong>Compliance Date:</strong> {date}
+                    </li>
+                )}
+                {data.EIDStatus && (
+                    <li>
+                        <strong>EID Status:</strong> {data.EIDStatus}
+                    </li>
+                )}
+            </ul>
+            <Separator />
             <ul className="detail-list">
                 {data.RiskAssessor && (
                     <li>
                         <strong>Assessor:</strong> {data.RiskAssessor}
-                    </li>
-                )}
-                {date && (
-                    <li>
-                        <strong>Date:</strong> {date}
                     </li>
                 )}
                 {data.RiskAssessmentResult && (
@@ -82,11 +77,6 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
                 {data.TransactionRiskLevel && (
                     <li>
                         <strong>Level:</strong> {data.TransactionRiskLevel}
-                    </li>
-                )}
-                {data.EIDStatus && (
-                    <li>
-                        <strong>EID:</strong> {data.EIDStatus}
                     </li>
                 )}
                 {data.ClientRiskFactorsConsidered !== undefined && (
@@ -114,4 +104,4 @@ const ComplianceCard: React.FC<ComplianceCardProps> = ({ data, animationDelay = 
     );
 };
 
-export default ComplianceCard;
+export default RiskComplianceCard;

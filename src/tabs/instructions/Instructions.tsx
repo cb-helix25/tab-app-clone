@@ -14,8 +14,7 @@ import { colours } from '../../app/styles/colours';
 import { dashboardTokens } from './componentTokens';
 import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
-import RiskCard from './RiskCard';
-import ComplianceCard from './ComplianceCard';
+import RiskComplianceCard from './RiskComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
 import InstructionDashboard from './InstructionDashboard';
 import type { DealSummary } from './JointClientCard';
@@ -368,43 +367,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     return Object.values(map);
   }, [instructionData]);
 
-  const complianceData = useMemo(
-    () =>
-      instructionData.flatMap((p) => {
-        const instructions = p.instructions ?? [];
-        const deals = p.deals ?? [];
-        const riskSource: any[] = [
-          ...(p.riskAssessments ?? p.compliance ?? []),
-        ];
-        const eidSource: any[] = [
-          ...(p.electronicIDChecks ?? p.idVerifications ?? []),
-        ];
-        instructions.forEach((inst: any) => {
-          riskSource.push(...((inst.riskAssessments ?? inst.compliance) ?? []));
-          eidSource.push(
-            ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
-          );
-        });
-        return riskSource.map((r: any) => {
-          const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
-          const instruction = instructions.find(
-            (i: any) => i.InstructionRef === r.MatterId
-          );
-          const deal = deals.find((d: any) => d.InstructionRef === r.MatterId);
-          return {
-            ...r,
-            EIDStatus: eid?.EIDStatus,
-            instruction,
-            deal,
-            ServiceDescription: deal?.ServiceDescription,
-            Stage: instruction?.Stage,
-          };
-        });
-      }),
-    [instructionData]
-  );
-
-  const riskData = useMemo(
+  const riskComplianceData = useMemo(
     () =>
       instructionData.flatMap((p) => {
         const instructions = p.instructions ?? [];
@@ -619,40 +582,20 @@ const Instructions: React.FC<InstructionsProps> = ({
           {activePivot === 'risk' && (
             <>
               <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: 8 } }}>
-                Risk Assessments
+                Risk &amp; Compliance
               </Text>
               <div className={gridContainerStyle}>
-                {riskData.length === 0 && (
-                  <Text>No risk data available.</Text>
-                )}
-                {riskData.map((r, idx) => {
+                {riskComplianceData.length === 0 && <Text>No risk data available.</Text>}
+                {riskComplianceData.map((r, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
                   return (
-                    <RiskCard
+                    <RiskComplianceCard
                       key={idx}
                       data={r}
                       animationDelay={animationDelay}
                       onOpenInstruction={() => handleOpenInstruction(r.MatterId)}
-                    />
-                  );
-                })}
-              </div>
-              <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, margin: '16px 0 8px' } }}>
-                Compliance
-              </Text>
-              <div className={gridContainerStyle}>
-                {complianceData.map((c, idx) => {
-                  const row = Math.floor(idx / 4);
-                  const col = idx % 4;
-                  const animationDelay = row * 0.2 + col * 0.1;
-                  return (
-                    <ComplianceCard
-                      key={idx}
-                      data={c}
-                      animationDelay={animationDelay}
-                      onOpenInstruction={() => handleOpenInstruction(c.MatterId)}
                     />
                   );
                 })}
