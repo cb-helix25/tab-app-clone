@@ -1,0 +1,54 @@
+{
+    "current_week": {
+        "daily_data": {
+            "2025-06-23": {
+                "total_hours": 2,
+                "total_amount": 200
+            },
+            "2025-06-24": {
+                "total_hours": 3,
+                "total_amount": 300
+            },
+            "2025-06-25": {
+                "total_hours": 4,
+                "total_amount": 400
+            },
+            "2025-06-26": {
+                "total_hours": 5,
+                "total_amount": 500
+            },
+            "2025-06-27": {
+                "total_hours": 1,
+                "total_amount": 100
+            }
+        },
+        "daily_average_hours": 3,
+        "daily_average_amount": 300
+    },
+    "last_week": {
+        "daily_data": {
+            "2025-06-16": {
+                "total_hours": 1,
+                "total_amount": 100
+            },
+            "2025-06-17": {
+                "total_hours": 2,
+                "total_amount": 200
+            },
+            "2025-06-18": {
+                "total_hours": 2.5,
+                "total_amount": 250
+            },
+            "2025-06-19": {
+                "total_hours": 3,
+                "total_amount": 300
+            },
+            "2025-06-20": {
+                "total_hours": 0,
+                "total_amount": 0
+            }
+        },
+        "daily_average_hours": 1.7,
+        "daily_average_amount": 170
+    }
+}

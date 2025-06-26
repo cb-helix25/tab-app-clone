@@ -13,9 +13,13 @@ export const templateBlockSets: Record<TemplateSet, TemplateBlock[]> = {
 };
 
 export const templateSetOptions = [
-  { key: 'Production', text: 'Production' },
-  { key: 'Simplified', text: 'Simplified' },
+  { key: 'Production', text: 'v1' },
+  { key: 'Simplified', text: 'v2' },
 ];
+
+export function getTemplateSetLabel(set: TemplateSet): string {
+  return set === 'Simplified' ? 'v2' : 'v1';
+}
 
 export function getTemplateBlocks(set: TemplateSet = 'Simplified'): TemplateBlock[] {
   return templateBlockSets[set];

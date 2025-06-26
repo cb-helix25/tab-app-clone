@@ -101,6 +101,17 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     gap: 4,
   });
 
+  const notesContainerStyle = mergeStyles({
+    background: '#ffffff',
+    border: `1px solid ${colours.light.border}`,
+    borderRadius: 0,
+    padding: 12,
+    fontFamily: 'monospace',
+    fontSize: 14,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    width: '100%',
+  });
+
   const intakeContainer = mergeStyles(sectionStyle);
 
   const intakeHeader = mergeStyles({
@@ -216,15 +227,20 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
               {enquiry.Secondary_Phone && (
                 <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
               )}
-              {enquiry.Initial_first_call_notes && (
-                <>
-                  <Separator style={{ margin: "8px 0" }} />
-                  <Text>{enquiry.Initial_first_call_notes}</Text>
-                </>
-              )}
             </Stack>
           </div>
         </Stack>
+
+        {enquiry.Initial_first_call_notes && (
+          <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
+            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+              Initial Notes
+            </Text>
+            <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+              {enquiry.Initial_first_call_notes}
+            </Text>
+          </div>
+        )}
 
         {/* Row 2: Email Details */}
         <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>

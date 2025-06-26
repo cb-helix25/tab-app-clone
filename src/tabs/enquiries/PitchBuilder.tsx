@@ -29,7 +29,11 @@ import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
 import { TemplateBlock, TemplateOption } from '../../app/customisation/ProductionTemplateBlocks';
-import { getTemplateBlocks, TemplateSet, templateSetOptions } from '../../app/customisation/TemplateBlockSets';
+import {
+  getTemplateBlocks,
+  TemplateSet,
+  getTemplateSetLabel,
+} from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
   sharedPrimaryButtonStyles,
@@ -726,23 +730,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [savedSnippets, setSavedSnippets] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const fetchBlocks = async () => {
-      try {
-        const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          setBlocks(data.blocks || []);
-          setSavedSnippets(data.savedSnippets || {});
-        } else {
-          setBlocks(getTemplateBlocks('Simplified'));
-        }
-      } catch (err) {
-        console.error('Failed to load blocks', err);
-        setBlocks(getTemplateBlocks('Simplified'));
-      }
-    };
-    fetchBlocks();
+    handleTemplateSetChange('Simplified');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Default subject
@@ -1376,7 +1365,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       ? `<div class="option-choice${selectedOption === '__saved' ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>`
       : '';
     const optionsHtmlCombined = optionsHtml + savedChoice;
-    const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
+    const labelText = `${block.title} (${getTemplateSetLabel(templateSet)}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
     const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.saveCustomSnippet('${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
@@ -2639,7 +2628,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     fontFamily: 'Raleway, sans-serif',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: 0,
     boxSizing: 'border-box',
     flex: 1,
     minHeight: 0,
@@ -2648,15 +2637,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const headerWrapperStyle = mergeStyles({
     backgroundColor: colours.sectionBackground,
     padding: 8,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   });
 
   const bodyWrapperStyle = mergeStyles({
     padding: 24,
     backgroundColor: '#fff',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',

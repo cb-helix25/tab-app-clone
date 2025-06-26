@@ -123,38 +123,55 @@ const Instructions: React.FC<InstructionsProps> = ({
     fetchData();
   }, [useLocalData]);
 
+  const handleBack = () => {
+    if (showNewMatterPage) setShowNewMatterPage(false);
+    else if (showRiskPage) setShowRiskPage(false);
+  };
+
   useEffect(() => {
     setContent(
       <>
         <div className={quickLinksStyle(isDarkMode)}>
-          <QuickActionsCard
-            title="New Matter"
-            icon="Calendar"
-            isDarkMode={isDarkMode}
-            onClick={() => setShowNewMatterPage(true)}
-            style={{ '--card-index': 0 } as React.CSSProperties}
-          />
-          <QuickActionsCard
-            title="EID Check"
-            icon="IdCheck"
-            isDarkMode={isDarkMode}
-            onClick={() => { }}
-            style={{ '--card-index': 1 } as React.CSSProperties}
-          />
-          <QuickActionsCard
-            title="Risk Assessment"
-            icon="Assessment"
-            isDarkMode={isDarkMode}
-            onClick={() => { }}
-            style={{ '--card-index': 2 } as React.CSSProperties}
-          />
-          <QuickActionsCard
-            title="Draft CCL"
-            icon="OpenFile"
-            isDarkMode={isDarkMode}
-            onClick={() => setShowRiskPage(true)}
-            style={{ '--card-index': 3 } as React.CSSProperties}
-          />
+          {showNewMatterPage || showRiskPage ? (
+            <IconButton
+              iconProps={{ iconName: 'ChevronLeft' }}
+              onClick={handleBack}
+              className={backButtonStyle}
+              title="Back"
+              ariaLabel="Back"
+            />
+          ) : (
+            <>
+              <QuickActionsCard
+                title="New Matter"
+                icon="Calendar"
+                isDarkMode={isDarkMode}
+                onClick={() => setShowNewMatterPage(true)}
+                style={{ '--card-index': 0 } as React.CSSProperties}
+              />
+              <QuickActionsCard
+                title="EID Check"
+                icon="IdCheck"
+                isDarkMode={isDarkMode}
+                onClick={() => { }}
+                style={{ '--card-index': 1 } as React.CSSProperties}
+              />
+              <QuickActionsCard
+                title="Risk Assessment"
+                icon="Assessment"
+                isDarkMode={isDarkMode}
+                onClick={() => { }}
+                style={{ '--card-index': 2 } as React.CSSProperties}
+              />
+              <QuickActionsCard
+                title="Draft CCL"
+                icon="OpenFile"
+                isDarkMode={isDarkMode}
+                onClick={() => setShowRiskPage(true)}
+                style={{ '--card-index': 3 } as React.CSSProperties}
+              />
+            </>
+          )}
         </div>
         <div className={pivotBarStyle(isDarkMode)}>
           <Pivot
@@ -175,7 +192,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
     );
     return () => setContent(null);
-  }, [setContent, isDarkMode, instructionData, activePivot]);
+  }, [setContent, isDarkMode, instructionData, activePivot, showNewMatterPage, showRiskPage]);
 
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
@@ -516,13 +533,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-        <IconButton
-          iconProps={{ iconName: 'ChevronLeft' }}
-          onClick={() => setShowNewMatterPage(false)}
-          className={backButtonStyle}
-          title="Back"
-          ariaLabel="Back"
-        />
         <NewMatters
           poidData={poidData}
           setPoidData={setPoidData}
@@ -539,7 +549,9 @@ const Instructions: React.FC<InstructionsProps> = ({
   if (showRiskPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
-        <RiskAssessmentPage onBack={() => setShowRiskPage(false)} />
+        <RiskAssessmentPage onBack={function (): void {
+          throw new Error('Function not implemented.');
+        } } />
       </Stack>
     );
   }

@@ -67,6 +67,9 @@ import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
 import localTransactions from '../../localData/localTransactions.json';
 import localOutstandingBalances from '../../localData/localOutstandingBalances.json';
+import localWipClio from '../../localData/localWipClio.json';
+import localRecovered from '../../localData/localRecovered.json';
+import localPrevRecovered from '../../localData/localPrevRecovered.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -1271,6 +1274,15 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       setRecoveredError(cachedRecoveredError);
       setPrevRecoveredData(cachedPrevRecovered);
       setPrevRecoveredError(cachedPrevRecoveredError);
+      setIsLoadingWipClio(false);
+      setIsLoadingRecovered(false);
+    } else if (useLocalData) {
+      cachedWipClio = localWipClio as any;
+      cachedRecovered = (localRecovered as any).totalPaymentAllocated;
+      cachedPrevRecovered = (localPrevRecovered as any).totalPaymentAllocated;
+      setWipClioData(cachedWipClio);
+      setRecoveredData(cachedRecovered);
+      setPrevRecoveredData(cachedPrevRecovered);
       setIsLoadingWipClio(false);
       setIsLoadingRecovered(false);
     } else {
