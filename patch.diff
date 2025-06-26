@@ -1,36 +1,283 @@
-diff --git a/docs/pitch-builder-editing.md b/docs/pitch-builder-editing.md
-index b3108640de6b48fc51b727b7c72b6d5bae062c23..3648ee323e385fb74a9f846be487961fc4d43a97 100644
---- a/docs/pitch-builder-editing.md
-+++ b/docs/pitch-builder-editing.md
-@@ -14,26 +14,30 @@ block can be customised in a number of ways and removed entirely if needed.
-    is wrapped in a `data-sentence` span which is `contenteditable`, allowing
-    quick tweaks without affecting the rest of the block. A small × icon before
-    each sentence lets you remove it entirely with one click if it is not
-    required.
+diff --git a/src/tabs/instructions/MatterOpening/ReviewStep.tsx b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+index 57d3d443e2d7ebf83531e8fde5ee03a5b3dac20b..495d8e95c9c61e08b5caebc24dd81fbf04d41bcb 100644
+--- a/src/tabs/instructions/MatterOpening/ReviewStep.tsx
++++ b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+@@ -1,76 +1,227 @@
+-import React from 'react';
+-import { Stack, Text, PrimaryButton } from '@fluentui/react';
+-import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
+-import { POID } from '../../../app/functionality/types';
++import React, { useState, useMemo, useEffect } from 'react';
++import SummaryReview from './SummaryReview';
++import ReviewConfirm from './ReviewConfirm';
++import SummaryCompleteOverlay from './SummaryCompleteOverlay';
++import { useCompletion } from './CompletionContext';
  
- ## Scrapping content
+ interface ReviewStepProps {
+-    selectedDate: Date | null;
+-    supervisingPartner: string;
+-    originatingSolicitor: string;
+-    fundsReceived: string;
+-    clientType: string;
+-    selectedPoidIds: string[];
+-    areaOfWork: string;
+-    practiceArea: string;
+-    description: string;
+-    folderStructure: string;
+-    disputeValue: string;
+-    source: string;
+-    referrerName: string;
+-    opponentName: string;
+-    opponentEmail: string;
+-    opponentSolicitorName: string;
+-    opponentSolicitorCompany: string;
+-    opponentSolicitorEmail: string;
+-    noConflict: boolean;
+-    onBuild: () => void;
++  selectedDate: Date | null;
++  supervisingPartner: string;
++  originatingSolicitor: string;
++  fundsReceived: string;
++  clientType: string;
++  selectedPoidIds: string[];
++  areaOfWork: string;
++  practiceArea: string;
++  description: string;
++  folderStructure: string;
++  disputeValue: string;
++  source: string;
++  referrerName: string;
++  opponentName: string;
++  opponentEmail: string;
++  opponentSolicitorName: string;
++  opponentSolicitorCompany: string;
++  opponentSolicitorEmail: string;
++  noConflict: boolean;
++  onBuild?: () => void;
+ }
  
- - Each block includes a delete icon to remove it from the editor.
- - The × icon on every sentence allows you to discard individual lines without
-   affecting the rest of the block.
- - The *Clear* button removes all inserted blocks and restores the original
-   placeholders.
+-const ReviewStep: React.FC<ReviewStepProps> = ({
++const ReviewStep: React.FC<ReviewStepProps> = (props) => {
++  const {
+     selectedDate,
+     supervisingPartner,
+     originatingSolicitor,
+     fundsReceived,
+     clientType,
+     selectedPoidIds,
+     areaOfWork,
+     practiceArea,
+     description,
+     folderStructure,
+     disputeValue,
+     source,
+     referrerName,
+     opponentName,
+     opponentEmail,
+     opponentSolicitorName,
+     opponentSolicitorCompany,
+     opponentSolicitorEmail,
+     noConflict,
+     onBuild,
+-}) => (
+-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
+-        <Text variant="medium">
+-            <strong>Client Details</strong>:<br />
+-            Date: {selectedDate?.toLocaleDateString() || 'N/A'} <br />
+-            Supervising Partner: {supervisingPartner || 'N/A'} <br />
+-            Originating Solicitor: {originatingSolicitor || 'N/A'} <br />
+-            Funds: {fundsReceived || 'N/A'}<br /><br />
+-            <strong>Client Type</strong>: {clientType || 'N/A'} <br />
+-            <strong>POID(s)</strong>: {selectedPoidIds.join(', ') || 'None'} <br />
+-            <strong>Area of Work</strong>: {areaOfWork || 'N/A'} <br />
+-            <strong>Practice Area</strong>: {practiceArea || 'N/A'} <br />
+-            <strong>Description</strong>: {description || 'N/A'} <br />
+-            <strong>Folder Structure</strong>: {folderStructure || 'N/A'} <br />
+-            <strong>Dispute Value</strong>: {disputeValue || 'N/A'} <br />
+-            <strong>Source</strong>: {source || 'N/A'} <br />
+-            {source === 'referral' && <><strong>Referrer's Name</strong>: {referrerName || 'N/A'} <br /></>}
+-            <strong>Opponent Details</strong>: <br />
+-            Opponent: {opponentName || 'N/A'} ({opponentEmail || 'N/A'}) <br />
+-            Opponent Solicitor: {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'}) <br />
+-            <strong>Conflict of Interest</strong>: {noConflict ? 'There is no Conflict of Interest' : 'There is a Conflict of Interest'} <br />
+-        </Text>
+-        <PrimaryButton text="Build Matter" onClick={onBuild} styles={sharedPrimaryButtonStyles} />
+-    </Stack>
+-);
++  } = props;
  
- These controls make it easy to experiment with different blocks or remove them
- completely before sending the final email.
- 
- ## Snippet edit workflow
- 
- The snippet library now supports a more robust editing process:
- 
- * Each proposed change may include updated label, sort order or even a new block assignment. Setting `IsNew` allows a brand new snippet to be added for review.
- * Allowed edit statuses (`pending`, `approved`, `rejected`) are enforced via a lookup table so typos cannot slip into the database.
- * Approvers can capture reasons in a `ReviewNotes` column when accepting or rejecting an edit.
- * Every time a snippet is approved the prior version is stored in `SimplifiedBlockSnippetVersions` along with its version number.
- 
--These upgrades make it easier to refine the library over time while preserving a full history of changes.
-+These upgrades make it easier to refine the library over time while preserving a full history of changes.
+-export default ReviewStep;
++  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
++  const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
++  const [edited, setEdited] = useState(false);
++  const { summaryComplete } = useCompletion();
 +
-+## UI prompts for edits
++  const formData = useMemo(
++    () => ({
++      selectedDate: selectedDate ? selectedDate.toISOString() : null,
++      supervisingPartner,
++      originatingSolicitor,
++      fundsReceived,
++      clientType,
++      selectedPoidIds,
++      areaOfWork,
++      practiceArea,
++      description,
++      folderStructure,
++      disputeValue,
++      source,
++      referrerName,
++      opponentName,
++      opponentEmail,
++      opponentSolicitorName,
++      opponentSolicitorCompany,
++      opponentSolicitorEmail,
++      noConflict,
++    }),
++    [
++      selectedDate,
++      supervisingPartner,
++      originatingSolicitor,
++      fundsReceived,
++      clientType,
++      selectedPoidIds,
++      areaOfWork,
++      practiceArea,
++      description,
++      folderStructure,
++      disputeValue,
++      source,
++      referrerName,
++      opponentName,
++      opponentEmail,
++      opponentSolicitorName,
++      opponentSolicitorCompany,
++      opponentSolicitorEmail,
++      noConflict,
++    ]
++  );
 +
-+The editor surfaces editing tools directly within each block. Selecting the block label opens an edit modal where snippet text, label and sort order can be modified. Pending changes appear in the **Snippet Edits** pane and approvers see a notification badge when new edits require review. Proposed snippets flagged with `IsNew` are highlighted so reviewers know they will create additional library entries once approved.
++  const proofSummary = useMemo(
++    () => (
++      <div>
++        <p>
++          <span className="field-label">Date:</span>{' '}
++          <span className="field-value">{selectedDate ? selectedDate.toLocaleDateString() : 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Supervising Partner:</span>{' '}
++          <span className="field-value">{supervisingPartner || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Originating Solicitor:</span>{' '}
++          <span className="field-value">{originatingSolicitor || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Funds:</span>{' '}
++          <span className="field-value">{fundsReceived || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Client Type:</span>{' '}
++          <span className="field-value">{clientType || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">POID(s):</span>{' '}
++          <span className="field-value">{selectedPoidIds.join(', ') || 'None'}</span>
++        </p>
++        <p>
++          <span className="field-label">Area of Work:</span>{' '}
++          <span className="field-value">{areaOfWork || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Practice Area:</span>{' '}
++          <span className="field-value">{practiceArea || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Description:</span>{' '}
++          <span className="field-value">{description || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Folder Structure:</span>{' '}
++          <span className="field-value">{folderStructure || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Dispute Value:</span>{' '}
++          <span className="field-value">{disputeValue || 'N/A'}</span>
++        </p>
++        <p>
++          <span className="field-label">Source:</span>{' '}
++          <span className="field-value">{source || 'N/A'}</span>
++        </p>
++        {source === 'referral' && (
++          <p>
++            <span className="field-label">Referrer Name:</span>{' '}
++            <span className="field-value">{referrerName || 'N/A'}</span>
++          </p>
++        )}
++        <p>
++          <span className="field-label">Opponent:</span>{' '}
++          <span className="field-value">{opponentName || 'N/A'} ({opponentEmail || 'N/A'})</span>
++        </p>
++        <p>
++          <span className="field-label">Opponent Solicitor:</span>{' '}
++          <span className="field-value">
++            {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'})
++          </span>
++        </p>
++        <p>
++          <span className="field-label">Conflict of Interest:</span>{' '}
++          <span className="field-value">{noConflict ? 'No' : 'Yes'}</span>
++        </p>
++      </div>
++    ),
++    [
++      selectedDate,
++      supervisingPartner,
++      originatingSolicitor,
++      fundsReceived,
++      clientType,
++      selectedPoidIds,
++      areaOfWork,
++      practiceArea,
++      description,
++      folderStructure,
++      disputeValue,
++      source,
++      referrerName,
++      opponentName,
++      opponentEmail,
++      opponentSolicitorName,
++      opponentSolicitorCompany,
++      opponentSolicitorEmail,
++      noConflict,
++    ]
++  );
++
++  useEffect(() => {
++    if (summaryComplete && snapshot) {
++      const changed = JSON.stringify(formData) !== JSON.stringify(snapshot);
++      setEdited(changed);
++    }
++  }, [formData, snapshot, summaryComplete]);
++
++  const handleConfirmed = () => {
++    setSnapshot(formData);
++    setDetailsConfirmed(false);
++    if (onBuild) onBuild();
++  };
++
++  return (
++    <div style={{ position: 'relative' }}>
++      {summaryComplete && <SummaryCompleteOverlay />}
++      <SummaryReview
++        proofContent={proofSummary}
++        detailsConfirmed={detailsConfirmed}
++        setDetailsConfirmed={setDetailsConfirmed}
++        edited={edited}
++      />
++      <ReviewConfirm detailsConfirmed={detailsConfirmed} formData={formData} onConfirmed={handleConfirmed} />
++    </div>
++  );
++};
++
++export default ReviewStep;

@@ -1,7 +1,8 @@
-import React from 'react';
-import { Stack, Text, PrimaryButton } from '@fluentui/react';
-import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
-import { POID } from '../../../app/functionality/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import SummaryReview from './SummaryReview';
+import ReviewConfirm from './ReviewConfirm';
+import SummaryCompleteOverlay from './SummaryCompleteOverlay';
+import { useCompletion } from './CompletionContext';
 
 interface ReviewStepProps {
     selectedDate: Date | null;
@@ -23,10 +24,11 @@ interface ReviewStepProps {
     opponentSolicitorCompany: string;
     opponentSolicitorEmail: string;
     noConflict: boolean;
-    onBuild: () => void;
+    onBuild?: () => void;
 }
 
-const ReviewStep: React.FC<ReviewStepProps> = ({
+const ReviewStep: React.FC<ReviewStepProps> = (props) => {
+    const {
     selectedDate,
     supervisingPartner,
     originatingSolicitor,
@@ -47,30 +49,180 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
     opponentSolicitorEmail,
     noConflict,
     onBuild,
-}) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Text variant="medium">
-            <strong>Client Details</strong>:<br />
-            Date: {selectedDate?.toLocaleDateString() || 'N/A'} <br />
-            Supervising Partner: {supervisingPartner || 'N/A'} <br />
-            Originating Solicitor: {originatingSolicitor || 'N/A'} <br />
-            Funds: {fundsReceived || 'N/A'}<br /><br />
-            <strong>Client Type</strong>: {clientType || 'N/A'} <br />
-            <strong>POID(s)</strong>: {selectedPoidIds.join(', ') || 'None'} <br />
-            <strong>Area of Work</strong>: {areaOfWork || 'N/A'} <br />
-            <strong>Practice Area</strong>: {practiceArea || 'N/A'} <br />
-            <strong>Description</strong>: {description || 'N/A'} <br />
-            <strong>Folder Structure</strong>: {folderStructure || 'N/A'} <br />
-            <strong>Dispute Value</strong>: {disputeValue || 'N/A'} <br />
-            <strong>Source</strong>: {source || 'N/A'} <br />
-            {source === 'referral' && <><strong>Referrer's Name</strong>: {referrerName || 'N/A'} <br /></>}
-            <strong>Opponent Details</strong>: <br />
-            Opponent: {opponentName || 'N/A'} ({opponentEmail || 'N/A'}) <br />
-            Opponent Solicitor: {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'}) <br />
-            <strong>Conflict of Interest</strong>: {noConflict ? 'There is no Conflict of Interest' : 'There is a Conflict of Interest'} <br />
-        </Text>
-        <PrimaryButton text="Build Matter" onClick={onBuild} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-);
+    } = props;
+
+    const [detailsConfirmed, setDetailsConfirmed] = useState(false);
+    const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
+    const [edited, setEdited] = useState(false);
+    const { summaryComplete } = useCompletion();
+
+    const formData = useMemo(
+        () => ({
+            selectedDate: selectedDate ? selectedDate.toISOString() : null,
+            supervisingPartner,
+            originatingSolicitor,
+            fundsReceived,
+            clientType,
+            selectedPoidIds,
+            areaOfWork,
+            practiceArea,
+            description,
+            folderStructure,
+            disputeValue,
+            source,
+            referrerName,
+            opponentName,
+            opponentEmail,
+            opponentSolicitorName,
+            opponentSolicitorCompany,
+            opponentSolicitorEmail,
+            noConflict,
+        }),
+        [
+            selectedDate,
+            supervisingPartner,
+            originatingSolicitor,
+            fundsReceived,
+            clientType,
+            selectedPoidIds,
+            areaOfWork,
+            practiceArea,
+            description,
+            folderStructure,
+            disputeValue,
+            source,
+            referrerName,
+            opponentName,
+            opponentEmail,
+            opponentSolicitorName,
+            opponentSolicitorCompany,
+            opponentSolicitorEmail,
+            noConflict,
+        ]
+    );
+
+    const proofSummary = useMemo(
+        () => (
+            <div>
+                <p>
+                    <span className="field-label">Date:</span>{' '}
+                    <span className="field-value">{selectedDate ? selectedDate.toLocaleDateString() : 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Supervising Partner:</span>{' '}
+                    <span className="field-value">{supervisingPartner || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Originating Solicitor:</span>{' '}
+                    <span className="field-value">{originatingSolicitor || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Funds:</span>{' '}
+                    <span className="field-value">{fundsReceived || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Client Type:</span>{' '}
+                    <span className="field-value">{clientType || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">POID(s):</span>{' '}
+                    <span className="field-value">{selectedPoidIds.join(', ') || 'None'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Area of Work:</span>{' '}
+                    <span className="field-value">{areaOfWork || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Practice Area:</span>{' '}
+                    <span className="field-value">{practiceArea || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Description:</span>{' '}
+                    <span className="field-value">{description || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Folder Structure:</span>{' '}
+                    <span className="field-value">{folderStructure || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Dispute Value:</span>{' '}
+                    <span className="field-value">{disputeValue || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Source:</span>{' '}
+                    <span className="field-value">{source || 'N/A'}</span>
+                </p>
+                {source === 'referral' && (
+                    <p>
+                        <span className="field-label">Referrer Name:</span>{' '}
+                        <span className="field-value">{referrerName || 'N/A'}</span>
+                    </p>
+                )}
+                <p>
+                    <span className="field-label">Opponent:</span>{' '}
+                    <span className="field-value">{opponentName || 'N/A'} ({opponentEmail || 'N/A'})</span>
+                </p>
+                <p>
+                    <span className="field-label">Opponent Solicitor:</span>{' '}
+                    <span className="field-value">
+                        {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'})
+                    </span>
+                </p>
+                <p>
+                    <span className="field-label">Conflict of Interest:</span>{' '}
+                    <span className="field-value">{noConflict ? 'No' : 'Yes'}</span>
+                </p>
+            </div>
+        ),
+        [
+            selectedDate,
+            supervisingPartner,
+            originatingSolicitor,
+            fundsReceived,
+            clientType,
+            selectedPoidIds,
+            areaOfWork,
+            practiceArea,
+            description,
+            folderStructure,
+            disputeValue,
+            source,
+            referrerName,
+            opponentName,
+            opponentEmail,
+            opponentSolicitorName,
+            opponentSolicitorCompany,
+            opponentSolicitorEmail,
+            noConflict,
+        ]
+    );
+
+    useEffect(() => {
+        if (summaryComplete && snapshot) {
+            const changed = JSON.stringify(formData) !== JSON.stringify(snapshot);
+            setEdited(changed);
+        }
+    }, [formData, snapshot, summaryComplete]);
+
+    const handleConfirmed = () => {
+        setSnapshot(formData);
+        setDetailsConfirmed(false);
+        if (onBuild) onBuild();
+    };
+
+    return (
+        <div style={{ position: 'relative' }}>
+            {summaryComplete && <SummaryCompleteOverlay />}
+            <SummaryReview
+                proofContent={proofSummary}
+                detailsConfirmed={detailsConfirmed}
+                setDetailsConfirmed={setDetailsConfirmed}
+                edited={edited}
+            />
+            <ReviewConfirm detailsConfirmed={detailsConfirmed} formData={formData} onConfirmed={handleConfirmed} />
+        </div>
+    );
+};
 
 export default ReviewStep;
+  

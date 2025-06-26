@@ -21,6 +21,7 @@ import SourceStep from './MatterOpening/SourceStep';
 import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
 
 import ReviewStep from './MatterOpening/ReviewStep';
+import { CompletionProvider } from './MatterOpening/CompletionContext';
 
 const practiceAreasByArea: { [key: string]: string[] } = {
     Commercial: [
@@ -466,7 +467,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         opponentSolicitorCompany={opponentSolicitorCompany}
                         opponentSolicitorEmail={opponentSolicitorEmail}
                         noConflict={noConflict}
-                        onBuild={() => console.log('Matter built')}
+                        onBuild={() => { }}
                     />
                 );
             default:
@@ -475,6 +476,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     };
 
     return (
+        <CompletionProvider>
         <Stack className="workflow-container">
             {!hideClientSections && (
                 <>
@@ -515,6 +517,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 />
             </div>
         </Stack>
+        </CompletionProvider>
     );
 };
 
