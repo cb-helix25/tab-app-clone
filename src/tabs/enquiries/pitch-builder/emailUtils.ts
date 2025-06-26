@@ -124,7 +124,7 @@ export function cleanTemplateString(template: string): string {
  */
 export function wrapInsertPlaceholders(text: string): string {
   return text.replace(/\[INSERT[^\]]*\]/gi, (m) => {
-    return `<span class="insert-placeholder" data-insert>${m}</span>`;
+    return `<span class="insert-placeholder" data-insert tabindex="0" role="button">${m}</span>`;
   });
 }
 

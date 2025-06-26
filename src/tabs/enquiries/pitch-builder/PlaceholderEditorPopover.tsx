@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Callout, TextField, PrimaryButton, Stack } from '@fluentui/react';
+import { Callout, TextField, PrimaryButton, Stack, DirectionalHint } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import '../../../app/styles/PlaceholderEditorPopover.css';
 
@@ -38,6 +38,10 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
             target={target}
             onDismiss={onDismiss}
             setInitialFocus
+            directionalHint={DirectionalHint.bottomLeftEdge}
+            isBeakVisible
+            gapSpace={8}
+            styles={{ calloutMain: { overflowY: 'visible' } }}
         >
             <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: 12 } }}>
                 <span className="placeholder-context">{before}</span>

@@ -341,13 +341,19 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.highlightBlue};
       color: ${colours.darkBlue};
       padding: 2px 4px;
-      border-radius: 8px;
+      border-radius: 6px;
+      border: 1px dashed ${colours.darkBlue};
+      font-style: italic;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
+      transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
     }
-    .insert-placeholder:hover {
+    .insert-placeholder:hover,
+    .insert-placeholder:focus {
       background: ${colours.blue};
+      color: #ffffff;
+      box-shadow: 0 0 0 2px ${colours.blue}80;
       transform: scale(1.05);
+      outline: none;
     }
     .sentence-delete {
       font-weight: bold;
@@ -1140,23 +1146,41 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const editor = bodyEditorRef.current;
     if (!editor) return;
 
+    const openPlaceholderEditor = (ph: HTMLElement) => {
+      const { before, after } = getNeighboringWords(ph);
+      setPlaceholderEdit({
+        span: ph,
+        target: ph,
+        before,
+        after,
+        text: ph.textContent || '',
+      });
+    };
+
     const handleDblClick = (e: MouseEvent) => {
       const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
       if (ph) {
         e.preventDefault();
-        const { before, after } = getNeighboringWords(ph);
-        setPlaceholderEdit({
-          span: ph,
-          target: ph,
-          before,
-          after,
-          text: ph.textContent || '',
-        });
+        openPlaceholderEditor(ph);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
+        if (ph) {
+          e.preventDefault();
+          openPlaceholderEditor(ph);
+        }
       }
     };
 
     editor.addEventListener('dblclick', handleDblClick);
-    return () => editor.removeEventListener('dblclick', handleDblClick);
+    editor.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      editor.removeEventListener('dblclick', handleDblClick);
+      editor.removeEventListener('keydown', handleKeyDown, true);
+    };
   }, []);
 
   /**
