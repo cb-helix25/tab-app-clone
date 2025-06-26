@@ -15,12 +15,15 @@ These actions use the shared `QuickActionsCard` component so the look and feel m
 
 ## Instruction Cards
 
-Each instruction card now shows two additional fields when available:
+Each instruction card displays a status row with individual clocks for key checks:
 
-- **ID Check** – current status of any electronic ID verification.
-- **Risk** – latest risk assessment result.
+- **ID** – proof of identity provided.
+- **Pay** – payment taken and confirmed.
+- **Docs** – engagement documents uploaded.
+- **EID** – electronic ID verification result.
+- **Comp.** – compliance review outcome.
 
-This ensures solicitors can quickly see whether mandatory checks have been completed before opening a matter.
+Each item shows a check mark when complete, a cross on failure and a clock while pending. This ensures solicitors can quickly see whether mandatory checks have been completed before opening a matter.
 
 Three action tabs now sit along the bottom edge of each card. Only the
 selected tab expands to show its label while the others collapse down to

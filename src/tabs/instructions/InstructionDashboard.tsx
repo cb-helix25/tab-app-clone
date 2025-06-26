@@ -53,15 +53,23 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
 
     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
     const uniqueClients = Array.from(new Set(clients.map((c) => c.ClientEmail))).length;
-    const idDocsComplete = proofOfIdComplete && paymentComplete && documentsComplete && !paymentFailed;
-    const eidComplete = eidStatus.toLowerCase() === 'verified' && complianceStatus.toLowerCase() === 'pass';
+
+    // Individual completion flags used for separate status clocks
+    const idComplete = proofOfIdComplete;
+    const payComplete = paymentComplete && !paymentFailed;
+    const docsComplete = documentsComplete;
+    const eidComplete = eidStatus.toLowerCase() === 'verified';
+    const compComplete = complianceStatus.toLowerCase() === 'pass';
 
 
     const summaryData = [
         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
         { key: 'clients', label: 'Clients', value: uniqueClients },
-        { key: 'ipd', label: 'ID/Pay/Docs', status: idDocsComplete ? 'complete' : 'pending' },
-        { key: 'eid', label: 'EID/Comp.', status: eidComplete ? 'complete' : 'pending' },
+        { key: 'id', label: 'ID', status: idComplete ? 'complete' : 'pending' },
+        { key: 'pay', label: 'Pay', status: payComplete ? 'complete' : paymentFailed ? 'failed' : 'pending' },
+        { key: 'docs', label: 'Docs', status: docsComplete ? 'complete' : 'pending' },
+        { key: 'eid', label: 'EID', status: eidComplete ? 'complete' : 'pending' },
+        { key: 'comp', label: 'Comp.', status: compComplete ? 'complete' : 'pending' },
         { key: 'risk', label: 'Risk', value: riskStatus },
     ];
 
