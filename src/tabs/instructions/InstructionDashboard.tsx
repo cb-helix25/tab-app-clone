@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { mergeStyles } from '@fluentui/react';
+import { FaCheckCircle, FaClock, FaTimesCircle } from 'react-icons/fa';
 import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionDashboard.css';
@@ -14,7 +15,6 @@ interface InstructionDashboardProps {
     documentCount?: number;
     animationDelay?: number;
     onOpenInstruction?: (ref: string) => void;
-    onNavigate?: (pivot: 'deals' | 'clients' | 'risk') => void;
 }
 
 const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
@@ -27,7 +27,6 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     documentCount = 0,
     animationDelay = 0,
     onOpenInstruction,
-    onNavigate,
 }) => {
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
@@ -38,8 +37,6 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
         boxShadow: 'none',
         border: '1px solid #ccc',
     });
-
-    const [activeTab, setActiveTab] = useState<'summary' | 'deals' | 'clients' | 'risk'>('summary');
 
     const stage = instruction.Stage ?? '-';
     const riskStatus = risk?.RiskAssessmentResult ?? '-';
@@ -54,99 +51,18 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     const paymentFailed = paymentStatusRaw === 'failed';
     const documentsComplete = documentCount > 0;
 
+    const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
+    const uniqueClients = Array.from(new Set(clients.map((c) => c.ClientEmail))).length;
+    const idDocsComplete = proofOfIdComplete && paymentComplete && documentsComplete && !paymentFailed;
+    const eidComplete = eidStatus.toLowerCase() === 'verified' && complianceStatus.toLowerCase() === 'pass';
+
+
     const summaryData = [
-        { label: 'Stage', value: stage },
-        { label: 'Deals', value: deals.length || '-' },
-        { label: 'Clients', value: clients.length || '-' },
-        { label: 'ID', value: proofOfIdComplete ? 'complete' : 'pending' },
-        {
-            label: 'Payment',
-            value: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
-        },
-        { label: 'Docs', value: documentsComplete ? 'complete' : 'pending' },
-        { label: 'EID', value: eidStatus },
-        { label: 'Risk', value: riskStatus },
-        { label: 'Compliance', value: complianceStatus },
-    ];
-
-    const renderTabContent = () => {
-        switch (activeTab) {
-            case 'deals':
-                if (!deals.length)
-                    return <div className="placeholder">No deals</div>;
-                return (
-                    <>
-                        <ul className="detail-list">
-                            {deals.map((d, i) => (
-                                <li key={i}>
-                                    {d.ServiceDescription || 'Deal'} – {d.Status || '-'}
-                                </li>
-                            ))}
-                        </ul>
-                        {onNavigate && (
-                            <div className="jump-link" onClick={() => onNavigate('deals')}>View all deals</div>
-                        )}
-                    </>
-                );
-            case 'clients':
-                if (!clients.length)
-                    return <div className="placeholder">No clients</div>;
-                return (
-                    <>
-                        <ul className="detail-list">
-                            {clients.map((c, i) => (
-                                <li key={i}>
-                                    {c.ClientEmail} –{' '}
-                                    {c.HasSubmitted ? 'submitted' : 'pending'}
-                                </li>
-                            ))}
-                        </ul>
-                        {onNavigate && (
-                            <div className="jump-link" onClick={() => onNavigate('clients')}>View all clients</div>
-                        )}
-                    </>
-                );
-            case 'risk':
-                return (
-                    <>
-                        <div className="risk-detail">
-                            <div>Risk: {riskStatus}</div>
-                            <div>EID: {eidStatus}</div>
-                            <div>Compliance: {complianceStatus}</div>
-                            {risk?.RiskScore !== undefined && (
-                                <div>Score: {risk.RiskScore}</div>
-                            )}
-                        </div>
-                        {onNavigate && (
-                            <div className="jump-link" onClick={() => onNavigate('risk')}>View full details</div>
-                        )}
-                    </>
-                );
-            default:
-                return (
-                    <>
-                        <ul className="detail-list">
-                            {summaryData.map((d, i) => (
-                                <li key={i}>
-                                    <strong>{d.label}:</strong> {d.value}
-                                </li>
-                            ))}
-                        </ul>
-                        {onOpenInstruction && (
-                            <div className="jump-link" onClick={() => onOpenInstruction(instruction.InstructionRef)}>
-                                Open instruction
-                            </div>
-                        )}
-                    </>
-                );
-        }
-    };
-
-    const tabs: { key: 'summary' | 'deals' | 'clients' | 'risk'; label: string }[] = [
-        { key: 'summary', label: 'Summary' },
-        { key: 'deals', label: 'Deals' },
-        { key: 'clients', label: 'Clients' },
-        { key: 'risk', label: 'Risk & Comp.' },
+        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
+        { key: 'clients', label: 'Clients', value: uniqueClients },
+        { key: 'ipd', label: 'ID/Pay/Docs', status: idDocsComplete ? 'complete' : 'pending' },
+        { key: 'eid', label: 'EID/Comp.', status: eidComplete ? 'complete' : 'pending' },
+        { key: 'risk', label: 'Risk', value: riskStatus },
     ];
 
     return (
@@ -157,33 +73,33 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
                 style={{ cursor: onOpenInstruction ? 'pointer' : 'default' }}
             >
                 {instruction.InstructionRef}
+                <span className="instruction-stage">{stage}</span>
             </header>
             <div className="status-row">
                 {summaryData.map((d, i) => {
-                    const status = typeof d.value === 'string' ? d.value.toLowerCase() : '';
+                    const status = (d.status ?? '').toString().toLowerCase();
+                    const value = d.value ?? null;
+                    const icon = d.status
+                        ? status === 'complete' || status === 'closed'
+                            ? <FaCheckCircle />
+                            : status === 'failed'
+                                ? <FaTimesCircle />
+                                : <FaClock />
+                        : null;
                     return (
                         <div key={i} className="status-item">
                             <span className="status-label">{d.label}</span>
-                            <span className={`status-value ${status}`}>{d.value}</span>
+                            {icon ? (
+                                <span className={`status-value ${status}`}>{icon}</span>
+                            ) : (
+                                <span className="status-value">{value}</span>
+                            )}
                         </div>
                     );
                 })}
             </div>
-            <div className="dashboard-tabs">
-                {tabs.map((t) => (
-                    <button
-                        key={t.key}
-                        type="button"
-                        className={`tab-btn ${activeTab === t.key ? 'active' : ''}`}
-                        onClick={() => setActiveTab(t.key)}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-            <div className="tab-content">{renderTabContent()}</div>
         </div>
     );
-};
+}; 
 
 export default InstructionDashboard;

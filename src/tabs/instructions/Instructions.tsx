@@ -508,7 +508,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
                     onOpenInstruction={handleOpenInstruction}
-                    onNavigate={(p) => setActivePivot(p)}
                   />
                 );
               })}

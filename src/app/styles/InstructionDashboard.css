@@ -13,6 +13,18 @@
 
 .dashboard-header {
     font-weight: 600;
+    color: var(--helix-dark-blue, #061733);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .instruction-stage {
+        font-size: 0.75rem;
+        background: var(--helix-light, #f4f4f6);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--helix-dark-blue, #061733);
 }
 
 .status-row {
@@ -41,6 +53,14 @@
     color: var(--helix-red, #d65541);
 }
 
+.status-value.open {
+    color: var(--helix-cta, #d65541);
+}
+
+.status-value.closed {
+    color: var(--helix-green, #107c10);
+}
+
 .jump-link {
     color: var(--helix-highlight, #0078d4);
     cursor: pointer;
@@ -54,32 +74,14 @@
 
 .status-value {
     font-weight: 600;
-    display: block;
-}
-
-.dashboard-tabs {
     display: flex;
-    gap: 4px;
-    border-bottom: 1px solid #ccc;
-}
-
-.tab-btn {
-    background: none;
-    border: none;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-
-.tab-btn.active {
-    border-bottom: 2px solid var(--helix-highlight, #0078d4);
-    font-weight: 600;
-}
-
-.tab-content {
-    padding-top: 8px;
-    font-size: 0.875rem;
-}
+        justify-content: center;
+    }
+    
+    .status-value svg {
+        width: 16px;
+        height: 16px;
+    }
 
 .placeholder {
     font-style: italic;
