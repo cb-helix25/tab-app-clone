@@ -342,6 +342,15 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       user-select: none;
       color: ${colours.red};
     }
+    .sentence-handle {
+      cursor: grab;
+      margin-right: 4px;
+      user-select: none;
+      color: ${colours.greyText};
+    }
+    .sentence-handle:active {
+      cursor: grabbing;
+    }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
@@ -739,6 +748,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     (window as any).togglePopoutPin = togglePopoutPin;
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
+    (window as any).saveCustomSnippet = saveCustomSnippet;
     (window as any).removeBlock = (title: string) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
@@ -799,7 +809,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-bubble" data-block-title="${block.title}" data-option-label="${o.label}"><strong>${o.label}</strong><div class="option-preview">${preview}</div></div>`;
       })
       .join('');
-    return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}</span>${options}</span>`;
+    const saved = localStorage.getItem(`customSnippet_${block.title}`);
+    const savedHtml = saved
+      ? `<div class="option-bubble" data-block-title="${block.title}" data-option-label="__saved"><strong>Saved Snippet</strong><div class="option-preview">${saved}</div></div>`
+      : '';
+    return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}</span>${options}${savedHtml}</span>`;
   }
 
   const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
@@ -826,6 +840,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   } | null>(null);
 
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+  const showToast = (
+    msg: string,
+    type: 'success' | 'error' | 'info'
+  ) => {
+    setToast({ message: msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // Tab state to switch between email details and deals
   const [activeTab, setActiveTab] = useState<string>('details');
@@ -969,7 +991,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (!editor) return;
 
     const handleDragStart = (e: DragEvent) => {
-      const target = (e.target as HTMLElement).closest('[data-sentence]') as HTMLElement | null;
+      const handle = (e.target as HTMLElement).closest('.sentence-handle');
+      if (!handle) return;
+      const target = handle.parentElement as HTMLElement | null;
       if (target) {
         setDragSentence(target);
         e.dataTransfer?.setData('text/plain', '');
@@ -1196,9 +1220,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const snippetMap: { [label: string]: string } = {};
     if (block.isMultiSelect && isStringArray(selectedOption)) {
       selectedOption.forEach((opt) => {
-        const option = block.options.find((o) => o.label === opt);
-        if (!option) return;
-        let text = option.previewText.trim().replace(/\n/g, '<br />');
+        let text: string | null = null;
+        if (opt === '__saved') {
+          text = localStorage.getItem(`customSnippet_${block.title}`);
+        } else {
+          const option = block.options.find((o) => o.label === opt);
+          if (!option) return;
+          text = option.previewText.trim().replace(/\n/g, '<br />');
+        }
+        if (text === null) return;
         text = applyDynamicSubstitutions(
           text,
           userData,
@@ -1216,7 +1246,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1225,9 +1255,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       });
     } else if (typeof selectedOption === 'string') {
 
-      const option = block.options.find((o) => o.label === selectedOption);
-      if (option) {
-        let text = option.previewText.trim().replace(/\n/g, '<br />');
+      let text: string | null = null;
+      if (selectedOption === '__saved') {
+        text = localStorage.getItem(`customSnippet_${block.title}`);
+      } else {
+        const option = block.options.find((o) => o.label === selectedOption);
+        if (option) {
+          text = option.previewText.trim().replace(/\n/g, '<br />');
+        }
+      }
+      if (text !== null) {
         text = applyDynamicSubstitutions(
           text,
           userData,
@@ -1245,7 +1282,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
           )
           .join(' ');
         const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1277,10 +1314,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
       })
       .join('');
+    const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+    const savedChoice = savedSnippet
+      ? `<div class="option-choice${selectedOption === '__saved' ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>`
+      : '';
+    const optionsHtmlCombined = optionsHtml + savedChoice;
     const labelText = `${block.title} (${templateSet}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtml}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openBlockPopout(event, '${block.title}')"><i class="ms-Icon ms-Icon--OpenInNewWindow"></i></span><span class="icon-btn" onclick="window.saveCustomSnippet('${block.title}')"><i class="ms-Icon ms-Icon--Save"></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 
@@ -1474,11 +1516,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
         })
         .join(' ');
-      const resetHtml =
-        Object.values(editedSnippets[block.title] || {}).some(Boolean) && newSelected
-          ? `<span class="option-choice reset-option" data-block-title="${block.title}">Reset</span>`
-          : '';
-      const optionListContent = [optionsHtml, resetHtml]
+      const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+      const savedChoice = savedSnippet ? `<span class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</span>` : '';
+      const optionListContent = [optionsHtml, savedChoice]
         .filter(Boolean)
         .join(' ');
       optionDiv.innerHTML = optionListContent;
@@ -1535,7 +1575,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       .filter((s) => s.trim().length > 0)
       .map(
         (s) =>
-          `<span data-sentence draggable="true" contenteditable="true"><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
+          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false">&#x2630;</span><span class="sentence-delete" contenteditable="false">&times;</span>${s.trim()}</span>`
       )
       .join(' ');
     const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
@@ -1575,13 +1615,27 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
         })
         .join('');
-      optionDiv.innerHTML = optionsHtml;
+      const savedSnippet = localStorage.getItem(`customSnippet_${block.title}`);
+      const savedChoice = savedSnippet ? `<div class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>` : '';
+      optionDiv.innerHTML = optionsHtml + savedChoice;
     }
 
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
     setBody(bodyEditorRef.current.innerHTML);
     setBody(bodyEditorRef.current.innerHTML);
+  }
+
+  function saveCustomSnippet(blockTitle: string) {
+    if (!bodyEditorRef.current) return;
+    const span = bodyEditorRef.current.querySelector(
+      `span[data-inserted="${blockTitle}"]`
+    ) as HTMLElement | null;
+    if (!span) return;
+    const main = span.querySelector('.block-main') as HTMLElement | null;
+    if (!main) return;
+    localStorage.setItem(`customSnippet_${blockTitle}`, main.innerHTML);
+    showToast('Snippet saved', 'success');
   }
 
   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
@@ -2724,10 +2778,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           onReorderBlocks={reorderTemplateBlocks}
           onDuplicateBlock={duplicateTemplateBlock}
           onClearAllBlocks={clearAllBlocks}
-          showToast={(msg, type) => {
-            setToast({ message: msg, type });
-            setTimeout(() => setToast(null), 3000);
-          }}
+          showToast={showToast}
         />
 
         {snippetOptionsBlock && snippetOptionsTarget && (
