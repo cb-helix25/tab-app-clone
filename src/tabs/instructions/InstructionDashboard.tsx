@@ -13,6 +13,8 @@ interface InstructionDashboardProps {
     compliance?: any;
     documentCount?: number;
     animationDelay?: number;
+    onOpenInstruction?: (ref: string) => void;
+    onNavigate?: (pivot: 'deals' | 'clients' | 'risk') => void;
 }
 
 const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
@@ -24,6 +26,8 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     compliance,
     documentCount = 0,
     animationDelay = 0,
+    onOpenInstruction,
+    onNavigate,
 }) => {
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
@@ -71,44 +75,69 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
                 if (!deals.length)
                     return <div className="placeholder">No deals</div>;
                 return (
-                    <ul className="detail-list">
-                        {deals.map((d, i) => (
-                            <li key={i}>
-                                {d.ServiceDescription || 'Deal'} – {d.Status || '-'}
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="detail-list">
+                            {deals.map((d, i) => (
+                                <li key={i}>
+                                    {d.ServiceDescription || 'Deal'} – {d.Status || '-'}
+                                </li>
+                            ))}
+                        </ul>
+                        {onNavigate && (
+                            <div className="jump-link" onClick={() => onNavigate('deals')}>View all deals</div>
+                        )}
+                    </>
                 );
             case 'clients':
                 if (!clients.length)
                     return <div className="placeholder">No clients</div>;
                 return (
-                    <ul className="detail-list">
-                        {clients.map((c, i) => (
-                            <li key={i}>
-                                {c.ClientEmail} –{' '}
-                                {c.HasSubmitted ? 'submitted' : 'pending'}
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="detail-list">
+                            {clients.map((c, i) => (
+                                <li key={i}>
+                                    {c.ClientEmail} –{' '}
+                                    {c.HasSubmitted ? 'submitted' : 'pending'}
+                                </li>
+                            ))}
+                        </ul>
+                        {onNavigate && (
+                            <div className="jump-link" onClick={() => onNavigate('clients')}>View all clients</div>
+                        )}
+                    </>
                 );
             case 'risk':
                 return (
-                    <div className="risk-detail">
-                        <div>Risk: {riskStatus}</div>
-                        <div>EID: {eidStatus}</div>
-                        <div>Compliance: {complianceStatus}</div>
-                    </div>
+                    <>
+                        <div className="risk-detail">
+                            <div>Risk: {riskStatus}</div>
+                            <div>EID: {eidStatus}</div>
+                            <div>Compliance: {complianceStatus}</div>
+                            {risk?.RiskScore !== undefined && (
+                                <div>Score: {risk.RiskScore}</div>
+                            )}
+                        </div>
+                        {onNavigate && (
+                            <div className="jump-link" onClick={() => onNavigate('risk')}>View full details</div>
+                        )}
+                    </>
                 );
             default:
                 return (
-                    <ul className="detail-list">
-                        {summaryData.map((d, i) => (
-                            <li key={i}>
-                                <strong>{d.label}:</strong> {d.value}
-                            </li>
-                        ))}
-                    </ul>
+                    <>
+                        <ul className="detail-list">
+                            {summaryData.map((d, i) => (
+                                <li key={i}>
+                                    <strong>{d.label}:</strong> {d.value}
+                                </li>
+                            ))}
+                        </ul>
+                        {onOpenInstruction && (
+                            <div className="jump-link" onClick={() => onOpenInstruction(instruction.InstructionRef)}>
+                                Open instruction
+                            </div>
+                        )}
+                    </>
                 );
         }
     };
@@ -122,14 +151,23 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
 
     return (
         <div className={cardClass} style={style}>
-            <header className="dashboard-header">{instruction.InstructionRef}</header>
+            <header
+                className="dashboard-header"
+                onClick={() => onOpenInstruction?.(instruction.InstructionRef)}
+                style={{ cursor: onOpenInstruction ? 'pointer' : 'default' }}
+            >
+                {instruction.InstructionRef}
+            </header>
             <div className="status-row">
-                {summaryData.slice(0, 5).map((d, i) => (
-                    <div key={i} className="status-item">
-                        <span className="status-label">{d.label}</span>
-                        <span className="status-value">{d.value}</span>
-                    </div>
-                ))}
+                {summaryData.map((d, i) => {
+                    const status = typeof d.value === 'string' ? d.value.toLowerCase() : '';
+                    return (
+                        <div key={i} className="status-item">
+                            <span className="status-label">{d.label}</span>
+                            <span className={`status-value ${status}`}>{d.value}</span>
+                        </div>
+                    );
+                })}
             </div>
             <div className="dashboard-tabs">
                 {tabs.map((t) => (
