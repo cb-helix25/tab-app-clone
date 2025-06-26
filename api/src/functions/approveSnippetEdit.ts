@@ -10,12 +10,12 @@ export async function approveSnippetEditHandler(req: HttpRequest, context: Invoc
     }
 
     const baseUrl =
-        process.env.SNIPPET_APPROVE_BASE_URL ||
-        "https://instructions-vnet-functions.azurewebsites.net/api/approveSnippetEdit";
+        process.env.ACTION_SNIPPET_BASE_URL ||
+        "https://instructions-vnet-functions.azurewebsites.net/api/actionSnippet";
 
-    let code = process.env.SNIPPET_APPROVE_CODE;
+    let code = process.env.ACTION_SNIPPET_CODE;
     if (!code) {
-        const secretName = process.env.SNIPPET_APPROVE_CODE_SECRET || "approveSnippetEdit-code";
+        const secretName = process.env.ACTION_SNIPPET_CODE_SECRET || "actionSnippetFunction-code";
         const secretClient = new SecretClient("https://helix-keys.vault.azure.net/", new DefaultAzureCredential());
         try {
             const secret = await secretClient.getSecret(secretName);
@@ -39,7 +39,7 @@ export async function approveSnippetEditHandler(req: HttpRequest, context: Invoc
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ action: "approveSnippetEdit", payload: body }),
         });
         if (!response.ok) {
             const text = await response.text();

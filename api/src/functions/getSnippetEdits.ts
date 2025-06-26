@@ -29,7 +29,11 @@ export async function getSnippetEditsHandler(req: HttpRequest, context: Invocati
     const url = `${baseUrl}?code=${code}`;
 
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "getSnippetEdits" }),
+        });
         if (!response.ok) {
             const text = await response.text();
             context.error("Snippet edits service error:", text);
