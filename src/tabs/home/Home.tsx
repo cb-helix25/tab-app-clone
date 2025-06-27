@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useCallback,
   ReactNode,
   useRef, // ADDED
   lazy,
@@ -1682,6 +1683,8 @@ const transformedAttendanceRecords = useMemo(() => {
 const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
   setAttendanceRecords((prevRecords) => {
     const newRecords = [...prevRecords];
+    let isChanged = false; // Track if the state actually changes
+
     updatedRecords.forEach((updated) => {
       const weekKey = generateWeekKey(new Date(updated.Week_Start));
       const index = newRecords.findIndex(
@@ -1689,10 +1692,12 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
       );
       if (index !== -1) {
         // Update existing record
-        newRecords[index].weeks[weekKey] = {
-          attendance: updated.Attendance_Days,
-          confirmed: !!updated.Confirmed_At,
-        };
+        const currentRecord = newRecords[index];
+        const updatedWeek = { attendance: updated.Attendance_Days, confirmed: !!updated.Confirmed_At };
+        if (JSON.stringify(currentRecord.weeks[weekKey]) !== JSON.stringify(updatedWeek)) {
+          newRecords[index].weeks[weekKey] = updatedWeek;
+          isChanged = true;
+        }
       } else {
         // Add new record or update with new week
         const existingPersonIndex = newRecords.findIndex(
@@ -1701,32 +1706,36 @@ const handleAttendanceUpdated = (updatedRecords: AttendanceRecord[]) => {
         if (existingPersonIndex !== -1) {
           newRecords[existingPersonIndex].weeks = {
             ...newRecords[existingPersonIndex].weeks,
-            [weekKey]: {
-              attendance: updated.Attendance_Days,
-              confirmed: !!updated.Confirmed_At,
-            },
+            [weekKey]: { attendance: updated.Attendance_Days, confirmed: !!updated.Confirmed_At },
           };
+          isChanged = true;
         } else {
           newRecords.push({
             name: updated.First_Name,
             weeks: {
-              [weekKey]: {
-                attendance: updated.Attendance_Days,
-                confirmed: !!updated.Confirmed_At,
-              },
+              [weekKey]: { attendance: updated.Attendance_Days, confirmed: !!updated.Confirmed_At },
             },
           });
+          isChanged = true;
         }
       }
     });
-    // Update cache correctly
+
+    // If no changes, do not trigger setState again
+    if (!isChanged) {
+      return prevRecords;
+    }
+
+    // Update cache only if records changed
     cachedAttendance = {
       attendance: newRecords,
       team: cachedAttendance?.team || attendanceTeam, // Preserve team data
     };
+
     return newRecords;
   });
 };
+
 
 // Decide which week we consider "the relevant week"
   const relevantWeekKey = isThursdayAfterMidday ? nextKey : currentKey;
@@ -2318,34 +2327,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   // Build immediate actions list
   // Ensure every action has an icon (never undefined)
   type Action = { title: string; onClick: () => void; icon: string };
-  let immediateActionsList: Action[] = [];
-  if (!isLoadingAttendance && !currentUserConfirmed) {
-    immediateActionsList.push({
-      title: 'Confirm Attendance',
-      icon: 'Cancel',
-      onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
-    });
-  }
-  if (instructionData.length > 0) {
-    immediateActionsList.push({
-      title: 'Review Instructions',
-      icon: 'OpenFile',
-      onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
-    });
-  }
-  // Map immediateALActions to always have an icon (fallback to empty string if missing)
-  immediateActionsList = immediateActionsList.concat(
-    immediateALActions.map(a => ({
-      ...a,
-      icon: a.icon || ''
-    }))
-  );
-  // Sort immediate actions by the predefined order.
-  immediateActionsList.sort(
-    (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-  );
-
-  function handleActionClick(action: { title: string; icon: string }) {
+  const handleActionClick = useCallback((action: { title: string; icon: string }) => {
     let content: React.ReactNode = <div>No form available.</div>;
     const titleText = action.title;
   
@@ -2426,29 +2408,68 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     setBespokePanelContent(content);
     setBespokePanelTitle(titleText);
     setIsBespokePanelOpen(true);
-  }
+  }, [
+    attendanceRef,
+    instructionData,
+    futureLeaveRecords,
+    transformedTeamData,
+    userData,
+    annualLeaveTotals,
+    bankHolidays,
+    annualLeaveAllData,
+    futureBookings,
+  ]);
 
-  let normalQuickActions = quickActions
-  .filter((action) => {
-    if (action.title === 'Confirm Attendance') {
-      return currentUserConfirmed;
+  const immediateActionsList: Action[] = useMemo(() => {
+    const actions: Action[] = [];
+    if (!isLoadingAttendance && !currentUserConfirmed) {
+      actions.push({
+        title: 'Confirm Attendance',
+        icon: 'Cancel',
+        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
+      });
     }
-    // Always show "Request Annual Leave"
-    if (action.title === 'Request Annual Leave') {
-      return true;
+    if (instructionData.length > 0) {
+      actions.push({
+        title: 'Review Instructions',
+        icon: 'OpenFile',
+        onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
+      });
     }
-    return true;
-  })
-  .map((action) => {
-    if (action.title === 'Confirm Attendance') {
-      return { ...action, title: 'Update Attendance' };
-    }
-    return action;
-  });
-  // Sort normal actions by order.
-  normalQuickActions.sort(
-    (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-  );
+    actions.push(
+      ...immediateALActions.map(a => ({
+        ...a,
+        icon: a.icon || '',
+      }))
+    );
+    actions.sort(
+      (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+    );
+    return actions;
+  }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
+
+  const normalQuickActions = useMemo(() => {
+    const actions = quickActions
+      .filter((action) => {
+        if (action.title === 'Confirm Attendance') {
+          return currentUserConfirmed;
+        }
+        if (action.title === 'Request Annual Leave') {
+          return true;
+        }
+        return true;
+      })
+      .map((action) => {
+        if (action.title === 'Confirm Attendance') {
+          return { ...action, title: 'Update Attendance' };
+        }
+        return action;
+      });
+    actions.sort(
+      (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+    );
+    return actions;
+  }, [currentUserConfirmed]);
 
   useLayoutEffect(() => {
     setContent(
