@@ -204,21 +204,6 @@ boxShadow: isDarkMode
     [templateBlocks]
   );
 
-  const [collapsedBlocks, setCollapsedBlocks] = React.useState<{ [title: string]: boolean }>(
-    () =>
-      Object.fromEntries(
-        templateBlocks.map((block) => [
-          block.title,
-          !(
-            selectedTemplateOptions[block.title] &&
-            ((Array.isArray(selectedTemplateOptions[block.title]) &&
-              (selectedTemplateOptions[block.title] as string[]).length > 0) ||
-              (typeof selectedTemplateOptions[block.title] === 'string' &&
-                selectedTemplateOptions[block.title]))
-          ),
-        ])
-      )
-  );
 
   const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
   const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
@@ -282,41 +267,7 @@ boxShadow: isDarkMode
     }
   };
 
-  const toggleCollapse = (title: string) => {
-    setCollapsedBlocks((prev) => ({
-      ...prev,
-      [title]: !prev[title],
-    }));
-  };
-
-  const collapseAll = () => {
-    setCollapsedBlocks(
-      Object.fromEntries(templateBlocks.map((b) => [b.title, true]))
-    );
-  };
-
-  const expandAll = () => {
-    setCollapsedBlocks(
-      Object.fromEntries(templateBlocks.map((b) => [b.title, false]))
-    );
-  };
-
-  React.useEffect(() => {
-    setCollapsedBlocks(
-      Object.fromEntries(
-        templateBlocks.map((block) => [
-          block.title,
-          !(
-            selectedTemplateOptions[block.title] &&
-            ((Array.isArray(selectedTemplateOptions[block.title]) &&
-              (selectedTemplateOptions[block.title] as string[]).length > 0) ||
-              (typeof selectedTemplateOptions[block.title] === 'string' &&
-                selectedTemplateOptions[block.title]))
-          ),
-        ])
-      )
-    );
-  }, [templateBlocks]);
+  // Legacy collapse functionality removed
   
   const toolbarButtonStyle = {
     root: {
@@ -452,15 +403,6 @@ boxShadow: isDarkMode
             </Stack>
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginLeft: 'auto' } }}>
               <DefaultButton
-                text={Object.values(collapsedBlocks).every(c => c) ? 'Expand All' : 'Collapse All'}
-                iconProps={{ iconName: Object.values(collapsedBlocks).every(c => c) ? 'ChevronDown' : 'ChevronUp' }}
-                onClick={() => {
-                  const allCollapsed = Object.values(collapsedBlocks).every(c => c);
-                  allCollapsed ? expandAll() : collapseAll();
-                }}
-                styles={whiteButtonStyles}
-              />
-              <DefaultButton
                 text="Clear"
                 iconProps={{ iconName: 'Cancel' }}
                 onClick={onClearAllBlocks}
@@ -529,7 +471,6 @@ boxShadow: isDarkMode
               setInitialFocus
             >
               <Stack tokens={{ childrenGap: 4 }} styles={{ root: { padding: 12 } }}>
-                <Text variant="small">Collapse All hides block content.</Text>
                 <Text variant="small">Clear removes all inserted blocks.</Text>
               </Stack>
             </Callout>

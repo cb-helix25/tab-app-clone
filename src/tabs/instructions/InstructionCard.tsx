@@ -88,6 +88,7 @@ interface InstructionCardProps {
     onEIDCheck?: () => void;
     innerRef?: React.Ref<HTMLDivElement>;
     expanded?: boolean;
+    onToggle?: () => void;
 }
 
 const iconMap = {
@@ -112,6 +113,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     onEIDCheck,
     innerRef,
     expanded = false,
+    onToggle,
 }) => {
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
@@ -236,7 +238,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style} ref={innerRef}>
-            <header className="instruction-header" onClick={() => setCollapsed(!collapsed)}>
+            <header
+                className="instruction-header"
+                onClick={() => {
+                    setCollapsed(!collapsed);
+                    onToggle?.();
+                }}
+            >
                 {isCompleted && (
                     <span className="completion-tick visible" aria-hidden="true">
                         <svg viewBox="0 0 24 24">

@@ -16,7 +16,6 @@ import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
 import RiskComplianceCard from './RiskComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
-import InstructionOverview from './InstructionOverview';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -607,9 +606,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const ref = item.instruction?.InstructionRef;
                 const expanded = !!(ref && expandedOverviewRef === ref);
                 return (
-                  <InstructionOverview
+                  <InstructionCard
                     key={idx}
-                    instruction={item.instruction}
+                    instruction={item.instruction as any}
                     deal={(item as any).deal}
                     deals={item.deals}
                     clients={item.clients}
@@ -617,11 +616,17 @@ const Instructions: React.FC<InstructionsProps> = ({
                     eid={(item as any).eid}
                     compliance={undefined}
                     prospectId={item.prospectId}
-                    passcode={(item as any).passcode}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
                     expanded={expanded}
-                    onToggle={ref ? () => handleOpenInstruction(ref) : () => {}}
+                    onToggle={
+                      ref
+                        ? () =>
+                            setExpandedOverviewRef((curr) =>
+                              curr === ref ? null : ref
+                            )
+                        : undefined
+                    }
                     onOpenMatter={() => handleOpenMatter(item.instruction)}
                     onRiskAssessment={() => handleRiskAssessment(item.instruction)}
                     onEIDCheck={() => handleEIDCheck(item.instruction)}

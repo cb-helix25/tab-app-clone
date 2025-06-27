@@ -1,93 +1,129 @@
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index cc8011989c5d6dd60addaba2b5c7b9cd708c1b60..25d78fbdc7e54206fba425e9c77c449123541fc3 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -1,31 +1,30 @@
- // src/tabs/home/Home.tsx
- 
- import React, {
-   useState,
-   useEffect,
--  useLayoutEffect,
-   useMemo,
-   useCallback,
-   ReactNode,
-   useRef, // ADDED
-   lazy,
-   Suspense,
- } from 'react';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 3b68cfd588c212b94654f96191d8466879a506b2..173273cd544f11f087aad08266a5b762d824bd5a 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1,44 +1,43 @@
+ import React, { useEffect, useState, useMemo, useRef } from 'react';
  import {
-   mergeStyles,
-   Text,
-   Spinner,
-   SpinnerSize,
-   MessageBar,
-   MessageBarType,
-   IconButton,
    Stack,
-   DetailsList,
-   IColumn,
-   DetailsListLayoutMode,
-   Persona,
-   PersonaSize,
-   PersonaPresence,
-   DefaultButton,
-   Icon,
-   Toggle,
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index cc8011989c5d6dd60addaba2b5c7b9cd708c1b60..25d78fbdc7e54206fba425e9c77c449123541fc3 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2449,51 +2448,51 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-   }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
+   mergeStyles,
+   IconButton,
+   Pivot,
+   PivotItem,
+   Text,
+ } from '@fluentui/react';
+ import QuickActionsCard from '../home/QuickActionsCard';
+ import { useTheme } from '../../app/functionality/ThemeContext';
+ import { useNavigator } from '../../app/functionality/NavigatorContext';
+ import { colours } from '../../app/styles/colours';
+ import { dashboardTokens } from './componentTokens';
+ import InstructionCard from './InstructionCard';
+ import DealCard from './DealCard';
+ import RiskComplianceCard from './RiskComplianceCard';
+ import JointClientCard, { ClientInfo } from './JointClientCard';
+-import InstructionOverview from './InstructionOverview';
+ import type { DealSummary } from './JointClientCard';
+ import { InstructionData, POID, TeamData } from '../../app/functionality/types';
+ import localInstructionData from '../../localData/localInstructionData.json';
+ import NewMatters from './NewMatters';
+ import RiskAssessmentPage from './RiskAssessmentPage';
  
-   const normalQuickActions = useMemo(() => {
-     const actions = quickActions
-       .filter((action) => {
-         if (action.title === 'Confirm Attendance') {
-           return currentUserConfirmed;
-         }
-         if (action.title === 'Request Annual Leave') {
-           return true;
-         }
-         return true;
-       })
-       .map((action) => {
-         if (action.title === 'Confirm Attendance') {
-           return { ...action, title: 'Update Attendance' };
-         }
-         return action;
-       });
-     actions.sort(
-       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+ }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 3b68cfd588c212b94654f96191d8466879a506b2..173273cd544f11f087aad08266a5b762d824bd5a 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -585,65 +584,71 @@ const Instructions: React.FC<InstructionsProps> = ({
+   }
+ 
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage onBack={function (): void {
+           throw new Error('Function not implemented.');
+         } } />
+       </Stack>
      );
-     return actions;
-   }, [currentUserConfirmed]);
+   }
  
--  useLayoutEffect(() => {
-+  useEffect(() => {
-     setContent(
-       <>
-         <QuickActionsBar
-           isDarkMode={isDarkMode}
-           quickActions={normalQuickActions}
-           handleActionClick={handleActionClick}
-           currentUserConfirmed={currentUserConfirmed}
-         />
-         <ImmediateActionsBar
-           isDarkMode={isDarkMode}
-           immediateActionsReady={immediateActionsReady}
-           immediateActionsList={immediateActionsList}
-         />
-       </>
-     );
-     return () => setContent(null);
-   }, [
-     setContent,
-     isDarkMode,
-     immediateActionsReady,
-     immediateActionsList,
-     normalQuickActions,
-     currentUserConfirmed,
-   ]);
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === 'overview' && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 const ref = item.instruction?.InstructionRef;
+                 const expanded = !!(ref && expandedOverviewRef === ref);
+                 return (
+-                  <InstructionOverview
++                  <InstructionCard
+                     key={idx}
+-                    instruction={item.instruction}
++                    instruction={item.instruction as any}
+                     deal={(item as any).deal}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={(item as any).risk}
+                     eid={(item as any).eid}
+                     compliance={undefined}
+                     prospectId={item.prospectId}
+-                    passcode={(item as any).passcode}
+                     documentCount={item.documentCount ?? 0}
+                     animationDelay={animationDelay}
+                     expanded={expanded}
+-                    onToggle={ref ? () => handleOpenInstruction(ref) : () => {}}
++                    onToggle={
++                      ref
++                        ? () =>
++                            setExpandedOverviewRef((curr) =>
++                              curr === ref ? null : ref
++                            )
++                        : undefined
++                    }
+                     onOpenMatter={() => handleOpenMatter(item.instruction)}
+                     onRiskAssessment={() => handleRiskAssessment(item.instruction)}
+                     onEIDCheck={() => handleEIDCheck(item.instruction)}
+                   />
  
+                 );
+               })}
+               {unlinkedDeals.map((deal, idx) => {
+                 const base = overviewItems.length + idx;
+                 const row = Math.floor(base / 2);
+                 const col = base % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <DealCard
+                     key={`unlinked-${idx}`}
+                     deal={deal}
+                     animationDelay={animationDelay}
+                   />
+                 );
+               })}
+             </div>
+           )}
+           {activePivot === 'deals' && (
+             <div className={gridContainerStyle}>
+               {deals.map((deal, idx) => {

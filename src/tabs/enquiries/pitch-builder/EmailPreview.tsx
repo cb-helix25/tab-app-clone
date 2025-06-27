@@ -154,12 +154,12 @@ function formatCurrency(val?: string): string {
       isOpen={isPreviewOpen}
       onDismiss={onDismiss}
       type={PanelType.custom}
-      customWidth="700px"
+      customWidth="600px"
       headerText="Email Preview"
       closeButtonAriaLabel="Close"
       styles={{
         main: {
-          padding: '20px',
+          padding: '12px',
           backgroundColor: colours.light.previewBackground,
           color: colours.light.text,
           display: 'flex',
@@ -168,17 +168,7 @@ function formatCurrency(val?: string): string {
         },
       }}
     >
-      <Stack tokens={{ childrenGap: 15 }} styles={{ root: { flex: 1 } }}>
-        {missingPlaceholders && missingPlaceholders.length > 0 && (
-          <MessageBar messageBarType={MessageBarType.warning}>
-            <strong>Warning:</strong> There are unfilled placeholders in your email:
-            <ul style={{ margin: '8px 0 0 18px' }}>
-              {missingPlaceholders.map((ph, i) => (
-                <li key={i}>{ph}</li>
-              ))}
-            </ul>
-          </MessageBar>
-        )}
+      <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
         <Separator />
         <Text variant="medium">
           <strong style={{ color: colours.cta }}>
@@ -253,9 +243,19 @@ function formatCurrency(val?: string): string {
           <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
             Body:
           </Text>
+          {missingPlaceholders && missingPlaceholders.length > 0 && (
+            <MessageBar
+              messageBarType={MessageBarType.warning}
+              isMultiline={false}
+              styles={{ root: { marginBottom: 6 } }}
+            >
+              <strong>Warning:</strong> Unfilled placeholders -{' '}
+              {missingPlaceholders.join(', ')}
+            </MessageBar>
+          )}
           <div
             ref={previewRef}
-            style={{ whiteSpace: 'pre-wrap', maxHeight: 350, overflowY: 'auto' }}
+            style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}
             dangerouslySetInnerHTML={{ __html: finalBody }}
           />
         </Stack>
