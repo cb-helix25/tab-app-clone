@@ -267,49 +267,35 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             </header>
             {bannerText && <div className={bannerClass}>{bannerText}</div>}
 
-            <div className="status-preview">
-                {statusData.map((stat) => (
-                    <div key={stat.key} className={`status-box ${stat.status}`}>
-                        <span className="status-label">{stat.label}</span>
-                        <span className="status-icon">
-                            {stat.status === 'complete'
-                                ? '✔'
-                                : stat.status === 'failed'
-                                    ? '✖'
-                                    : '…'}
-                        </span>
-                    </div>
-                ))}
+            <div className="interactive-status status-row">
+                {statusData.map((d, i) => {
+                    const status = (d.status ?? '').toString().toLowerCase();
+                    const value = d.value ?? null;
+                    const icon = d.status
+                        ? status === 'complete' || status === 'closed'
+                            ? <FaCheckCircle />
+                            : status === 'failed'
+                                ? <FaTimesCircle />
+                                : <FaClock />
+                        : null;
+                    return (
+                        <div
+                            key={i}
+                            className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
+                            onClick={() => setSelectedStatus(d.key)}
+                        >
+                            <span className="status-label">{d.label}</span>
+                            {icon ? (
+                                <span className={`status-value ${status}`}>{icon}</span>
+                            ) : (
+                                <span className="status-value">{value}</span>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             <div className="card-content">
-                <div className="interactive-status status-row">
-                    {statusData.map((d, i) => {
-                        const status = (d.status ?? '').toString().toLowerCase();
-                        const value = d.value ?? null;
-                        const icon = d.status
-                            ? status === 'complete' || status === 'closed'
-                                ? <FaCheckCircle />
-                                : status === 'failed'
-                                    ? <FaTimesCircle />
-                                    : <FaClock />
-                            : null;
-                        return (
-                            <div
-                                key={i}
-                                className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
-                                onClick={() => setSelectedStatus(d.key)}
-                            >
-                                <span className="status-label">{d.label}</span>
-                                {icon ? (
-                                    <span className={`status-value ${status}`}>{icon}</span>
-                                ) : (
-                                    <span className="status-value">{value}</span>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
                 <div className="instruction-details">
                     {selectedStatus === 'deal' && (
                         <div className="detail-group open">

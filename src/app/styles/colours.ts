@@ -13,6 +13,7 @@ export const colours = {
   inactiveTrackLight: '#CCCCCC',
   highlightYellow: '#ffefc1',
   highlightBlue: '#d6e8ff',
+  highlightNeutral: '#e1e1e1',
 
   dark: {
     background: '#1e1e1e',

@@ -19,7 +19,7 @@ import JointClientCard, { ClientInfo } from './JointClientCard';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
-import NewMatters from './NewMatters';
+import FlatMatterOpening from './MatterOpening/FlatMatterOpening';
 import RiskAssessmentPage from './RiskAssessmentPage';
 
 interface InstructionsProps {
@@ -519,7 +519,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-        <NewMatters
+        <FlatMatterOpening
           poidData={poidData}
           setPoidData={setPoidData}
           teamData={teamData}

@@ -2,9 +2,11 @@
   {
     "First": "Lukasz",
     "Last": "Zemanek",
-    "FullName": "Lukasz Zemanek",
+    "Full Name": "Lukasz Zemanek",
     "Nickname": "Luke",
     "Initials": "LZ",
-    "Email": "lz@helix-law.com"
+    "Email": "lz@helix-law.com",
+    "Role": "Non-solicitor",
+    "Rate": 1000.0
   }
 ]

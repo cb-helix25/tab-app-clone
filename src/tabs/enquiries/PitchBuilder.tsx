@@ -542,6 +542,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           bg = lockedBg;
         } else if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
           bg = blueBg;
+        } else if (autoInsertedBlocks[blockTitle]) {
+          bg = colours.highlightNeutral;
         } else {
           bg = colours.highlightYellow;
         }
@@ -568,7 +570,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       span.querySelectorAll('div[data-snippet]').forEach((snip) => {
         if (!(snip instanceof HTMLElement)) return;
         const label = snip.getAttribute('data-snippet') || '';
-        let bg = colours.highlightYellow;
+        let bg = autoInsertedBlocks[blockTitle]
+          ? colours.highlightNeutral
+          : colours.highlightYellow;
         if (lockedBlocks[blockTitle]) {
           bg = lockedBg;
         } else if (editedSnippets[blockTitle]?.[label]) {
@@ -580,7 +584,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       // now lockedBg is in scope here
       span.style.backgroundColor = lockedBlocks[blockTitle]
         ? lockedBg
-        : colours.highlightYellow;
+        : autoInsertedBlocks[blockTitle]
+          ? colours.highlightNeutral
+          : colours.highlightYellow;
     });
 
     const block = templateBlocks.find((b) => b.title === blockTitle);
@@ -1209,7 +1215,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           ? lockedBg
           : changed
             ? colours.highlightBlue
-            : colours.highlightYellow;
+            : autoInsertedBlocks[title]
+              ? colours.highlightNeutral
+              : colours.highlightYellow;
       });
 
       const headerElement = document.getElementById(
@@ -1222,7 +1230,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         } else if (Object.values(updatedSnippets[title] || {}).some(Boolean)) {
           bg = colours.highlightBlue;
         } else if (insertedBlocks[title]) {
-          bg = colours.highlightYellow;
+          bg = autoInsertedBlocks[title]
+            ? colours.highlightNeutral
+            : colours.highlightYellow;
         }
         headerElement.style.backgroundColor = bg;
       }

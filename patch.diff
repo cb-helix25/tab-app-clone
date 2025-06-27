@@ -1,105 +1,174 @@
-diff --git a/src/tabs/enquiries/pitch-builder/emailUtils.ts b/src/tabs/enquiries/pitch-builder/emailUtils.ts
-index 928ef28154f47c332fddc3a8cffb1afac6214268..d7b4bbaecdd96d8050db5658bbe1c24c9f733095 100644
---- a/src/tabs/enquiries/pitch-builder/emailUtils.ts
-+++ b/src/tabs/enquiries/pitch-builder/emailUtils.ts
-@@ -68,75 +68,98 @@ export function markUnfilledPlaceholders(
-   text: string,
-   blocks: TemplateBlock[] = templateBlocks
- ): string {
-   const placeholders = getLeftoverPlaceholders(blocks);
-   let marked = text;
-   placeholders.forEach((placeholder) => {
-     const regex = new RegExp(escapeRegExp(placeholder), 'g');
-     marked = marked.replace(
-       regex,
-       `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
+diff --git a/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx b/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
+index 2b1c815f8a372f4d53b3c3ccf88c510370d83c4d..1902b812e30e14e85ff6079592114e4c280367a7 100644
+--- a/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
++++ b/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
+@@ -1,30 +1,28 @@
+ import React, { useMemo, useState, useRef } from 'react';
+ import { Stack } from '@fluentui/react';
+-import StepHeader from '../StepHeader';
+ import StepProgress from '../StepProgress';
+-import StepOverview from '../StepOverview';
+ import { POID, TeamData } from '../../../app/functionality/types';
+ import ClientDetails from '../ClientDetails';
+ import ClientHub from '../ClientHub';
+ import { colours } from '../../../app/styles/colours';
+ 
+ // Import step components
+ import ClientInfoStep from './ClientInfoStep';
+ import PoidSelectionStep from './PoidSelectionStep';
+ import AreaOfWorkStep from './AreaOfWorkStep';
+ import PracticeAreaStep from './PracticeAreaStep';
+ import DescriptionStep from './DescriptionStep';
+ import FolderStructureStep from './FolderStructureStep';
+ import DisputeValueStep from './DisputeValueStep';
+ import SourceStep from './SourceStep';
+ import OpponentDetailsStep from './OpponentDetailsStep';
+ import ReviewStep from './ReviewStep';
+ import { CompletionProvider } from './CompletionContext';
+ 
+ const practiceAreasByArea: { [key: string]: string[] } = {
+     Commercial: [
+         'Commercial',
+         'Director Rights & Dispute Advice',
+         'Shareholder Rights & Dispute Advice',
+         'Civil/Commercial Fraud Advice',
+         'Partnership Advice',
+diff --git a/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx b/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
+index 2b1c815f8a372f4d53b3c3ccf88c510370d83c4d..1902b812e30e14e85ff6079592114e4c280367a7 100644
+--- a/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
++++ b/src/tabs/instructions/MatterOpening/MatterOpeningFlow.tsx
+@@ -412,127 +410,59 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
+                         referrerName={referrerName}
+                         opponentName={opponentName}
+                         opponentEmail={opponentEmail}
+                         opponentSolicitorName={opponentSolicitorName}
+                         opponentSolicitorCompany={opponentSolicitorCompany}
+                         opponentSolicitorEmail={opponentSolicitorEmail}
+                         noConflict={noConflict}
+                         onBuild={() => { }}
+                     />
+                 );
+             default:
+                 return null;
+         }
+     };
+ 
+     const stepProgressSteps = useMemo(
+         () =>
+             stepsOrder.map((key) => ({
+                 key,
+                 label: stepTitles[key],
+                 title: stepTitles[key],
+             })),
+         [stepsOrder]
      );
-   });
-   return marked;
- }
  
- /**
-  * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
-  * so final email doesn't have bright highlighting.
-  */
- export function removeHighlightSpans(html: string): string {
-   const tempDiv = document.createElement('div');
-   tempDiv.innerHTML = html;
+-    const stepDetails = useMemo(() => ({
+-        clientInfo: (
+-            <div>
+-                <div>Date: {selectedDate ? selectedDate.toLocaleDateString() : '-'}</div>
+-                <div>Supervising: {supervisingPartner || '-'}</div>
+-                <div>Originating: {originatingSolicitor || '-'}</div>
+-                <div>Funds: {fundsReceived || '-'}</div>
+-            </div>
+-        ),
+-        poidSelection: <div>IDs: {selectedPoidIds.join(', ') || '-'}</div>,
+-        areaOfWork: <div>{areaOfWork || '-'}</div>,
+-        practiceArea: <div>{practiceArea || '-'}</div>,
+-        description: <div>{description || '-'}</div>,
+-        folderStructure: <div>{folderStructure || '-'}</div>,
+-        disputeValue: <div>{disputeValue || '-'}</div>,
+-        source: (
+-            <div>
+-                {source || '-'}
+-                {source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+-            </div>
+-        ),
+-        opponentDetails: (
+-            <div>
+-                <div>Opponent: {opponentName || '-'}</div>
+-                <div>Solicitor: {opponentSolicitorName || '-'}</div>
+-            </div>
+-        ),
+-        review: null,
+-    }), [
+-        selectedDate,
+-        supervisingPartner,
+-        originatingSolicitor,
+-        fundsReceived,
+-        selectedPoidIds,
+-        areaOfWork,
+-        practiceArea,
+-        description,
+-        folderStructure,
+-        disputeValue,
+-        source,
+-        referrerName,
+-        opponentName,
+-        opponentSolicitorName,
+-    ]);
  
-   // Elements that should be fully removed
-   const removeSelectors =
--    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble';
-+    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
-   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
+     return (
+         <CompletionProvider>
+             <Stack className="workflow-container">
+                 {!hideClientSections && (
+                     <>
+                         <ClientDetails stage={stage} instructionRef={instructionRef} />
+                         <ClientHub
+                             instructionRef={instructionRef}
+                             clientId={clientId}
+                             feeEarner={feeEarner}
+                             idExpiry={idExpiry}
+                             idVerified={false}
+                             matterRef={matterRef}
+                         />
+                     </>
+                 )}
+                 <div className="workflow-main">
+                     <StepProgress steps={stepProgressSteps} current={currentStep} />
+-                    <div className="steps-column">
+-                        {stepsOrder.map((stepKey, idx) => {
+-                            const open = stepKey === currentStep;
+-                            const locked = stepsOrder.indexOf(currentStep) < idx && !isStepComplete(stepKey);
+-                            return (
+-                                <div key={stepKey} className={`step-section${open ? ' active' : ''}`}>
+-                                    <StepHeader
+-                                        step={idx + 1}
+-                                        title={stepTitles[stepKey]}
+-                                        complete={isStepComplete(stepKey)}
+-                                        open={open}
+-                                        hideToggle
+-                                        onToggle={() => setCurrentStep(stepKey)}
+-                                        locked={idx > stepsOrder.indexOf(currentStep)}
+-                                    />
+-                                    <div className="step-content">
+-                                        {open && renderStepContent(stepKey)}
+-                                    </div>
+-                                    {!open && (
+-                                        <div className="step-summary">{stepDetails[stepKey]}</div>
+-                                    )}
+-                                </div>
+-                            );
+-                        })}
++                    <div className="single-step">
++                        {renderStepContent(currentStep)}
++                        <div className="nav-buttons">
++                            {stepsOrder.indexOf(currentStep) > 0 && (
++                                <button type="button" className="btn secondary" onClick={() => setCurrentStep(stepsOrder[stepsOrder.indexOf(currentStep) - 1])}>Back</button>
++                            )}
++                        </div>
+                     </div>
+-                    <StepOverview
+-                        steps={stepProgressSteps}
+-                        current={currentStep}
+-                        isStepComplete={isStepComplete}
+-                        details={stepDetails as any}
+-                        onStepClick={(k: StepKey) => setCurrentStep(k)}
+-                    />
+                 </div>
+             </Stack>
+         </CompletionProvider>
+     );
+ };
  
-   // Unwrap any remaining placeholder containers but keep their content
-   tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
-     const parent = el.parentNode;
-     if (!parent) return;
-     while (el.firstChild) parent.insertBefore(el.firstChild, el);
-     parent.removeChild(el);
-   });
- 
-   // Remove highlight attributes/classes but keep user content
-   const cleanupSelectors =
--    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], .insert-placeholder, .block-main';
-+    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], [data-snippet], [data-block-title], .insert-placeholder, .block-main, .block-container';
-   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
-     el.removeAttribute('data-placeholder');
-     el.removeAttribute('data-inserted');
-     el.removeAttribute('data-link');
-     el.removeAttribute('data-sentence');
-     el.removeAttribute('data-insert');
-+    el.removeAttribute('data-snippet');
-+    el.removeAttribute('data-block-title');
-     el.removeAttribute('style');
-     el.removeAttribute('contenteditable');
-     if ((el as HTMLElement).classList.contains('block-main')) {
-       (el as HTMLElement).classList.remove('block-main');
-     }
-+    if ((el as HTMLElement).classList.contains('block-container')) {
-+      (el as HTMLElement).classList.remove('block-container');
-+    }
-+    if ((el as HTMLElement).classList.contains('insert-placeholder')) {
-+      (el as HTMLElement).classList.remove('insert-placeholder');
-+    }
-+  });
-+
-+  // Unwrap containers that are purely structural
-+  tempDiv.querySelectorAll('[data-block-title]').forEach((el) => {
-+    const parent = el.parentNode;
-+    if (!parent) return;
-+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
-+    parent.removeChild(el);
-+  });
-+
-+  tempDiv.querySelectorAll('.block-main, .block-container').forEach((el) => {
-+    const parent = el.parentNode;
-+    if (!parent) return;
-+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
-+    parent.removeChild(el);
-   });
- 
-   // Remove label helpers
-   tempDiv
-     .querySelectorAll('.block-label, .block-label-display')
-     .forEach((el) => el.remove());
- 
-   return tempDiv.innerHTML;
- }
- 
- /**
-  * When we insert multiline text from the TemplateBlocks, we turn raw newlines into <br />.
-  */
- export function cleanTemplateString(template: string): string {
-   // Trim the entire string to remove leading/trailing whitespace and newlines
-   const trimmedTemplate = template.trim();
-   return trimmedTemplate
-     .split('\n')
-     .map(line => line.trim())
-     .join('<br />')
-     .replace(/(<br \/>)+$/, '');
- }
- 
- /**
-  * Wrap all [INSERT ...] placeholders in a span so we can detect them easily.
+ export default MatterOpeningFlow;

@@ -24,19 +24,6 @@
     margin-bottom: 8px;
 }
 
-.status-preview {
-    display: flex;
-    gap: 4px;
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-}
-
-.instructionCard.collapsed .status-preview {
-    max-height: 60px;
-    opacity: 1;
-}
 
 .status-box {
     flex: 1 1 0;
