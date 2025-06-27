@@ -92,8 +92,8 @@
 
 /* Highlight the currently open section */
 .overview-section.active .step-marker {
-    border: 2px solid var(--helix-highlight);
-    background: #fff;
+    border: none;
+        background: rgba(54, 144, 206, 0.1);
     color: var(--helix-highlight);
 }
 

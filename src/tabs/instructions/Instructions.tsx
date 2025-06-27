@@ -480,6 +480,61 @@ const Instructions: React.FC<InstructionsProps> = ({
     [instructionData]
   );
 
+  const idVerificationOptions = useMemo(() => {
+    const seen = new Set<number>();
+    return instructionData.flatMap((p) => {
+      const instructions = p.instructions ?? [];
+      const all: any[] = [
+        ...(p.electronicIDChecks ?? []),
+        ...(p.idVerifications ?? []),
+      ];
+      instructions.forEach((inst: any) => {
+        all.push(...(inst.electronicIDChecks ?? []));
+        all.push(...(inst.idVerifications ?? []));
+      });
+      return all.flatMap((v) => {
+        if (!v || seen.has(v.InternalId)) return [];
+        seen.add(v.InternalId);
+        const instRef = v.InstructionRef ?? v.MatterId;
+        const inst = instructions.find((i: any) => i.InstructionRef === instRef);
+        const merged: any = { ...v };
+        delete merged.EIDRawResponse;
+        return [
+          {
+            poid_id: String(v.InternalId ?? ''),
+            prefix: inst?.Title,
+            first: inst?.FirstName,
+            last: inst?.LastName,
+            company_name: inst?.CompanyName,
+            nationality: inst?.Nationality,
+            nationality_iso: inst?.NationalityAlpha2,
+            date_of_birth: inst?.DOB,
+            best_number: inst?.Phone,
+            email: inst?.Email,
+            passport_number: inst?.PassportNumber,
+            drivers_license_number: inst?.DriversLicenseNumber,
+            house_building_number: inst?.HouseNumber,
+            street: inst?.Street,
+            city: inst?.City,
+            county: inst?.County,
+            post_code: inst?.Postcode,
+            country: inst?.Country,
+            country_code: inst?.CountryCode,
+            company_number: inst?.CompanyNumber,
+            company_house_building_number: inst?.CompanyHouseNumber,
+            company_street: inst?.CompanyStreet,
+            company_city: inst?.CompanyCity,
+            company_county: inst?.CompanyCounty,
+            company_post_code: inst?.CompanyPostcode,
+            company_country: inst?.CompanyCountry,
+            company_country_code: inst?.CompanyCountryCode,
+            ...merged,
+          },
+        ];
+      });
+    });
+  }, [instructionData]);
+
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
     setNewMatterClientType(inst?.ClientType || 'Individual');
@@ -524,7 +579,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
-          poidData={poidData}
+          poidData={selectedInstruction ? poidData : idVerificationOptions}
           setPoidData={setPoidData}
           teamData={teamData}
           instructionRef={selectedInstruction?.InstructionRef}

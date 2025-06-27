@@ -78,7 +78,6 @@ const practiceAreasByArea: { [key: string]: string[] } = {
     ],
 };
 
-const partnerOptions = ['Alex', 'Jonathan', 'Luke', 'Kanchel'];
 
 const getGroupColor = (group: string): string => {
     switch (group) {
@@ -127,6 +126,17 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, []);
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const defaultPartnerOptions = ['Alex', 'Jonathan', 'Brendan', 'Laura', 'Sam'];
+    const partnerOptions = useMemo(() => {
+        if (teamData) {
+            const names = teamData
+                .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
+                .map((t) => t.Nickname || t.First || '')
+                .filter(Boolean);
+            return names.length ? names : defaultPartnerOptions;
+        }
+        return defaultPartnerOptions;
+    }, [teamData]);
     const [supervisingPartner, setSupervisingPartner] = useState('');
     const [originatingSolicitor, setOriginatingSolicitor] = useState('');
     const [fundsReceived, setFundsReceived] = useState('');
@@ -224,6 +234,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             partnerOptions={partnerOptions}
                             onContinue={() => { }}
                         />
+                        <div className="form-separator" />
                         <PoidSelectionStep
                             poidData={poidData}
                             teamData={teamData}
@@ -236,33 +247,39 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             handlePoidClick={handlePoidClick}
                             onConfirm={() => { }}
                         />
+                        <div className="form-separator" />
                         <AreaOfWorkStep
                             areaOfWork={areaOfWork}
                             setAreaOfWork={setAreaOfWork}
                             onContinue={() => { }}
                             getGroupColor={getGroupColor}
                         />
+                        <div className="form-separator" />
                         <PracticeAreaStep
                             options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                             practiceArea={practiceArea}
                             setPracticeArea={setPracticeArea}
                             onContinue={() => { } } groupColor={''}                        />
+                        <div className="form-separator" />
                         <DescriptionStep
                             description={description}
                             setDescription={setDescription}
                             onContinue={() => { }}
                         />
+                        <div className="form-separator" />
                         <FolderStructureStep
                             folderStructure={folderStructure}
                             setFolderStructure={setFolderStructure}
                             onContinue={() => { }}
                             folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
                         />
+                        <div className="form-separator" />
                         <DisputeValueStep
                             disputeValue={disputeValue}
                             setDisputeValue={setDisputeValue}
                             onContinue={() => { }}
                         />
+                        <div className="form-separator" />
                         <SourceStep
                             source={source}
                             setSource={setSource}
@@ -270,6 +287,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             setReferrerName={setReferrerName}
                             onContinue={() => { }}
                         />
+                        <div className="form-separator" />
                         <OpponentDetailsStep
                             opponentName={opponentName}
                             setOpponentName={setOpponentName}
@@ -285,6 +303,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             setNoConflict={setNoConflict}
                             onContinue={() => { }}
                         />
+                        <div className="form-separator" />
                         <ReviewStep
                             selectedDate={selectedDate}
                             supervisingPartner={supervisingPartner}

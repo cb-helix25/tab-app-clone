@@ -13,7 +13,7 @@
     overflow: hidden;
     border-radius: 0;
     break-inside: avoid;
-    transition: margin-bottom 0.4s ease;
+    transition: margin-bottom 0.4s linear;
     }
     
     .instructionCard.collapsed {
@@ -138,9 +138,9 @@
         opacity: 0;
         transform: scaleY(0.98);
         transition:
-            opacity 0.3s ease,
-            max-height 0.3s ease,
-            transform 0.3s ease;
+            opacity 0.3s linear,
+            max-height 0.3s linear,
+            transform 0.3s linear;
     }
     
         .detail-group.open .detail-list,
@@ -341,7 +341,7 @@
 
 .card-content {
     overflow: hidden;
-    transition: max-height 0.4s ease-in-out;
+    transition: max-height 0.4s linear;
     max-height: 1000px;
 }
 

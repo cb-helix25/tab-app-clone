@@ -34,41 +34,43 @@
 }
 
 .quickActionCard:hover {
-  background-color: var(--card-hover, #f4f4f6);
-  transform: scale(1.05);
-}
-
-.quickActionCard:hover .icon-outline {
-  opacity: 0;
-}
-
-.quickActionCard:hover .icon-filled {
-  opacity: 1;
-  color: var(--helix-cta, #D65541);
-  transform: translate(-50%, -50%) scale(1.15);
-}
-
-.quickActionCard:active {
-  transform: scale(0.97);
-  background-color: transparent !important;
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
-  border-radius: 0 !important;
-}
-
-.quickActionCard:active .icon-filled,
-.quickActionCard:active .ms-Text {
-  opacity: 1;
-  color: var(--helix-highlight) !important;
-}
-
-.quickActionCard:focus {
-  outline: 2px solid var(--helix-highlight, #3690CE);
-  outline-offset: 2px;
-}
-
-.quickActionCard.selected {
-  background-color: var(--card-selected, var(--card-hover, #f4f4f6));
-  border-color: var(--helix-highlight, #3690CE);
+  background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
+  }
+  
+  .quickActionCard:hover .icon-outline {
+    opacity: 0;
+  }
+  
+  .quickActionCard:hover .icon-filled {
+    opacity: 1;
+    color: var(--helix-cta, #D65541);
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  
+  .quickActionCard:active {
+    transform: scale(0.97);
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 0 !important;
+  }
+  
+  .quickActionCard:active .icon-filled,
+  .quickActionCard:active .ms-Text {
+    opacity: 1;
+    color: var(--helix-highlight) !important;
+  }
+  
+  
+  /* Remove default outline to match tab styling */
+  .quickActionCard:focus {
+    outline: none;
+  }
+  
+  .quickActionCard.selected {
+    color: var(--helix-highlight, #3690CE);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
   }
   
   .quickActionCard.vertical {

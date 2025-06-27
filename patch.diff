@@ -1,152 +1,99 @@
-diff --git a/src/app/styles/InstructionCard.css b/src/app/styles/InstructionCard.css
-index 2e34eb9aa7eb9aee29475054694fe75eaf32d935..89ce296640090e86bcb4ecd3e2bd2d8e30e64db6 100644
---- a/src/app/styles/InstructionCard.css
-+++ b/src/app/styles/InstructionCard.css
-@@ -1,87 +1,87 @@
- .instructionCard {
-     position: relative;
-     padding: 12px 16px 40px 20px;
-     /* bottom space for tabs */
-     display: flex;
-     flex-direction: column;
-     gap: 8px;
-     width: 100%;
-     margin-bottom: 24px;
-     opacity: 0;
--    animation: dropIn 0.3s ease forwards;
-+    animation: dropIn 0.2s ease-out forwards;
-     animation-delay: var(--animation-delay, 0s);
-     overflow: hidden;
-     border-radius: 0;
-     break-inside: avoid;
--    transition: margin-bottom 0.4s ease;
-+    transition: margin-bottom 0.2s ease-out;
-     }
-     
-     .instructionCard.collapsed {
-         margin-bottom: 8px;
+diff --git a/src/app/styles/QuickActionsCard.css b/src/app/styles/QuickActionsCard.css
+index 6659366eb05c763fa5d6e714f72a553b5721d07c..c20db427514d6335ee7072634510f45afe61f3b3 100644
+--- a/src/app/styles/QuickActionsCard.css
++++ b/src/app/styles/QuickActionsCard.css
+@@ -12,84 +12,86 @@
+ 
+ .quickActionCard .icon-wrapper {
+   position: relative;
+   display: inline-flex;
+   width: 24px;
+   justify-content: center;
+   align-items: center;
+   flex-shrink: 0;
  }
  
- .instructionCard.collapsed {
-     margin-bottom: 8px;
+ .quickActionCard .icon-outline,
+ .quickActionCard .icon-filled {
+   position: absolute;
+   left: 50%;
+   top: 50%;
+   transform: translate(-50%, -50%);
+   display: inline-flex;
+   transition: opacity 0.35s ease, transform 0.35s ease;
  }
  
+ .quickActionCard .icon-filled {
+   opacity: 0;
+ }
  
- .status-box {
-     flex: 1 1 0;
-     padding: 6px;
-     text-align: center;
-     border: 1px solid #e1dfdd;
-     border-radius: 4px;
-     background: #fff;
-     font-size: 0.75rem;
-     display: flex;
+ .quickActionCard:hover {
+-  background-color: var(--card-hover, #f4f4f6);
++  background-color: rgba(255, 255, 255, 0.1);
+   transform: scale(1.05);
+ }
+ 
+ .quickActionCard:hover .icon-outline {
+   opacity: 0;
+ }
+ 
+ .quickActionCard:hover .icon-filled {
+   opacity: 1;
+   color: var(--helix-cta, #D65541);
+   transform: translate(-50%, -50%) scale(1.15);
+ }
+ 
+ .quickActionCard:active {
+   transform: scale(0.97);
+-  background-color: transparent !important;
+-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
++  background-color: rgba(0, 0, 0, 0.2) !important;
++  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+   border-radius: 0 !important;
+ }
+ 
+ .quickActionCard:active .icon-filled,
+ .quickActionCard:active .ms-Text {
+   opacity: 1;
+   color: var(--helix-highlight) !important;
+ }
+ 
++
++/* Remove default outline to match tab styling */
+ .quickActionCard:focus {
+-  outline: 2px solid var(--helix-highlight, #3690CE);
+-  outline-offset: 2px;
++  outline: none;
+ }
+ 
+ .quickActionCard.selected {
+-  background-color: var(--card-selected, var(--card-hover, #f4f4f6));
+-  border-color: var(--helix-highlight, #3690CE);
+-  }
++  color: var(--helix-highlight, #3690CE);
++  background-color: rgba(255, 255, 255, 0.1);
++  border: none;
++}
+   
+   .quickActionCard.vertical {
      flex-direction: column;
-     align-items: center;
      justify-content: center;
- }
- 
- .instruction-header {
-     background-color: #061733;
-     color: #ffffff;
-     padding: 12px 12px;
-     font-size: 16px;
-     font-weight: 600;
-     margin: -12px -16px 8px -20px;
-     display: flex;
-         align-items: center;
-         justify-content: space-between;
-         cursor: pointer;
-     }
-     
-     .header-title {
-         display: flex;
-         align-items: center;
-         gap: 4px;
-     }
-     
-     .chevron-icon {
--        transition: transform 0.3s ease;
-+        transition: transform 0.2s ease-out;
-     }
-     
-     .instructionCard.collapsed .chevron-icon {
-         transform: rotate(180deg);
- }
- 
- .instruction-details {
-     display: flex;
-     flex-direction: column;
-     gap: 2px;
-     flex: 1 1 auto;
-     border-bottom-left-radius: 0;
-     border-bottom-right-radius: 0;
-     overflow: hidden;
-     margin-bottom: 16px;
- }
- 
- .detail-group {
-     border: 1px solid #e1dfdd;
-     border-radius: 4px;
-     background-color: #fff;
+     align-items: center;
+     line-height: normal;
+     padding: 8px 12px;
+   }
+   
+   .quickActionCard.vertical .icon-wrapper {
      margin-bottom: 4px;
-     padding: 0;
-     /* <- DO NOT add padding here */ }
- 
-diff --git a/src/app/styles/InstructionCard.css b/src/app/styles/InstructionCard.css
-index 2e34eb9aa7eb9aee29475054694fe75eaf32d935..89ce296640090e86bcb4ecd3e2bd2d8e30e64db6 100644
---- a/src/app/styles/InstructionCard.css
-+++ b/src/app/styles/InstructionCard.css
-@@ -319,51 +319,51 @@
  }
  
- .completion-tick {
-     margin-right: 4px;
-     width: 16px;
-     height: 16px;
-     display: inline-flex;
-     align-items: center;
-     justify-content: center;
-     border-radius: 50%;
-     background: #fff;
-     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-     color: #20b26c;
-     opacity: 0;
-     transform: scale(0);
+ .quickActionCard:active .icon-outline {
+   opacity: 0;
  }
  
- .completion-tick.visible {
-     opacity: 1;
-     transform: scale(1);
-     animation: tickPop 0.3s ease;
+ .quickActionCard:active .icon-filled {
+   opacity: 1;
+   color: var(--helix-cta, #D65541);
  }
  
- .card-content {
-     overflow: hidden;
--    transition: max-height 0.4s ease-in-out;
-+    transition: max-height 0.2s ease-out;
-     max-height: 1000px;
- }
- 
- .instructionCard.collapsed .card-content {
-     max-height: 0;
- }
- 
- @keyframes tickPop {
-     from {
-         opacity: 0;
-         transform: scale(0);
-     }
- 
-     to {
-         opacity: 1;
-         transform: scale(1);
-     }
- }
- 
- /* interactive status row inside expanded cards */
- .interactive-status {
-     display: flex;
-     flex-wrap: wrap;
-     gap: 6px;
-     margin-bottom: 8px;
+ /* subtlePulse keyframes moved to animations.css */

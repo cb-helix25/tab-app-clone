@@ -2,11 +2,26 @@
 .navigatorPivot .ms-Pivot-link {
     position: relative;
     padding: 0 12px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    border-bottom: none;
+        transition: background-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 
 .navigatorPivot .ms-Pivot-link:hover {
     background-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .navigatorPivot .ms-Pivot-link:active {
+        background-color: rgba(0, 0, 0, 0.2) !important;
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+        transform: scale(0.97);
+        color: var(--helix-highlight) !important;
+    }
+    
+    .navigatorPivot .ms-Pivot-link:active,
+    .navigatorPivot .ms-Pivot-link:focus {
+        border: none !important;
+        outline: none !important;
 }
 
 .navigatorPivot .ms-Pivot-link::before {

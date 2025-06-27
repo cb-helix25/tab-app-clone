@@ -84,6 +84,8 @@ interface EditorAndTemplateBlocksProps {
   templateSet: TemplateSet;
   onTemplateSetChange: (set: TemplateSet) => void;
   onClearAllBlocks: () => void;
+  removedBlocks: string[];
+  onAddBlock: (title: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -117,6 +119,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
     templateSet,
     onTemplateSetChange,
     onClearAllBlocks,
+    removedBlocks,
+    onAddBlock,
     showToast,
   } = props;
 
@@ -400,6 +404,14 @@ boxShadow: isDarkMode
                   onClick={() => setIsCheatSheetOpen(!isCheatSheetOpen)}
                 />
               </div>
+              {removedBlocks.length > 0 && (
+                <Dropdown
+                  placeholder="Add Block"
+                  options={removedBlocks.map(b => ({ key: b, text: b }))}
+                  styles={sharedOptionsDropdownStyles(isDarkMode)}
+                  onChange={(_e, opt) => opt && onAddBlock(opt.key as string)}
+                />
+              )}
             </Stack>
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginLeft: 'auto' } }}>
               <DefaultButton

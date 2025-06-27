@@ -166,18 +166,24 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const paymentFailed = paymentStatusRaw === 'failed';
     const documentsComplete = (documentCount ?? 0) > 0;
     const eidStatus = eid?.EIDStatus ?? '-';
+    const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
     const complianceStatus = (compliance as any)?.Status ?? '-';
     const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
-    const uniqueClients = clients ? Array.from(new Set(clients.map(c => c.ClientEmail))).length : 0;
     const leadName = instruction
         ? (instruction.FirstName || instruction.LastName)
             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
             : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
         : deal?.ServiceDescription ?? '';
 
-    const eidVerified = eidStatus.toLowerCase() === 'verified';
+    const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
     const compliancePassed = complianceStatus.toLowerCase() === 'pass';
     const verifyIdComplete = proofOfIdComplete && eidVerified && compliancePassed;
+    let idStatus = 'pending';
+    if (proofOfIdComplete) {
+        if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
+        else if (eidVerified) idStatus = 'verified';
+        else idStatus = 'review';
+    }
     const riskAssessed = Boolean(risk?.RiskAssessmentResult);
     const dealClosed = !dealOpen;
     const openMatterReady = dealClosed && paymentComplete && eidVerified && compliancePassed;
@@ -222,21 +228,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const statusData = [
         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
-        { key: 'clients', label: 'Clients', value: uniqueClients },
-        { key: 'id', label: 'ID', status: proofOfIdComplete ? 'complete' : 'pending' },
+        { key: 'id', label: 'Proof of ID', status: idStatus },
         {
             key: 'pay',
             label: 'Pay',
             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
         },
         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-        { key: 'eid', label: 'EID', status: eidStatus.toLowerCase() === 'verified' ? 'complete' : 'pending' },
-        {
-            key: 'comp',
-            label: 'Comp.',
-            status: complianceStatus.toLowerCase() === 'pass' ? 'complete' : 'pending',
-        },
-        { key: 'risk', label: 'Risk', value: risk?.RiskAssessmentResult ?? '-' },
     ];
 
     return (
@@ -273,9 +271,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             <div className="interactive-status status-row">
                 {statusData.map((d, i) => {
                     const status = (d.status ?? '').toString().toLowerCase();
-                    const value = d.value ?? null;
                     const icon = d.status
-                        ? status === 'complete' || status === 'closed'
+                        ? ['complete', 'closed', 'verified', 'approved'].includes(status)
                             ? <FaCheckCircle />
                             : status === 'failed'
                                 ? <FaTimesCircle />
@@ -291,7 +288,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             {icon ? (
                                 <span className={`status-value ${status}`}>{icon}</span>
                             ) : (
-                                <span className="status-value">{value}</span>
+                                <span className="status-value"></span>
                             )}
                         </div>
                     );
@@ -316,18 +313,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                 {deal?.Amount != null && (
                                     <li><strong>Amount:</strong> £{deal.Amount}</li>
                                 )}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'clients' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Clients</div>
-                            <ul className="detail-list">
-                                {clients && clients.map(c => (
-                                    <li key={c.ClientEmail}>
-                                        {c.ClientEmail} {c.Lead ? '(Lead)' : ''}
-                                    </li>
-                                ))}
                             </ul>
                         </div>
                     )}
@@ -392,16 +377,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <div className="detail-summary">Compliance</div>
                             <ul className="detail-list">
                                 {compliance && Object.entries(compliance).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'risk' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Risk</div>
-                            <ul className="detail-list">
-                                {risk && Object.entries(risk).map(([k,v]) => (
                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>
                                 ))}
                             </ul>

@@ -45,8 +45,8 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     });
 
     const stage = instruction?.Stage ?? 'deal pending';
-    const riskStatus = risk?.RiskAssessmentResult ?? '-';
     const eidStatus = eid?.EIDStatus ?? '-';
+    const eidResult = eid?.EIDOverallResult?.toLowerCase();
     const complianceStatus = compliance?.Status ?? '-';
 
     const proofOfIdComplete = Boolean(
@@ -58,25 +58,25 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
     const documentsComplete = documentCount > 0;
 
     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
-    const uniqueClients = Array.from(new Set(clients.map((c) => c.ClientEmail))).length;
 
     // Individual completion flags used for separate status clocks
-    const idComplete = proofOfIdComplete;
+    const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
+    const idStatus = proofOfIdComplete
+        ? (!eid || eidStatus.toLowerCase() === 'pending')
+            ? 'received'
+            : eidVerified
+                ? 'verified'
+                : 'review'
+        : 'pending';
     const payComplete = paymentComplete && !paymentFailed;
     const docsComplete = documentsComplete;
-    const eidComplete = eidStatus.toLowerCase() === 'verified';
-    const compComplete = complianceStatus.toLowerCase() === 'pass';
 
 
     const summaryData = [
         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
-        { key: 'clients', label: 'Clients', value: uniqueClients },
-        { key: 'id', label: 'ID', status: idComplete ? 'complete' : 'pending' },
+        { key: 'id', label: 'Proof of ID', status: idStatus },
         { key: 'pay', label: 'Pay', status: payComplete ? 'complete' : paymentFailed ? 'failed' : 'pending' },
         { key: 'docs', label: 'Docs', status: docsComplete ? 'complete' : 'pending' },
-        { key: 'eid', label: 'EID', status: eidComplete ? 'complete' : 'pending' },
-        { key: 'comp', label: 'Comp.', status: compComplete ? 'complete' : 'pending' },
-        { key: 'risk', label: 'Risk', value: riskStatus },
     ];
 
     const primaryDeal = deal ?? deals[0];
@@ -107,9 +107,8 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
             <div className="status-row">
                 {summaryData.map((d, i) => {
                     const status = (d.status ?? '').toString().toLowerCase();
-                    const value = d.value ?? null;
                     const icon = d.status
-                        ? status === 'complete' || status === 'closed'
+                        ? ['complete', 'closed', 'verified', 'approved'].includes(status)
                             ? <FaCheckCircle />
                             : status === 'failed'
                                 ? <FaTimesCircle />
@@ -121,7 +120,7 @@ const InstructionDashboard: React.FC<InstructionDashboardProps> = ({
                             {icon ? (
                                 <span className={`status-value ${status}`}>{icon}</span>
                             ) : (
-                                <span className="status-value">{value}</span>
+                                <span className="status-value"></span>
                             )}
                         </div>
                     );

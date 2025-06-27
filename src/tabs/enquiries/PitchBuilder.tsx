@@ -433,6 +433,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
+  const [hiddenBlocks, setHiddenBlocks] = useState<{ [key: string]: boolean }>({});
 
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
@@ -460,7 +461,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       }
     };
     loadBlocks().then((newBlocks) => {
-      const blocksToUse = newBlocks || getTemplateBlocks(newSet);
+      const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
+        b => !hiddenBlocks[b.title]
+      );
       setBody(generateInitialBody(blocksToUse));
       if (bodyEditorRef.current) {
         bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
@@ -823,10 +826,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const savedHtml = saved
       ? `<div class="option-bubble" data-block-title="${block.title}" data-option-label="__saved"><strong>Saved Snippet</strong><div class="option-preview">${saved}</div></div>`
       : '';
-    return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}</span>${options}${savedHtml}</span>`;
+    const removeBtn = `<span class="remove-block" data-block-title="${block.title}" style="margin-left:4px;cursor:pointer;">&times;</span>`;
+    return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}${removeBtn}</span>${options}${savedHtml}</span>`;
   }
 
-  const [body, setBody] = useState<string>(() => generateInitialBody(blocks));
+  const [body, setBody] = useState<string>(() =>
+    generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
+  );
 
   useEffect(() => {
     // No automatic insertion of default options
@@ -964,6 +970,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
+      const remove = (target as HTMLElement).closest('.remove-block');
+      if (remove) {
+        const blockTitle = remove.getAttribute('data-block-title');
+        if (blockTitle) hideTemplateBlock(blockTitle);
+        return;
+      }
+
       const del = (target as HTMLElement).closest('.sentence-delete');
       if (del) {
         const sentence = del.closest('[data-sentence]');
@@ -1040,7 +1053,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     };
     editor.addEventListener('click', handleClick);
     return () => editor.removeEventListener('click', handleClick);
-  }, [insertBlockOption, resetBlockOption]);
+  }, [insertBlockOption, resetBlockOption, hideTemplateBlock]);
 
   useEffect(() => {
     const editor = bodyEditorRef.current;
@@ -1815,6 +1828,38 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
   }
 
+  function hideTemplateBlock(title: string) {
+    const block = templateBlocks.find(b => b.title === title);
+    if (!block) return;
+    setHiddenBlocks(prev => ({ ...prev, [title]: true }));
+    if (bodyEditorRef.current) {
+      const span = bodyEditorRef.current.querySelector(
+        `span[data-placeholder="${escapeForSelector(block.placeholder)}"]`
+      ) as HTMLElement | null;
+      if (span) {
+        span.remove();
+        setBody(bodyEditorRef.current.innerHTML);
+      }
+    }
+  }
+
+  function addTemplateBlock(title: string) {
+    const block = templateBlocks.find(b => b.title === title);
+    if (!block) return;
+    setHiddenBlocks(prev => {
+      const copy = { ...prev };
+      delete copy[title];
+      return copy;
+    });
+    if (bodyEditorRef.current) {
+      const placeholderHTML = buildPlaceholder(block);
+      const temp = document.createElement('div');
+      temp.innerHTML = placeholderHTML;
+      bodyEditorRef.current.appendChild(temp.firstChild as Node);
+      setBody(bodyEditorRef.current.innerHTML);
+    }
+  }
+
   /**
    * When the user chooses an attachment from the list, we either insert or remove it.
    */
@@ -1878,7 +1923,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setCc('');
     setBcc('2day@followupthen.com');
     // Re-load the base template
-    const newBody = generateInitialBody(templateBlocks);
+    const newBody = generateInitialBody(
+      templateBlocks.filter(b => !hiddenBlocks[b.title])
+    );
     setBody(newBody);
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = newBody;
@@ -2892,6 +2939,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           onReorderBlocks={reorderTemplateBlocks}
           onDuplicateBlock={duplicateTemplateBlock}
           onClearAllBlocks={clearAllBlocks}
+          removedBlocks={Object.keys(hiddenBlocks)}
+          onAddBlock={addTemplateBlock}
           showToast={showToast}
         />
 

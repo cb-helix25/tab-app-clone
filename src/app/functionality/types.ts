@@ -189,6 +189,30 @@ export interface POID {
   risk_assessment_date?: string; // ISO format for date
 }
 
+export interface IDVerification {
+  InternalId: number;
+  InstructionRef?: string | null;
+  MatterId?: string | null;
+  DealJointClientId?: number | null;
+  ClientId?: number | null;
+  ProspectId?: number | null;
+  ClientEmail?: string | null;
+  IsLeadClient?: boolean;
+  AdditionalIDDate?: string | null;
+  AdditionalIDTime?: string | null;
+  EIDCheckId?: string;
+  EIDProvider?: string;
+  EIDStatus?: string;
+  EIDScore?: number | null;
+  EIDRawResponse?: string;
+  EIDCheckedDate?: string | null;
+  EIDCheckedTime?: string | null;
+  CheckExpiry?: string | null;
+  EIDOverallResult?: string | null;
+  PEPAndSanctionsCheckResult?: string | null;
+  AddressVerificationResult?: string | null;
+}
+
 // Define the structure for TeamData
 export interface TeamData {
   "Created Date"?: string;
