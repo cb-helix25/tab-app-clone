@@ -1,6 +1,6 @@
 // D:/helix projects/workspace/tab apps/helix hub v1/src/tabs/enquiries/Enquiries.tsx
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   Stack,
   Text,
@@ -511,7 +511,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedEnquiry) {
       setContent(
         <EnquiriesMenu

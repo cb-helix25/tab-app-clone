@@ -6,9 +6,9 @@ import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionDashboard.css';
 import '../../app/styles/InstructionCard.css';
-import '../../app/styles/InstructionOverviewItem.css';
+import '../../app/styles/InstructionOverview.css';
 
-interface InstructionOverviewItemProps {
+interface InstructionOverviewProps {
     instruction?: any;
     deal?: any;
     deals: any[];
@@ -27,7 +27,7 @@ interface InstructionOverviewItemProps {
     onEIDCheck?: () => void;
 }
 
-const InstructionOverviewItem: React.FC<InstructionOverviewItemProps> = ({
+const InstructionOverview: React.FC<InstructionOverviewProps> = ({
     instruction,
     deal,
     deals,
@@ -49,7 +49,7 @@ const InstructionOverviewItem: React.FC<InstructionOverviewItemProps> = ({
         '--animation-delay': `${animationDelay}s`,
     } as React.CSSProperties;
 
-    const containerClass = mergeStyles('overview-item', cardStyles.root, expanded && 'expanded', {
+    const containerClass = mergeStyles('instruction-overview', cardStyles.root, expanded && 'expanded', {
         padding: 0,
         overflow: 'hidden',
     });
@@ -105,10 +105,10 @@ const InstructionOverviewItem: React.FC<InstructionOverviewItemProps> = ({
             <button type="button" className="overview-toggle" onClick={onToggle}>
                 <div className="dashboard-header">
                     {instruction ? instruction.InstructionRef : 'Deal Pending'}
+                    {leadName && <span className="lead-client">{leadName}</span>}
                     <span className="instruction-stage">{stage}</span>
                     <FaChevronDown className="chevron" />
                 </div>
-                {leadName && <div className="lead-client">{leadName}</div>}
                 {!instruction && (prospectId || passcode) && (
                     <div className="lead-client">
                         {prospectId && <>Prospect {prospectId}</>}
@@ -161,4 +161,4 @@ const InstructionOverviewItem: React.FC<InstructionOverviewItemProps> = ({
     );
 };
 
-export default InstructionOverviewItem;
+export default InstructionOverview;

@@ -155,8 +155,44 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         }
         return value;
     };
-    const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
-    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+
+    const proofOfIdComplete = Boolean(
+        instruction.PassportNumber || instruction.DriversLicenseNumber
+    );
+    const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
+    const paymentComplete = paymentStatusRaw === 'successful';
+    const paymentFailed = paymentStatusRaw === 'failed';
+    const documentsComplete = (documentCount ?? 0) > 0;
+    const eidStatus = eid?.EIDStatus ?? '-';
+    const complianceStatus = (compliance as any)?.Status ?? '-';
+    const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
+    const uniqueClients = clients ? Array.from(new Set(clients.map(c => c.ClientEmail))).length : 0;
+    const leadName = instruction
+        ? (instruction.FirstName || instruction.LastName)
+            ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
+            : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
+        : deal?.ServiceDescription ?? '';
+
+    const eidVerified = eidStatus.toLowerCase() === 'verified';
+    const compliancePassed = complianceStatus.toLowerCase() === 'pass';
+    const verifyIdComplete = proofOfIdComplete && eidVerified && compliancePassed;
+    const riskAssessed = Boolean(risk?.RiskAssessmentResult);
+    const dealClosed = !dealOpen;
+    const openMatterReady = dealClosed && paymentComplete && eidVerified && compliancePassed;
+    const openDisabled = !openMatterReady;
+
+    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>(() => {
+        if (!verifyIdComplete) return 'eid';
+        if (!riskAssessed || !openMatterReady) return 'risk';
+        return 'matter';
+    });
+
+    useEffect(() => {
+        if (!verifyIdComplete) setActiveTab('eid');
+        else if (!riskAssessed || !openMatterReady) setActiveTab('risk');
+        else setActiveTab('matter');
+    }, [verifyIdComplete, riskAssessed, openMatterReady]);
+
     const [selectedStatus, setSelectedStatus] = useState<string>('deal');
 
     const isPoid = stage === 'poid';
@@ -178,19 +214,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         padding: componentTokens.infoBanner.padding,
         fontSize: '0.875rem',
     });
-
-
-    const proofOfIdComplete = Boolean(
-        instruction.PassportNumber || instruction.DriversLicenseNumber
-    );
-    const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
-    const paymentComplete = paymentStatusRaw === 'successful';
-    const paymentFailed = paymentStatusRaw === 'failed';
-    const documentsComplete = (documentCount ?? 0) > 0;
-    const eidStatus = eid?.EIDStatus ?? '-';
-    const complianceStatus = (compliance as any)?.Status ?? '-';
-    const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
-    const uniqueClients = clients ? Array.from(new Set(clients.map(c => c.ClientEmail))).length : 0;
 
     const statusData = [
         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
@@ -228,7 +251,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         </svg>
                     </span>
                 )}
-                <span className="header-title">{instruction.InstructionRef}</span>
+                <span className="header-title">
+                    {instruction.InstructionRef}
+                    {leadName && <span className="lead-client">{leadName}</span>}
+                </span>
                 <FaChevronDown className="chevron-icon" />
             </header>
             {bannerText && <div className={bannerClass}>{bannerText}</div>}
@@ -388,17 +414,38 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
                 <div className="bottom-tabs">
                     {[
-                        { key: 'eid', label: 'Verify ID', icon: iconMap.eid, onClick: () => { setActiveTab('eid'); onEIDCheck?.(); } },
-                        { key: 'risk', label: 'Assess Risk', icon: iconMap.risk, onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); } },
-                        { key: 'matter', label: 'Open Matter', icon: iconMap.matter, onClick: () => { setActiveTab('matter'); onOpenMatter?.(); }, disabled: openDisabled },
-                    ].map(tab => (
+                        {
+                            key: 'eid',
+                            label: 'Verify ID',
+                            title: verifyIdComplete ? 'ID Verified' : undefined,
+                            icon: iconMap.eid,
+                            onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
+                            complete: verifyIdComplete,
+                        },
+                        {
+                            key: 'risk',
+                            label: 'Assess Risk',
+                            title: riskAssessed ? 'Risk Assessed' : undefined,
+                            icon: iconMap.risk,
+                            onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
+                            complete: riskAssessed,
+                        },
+                        {
+                            key: 'matter',
+                            label: 'Open Matter',
+                            icon: iconMap.matter,
+                            onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
+                            disabled: openDisabled,
+                        },
+                    ].map((tab) => (
                         <button
                             key={tab.key}
                             type="button"
-                            className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}`}
+                            className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}${tab.complete ? ' complete' : ''}`}
                             onClick={tab.onClick}
                             aria-label={tab.label}
                             disabled={tab.disabled}
+                            title={tab.title}
                         >
                             <span className="icon-hover">
                                 {React.createElement(tab.icon.outline, { className: 'icon-outline' })}

@@ -16,7 +16,7 @@ import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
 import RiskComplianceCard from './RiskComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
-import InstructionOverviewItem from './InstructionOverviewItem';
+import InstructionOverview from './InstructionOverview';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -607,7 +607,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const ref = item.instruction?.InstructionRef;
                 const expanded = !!(ref && expandedOverviewRef === ref);
                 return (
-                  <InstructionOverviewItem
+                  <InstructionOverview
                     key={idx}
                     instruction={item.instruction}
                     deal={(item as any).deal}

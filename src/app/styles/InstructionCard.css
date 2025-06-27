@@ -243,6 +243,36 @@
     color: #ffffff;
 }
 
+/* Completed action tabs remain collapsed with a check mark */
+.bottom-tab.complete {
+    background-color: #f0f9f0;
+    color: #20b26c;
+    cursor: default;
+}
+
+.bottom-tab.complete:hover {
+    background-color: #f0f9f0;
+    color: #20b26c;
+    flex-basis: 20%;
+    padding-left: 4px;
+    justify-content: center;
+}
+
+.bottom-tab.complete .icon-outline {
+    display: none;
+}
+
+.bottom-tab.complete .icon-filled {
+    display: inline-block;
+    color: #20b26c;
+}
+
+.bottom-tab.complete:hover .label {
+    max-width: 0;
+    opacity: 0;
+    margin-left: 0;
+}
+
 .bottom-tab:hover .icon-filled {
     display: inline-block;
     transform: scale(1.1);

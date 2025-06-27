@@ -3,6 +3,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   ReactNode,
   useRef, // ADDED
@@ -649,7 +650,7 @@ const ensureLZInApprovers = (approvers: string[] = []): string[] => {
 };
 
 //////////////////////
-// Helper: Map Lukasz/Luke (LZ) to Alex Cook (AC) for metrics
+// Helper: Map Lukasz/Luke (LZ) to Sam Packwood (SP) for metrics
 //////////////////////
 
 const getMetricsAlias = (
@@ -659,7 +660,7 @@ const getMetricsAlias = (
 ) => {
   const parsedId = clioId ? parseInt(String(clioId), 10) : undefined;
   if (fullName?.trim() === 'Lukasz Zemanek' || initials?.toUpperCase() === 'LZ') {
-    return { name: 'Alex Cook', clioId: 142961 };
+    return { name: 'Sam Packwood', clioId: 142964 };
   }
   return { name: fullName?.trim() || '', clioId: parsedId };
 };
@@ -2449,7 +2450,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setContent(
       <>
         <QuickActionsBar
