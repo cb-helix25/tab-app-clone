@@ -1,84 +1,279 @@
-diff --git a/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx b/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
-index 03164f577ddd58bc9b239cd5ed2b5a181fe26a41..1ccf558dd0988616524632153af4ddcc47d3f81a 100644
---- a/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
-@@ -1,74 +1,77 @@
--import React, { useState, useRef, useEffect } from 'react';
-+import React, { useState, useEffect } from 'react';
- import ReactDOM from 'react-dom';
- import { Callout, TextField, PrimaryButton, Stack, DirectionalHint } from '@fluentui/react';
- import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
- import '../../../app/styles/PlaceholderEditorPopover.css';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 1272e80de0403c8bc177bf825ea286c44a5f4760..cb138a0fa6060c1e3bdfa0f19d1094092a0fd6fb 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -23,50 +23,51 @@ import localInstructionData from '../../localData/localInstructionData.json';
+ import NewMatters from './NewMatters';
+ import RiskAssessmentPage from './RiskAssessmentPage';
  
- type PlaceholderEditorPopoverProps = {
-     target: HTMLElement;
-     initialText: string;
-     before: string;
-     after: string;
-     onSave: (text: string) => void;
-     onDismiss: () => void;
- };
- 
- const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
-     target,
-     initialText,
-     before,
-     after,
-     onSave,
-     onDismiss,
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+ }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
  }) => {
-     const [value, setValue] = useState(initialText);
--    const calloutRef = useRef<HTMLDivElement | null>(null);
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
+   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
+   const [activePivot, setActivePivot] = useState<string>('overview');
+   const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
++  const [expandedOverviewRef, setExpandedOverviewRef] = useState<string | null>(null);
  
-     useEffect(() => {
-         function handleKey(e: KeyboardEvent) {
-             if (e.key === 'Escape') onDismiss();
-         }
-         document.addEventListener('keydown', handleKey);
-         return () => document.removeEventListener('keydown', handleKey);
-     }, [onDismiss]);
+   const ACTION_BAR_HEIGHT = 48;
  
-     const callout = (
-         <Callout
-             className="placeholder-editor-callout"
-             target={target}
-             onDismiss={onDismiss}
-             setInitialFocus
-             directionalHint={DirectionalHint.bottomLeftEdge}
-             isBeakVisible
-             gapSpace={12}
-             styles={{ calloutMain: { overflowY: 'visible' } }}
-         >
-             <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 16 } }}>
-                 <span className="placeholder-context">{before}</span>
-                 <TextField
-                     value={value}
-                     onChange={(_, v) => setValue(v || '')}
-                     autoFocus
-+                    styles={{
-+                        fieldGroup: { borderRadius: 10 },
-+                        field: { fontSize: 16, padding: '14px 12px' },
-+                    }}
-                 />
-                 <span className="placeholder-context">{after}</span>
-                 <Stack horizontal horizontalAlign="end">
-                     <PrimaryButton
-                         text="Save"
-                         styles={sharedPrimaryButtonStyles}
-                         onClick={() => onSave(value)}
-                     />
-                 </Stack>
-             </Stack>
-         </Callout>
+   const CLIENT_TYPE_OPTIONS = [
+     { label: 'Individual', icon: 'Contact' },
+     { label: 'Company', icon: 'CityNext' },
+     { label: 'Multiple Clients', icon: 'People' },
+     { label: 'Existing Client', icon: 'Folder' },
+   ];
+ 
+   const quickLinksStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       padding: '0 24px',
+       transition: 'background-color 0.3s',
+       display: 'flex',
+       flexDirection: 'row',
+       gap: '8px',
+       overflowX: 'auto',
+       alignItems: 'center',
+       height: ACTION_BAR_HEIGHT,
+       paddingBottom: 0,
+       position: 'sticky',
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 1272e80de0403c8bc177bf825ea286c44a5f4760..cb138a0fa6060c1e3bdfa0f19d1094092a0fd6fb 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -205,50 +206,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+                 style={{ '--card-index': 1 } as React.CSSProperties}
+               />
+               <QuickActionsCard
+                 title="Risk Assessment"
+                 icon="Assessment"
+                 isDarkMode={isDarkMode}
+                 onClick={() => { }}
+                 style={{ '--card-index': 2 } as React.CSSProperties}
+               />
+               <QuickActionsCard
+                 title="Draft CCL"
+                 icon="OpenFile"
+                 isDarkMode={isDarkMode}
+                 onClick={() => setShowRiskPage(true)}
+                 style={{ '--card-index': 3 } as React.CSSProperties}
+               />
+             </>
+           ) : null}
+         </div>
+         {!showNewMatterPage && (
+           <div className={pivotBarStyle(isDarkMode)}>
+             <Pivot
+               selectedKey={activePivot}
+               onLinkClick={(item) => {
+                 setExpandedInstructionRef(null);
++                setExpandedOverviewRef(null);
+                 setActivePivot(item?.props.itemKey || 'instructions');
+               }}
+             >
+               <PivotItem headerText="Overview" itemKey="overview" />
+               <PivotItem headerText="Instructions" itemKey="instructions" />
+               <PivotItem headerText="Deals" itemKey="deals" />
+               <PivotItem headerText="Clients" itemKey="clients" />
+               <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+             </Pivot>
+           </div>
+         )}
+       </>
+ 
      );
+     return () => setContent(null);
+   }, [
+     setContent,
+     isDarkMode,
+     instructionData,
+     activePivot,
+     showNewMatterPage,
+     showRiskPage,
+     newMatterClientType,
+   ]);
  
-     return ReactDOM.createPortal(
-         <>
-             <div className="placeholder-editor-overlay" onClick={onDismiss} />
-             {callout}
-         </>,
-         document.body
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 1272e80de0403c8bc177bf825ea286c44a5f4760..cb138a0fa6060c1e3bdfa0f19d1094092a0fd6fb 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -532,56 +534,53 @@ const Instructions: React.FC<InstructionsProps> = ({
+             deal,
+             ServiceDescription: deal?.ServiceDescription,
+             Stage: instruction?.Stage,
+           };
+         });
+       }),
+     [instructionData]
+   );
+ 
+   const handleOpenMatter = (inst: any) => {
+     setSelectedInstruction(inst);
+     setNewMatterClientType(inst?.ClientType || 'Individual');
+     setShowNewMatterPage(true);
+   };
+ 
+   const handleRiskAssessment = (inst: any) => {
+     setSelectedInstruction(inst);
+     setShowRiskPage(true);
+   };
+ 
+   const handleEIDCheck = (inst: any) => {
+     console.log('EID check for', inst.InstructionRef);
+   };
+ 
+   const handleOpenInstruction = (ref: string) => {
+-    setActivePivot('instructions');
+-    setExpandedInstructionRef(ref);
+-    setTimeout(() => {
+-      const el = instructionRefs.current[ref];
+-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+-    }, 100);
++    setActivePivot('overview');
++    setExpandedInstructionRef(null);
++    setExpandedOverviewRef((curr) => (curr === ref ? null : ref));
+   };
+ 
+   const gridContainerStyle = mergeStyles({
+     display: 'grid',
+     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+     gap: '16px',
+     maxWidth: '1200px',
+     width: '100%',
+     margin: '0 auto',
+     boxSizing: 'border-box',
+   });
+ 
+   const instructionColumnStyle = mergeStyles({
+     columnCount: 2,
+     columnGap: '24px',
+     maxWidth: '1200px',
+     width: '100%',
+     margin: '0 auto',
+     boxSizing: 'border-box',
+   });
+ 
+   const overviewColumnStyle = mergeStyles({
+     display: 'flex',
+     flexDirection: 'column',
+     gap: '24px',
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 1272e80de0403c8bc177bf825ea286c44a5f4760..cb138a0fa6060c1e3bdfa0f19d1094092a0fd6fb 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -606,66 +605,83 @@ const Instructions: React.FC<InstructionsProps> = ({
+         />
+       </Stack>
      );
- };
+   }
  
- export default PlaceholderEditorPopover;
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage onBack={function (): void {
+           throw new Error('Function not implemented.');
+         } } />
+       </Stack>
+     );
+   }
+ 
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === 'overview' && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
++                const ref = item.instruction?.InstructionRef;
++                const expanded = ref && expandedOverviewRef === ref;
+                 return (
+-                  <InstructionDashboard
+-                    key={idx}
+-                    instruction={item.instruction}
+-                    deal={(item as any).deal}
+-                    deals={item.deals}
+-                    clients={item.clients}
+-                    risk={(item as any).risk}
+-                    eid={(item as any).eid}
+-                    compliance={undefined}
+-                    prospectId={item.prospectId}
+-                    passcode={(item as any).passcode}
+-                    documentCount={item.documentCount ?? 0}
+-                    animationDelay={animationDelay}
+-                    onOpenInstruction={handleOpenInstruction}
+-                  />
++                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
++                    <InstructionDashboard
++                      instruction={item.instruction}
++                      deal={(item as any).deal}
++                      deals={item.deals}
++                      clients={item.clients}
++                      risk={(item as any).risk}
++                      eid={(item as any).eid}
++                      compliance={undefined}
++                      prospectId={item.prospectId}
++                      passcode={(item as any).passcode}
++                      documentCount={item.documentCount ?? 0}
++                      animationDelay={animationDelay}
++                      onOpenInstruction={ref ? () => handleOpenInstruction(ref) : undefined}
++                    />
++                    {expanded && ref && (
++                      <InstructionCard
++                        instruction={item.instruction}
++                        deal={(item as any).deal}
++                        prospectId={item.prospectId}
++                        risk={(item as any).risk}
++                        eid={(item as any).eid}
++                        documentCount={item.documentCount}
++                        expanded
++                        onOpenMatter={() => handleOpenMatter(item.instruction)}
++                        onRiskAssessment={() => handleRiskAssessment(item.instruction)}
++                        onEIDCheck={() => handleEIDCheck(item.instruction)}
++                      />
++                    )}
++                  </div>
+                 );
+               })}
+               {unlinkedDeals.map((deal, idx) => {
+                 const base = overviewItems.length + idx;
+                 const row = Math.floor(base / 2);
+                 const col = base % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <DealCard
+                     key={`unlinked-${idx}`}
+                     deal={deal}
+                     animationDelay={animationDelay}
+                   />
+                 );
+               })}
+             </div>
+           )}
+           {activePivot === 'instructions' && (
+             <div className={instructionColumnStyle}>
+               {flattenedInstructions.map((instruction, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard

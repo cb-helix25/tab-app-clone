@@ -45,6 +45,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('overview');
   const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
+  const [expandedOverviewRef, setExpandedOverviewRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
 
@@ -160,7 +161,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   useEffect(() => {
     setContent(
       <>
-        {(showNewMatterPage || showRiskPage) && (
+        {showNewMatterPage || showRiskPage ? (
           <div className={detailNavStyle(isDarkMode)}>
             <IconButton
               iconProps={{ iconName: 'ChevronLeft' }}
@@ -169,23 +170,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               title="Back"
               ariaLabel="Back"
             />
+            {showNewMatterPage &&
+              CLIENT_TYPE_OPTIONS.map((opt, idx) => (
+                <QuickActionsCard
+                  key={opt.label}
+                  title={opt.label}
+                  icon={opt.icon}
+                  isDarkMode={isDarkMode}
+                  onClick={() => setNewMatterClientType(opt.label)}
+                  selected={newMatterClientType === opt.label}
+                  style={{ '--card-index': idx } as React.CSSProperties}
+                />
+              ))}
           </div>
-        )}
-        <div className={quickLinksStyle(isDarkMode)}>
-          {showNewMatterPage ? (
-            CLIENT_TYPE_OPTIONS.map((opt, idx) => (
-              <QuickActionsCard
-                key={opt.label}
-                title={opt.label}
-                icon={opt.icon}
-                isDarkMode={isDarkMode}
-                onClick={() => setNewMatterClientType(opt.label)}
-                selected={newMatterClientType === opt.label}
-                style={{ '--card-index': idx } as React.CSSProperties}
-              />
-            ))
-          ) : !showRiskPage ? (
-            <>
+        ) : (
+          <>
+            <div className={quickLinksStyle(isDarkMode)}>
               <QuickActionsCard
                 title="New Matter"
                 icon="Calendar"
@@ -218,28 +218,26 @@ const Instructions: React.FC<InstructionsProps> = ({
                 onClick={() => setShowRiskPage(true)}
                 style={{ '--card-index': 3 } as React.CSSProperties}
               />
-            </>
-          ) : null}
-        </div>
-        {!showNewMatterPage && (
-          <div className={pivotBarStyle(isDarkMode)}>
-            <Pivot
-              selectedKey={activePivot}
-              onLinkClick={(item) => {
-                setExpandedInstructionRef(null);
-                setActivePivot(item?.props.itemKey || 'instructions');
-              }}
-            >
-              <PivotItem headerText="Overview" itemKey="overview" />
-              <PivotItem headerText="Instructions" itemKey="instructions" />
-              <PivotItem headerText="Deals" itemKey="deals" />
-              <PivotItem headerText="Clients" itemKey="clients" />
-              <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-            </Pivot>
-          </div>
+            </div>
+            <div className={pivotBarStyle(isDarkMode)}>
+              <Pivot
+                selectedKey={activePivot}
+                onLinkClick={(item) => {
+                  setExpandedInstructionRef(null);
+                  setExpandedOverviewRef(null);
+                  setActivePivot(item?.props.itemKey || 'instructions');
+                }}
+              >
+                <PivotItem headerText="Overview" itemKey="overview" />
+                <PivotItem headerText="Instructions" itemKey="instructions" />
+                <PivotItem headerText="Deals" itemKey="deals" />
+                <PivotItem headerText="Clients" itemKey="clients" />
+                <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+              </Pivot>
+            </div>
+          </>
         )}
       </>
-
     );
     return () => setContent(null);
   }, [
@@ -512,12 +510,34 @@ const Instructions: React.FC<InstructionsProps> = ({
         const eidSource: any[] = [
           ...(p.electronicIDChecks ?? p.idVerifications ?? []),
         ];
+        (p.idVerifications ?? []).forEach((eid: any) => {
+          riskSource.push({
+            MatterId: eid.InstructionRef ?? eid.MatterId,
+            ComplianceDate: eid.EIDCheckedDate,
+            CheckId: eid.EIDCheckId,
+            CheckResult: eid.EIDOverallResult,
+            PEPandSanctionsCheckResult: eid.PEPAndSanctionsCheckResult,
+            AddressVerificationCheckResult: eid.AddressVerificationResult,
+            EIDStatus: eid.EIDStatus,
+          });
+        });
         instructions.forEach((inst: any) => {
           riskSource.push(...(inst.riskAssessments ?? []));
           riskSource.push(...(inst.compliance ?? []));
-          eidSource.push(
-            ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
-          );
+          const instEids =
+            (inst.electronicIDChecks ?? inst.idVerifications) ?? [];
+          eidSource.push(...instEids);
+          instEids.forEach((eid: any) => {
+            riskSource.push({
+              MatterId: eid.InstructionRef ?? inst.InstructionRef,
+              ComplianceDate: eid.EIDCheckedDate,
+              CheckId: eid.EIDCheckId,
+              CheckResult: eid.EIDOverallResult,
+              PEPandSanctionsCheckResult: eid.PEPAndSanctionsCheckResult,
+              AddressVerificationCheckResult: eid.AddressVerificationResult,
+              EIDStatus: eid.EIDStatus,
+            });
+          });
         });
         return riskSource.map((r: any) => {
           const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
@@ -554,12 +574,9 @@ const Instructions: React.FC<InstructionsProps> = ({
   };
 
   const handleOpenInstruction = (ref: string) => {
-    setActivePivot('instructions');
-    setExpandedInstructionRef(ref);
-    setTimeout(() => {
-      const el = instructionRefs.current[ref];
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+    setActivePivot('overview');
+    setExpandedInstructionRef(null);
+    setExpandedOverviewRef((curr) => (curr === ref ? null : ref));
   };
 
   const gridContainerStyle = mergeStyles({
@@ -628,22 +645,40 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const row = Math.floor(idx / 2);
                 const col = idx % 2;
                 const animationDelay = row * 0.2 + col * 0.1;
+                const ref = item.instruction?.InstructionRef;
+                const expanded = ref && expandedOverviewRef === ref;
                 return (
-                  <InstructionDashboard
-                    key={idx}
-                    instruction={item.instruction}
-                    deal={(item as any).deal}
-                    deals={item.deals}
-                    clients={item.clients}
-                    risk={(item as any).risk}
-                    eid={(item as any).eid}
-                    compliance={undefined}
-                    prospectId={item.prospectId}
-                    passcode={(item as any).passcode}
-                    documentCount={item.documentCount ?? 0}
-                    animationDelay={animationDelay}
-                    onOpenInstruction={handleOpenInstruction}
-                  />
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <InstructionDashboard
+                      instruction={item.instruction}
+                      deal={(item as any).deal}
+                      deals={item.deals}
+                      clients={item.clients}
+                      risk={(item as any).risk}
+                      eid={(item as any).eid}
+                      compliance={undefined}
+                      prospectId={item.prospectId}
+                      passcode={(item as any).passcode}
+                      documentCount={item.documentCount ?? 0}
+                      animationDelay={animationDelay}
+                      onOpenInstruction={ref ? () => handleOpenInstruction(ref) : undefined}
+                    />
+                    {expanded && ref && (
+                      <InstructionCard
+                        instruction={item.instruction}
+                        deal={(item as any).deal}
+                        prospectId={item.prospectId}
+                        risk={(item as any).risk}
+                        eid={(item as any).eid}
+                        documentCount={item.documentCount}
+                        expanded
+                        onOpenMatter={() => handleOpenMatter(item.instruction)}
+                        onRiskAssessment={() => handleRiskAssessment(item.instruction)}
+                        onEIDCheck={() => handleEIDCheck(item.instruction)}
+                      />
+                    )}
+                  </div>
+
                 );
               })}
               {unlinkedDeals.map((deal, idx) => {

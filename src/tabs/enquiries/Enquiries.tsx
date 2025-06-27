@@ -497,6 +497,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   function detailNavStyle(dark: boolean) {
     return mergeStyles({
       backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
+      borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
       padding: '0 24px',
       display: 'flex',
       flexDirection: 'row',
@@ -506,18 +508,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       position: 'sticky',
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
-    });
-  }
-
-  function pivotBarStyle(dark: boolean) {
-    return mergeStyles({
-      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
-      borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
-      padding: '0 24px',
-      position: 'sticky',
-      top: ACTION_BAR_HEIGHT * 2,
-      zIndex: 998,
     });
   }
 
@@ -537,23 +527,19 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       );
     } else {
       setContent(
-        <>
-          <div className={detailNavStyle(isDarkMode)}>
-            <IconButton
-              iconProps={{ iconName: 'ChevronLeft' }}
-              onClick={handleBackToList}
-              className={backButtonStyle}
-              title="Back"
-              ariaLabel="Back"
-            />
-          </div>
-          <div className={pivotBarStyle(isDarkMode)}>
-            <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
-              <PivotItem headerText="Overview" itemKey="Overview" />
-              <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-            </Pivot>
-          </div>
-        </>
+        <div className={detailNavStyle(isDarkMode)}>
+          <IconButton
+            iconProps={{ iconName: 'ChevronLeft' }}
+            onClick={handleBackToList}
+            className={backButtonStyle}
+            title="Back"
+            ariaLabel="Back"
+          />
+          <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
+            <PivotItem headerText="Overview" itemKey="Overview" />
+            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+          </Pivot>
+        </div>
       );
     }
     return () => setContent(null);

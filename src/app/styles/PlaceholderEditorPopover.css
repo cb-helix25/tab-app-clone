@@ -1,35 +1,40 @@
 .placeholder-editor-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(3px);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
     z-index: 1000;
-    animation: fadeInOverlay 0.2s ease;
-}
-
-.placeholder-editor-callout {
-    z-index: 1001;
-    animation: fadeInScale 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+    animation: fadeInOverlay 0.3s ease;
 }
 
 .placeholder-editor-callout .ms-Callout {
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
-    padding: 40px;
-    width: 720px;
+    border-radius: 16px;
+    /* Sleek rounded corners */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    /* Light shadow for a floating effect */
+    padding: 24px;
+    /* Consistent padding */
+    width: 600px;
+    /* Balanced fixed width */
     max-width: 95vw;
+    /* Responsiveness */
+    background-color: #ffffff;
 }
 
 .placeholder-context {
-    font-size: 15px;
-    color: var(--helix-grey-dark, #444);
+    font-size: 16px;
+    color: #333;
     margin-bottom: 12px;
-    opacity: 0.85;
+    opacity: 0.8;
 }
 
 .placeholder-editor-callout .ms-TextField {
     margin-bottom: 20px;
     font-size: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background-color: #f4f4f7;
+    border: 1px solid #ccc;
 }
 
 @keyframes fadeInOverlay {
@@ -39,17 +44,5 @@
 
     to {
         opacity: 1;
-    }
-}
-
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
     }
 }

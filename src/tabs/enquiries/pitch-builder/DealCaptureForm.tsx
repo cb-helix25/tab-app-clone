@@ -412,7 +412,12 @@ useLayoutEffect(() => {
                   <div className={intakeHeader}>Service Description</div>
                   <Dropdown
                     options={SERVICE_OPTIONS}
-                    styles={{ dropdown: [dropdownStyle, { border: 'none', borderRadius: 0 }] }}
+                    styles={{
+                      dropdown: [
+                        dropdownStyle,
+                        { border: 'none', borderRadius: 0, width: '100%' },
+                      ],
+                    }}
                     selectedKey={selectedOption?.key}
                     onChange={(_, option) => {
                       if (option?.key === 'Other') {

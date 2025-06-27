@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Callout, TextField, PrimaryButton, Stack, DirectionalHint } from '@fluentui/react';
-import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import '../../../app/styles/PlaceholderEditorPopover.css';
 
 type PlaceholderEditorPopoverProps = {
@@ -24,9 +23,9 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
     const [value, setValue] = useState(initialText);
 
     useEffect(() => {
-        function handleKey(e: KeyboardEvent) {
+        const handleKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onDismiss();
-        }
+        };
         document.addEventListener('keydown', handleKey);
         return () => document.removeEventListener('keydown', handleKey);
     }, [onDismiss]);
@@ -38,26 +37,28 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
             onDismiss={onDismiss}
             setInitialFocus
             directionalHint={DirectionalHint.bottomLeftEdge}
-            isBeakVisible
+            isBeakVisible={false}
             gapSpace={12}
-            styles={{ calloutMain: { overflowY: 'visible' } }}
         >
-            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 16 } }}>
+            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: '20px 24px' } }}>
                 <span className="placeholder-context">{before}</span>
                 <TextField
                     value={value}
                     onChange={(_, v) => setValue(v || '')}
                     autoFocus
                     styles={{
-                        fieldGroup: { borderRadius: 10 },
-                        field: { fontSize: 16, padding: '14px 12px' },
+                        fieldGroup: { border: 'none', backgroundColor: '#f4f4f7' },
+                        field: { fontSize: 16, padding: '16px', fontWeight: 400, borderRadius: 8, boxShadow: 'none' },
                     }}
                 />
                 <span className="placeholder-context">{after}</span>
                 <Stack horizontal horizontalAlign="end">
                     <PrimaryButton
                         text="Save"
-                        styles={sharedPrimaryButtonStyles}
+                        styles={{
+                            root: { padding: '12px 28px', fontSize: 14, fontWeight: 600, borderRadius: 8 },
+                            label: { textTransform: 'none' },
+                        }}
                         onClick={() => onSave(value)}
                     />
                 </Stack>

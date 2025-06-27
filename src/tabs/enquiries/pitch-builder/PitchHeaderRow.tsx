@@ -5,6 +5,8 @@ import {
   mergeStyles,
   IconButton,
   Text,
+  MessageBar,
+  MessageBarType,
 } from "@fluentui/react";
 import { Enquiry } from "../../../app/functionality/types";
 import DealCaptureForm from "./DealCaptureForm";
@@ -137,6 +139,27 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     },
   });
 
+  const detailRowStyle = mergeStyles({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 14,
+  });
+
+  const detailLabelStyle = mergeStyles({ fontWeight: 600 });
+
+  const detailValueStyle = mergeStyles({ flexGrow: 1, overflowWrap: 'anywhere' });
+
+  const copyBtnStyle = mergeStyles({
+    background: 'none',
+    border: 'none',
+    color: colours.highlight,
+    cursor: 'pointer',
+    padding: 0,
+    fontSize: 12,
+    selectors: { ':hover': { textDecoration: 'underline' } },
+  });
+
   const [showCc, setShowCc] = useState(!!cc);
   const [showBcc, setShowBcc] = useState(!!bcc);
   const toCcBccRef = useRef<HTMLDivElement>(null);
@@ -145,6 +168,19 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   // Static spacing below the enquiry notes
   const notesSpacing = 8;
   const [dealFormSaved, setDealFormSaved] = useState(false);
+
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  const copy = (text?: string) => {
+    if (!text) return;
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopySuccess('Copied!');
+        setTimeout(() => setCopySuccess(null), 2000);
+      })
+      .catch((err) => console.error('Failed to copy: ', err));
+  };
 
   // Previously aligned the subject field with the amount input using
   // calculated spacing. With the simplified layout we use static spacing
@@ -187,12 +223,43 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         <div className={enquiryNotesContainer}>
           <div className={enquiryNotesHeader}>Enquiry Details</div>
           <Stack className={enquiryNotesContent}>
-            <Text>
-              {enquiry.First_Name} {enquiry.Last_Name}
-            </Text>
-            {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
+            <div className={detailRowStyle}>
+              <span className={detailLabelStyle}>Name:</span>
+              <span className={detailValueStyle}>
+                {enquiry.First_Name} {enquiry.Last_Name}
+              </span>
+              <IconButton
+                iconProps={{ iconName: 'Copy' }}
+                styles={{ root: { background: 'none', padding: 0 } }}
+                ariaLabel="Copy Name"
+                onClick={() =>
+                  copy(`${enquiry.First_Name ?? ''} ${enquiry.Last_Name ?? ''}`.trim())
+                }
+              />
+            </div>
+            {enquiry.Email && (
+              <div className={detailRowStyle}>
+                <span className={detailLabelStyle}>Email:</span>
+                <span className={detailValueStyle}>{enquiry.Email}</span>
+                <IconButton
+                  iconProps={{ iconName: 'Copy' }}
+                  styles={{ root: { background: 'none', padding: 0 } }}
+                  ariaLabel="Copy Email"
+                  onClick={() => copy(enquiry.Email!)}
+                />
+              </div>
+            )}
             {enquiry.Phone_Number && (
-              <Text>Phone: {enquiry.Phone_Number}</Text>
+              <div className={detailRowStyle}>
+                <span className={detailLabelStyle}>Phone:</span>
+                <span className={detailValueStyle}>{enquiry.Phone_Number}</span>
+                <IconButton
+                  iconProps={{ iconName: 'Copy' }}
+                  styles={{ root: { background: 'none', padding: 0 } }}
+                  ariaLabel="Copy Phone"
+                  onClick={() => copy(enquiry.Phone_Number!)}
+                />
+              </div>
             )}
             {enquiry.Secondary_Phone && (
               <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
@@ -385,6 +452,28 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           onSavedChange={setDealFormSaved}
         />
       </Stack>
+      {copySuccess && (
+        <MessageBar
+          messageBarType={MessageBarType.success}
+          isMultiline={false}
+          onDismiss={() => setCopySuccess(null)}
+          dismissButtonAriaLabel="Close"
+          styles={{
+            root: {
+              position: 'fixed',
+              bottom: 20,
+              right: 20,
+              maxWidth: '300px',
+              zIndex: 1000,
+              borderRadius: 0,
+              backgroundColor: colours.green,
+              color: 'white',
+            },
+          }}
+        >
+          {copySuccess}
+        </MessageBar>
+      )}
     </Stack>
   );
 };
