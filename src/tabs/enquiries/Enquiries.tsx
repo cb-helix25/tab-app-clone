@@ -535,7 +535,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             title="Back"
             ariaLabel="Back"
           />
-          <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
+          <Pivot
+            className="navigatorPivot"
+            selectedKey={activeSubTab}
+            onLinkClick={handleSubTabChange}
+          >
             <PivotItem headerText="Overview" itemKey="Overview" />
             <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
           </Pivot>

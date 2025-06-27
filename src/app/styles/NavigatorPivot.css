@@ -1,0 +1,36 @@
+/* Styles for pivot menus shown inside the Navigator component */
+.navigatorPivot .ms-Pivot-link {
+    position: relative;
+    padding: 0 12px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navigatorPivot .ms-Pivot-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navigatorPivot .ms-Pivot-link::before {
+    display: none;
+}
+
+.navigatorPivot .ms-Pivot-link::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background-color: var(--helix-highlight, #3690CE);
+    transform: translateX(-50%) scaleX(0);
+    transform-origin: center;
+    transition: transform 0.3s ease;
+}
+
+.navigatorPivot .ms-Pivot-link:hover::after,
+.navigatorPivot .ms-Pivot-link[aria-selected='true']::after {
+    transform: translateX(-50%) scaleX(1);
+}
+
+.navigatorPivot .ms-Pivot-link[aria-selected='true'] {
+    color: var(--helix-highlight, #3690CE);
+    background-color: rgba(255, 255, 255, 0.1); }

@@ -43,7 +43,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('overview');
-  const [expandedOverviewRef, setExpandedOverviewRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
 
@@ -219,9 +218,9 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
             <div className={pivotBarStyle(isDarkMode)}>
               <Pivot
+                className="navigatorPivot"
                 selectedKey={activePivot}
                 onLinkClick={(item) => {
-                  setExpandedOverviewRef(null);
                   setActivePivot(item?.props.itemKey || 'overview');
                 }}
               >
@@ -494,7 +493,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenInstruction = (ref: string) => {
     setActivePivot('overview');
-    setExpandedOverviewRef((curr) => (curr === ref ? null : ref));
   };
 
   const gridContainerStyle = mergeStyles({
@@ -555,8 +553,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const row = Math.floor(idx / 2);
                 const col = idx % 2;
                 const animationDelay = row * 0.2 + col * 0.1;
-                const ref = item.instruction?.InstructionRef;
-                const expanded = !!(ref && expandedOverviewRef === ref);
                 return (
                   <InstructionCard
                     key={idx}
@@ -570,15 +566,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     prospectId={item.prospectId}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
-                    expanded={expanded}
-                    onToggle={
-                      ref
-                        ? () =>
-                            setExpandedOverviewRef((curr) =>
-                              curr === ref ? null : ref
-                            )
-                        : undefined
-                    }
+                    expanded
                     onOpenMatter={() => handleOpenMatter(item.instruction)}
                     onRiskAssessment={() => handleRiskAssessment(item.instruction)}
                     onEIDCheck={() => handleEIDCheck(item.instruction)}

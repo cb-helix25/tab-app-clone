@@ -665,6 +665,7 @@ const Matters: React.FC<MattersProps> = ({
             className={backButtonStyle}
           />
           <Pivot
+            className="navigatorPivot"
             selectedKey={activeTab}
             onLinkClick={(item) =>
               setActiveTab(item?.props.itemKey || 'Overview')

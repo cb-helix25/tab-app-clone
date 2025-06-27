@@ -90,7 +90,7 @@ export function removeHighlightSpans(html: string): string {
 
   // Elements that should be fully removed
   const removeSelectors =
-    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble';
+    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
 
   // Unwrap any remaining placeholder containers but keep their content
@@ -103,18 +103,41 @@ export function removeHighlightSpans(html: string): string {
 
   // Remove highlight attributes/classes but keep user content
   const cleanupSelectors =
-    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], .insert-placeholder, .block-main';
+    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], [data-snippet], [data-block-title], .insert-placeholder, .block-main, .block-container';
   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
     el.removeAttribute('data-placeholder');
     el.removeAttribute('data-inserted');
     el.removeAttribute('data-link');
     el.removeAttribute('data-sentence');
     el.removeAttribute('data-insert');
+    el.removeAttribute('data-snippet');
+    el.removeAttribute('data-block-title');
     el.removeAttribute('style');
     el.removeAttribute('contenteditable');
     if ((el as HTMLElement).classList.contains('block-main')) {
       (el as HTMLElement).classList.remove('block-main');
     }
+    if ((el as HTMLElement).classList.contains('block-container')) {
+      (el as HTMLElement).classList.remove('block-container');
+    }
+    if ((el as HTMLElement).classList.contains('insert-placeholder')) {
+      (el as HTMLElement).classList.remove('insert-placeholder');
+    }
+  });
+
+  // Unwrap containers that are purely structural
+  tempDiv.querySelectorAll('[data-block-title]').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  });
+
+  tempDiv.querySelectorAll('.block-main, .block-container').forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
   });
 
   // Remove label helpers

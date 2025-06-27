@@ -14,6 +14,8 @@ interface StepHeaderProps {
     allowToggleWhenLocked?: boolean;
     dimOnLock?: boolean;
     summary?: React.ReactNode;
+    /** Hide the plus/minus toggle icon for a cleaner checkout style */
+    hideToggle?: boolean;
 }
 
 const StepHeader: React.FC<StepHeaderProps> = ({
@@ -28,6 +30,7 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     allowToggleWhenLocked = false,
     dimOnLock = true,
     summary,
+    hideToggle = false,
 }) => {
     const baseStyle: React.CSSProperties = {
         backgroundColor: componentTokens.stepHeader.base.backgroundColor,
@@ -100,7 +103,9 @@ const StepHeader: React.FC<StepHeaderProps> = ({
 
                     </span>
                 )}
-                <span className="toggle-icon">{open ? '−' : '+'}</span>
+                {!hideToggle && (
+                    <span className="toggle-icon">{open ? '−' : '+'}</span>
+                )}
 
             </div>
             {summary && !open && (

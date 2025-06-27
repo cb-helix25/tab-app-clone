@@ -1,198 +1,105 @@
-diff --git a/src/app/styles/CustomTabs.css b/src/app/styles/CustomTabs.css
-index 11dab2e67887fd4af1759dae135b03ee51660656..867416f0be9f8d7708ce6ad5c6ac8bfd7decb6a5 100644
---- a/src/app/styles/CustomTabs.css
-+++ b/src/app/styles/CustomTabs.css
-@@ -1,47 +1,57 @@
- /* src/app/styles/CustomTabs.css */
- 
- /* Grey out the disabled tab and change the cursor */
- .customPivot .disabledTab {
-   color: grey !important; /* Override existing color */
-   cursor: not-allowed !important; /* Change cursor to indicate it's not clickable */
+diff --git a/src/tabs/enquiries/pitch-builder/emailUtils.ts b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+index 928ef28154f47c332fddc3a8cffb1afac6214268..d7b4bbaecdd96d8050db5658bbe1c24c9f733095 100644
+--- a/src/tabs/enquiries/pitch-builder/emailUtils.ts
++++ b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+@@ -68,75 +68,98 @@ export function markUnfilledPlaceholders(
+   text: string,
+   blocks: TemplateBlock[] = templateBlocks
+ ): string {
+   const placeholders = getLeftoverPlaceholders(blocks);
+   let marked = text;
+   placeholders.forEach((placeholder) => {
+     const regex = new RegExp(escapeRegExp(placeholder), 'g');
+     marked = marked.replace(
+       regex,
+       `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
+     );
+   });
+   return marked;
  }
  
- /* Optional: Adjust the position or style of the lock icon if necessary */
- .customPivot .ms-Pivot-link .ms-Pivot-icon {
-   margin-right: 8px; /* Space between icon and text */
- }
+ /**
+  * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
+  * so final email doesn't have bright highlighting.
+  */
+ export function removeHighlightSpans(html: string): string {
+   const tempDiv = document.createElement('div');
+   tempDiv.innerHTML = html;
  
- /* Target the links inside your custom pivot */
- .customPivot .ms-Pivot-link {
-   opacity: 0;
-   animation: dropIn 0.3s ease forwards;
-   position: relative;
-   border-bottom: none;
-   font-weight: 500;
--    padding: 0 16px;
--    transition: background-color 0.15s, transform 0.1s, color 0.2s;
-+  padding: 0 16px;
-+  transition: background-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
-+  color: #ffffff;
-+}
+   // Elements that should be fully removed
+   const removeSelectors =
+-    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble';
++    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
+   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
+ 
+   // Unwrap any remaining placeholder containers but keep their content
+   tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
+     const parent = el.parentNode;
+     if (!parent) return;
+     while (el.firstChild) parent.insertBefore(el.firstChild, el);
+     parent.removeChild(el);
+   });
+ 
+   // Remove highlight attributes/classes but keep user content
+   const cleanupSelectors =
+-    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], .insert-placeholder, .block-main';
++    '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], [data-snippet], [data-block-title], .insert-placeholder, .block-main, .block-container';
+   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
+     el.removeAttribute('data-placeholder');
+     el.removeAttribute('data-inserted');
+     el.removeAttribute('data-link');
+     el.removeAttribute('data-sentence');
+     el.removeAttribute('data-insert');
++    el.removeAttribute('data-snippet');
++    el.removeAttribute('data-block-title');
+     el.removeAttribute('style');
+     el.removeAttribute('contenteditable');
+     if ((el as HTMLElement).classList.contains('block-main')) {
+       (el as HTMLElement).classList.remove('block-main');
+     }
++    if ((el as HTMLElement).classList.contains('block-container')) {
++      (el as HTMLElement).classList.remove('block-container');
++    }
++    if ((el as HTMLElement).classList.contains('insert-placeholder')) {
++      (el as HTMLElement).classList.remove('insert-placeholder');
++    }
++  });
 +
-+.customPivot .ms-Pivot-link:hover {
-+  background-color: rgba(255, 255, 255, 0.1);
-+}
++  // Unwrap containers that are purely structural
++  tempDiv.querySelectorAll('[data-block-title]').forEach((el) => {
++    const parent = el.parentNode;
++    if (!parent) return;
++    while (el.firstChild) parent.insertBefore(el.firstChild, el);
++    parent.removeChild(el);
++  });
 +
-+.customPivot .ms-Pivot-link[aria-selected='true'] {
-+  color: var(--helix-highlight, #3690CE);
-+  background-color: var(--helix-dark-blue, #061733);
++  tempDiv.querySelectorAll('.block-main, .block-container').forEach((el) => {
++    const parent = el.parentNode;
++    if (!parent) return;
++    while (el.firstChild) parent.insertBefore(el.firstChild, el);
++    parent.removeChild(el);
+   });
+ 
+   // Remove label helpers
+   tempDiv
+     .querySelectorAll('.block-label, .block-label-display')
+     .forEach((el) => el.remove());
+ 
+   return tempDiv.innerHTML;
  }
  
- /* Remove Fluent UI's default underline */
- .customPivot .ms-Pivot-link::before {
-   display: none;
+ /**
+  * When we insert multiline text from the TemplateBlocks, we turn raw newlines into <br />.
+  */
+ export function cleanTemplateString(template: string): string {
+   // Trim the entire string to remove leading/trailing whitespace and newlines
+   const trimmedTemplate = template.trim();
+   return trimmedTemplate
+     .split('\n')
+     .map(line => line.trim())
+     .join('<br />')
+     .replace(/(<br \/>)+$/, '');
  }
  
- .customPivot .ms-Pivot-link[aria-selected='true'] {
-   border-bottom: none;
- }
- 
- /* Apply staggered animation delays to each link */
- .customPivot .ms-Pivot-link:nth-child(1) {
-   animation-delay: 0s;
- }
- 
- .customPivot .ms-Pivot-link:nth-child(2) {
-   animation-delay: 0.1s;
- }
- 
- .customPivot .ms-Pivot-link:nth-child(3) {
-   animation-delay: 0.2s;
- }
- 
- .customPivot .ms-Pivot-link:nth-child(4) {
-diff --git a/src/app/styles/CustomTabs.css b/src/app/styles/CustomTabs.css
-index 11dab2e67887fd4af1759dae135b03ee51660656..867416f0be9f8d7708ce6ad5c6ac8bfd7decb6a5 100644
---- a/src/app/styles/CustomTabs.css
-+++ b/src/app/styles/CustomTabs.css
-@@ -54,71 +64,76 @@
- 
- .customPivot .ms-Pivot-link:nth-child(6) {
-   animation-delay: 0.5s;
- }
- 
- .customPivot .ms-Pivot-link:nth-child(7) {
-   animation-delay: 0.6s;
- }
- 
- .customPivot .ms-Pivot-link:nth-child(8) {
-   animation-delay: 0.7s;
- }
- 
- .home-icon {
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   padding: 0 12px;
-   height: 48px;
-   line-height: 48px;
-   cursor: pointer;
-   position: relative;
-   transition: background-color 0.15s, transform 0.1s;
-   }
-   
--  .home-icon:active {
--    transform: scale(0.97);
--  }
--  
--  .home-icon:focus {
--    outline: 2px solid var(--helix-highlight, #3690CE);
--    outline-offset: 2px;
--  }
--  
--  .customPivot .ms-Pivot-link:active {
--    transform: scale(0.97);
--  }
-+.home-icon:active {
-+  transform: scale(0.97);
-+  background-color: rgba(0, 0, 0, 0.2);
-+}
-+
-+.home-icon:focus {
-+  outline: none;
-+  box-shadow: 0 0 0 2px var(--helix-highlight, #3690CE);
-+  border-radius: 4px;
-+}
-   
--  .customPivot .ms-Pivot-link:focus {
--    outline: 2px solid var(--helix-highlight, #3690CE);
--    outline-offset: 2px;
-+.customPivot .ms-Pivot-link:active {
-+  transform: scale(0.97);
-+  background-color: rgba(0, 0, 0, 0.2);
-+}
-+
-+.customPivot .ms-Pivot-link:focus {
-+  outline: none;
-+  box-shadow: 0 0 0 2px var(--helix-highlight, #3690CE);
-+  border-radius: 4px;
- }
- 
- .home-icon:hover,
- .home-icon.active {
-   color: var(--helix-highlight, #3690CE) !important;
-+  background-color: rgba(255, 255, 255, 0.1);
- }
- 
- /* Animated underline for pivot links */
- .customPivot .ms-Pivot-link::after,
- .home-icon::after {
-   content: '';
-   position: absolute;
-   left: 50%;
-   bottom: 0;
-   height: 2px;
-   width: 100%;
-   background-color: var(--helix-highlight, #3690CE);
-   transform: translateX(-50%) scaleX(0);
-   transform-origin: center;
-   transition: transform 0.15s ease-out;
- }
- 
- .customPivot .ms-Pivot-link:hover::after,
- .customPivot .ms-Pivot-link[aria-selected='true']::after,
- .home-icon:hover::after,
- .home-icon.active::after {
-   transform: translateX(-50%) scaleX(1);
- }
- 
- /* If you have more than 6 tabs, just add more nth-child rules
-diff --git a/src/app/styles/CustomTabs.css b/src/app/styles/CustomTabs.css
-index 11dab2e67887fd4af1759dae135b03ee51660656..867416f0be9f8d7708ce6ad5c6ac8bfd7decb6a5 100644
---- a/src/app/styles/CustomTabs.css
-+++ b/src/app/styles/CustomTabs.css
-@@ -137,30 +152,30 @@
-     background-color: rgba(0, 0, 0, 0.2);
-   }
- 
-   .customPivot .ms-Pivot-link {
-     font-size: 14px;
-     padding: 0 8px;
-   }
- 
-   .home-icon {
-     padding: 0 8px;
-   }
- }
- 
- /* remove border/outline on press/focus */
- .customPivot .ms-Pivot-link:active,
- .customPivot .ms-Pivot-link:focus,
- .home-icon:active,
- .home-icon:focus {
-   border: none !important;
-   outline: none !important;
- }
- 
- /* pressed = transparent bg + inner white “border” */
- .customPivot .ms-Pivot-link:active,
- .home-icon:active {
--  background-color: transparent !important;
--  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
--  border-radius: 6px !important;
-+  background-color: rgba(0, 0, 0, 0.2) !important;
-+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
-+  border-radius: 4px !important;
-   color: var(--helix-highlight) !important;
- }
+ /**
+  * Wrap all [INSERT ...] placeholders in a span so we can detect them easily.

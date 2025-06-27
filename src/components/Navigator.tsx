@@ -3,6 +3,7 @@ import { useNavigator } from '../app/functionality/NavigatorContext';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
 import '../app/styles/Navigator.css';
+import '../app/styles/NavigatorPivot.css';
 
 const Navigator: React.FC = () => {
     const { content } = useNavigator();
