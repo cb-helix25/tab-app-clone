@@ -9,6 +9,7 @@ import {
   PanelType,
   PrimaryButton,
   DefaultButton,
+  Checkbox,
 } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import {
@@ -119,6 +120,12 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
+  const [isConfirmed, setIsConfirmed] = React.useState(false);
+  React.useEffect(() => {
+    if (isPreviewOpen) {
+      setIsConfirmed(false);
+    }
+  }, [isPreviewOpen]);
   const inTeams = isInTeams();
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
@@ -198,41 +205,43 @@ function formatCurrency(val?: string): string {
 
         <Separator />
 
-        {/* Deal Details */}
-        <Stack tokens={{ childrenGap: 4 }}>
-          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-            Deal Details:
-          </Text>
-          <Text variant="medium">
-            <strong>Service:</strong> {serviceDescription || 'N/A'}
-          </Text>
-          <Text variant="medium">
-            <strong>Amount:</strong> {formatCurrency(amount)}
-          </Text>
-          {clients && clients.length > 0 && (
-            <Stack tokens={{ childrenGap: 2 }}>
-              <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-                <strong>Clients Requiring ID:</strong>
-              </Text>
-              {clients.map((c, idx) => (
-                <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-                  {c.firstName} {c.lastName} - {c.email}
+        {/* Deal Details & Subject */}
+        <Stack
+          tokens={{ childrenGap: 8 }}
+          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
+        >
+          <Stack tokens={{ childrenGap: 4 }}>
+            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+              Deal Details
+            </Text>
+            <Text variant="medium">
+              <strong>Service:</strong> {serviceDescription || 'N/A'}
+            </Text>
+            <Text variant="medium">
+              <strong>Amount:</strong> {formatCurrency(amount)}
+            </Text>
+            {clients && clients.length > 0 && (
+              <Stack tokens={{ childrenGap: 2 }}>
+                <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
+                  <strong>Clients Requiring ID:</strong>
                 </Text>
-              ))}
-            </Stack>
-          )}
-        </Stack>
+                {clients.map((c, idx) => (
+                  <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
+                    {c.firstName} {c.lastName} - {c.email}
+                  </Text>
+                ))}
+              </Stack>
+            )}
+          </Stack>
 
-        <Separator />
-
-        {/* Subject */}
-        <Stack tokens={{ childrenGap: 6 }}>
-          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-            Subject:
-          </Text>
-          <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-            {subject || 'N/A'}
-          </Text>
+          <Stack tokens={{ childrenGap: 4 }}>
+            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+              Subject
+            </Text>
+            <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+              {subject || 'N/A'}
+            </Text>
+          </Stack>
         </Stack>
 
         <Separator />
@@ -270,21 +279,27 @@ function formatCurrency(val?: string): string {
         )}
         */}
 
-        {followUp && (
-          <>
-            <Separator />
-            <Stack tokens={{ childrenGap: 6 }}>
-              <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-                Follow Up:
-              </Text>
-              <Text variant="medium">
-                {followUpOptions[followUp] || followUp}
-              </Text>
-            </Stack>
-          </>
-        )}
+      {followUp && (
+        <>
+          <Separator />
+          <Stack tokens={{ childrenGap: 6 }}>
+            <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
+              Follow Up:
+            </Text>
+            <Text variant="medium">
+              {followUpOptions[followUp] || followUp}
+            </Text>
+          </Stack>
+        </>
+      )}
 
       </Stack>
+      <Checkbox
+        label="Looks good"
+        checked={isConfirmed}
+        onChange={(_e, checked) => setIsConfirmed(!!checked)}
+        styles={{ root: { marginTop: 10 } }}
+      />
 
       <Stack horizontal styles={{ root: { marginTop: 20, justifyContent: 'space-between', alignItems: 'center' } }}>
         <Stack horizontal tokens={{ childrenGap: 15 }}>
@@ -299,7 +314,7 @@ function formatCurrency(val?: string): string {
             text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
             onClick={handleDraftEmail}
             styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles}
-            disabled={isDraftConfirmed}
+            disabled={!isConfirmed || isDraftConfirmed}
             iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
           />
         </Stack>

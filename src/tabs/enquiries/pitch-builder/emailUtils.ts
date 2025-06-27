@@ -77,6 +77,10 @@ export function markUnfilledPlaceholders(
       `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
     );
   });
+  // Also highlight generic [INSERT ...] placeholders that haven't been filled
+  marked = marked.replace(/\[INSERT[^\]]*\]/gi, (m) => {
+    return `<span style="color: ${colours.cta}; font-weight: bold;">${m}</span>`;
+  });
   return marked;
 }
 
