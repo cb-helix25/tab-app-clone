@@ -3,7 +3,6 @@
 import React, {
   useState,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useCallback,
   ReactNode,
@@ -2471,7 +2470,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [currentUserConfirmed]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     setContent(
       <>
         <QuickActionsBar

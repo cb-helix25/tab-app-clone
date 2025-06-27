@@ -1,16 +1,16 @@
 diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 1160934eb070222697216450b5cf1c19f8c44be0..cd94c8c935abc665d020399a6b49e58c22b8ed0e 100644
+index cc8011989c5d6dd60addaba2b5c7b9cd708c1b60..25d78fbdc7e54206fba425e9c77c449123541fc3 100644
 --- a/src/tabs/home/Home.tsx
 +++ b/src/tabs/home/Home.tsx
-@@ -1,32 +1,33 @@
+@@ -1,31 +1,30 @@
  // src/tabs/home/Home.tsx
  
  import React, {
    useState,
    useEffect,
-   useLayoutEffect,
+-  useLayoutEffect,
    useMemo,
-+  useCallback,
+   useCallback,
    ReactNode,
    useRef, // ADDED
    lazy,
@@ -34,206 +34,38 @@ index 1160934eb070222697216450b5cf1c19f8c44be0..cd94c8c935abc665d020399a6b49e58c
    DefaultButton,
    Icon,
    Toggle,
-   keyframes,
- } from '@fluentui/react';
 diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 1160934eb070222697216450b5cf1c19f8c44be0..cd94c8c935abc665d020399a6b49e58c22b8ed0e 100644
+index cc8011989c5d6dd60addaba2b5c7b9cd708c1b60..25d78fbdc7e54206fba425e9c77c449123541fc3 100644
 --- a/src/tabs/home/Home.tsx
 +++ b/src/tabs/home/Home.tsx
-@@ -2296,78 +2297,51 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-         styles: approveButtonStyles,
-       });
-     }
-     if (isApprover && snippetApprovalsNeeded.length > 0) {
-       actions.push({
-         title: 'Approve Snippet Edits',
-         onClick: handleSnippetApprovalClick,
-         icon: 'Edit',
-         styles: approveButtonStyles,
-       });
-     }
-     if (bookingsNeeded.length > 0) {
-       actions.push({
-         title: 'Book Requested Leave',
-         onClick: handleBookLeaveClick,
-         icon: 'Accept',
-         styles: bookButtonStyles,
-       });
-     }
-     return actions;
-   }, [isApprover, approvalsNeeded, snippetApprovalsNeeded, bookingsNeeded, approveButtonStyles, bookButtonStyles]);
+@@ -2449,51 +2448,51 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
+   }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
  
-   // Build immediate actions list
-   // Ensure every action has an icon (never undefined)
-   type Action = { title: string; onClick: () => void; icon: string };
--  let immediateActionsList: Action[] = [];
--  if (!isLoadingAttendance && !currentUserConfirmed) {
--    immediateActionsList.push({
--      title: 'Confirm Attendance',
--      icon: 'Cancel',
--      onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
--    });
--  }
--  if (instructionData.length > 0) {
--    immediateActionsList.push({
--      title: 'Review Instructions',
--      icon: 'OpenFile',
--      onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
--    });
--  }
--  // Map immediateALActions to always have an icon (fallback to empty string if missing)
--  immediateActionsList = immediateActionsList.concat(
--    immediateALActions.map(a => ({
--      ...a,
--      icon: a.icon || ''
--    }))
--  );
--  // Sort immediate actions by the predefined order.
--  immediateActionsList.sort(
--    (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
--  );
--
--  function handleActionClick(action: { title: string; icon: string }) {
-+  const handleActionClick = useCallback((action: { title: string; icon: string }) => {
-     let content: React.ReactNode = <div>No form available.</div>;
-     const titleText = action.title;
-   
-     switch (titleText) {
-       case "Confirm Attendance":
-       case "Update Attendance":
-         if (attendanceRef.current) {
-           const now = new Date();
-           const isThursdayAfterMidday = now.getDay() === 4 && now.getHours() >= 12;
-           const week = isThursdayAfterMidday ? 'next' : 'current';
-           attendanceRef.current.setWeek(week);
-           attendanceRef.current.focusTable();
+   const normalQuickActions = useMemo(() => {
+     const actions = quickActions
+       .filter((action) => {
+         if (action.title === 'Confirm Attendance') {
+           return currentUserConfirmed;
          }
-         return; // Exit early, no panel needed
-       case 'Create a Task':
-         content = (
-           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
-             <Tasking />
-           </Suspense>
-         );
-         break;
-       case 'Request CollabSpace':
-         content = <CognitoForm dataKey="QzaAr_2Q7kesClKq8g229g" dataForm="44" />;
-         break;
-       case 'Save Telephone Note':
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 1160934eb070222697216450b5cf1c19f8c44be0..cd94c8c935abc665d020399a6b49e58c22b8ed0e 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2404,73 +2378,112 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-         content = (
-           <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '20px' }}>
-             {JSON.stringify(instructionData, null, 2)}
-           </pre>
-         );
-           break;
-       case 'Book Space':
-         content = (
-           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
-             <BookSpaceForm
-               feeEarner={userData[0].Initials}
-               onCancel={() => setIsBespokePanelOpen(false)}
-               futureBookings={futureBookings}
-             />
-           </Suspense>
-         );
-         break;
-       default:
-         content = <div>No form available.</div>;
-         break;
-     }
-   
-     setBespokePanelContent(content);
-     setBespokePanelTitle(titleText);
-     setIsBespokePanelOpen(true);
--  }
-+  }, [
-+    attendanceRef,
-+    instructionData,
-+    futureLeaveRecords,
-+    transformedTeamData,
-+    userData,
-+    annualLeaveTotals,
-+    bankHolidays,
-+    annualLeaveAllData,
-+    futureBookings,
-+  ]);
+         if (action.title === 'Request Annual Leave') {
+           return true;
+         }
+         return true;
+       })
+       .map((action) => {
+         if (action.title === 'Confirm Attendance') {
+           return { ...action, title: 'Update Attendance' };
+         }
+         return action;
+       });
+     actions.sort(
+       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+     );
+     return actions;
+   }, [currentUserConfirmed]);
  
--  let normalQuickActions = quickActions
--  .filter((action) => {
--    if (action.title === 'Confirm Attendance') {
--      return currentUserConfirmed;
--    }
--    // Always show "Request Annual Leave"
--    if (action.title === 'Request Annual Leave') {
--      return true;
-+  const immediateActionsList: Action[] = useMemo(() => {
-+    const actions: Action[] = [];
-+    if (!isLoadingAttendance && !currentUserConfirmed) {
-+      actions.push({
-+        title: 'Confirm Attendance',
-+        icon: 'Cancel',
-+        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
-+      });
-     }
--    return true;
--  })
--  .map((action) => {
--    if (action.title === 'Confirm Attendance') {
--      return { ...action, title: 'Update Attendance' };
-+    if (instructionData.length > 0) {
-+      actions.push({
-+        title: 'Review Instructions',
-+        icon: 'OpenFile',
-+        onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
-+      });
-     }
--    return action;
--  });
--  // Sort normal actions by order.
--  normalQuickActions.sort(
--    (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
--  );
-+    actions.push(
-+      ...immediateALActions.map(a => ({
-+        ...a,
-+        icon: a.icon || '',
-+      }))
-+    );
-+    actions.sort(
-+      (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-+    );
-+    return actions;
-+  }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
-+
-+  const normalQuickActions = useMemo(() => {
-+    const actions = quickActions
-+      .filter((action) => {
-+        if (action.title === 'Confirm Attendance') {
-+          return currentUserConfirmed;
-+        }
-+        if (action.title === 'Request Annual Leave') {
-+          return true;
-+        }
-+        return true;
-+      })
-+      .map((action) => {
-+        if (action.title === 'Confirm Attendance') {
-+          return { ...action, title: 'Update Attendance' };
-+        }
-+        return action;
-+      });
-+    actions.sort(
-+      (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-+    );
-+    return actions;
-+  }, [currentUserConfirmed]);
- 
-   useLayoutEffect(() => {
+-  useLayoutEffect(() => {
++  useEffect(() => {
      setContent(
        <>
          <QuickActionsBar
@@ -257,3 +89,5 @@ index 1160934eb070222697216450b5cf1c19f8c44be0..cd94c8c935abc665d020399a6b49e58c
      immediateActionsList,
      normalQuickActions,
      currentUserConfirmed,
+   ]);
+ 
