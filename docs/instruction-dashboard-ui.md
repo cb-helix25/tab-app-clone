@@ -30,8 +30,10 @@ selected tab expands to show its label while the others collapse down to
 icons. They appear in the order **EID Check**, **Risk Assessment** and
 finally **Open Matter** so a user is guided through each step in turn.
 
-All functionality is currently non-operational but the UI is ready to hook into
-future services.
+The **Open Matter** tab now launches the matter opening workflow directly
+from a card. Previously users had to use the navigator action to start a
+new matter. The navigator still displays the workflow controls once
+invoked, but the action is now accessible from each instruction card.
 
 ## Additional Clients Placeholder ID
 

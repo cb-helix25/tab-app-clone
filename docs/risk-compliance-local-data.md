@@ -9,7 +9,7 @@ It pairs with the Tiller response generator to provide realistic status informat
 
 Use `npm run generate:tiller` whenever instruction refs change to refresh the sample data.
 Run `npm run generate:risk` to populate `localInstructionData.json` with example
-risk assessments, electronic ID checks and basic compliance results so the
+risk assessments, electronic ID checks, ID verification results and basic compliance data so the
 dashboard cards show realistic statuses.
 
 # Tiller Integration Overview

@@ -179,7 +179,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .option-bubble {
       display: block;
-      background: ${colours.highlightBlue};
+      background: ${colours.highlightNeutral};
       color: ${colours.darkBlue};
       padding: 4px 6px;
       border-radius: 0;
@@ -205,7 +205,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       color: ${colours.greyText};
     }
     .option-choice {
-      background: ${colours.highlightBlue};
+      background: ${colours.highlightNeutral};
       color: ${colours.darkBlue};
       padding: 2px 6px;
       border-radius: 0;

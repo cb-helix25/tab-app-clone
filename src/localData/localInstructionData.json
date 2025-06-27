@@ -445,6 +445,44 @@
         "AddressVerificationCheckResult": "Failed",
         "Status": "fail"
       }
+    ],
+    "idVerifications": [
+      {
+        "MatterId": "HLX-22338-3927",
+        "EIDCheckId": "id-1",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Review",
+        "PEPAndSanctionsCheckResult": "Passed",
+        "AddressVerificationResult": "Passed",
+        "EIDCheckedDate": "2025-06-27"
+      },
+      {
+        "MatterId": "HLX-22338-4581",
+        "EIDCheckId": "id-2",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Passed",
+        "PEPAndSanctionsCheckResult": "Failed",
+        "AddressVerificationResult": "Review",
+        "EIDCheckedDate": "2025-06-27"
+      },
+      {
+        "MatterId": "HLX-22338-4843",
+        "EIDCheckId": "id-3",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Failed",
+        "PEPAndSanctionsCheckResult": "Passed",
+        "AddressVerificationResult": "Passed",
+        "EIDCheckedDate": "2025-06-27"
+      },
+      {
+        "MatterId": "HLX-22338-7385",
+        "EIDCheckId": "id-4",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Review",
+        "PEPAndSanctionsCheckResult": "Failed",
+        "AddressVerificationResult": "Review",
+        "EIDCheckedDate": "2025-06-27"
+      }
     ]
   }
 ]

@@ -35,7 +35,7 @@ export const templateBlocks: TemplateBlock[] = [
     placeholder: '[Issue Summary Placeholder]',
     isMultiSelect: true,
     options: [
-      { label: 'The Dispute', previewText: 'The Dispute\n\nYou have provided an initial outline of the position that X' },
+      { label: 'The Dispute', previewText: 'The Dispute\n\nYou have provided an initial outline of the position that [INSERT]' },
       {
         label: 'Current Position and Problems',
         previewText: `We have discussed that you are [INSERT]. You have a dispute with [INSERT] because [INSERT] and have confirmed that [INSERT].\n\nThe dispute with [INSERT] situation creates difficulty for you for obvious reasons, including because [INSERT].\n\nIn addition to the above, additional problems arise and need to be addressed, such as [INSERT].`,

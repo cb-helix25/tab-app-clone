@@ -425,10 +425,12 @@ const Instructions: React.FC<InstructionsProps> = ({
           ...(p.riskAssessments ?? []),
           ...(p.compliance ?? []),
         ];
-        const eidSource: any[] = [
-          ...(p.electronicIDChecks ?? p.idVerifications ?? []),
+        const prospectEids: any[] = [
+          ...(p.electronicIDChecks ?? []),
+          ...(p.idVerifications ?? []),
         ];
-        (p.idVerifications ?? []).forEach((eid: any) => {
+        const eidSource: any[] = [...prospectEids];
+        prospectEids.forEach((eid: any) => {
           riskSource.push({
             MatterId: eid.InstructionRef ?? eid.MatterId,
             ComplianceDate: eid.EIDCheckedDate,
@@ -442,8 +444,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         instructions.forEach((inst: any) => {
           riskSource.push(...(inst.riskAssessments ?? []));
           riskSource.push(...(inst.compliance ?? []));
-          const instEids =
-            (inst.electronicIDChecks ?? inst.idVerifications) ?? [];
+          const instEids: any[] = [
+            ...(inst.electronicIDChecks ?? []),
+            ...(inst.idVerifications ?? []),
+          ];
           eidSource.push(...instEids);
           instEids.forEach((eid: any) => {
             riskSource.push({

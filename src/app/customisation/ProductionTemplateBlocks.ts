@@ -51,7 +51,7 @@ export const templateBlocks: TemplateBlock[] = [
         label: 'The Dispute',
         previewText: `The Dispute
   
-  You have provided an initial outline of the position that X`,
+  You have provided an initial outline of the position that [INSERT]`,
       },
       {
         label: 'Current Position and Problems',

@@ -181,7 +181,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const riskAssessed = Boolean(risk?.RiskAssessmentResult);
     const dealClosed = !dealOpen;
     const openMatterReady = dealClosed && paymentComplete && eidVerified && compliancePassed;
-    const openDisabled = !openMatterReady;
+    // Allow opening a new matter directly from the card even if some
+    // prerequisite checks are outstanding. The navigator already shows
+    // the relevant warnings so we no longer disable the action here.
+    const openDisabled = false;
 
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>(() => {
         if (!verifyIdComplete) return 'eid';

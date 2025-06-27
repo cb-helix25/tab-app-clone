@@ -51,12 +51,26 @@ const compliance = instructionRefs.map((ref, idx) => {
     };
 });
 
+const idVerifications = instructionRefs.map((ref, idx) => {
+    const resultOptions = ['Review', 'Passed', 'Failed'];
+    return {
+        MatterId: ref,
+        EIDCheckId: `id-${idx + 1}`,
+        EIDStatus: 'completed',
+        EIDOverallResult: resultOptions[idx % resultOptions.length],
+        PEPAndSanctionsCheckResult: idx % 2 === 0 ? 'Passed' : 'Failed',
+        AddressVerificationResult: idx % 2 === 0 ? 'Passed' : 'Review',
+        EIDCheckedDate: new Date().toISOString().split('T')[0],
+    };
+});
+
 data[0].riskAssessments = riskAssessments;
 data[0].electronicIDChecks = electronicIDChecks;
 data[0].compliance = compliance;
+data[0].idVerifications = idVerifications;
 
 fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 console.log(
-    `Local risk assessment and compliance data generated: ${riskAssessments.length} records`
+    `Local risk assessment and ID verification data generated: ${riskAssessments.length} records`
 );
 

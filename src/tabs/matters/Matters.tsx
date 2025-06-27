@@ -683,6 +683,7 @@ const Matters: React.FC<MattersProps> = ({
   }, [
     setContent,
     selectedMatter,
+    activeTab,
     activeGroupedArea,
     activePracticeAreas,
     activeState,
@@ -692,6 +693,7 @@ const Matters: React.FC<MattersProps> = ({
     feeEarnerType,
     practiceAreasList,
     teamData,
+    isDarkMode,
   ]);
 
   // ------------------------------------------------

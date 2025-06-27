@@ -1,315 +1,152 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ffe54e3c717d06425f68c6f08552709809a71e3e..6a4f336750975cfa5be9750b833fb6bce5678347 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -1,36 +1,37 @@
- import React from 'react';
- import {
-   Stack,
-   Text,
-   MessageBar,
-   MessageBarType,
-   Separator,
-   Panel,
-   PanelType,
-   PrimaryButton,
-   DefaultButton,
-+  Checkbox,
- } from '@fluentui/react';
- import { colours } from '../../../app/styles/colours';
- import {
-   sharedPrimaryButtonStyles,
-   sharedDefaultButtonStyles,
-   sharedDraftConfirmedButtonStyles,
- } from '../../../app/styles/ButtonStyles';
- import {
-   removeHighlightSpans,
-   markUnfilledPlaceholders,
-   removeUnfilledPlaceholders,
-   applyDynamicSubstitutions,
-   convertDoubleBreaksToParagraphs,
- } from './emailUtils';
- import ExperimentalAssistant from './ExperimentalAssistant';
- import { isInTeams } from '../../../app/functionality/isInTeams';
- import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
- 
- function escapeRegExp(str: string): string {
-   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+diff --git a/src/app/styles/InstructionCard.css b/src/app/styles/InstructionCard.css
+index 2e34eb9aa7eb9aee29475054694fe75eaf32d935..89ce296640090e86bcb4ecd3e2bd2d8e30e64db6 100644
+--- a/src/app/styles/InstructionCard.css
++++ b/src/app/styles/InstructionCard.css
+@@ -1,87 +1,87 @@
+ .instructionCard {
+     position: relative;
+     padding: 12px 16px 40px 20px;
+     /* bottom space for tabs */
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+     width: 100%;
+     margin-bottom: 24px;
+     opacity: 0;
+-    animation: dropIn 0.3s ease forwards;
++    animation: dropIn 0.2s ease-out forwards;
+     animation-delay: var(--animation-delay, 0s);
+     overflow: hidden;
+     border-radius: 0;
+     break-inside: avoid;
+-    transition: margin-bottom 0.4s ease;
++    transition: margin-bottom 0.2s ease-out;
+     }
+     
+     .instructionCard.collapsed {
+         margin-bottom: 8px;
  }
  
- function removeAutoInsertedBlocks(
-   html: string,
-   autoBlocks: { [key: string]: boolean },
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ffe54e3c717d06425f68c6f08552709809a71e3e..6a4f336750975cfa5be9750b833fb6bce5678347 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -97,50 +98,56 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
-   amount,
-   passcode,
- }) => {
-   // Strip blocks auto inserted by the system unless edited
-   const withoutAutoBlocks = removeAutoInsertedBlocks(
-     body,
-     autoInsertedBlocks,
-     editedBlocks
-   );
-   
-   // Process body HTML using imported functions
-   const sanitized = removeHighlightSpans(withoutAutoBlocks);
-   const substituted = applyDynamicSubstitutions(
-     sanitized,
-     userData,
-     enquiry,
-     amount,
-     passcode,
-     passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
-   );
-   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
-   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
- const previewRef = React.useRef<HTMLDivElement>(null);
+ .instructionCard.collapsed {
+     margin-bottom: 8px;
+ }
  
-   const [isAiOpen, setIsAiOpen] = React.useState(false);
-+  const [isConfirmed, setIsConfirmed] = React.useState(false);
-+  React.useEffect(() => {
-+    if (isPreviewOpen) {
-+      setIsConfirmed(false);
-+    }
-+  }, [isPreviewOpen]);
-   const inTeams = isInTeams();
-   const useLocalData =
-     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
-   const allowedInitials = ['LZ', 'AC'];
-   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
-   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
-   const showAiAssistButton = false;
  
-   // Example follow-up options (you may wish to pass these in or centralise them)
-   const followUpOptions: { [key: string]: string } = {
-     '1_day': '1 day',
-     '2_days': '2 days',
-     '3_days': '3 days',
-     '7_days': '7 days',
-     '14_days': '14 days',
-     '30_days': '30 days',
-   };
+ .status-box {
+     flex: 1 1 0;
+     padding: 6px;
+     text-align: center;
+     border: 1px solid #e1dfdd;
+     border-radius: 4px;
+     background: #fff;
+     font-size: 0.75rem;
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     justify-content: center;
+ }
  
- function formatCurrency(val?: string): string {
-   if (!val) return 'N/A';
-   const num = parseFloat(val.replace(/,/g, ''));
-   if (isNaN(num)) return val;
-   return num.toLocaleString('en-GB', {
-     style: 'currency',
-     currency: 'GBP',
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ffe54e3c717d06425f68c6f08552709809a71e3e..6a4f336750975cfa5be9750b833fb6bce5678347 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -176,152 +183,160 @@ function formatCurrency(val?: string): string {
-           <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
-           {enquiry.Point_of_Contact || 'N/A'}
-         </Text>
-         <MessageBar
-           messageBarType={MessageBarType.info}
-           isMultiline={false}
-           styles={{ root: { backgroundColor: colours.grey } }}
-         >
-           This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're responding on the same day.
-         </MessageBar>
+ .instruction-header {
+     background-color: #061733;
+     color: #ffffff;
+     padding: 12px 12px;
+     font-size: 16px;
+     font-weight: 600;
+     margin: -12px -16px 8px -20px;
+     display: flex;
+         align-items: center;
+         justify-content: space-between;
+         cursor: pointer;
+     }
+     
+     .header-title {
+         display: flex;
+         align-items: center;
+         gap: 4px;
+     }
+     
+     .chevron-icon {
+-        transition: transform 0.3s ease;
++        transition: transform 0.2s ease-out;
+     }
+     
+     .instructionCard.collapsed .chevron-icon {
+         transform: rotate(180deg);
+ }
  
-         {isSuccessVisible && (
-           <MessageBar
-             messageBarType={MessageBarType.success}
-             isMultiline={false}
-             onDismiss={() => {}}
-             dismissButtonAriaLabel="Close"
-             styles={{ root: { borderRadius: 0, marginTop: '10px' } }}
-           >
-             Email drafted successfully!
-           </MessageBar>
-         )}
+ .instruction-details {
+     display: flex;
+     flex-direction: column;
+     gap: 2px;
+     flex: 1 1 auto;
+     border-bottom-left-radius: 0;
+     border-bottom-right-radius: 0;
+     overflow: hidden;
+     margin-bottom: 16px;
+ }
  
-         <Separator />
+ .detail-group {
+     border: 1px solid #e1dfdd;
+     border-radius: 4px;
+     background-color: #fff;
+     margin-bottom: 4px;
+     padding: 0;
+     /* <- DO NOT add padding here */ }
  
--        {/* Deal Details */}
--        <Stack tokens={{ childrenGap: 4 }}>
--          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
--            Deal Details:
--          </Text>
--          <Text variant="medium">
--            <strong>Service:</strong> {serviceDescription || 'N/A'}
--          </Text>
--          <Text variant="medium">
--            <strong>Amount:</strong> {formatCurrency(amount)}
--          </Text>
--          {clients && clients.length > 0 && (
--            <Stack tokens={{ childrenGap: 2 }}>
--              <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
--                <strong>Clients Requiring ID:</strong>
--              </Text>
--              {clients.map((c, idx) => (
--                <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
--                  {c.firstName} {c.lastName} - {c.email}
-+        {/* Deal Details & Subject */}
-+        <Stack
-+          tokens={{ childrenGap: 8 }}
-+          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
-+        >
-+          <Stack tokens={{ childrenGap: 4 }}>
-+            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-+              Deal Details
-+            </Text>
-+            <Text variant="medium">
-+              <strong>Service:</strong> {serviceDescription || 'N/A'}
-+            </Text>
-+            <Text variant="medium">
-+              <strong>Amount:</strong> {formatCurrency(amount)}
-+            </Text>
-+            {clients && clients.length > 0 && (
-+              <Stack tokens={{ childrenGap: 2 }}>
-+                <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-+                  <strong>Clients Requiring ID:</strong>
-                 </Text>
--              ))}
--            </Stack>
--          )}
--        </Stack>
--
--        <Separator />
-+                {clients.map((c, idx) => (
-+                  <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-+                    {c.firstName} {c.lastName} - {c.email}
-+                  </Text>
-+                ))}
-+              </Stack>
-+            )}
-+          </Stack>
+diff --git a/src/app/styles/InstructionCard.css b/src/app/styles/InstructionCard.css
+index 2e34eb9aa7eb9aee29475054694fe75eaf32d935..89ce296640090e86bcb4ecd3e2bd2d8e30e64db6 100644
+--- a/src/app/styles/InstructionCard.css
++++ b/src/app/styles/InstructionCard.css
+@@ -319,51 +319,51 @@
+ }
  
--        {/* Subject */}
--        <Stack tokens={{ childrenGap: 6 }}>
--          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
--            Subject:
--          </Text>
--          <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
--            {subject || 'N/A'}
--          </Text>
-+          <Stack tokens={{ childrenGap: 4 }}>
-+            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-+              Subject
-+            </Text>
-+            <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-+              {subject || 'N/A'}
-+            </Text>
-+          </Stack>
-         </Stack>
+ .completion-tick {
+     margin-right: 4px;
+     width: 16px;
+     height: 16px;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     border-radius: 50%;
+     background: #fff;
+     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+     color: #20b26c;
+     opacity: 0;
+     transform: scale(0);
+ }
  
-         <Separator />
+ .completion-tick.visible {
+     opacity: 1;
+     transform: scale(1);
+     animation: tickPop 0.3s ease;
+ }
  
-         {/* Body */}
-         <Stack tokens={{ childrenGap: 6 }}>
-           <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-             Body:
-           </Text>
-           <div
-             ref={previewRef}
-             style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}
-             dangerouslySetInnerHTML={{ __html: finalBody }}
-           />
-         </Stack>
+ .card-content {
+     overflow: hidden;
+-    transition: max-height 0.4s ease-in-out;
++    transition: max-height 0.2s ease-out;
+     max-height: 1000px;
+ }
  
-         {/*
-           Attachments preview disabled. Retained code for future use.
-         {attachments.length > 0 && (
-           <>
-             <Separator />
-             <Stack tokens={{ childrenGap: 6 }}>
-               <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-                 Attachments:
-               </Text>
-               <Stack tokens={{ childrenGap: 5 }}>
-                 {attachments.map((att: string) => (
-                   <Text key={att} variant="medium">
-                     - {att}
-                   </Text>
-                 ))}
-               </Stack>
-             </Stack>
-           </>
-         )}
-         */}
+ .instructionCard.collapsed .card-content {
+     max-height: 0;
+ }
  
--        {followUp && (
--          <>
--            <Separator />
--            <Stack tokens={{ childrenGap: 6 }}>
--              <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
--                Follow Up:
--              </Text>
--              <Text variant="medium">
--                {followUpOptions[followUp] || followUp}
--              </Text>
--            </Stack>
--          </>
--        )}
-+      {followUp && (
-+        <>
-+          <Separator />
-+          <Stack tokens={{ childrenGap: 6 }}>
-+            <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-+              Follow Up:
-+            </Text>
-+            <Text variant="medium">
-+              {followUpOptions[followUp] || followUp}
-+            </Text>
-+          </Stack>
-+        </>
-+      )}
+ @keyframes tickPop {
+     from {
+         opacity: 0;
+         transform: scale(0);
+     }
  
-       </Stack>
-+      <Checkbox
-+        label="Looks good"
-+        checked={isConfirmed}
-+        onChange={(_e, checked) => setIsConfirmed(!!checked)}
-+        styles={{ root: { marginTop: 10 } }}
-+      />
+     to {
+         opacity: 1;
+         transform: scale(1);
+     }
+ }
  
-       <Stack horizontal styles={{ root: { marginTop: 20, justifyContent: 'space-between', alignItems: 'center' } }}>
-         <Stack horizontal tokens={{ childrenGap: 15 }}>
-           <PrimaryButton
-             text="Send Email"
-             onClick={sendEmail}
-             styles={sharedPrimaryButtonStyles}
-             disabled
-             title="Sending is disabled in testing mode. Use Draft Email."
-           />
-           <DefaultButton
-             text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
-             onClick={handleDraftEmail}
-             styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles}
--            disabled={isDraftConfirmed}
-+            disabled={!isConfirmed || isDraftConfirmed}
-             iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
-           />
-         </Stack>
-         {canUseAi && showAiAssistButton && (
-           <DefaultButton
-             text="AI Assist"
-             styles={sharedDefaultButtonStyles}
-             onClick={() => setIsAiOpen(true)}
-             iconProps={{ iconName: 'Robot' }}
-             title="Send this email to OpenAI for suggestions"
-           />
-         )}
-         <DefaultButton
-           text="Copy to Clipboard"
-           styles={sharedDefaultButtonStyles}
-           onClick={() => {
-             const tempDiv = document.createElement('div');
-             tempDiv.innerHTML = finalBody;
-             navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
-           }}
-           iconProps={{ iconName: 'Copy' }}
-           title="Copy the email preview text to your clipboard"
-         />
-       </Stack>
-       {canUseAi && showAiAssistButton && (
+ /* interactive status row inside expanded cards */
+ .interactive-status {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 6px;
+     margin-bottom: 8px;
