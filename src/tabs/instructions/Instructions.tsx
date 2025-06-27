@@ -348,55 +348,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         };
       });
 
-      const dealOnlyItems = (prospect.deals ?? [])
-        .filter((d) => !d.InstructionRef)
-        .map((d) => {
-          const clientsForDeal: ClientInfo[] = [];
-          (prospect.jointClients ?? prospect.joinedClients ?? []).forEach((jc) => {
-            if (jc.DealId === d.DealId) {
-              clientsForDeal.push({
-                ClientEmail: jc.ClientEmail,
-                HasSubmitted: jc.HasSubmitted,
-                Lead: false,
-                deals: [
-                  {
-                    DealId: jc.DealId,
-                    InstructionRef: null,
-                    ServiceDescription: d.ServiceDescription,
-                    Status: d.Status,
-                  },
-                ],
-              });
-            }
-          });
-          if (d.LeadClientEmail) {
-            clientsForDeal.push({
-              ClientEmail: d.LeadClientEmail,
-              Lead: true,
-              deals: [
-                {
-                  DealId: d.DealId,
-                  InstructionRef: null,
-                  ServiceDescription: d.ServiceDescription,
-                  Status: d.Status,
-                },
-              ],
-            });
-          }
-          return {
-            instruction: null,
-            deal: d,
-            deals: [d],
-            clients: clientsForDeal,
-            risk: undefined,
-            eid: undefined,
-            prospectId: prospect.prospectId,
-            passcode: d.Passcode,
-            documentCount: 0,
-          };
-        });
-
-      return [...instructionItems, ...dealOnlyItems];
+      return instructionItems;
     });
   }, [instructionData]);
 

@@ -18,6 +18,7 @@ import {
 } from '../../../app/styles/ButtonStyles';
 import {
   removeHighlightSpans,
+  markUnfilledPlaceholders,
   removeUnfilledPlaceholders,
   applyDynamicSubstitutions,
   convertDoubleBreaksToParagraphs,
@@ -104,16 +105,17 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   );
   
   // Process body HTML using imported functions
+  const sanitized = removeHighlightSpans(withoutAutoBlocks);
   const substituted = applyDynamicSubstitutions(
-    removeHighlightSpans(withoutAutoBlocks),
+    sanitized,
     userData,
     enquiry,
     amount,
     passcode,
     passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
   );
-  const cleanBody = removeUnfilledPlaceholders(substituted, templateBlocks);
-  const finalBody = convertDoubleBreaksToParagraphs(cleanBody);
+  const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
+  const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
@@ -124,9 +126,6 @@ const previewRef = React.useRef<HTMLDivElement>(null);
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
   const showAiAssistButton = false;
-
-// Detect missing placeholders in the clean body
-const missingPlaceholders = cleanBody.match(/\[[^[\]]+]/g);
 
   // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
@@ -243,16 +242,6 @@ function formatCurrency(val?: string): string {
           <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
             Body:
           </Text>
-          {missingPlaceholders && missingPlaceholders.length > 0 && (
-            <MessageBar
-              messageBarType={MessageBarType.warning}
-              isMultiline={false}
-              styles={{ root: { marginBottom: 6 } }}
-            >
-              <strong>Warning:</strong> Unfilled placeholders -{' '}
-              {missingPlaceholders.join(', ')}
-            </MessageBar>
-          )}
           <div
             ref={previewRef}
             style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}

@@ -43,7 +43,6 @@ const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
     fontSize: '16px',
     fontWeight: 600,
     color: '#ffffff',
-    backgroundColor: 'transparent',
     padding: '0 12px',
     lineHeight: '48px',
     position: 'relative',
@@ -51,7 +50,6 @@ const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
     selectors: {
       ':hover': {
         color: colours.highlight,
-        backgroundColor: 'transparent',
       },
     },
   },

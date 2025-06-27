@@ -62,6 +62,25 @@ export function removeUnfilledPlaceholders(
 }
 
 /**
+ * Highlight leftover placeholders in CTA red so they stand out in previews
+ */
+export function markUnfilledPlaceholders(
+  text: string,
+  blocks: TemplateBlock[] = templateBlocks
+): string {
+  const placeholders = getLeftoverPlaceholders(blocks);
+  let marked = text;
+  placeholders.forEach((placeholder) => {
+    const regex = new RegExp(escapeRegExp(placeholder), 'g');
+    marked = marked.replace(
+      regex,
+      `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
+    );
+  });
+  return marked;
+}
+
+/**
  * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
  * so final email doesn't have bright highlighting.
  */

@@ -1,25 +1,53 @@
-/* src/app/styles/CustomTabs.css */
+/* Remove bold text */
+.customPivot .ms-Pivot-link {
+  font-weight: normal !important;
+  /* Remove bold */
+}
 
 /* Grey out the disabled tab and change the cursor */
 .customPivot .disabledTab {
-  color: grey !important; /* Override existing color */
-  cursor: not-allowed !important; /* Change cursor to indicate it's not clickable */
+  color: grey !important;
+  cursor: not-allowed !important;
 }
 
-/* Optional: Adjust the position or style of the lock icon if necessary */
-.customPivot .ms-Pivot-link .ms-Pivot-icon {
-  margin-right: 8px; /* Space between icon and text */
-}
-
-/* Target the links inside your custom pivot */
+/* Hover state: Soft background change and shadow for interactivity */
 .customPivot .ms-Pivot-link {
   opacity: 0;
   animation: dropIn 0.3s ease forwards;
   position: relative;
   border-bottom: none;
-  font-weight: 500;
-    padding: 0 16px;
-    transition: background-color 0.15s, transform 0.1s, color 0.2s;
+  padding: 0 16px;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
+  color: #ffffff;
+}
+
+.customPivot .ms-Pivot-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  /* Soft background for hover */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow for hover effect */
+}
+
+/* Press state: Darker background and bold effect */
+.customPivot .ms-Pivot-link:active {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  /* Darker background on press */
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+  /* Inset shadow for feedback */
+  transform: scale(0.97);
+  /* Slight scale effect */
+  color: var(--helix-highlight) !important;
+  /* Highlight color on press */
+}
+
+/* Selected/Active state: Strong visual indicator below the tab */
+.customPivot .ms-Pivot-link[aria-selected='true'] {
+  color: var(--helix-highlight, #3690CE);
+  /* Highlight color */
+  background-color: var(--helix-dark-blue, #061733);
+  /* Background color for active tab */
+  border-bottom: 2px solid var(--helix-highlight, #3690CE);
+  /* Strong bottom indicator */
 }
 
 /* Remove Fluent UI's default underline */
@@ -27,43 +55,35 @@
   display: none;
 }
 
-.customPivot .ms-Pivot-link[aria-selected='true'] {
-  border-bottom: none;
+/* Underline animation on hover and selection */
+/* Ensure underline stays hidden initially */
+.customPivot .ms-Pivot-link::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background-color: var(--helix-highlight, #3690CE);
+  transform: translateX(-50%) scaleX(0); /* Hidden initially */
+  transform-origin: center; /* Start the animation from the centre */
+  transition: transform 0.3s ease-out; /* Smooth ease-in/ease-out transition */
 }
 
-/* Apply staggered animation delays to each link */
-.customPivot .ms-Pivot-link:nth-child(1) {
-  animation-delay: 0s;
+/* Animate underline on hover and selection */
+.customPivot .ms-Pivot-link:hover::after,
+.customPivot .ms-Pivot-link[aria-selected='true']::after {
+  transform: translateX(-50%) scaleX(1); /* Animate from centre */
 }
 
-.customPivot .ms-Pivot-link:nth-child(2) {
-  animation-delay: 0.1s;
+/* Ensure underline stays visible when hovered or selected */
+.customPivot .ms-Pivot-link:hover::after,
+.customPivot .ms-Pivot-link[aria-selected='true']::after {
+  transform: translateX(-50%) scaleX(1);
+  /* Ensure it animates immediately */
 }
 
-.customPivot .ms-Pivot-link:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.customPivot .ms-Pivot-link:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-.customPivot .ms-Pivot-link:nth-child(5) {
-  animation-delay: 0.4s;
-}
-
-.customPivot .ms-Pivot-link:nth-child(6) {
-  animation-delay: 0.5s;
-}
-
-.customPivot .ms-Pivot-link:nth-child(7) {
-  animation-delay: 0.6s;
-}
-
-.customPivot .ms-Pivot-link:nth-child(8) {
-  animation-delay: 0.7s;
-}
-
+/* Home icon styles (active shade on selection, no focus outline) */
 .home-icon {
   display: flex;
   align-items: center;
@@ -74,59 +94,37 @@
   cursor: pointer;
   position: relative;
   transition: background-color 0.15s, transform 0.1s;
-  }
-  
-  .home-icon:active {
-    transform: scale(0.97);
-  }
-  
-  .home-icon:focus {
-    outline: 2px solid var(--helix-highlight, #3690CE);
-    outline-offset: 2px;
-  }
-  
-  .customPivot .ms-Pivot-link:active {
-    transform: scale(0.97);
-  }
-  
-  .customPivot .ms-Pivot-link:focus {
-    outline: 2px solid var(--helix-highlight, #3690CE);
-    outline-offset: 2px;
+}
+
+.home-icon:active {
+  transform: scale(0.97);
+  background-color: rgba(0, 0, 0, 0.2);
+  /* Darker background on press */
+}
+
+.home-icon:focus {
+  outline: none;
+  /* Remove focus outline */
 }
 
 .home-icon:hover,
 .home-icon.active {
-  color: var(--helix-highlight, #3690CE) !important;
+  color: var(--helix-highlight, #3690CE);
+  /* Highlight color on hover */
+  background-color: rgba(255, 255, 255, 0.1);
+  /* Subtle background on hover */
 }
 
-/* Animated underline for pivot links */
-.customPivot .ms-Pivot-link::after,
-.home-icon::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  height: 2px;
-  width: 100%;
-  background-color: var(--helix-highlight, #3690CE);
-  transform: translateX(-50%) scaleX(0);
-  transform-origin: center;
-  transition: transform 0.15s ease-out;
+.home-icon.active {
+  background-color: var(--helix-dark-blue, #061733);
+  /* Active state background */
 }
 
-.customPivot .ms-Pivot-link:hover::after,
-.customPivot .ms-Pivot-link[aria-selected='true']::after,
-.home-icon:hover::after,
-.home-icon.active::after {
-  transform: translateX(-50%) scaleX(1);
-}
-
-/* If you have more than 6 tabs, just add more nth-child rules
-   or use a different approach (like SCSS loops or JavaScript). */
 /* Mobile layout tweaks */
 @media (max-width: 600px) {
   .customTabsContainer {
     overflow-x: auto;
+    /* Horizontal scroll on small screens */
   }
 
   .customTabsContainer::-webkit-scrollbar {
@@ -139,28 +137,21 @@
 
   .customPivot .ms-Pivot-link {
     font-size: 14px;
+    /* Smaller font size for mobile */
     padding: 0 8px;
   }
 
   .home-icon {
     padding: 0 8px;
+    /* Adjust padding for mobile */
   }
 }
 
-/* remove border/outline on press/focus */
+/* Remove border/outline on press/focus */
 .customPivot .ms-Pivot-link:active,
 .customPivot .ms-Pivot-link:focus,
 .home-icon:active,
 .home-icon:focus {
   border: none !important;
   outline: none !important;
-}
-
-/* pressed = transparent bg + inner white “border” */
-.customPivot .ms-Pivot-link:active,
-.home-icon:active {
-  background-color: transparent !important;
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
-  border-radius: 6px !important;
-  color: var(--helix-highlight) !important;
 }
