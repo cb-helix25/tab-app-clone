@@ -362,6 +362,17 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       color: ${colours.red};
       display: inline-flex;
       align-items: center;
+      border: 1px solid ${colours.greyText};
+      background: ${colours.grey};
+      padding: 2px 4px;
+      border-radius: 0;
+    }
+    .sentence-delete:hover {
+      background: ${colours.highlightBlue};
+    }
+    .sentence-delete:active {
+      background: ${colours.blue};
+      color: #ffffff;
     }
     .sentence-handle {
       cursor: grab;
@@ -369,21 +380,29 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       user-select: none;
       color: ${colours.greyText};
       padding: 2px 4px;
-      border-radius: 4px;
+      border: 1px solid ${colours.greyText};
       display: inline-flex;
       align-items: center;
       font-size: 18px;
+      background: ${colours.grey};
+      border-radius: 0;
+    }
+    .sentence-handle:hover {
+      background: ${colours.highlightBlue};
     }
     .sentence-handle:active {
       cursor: grabbing;
+      background: ${colours.blue};
+      color: #ffffff;
     }
     .sentence-handle i,
     .sentence-delete i {
       pointer-events: none;
     }
     .drag-over {
-      outline: 2px dashed ${colours.highlightBlue};
-      border-radius: 4px;
+      outline: 2px dashed ${colours.blue};
+      background: ${colours.highlightBlue};
+      border-radius: 0;
     }
     @keyframes fadeInScale {
       from { opacity: 0; transform: scale(0.95); }

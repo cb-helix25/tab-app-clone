@@ -389,87 +389,94 @@ useLayoutEffect(() => {
     },
   });
 
+  const dealFieldsRow = mergeStyles({
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: '10px',
+    rowGap: '10px',
+    width: '100%',
+  });
+
   return (
     <Stack tokens={{ childrenGap: 14 }} className={rootStackStyle}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
 
-      {/* Service Description */}
-      <Stack>
-        <div ref={descRef}>
-          {!useBespoke ? (
-            <Stack tokens={{ childrenGap: 6 }}>
-              <div className={intakeContainer}>
-                <div className={intakeHeader}>Service Description</div>
-                <Dropdown
-                  options={SERVICE_OPTIONS}
-                  styles={{ dropdown: [dropdownStyle, { border: 'none', borderRadius: 0 }] }}
-                  selectedKey={selectedOption?.key}
-                  onChange={(_, option) => {
-                    if (option?.key === 'Other') {
-                      setUseBespoke(true);
-                      setServiceDescription('');
-                      setSelectedOption(undefined);
-                    } else {
-                      setSelectedOption(option);
-                      setServiceDescription(option?.text || '');
-                    }
+      {/* Service Description, Amount and Expiry */}
+      <Stack className={dealFieldsRow}>
+        <Stack styles={{ root: { flexBasis: '40%', flexGrow: 1, minWidth: 250 } }}>
+          <div ref={descRef}>
+            {!useBespoke ? (
+              <Stack tokens={{ childrenGap: 6 }}>
+                <div className={intakeContainer}>
+                  <div className={intakeHeader}>Service Description</div>
+                  <Dropdown
+                    options={SERVICE_OPTIONS}
+                    styles={{ dropdown: [dropdownStyle, { border: 'none', borderRadius: 0 }] }}
+                    selectedKey={selectedOption?.key}
+                    onChange={(_, option) => {
+                      if (option?.key === 'Other') {
+                        setUseBespoke(true);
+                        setServiceDescription('');
+                        setSelectedOption(undefined);
+                      } else {
+                        setSelectedOption(option);
+                        setServiceDescription(option?.text || '');
+                      }
+                    }}
+                    required
+                  />
+                </div>
+                <span
+                  className={toggleFreehandStyle}
+                  onClick={() => {
+                    setUseBespoke(true);
+                    setServiceDescription('');
+                    setSelectedOption(undefined);
                   }}
-                  required
-                />
-              </div>
-              <span
-                className={toggleFreehandStyle}
-                onClick={() => {
-                  setUseBespoke(true);
-                  setServiceDescription('');
-                  setSelectedOption(undefined);
-                }}
-              >
-                Use freehand description
-              </span>
-            </Stack>
-          ) : (
-            <Stack>
-              <div className={intakeContainer}>
-                <div className={intakeHeader}>Freehand Description</div>
-                <TextField
-                  multiline
-                  required
-                  autoAdjustHeight
-                  value={serviceDescription}
-                  onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
-                  styles={{
-                    fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
-                    prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
+                >
+                  Use freehand description
+                </span>
+              </Stack>
+            ) : (
+              <Stack>
+                <div className={intakeContainer}>
+                  <div className={intakeHeader}>Freehand Description</div>
+                  <TextField
+                    multiline
+                    required
+                    autoAdjustHeight
+                    value={serviceDescription}
+                    onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
+                    styles={{
+                      fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
+                      prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
+                    }}
+                    maxLength={200}
+                  />
+                </div>
+                <Text
+                  variant="small"
+                  styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
+                >
+                  {serviceDescription.length}/200 characters
+                </Text>
+                <span
+                  onClick={() => setUseBespoke(false)}
+                  style={{
+                    color: colours.highlight,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    marginTop: 6,
                   }}
-                  maxLength={200}
-                />
-              </div>
-              <Text
-                variant="small"
-                styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
-              >
-                {serviceDescription.length}/200 characters
-              </Text>
-              <span
-                onClick={() => setUseBespoke(false)}
-                style={{
-                  color: colours.highlight,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  marginTop: 6,
-                }}
-              >
-                ← Back to dropdown options
-              </span>
-            </Stack>
-          )}
-        </div>
-      </Stack>
+                >
+                  ← Back to dropdown options
+                </span>
+              </Stack>
+            )}
+          </div>
+        </Stack>
 
-      {/* Amount and Expiry */}
-      <Stack horizontal tokens={{ childrenGap: 10 }}>
-        <Stack styles={{ root: { width: '50%' } }}>
+        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Amount (ex. VAT)</div>
             <div className={amountContainerStyle}>
@@ -495,10 +502,9 @@ useLayoutEffect(() => {
               />
             </div>
           </div>
-
         </Stack>
 
-        <Stack styles={{ root: { width: '50%' } }}>
+        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
           <div className={intakeContainer}>
             <div className={intakeHeader}>Deal Expiry</div>
             <TextField

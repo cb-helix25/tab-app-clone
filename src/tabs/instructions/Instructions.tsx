@@ -76,6 +76,22 @@ const Instructions: React.FC<InstructionsProps> = ({
       borderTopRightRadius: 0,
     });
 
+  const detailNavStyle = (dark: boolean) =>
+    mergeStyles({
+      backgroundColor: dark
+        ? colours.dark.sectionBackground
+        : colours.light.sectionBackground,
+      padding: '0 24px',
+      display: 'flex',
+      flexDirection: 'row',
+      gap: '8px',
+      alignItems: 'center',
+      height: ACTION_BAR_HEIGHT,
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT,
+      zIndex: 999,
+    });
+
   const pivotBarStyle = (dark: boolean) =>
     mergeStyles({
       backgroundColor: dark
@@ -144,8 +160,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   useEffect(() => {
     setContent(
       <>
-        <div className={quickLinksStyle(isDarkMode)}>
-          {(showNewMatterPage || showRiskPage) && (
+        {(showNewMatterPage || showRiskPage) && (
+          <div className={detailNavStyle(isDarkMode)}>
             <IconButton
               iconProps={{ iconName: 'ChevronLeft' }}
               onClick={handleBack}
@@ -153,7 +169,9 @@ const Instructions: React.FC<InstructionsProps> = ({
               title="Back"
               ariaLabel="Back"
             />
-          )}
+          </div>
+        )}
+        <div className={quickLinksStyle(isDarkMode)}>
           {showNewMatterPage ? (
             CLIENT_TYPE_OPTIONS.map((opt, idx) => (
               <QuickActionsCard
@@ -163,7 +181,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                 isDarkMode={isDarkMode}
                 onClick={() => setNewMatterClientType(opt.label)}
                 selected={newMatterClientType === opt.label}
-                orientation="column"
                 style={{ '--card-index': idx } as React.CSSProperties}
               />
             ))

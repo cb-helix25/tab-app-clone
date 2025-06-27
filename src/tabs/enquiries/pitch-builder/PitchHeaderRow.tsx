@@ -105,10 +105,13 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     border: `1px solid ${colours.light.border}`,
     borderRadius: 0,
     padding: 12,
-    fontFamily: 'monospace',
     fontSize: 14,
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     width: '100%',
+  });
+
+  const notesTextStyle = mergeStyles({
+    fontFamily: 'Raleway',
   });
 
   const intakeContainer = mergeStyles(sectionStyle);
@@ -195,6 +198,17 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
               <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
             )}
           </Stack>
+          {enquiry.Initial_first_call_notes && (
+            <div className={notesContainerStyle} style={{ marginTop: 12 }}>
+              <div className={enquiryNotesHeader}>Initial Notes</div>
+              <Text
+                className={notesTextStyle}
+                styles={{ root: { whiteSpace: 'pre-wrap' } }}
+              >
+                {enquiry.Initial_first_call_notes}
+              </Text>
+            </div>
+          )}
         </div>
 
         {/* Email Details */}
@@ -351,15 +365,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           </div>
 
         </div>
-
-      {enquiry.Initial_first_call_notes && (
-        <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
-          <div className={enquiryNotesHeader}>Initial Notes</div>
-          <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-            {enquiry.Initial_first_call_notes}
-          </Text>
-        </div>
-      )}
 
       {/* Deal Capture Form */}
       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>

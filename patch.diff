@@ -1,305 +1,151 @@
-diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-index 90c1eb039eddcf6c463d784476677b30e9803073..77f2ebb1a0ac22c40f13a5352a6629c31e81c3b3 100644
---- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-@@ -1,32 +1,31 @@
- import React, { useState, useRef, useEffect } from "react";
- import {
-   Stack,
-   TextField,
-   mergeStyles,
-   IconButton,
--  Separator,
-   Text,
- } from "@fluentui/react";
- import { Enquiry } from "../../../app/functionality/types";
- import DealCaptureForm from "./DealCaptureForm";
- import { colours } from "../../../app/styles/colours";
- import { inputFieldStyle } from "../../../CustomForms/BespokeForms";
- import { IDropdownOption } from "@fluentui/react";
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 7caa161377777a84fe1664077d547c27c62e69a1..492e14bf9aefb5aad0d952e71f79a43f7d057c65 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -54,50 +54,66 @@ const Instructions: React.FC<InstructionsProps> = ({
+     { label: 'Multiple Clients', icon: 'People' },
+     { label: 'Existing Client', icon: 'Folder' },
+   ];
  
- interface PitchHeaderRowProps {
-   enquiry: Enquiry;
-   to: string;
-   setTo: (v: string) => void;
-   cc: string;
-   setCc: (v: string) => void;
-   bcc: string;
-   setBcc: (v: string) => void;
-   subject: string;
-   setSubject: (v: string) => void;
-   serviceDescription: string;
-   setServiceDescription: (v: string) => void;
-   selectedOption: IDropdownOption | undefined;
-   setSelectedOption: (o: IDropdownOption | undefined) => void;
-   SERVICE_OPTIONS: IDropdownOption[];
-   amount: string;
-   handleAmountChange: (v?: string) => void;
-diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-index 90c1eb039eddcf6c463d784476677b30e9803073..77f2ebb1a0ac22c40f13a5352a6629c31e81c3b3 100644
---- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-@@ -118,161 +117,116 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
-     color: labelColour,
-     fontWeight: 600,
-     fontSize: 13,
-     marginBottom: 8,    // ↑ match the enquiry title spacing
-     display: 'flex',
-     alignItems: 'center',
-     justifyContent: 'space-between',
-   });
- 
-   const toggleCcBccStyle = mergeStyles({
-     color: colours.greyText,
-     cursor: 'pointer',
-     fontSize: 12,
-     marginTop: 6,
-     selectors: {
-       ':hover': { color: labelColour },
- 
-     },
-   });
- 
-   const [showCc, setShowCc] = useState(!!cc);
-   const [showBcc, setShowBcc] = useState(!!bcc);
-   const toCcBccRef = useRef<HTMLDivElement>(null);
-   const subjectRef = useRef<HTMLDivElement>(null);
-   const [descHeight, setDescHeight] = useState(0);
--  const rowSpacing = 12; // simple consistent spacing
-   // Static spacing below the enquiry notes
-   const notesSpacing = 8;
-   const [dealFormSaved, setDealFormSaved] = useState(false);
- 
-   // Previously aligned the subject field with the amount input using
-   // calculated spacing. With the simplified layout we use static spacing
-   // so this effect is no longer required.
- 
-     useEffect(() => {
-     if (cc && !showCc) {
-       setShowCc(true);
-     }
-   }, [cc, showCc]);
- 
-   useEffect(() => {
-     if (bcc && !showBcc) {
-       setShowBcc(true);
-     }
-   }, [bcc, showBcc]);
- 
- 
--  const sideContainerStyle = mergeStyles({
-+  const headerRowStyle = mergeStyles({
-     display: 'flex',
-     flexDirection: 'column',
--    flex: 1,
--    gap: 8,
-+    width: '100%',
-+    gap: 16,
-+    '@media (min-width: 768px)': {
-+      flexDirection: 'row',
-+    },
-   });
- 
-   const dealSideContainerStyle = (saved: boolean) =>
--    mergeStyles(sideContainerStyle, {
-+    mergeStyles({
-+      width: '100%',
-       border: saved ? `2px solid ${colours.green}` : 'none',
-       opacity: saved ? 0.6 : 1,
+   const quickLinksStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       padding: '0 24px',
+       transition: 'background-color 0.3s',
+       display: 'flex',
+       flexDirection: 'row',
+       gap: '8px',
+       overflowX: 'auto',
+       alignItems: 'center',
+       height: ACTION_BAR_HEIGHT,
+       paddingBottom: 0,
+       position: 'sticky',
+       top: ACTION_BAR_HEIGHT,
+       zIndex: 999,
+       borderTopLeftRadius: 0,
+       borderTopRightRadius: 0,
      });
  
--  const verticalSeparatorStyle = mergeStyles({
--    margin: '0',
--    alignSelf: 'stretch',
--    display: 'none',
--    '@media (min-width: 768px)': {
--      display: 'block',
--    },
--    selectors: {
--      '::before': {
--        backgroundColor: isDarkMode ? colours.dark.border : colours.light.border,
--        width: 2,
--      },
--    },
--  });
--
-   return (
--    <Stack
--      tokens={{ childrenGap: 16 }}
--      styles={{
--        root: {
--          display: 'flex',
--          flexDirection: 'column',
--          width: '100%',
--          gap: 16,
--          '@media (min-width: 768px)': {
--            flexDirection: 'row',
--          },
--        },
--      }}
--    >
--        {/* LEFT SIDE (Details) */}
--      <Stack className={sideContainerStyle}>
--        {/* Row 1: Enquiry Details */}
--        <Stack
--          style={{
--            marginBottom: notesSpacing,
--            transition: "margin 0.2s ease",
--          }}
--        >
--          <div className={enquiryNotesContainer}>
--            <div className={enquiryNotesHeader}>Enquiry Details</div>
--            <Stack className={enquiryNotesContent}>
--              <Text>
--                {enquiry.First_Name} {enquiry.Last_Name}
--              </Text>
--              {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
--              {enquiry.Phone_Number && (
--                <Text>Phone: {enquiry.Phone_Number}</Text>
--              )}
--              {enquiry.Secondary_Phone && (
--                <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
--              )}
--            </Stack>
--          </div>
--        </Stack>
--
--        {enquiry.Initial_first_call_notes && (
--          <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
--            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
--              Initial Notes
-+    <Stack tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
-+      <div className={headerRowStyle}>
-+        {/* Enquiry Details */}
-+        <div className={enquiryNotesContainer}>
-+          <div className={enquiryNotesHeader}>Enquiry Details</div>
-+          <Stack className={enquiryNotesContent}>
-+            <Text>
-+              {enquiry.First_Name} {enquiry.Last_Name}
-             </Text>
--            <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
--              {enquiry.Initial_first_call_notes}
--            </Text>
--          </div>
--        )}
-+            {enquiry.Email && <Text>Email: {enquiry.Email}</Text>}
-+            {enquiry.Phone_Number && (
-+              <Text>Phone: {enquiry.Phone_Number}</Text>
-+            )}
-+            {enquiry.Secondary_Phone && (
-+              <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
-+            )}
-+          </Stack>
-+        </div>
- 
--        {/* Row 2: Email Details */}
--        <div ref={toCcBccRef} style={{ marginBottom: rowSpacing }}>
--          <div className={enquiryNotesContainer}>
--            <div className={enquiryNotesHeader}>Email Details</div>
--            <div className={enquiryNotesContent}>
--              <Stack tokens={{ childrenGap: 6 }}>
--                <Stack
--                  horizontal
--                  wrap
-+        {/* Email Details */}
-+        <div ref={toCcBccRef} className={enquiryNotesContainer}>
-+          <div className={enquiryNotesHeader}>Email Details</div>
-+          <div className={enquiryNotesContent}>
-+            <Stack tokens={{ childrenGap: 6 }}>
-+              <Stack
-+                horizontal
-+                wrap
-                   tokens={{ childrenGap: 12 }}
-                   verticalAlign="end"
-                   styles={{ root: { width: '100%' } }}
-                 >
-                   <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                   <div className={intakeContainer}>
-                     <div className={intakeHeader}>To</div>
-                     <TextField
-                       value={to}
-                       onChange={(_, val) => setTo(val || "")}
-                       placeholder="Recipient email"
-                       ariaLabel="To"
-                       styles={{
-                         root: { margin: 0 },
-                         fieldGroup: [
-                           inputFieldStyle,
-                           { border: "none", borderRadius: 0 },
-                         ],
-                       }}
-                     />
-                   </div>
-                 </Stack.Item>
-                 {showCc && (
-                     <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                     <div className={intakeContainer}>
-diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-index 90c1eb039eddcf6c463d784476677b30e9803073..77f2ebb1a0ac22c40f13a5352a6629c31e81c3b3 100644
---- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-@@ -373,53 +327,60 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
-                       </span>
-                     )}
-                   </Stack>
-                 )}
-                 <Stack>
-                   <div ref={subjectRef} className={intakeContainer}>
-                     <div className={intakeHeader}>Subject</div>
-                     <TextField
-                       value={subject}
-                       onChange={(_, val) => setSubject(val || "")}
-                       placeholder="Email subject"
-                       ariaLabel="Subject"
-                       styles={{
-                         root: { margin: 0 },
-                         fieldGroup: [
-                           inputFieldStyle,
-                           { border: "none", borderRadius: 0 },
-                         ],
-                       }}
-                     />
-                   </div>
-                 </Stack>
-                 </Stack>
-               </div>
-             </div>
--
-           </div>
--        </Stack>
--        <Separator vertical className={verticalSeparatorStyle} />
--        {/* RIGHT SIDE (Deal Form) */}
++  const detailNavStyle = (dark: boolean) =>
++    mergeStyles({
++      backgroundColor: dark
++        ? colours.dark.sectionBackground
++        : colours.light.sectionBackground,
++      padding: '0 24px',
++      display: 'flex',
++      flexDirection: 'row',
++      gap: '8px',
++      alignItems: 'center',
++      height: ACTION_BAR_HEIGHT,
++      position: 'sticky',
++      top: ACTION_BAR_HEIGHT,
++      zIndex: 999,
++    });
 +
-+      {enquiry.Initial_first_call_notes && (
-+        <div className={notesContainerStyle} style={{ marginBottom: notesSpacing }}>
-+          <div className={enquiryNotesHeader}>Initial Notes</div>
-+          <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-+            {enquiry.Initial_first_call_notes}
-+          </Text>
-+        </div>
-+      )}
-+
-+      {/* Deal Capture Form */}
-       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
-           <DealCaptureForm
-             enquiry={enquiry}
-             onSubmit={handleDealFormSubmit}
-             areaOfWork={enquiry.Area_of_Work}
-             enquiryId={enquiry.ID}
-             dealId={dealId}
-             clientIds={clientIds}
-             onAmountChange={handleAmountChange}
-             onAmountBlur={handleAmountBlur}
-             serviceDescription={serviceDescription}
-             setServiceDescription={setServiceDescription}
-             selectedOption={selectedOption}
-             setSelectedOption={setSelectedOption}
-             onDescriptionHeightChange={setDescHeight}
-             onSavedChange={setDealFormSaved}
-           />
-         </Stack>
-   </Stack>
-   );
- };
+   const pivotBarStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       boxShadow: dark
+         ? '0 2px 4px rgba(0,0,0,0.4)'
+         : '0 2px 4px rgba(0,0,0,0.1)',
+       borderTop: dark
+         ? '1px solid rgba(255,255,255,0.1)'
+         : '1px solid rgba(0,0,0,0.05)',
+       padding: '0 24px',
+       transition: 'background-color 0.3s',
+       position: 'sticky',
+       top: ACTION_BAR_HEIGHT * 2,
+       zIndex: 998,
+     });
  
- export default PitchHeaderRow;
+   const useLocalData =
+     process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
+     window.location.hostname === 'localhost';
+ 
+   useEffect(() => {
+     async function fetchData() {
+       // During the pilot we always pull Lukasz's instructions so everyone
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 7caa161377777a84fe1664077d547c27c62e69a1..492e14bf9aefb5aad0d952e71f79a43f7d057c65 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -122,70 +138,71 @@ const Instructions: React.FC<InstructionsProps> = ({
+         if (res.ok) {
+           const data = await res.json();
+           setInstructionData(Array.isArray(data) ? data : [data]);
+         } else {
+           console.error('Failed to fetch instructions for user', targetInitials);
+         }
+       } catch (err) {
+         console.error('Error fetching instructions for user', targetInitials, err);
+       }
+     }
+     fetchData();
+   }, [useLocalData]);
+ 
+   const handleBack = () => {
+     if (showNewMatterPage) {
+       setShowNewMatterPage(false);
+       setSelectedInstruction(null);
+     } else if (showRiskPage) {
+       setShowRiskPage(false);
+     }
+   };
+ 
+   useEffect(() => {
+     setContent(
+       <>
+-        <div className={quickLinksStyle(isDarkMode)}>
+-          {(showNewMatterPage || showRiskPage) && (
++        {(showNewMatterPage || showRiskPage) && (
++          <div className={detailNavStyle(isDarkMode)}>
+             <IconButton
+               iconProps={{ iconName: 'ChevronLeft' }}
+               onClick={handleBack}
+               className={backButtonStyle}
+               title="Back"
+               ariaLabel="Back"
+             />
+-          )}
++          </div>
++        )}
++        <div className={quickLinksStyle(isDarkMode)}>
+           {showNewMatterPage ? (
+             CLIENT_TYPE_OPTIONS.map((opt, idx) => (
+               <QuickActionsCard
+                 key={opt.label}
+                 title={opt.label}
+                 icon={opt.icon}
+                 isDarkMode={isDarkMode}
+                 onClick={() => setNewMatterClientType(opt.label)}
+                 selected={newMatterClientType === opt.label}
+-                orientation="column"
+                 style={{ '--card-index': idx } as React.CSSProperties}
+               />
+             ))
+           ) : !showRiskPage ? (
+             <>
+               <QuickActionsCard
+                 title="New Matter"
+                 icon="Calendar"
+                 isDarkMode={isDarkMode}
+                 onClick={() => {
+                   setSelectedInstruction(null);
+                   setNewMatterClientType('Individual');
+                   setShowNewMatterPage(true);
+                 }}
+                 style={{ '--card-index': 0 } as React.CSSProperties}
+               />
+               <QuickActionsCard
+                 title="EID Check"
+                 icon="IdCheck"
+                 isDarkMode={isDarkMode}
+                 onClick={() => { }}
+                 style={{ '--card-index': 1 } as React.CSSProperties}
+               />
+               <QuickActionsCard
+                 title="Risk Assessment"
