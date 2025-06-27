@@ -1,468 +1,84 @@
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index a3dadab645b2c3581bf1975089f2cf658a31dc5e..5ab53684b7fbefc118c36c687d6b304f5f461ec9 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -1,38 +1,37 @@
- import React, { useState, useEffect, useRef, useMemo } from 'react';
- import { Stack } from '@fluentui/react';
- import { POID, TeamData } from '../../app/functionality/types';
- import StepHeader from './StepHeader';
- import StepOverview from './StepOverview';
- import ClientDetails from './ClientDetails';
- import ClientHub from './ClientHub';
- import { colours } from '../../app/styles/colours';
- import '../../app/styles/NewMatters.css';
+diff --git a/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx b/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
+index 03164f577ddd58bc9b239cd5ed2b5a181fe26a41..1ccf558dd0988616524632153af4ddcc47d3f81a 100644
+--- a/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
++++ b/src/tabs/enquiries/pitch-builder/PlaceholderEditorPopover.tsx
+@@ -1,74 +1,77 @@
+-import React, { useState, useRef, useEffect } from 'react';
++import React, { useState, useEffect } from 'react';
+ import ReactDOM from 'react-dom';
+ import { Callout, TextField, PrimaryButton, Stack, DirectionalHint } from '@fluentui/react';
+ import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
+ import '../../../app/styles/PlaceholderEditorPopover.css';
  
- // Components for individual steps
- import ClientInfoStep from './MatterOpening/ClientInfoStep';
--import ClientTypeStep from './MatterOpening/ClientTypeStep';
- import PoidSelectionStep from './MatterOpening/PoidSelectionStep';
- import AreaOfWorkStep from './MatterOpening/AreaOfWorkStep';
- import PracticeAreaStep from './MatterOpening/PracticeAreaStep';
- import DescriptionStep from './MatterOpening/DescriptionStep';
- import FolderStructureStep from './MatterOpening/FolderStructureStep';
- import DisputeValueStep from './MatterOpening/DisputeValueStep';
- import SourceStep from './MatterOpening/SourceStep';
- import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
- 
- import ReviewStep from './MatterOpening/ReviewStep';
- import { CompletionProvider } from './MatterOpening/CompletionContext';
- 
- const practiceAreasByArea: { [key: string]: string[] } = {
-     Commercial: [
-         'Commercial',
-         'Director Rights & Dispute Advice',
-         'Shareholder Rights & Dispute Advice',
-         'Civil/Commercial Fraud Advice',
-         'Partnership Advice',
-         'Business Contract Dispute',
-         'Unpaid Loan Recovery',
-         'Contentious Probate',
-         'Statutory Demand - Drafting',
-         'Statutory Demand - Advising',
-         'Winding Up Petition Advice',
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index a3dadab645b2c3581bf1975089f2cf658a31dc5e..5ab53684b7fbefc118c36c687d6b304f5f461ec9 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -80,64 +79,62 @@ const practiceAreasByArea: { [key: string]: string[] } = {
-         'Restrictive Covenant Advice',
-         'Post Termination Dispute',
-         'Employment Tribunal Claim - Advising',
-     ],
+ type PlaceholderEditorPopoverProps = {
+     target: HTMLElement;
+     initialText: string;
+     before: string;
+     after: string;
+     onSave: (text: string) => void;
+     onDismiss: () => void;
  };
  
- const partnerOptions = ['Alex', 'Jonathan', 'Luke', 'Kanchel'];
- 
- const getGroupColor = (group: string): string => {
-     switch (group) {
-         case 'Commercial':
-             return colours.highlight;
-         case 'Construction':
-             return colours.orange;
-         case 'Property':
-             return colours.green;
-         case 'Employment':
-             return colours.yellow;
-         default:
-             return colours.red;
-     }
- };
- 
- type StepKey =
-     | 'clientInfo'
--    | 'clientType'
-     | 'poidSelection'
-     | 'areaOfWork'
-     | 'practiceArea'
-     | 'description'
-     | 'folderStructure'
-     | 'disputeValue'
-     | 'source'
-     | 'opponentDetails'
-     | 'review';
- 
- const stepTitles: { [key in StepKey]: string } = {
-     clientInfo: 'Main Details',
--    clientType: 'Select Client Type',
-     poidSelection: 'Choose Proof of Identity',
-     areaOfWork: 'Select Area of Work',
-     practiceArea: 'Select Practice Area',
-     description: 'Enter Description',
-     folderStructure: 'Select NetDocuments Folder Structure',
-     disputeValue: 'Select Value of the Dispute',
-     source: 'Select Source & Confirm Referrer (if applicable)',
-     opponentDetails: 'Confirm Opponent Details',
-     review: 'Review & Build Matter',
- };
- 
- interface NewMattersProps {
-     poidData: POID[];
-     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
-     teamData?: TeamData[] | null;
-     instructionRef?: string;
-     clientId?: string;
-     feeEarner?: string;
-     stage?: string;
-     matterRef?: string;
-     hideClientSections?: boolean;
-     /** Sets the initial client type when launching the workflow */
-     initialClientType?: string;
- }
- 
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index a3dadab645b2c3581bf1975089f2cf658a31dc5e..5ab53684b7fbefc118c36c687d6b304f5f461ec9 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -185,293 +182,310 @@ const NewMatters: React.FC<NewMattersProps> = ({
-     const [source, setSource] = useState('');
-     const [referrerName, setReferrerName] = useState('');
- 
-     const [opponentName, setOpponentName] = useState('');
-     const [opponentEmail, setOpponentEmail] = useState('');
-     const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
-     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
-     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
-     const [noConflict, setNoConflict] = useState(false);
- 
-     const [visiblePoidCount, setVisiblePoidCount] = useState(12);
-     const [poidSearchTerm, setPoidSearchTerm] = useState('');
-     const poidGridRef = useRef<HTMLDivElement | null>(null);
-     const [activePoid, setActivePoid] = useState<POID | null>(null);
- 
-     const filteredPoidData = poidData.filter((poid) => {
-         const term = poidSearchTerm.toLowerCase();
-         return (
-             poid.poid_id.toLowerCase().includes(term) ||
-             (poid.first && poid.first.toLowerCase().includes(term)) ||
-             (poid.last && poid.last.toLowerCase().includes(term))
-         );
-     });
+ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
+     target,
+     initialText,
+     before,
+     after,
+     onSave,
+     onDismiss,
+ }) => {
+     const [value, setValue] = useState(initialText);
+-    const calloutRef = useRef<HTMLDivElement | null>(null);
  
      useEffect(() => {
--        if (openStep !== 2) return;
-+        const poidIndex = stepsOrder.indexOf('poidSelection');
-+        if (poidIndex === -1 || openStep !== poidIndex) return;
-         const observer = new IntersectionObserver(
-             (entries) => {
-                 if (entries[0].isIntersecting) {
-                     setVisiblePoidCount((prev) => Math.min(prev + 12, filteredPoidData.length));
-                 }
-             },
-             { rootMargin: '200px' }
-         );
-         if (poidGridRef.current) observer.observe(poidGridRef.current);
-         return () => observer.disconnect();
--    }, [openStep, filteredPoidData]);
-+    }, [openStep, filteredPoidData, stepsOrder]);
- 
-     const handlePoidClick = (poid: POID) => {
-         if (selectedPoidIds.includes(poid.poid_id)) {
-             setSelectedPoidIds((prev) => prev.filter((id) => id !== poid.poid_id));
-             if (activePoid && activePoid.poid_id === poid.poid_id) {
-                 const remaining = poidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
-                 setActivePoid(remaining || null);
-             }
-         } else {
-             setSelectedPoidIds((prev) => [...prev, poid.poid_id]);
-             setActivePoid(poid);
+         function handleKey(e: KeyboardEvent) {
+             if (e.key === 'Escape') onDismiss();
          }
-     };
+         document.addEventListener('keydown', handleKey);
+         return () => document.removeEventListener('keydown', handleKey);
+     }, [onDismiss]);
  
-     const isStepComplete = (step: StepKey): boolean => {
-         switch (step) {
-             case 'clientInfo':
-                 return !!(selectedDate && supervisingPartner && originatingSolicitor);
--            case 'clientType':
--                return !!clientType;
-             case 'poidSelection':
-                 return selectedPoidIds.length > 0;
-             case 'areaOfWork':
-                 return !!areaOfWork;
-             case 'practiceArea':
-                 return !!practiceArea;
-             case 'description':
-                 return !!description;
-             case 'folderStructure':
-                 return !!folderStructure;
-             case 'disputeValue':
-                 return !!disputeValue;
-             case 'source':
-                 return !!source && (source !== 'referral' || !!referrerName);
-             case 'opponentDetails':
-                 return Boolean(
-                     opponentName &&
-                     opponentEmail &&
-                     opponentSolicitorName &&
-                     opponentSolicitorCompany &&
-                     opponentSolicitorEmail &&
-                     noConflict
-                 );
-             case 'review':
-                 return false;
-             default:
-                 return false;
-         }
-     };
+     const callout = (
+         <Callout
+             className="placeholder-editor-callout"
+             target={target}
+             onDismiss={onDismiss}
+             setInitialFocus
+             directionalHint={DirectionalHint.bottomLeftEdge}
+             isBeakVisible
+             gapSpace={12}
+             styles={{ calloutMain: { overflowY: 'visible' } }}
+         >
+             <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 16 } }}>
+                 <span className="placeholder-context">{before}</span>
+                 <TextField
+                     value={value}
+                     onChange={(_, v) => setValue(v || '')}
+                     autoFocus
++                    styles={{
++                        fieldGroup: { borderRadius: 10 },
++                        field: { fontSize: 16, padding: '14px 12px' },
++                    }}
+                 />
+                 <span className="placeholder-context">{after}</span>
+                 <Stack horizontal horizontalAlign="end">
+                     <PrimaryButton
+                         text="Save"
+                         styles={sharedPrimaryButtonStyles}
+                         onClick={() => onSave(value)}
+                     />
+                 </Stack>
+             </Stack>
+         </Callout>
+     );
  
--    const stepsOrder: StepKey[] = [
--        'clientInfo',
--        'clientType',
--        'poidSelection',
--        'areaOfWork',
--        'practiceArea',
--        'description',
--        'folderStructure',
--        'disputeValue',
--        'source',
--        'opponentDetails',
--        'review',
--    ];
-+    const stepsOrder: StepKey[] = useMemo(() => {
-+        const order: StepKey[] = ['clientInfo'];
-+        if (!instructionRef) {
-+            order.push('poidSelection');
-+        }
-+        order.push(
-+            'areaOfWork',
-+            'practiceArea',
-+            'description',
-+            'folderStructure',
-+            'disputeValue',
-+            'source',
-+            'opponentDetails',
-+            'review'
-+        );
-+        return order;
-+    }, [instructionRef]);
+     return ReactDOM.createPortal(
+         <>
+             <div className="placeholder-editor-overlay" onClick={onDismiss} />
+             {callout}
+         </>,
+         document.body
+     );
+ };
  
--    const stepProgressSteps = stepsOrder.map((key) => ({
--        key,
--        label: stepTitles[key],
--        title: stepTitles[key],
--    }));
-+    const stepProgressSteps = useMemo(
-+        () =>
-+            stepsOrder.map((key) => ({
-+                key,
-+                label: stepTitles[key],
-+                title: stepTitles[key],
-+            })),
-+        [stepsOrder]
-+    );
- 
-     const stepDetails = React.useMemo(() => ({
-         clientInfo: (
-             <div>
-                 <div>Date: {selectedDate ? selectedDate.toLocaleDateString() : '-'}</div>
-                 <div>Supervising: {supervisingPartner || '-'}</div>
-                 <div>Originating: {originatingSolicitor || '-'}</div>
-                 <div>Funds: {fundsReceived || '-'}</div>
-             </div>
-         ),
--        clientType: <div>Type: {clientType || '-'}</div>,
-         poidSelection: <div>IDs: {selectedPoidIds.join(', ') || '-'}</div>,
-         areaOfWork: <div>{areaOfWork || '-'}</div>,
-         practiceArea: <div>{practiceArea || '-'}</div>,
-         description: <div>{description || '-'}</div>,
-         folderStructure: <div>{folderStructure || '-'}</div>,
-         disputeValue: <div>{disputeValue || '-'}</div>,
-         source: (
-             <div>
-                 {source || '-'}
-                 {source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
-             </div>
-         ),
-         opponentDetails: (
-             <div>
-                 <div>Opponent: {opponentName || '-'}</div>
-                 <div>Solicitor: {opponentSolicitorName || '-'}</div>
-             </div>
-         ),
-         review: null,
-     }), [
-         selectedDate,
-         supervisingPartner,
-         originatingSolicitor,
-         fundsReceived,
--        clientType,
-         selectedPoidIds,
-         areaOfWork,
-         practiceArea,
-         description,
-         folderStructure,
-         disputeValue,
-         source,
-         referrerName,
-         opponentName,
-         opponentSolicitorName,
-     ]);
- 
-     const renderStepContent = (step: StepKey) => {
- 
-         switch (step) {
-             case 'clientInfo':
-                 return (
-                     <ClientInfoStep
-                         selectedDate={selectedDate}
-                         setSelectedDate={setSelectedDate}
-                         supervisingPartner={supervisingPartner}
-                         setSupervisingPartner={setSupervisingPartner}
-                         originatingSolicitor={originatingSolicitor}
-                         setOriginatingSolicitor={setOriginatingSolicitor}
-                         fundsReceived={fundsReceived}
-                         setFundsReceived={setFundsReceived}
-                         isDateCalloutOpen={isDateCalloutOpen}
-                         setIsDateCalloutOpen={setIsDateCalloutOpen}
-                         dateButtonRef={dateButtonRef}
-                         partnerOptions={partnerOptions}
--                        onContinue={() => setOpenStep(1)}
--                    />
--                );
--            case 'clientType':
--                return (
--                    <ClientTypeStep
--                        clientType={clientType}
--                        setClientType={setClientType}
--                        onContinue={() => setOpenStep(2)}
-+                        onContinue={() =>
-+                            setOpenStep(
-+                                stepsOrder.indexOf('clientInfo') + 1
-+                            )
-+                        }
-                     />
-                 );
-             case 'poidSelection':
-                 return (
-                     <PoidSelectionStep
-                         poidData={poidData}
-                         teamData={teamData}
-                         filteredPoidData={filteredPoidData}
-                         visiblePoidCount={visiblePoidCount}
-                         selectedPoidIds={selectedPoidIds}
-                         poidSearchTerm={poidSearchTerm}
-                         setPoidSearchTerm={setPoidSearchTerm}
-                         poidGridRef={poidGridRef}
-                         handlePoidClick={handlePoidClick}
--                        onConfirm={() => setOpenStep(3)}
-+                        onConfirm={() =>
-+                            setOpenStep(stepsOrder.indexOf('poidSelection') + 1)
-+                        }
-                     />
-                 );
-             case 'areaOfWork':
-                 return (
-                     <AreaOfWorkStep
-                         areaOfWork={areaOfWork}
-                         setAreaOfWork={setAreaOfWork}
--                        onContinue={() => setOpenStep(4)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('areaOfWork') + 1)
-+                        }
-                         getGroupColor={getGroupColor}
-                     />
-                 );
-             case 'practiceArea':
-                 return (
-                     <PracticeAreaStep
-                         options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
-                         practiceArea={practiceArea}
-                         setPracticeArea={setPracticeArea}
--                        onContinue={() => setOpenStep(5)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('practiceArea') + 1)
-+                        }
-                         groupColor={getGroupColor(areaOfWork)}
-                     />
-                 );
-             case 'description':
-                 return (
-                     <DescriptionStep
-                         description={description}
-                         setDescription={setDescription}
--                        onContinue={() => setOpenStep(6)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('description') + 1)
-+                        }
-                     />
-                 );
-             case 'folderStructure':
-                 return (
-                     <FolderStructureStep
-                         folderStructure={folderStructure}
-                         setFolderStructure={setFolderStructure}
--                        onContinue={() => setOpenStep(7)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('folderStructure') + 1)
-+                        }
-                         folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
-                     />
-                 );
-             case 'disputeValue':
-                 return (
-                     <DisputeValueStep
-                         disputeValue={disputeValue}
-                         setDisputeValue={setDisputeValue}
--                        onContinue={() => setOpenStep(8)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('disputeValue') + 1)
-+                        }
-                     />
-                 );
-             case 'source':
-                 return (
-                     <SourceStep
-                         source={source}
-                         setSource={setSource}
-                         referrerName={referrerName}
-                         setReferrerName={setReferrerName}
--                        onContinue={() => setOpenStep(9)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('source') + 1)
-+                        }
-                     />
-                 );
-             case 'opponentDetails':
-                 return (
-                     <OpponentDetailsStep
-                         opponentName={opponentName}
-                         setOpponentName={setOpponentName}
-                         opponentEmail={opponentEmail}
-                         setOpponentEmail={setOpponentEmail}
-                         opponentSolicitorName={opponentSolicitorName}
-                         setOpponentSolicitorName={setOpponentSolicitorName}
-                         opponentSolicitorCompany={opponentSolicitorCompany}
-                         setOpponentSolicitorCompany={setOpponentSolicitorCompany}
-                         opponentSolicitorEmail={opponentSolicitorEmail}
-                         setOpponentSolicitorEmail={setOpponentSolicitorEmail}
-                         noConflict={noConflict}
-                         setNoConflict={setNoConflict}
--                        onContinue={() => setOpenStep(10)}
-+                        onContinue={() =>
-+                            setOpenStep(stepsOrder.indexOf('opponentDetails') + 1)
-+                        }
-                     />
-                 );
-             case 'review':
-                 return (
-                     <ReviewStep
-                         selectedDate={selectedDate}
-                         supervisingPartner={supervisingPartner}
-                         originatingSolicitor={originatingSolicitor}
-                         fundsReceived={fundsReceived}
-                         clientType={clientType}
-                         selectedPoidIds={selectedPoidIds}
-                         areaOfWork={areaOfWork}
-                         practiceArea={practiceArea}
-                         description={description}
-                         folderStructure={folderStructure}
-                         disputeValue={disputeValue}
-                         source={source}
-                         referrerName={referrerName}
-                         opponentName={opponentName}
-                         opponentEmail={opponentEmail}
-                         opponentSolicitorName={opponentSolicitorName}
-                         opponentSolicitorCompany={opponentSolicitorCompany}
-                         opponentSolicitorEmail={opponentSolicitorEmail}
-                         noConflict={noConflict}
-                         onBuild={() => { }}
+ export default PlaceholderEditorPopover;

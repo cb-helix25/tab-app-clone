@@ -340,7 +340,7 @@
       {
         "MatterId": "HLX-22338-3927",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-26",
+        "ComplianceDate": "2025-06-27",
         "RiskAssessmentResult": "Low",
         "RiskScore": 5,
         "TransactionRiskLevel": "Low Risk",
@@ -352,7 +352,7 @@
       {
         "MatterId": "HLX-22338-4581",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-26",
+        "ComplianceDate": "2025-06-27",
         "RiskAssessmentResult": "Low",
         "RiskScore": 10,
         "TransactionRiskLevel": "Low Risk",
@@ -364,7 +364,7 @@
       {
         "MatterId": "HLX-22338-4843",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-26",
+        "ComplianceDate": "2025-06-27",
         "RiskAssessmentResult": "Medium",
         "RiskScore": 15,
         "TransactionRiskLevel": "Medium Risk",
@@ -376,7 +376,7 @@
       {
         "MatterId": "HLX-22338-7385",
         "RiskAssessor": "Local Tester",
-        "ComplianceDate": "2025-06-26",
+        "ComplianceDate": "2025-06-27",
         "RiskAssessmentResult": "High",
         "RiskScore": 20,
         "TransactionRiskLevel": "High Risk",
@@ -407,18 +407,42 @@
     "compliance": [
       {
         "MatterId": "HLX-22338-3927",
+        "ComplianceDate": "2025-06-27",
+        "ComplianceExpiry": "2026-06-27",
+        "CheckId": 1,
+        "CheckResult": "pass",
+        "PEPandSanctionsCheckResult": "Passed",
+        "AddressVerificationCheckResult": "Passed",
         "Status": "pass"
       },
       {
         "MatterId": "HLX-22338-4581",
+        "ComplianceDate": "2025-06-27",
+        "ComplianceExpiry": "2026-06-27",
+        "CheckId": 2,
+        "CheckResult": "pass",
+        "PEPandSanctionsCheckResult": "Passed",
+        "AddressVerificationCheckResult": "Failed",
         "Status": "pass"
       },
       {
         "MatterId": "HLX-22338-4843",
+        "ComplianceDate": "2025-06-27",
+        "ComplianceExpiry": "2026-06-27",
+        "CheckId": 3,
+        "CheckResult": "pending",
+        "PEPandSanctionsCheckResult": "Passed",
+        "AddressVerificationCheckResult": "Passed",
         "Status": "pending"
       },
       {
         "MatterId": "HLX-22338-7385",
+        "ComplianceDate": "2025-06-27",
+        "ComplianceExpiry": "2026-06-27",
+        "CheckId": 4,
+        "CheckResult": "fail",
+        "PEPandSanctionsCheckResult": "Failed",
+        "AddressVerificationCheckResult": "Failed",
         "Status": "fail"
       }
     ]

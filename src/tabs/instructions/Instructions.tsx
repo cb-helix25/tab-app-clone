@@ -506,13 +506,15 @@ const Instructions: React.FC<InstructionsProps> = ({
         const instructions = p.instructions ?? [];
         const deals = p.deals ?? [];
         const riskSource: any[] = [
-          ...(p.riskAssessments ?? p.compliance ?? []),
+          ...(p.riskAssessments ?? []),
+          ...(p.compliance ?? []),
         ];
         const eidSource: any[] = [
           ...(p.electronicIDChecks ?? p.idVerifications ?? []),
         ];
         instructions.forEach((inst: any) => {
-          riskSource.push(...((inst.riskAssessments ?? inst.compliance) ?? []));
+          riskSource.push(...(inst.riskAssessments ?? []));
+          riskSource.push(...(inst.compliance ?? []));
           eidSource.push(
             ...((inst.electronicIDChecks ?? inst.idVerifications) ?? [])
           );

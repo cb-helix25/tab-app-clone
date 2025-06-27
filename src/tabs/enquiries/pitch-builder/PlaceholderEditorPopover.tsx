@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Callout, TextField, PrimaryButton, Stack, DirectionalHint } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
@@ -22,7 +22,6 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
     onDismiss,
 }) => {
     const [value, setValue] = useState(initialText);
-    const calloutRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
@@ -49,6 +48,10 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
                     value={value}
                     onChange={(_, v) => setValue(v || '')}
                     autoFocus
+                    styles={{
+                        fieldGroup: { borderRadius: 10 },
+                        field: { fontSize: 16, padding: '14px 12px' },
+                    }}
                 />
                 <span className="placeholder-context">{after}</span>
                 <Stack horizontal horizontalAlign="end">
