@@ -100,7 +100,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     textField: {
       width: '100%',
       height: '40px',
-      borderRadius: '4px',
+      borderRadius: '0',
       backgroundColor: colours.secondaryButtonBackground,
       border: 'none',
       padding: '6px 12px',
@@ -484,7 +484,7 @@ const availableData = [
       {previewDataset && (
         <div className="data-preview-popup" style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+          background: 'white', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
           zIndex: 1001, maxWidth: '600px', width: '90%', maxHeight: '70vh', overflowY: 'auto'
         }}>
           <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>{previewDataset} Preview</h3>
@@ -502,7 +502,7 @@ const availableData = [
       {showSelectionModal && (
         <div className="selection-modal" style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+          background: 'white', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
           zIndex: 1000, maxWidth: '500px', width: '90%'
         }}>
           <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>Select Datasets to Refresh</h3>
@@ -551,7 +551,7 @@ const availableData = [
       {(Object.values(fetchStatus).some(status => status === 'fetching' || status === 'success' || status === 'error') || isWrappingUp) && (
         <div className="fetch-status-overlay" style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: 'rgba(255, 255, 255, 0.95)', padding: '20px', borderRadius: '12px', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+          background: 'rgba(255, 255, 255, 0.95)', padding: '20px', borderRadius: '0', boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
           zIndex: 999, maxWidth: '600px', width: '90%'
         }}>
           <h3 style={{ margin: '0 0 15px', fontSize: '18px', color: '#333' }}>Fetching Data</h3>
@@ -564,7 +564,7 @@ const availableData = [
                   flex: '1 1 180px',
                   padding: '10px',
                   background: fetchStatus[dataset.key] === 'success' ? '#e6ffe6' : fetchStatus[dataset.key] === 'error' ? '#ffe6e6' : '#f9f9f9',
-                  borderRadius: '6px',
+                  borderRadius: '0',
                   textAlign: 'center',
                   display: fetchStatus[dataset.key] === 'idle' ? 'none' : 'block',
                 }}
@@ -597,7 +597,7 @@ const availableData = [
                   flex: '1 1 180px',
                   padding: '10px',
                   background: '#f9f9f9',
-                  borderRadius: '6px',
+                  borderRadius: '0',
                   textAlign: 'center',
                 }}
               >
@@ -641,7 +641,7 @@ const availableData = [
           <h2 style={{ fontSize: '20px', color: '#333', margin: '0 0 20px' }}>Reports</h2>
           <div className="report-cards-container" style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '20px',
             width: '100%',
           }}>
@@ -659,7 +659,7 @@ const availableData = [
         <section className="data-section" style={{
           marginBottom: '40px',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-          borderRadius: '4px',
+          borderRadius: '0',
           overflow: 'hidden',
         }}>
           <div
@@ -756,7 +756,7 @@ const availableData = [
         }
         .decision-button {
           padding: 6px 12px;
-          border-radius: 4px;
+          border-radius: 0;
           background-color: ${colours.highlight};
           border: none;
           height: 40px;
@@ -786,7 +786,7 @@ const availableData = [
         }
         .default-button {
           padding: 6px 12px;
-          border-radius: 4px;
+          border-radius: 0;
           background-color: ${colours.secondaryButtonBackground};
           border: none;
           height: 40px;

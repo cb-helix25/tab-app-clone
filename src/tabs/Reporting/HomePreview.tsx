@@ -119,9 +119,9 @@ const HomePreview: React.FC<HomePreviewProps> = ({ enquiries, allMatters, wip, r
     ? `${parseAndFormatDate(filteredRecoveredFees.reduce((min, r) => new Date(r.payment_date) < new Date(min.payment_date) ? r : min, filteredRecoveredFees[0]).payment_date)} - ${parseAndFormatDate(filteredRecoveredFees.reduce((max, r) => new Date(r.payment_date) > new Date(max.payment_date) ? r : max, filteredRecoveredFees[0]).payment_date)}`
     : 'N/A';
 
-  const sectionStyle = mergeStyles({ backgroundColor: isDarkMode ? colours.dark.background : '#ffffff', borderRadius: '12px', boxShadow: isDarkMode ? '0 4px 16px rgba(255, 255, 255, 0.1)' : '0 4px 16px rgba(0, 0, 0, 0.1)', padding: '20px', fontFamily: 'Raleway, sans-serif', marginBottom: '40px' });
+  const sectionStyle = mergeStyles({ backgroundColor: isDarkMode ? colours.dark.background : '#ffffff', borderRadius: '0', boxShadow: isDarkMode ? '0 4px 16px rgba(255, 255, 255, 0.1)' : '0 4px 16px rgba(0, 0, 0, 0.1)', padding: '20px', fontFamily: 'Raleway, sans-serif', marginBottom: '40px' });
   const headerStyle = mergeStyles({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' });
-  const metricsGridStyle = mergeStyles({ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '20px', width: '100%' });
+  const metricsGridStyle = mergeStyles({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', width: '100%' });
   const metricCardStyle = mergeStyles({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', minHeight: '100px' });
   const iconStyle = mergeStyles({ fontSize: '32px', color: colours.highlight, marginRight: '10px' });
   const contentStyle = mergeStyles({ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' });

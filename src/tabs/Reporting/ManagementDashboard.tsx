@@ -613,14 +613,14 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
     root: { marginRight: 16, width: 140 },
     textField: {
       width: '100%',
-      borderRadius: '4px',
+      borderRadius: '0',
       background: colours.light.inputBackground,
       border: `1px solid ${colours.light.border}`,
       selectors: {
         '& .ms-TextField-fieldGroup': {
           border: 'none',
           background: 'transparent',
-          borderRadius: '4px',
+          borderRadius: '0',
           display: 'flex',
           alignItems: 'center',
           height: '32px',
@@ -802,7 +802,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
         style={{
           background: colours.light.sectionBackground,
           padding: '16px',
-          borderRadius: '8px',
+          borderRadius: '0',
           boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
           marginTop: '-8px',
           position: 'relative',
@@ -817,7 +817,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
               padding: '8px',
               background: colours.highlightBlue,
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderRadius: '4px',
+              borderRadius: '0',
               marginBottom: '16px',
             }}
           >
@@ -828,7 +828,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
                 style={{
                   padding: '4px 8px',
                   background: colours.highlightBlue,
-                  borderRadius: '4px',
+                  borderRadius: '0',
                   cursor: 'pointer',
                   fontWeight: 'bold',
                   fontSize: '1em',
@@ -848,7 +848,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
             alignItems: 'center',
             background: colours.light.sectionBackground,
             padding: '12px',
-            borderRadius: '8px',
+            borderRadius: '0',
             boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
           }}
         >
@@ -880,7 +880,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
                 alignItems: 'center',
                 padding: '12px',
                 border: `1px solid ${colours.light.border}`,
-                borderRadius: '8px',
+                borderRadius: '0',
                 cursor: row.initial === 'TOTAL' ? 'default' : 'pointer',
               }}
             >

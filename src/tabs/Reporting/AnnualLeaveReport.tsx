@@ -46,14 +46,14 @@ const datePickerStyles: Partial<IDatePickerStyles> = {
   root: { marginRight: 16, width: 140 },
   textField: {
     width: '100%',
-    borderRadius: '4px',
+    borderRadius: '0',
     background: colours.light.inputBackground,
     border: `1px solid ${colours.light.border}`,
     selectors: {
       '& .ms-TextField-fieldGroup': {
         border: 'none',
         background: 'transparent',
-        borderRadius: '4px',
+        borderRadius: '0',
         display: 'flex',
         alignItems: 'center',
         height: '32px',

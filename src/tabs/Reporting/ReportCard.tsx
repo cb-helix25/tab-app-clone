@@ -22,7 +22,7 @@ const cardStyle = (isDarkMode: boolean, isReady: boolean) =>
   mergeStyles({
     padding: '20px',
     backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-    borderRadius: '12px',
+    borderRadius: '0',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
     transition: 'box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease',
     cursor: isReady ? 'pointer' : 'not-allowed',

@@ -11,7 +11,7 @@
   border-left: 4px solid #ffd700;
   padding: 10px 15px;
   margin-bottom: 20px;
-  border-radius: 4px;
+  border-radius: 0;
   text-align: center;
 }
 
@@ -28,7 +28,7 @@
 
 .page-content {
   background: white;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 30px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -68,14 +68,14 @@
 
 .report-cards-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 20px;
   margin-bottom: 40px;
 }
 
 .report-button {
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 0;
   background-color: var(--highlight);
   border: none;
   height: 42px;
@@ -111,7 +111,7 @@
   background: linear-gradient(to right, #e1e1e1, white);
   cursor: pointer;
   transition: background 0.3s ease;
-  border-radius: 4px;
+  border-radius: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -155,7 +155,7 @@
 
 .refresh-button {
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 0;
   background-color: var(--highlight);
   border: none;
   font-weight: 600;
@@ -193,7 +193,7 @@
 .data-access-item {
   position: relative;
   background: white;
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.3s ease;
   padding: 15px 20px;
@@ -214,7 +214,7 @@
   left: 10px;
   width: 8px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: 0;
   transition: background 0.3s ease;
 }
 

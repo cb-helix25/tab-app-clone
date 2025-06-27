@@ -16,7 +16,7 @@ import InstructionCard from './InstructionCard';
 import DealCard from './DealCard';
 import RiskComplianceCard from './RiskComplianceCard';
 import JointClientCard, { ClientInfo } from './JointClientCard';
-import InstructionDashboard from './InstructionDashboard';
+import InstructionOverviewItem from './InstructionOverviewItem';
 import type { DealSummary } from './JointClientCard';
 import { InstructionData, POID, TeamData } from '../../app/functionality/types';
 import localInstructionData from '../../localData/localInstructionData.json';
@@ -646,38 +646,27 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const col = idx % 2;
                 const animationDelay = row * 0.2 + col * 0.1;
                 const ref = item.instruction?.InstructionRef;
-                const expanded = ref && expandedOverviewRef === ref;
+                const expanded = !!(ref && expandedOverviewRef === ref);
                 return (
-                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <InstructionDashboard
-                      instruction={item.instruction}
-                      deal={(item as any).deal}
-                      deals={item.deals}
-                      clients={item.clients}
-                      risk={(item as any).risk}
-                      eid={(item as any).eid}
-                      compliance={undefined}
-                      prospectId={item.prospectId}
-                      passcode={(item as any).passcode}
-                      documentCount={item.documentCount ?? 0}
-                      animationDelay={animationDelay}
-                      onOpenInstruction={ref ? () => handleOpenInstruction(ref) : undefined}
-                    />
-                    {expanded && ref && (
-                      <InstructionCard
-                        instruction={item.instruction}
-                        deal={(item as any).deal}
-                        prospectId={item.prospectId}
-                        risk={(item as any).risk}
-                        eid={(item as any).eid}
-                        documentCount={item.documentCount}
-                        expanded
-                        onOpenMatter={() => handleOpenMatter(item.instruction)}
-                        onRiskAssessment={() => handleRiskAssessment(item.instruction)}
-                        onEIDCheck={() => handleEIDCheck(item.instruction)}
-                      />
-                    )}
-                  </div>
+                  <InstructionOverviewItem
+                    key={idx}
+                    instruction={item.instruction}
+                    deal={(item as any).deal}
+                    deals={item.deals}
+                    clients={item.clients}
+                    risk={(item as any).risk}
+                    eid={(item as any).eid}
+                    compliance={undefined}
+                    prospectId={item.prospectId}
+                    passcode={(item as any).passcode}
+                    documentCount={item.documentCount ?? 0}
+                    animationDelay={animationDelay}
+                    expanded={expanded}
+                    onToggle={ref ? () => handleOpenInstruction(ref) : () => {}}
+                    onOpenMatter={() => handleOpenMatter(item.instruction)}
+                    onRiskAssessment={() => handleRiskAssessment(item.instruction)}
+                    onEIDCheck={() => handleEIDCheck(item.instruction)}
+                  />
 
                 );
               })}

@@ -17,16 +17,17 @@
   color: #ffffff;
   border: none;
   padding: 6px 12px;
-  border-radius: 4px;
-  transition: opacity 0.2s ease;
-}
-
-.unselected {
-  background-color: #f3f2f1; /* Matches colours.secondaryButtonBackground, light grey */
-  color: #000000;
-  border: 1px solid #d1d1d1;
-  padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .unselected {
+    background-color: #f3f2f1;
+    /* Matches colours.secondaryButtonBackground, light grey */
+    color: #000000;
+    border: 1px solid #d1d1d1;
+    padding: 6px 12px;
+    border-radius: 0;
   transition: opacity 0.2s ease;
 }
 

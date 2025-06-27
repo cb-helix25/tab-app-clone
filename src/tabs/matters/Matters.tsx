@@ -296,6 +296,7 @@ const dateSliderContainerStyle = mergeStyles({
   alignItems: 'center',
 });
 
+
 const renderCustomLegend = (props: any) => {
   const { payload } = props;
   return (
@@ -398,6 +399,37 @@ const Matters: React.FC<MattersProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
+
+  const ACTION_BAR_HEIGHT = 48;
+
+  const backButtonStyle = mergeStyles({
+    width: 32,
+    height: 32,
+    borderRadius: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    marginRight: 8,
+  });
+
+  function detailNavStyle(dark: boolean) {
+    return mergeStyles({
+      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
+      boxShadow: dark ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
+      borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)',
+      padding: '0 24px',
+      display: 'flex',
+      flexDirection: 'row',
+      gap: '8px',
+      alignItems: 'center',
+      height: ACTION_BAR_HEIGHT,
+      position: 'sticky',
+      top: ACTION_BAR_HEIGHT,
+      zIndex: 999,
+    });
+  }
 
   // ---------- Filter States ----------
   const [activeGroupedArea, setActiveGroupedArea] = useState<string | null>(null);
@@ -623,7 +655,28 @@ const Matters: React.FC<MattersProps> = ({
         />
       );
     } else {
-      setContent(null);
+      setContent(
+        <div className={detailNavStyle(isDarkMode)}>
+          <IconButton
+            iconProps={{ iconName: 'Back' }}
+            title="Back"
+            ariaLabel="Back"
+            onClick={() => setSelectedMatter(null)}
+            className={backButtonStyle}
+          />
+          <Pivot
+            selectedKey={activeTab}
+            onLinkClick={(item) =>
+              setActiveTab(item?.props.itemKey || 'Overview')
+            }
+            aria-label="Matter Detail Tabs"
+          >
+            <PivotItem headerText="Overview" itemKey="Overview" />
+            <PivotItem headerText="Transactions" itemKey="Transactions" />
+            <PivotItem headerText="Documents" itemKey="Documents" />
+          </Pivot>
+        </div>
+      );
     }
     return () => setContent(null);
   }, [
@@ -676,49 +729,6 @@ const Matters: React.FC<MattersProps> = ({
 
     return (
       <div className={outerDetailContainerStyle(isDarkMode)}>
-        {/* Nav Row (Back + Tabs) */}
-        <Stack
-          horizontal
-          verticalAlign="center"
-          tokens={{ childrenGap: 10 }}
-          className={mergeStyles({ marginBottom: '20px' })}
-        >
-          <IconButton
-            iconProps={{ iconName: 'Back' }}
-            title="Back"
-            ariaLabel="Back"
-            onClick={() => setSelectedMatter(null)}
-            styles={{
-              root: {
-                backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-                color: isDarkMode ? colours.dark.iconColor : colours.light.iconColor,
-                borderRadius: '50%',
-                width: 40,
-                height: 40,
-                selectors: {
-                  ':hover': {
-                    backgroundColor: isDarkMode
-                      ? colours.dark.background
-                      : colours.light.background,
-                  },
-                },
-              },
-            }}
-          />
-          <Pivot
-            selectedKey={activeTab}
-            onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'Overview')}
-            aria-label="Matter Detail Tabs"
-            styles={{
-              root: { marginBottom: 0, borderBottom: 'none' },
-              link: { fontSize: 16, fontWeight: 600 },
-            }}
-          >
-            <PivotItem headerText="Overview" itemKey="Overview" />
-            <PivotItem headerText="Transactions" itemKey="Transactions" />
-            <PivotItem headerText="Documents" itemKey="Documents" />
-          </Pivot>
-        </Stack>
 
         {/* Card Content */}
         <div className={innerDetailCardStyle(isDarkMode)}>

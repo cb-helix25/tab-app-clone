@@ -1,7 +1,7 @@
 .metric-card {
     position: relative;
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 0;
     padding: 16px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     min-width: 180px;
@@ -22,7 +22,7 @@
     bottom: 0;
     width: 4px;
     background: #3690ce;
-    border-radius: 8px 0 0 8px;
+    border-radius: 0;
   }
 
   .content {
