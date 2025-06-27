@@ -6,19 +6,17 @@ import {
     FaRegIdBadge,
     FaFileAlt,
     FaRegFileAlt,
-    FaUser,
-    FaPhone,
-    FaAddressCard,
-    FaBuilding,
-    FaIdCard,
-    FaMoneyBillWave,
-    FaInfoCircle,
     FaChevronDown,
+    FaCheckCircle,
+    FaClock,
+    FaTimesCircle,
 } from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
+import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionCard.css';
+import '../../app/styles/InstructionDashboard.css';
 
 interface InstructionInfo {
     InstructionRef: string;
@@ -77,9 +75,12 @@ interface DealInfo {
 interface InstructionCardProps {
     instruction: InstructionInfo;
     deal?: DealInfo;
+    deals?: DealInfo[];
+    clients?: ClientInfo[];
     prospectId?: number;
     risk?: { RiskAssessmentResult?: string; RiskScore?: number } | null;
     eid?: { EIDStatus?: string } | null;
+    compliance?: any | null;
     documentCount?: number;
     animationDelay?: number;
     onOpenMatter?: () => void;
@@ -98,9 +99,12 @@ const iconMap = {
 const InstructionCard: React.FC<InstructionCardProps> = ({
     instruction,
     deal,
+    deals,
+    clients,
     prospectId,
     risk,
     eid,
+    compliance,
     documentCount,
     animationDelay = 0,
     onOpenMatter,
@@ -153,6 +157,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
     const openDisabled = !risk?.RiskAssessmentResult || eid?.EIDStatus?.toLowerCase() !== 'verified';
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>('eid');
+    const [selectedStatus, setSelectedStatus] = useState<string>('deal');
 
     const isPoid = stage === 'poid';
 
@@ -174,116 +179,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         fontSize: '0.875rem',
     });
 
-    const sections = [
-        {
-            title: 'General',
-            icon: <FaFileAlt className="group-icon" />, 
-            fields: [
-                ['Stage', 'Status'],
-                ['ClientType', 'Client Type'],
-                ['HelixContact', 'Contact'],
-                ['InternalStatus', 'Internal Status'],
-                ['ConsentGiven', 'Consent'],
-                ['SubmissionDate', 'Submitted'],
-                ['SubmissionTime', 'Submission Time'],
-                ['LastUpdated', 'Last Updated'],
-            ],
-        },
-        {
-            title: 'Personal',
-            icon: <FaUser className="group-icon" />,
-            fields: [
-                ['Title', 'Title'],
-                ['FirstName', 'First Name'],
-                ['LastName', 'Last Name'],
-                ['Gender', 'Gender'],
-                ['DOB', 'DOB'],
-                ['Nationality', 'Nationality'],
-                ['NationalityAlpha2', 'ISO'],
-            ],
-        },
-        {
-            title: 'Contact',
-            icon: <FaPhone className="group-icon" />,
-            fields: [
-                ['Phone', 'Phone'],
-                ['Email', 'Email'],
-            ],
-        },
-        {
-            title: 'Documents',
-            icon: <FaIdCard className="group-icon" />,
-            fields: [
-                ['PassportNumber', 'Passport'],
-                ['DriversLicenseNumber', 'DL Number'],
-                ['IdType', 'ID Type'],
-            ],
-        },
-        {
-            title: 'Address',
-            icon: <FaAddressCard className="group-icon" />,
-            fields: [
-                ['HouseNumber', 'House'],
-                ['Street', 'Street'],
-                ['City', 'City'],
-                ['County', 'County'],
-                ['Postcode', 'Postcode'],
-                ['Country', 'Country'],
-                ['CountryCode', 'Country Code'],
-            ],
-        },
-        {
-            title: 'Company',
-            icon: <FaBuilding className="group-icon" />,
-            fields: [
-                ['CompanyName', 'Name'],
-                ['CompanyNumber', 'Number'],
-                ['CompanyHouseNumber', 'House'],
-                ['CompanyStreet', 'Street'],
-                ['CompanyCity', 'City'],
-                ['CompanyCounty', 'County'],
-                ['CompanyPostcode', 'Postcode'],
-                ['CompanyCountry', 'Country'],
-                ['CompanyCountryCode', 'Country Code'],
-            ],
-        },
-        {
-            title: 'Payment',
-            icon: <FaMoneyBillWave className="group-icon" />,
-            fields: [
-                ['PaymentMethod', 'Method'],
-                ['PaymentResult', 'Result'],
-                ['PaymentAmount', 'Amount'],
-                ['PaymentProduct', 'Product'],
-                ['PaymentTimestamp', 'Timestamp'],
-                ['AliasId', 'Alias ID'],
-                ['OrderId', 'Order ID'],
-                ['SHASign', 'SHA'],
-            ],
-        },
-        {
-            title: 'Other',
-            icon: <FaInfoCircle className="group-icon" />,
-            fields: [
-                ['Notes', 'Notes'],
-                ['ClientId', 'Client ID'],
-                ['RelatedClientId', 'Related Client'],
-                ['MatterId', 'Matter ID'],
-            ],
-        },
-    ];
-
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-        const initial: Record<string, boolean> = {};
-        sections.forEach(sec => {
-            initial[sec.title] = sec.title === 'General';
-        });
-        return initial;
-    });
-
-    const toggleGroup = (title: string) => {
-        setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }));
-    };
 
     const proofOfIdComplete = Boolean(
         instruction.PassportNumber || instruction.DriversLicenseNumber
@@ -292,23 +187,28 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const paymentComplete = paymentStatusRaw === 'successful';
     const paymentFailed = paymentStatusRaw === 'failed';
     const documentsComplete = (documentCount ?? 0) > 0;
+    const eidStatus = eid?.EIDStatus ?? '-';
+    const complianceStatus = (compliance as any)?.Status ?? '-';
+    const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
+    const uniqueClients = clients ? Array.from(new Set(clients.map(c => c.ClientEmail))).length : 0;
 
     const statusData = [
+        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
+        { key: 'clients', label: 'Clients', value: uniqueClients },
+        { key: 'id', label: 'ID', status: proofOfIdComplete ? 'complete' : 'pending' },
         {
-            key: 'id',
-            label: 'ID',
-            status: proofOfIdComplete ? 'complete' : 'pending',
-        },
-        {
-            key: 'payment',
-            label: 'Payment',
+            key: 'pay',
+            label: 'Pay',
             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
         },
+        { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
+        { key: 'eid', label: 'EID', status: eidStatus.toLowerCase() === 'verified' ? 'complete' : 'pending' },
         {
-            key: 'docs',
-            label: 'Docs',
-            status: documentsComplete ? 'complete' : 'pending',
+            key: 'comp',
+            label: 'Comp.',
+            status: complianceStatus.toLowerCase() === 'pass' ? 'complete' : 'pending',
         },
+        { key: 'risk', label: 'Risk', value: risk?.RiskAssessmentResult ?? '-' },
     ];
 
     return (
@@ -349,36 +249,141 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             </div>
 
             <div className="card-content">
-                <div className="instruction-details">
-                    {sections.map((section) => {
-                        const items = section.fields as [string, string][];
-                        const details = items
-                            .map(([key, label]) => {
-                                const raw = (instruction as any)[key];
-                                const val = formatValue(key, raw);
-                                if (val == null || val === '') return null;
-                                return <li key={key}><strong>{label}:</strong> {String(val)}</li>;
-                            })
-                            .filter(Boolean);
-
-                        if (section.title === 'General') {
-                            if (prospectId != null) details.unshift(<li key="prospect"><strong>Prospect ID:</strong> {prospectId}</li>);
-                            if (deal?.ServiceDescription) details.push(<li key="service"><strong>Service:</strong> {deal.ServiceDescription}</li>);
-                            if (deal?.AreaOfWork) details.push(<li key="area"><strong>Area:</strong> {deal.AreaOfWork}</li>);
-                            if (deal?.Amount != null) details.push(<li key="amount"><strong>Amount:</strong> £{deal.Amount}</li>);
-                        }
-
-                        if (!details.length) return null;
-                        const open = openGroups[section.title];
+                <div className="interactive-status status-row">
+                    {statusData.map((d, i) => {
+                        const status = (d.status ?? '').toString().toLowerCase();
+                        const value = d.value ?? null;
+                        const icon = d.status
+                            ? status === 'complete' || status === 'closed'
+                                ? <FaCheckCircle />
+                                : status === 'failed'
+                                    ? <FaTimesCircle />
+                                    : <FaClock />
+                            : null;
                         return (
-                            <div className={`detail-group${open ? ' open' : ''}`} key={section.title}>
-                                <div className="detail-summary" onClick={() => toggleGroup(section.title)}>
-                                    {section.icon} {section.title}
-                                </div>
-                                <ul className="detail-list">{details}</ul>
+                            <div
+                                key={i}
+                                className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
+                                onClick={() => setSelectedStatus(d.key)}
+                            >
+                                <span className="status-label">{d.label}</span>
+                                {icon ? (
+                                    <span className={`status-value ${status}`}>{icon}</span>
+                                ) : (
+                                    <span className="status-value">{value}</span>
+                                )}
                             </div>
                         );
                     })}
+                </div>
+                <div className="instruction-details">
+                    {selectedStatus === 'deal' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Deal Info</div>
+                            <ul className="detail-list">
+                                {prospectId != null && (
+                                    <li><strong>Prospect ID:</strong> {prospectId}</li>
+                                )}
+                                {deal?.ServiceDescription && (
+                                    <li><strong>Service:</strong> {deal.ServiceDescription}</li>
+                                )}
+                                {deal?.AreaOfWork && (
+                                    <li><strong>Area:</strong> {deal.AreaOfWork}</li>
+                                )}
+                                {deal?.Amount != null && (
+                                    <li><strong>Amount:</strong> £{deal.Amount}</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'clients' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Clients</div>
+                            <ul className="detail-list">
+                                {clients && clients.map(c => (
+                                    <li key={c.ClientEmail}>
+                                        {c.ClientEmail} {c.Lead ? '(Lead)' : ''}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'id' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">ID Details</div>
+                            <ul className="detail-list">
+                                {instruction.PassportNumber && (
+                                    <li><strong>Passport:</strong> {instruction.PassportNumber}</li>
+                                )}
+                                {instruction.DriversLicenseNumber && (
+                                    <li><strong>DL Number:</strong> {instruction.DriversLicenseNumber}</li>
+                                )}
+                                {instruction.IdType && (
+                                    <li><strong>ID Type:</strong> {instruction.IdType}</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'pay' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Payment</div>
+                            <ul className="detail-list">
+                                {instruction.PaymentMethod && (
+                                    <li><strong>Method:</strong> {instruction.PaymentMethod}</li>
+                                )}
+                                {instruction.PaymentResult && (
+                                    <li><strong>Result:</strong> {instruction.PaymentResult}</li>
+                                )}
+                                {instruction.PaymentAmount != null && (
+                                    <li><strong>Amount:</strong> £{instruction.PaymentAmount}</li>
+                                )}
+                                {instruction.PaymentProduct && (
+                                    <li><strong>Product:</strong> {instruction.PaymentProduct}</li>
+                                )}
+                                {instruction.PaymentTimestamp && (
+                                    <li><strong>Timestamp:</strong> {formatValue('PaymentTimestamp', instruction.PaymentTimestamp)}</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'docs' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Documents</div>
+                            <ul className="detail-list">
+                                <li><strong>Documents Uploaded:</strong> {documentCount ?? 0}</li>
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'eid' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">EID Check</div>
+                            <ul className="detail-list">
+                                {eid && Object.entries(eid).map(([k,v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'comp' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Compliance</div>
+                            <ul className="detail-list">
+                                {compliance && Object.entries(compliance).map(([k,v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {selectedStatus === 'risk' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Risk</div>
+                            <ul className="detail-list">
+                                {risk && Object.entries(risk).map(([k,v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 <div className="bottom-tabs">

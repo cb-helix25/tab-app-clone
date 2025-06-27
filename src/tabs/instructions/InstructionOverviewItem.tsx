@@ -144,9 +144,12 @@ const InstructionOverviewItem: React.FC<InstructionOverviewItemProps> = ({
                 <InstructionCard
                     instruction={instruction as any}
                     deal={deal}
+                    deals={deals}
+                    clients={clients}
                     prospectId={prospectId}
                     risk={risk}
                     eid={eid}
+                    compliance={compliance}
                     documentCount={documentCount}
                     expanded
                     onOpenMatter={onOpenMatter}

@@ -44,7 +44,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
   const [activePivot, setActivePivot] = useState<string>('overview');
-  const [expandedInstructionRef, setExpandedInstructionRef] = useState<string | null>(null);
   const [expandedOverviewRef, setExpandedOverviewRef] = useState<string | null>(null);
 
   const ACTION_BAR_HEIGHT = 48;
@@ -223,13 +222,11 @@ const Instructions: React.FC<InstructionsProps> = ({
               <Pivot
                 selectedKey={activePivot}
                 onLinkClick={(item) => {
-                  setExpandedInstructionRef(null);
                   setExpandedOverviewRef(null);
-                  setActivePivot(item?.props.itemKey || 'instructions');
+                  setActivePivot(item?.props.itemKey || 'overview');
                 }}
               >
                 <PivotItem headerText="Overview" itemKey="overview" />
-                <PivotItem headerText="Instructions" itemKey="instructions" />
                 <PivotItem headerText="Deals" itemKey="deals" />
                 <PivotItem headerText="Clients" itemKey="clients" />
                 <PivotItem headerText="Risk & Compliance" itemKey="risk" />
@@ -284,36 +281,6 @@ const Instructions: React.FC<InstructionsProps> = ({
       width: '100%',
     });
 
-  const flattenedInstructions = useMemo(() => {
-    return instructionData.flatMap((prospect) =>
-      (prospect.instructions ?? []).map((inst) => {
-        const deal = prospect.deals.find(
-          (d) => d.InstructionRef === inst.InstructionRef
-        );
-        const riskSource = [
-          ...(prospect.riskAssessments ?? prospect.compliance ?? []),
-          ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
-        ];
-        const eidSource = [
-          ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-          ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
-        ];
-        const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-        const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
-        const docs = prospect.documents?.filter(
-          (d) => d.InstructionRef === inst.InstructionRef
-        );
-        return {
-          ...inst,
-          deal,
-          prospectId: prospect.prospectId,
-          risk,
-          eid,
-          documentCount: docs ? docs.length : 0,
-        };
-      })
-    );
-  }, [instructionData]);
 
   const overviewItems = useMemo(() => {
     return instructionData.flatMap((prospect) => {
@@ -356,6 +323,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             });
           }
         });
+        const deal = dealsForInst[0];
 
         const riskSource = [
           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
@@ -575,7 +543,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenInstruction = (ref: string) => {
     setActivePivot('overview');
-    setExpandedInstructionRef(null);
     setExpandedOverviewRef((curr) => (curr === ref ? null : ref));
   };
 
@@ -589,14 +556,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: 'border-box',
   });
 
-  const instructionColumnStyle = mergeStyles({
-    columnCount: 2,
-    columnGap: '24px',
-    maxWidth: '1200px',
-    width: '100%',
-    margin: '0 auto',
-    boxSizing: 'border-box',
-  });
 
   const overviewColumnStyle = mergeStyles({
     display: 'flex',
@@ -680,33 +639,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                     key={`unlinked-${idx}`}
                     deal={deal}
                     animationDelay={animationDelay}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {activePivot === 'instructions' && (
-            <div className={instructionColumnStyle}>
-              {flattenedInstructions.map((instruction, idx) => {
-                const row = Math.floor(idx / 2);
-                const col = idx % 2;
-                const animationDelay = row * 0.2 + col * 0.1;
-                return (
-                  <InstructionCard
-                    key={idx}
-                    instruction={instruction}
-                    risk={instruction.risk}
-                    eid={instruction.eid}
-                    documentCount={instruction.documentCount}
-                    prospectId={instruction.prospectId}
-                    animationDelay={animationDelay}
-                    expanded={expandedInstructionRef === instruction.InstructionRef}
-                    onOpenMatter={() => handleOpenMatter(instruction)}
-                    onRiskAssessment={() => handleRiskAssessment(instruction)}
-                    onEIDCheck={() => handleEIDCheck(instruction)}
-                    innerRef={(el: HTMLDivElement | null) => {
-                      instructionRefs.current[instruction.InstructionRef] = el;
-                    }}
                   />
                 );
               })}

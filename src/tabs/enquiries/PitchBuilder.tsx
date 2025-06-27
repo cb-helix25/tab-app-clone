@@ -52,6 +52,7 @@ import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 import PitchHeaderRow from './pitch-builder/PitchHeaderRow';
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
 import PlaceholderEditorPopover from './pitch-builder/PlaceholderEditorPopover';
+import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -681,6 +682,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
   }
 
+  function openSnippetEdit(e: MouseEvent, blockTitle: string) {
+    e.stopPropagation();
+    e.preventDefault();
+    setSnippetEdit({ blockTitle, target: e.currentTarget as HTMLElement });
+  }
+
   function closeSnippetOptions() {
     setSnippetOptionsBlock(null);
     setSnippetOptionsTarget(null);
@@ -734,6 +741,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     (window as any).toggleBlockSidebar = toggleBlockSidebar;
     (window as any).highlightBlock = highlightBlock;
     (window as any).openSnippetOptions = openSnippetOptions;
+    (window as any).openSnippetEdit = openSnippetEdit;
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).saveCustomSnippet = saveCustomSnippet;
@@ -741,7 +749,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -886,6 +894,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     before: string;
     after: string;
     text: string;
+  } | null>(null);
+
+  const [snippetEdit, setSnippetEdit] = useState<{
+    blockTitle: string;
+    target: HTMLElement;
   } | null>(null);
 
   function getNeighboringWords(span: HTMLElement, count: number = 3) {
@@ -1394,7 +1407,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelText = `${block.title} (${getTemplateSetLabel(templateSet)}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.saveCustomSnippet('${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 
@@ -1700,7 +1713,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setBody(bodyEditorRef.current.innerHTML);
   }
 
-  async function saveCustomSnippet(blockTitle: string) {
+  async function saveCustomSnippet(blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) {
     if (!bodyEditorRef.current) return;
     const span = bodyEditorRef.current.querySelector(
       `span[data-inserted="${blockTitle}"]`
@@ -1714,7 +1727,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blockTitle, html: snippetHtml })
+        body: JSON.stringify({ blockTitle, html: snippetHtml, label, sortOrder, isNew })
       });
       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
       showToast('Snippet saved', 'success');
@@ -2990,9 +3003,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             after={placeholderEdit.after}
             onDismiss={() => setPlaceholderEdit(null)}
             onSave={(val) => {
-              placeholderEdit.span.textContent = val;
+              const span = placeholderEdit.span;
+              const textNode = document.createTextNode(val);
+              span.replaceWith(textNode);
               setBody(bodyEditorRef.current?.innerHTML || '');
               setPlaceholderEdit(null);
+            }}
+          />
+        )}
+
+        {snippetEdit && (
+          <SnippetEditPopover
+            target={snippetEdit.target}
+            onDismiss={() => setSnippetEdit(null)}
+            onSave={({ label, sortOrder, isNew }) => {
+              saveCustomSnippet(snippetEdit.blockTitle, label, sortOrder, isNew);
+              setSnippetEdit(null);
             }}
           />
         )}

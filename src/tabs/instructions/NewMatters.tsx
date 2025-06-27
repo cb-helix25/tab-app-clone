@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Stack } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import StepHeader from './StepHeader';
-import StepOverview from './StepOverview';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
@@ -529,13 +528,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         </div>
                     ))}
                 </div>
-                <StepOverview
-                    steps={stepProgressSteps}
-                    current={stepsOrder[openStep]}
-                    isStepComplete={isStepComplete}
-                    details={stepDetails}
-                    onStepClick={(key) => setOpenStep(stepsOrder.indexOf(key))}
-                />
             </div>
         </Stack>
         </CompletionProvider>

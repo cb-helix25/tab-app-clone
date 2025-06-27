@@ -1,6 +1,6 @@
 # Instruction Card Design
 
-This document describes the small card component used to display a single instruction in the Instructions tab. The design reuses tokens from the main instructions app so the look and feel is consistent across projects.
+This document describes the small card component used to display a single instruction in the Overview. The design reuses tokens from the main instructions app so the look and feel is consistent across projects.
 
 ## Layout
 

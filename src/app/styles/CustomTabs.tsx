@@ -29,6 +29,8 @@ interface CustomTabsProps {
   user?: UserData;
   onFormsHover?: (hover: boolean) => void;
   onFormsClick?: () => void;
+  onResourcesHover?: (hover: boolean) => void;
+  onResourcesClick?: () => void;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -67,6 +69,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   user,
   onFormsHover,
   onFormsClick,
+  onResourcesHover,
+  onResourcesClick,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -85,6 +89,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
     if (clickedTab?.disabled) {
       if (clickedTab.key === 'forms' && onFormsClick) {
         onFormsClick();
+      } else if (clickedTab.key === 'resources' && onResourcesClick) {
+        onResourcesClick();
       }
       ev?.preventDefault();
       return;
@@ -148,10 +154,14 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
               onMouseEnter:
                 tab.key === 'forms' && onFormsHover
                   ? () => onFormsHover(true)
+                  : tab.key === 'resources' && onResourcesHover
+                    ? () => onResourcesHover(true)
                   : undefined,
               onMouseLeave:
                 tab.key === 'forms' && onFormsHover
                   ? () => onFormsHover(false)
+                  : tab.key === 'resources' && onResourcesHover
+                    ? () => onResourcesHover(false)
                   : undefined,
             }}
           />

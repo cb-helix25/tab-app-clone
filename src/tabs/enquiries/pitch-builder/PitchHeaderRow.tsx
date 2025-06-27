@@ -143,7 +143,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     display: 'flex',
     alignItems: 'center',
     gap: 4,
-    fontSize: 14,
+    fontSize: 13,
   });
 
   const detailLabelStyle = mergeStyles({ fontWeight: 600 });
@@ -161,7 +161,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   });
 
   const [showCc, setShowCc] = useState(!!cc);
-  const [showBcc, setShowBcc] = useState(!!bcc);
+  const [showBcc, setShowBcc] = useState(false);
   const toCcBccRef = useRef<HTMLDivElement>(null);
   const subjectRef = useRef<HTMLDivElement>(null);
   const [descHeight, setDescHeight] = useState(0);
@@ -192,11 +192,6 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     }
   }, [cc, showCc]);
 
-  useEffect(() => {
-    if (bcc && !showBcc) {
-      setShowBcc(true);
-    }
-  }, [bcc, showBcc]);
 
 
   const headerRowStyle = mergeStyles({

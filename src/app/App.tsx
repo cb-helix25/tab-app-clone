@@ -4,6 +4,7 @@ import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
 import FormsSidebar from '../components/FormsSidebar';
+import ResourcesSidebar from '../components/ResourcesSidebar';
 import { NavigatorProvider } from './functionality/NavigatorContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
@@ -12,7 +13,6 @@ import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomB
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
-const Resources = lazy(() => import('../tabs/resources/Resources'));
 const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
 const Instructions = lazy(() => import('../tabs/instructions/Instructions'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
@@ -53,9 +53,18 @@ const App: React.FC<AppProps> = ({
   const [formsTabHovered, setFormsTabHovered] = useState(false);
   const [formsSidebarPinned, setFormsSidebarPinned] = useState(false);
 
+  const [resourcesTabHovered, setResourcesTabHovered] = useState(false);
+  const [resourcesSidebarPinned, setResourcesSidebarPinned] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'forms') {
       setFormsSidebarPinned(true);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'resources') {
+      setResourcesSidebarPinned(true);
     }
   }, [activeTab]);
 
@@ -87,6 +96,10 @@ const App: React.FC<AppProps> = ({
     setFormsSidebarPinned((prev) => !prev);
   };
 
+  const handleResourcesTabClick = () => {
+    setResourcesSidebarPinned((prev) => !prev);
+  };
+
   useEffect(() => {
     const closeLoadingScreen = () => {
       const loadingScreen = document.getElementById('loading-screen');
@@ -106,7 +119,6 @@ const App: React.FC<AppProps> = ({
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
   // Tabs visible to all users start with the Enquiries tab.
-
   // Only show the Instructions tab to Luke (LZ), Kelly (KW), Ben (BL),
   // Alex (AC) and Jonathan (JW). Keep it visible when developing locally
   // (hostname === 'localhost').
@@ -122,7 +134,7 @@ const App: React.FC<AppProps> = ({
       : []),
     { key: 'matters', text: 'Matters' },
     { key: 'forms', text: 'Forms', disabled: true },
-    { key: 'resources', text: 'Resources' },
+    { key: 'resources', text: 'Resources', disabled: true },
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
     ];
@@ -149,8 +161,6 @@ const App: React.FC<AppProps> = ({
             teamData={teamData}
           />
         );
-      case 'resources':
-        return <Resources />;
       case 'enquiries':
         return (
           <Enquiries
@@ -168,9 +178,9 @@ const App: React.FC<AppProps> = ({
             userInitials={userInitials}
             poidData={poidData}
             setPoidData={setPoidData}
-            teamData={teamData}            
+            teamData={teamData}
           />
-        );
+          );
       case 'matters':
         return (
           <Matters
@@ -238,6 +248,8 @@ const App: React.FC<AppProps> = ({
             user={userData[0]}
             onFormsHover={setFormsTabHovered}
             onFormsClick={handleFormsTabClick}
+            onResourcesHover={setResourcesTabHovered}
+            onResourcesClick={handleResourcesTabClick}
           />
           <Navigator />
           <FormsSidebar
@@ -247,6 +259,12 @@ const App: React.FC<AppProps> = ({
             hovered={formsTabHovered}
             pinned={formsSidebarPinned}
             setPinned={setFormsSidebarPinned}
+          />
+          <ResourcesSidebar
+            activeTab={activeTab}
+            hovered={resourcesTabHovered}
+            pinned={resourcesSidebarPinned}
+            setPinned={setResourcesSidebarPinned}
           />
           <Suspense fallback={<div>Loading...</div>}>
             {renderContent()}

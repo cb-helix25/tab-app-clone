@@ -4,7 +4,7 @@ This document outlines the new placeholders added to the instruction dashboard. 
 
 ## Quick Actions
 
-A sticky action bar now appears at the top of the Instructions tab. It contains buttons for:
+A sticky action bar now appears at the top of the Overview. It contains buttons for:
 
 - **New Matter** – open a matter against the selected instruction.
 - **EID Check** – placeholder for launching an electronic ID verification.

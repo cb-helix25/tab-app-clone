@@ -1,0 +1,28 @@
+.snippet-edit-callout .ms-Callout {
+    border-radius: 0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    padding: 16px 20px !important;
+    width: 90vw !important;
+    max-width: 300px !important;
+    background-color: #ffffff !important;
+}
+
+.snippet-edit-callout .ms-TextField {
+    margin-bottom: 12px !important;
+}
+
+.snippet-edit-callout .ms-TextField-fieldGroup {
+    border-radius: 0 !important;
+}
+
+.snippet-edit-callout .ms-Button {
+    border-radius: 0 !important;
+    text-transform: none !important;
+}
+
+.snippet-edit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}

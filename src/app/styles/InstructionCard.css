@@ -343,3 +343,30 @@
         transform: scale(1);
     }
 }
+
+/* interactive status row inside expanded cards */
+.interactive-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.interactive-status .status-item {
+    flex: 1 1 80px;
+    background: var(--helix-light, #f4f4f6);
+    padding: 4px 6px;
+    text-align: center;
+    border: 1px solid #e3e8ef;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.interactive-status .status-item:hover {
+    background-color: #e7f1ff;
+}
+
+.interactive-status .status-item.active {
+    background-color: #d6e8ff;
+    border-color: #3690CE;
+}
