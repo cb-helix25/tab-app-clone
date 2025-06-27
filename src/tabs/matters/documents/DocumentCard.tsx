@@ -31,7 +31,7 @@ export interface DocumentCardProps {
 const cardContainerStyle = mergeStyles({
   position: 'relative',
   width: '100%',
-  borderRadius: '12px',
+  borderRadius: 0,
   backgroundColor: '#ffffff',
   boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
   overflow: 'hidden',
@@ -54,8 +54,8 @@ const cardContainerStyle = mergeStyles({
 const topImageStyle = mergeStyles({
   width: '100%',
   height: '120px',
-  borderTopLeftRadius: '12px',
-  borderTopRightRadius: '12px',
+  borderTopLeftRadius: 0,
+  borderTopRightRadius: 0,
 });
 
 // Full-width title section placed between the image and the content area

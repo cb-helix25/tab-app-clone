@@ -4,7 +4,7 @@
     "deals": [
       {
         "DealId": 7,
-        "InstructionRef": null,
+        "InstructionRef": "HLX-22338-3927",
         "ProspectId": 22338,
         "Passcode": "54321",
         "ServiceDescription": "bespoke contract  review and letter",
@@ -18,8 +18,8 @@
         "IsMultiClient": "1",
         "LeadClientId": 22338,
         "LeadClientEmail": "lz@helix-law.com",
-        "CloseDate": null,
-        "CloseTime": null
+        "CloseDate": "2025-07-05T00:00:00",
+        "CloseTime": "13:00:00"
       },
       {
         "DealId": 8,
@@ -138,14 +138,14 @@
         "CompanyCountry": "United Kingdom",
         "CompanyCountryCode": "GB",
         "Notes": null,
-        "PaymentMethod": null,
-        "PaymentResult": null,
+        "PaymentMethod": "card",
+        "PaymentResult": "pending",
         "PaymentAmount": 0.5,
         "PaymentProduct": "Test service description",
-        "AliasId": null,
-        "OrderId": null,
-        "SHASign": null,
-        "PaymentTimestamp": null
+        "AliasId": "A1",
+        "OrderId": "ORD3927",
+        "SHASign": "SIG3927",
+        "PaymentTimestamp": "2025-06-16T07:00:00"
       },
       {
         "InstructionRef": "HLX-22338-4581",

@@ -176,20 +176,52 @@ function formatCurrency(val?: string): string {
     >
       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
         <Separator />
-        <Text variant="medium">
-          <strong style={{ color: colours.cta }}>
-            You're sending an email to {fullName || 'N/A'}
-          </strong>
-          <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
-          {enquiry.Point_of_Contact || 'N/A'}
-        </Text>
-        <MessageBar
-          messageBarType={MessageBarType.info}
-          isMultiline={false}
-          styles={{ root: { backgroundColor: colours.grey } }}
-        >
-          This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're responding on the same day.
-        </MessageBar>
+        {/* Combined summary section */}
+        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}>
+          <Text variant="medium">
+            <strong style={{ color: colours.cta }}>
+              You're sending an email to {fullName || 'N/A'}
+            </strong>
+            <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
+            {enquiry.Point_of_Contact || 'N/A'}
+          </Text>
+          <Text variant="small">
+            This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're responding on the same day.
+          </Text>
+          <Stack tokens={{ childrenGap: 8 }}>
+            <Stack tokens={{ childrenGap: 4 }}>
+              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+                Deal Details
+              </Text>
+              <Text variant="medium">
+                <strong>Service:</strong> {serviceDescription || 'N/A'}
+              </Text>
+              <Text variant="medium">
+                <strong>Amount:</strong> {formatCurrency(amount)}
+              </Text>
+              {clients && clients.length > 0 && (
+                <Stack tokens={{ childrenGap: 2 }}>
+                  <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
+                    <strong>Clients Requiring ID:</strong>
+                  </Text>
+                  {clients.map((c, idx) => (
+                    <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
+                      {c.firstName} {c.lastName} - {c.email}
+                    </Text>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+            <Stack tokens={{ childrenGap: 4 }}>
+              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+                Subject
+              </Text>
+              <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+                {subject || 'N/A'}
+              </Text>
+            </Stack>
+          </Stack>
+        </Stack>
 
         {isSuccessVisible && (
           <MessageBar
@@ -202,48 +234,6 @@ function formatCurrency(val?: string): string {
             Email drafted successfully!
           </MessageBar>
         )}
-
-        <Separator />
-
-        {/* Deal Details & Subject */}
-        <Stack
-          tokens={{ childrenGap: 8 }}
-          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
-        >
-          <Stack tokens={{ childrenGap: 4 }}>
-            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-              Deal Details
-            </Text>
-            <Text variant="medium">
-              <strong>Service:</strong> {serviceDescription || 'N/A'}
-            </Text>
-            <Text variant="medium">
-              <strong>Amount:</strong> {formatCurrency(amount)}
-            </Text>
-            {clients && clients.length > 0 && (
-              <Stack tokens={{ childrenGap: 2 }}>
-                <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-                  <strong>Clients Requiring ID:</strong>
-                </Text>
-                {clients.map((c, idx) => (
-                  <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-                    {c.firstName} {c.lastName} - {c.email}
-                  </Text>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-
-          <Stack tokens={{ childrenGap: 4 }}>
-            <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-              Subject
-            </Text>
-            <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-              {subject || 'N/A'}
-            </Text>
-          </Stack>
-        </Stack>
-
         <Separator />
 
         {/* Body */}

@@ -338,10 +338,12 @@ const Instructions: React.FC<InstructionsProps> = ({
         );
         return {
           instruction: inst,
+          deal,
           deals: dealsForInst,
           clients: clientsForInst,
           risk,
           eid,
+          documents: docs,
           prospectId: prospect.prospectId,
           documentCount: docs ? docs.length : 0,
         };
@@ -622,6 +624,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     risk={(item as any).risk}
                     eid={(item as any).eid}
                     compliance={undefined}
+                    documents={item.documents}
                     prospectId={item.prospectId}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}

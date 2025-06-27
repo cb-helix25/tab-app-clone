@@ -44,7 +44,7 @@ const containerStyle = (isDarkMode: boolean) =>
 const sectionContainerStyle = (isDarkMode: boolean) =>
   mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-    borderRadius: '12px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 2px 8px rgba(0,0,0,0.8)'
       : '0 2px 8px rgba(0,0,0,0.1)',
@@ -92,7 +92,7 @@ const chartBoxStyle = (isDarkMode: boolean) =>
     minWidth: '280px',
     height: '260px',
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-    borderRadius: '8px',
+    borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 2px 4px rgba(0,0,0,0.7)'
       : '0 2px 4px rgba(0,0,0,0.1)',

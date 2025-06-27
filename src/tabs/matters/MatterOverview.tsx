@@ -131,7 +131,7 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
       <div
         className={mergeStyles({
           padding: '20px',
-          borderRadius: '8px',
+          borderRadius: 0,
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           marginBottom: '20px',
@@ -178,7 +178,7 @@ const FinancialSection: React.FC<FinancialSectionProps> = ({
         className={mergeStyles({
           width: '100%',
           padding: '10px',
-          borderRadius: '8px',
+          borderRadius: 0,
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           marginBottom: '20px',
@@ -320,7 +320,7 @@ const ComplianceDetails: React.FC<{ record: ComplianceRecord }> = ({ record }) =
   const { isDarkMode } = useTheme();
   const containerStyle = mergeStyles({
     border: `1px solid ${colours.grey}`,
-    borderRadius: '4px',
+    borderRadius: 0,
     padding: '10px',
     marginBottom: '10px',
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -482,7 +482,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
 
   const containerStyleFixed = mergeStyles({
     padding: '20px',
-    borderRadius: '8px',
+    borderRadius: 0,
     marginBottom: '20px',
     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -541,7 +541,7 @@ const MatterOverview: React.FC<MatterOverviewProps> = ({
     flex: '1 1 320px',
     minWidth: '280px',
     backgroundColor: isDarkMode ? '#262626' : '#fff',
-    borderRadius: '8px',
+    borderRadius: 0,
     boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.1)',
     padding: '16px',
     transition: 'transform 0.2s, box-shadow 0.2s',

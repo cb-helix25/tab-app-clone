@@ -82,6 +82,7 @@ interface InstructionCardProps {
     eid?: { EIDStatus?: string } | null;
     compliance?: any | null;
     documentCount?: number;
+    documents?: any[];
     animationDelay?: number;
     onOpenMatter?: () => void;
     onRiskAssessment?: () => void;
@@ -107,6 +108,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     eid,
     compliance,
     documentCount,
+    documents,
     animationDelay = 0,
     onOpenMatter,
     onRiskAssessment,
@@ -164,7 +166,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
     const paymentComplete = paymentStatusRaw === 'successful';
     const paymentFailed = paymentStatusRaw === 'failed';
-    const documentsComplete = (documentCount ?? 0) > 0;
+    const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
     const eidStatus = eid?.EIDStatus ?? '-';
     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
     const complianceStatus = (compliance as any)?.Status ?? '-';
@@ -304,15 +306,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                 {prospectId != null && (
                                     <li><strong>Prospect ID:</strong> {prospectId}</li>
                                 )}
-                                {deal?.ServiceDescription && (
-                                    <li><strong>Service:</strong> {deal.ServiceDescription}</li>
-                                )}
-                                {deal?.AreaOfWork && (
-                                    <li><strong>Area:</strong> {deal.AreaOfWork}</li>
-                                )}
-                                {deal?.Amount != null && (
-                                    <li><strong>Amount:</strong> £{deal.Amount}</li>
-                                )}
+                                {deal &&
+                                    Object.entries(deal).map(([k, v]) =>
+                                        v != null ? (
+                                            <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                        ) : null
+                                    )}
                             </ul>
                         </div>
                     )}
@@ -320,14 +319,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">ID Details</div>
                             <ul className="detail-list">
-                                {instruction.PassportNumber && (
-                                    <li><strong>Passport:</strong> {instruction.PassportNumber}</li>
-                                )}
-                                {instruction.DriversLicenseNumber && (
-                                    <li><strong>DL Number:</strong> {instruction.DriversLicenseNumber}</li>
-                                )}
-                                {instruction.IdType && (
-                                    <li><strong>ID Type:</strong> {instruction.IdType}</li>
+                                {Object.entries(instruction).map(([k, v]) =>
+                                    v != null ? (
+                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                    ) : null
                                 )}
                             </ul>
                         </div>
@@ -336,21 +331,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">Payment</div>
                             <ul className="detail-list">
-                                {instruction.PaymentMethod && (
-                                    <li><strong>Method:</strong> {instruction.PaymentMethod}</li>
-                                )}
-                                {instruction.PaymentResult && (
-                                    <li><strong>Result:</strong> {instruction.PaymentResult}</li>
-                                )}
-                                {instruction.PaymentAmount != null && (
-                                    <li><strong>Amount:</strong> £{instruction.PaymentAmount}</li>
-                                )}
-                                {instruction.PaymentProduct && (
-                                    <li><strong>Product:</strong> {instruction.PaymentProduct}</li>
-                                )}
-                                {instruction.PaymentTimestamp && (
-                                    <li><strong>Timestamp:</strong> {formatValue('PaymentTimestamp', instruction.PaymentTimestamp)}</li>
-                                )}
+                                {Object.entries(instruction)
+                                    .filter(([k]) =>
+                                        k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
+                                    )
+                                    .map(([k, v]) =>
+                                        v != null ? (
+                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                        ) : null
+                                    )}
                             </ul>
                         </div>
                     )}
@@ -358,7 +347,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">Documents</div>
                             <ul className="detail-list">
-                                <li><strong>Documents Uploaded:</strong> {documentCount ?? 0}</li>
+                                <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
+                                {documents?.map((d, idx) => (
+                                    <li key={idx}><strong>{d.FileName}</strong></li>
+                                ))}
                             </ul>
                         </div>
                     )}

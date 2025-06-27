@@ -1,99 +1,46 @@
-diff --git a/src/app/styles/QuickActionsCard.css b/src/app/styles/QuickActionsCard.css
-index 6659366eb05c763fa5d6e714f72a553b5721d07c..c20db427514d6335ee7072634510f45afe61f3b3 100644
---- a/src/app/styles/QuickActionsCard.css
-+++ b/src/app/styles/QuickActionsCard.css
-@@ -12,84 +12,86 @@
+diff --git a/src/tabs/transactions/OutstandingBalancesList.tsx b/src/tabs/transactions/OutstandingBalancesList.tsx
+index ce91b358737cd3c0c036fd56b3ae4d12b698d6c6..adf2733cc9654f5966cc19cb62a40ec23b3465af 100644
+--- a/src/tabs/transactions/OutstandingBalancesList.tsx
++++ b/src/tabs/transactions/OutstandingBalancesList.tsx
+@@ -1,40 +1,40 @@
+ import React from 'react';
+ import { Stack, Text, Link, Separator, Icon, TooltipHost } from '@fluentui/react';
+ import { mergeStyles } from '@fluentui/react';
+ import { colours } from '../../app/styles/colours';
+ import { OutstandingClientBalance, Matter } from '../../app/functionality/types';
  
- .quickActionCard .icon-wrapper {
-   position: relative;
-   display: inline-flex;
-   width: 24px;
-   justify-content: center;
-   align-items: center;
-   flex-shrink: 0;
+ interface OutstandingBalancesListProps {
+   balances: OutstandingClientBalance[];
+   matters: Matter[];
  }
  
- .quickActionCard .icon-outline,
- .quickActionCard .icon-filled {
-   position: absolute;
-   left: 50%;
-   top: 50%;
-   transform: translate(-50%, -50%);
-   display: inline-flex;
-   transition: opacity 0.35s ease, transform 0.35s ease;
- }
+ const containerStyle = mergeStyles({
+   padding: '10px',
+   backgroundColor: colours.light.sectionBackground,
+-  borderRadius: '8px',
++  borderRadius: 0,
+   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+   marginBottom: '16px'
+ });
  
- .quickActionCard .icon-filled {
-   opacity: 0;
- }
+ const headerStyle = mergeStyles({
+   padding: '8px',
+   borderBottom: `1px solid ${colours.light.border}`,
+   display: 'flex',
+   justifyContent: 'space-between',
+   alignItems: 'center'
+ });
  
- .quickActionCard:hover {
--  background-color: var(--card-hover, #f4f4f6);
-+  background-color: rgba(255, 255, 255, 0.1);
-   transform: scale(1.05);
- }
+ // Matters styling
+ const mattersContainerStyle = mergeStyles({
+   padding: '4px 8px',
+   marginTop: '4px',
+   marginBottom: '4px'
+ });
  
- .quickActionCard:hover .icon-outline {
-   opacity: 0;
- }
- 
- .quickActionCard:hover .icon-filled {
-   opacity: 1;
-   color: var(--helix-cta, #D65541);
-   transform: translate(-50%, -50%) scale(1.15);
- }
- 
- .quickActionCard:active {
-   transform: scale(0.97);
--  background-color: transparent !important;
--  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4) !important;
-+  background-color: rgba(0, 0, 0, 0.2) !important;
-+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
-   border-radius: 0 !important;
- }
- 
- .quickActionCard:active .icon-filled,
- .quickActionCard:active .ms-Text {
-   opacity: 1;
-   color: var(--helix-highlight) !important;
- }
- 
-+
-+/* Remove default outline to match tab styling */
- .quickActionCard:focus {
--  outline: 2px solid var(--helix-highlight, #3690CE);
--  outline-offset: 2px;
-+  outline: none;
- }
- 
- .quickActionCard.selected {
--  background-color: var(--card-selected, var(--card-hover, #f4f4f6));
--  border-color: var(--helix-highlight, #3690CE);
--  }
-+  color: var(--helix-highlight, #3690CE);
-+  background-color: rgba(255, 255, 255, 0.1);
-+  border: none;
-+}
-   
-   .quickActionCard.vertical {
-     flex-direction: column;
-     justify-content: center;
-     align-items: center;
-     line-height: normal;
-     padding: 8px 12px;
-   }
-   
-   .quickActionCard.vertical .icon-wrapper {
-     margin-bottom: 4px;
- }
- 
- .quickActionCard:active .icon-outline {
-   opacity: 0;
- }
- 
- .quickActionCard:active .icon-filled {
-   opacity: 1;
-   color: var(--helix-cta, #D65541);
- }
- 
- /* subtlePulse keyframes moved to animations.css */
+ const matterLinkStyle = mergeStyles({
+   fontWeight: 400,
+   fontSize: '14px',
+   textDecoration: 'none',
+   color: colours.highlight
+ });

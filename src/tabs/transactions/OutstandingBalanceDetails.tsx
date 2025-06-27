@@ -13,7 +13,7 @@ interface OutstandingBalanceDetailsProps {
 const containerStyle = mergeStyles({
   padding: '10px',
   backgroundColor: colours.light.sectionBackground,
-  borderRadius: '8px',
+  borderRadius: 0,
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   marginBottom: '16px'
 });

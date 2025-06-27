@@ -44,7 +44,7 @@ const containerStyle = mergeStyles({
 // Header container: retains its own style for the display number and search.
 const headerContainerStyle = mergeStyles({
   padding: '10px 20px',
-  borderRadius: '8px',
+  borderRadius: 0,
   backgroundColor: '#fff',
   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   marginBottom: '20px',
@@ -195,7 +195,7 @@ const Documents: React.FC<DocumentsProps> = ({ matter, category }) => {
     color: isDarkMode ? '#fff' : '#333',
     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
     padding: '16px',
-    borderRadius: '8px',
+    borderRadius: 0,
     zIndex: 1000,
     maxWidth: '300px',
   };
