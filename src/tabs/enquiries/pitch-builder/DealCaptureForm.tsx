@@ -392,6 +392,7 @@ useLayoutEffect(() => {
   const dealFieldsRow = mergeStyles({
     display: 'flex',
     flexWrap: 'wrap',
+    flexDirection: 'row',
     columnGap: '10px',
     rowGap: '10px',
     width: '100%',
@@ -402,7 +403,7 @@ useLayoutEffect(() => {
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
 
       {/* Service Description, Amount and Expiry */}
-      <Stack className={dealFieldsRow}>
+      <Stack horizontal wrap className={dealFieldsRow}>
         <Stack styles={{ root: { flexBasis: '40%', flexGrow: 1, minWidth: 250 } }}>
           <div ref={descRef}>
             {!useBespoke ? (

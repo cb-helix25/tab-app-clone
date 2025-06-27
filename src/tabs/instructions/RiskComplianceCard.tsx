@@ -11,6 +11,14 @@ interface RiskComplianceCardProps {
     onOpenInstruction?: () => void;
 }
 
+const getField = (obj: any, ...keys: string[]) => {
+    for (const key of keys) {
+        const val = obj?.[key];
+        if (val !== undefined && val !== null) return val;
+    }
+    return undefined;
+};
+
 const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
     data,
     animationDelay = 0,
@@ -36,7 +44,24 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
 
-    const date = data.ComplianceDate ? new Date(data.ComplianceDate).toLocaleDateString() : undefined;
+    const complianceDate = getField(data, 'ComplianceDate', 'Compliance Date');
+    const complianceExpiry = getField(data, 'ComplianceExpiry', 'Compliance Expiry');
+    const date = complianceDate ? new Date(complianceDate).toLocaleDateString() : undefined;
+    const expiry = complianceExpiry ? new Date(complianceExpiry).toLocaleDateString() : undefined;
+
+    const checkId = getField(data, 'CheckId', 'Check ID');
+    const checkResult = getField(data, 'CheckResult', 'Check Result');
+    const pepResult = getField(data, 'PEPandSanctionsCheckResult', 'PEP and Sanctions Check Result');
+    const addressResult = getField(data, 'AddressVerificationCheckResult', 'Address Verification Check Result');
+
+    const riskAssessor = getField(data, 'RiskAssessor', 'Risk Assessor');
+    const riskAssessmentResult = getField(data, 'RiskAssessmentResult', 'Risk Assessment Result');
+    const riskScore = getField(data, 'RiskScore', 'Risk Score');
+    const riskLevel = getField(data, 'TransactionRiskLevel', 'Transaction Risk Level');
+    const clientFactors = getField(data, 'ClientRiskFactorsConsidered', 'Client Risk Factors Considered');
+    const transactionFactors = getField(data, 'TransactionRiskFactorsConsidered', 'Transaction Risk Factors Considered');
+    const firmAML = getField(data, 'FirmWideAMLPolicyConsidered', 'Firm-Wide AML Policy Considered');
+    const firmSanctions = getField(data, 'FirmWideSanctionsRiskConsidered', 'Firm-Wide Sanctions Risk Considered');
 
     return (
         <div className={cardClass} style={style} onClick={onOpenInstruction}>
@@ -51,6 +76,31 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                         <strong>Compliance Date:</strong> {date}
                     </li>
                 )}
+                {expiry && (
+                    <li>
+                        <strong>Expiry:</strong> {expiry}
+                    </li>
+                )}
+                {checkId && (
+                    <li>
+                        <strong>Check ID:</strong> {checkId}
+                    </li>
+                )}
+                {checkResult && (
+                    <li>
+                        <strong>Check Result:</strong> {checkResult}
+                    </li>
+                )}
+                {pepResult && (
+                    <li>
+                        <strong>PEP/Sanctions:</strong> {pepResult}
+                    </li>
+                )}
+                {addressResult && (
+                    <li>
+                        <strong>Address Check:</strong> {addressResult}
+                    </li>
+                )}
                 {data.EIDStatus && (
                     <li>
                         <strong>EID Status:</strong> {data.EIDStatus}
@@ -59,44 +109,44 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
             </ul>
             <Separator />
             <ul className="detail-list">
-                {data.RiskAssessor && (
+                {riskAssessor && (
                     <li>
-                        <strong>Assessor:</strong> {data.RiskAssessor}
+                        <strong>Assessor:</strong> {riskAssessor}
                     </li>
                 )}
-                {data.RiskAssessmentResult && (
+                {riskAssessmentResult && (
                     <li>
-                        <strong>Result:</strong> {data.RiskAssessmentResult}
+                        <strong>Result:</strong> {riskAssessmentResult}
                     </li>
                 )}
-                {data.RiskScore !== undefined && (
+                {riskScore !== undefined && (
                     <li>
-                        <strong>Score:</strong> {data.RiskScore}
+                        <strong>Score:</strong> {riskScore}
                     </li>
                 )}
-                {data.TransactionRiskLevel && (
+                {riskLevel && (
                     <li>
-                        <strong>Level:</strong> {data.TransactionRiskLevel}
+                        <strong>Level:</strong> {riskLevel}
                     </li>
                 )}
-                {data.ClientRiskFactorsConsidered !== undefined && (
+                {clientFactors !== undefined && (
                     <li>
-                        <strong>Client Factors:</strong> {data.ClientRiskFactorsConsidered ? 'Yes' : 'No'}
+                        <strong>Client Factors:</strong> {clientFactors ? 'Yes' : 'No'}
                     </li>
                 )}
-                {data.TransactionRiskFactorsConsidered !== undefined && (
+                {transactionFactors !== undefined && (
                     <li>
-                        <strong>Transaction Factors:</strong> {data.TransactionRiskFactorsConsidered ? 'Yes' : 'No'}
+                        <strong>Transaction Factors:</strong> {transactionFactors ? 'Yes' : 'No'}
                     </li>
                 )}
-                {data.FirmWideAMLPolicyConsidered !== undefined && (
+                {firmAML !== undefined && (
                     <li>
-                        <strong>Firm AML Policy:</strong> {data.FirmWideAMLPolicyConsidered ? 'Yes' : 'No'}
+                        <strong>Firm AML Policy:</strong> {firmAML ? 'Yes' : 'No'}
                     </li>
                 )}
-                {data.FirmWideSanctionsRiskConsidered !== undefined && (
+                {firmSanctions !== undefined && (
                     <li>
-                        <strong>FW Sanctions:</strong> {data.FirmWideSanctionsRiskConsidered ? 'Yes' : 'No'}
+                        <strong>FW Sanctions:</strong> {firmSanctions ? 'Yes' : 'No'}
                     </li>
                 )}
             </ul>

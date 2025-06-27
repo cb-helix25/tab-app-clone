@@ -356,16 +356,20 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       outline: none;
     }
     .sentence-delete {
-      margin-right: 4px;
+      margin-right: 6px;
       cursor: pointer;
       user-select: none;
       color: ${colours.red};
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       border: 1px solid ${colours.greyText};
       background: ${colours.grey};
       padding: 2px 4px;
       border-radius: 0;
+      font-size: 18px;
+      width: 24px;
+      height: 24px;
     }
     .sentence-delete:hover {
       background: ${colours.highlightBlue};
@@ -383,9 +387,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       border: 1px solid ${colours.greyText};
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       font-size: 18px;
       background: ${colours.grey};
       border-radius: 0;
+      width: 24px;
+      height: 24px;
     }
     .sentence-handle:hover {
       background: ${colours.highlightBlue};

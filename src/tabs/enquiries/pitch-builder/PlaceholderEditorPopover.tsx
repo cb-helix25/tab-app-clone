@@ -40,10 +40,10 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
             setInitialFocus
             directionalHint={DirectionalHint.bottomLeftEdge}
             isBeakVisible
-            gapSpace={8}
+            gapSpace={12}
             styles={{ calloutMain: { overflowY: 'visible' } }}
         >
-            <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: 12 } }}>
+            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: 16 } }}>
                 <span className="placeholder-context">{before}</span>
                 <TextField
                     value={value}

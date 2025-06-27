@@ -10,7 +10,6 @@ import '../../app/styles/NewMatters.css';
 
 // Components for individual steps
 import ClientInfoStep from './MatterOpening/ClientInfoStep';
-import ClientTypeStep from './MatterOpening/ClientTypeStep';
 import PoidSelectionStep from './MatterOpening/PoidSelectionStep';
 import AreaOfWorkStep from './MatterOpening/AreaOfWorkStep';
 import PracticeAreaStep from './MatterOpening/PracticeAreaStep';
@@ -102,7 +101,6 @@ const getGroupColor = (group: string): string => {
 
 type StepKey =
     | 'clientInfo'
-    | 'clientType'
     | 'poidSelection'
     | 'areaOfWork'
     | 'practiceArea'
@@ -115,7 +113,6 @@ type StepKey =
 
 const stepTitles: { [key in StepKey]: string } = {
     clientInfo: 'Main Details',
-    clientType: 'Select Client Type',
     poidSelection: 'Choose Proof of Identity',
     areaOfWork: 'Select Area of Work',
     practiceArea: 'Select Practice Area',
@@ -197,6 +194,24 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const poidGridRef = useRef<HTMLDivElement | null>(null);
     const [activePoid, setActivePoid] = useState<POID | null>(null);
 
+    const stepsOrder: StepKey[] = useMemo(() => {
+        const order: StepKey[] = ['clientInfo'];
+        if (!instructionRef) {
+            order.push('poidSelection');
+        }
+        order.push(
+            'areaOfWork',
+            'practiceArea',
+            'description',
+            'folderStructure',
+            'disputeValue',
+            'source',
+            'opponentDetails',
+            'review'
+        );
+        return order;
+    }, [instructionRef]);
+
     const filteredPoidData = poidData.filter((poid) => {
         const term = poidSearchTerm.toLowerCase();
         return (
@@ -207,7 +222,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
     });
 
     useEffect(() => {
-        if (openStep !== 2) return;
+        const poidIndex = stepsOrder.indexOf('poidSelection');
+        if (poidIndex === -1 || openStep !== poidIndex) return;
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting) {
@@ -218,7 +234,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
         );
         if (poidGridRef.current) observer.observe(poidGridRef.current);
         return () => observer.disconnect();
-    }, [openStep, filteredPoidData]);
+    }, [openStep, filteredPoidData, stepsOrder]);
 
     const handlePoidClick = (poid: POID) => {
         if (selectedPoidIds.includes(poid.poid_id)) {
@@ -237,8 +253,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
         switch (step) {
             case 'clientInfo':
                 return !!(selectedDate && supervisingPartner && originatingSolicitor);
-            case 'clientType':
-                return !!clientType;
             case 'poidSelection':
                 return selectedPoidIds.length > 0;
             case 'areaOfWork':
@@ -269,25 +283,15 @@ const NewMatters: React.FC<NewMattersProps> = ({
         }
     };
 
-    const stepsOrder: StepKey[] = [
-        'clientInfo',
-        'clientType',
-        'poidSelection',
-        'areaOfWork',
-        'practiceArea',
-        'description',
-        'folderStructure',
-        'disputeValue',
-        'source',
-        'opponentDetails',
-        'review',
-    ];
-
-    const stepProgressSteps = stepsOrder.map((key) => ({
-        key,
-        label: stepTitles[key],
-        title: stepTitles[key],
-    }));
+    const stepProgressSteps = useMemo(
+        () =>
+            stepsOrder.map((key) => ({
+                key,
+                label: stepTitles[key],
+                title: stepTitles[key],
+            })),
+        [stepsOrder]
+    );
 
     const stepDetails = React.useMemo(() => ({
         clientInfo: (
@@ -298,7 +302,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 <div>Funds: {fundsReceived || '-'}</div>
             </div>
         ),
-        clientType: <div>Type: {clientType || '-'}</div>,
         poidSelection: <div>IDs: {selectedPoidIds.join(', ') || '-'}</div>,
         areaOfWork: <div>{areaOfWork || '-'}</div>,
         practiceArea: <div>{practiceArea || '-'}</div>,
@@ -323,7 +326,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
         supervisingPartner,
         originatingSolicitor,
         fundsReceived,
-        clientType,
         selectedPoidIds,
         areaOfWork,
         practiceArea,
@@ -354,15 +356,11 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setIsDateCalloutOpen={setIsDateCalloutOpen}
                         dateButtonRef={dateButtonRef}
                         partnerOptions={partnerOptions}
-                        onContinue={() => setOpenStep(1)}
-                    />
-                );
-            case 'clientType':
-                return (
-                    <ClientTypeStep
-                        clientType={clientType}
-                        setClientType={setClientType}
-                        onContinue={() => setOpenStep(2)}
+                        onContinue={() =>
+                            setOpenStep(
+                                stepsOrder.indexOf('clientInfo') + 1
+                            )
+                        }
                     />
                 );
             case 'poidSelection':
@@ -377,7 +375,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setPoidSearchTerm={setPoidSearchTerm}
                         poidGridRef={poidGridRef}
                         handlePoidClick={handlePoidClick}
-                        onConfirm={() => setOpenStep(3)}
+                        onConfirm={() =>
+                            setOpenStep(stepsOrder.indexOf('poidSelection') + 1)
+                        }
                     />
                 );
             case 'areaOfWork':
@@ -385,7 +385,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <AreaOfWorkStep
                         areaOfWork={areaOfWork}
                         setAreaOfWork={setAreaOfWork}
-                        onContinue={() => setOpenStep(4)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('areaOfWork') + 1)
+                        }
                         getGroupColor={getGroupColor}
                     />
                 );
@@ -395,7 +397,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                         practiceArea={practiceArea}
                         setPracticeArea={setPracticeArea}
-                        onContinue={() => setOpenStep(5)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('practiceArea') + 1)
+                        }
                         groupColor={getGroupColor(areaOfWork)}
                     />
                 );
@@ -404,7 +408,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <DescriptionStep
                         description={description}
                         setDescription={setDescription}
-                        onContinue={() => setOpenStep(6)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('description') + 1)
+                        }
                     />
                 );
             case 'folderStructure':
@@ -412,7 +418,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <FolderStructureStep
                         folderStructure={folderStructure}
                         setFolderStructure={setFolderStructure}
-                        onContinue={() => setOpenStep(7)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('folderStructure') + 1)
+                        }
                         folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
                     />
                 );
@@ -421,7 +429,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <DisputeValueStep
                         disputeValue={disputeValue}
                         setDisputeValue={setDisputeValue}
-                        onContinue={() => setOpenStep(8)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('disputeValue') + 1)
+                        }
                     />
                 );
             case 'source':
@@ -431,7 +441,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setSource={setSource}
                         referrerName={referrerName}
                         setReferrerName={setReferrerName}
-                        onContinue={() => setOpenStep(9)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('source') + 1)
+                        }
                     />
                 );
             case 'opponentDetails':
@@ -449,7 +461,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setOpponentSolicitorEmail={setOpponentSolicitorEmail}
                         noConflict={noConflict}
                         setNoConflict={setNoConflict}
-                        onContinue={() => setOpenStep(10)}
+                        onContinue={() =>
+                            setOpenStep(stepsOrder.indexOf('opponentDetails') + 1)
+                        }
                     />
                 );
             case 'review':
