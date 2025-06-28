@@ -1,41 +1,99 @@
 diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 0900c58d673c7a62fc25148f9e951ba3e0da4af8..efe552c91c89ba820c5e819bbb495490f9eb040a 100644
+index 88c248985674cd0b009bb9c76c1445461315c473..ff6404545548a2eeb190a37efd64b437523c7f92 100644
 --- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
 +++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -174,77 +174,63 @@ function formatCurrency(val?: string): string {
-         },
-       }}
-     >
-       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
-         {/* Header with close button */}
-         <Stack
-           horizontal
-           verticalAlign="center"
-           styles={{ root: { justifyContent: 'space-between' } }}
-         >
-           <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-             You're sending an email to {fullName || 'N/A'}
-           </Text>
-           <IconButton
-             iconProps={{ iconName: 'Cancel' }}
-             ariaLabel="Close preview"
-             onClick={onDismiss}
-           />
+@@ -68,51 +68,50 @@ interface EmailPreviewProps {
+   to: string;
+   cc?: string;
+   bcc?: string;
+   autoInsertedBlocks: { [key: string]: boolean };
+   editedBlocks: { [key: string]: boolean };
+   sendEmail: () => void;
+   handleDraftEmail: () => void;
+   isSuccessVisible: boolean;
+   isDraftConfirmed: boolean;
+   amount?: string;
+   passcode?: string;
+ }
+ 
+ const EmailPreview: React.FC<EmailPreviewProps> = ({
+   isPreviewOpen,
+   onDismiss,
+   enquiry,
+   subject,
+   body,
+   templateBlocks,
+   attachments,
+   followUp,
+   fullName,
+   userData,
+   serviceDescription,
+-  clients,
+   to,
+   cc,
+   bcc,
+   autoInsertedBlocks,
+   editedBlocks,
+   sendEmail,
+   handleDraftEmail,
+   isSuccessVisible,
+   isDraftConfirmed,
+   amount,
+   passcode,
+ }) => {
+   // Strip blocks auto inserted by the system unless edited
+   const withoutAutoBlocks = removeAutoInsertedBlocks(
+     body,
+     autoInsertedBlocks,
+     editedBlocks
+   );
+   
+   // Process body HTML using imported functions
+   const sanitized = removeHighlightSpans(withoutAutoBlocks);
+   const substituted = applyDynamicSubstitutions(
+     sanitized,
+     userData,
+     enquiry,
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index 88c248985674cd0b009bb9c76c1445461315c473..ff6404545548a2eeb190a37efd64b437523c7f92 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -198,81 +197,51 @@ function formatCurrency(val?: string): string {
+           </Stack>
+           <Stack tokens={{ childrenGap: 2 }}>
+             <Text variant="medium">{to}</Text>
+             {cc && (
+               <Text variant="small" styles={{ root: { color: colours.greyText } }}>
+                 CC: {cc}
+               </Text>
+             )}
+             {bcc && (
+               <Text variant="small" styles={{ root: { color: colours.greyText } }}>
+                 BCC: {bcc}
+               </Text>
+             )}
+           </Stack>
          </Stack>
  
-         {/* Combined summary section */}
-         <Stack
-           tokens={{ childrenGap: 8 }}
-           styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
+         <MessageBar
+           messageBarType={MessageBarType.warning}
+           isMultiline={false}
+           styles={{ root: { borderRadius: 0 } }}
          >
+           You're requesting {formatCurrency(amount)} on account for{' '}
+           {serviceDescription || 'N/A'}.
+         </MessageBar>
+ 
+-        {/* Combined summary section */}
+-        <Stack
+-          tokens={{ childrenGap: 8 }}
+-          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
+-        >
 -          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
 -            {enquiry.Point_of_Contact || 'N/A'}
 -          </Text>
-           <Stack tokens={{ childrenGap: 8 }}>
+-          <Stack tokens={{ childrenGap: 8 }}>
 -            <Stack tokens={{ childrenGap: 4 }}>
--              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
--                Deal Details
--              </Text>
 -              <Text variant="medium">
 -                <strong>Service:</strong> {serviceDescription || 'N/A'}
 -              </Text>
@@ -46,15 +104,7 @@ index 0900c58d673c7a62fc25148f9e951ba3e0da4af8..efe552c91c89ba820c5e819bbb495490
 -                <Stack tokens={{ childrenGap: 2 }}>
 -                  <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
 -                    <strong>Clients Requiring ID:</strong>
-+            {clients && clients.length > 0 && (
-+              <Stack tokens={{ childrenGap: 2 }}>
-+                <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-+                  <strong>Clients Requiring ID:</strong>
-+                </Text>
-+                {clients.map((c, idx) => (
-+                  <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-+                    {c.firstName} {c.lastName} - {c.email}
-                   </Text>
+-                  </Text>
 -                  {clients.map((c, idx) => (
 -                    <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
 -                      {c.firstName} {c.lastName} - {c.email}
@@ -63,19 +113,9 @@ index 0900c58d673c7a62fc25148f9e951ba3e0da4af8..efe552c91c89ba820c5e819bbb495490
 -                </Stack>
 -              )}
 -            </Stack>
-+                ))}
-+              </Stack>
-+            )}
-             <Stack tokens={{ childrenGap: 4 }}>
-               <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-                 Subject
-               </Text>
-               <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-                 {subject || 'N/A'}
-               </Text>
-             </Stack>
-           </Stack>
-         </Stack>
+-          </Stack>
+-        </Stack>
++        {/* Removed duplicate summary section */}
  
          {isSuccessVisible && (
            <MessageBar
@@ -89,5 +129,15 @@ index 0900c58d673c7a62fc25148f9e951ba3e0da4af8..efe552c91c89ba820c5e819bbb495490
            </MessageBar>
          )}
          <Separator />
+         <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+           {subject || 'N/A'}
+         </Text>
  
          {/* Body */}
+         <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
+           <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight, marginBottom: 5 } }}>
+             Body:
+           </Text>
+           <div
+             ref={previewRef}
+             style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}

@@ -167,7 +167,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const paymentComplete = paymentStatusRaw === 'successful';
     const paymentFailed = paymentStatusRaw === 'failed';
     const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
-    const eidStatus = eid?.EIDStatus ?? '-';
+    const eidStatus = (eid?.EIDStatus || '').toLowerCase();
     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
     const complianceStatus = (compliance as any)?.Status ?? '-';
     const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
@@ -177,34 +177,33 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
         : deal?.ServiceDescription ?? '';
 
-    const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
-    const compliancePassed = complianceStatus.toLowerCase() === 'pass';
-    const verifyIdComplete = proofOfIdComplete && eidVerified && compliancePassed;
-    let idStatus = 'pending';
-    if (proofOfIdComplete) {
-        if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
-        else if (eidVerified) idStatus = 'verified';
-        else idStatus = 'review';
-    }
+    const eidPassed = eidResult === 'passed' || eidResult === 'pass';
+    const verifyIdStatus = !eid || eidStatus === 'pending'
+        ? 'pending'
+        : eidPassed
+            ? 'complete'
+            : 'review';
+    const idStatus = verifyIdStatus === 'complete' ? 'verified'
+        : verifyIdStatus === 'review' ? 'review'
+            : 'pending';
     const riskAssessed = Boolean(risk?.RiskAssessmentResult);
-    const dealClosed = !dealOpen;
-    const openMatterReady = dealClosed && paymentComplete && eidVerified && compliancePassed;
+    const openMatterReady = paymentComplete && riskAssessed && verifyIdStatus === 'complete';
     // Allow opening a new matter directly from the card even if some
     // prerequisite checks are outstanding. The navigator already shows
     // the relevant warnings so we no longer disable the action here.
     const openDisabled = false;
 
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>(() => {
-        if (!verifyIdComplete) return 'eid';
+        if (verifyIdStatus !== 'complete') return 'eid';
         if (!riskAssessed || !openMatterReady) return 'risk';
         return 'matter';
     });
 
     useEffect(() => {
-        if (!verifyIdComplete) setActiveTab('eid');
+        if (verifyIdStatus !== 'complete') setActiveTab('eid');
         else if (!riskAssessed || !openMatterReady) setActiveTab('risk');
         else setActiveTab('matter');
-    }, [verifyIdComplete, riskAssessed, openMatterReady]);
+    }, [verifyIdStatus, riskAssessed, openMatterReady]);
 
     const [selectedStatus, setSelectedStatus] = useState<string>('deal');
 
@@ -381,10 +380,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         {
                             key: 'eid',
                             label: 'Verify ID',
-                            title: verifyIdComplete ? 'ID Verified' : undefined,
+                            title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
                             icon: iconMap.eid,
                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                            status: verifyIdComplete ? 'complete' : 'ready',
+                            status: verifyIdStatus,
                         },
                         {
                             key: 'risk',
@@ -392,14 +391,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             title: riskAssessed ? 'Risk Assessed' : undefined,
                             icon: iconMap.risk,
                             onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
-                            status: !verifyIdComplete ? 'pending' : riskAssessed ? 'complete' : 'ready',
+                            status: riskAssessed ? 'complete' : 'ready',
                         },
                         {
                             key: 'matter',
                             label: 'Open Matter',
                             icon: iconMap.matter,
                             onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
-                            status: !riskAssessed || !openMatterReady ? 'pending' : 'ready',
+                            status: openMatterReady ? 'ready' : 'pending',
                         },
                     ].map((tab) => (
                         <button

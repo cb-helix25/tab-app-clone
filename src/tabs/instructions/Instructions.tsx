@@ -630,9 +630,9 @@ const Instructions: React.FC<InstructionsProps> = ({
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <RiskAssessmentPage
-          onBack={function (): void {
-            throw new Error("Function not implemented.");
-          }}
+          onBack={() => setShowRiskPage(false)}
+          instructionRef={selectedInstruction?.InstructionRef}
+          riskAssessor={userInitials}
         />
       </Stack>
     );

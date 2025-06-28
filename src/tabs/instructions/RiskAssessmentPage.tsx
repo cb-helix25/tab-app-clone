@@ -5,9 +5,11 @@ import { dashboardTokens } from './componentTokens';
 
 interface RiskAssessmentPageProps {
     onBack: () => void;
+    instructionRef?: string;
+    riskAssessor?: string;
 }
 
-const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack }) => {
+const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor }) => {
     const [riskCore, setRiskCore] = useState<RiskCore>({
         clientType: '',
         destinationOfFunds: '',
@@ -31,6 +33,36 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack }) => {
         consideredFirmWideSanctions &&
         consideredFirmWideAML;
 
+    const handleContinue = async () => {
+        if (!isComplete()) return;
+        try {
+            await fetch('/api/insertRiskAssessment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    InstructionRef: instructionRef,
+                    RiskAssessor: riskAssessor,
+                    ClientType: riskCore.clientType,
+                    DestinationOfFunds: riskCore.destinationOfFunds,
+                    FundsType: riskCore.fundsType,
+                    HowWasClientIntroduced: riskCore.clientIntroduced,
+                    Limitation: riskCore.limitation,
+                    SourceOfFunds: riskCore.sourceOfFunds,
+                    ValueOfInstruction: riskCore.valueOfInstruction,
+                    TransactionRiskLevel: transactionRiskLevel,
+                    ClientRiskFactorsConsidered: consideredClientRisk,
+                    TransactionRiskFactorsConsidered: consideredTransactionRisk,
+                    FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
+                    FirmWideAMLPolicyConsidered: consideredFirmWideAML,
+                    RiskAssessmentResult: transactionRiskLevel.replace(' Risk', ''),
+                }),
+            });
+        } catch (err) {
+            console.error('❌ Risk assessment submit failed', err);
+        }
+        onBack();
+    };
+
     return (
         <Stack tokens={dashboardTokens}>
             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
@@ -47,7 +79,7 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack }) => {
                 setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
                 consideredFirmWideAML={consideredFirmWideAML}
                 setConsideredFirmWideAML={setConsideredFirmWideAML}
-                onContinue={onBack}
+                onContinue={handleContinue}
                 isComplete={isComplete}
             />
         </Stack>

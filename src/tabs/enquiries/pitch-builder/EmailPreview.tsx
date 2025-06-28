@@ -90,7 +90,6 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   fullName,
   userData,
   serviceDescription,
-  clients,
   to,
   cc,
   bcc,
@@ -220,37 +219,7 @@ function formatCurrency(val?: string): string {
           {serviceDescription || 'N/A'}.
         </MessageBar>
 
-        {/* Combined summary section */}
-        <Stack
-          tokens={{ childrenGap: 8 }}
-          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
-        >
-          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
-            {enquiry.Point_of_Contact || 'N/A'}
-          </Text>
-          <Stack tokens={{ childrenGap: 8 }}>
-            <Stack tokens={{ childrenGap: 4 }}>
-              <Text variant="medium">
-                <strong>Service:</strong> {serviceDescription || 'N/A'}
-              </Text>
-              <Text variant="medium">
-                <strong>Amount:</strong> {formatCurrency(amount)}
-              </Text>
-              {clients && clients.length > 0 && (
-                <Stack tokens={{ childrenGap: 2 }}>
-                  <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-                    <strong>Clients Requiring ID:</strong>
-                  </Text>
-                  {clients.map((c, idx) => (
-                    <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-                      {c.firstName} {c.lastName} - {c.email}
-                    </Text>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-          </Stack>
-        </Stack>
+        {/* Removed duplicate summary section */}
 
         {isSuccessVisible && (
           <MessageBar
