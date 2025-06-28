@@ -20,7 +20,7 @@ interface ClientInfoStepProps {
     setIsDateCalloutOpen: (v: boolean) => void;
     dateButtonRef: React.RefObject<HTMLDivElement>;
     partnerOptions: string[];
-    onContinue: () => void;
+    onContinue?: () => void;
 }
 
 const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
@@ -135,7 +135,13 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 </div>
             </Stack>
             <div className={separatorStyle} />
-            <PrimaryButton text="Continue" onClick={onContinue} styles={sharedPrimaryButtonStyles} />
+            {onContinue && (
+                <PrimaryButton
+                    text="Continue"
+                    onClick={onContinue}
+                    styles={sharedPrimaryButtonStyles}
+                />
+            )}
         </Stack>
     );
 };

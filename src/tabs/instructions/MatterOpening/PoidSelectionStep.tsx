@@ -15,7 +15,7 @@ interface PoidSelectionStepProps {
     setPoidSearchTerm: (v: string) => void;
     poidGridRef: React.RefObject<HTMLDivElement | null>;
     handlePoidClick: (p: POID) => void;
-    onConfirm: () => void;
+    onConfirm?: () => void;
 }
 
 const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
@@ -58,7 +58,21 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                             </div>
                         ))
                 )}
-                <PrimaryButton text="Confirm POID Selection" onClick={onConfirm} styles={{ root: { ...(sharedPrimaryButtonStyles.root as any), height: 36, padding: '0 12px', fontSize: 14 } }} />
+                {onConfirm && (
+                    <PrimaryButton
+                        text="Confirm POID Selection"
+                        onClick={onConfirm}
+                        styles={{
+                            root: {
+                                ...(sharedPrimaryButtonStyles.root as any),
+                                height: 36,
+                                padding: '0 12px',
+                                fontSize: 14,
+                            },
+                        }}
+                    />
+                )}
+
             </Stack>
         </Stack>
     </Stack>

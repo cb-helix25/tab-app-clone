@@ -8,7 +8,7 @@ interface SourceStepProps {
     setSource: (v: string) => void;
     referrerName: string;
     setReferrerName: (v: string) => void;
-    onContinue: () => void;
+    onContinue?: () => void;
 }
 
 const sourceOptions = ['referral', 'organic search', 'paid search', 'your following', 'tbc'];
@@ -41,12 +41,14 @@ const SourceStep: React.FC<SourceStepProps> = ({ source, setSource, referrerName
                 styles={{ root: { width: '100%', maxWidth: 400, margin: '0 auto' } }}
             />
         )}
-        <PrimaryButton
-            text="Continue"
-            onClick={onContinue}
-            disabled={source === 'referral' && !referrerName.trim()}
-            styles={sharedPrimaryButtonStyles}
-        />
+        {onContinue && (
+            <PrimaryButton
+                text="Continue"
+                onClick={onContinue}
+                disabled={source === 'referral' && !referrerName.trim()}
+                styles={sharedPrimaryButtonStyles}
+            />
+        )}
     </Stack>
 );
 

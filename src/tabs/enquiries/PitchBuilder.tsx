@@ -428,7 +428,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
-  const [templateSet, setTemplateSet] = useState<TemplateSet>('Simplified');
+  const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
   const templateBlocks = getTemplateBlocks(templateSet);
   // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
@@ -438,7 +438,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
     const loadBlocks = async (): Promise<TemplateBlock[]> => {
-      if (newSet === 'Simplified') {
+      if (newSet === 'Database') {
         try {
           const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
           const res = await fetch(url);
@@ -451,7 +451,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         } catch (err) {
           console.error('Failed to load blocks', err);
         }
-        const fallback = getTemplateBlocks('Simplified');
+        const fallback = getTemplateBlocks('Database');
         setBlocks(fallback);
         return fallback;
       } else {
@@ -773,7 +773,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [savedSnippets, setSavedSnippets] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    handleTemplateSetChange('Simplified');
+    handleTemplateSetChange('Database');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

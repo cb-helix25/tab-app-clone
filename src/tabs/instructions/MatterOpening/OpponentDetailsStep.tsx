@@ -18,7 +18,7 @@ interface OpponentDetailsStepProps {
   setOpponentSolicitorEmail: (v: string) => void;
   noConflict: boolean;
   setNoConflict: (v: boolean) => void;
-  onContinue: () => void;
+  onContinue?: () => void;
 }
 
 const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
@@ -38,43 +38,35 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
   return (
-    <Stack tokens={{ childrenGap: 20 }}>
-      <Stack horizontal tokens={{ childrenGap: 12 }} wrap>
-        <BubbleTextField
-          value={opponentName}
-          onChange={(_, v) => setOpponentName(v || "")}
-          placeholder="Opponent Name"
-          ariaLabel="Opponent Name"
-          isDarkMode={isDarkMode}
-          style={{ flex: 1 }}
-        />
-        <BubbleTextField
-          value={opponentEmail}
-          onChange={(_, v) => setOpponentEmail(v || "")}
-          placeholder="Opponent Email"
-          ariaLabel="Opponent Email"
-          isDarkMode={isDarkMode}
-          style={{ flex: 1 }}
-        />
-      </Stack>
-      <Stack horizontal tokens={{ childrenGap: 12 }} wrap>
-        <BubbleTextField
-          value={opponentSolicitorName}
-          onChange={(_, v) => setOpponentSolicitorName(v || "")}
-          placeholder="Opponent Solicitor"
-          ariaLabel="Opponent Solicitor"
-          isDarkMode={isDarkMode}
-          style={{ flex: 1 }}
-        />
-        <BubbleTextField
-          value={opponentSolicitorCompany}
-          onChange={(_, v) => setOpponentSolicitorCompany(v || "")}
-          placeholder="Solicitor Company"
-          ariaLabel="Solicitor Company"
-          isDarkMode={isDarkMode}
-          style={{ flex: 1 }}
-        />
-      </Stack>
+    <Stack tokens={{ childrenGap: 12 }}>
+      <BubbleTextField
+        value={opponentName}
+        onChange={(_, v) => setOpponentName(v || "")}
+        placeholder="Opponent Name"
+        ariaLabel="Opponent Name"
+        isDarkMode={isDarkMode}
+      />
+      <BubbleTextField
+        value={opponentEmail}
+        onChange={(_, v) => setOpponentEmail(v || "")}
+        placeholder="Opponent Email"
+        ariaLabel="Opponent Email"
+        isDarkMode={isDarkMode}
+      />
+      <BubbleTextField
+        value={opponentSolicitorName}
+        onChange={(_, v) => setOpponentSolicitorName(v || "")}
+        placeholder="Solicitor Name"
+        ariaLabel="Solicitor Name"
+        isDarkMode={isDarkMode}
+      />
+      <BubbleTextField
+        value={opponentSolicitorCompany}
+        onChange={(_, v) => setOpponentSolicitorCompany(v || "")}
+        placeholder="Solicitor Company"
+        ariaLabel="Solicitor Company"
+        isDarkMode={isDarkMode}
+      />
       <BubbleTextField
         value={opponentSolicitorEmail}
         onChange={(_, v) => setOpponentSolicitorEmail(v || "")}
@@ -99,12 +91,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           </div>
         </div>
       </Stack>
-      <PrimaryButton
-        text="Continue"
-        onClick={onContinue}
-        disabled={!noConflict}
-        styles={sharedPrimaryButtonStyles}
-      />
+      {onContinue && (
+        <PrimaryButton
+          text="Continue"
+          onClick={onContinue}
+          disabled={!noConflict}
+          styles={sharedPrimaryButtonStyles}
+        />
+      )}
     </Stack>
   );
 };

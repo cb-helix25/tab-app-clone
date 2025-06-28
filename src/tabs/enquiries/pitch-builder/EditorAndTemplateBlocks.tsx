@@ -387,6 +387,11 @@ boxShadow: isDarkMode
           >
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
               <DefaultButton
+                text="v3"
+                onClick={() => onTemplateSetChange('Database')}
+                styles={templateSet === 'Database' ? selectedButtonStyles : whiteButtonStyles}
+              />
+              <DefaultButton
                 text="v2"
                 onClick={() => onTemplateSetChange('Simplified')}
                 styles={templateSet === 'Simplified' ? selectedButtonStyles : whiteButtonStyles}

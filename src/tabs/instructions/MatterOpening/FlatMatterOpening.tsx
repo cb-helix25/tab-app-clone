@@ -269,7 +269,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             setIsDateCalloutOpen={setIsDateCalloutOpen}
                             dateButtonRef={dateButtonRef}
                             partnerOptions={partnerOptions}
-                            onContinue={() => { }}
                         />
                         {showPoidSelection && (
                             <>
@@ -283,7 +282,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     setPoidSearchTerm={setPoidSearchTerm}
                                     poidGridRef={poidGridRef}
                                     handlePoidClick={handlePoidClick}
-                                    onConfirm={() => { }}
                                 />
                                 <div className="form-separator" />
                             </>
@@ -292,41 +290,41 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         <AreaOfWorkStep
                             areaOfWork={areaOfWork}
                             setAreaOfWork={setAreaOfWork}
-                            onContinue={() => { }}
-                            getGroupColor={getGroupColor}
-                        />
+                            getGroupColor={getGroupColor} onContinue={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
                         <div className="form-separator" />
                         <PracticeAreaStep
                             options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                             practiceArea={practiceArea}
                             setPracticeArea={setPracticeArea}
-                            onContinue={() => { } } groupColor={''}                        />
+                            groupColor={''} onContinue={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
                         <div className="form-separator" />
                         <DescriptionStep
                             description={description}
                             setDescription={setDescription}
-                            onContinue={() => { }}
                         />
                         <div className="form-separator" />
                         <FolderStructureStep
                             folderStructure={folderStructure}
                             setFolderStructure={setFolderStructure}
-                            onContinue={() => { }}
-                            folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
-                        />
+                            folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']} onContinue={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
                         <div className="form-separator" />
                         <DisputeValueStep
                             disputeValue={disputeValue}
-                            setDisputeValue={setDisputeValue}
-                            onContinue={() => { }}
-                        />
+                            setDisputeValue={setDisputeValue} onContinue={function (): void {
+                                throw new Error('Function not implemented.');
+                            } }                        />
                         <div className="form-separator" />
                         <SourceStep
                             source={source}
                             setSource={setSource}
                             referrerName={referrerName}
                             setReferrerName={setReferrerName}
-                            onContinue={() => { }}
                         />
                         <div className="form-separator" />
                         <OpponentDetailsStep
@@ -342,7 +340,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             setOpponentSolicitorEmail={setOpponentSolicitorEmail}
                             noConflict={noConflict}
                             setNoConflict={setNoConflict}
-                            onContinue={() => { }}
                         />
                         <div className="form-separator" />
                         <ReviewStep
@@ -365,7 +362,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             opponentSolicitorCompany={opponentSolicitorCompany}
                             opponentSolicitorEmail={opponentSolicitorEmail}
                             noConflict={noConflict}
-                            onBuild={() => { }}
                         />
                     </div>
                 </div>

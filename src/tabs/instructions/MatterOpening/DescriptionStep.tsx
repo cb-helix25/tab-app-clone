@@ -7,7 +7,7 @@ import { useTheme } from "../../../app/functionality/ThemeContext";
 interface DescriptionStepProps {
     description: string;
     setDescription: (v: string) => void;
-    onContinue: () => void;
+    onContinue?: () => void;
 }
 
 const DescriptionStep: React.FC<DescriptionStepProps> = ({
@@ -28,11 +28,13 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
                 ariaLabel="Matter description"
                 isDarkMode={isDarkMode}
             />
-            <PrimaryButton
-                text="Continue"
-                onClick={onContinue}
-                styles={sharedPrimaryButtonStyles}
-            />
+            {onContinue && (
+                <PrimaryButton
+                    text="Continue"
+                    onClick={onContinue}
+                    styles={sharedPrimaryButtonStyles}
+                />
+            )}
         </Stack>
     );
 };
