@@ -5,6 +5,7 @@ import ClientDetails from '../ClientDetails';
 import ClientHub from '../ClientHub';
 import { colours } from '../../../app/styles/colours';
 import '../../../app/styles/NewMatters.css';
+import localTeamDataJson from '../../../localData/team-sql-data.json';
 
 import ClientInfoStep from './ClientInfoStep';
 import PoidSelectionStep from './PoidSelectionStep';
@@ -127,35 +128,45 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         return d.toLocaleDateString('en-GB');
     }, []);
 
+    const showPoidSelection = !instructionRef;
+
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const localTeamData = useMemo(() => localTeamDataJson, []);
     const defaultPartnerOptions = ['Alex', 'Jonathan', 'Brendan', 'Laura', 'Sam'];
     const partnerOptions = useMemo(() => {
-        if (teamData) {
-            const names = teamData
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam) {
+            const names = activeTeam
                 .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
-                .map((t) => t.Nickname || t.First || '')
+                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
                 .filter(Boolean);
             return names.length ? names : defaultPartnerOptions;
         }
         return defaultPartnerOptions;
-    }, [teamData]);
-
+    }, [teamData, localTeamData]);
+    
     const teamMemberOptions = useMemo(() => {
-        if (teamData) {
-            return teamData.map((t) => t.Nickname || t.First || '').filter(Boolean);
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam) {
+            return activeTeam
+                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
+                .filter(Boolean);
         }
         return [] as string[];
-    }, [teamData]);
-
+    }, [teamData, localTeamData]);
+    
     const defaultTeamMember = useMemo(() => {
-        if (teamData) {
-            const found = teamData.find(
-                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase()
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam) {
+            const found = activeTeam.find(
+                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase(),
             );
-            return found?.Nickname || found?.First || '';
+            if (found) {
+                return found['Full Name'] || `${found.First || ''} ${found.Last || ''}`.trim();
+            }
         }
         return '';
-    }, [teamData, userInitials]);
+    }, [teamData, localTeamData, userInitials]);
 
     const [teamMember, setTeamMember] = useState(defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
@@ -260,20 +271,24 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             partnerOptions={partnerOptions}
                             onContinue={() => { }}
                         />
-                        <div className="form-separator" />
-                        <PoidSelectionStep
-                            poidData={poidData}
-                            teamData={teamData}
-                            filteredPoidData={filteredPoidData}
-                            visiblePoidCount={visiblePoidCount}
-                            selectedPoidIds={selectedPoidIds}
-                            poidSearchTerm={poidSearchTerm}
-                            setPoidSearchTerm={setPoidSearchTerm}
-                            poidGridRef={poidGridRef}
-                            handlePoidClick={handlePoidClick}
-                            onConfirm={() => { }}
-                        />
-                        <div className="form-separator" />
+                        {showPoidSelection && (
+                            <>
+                                <PoidSelectionStep
+                                    poidData={poidData}
+                                    teamData={teamData}
+                                    filteredPoidData={filteredPoidData}
+                                    visiblePoidCount={visiblePoidCount}
+                                    selectedPoidIds={selectedPoidIds}
+                                    poidSearchTerm={poidSearchTerm}
+                                    setPoidSearchTerm={setPoidSearchTerm}
+                                    poidGridRef={poidGridRef}
+                                    handlePoidClick={handlePoidClick}
+                                    onConfirm={() => { }}
+                                />
+                                <div className="form-separator" />
+                            </>
+                        )}
+                        {!showPoidSelection && <div className="form-separator" />}
                         <AreaOfWorkStep
                             areaOfWork={areaOfWork}
                             setAreaOfWork={setAreaOfWork}

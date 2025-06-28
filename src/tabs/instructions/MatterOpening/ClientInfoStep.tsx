@@ -97,13 +97,17 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 </div>
             </Stack>
             <div className={separatorStyle} />
-            <Stack>
+            <Stack aria-label="Solicitor">
                 <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
                     Select Originating Solicitor
                 </Text>
-                <div className="MultiSelect-bar">
+                <div className="input-bar">
                     <div className="MultiSelect-segment">
-                        <select className="team-select" value={originatingSolicitor} onChange={(e) => setOriginatingSolicitor(e.target.value)}>
+                        <select
+                            className="team-select"
+                            value={originatingSolicitor}
+                            onChange={(e) => setOriginatingSolicitor(e.target.value)}
+                        >
                             {teamMemberOptions.map((name) => (
                                 <option key={name} value={name}>
                                     {name}
@@ -118,7 +122,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
                     Have funds on account been received?
                 </Text>
-                <div className="MultiSelect-bar">
+                <div className="have-funds-bar">
                     {['Yes', 'No', 'Not Required'].map((option) => (
                         <div
                             key={option}

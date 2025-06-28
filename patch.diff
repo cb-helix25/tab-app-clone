@@ -1,8 +1,54 @@
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index 8ffcc02f8de3c6bc084d61c1ee3c5c1e6f84500e..1050bc3129057b0e4729f73b2e21d83d216c2761 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -146,106 +146,119 @@ const NewMatters: React.FC<NewMattersProps> = ({
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 79f54432ca0ec677fc0dc5b4417f3d89f6c73014..57d006e5a8a36afa72a81422d15454243d0d190c 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -1,32 +1,33 @@
+ import React, { useState, useEffect, useMemo, useRef } from 'react';
+ import { Stack } from '@fluentui/react';
+ import { POID, TeamData } from '../../../app/functionality/types';
+ import ClientDetails from '../ClientDetails';
+ import ClientHub from '../ClientHub';
+ import { colours } from '../../../app/styles/colours';
+ import '../../../app/styles/NewMatters.css';
++import localTeamDataJson from '../../../data/team-sql-data.json';
+ 
+ import ClientInfoStep from './ClientInfoStep';
+ import PoidSelectionStep from './PoidSelectionStep';
+ import AreaOfWorkStep from './AreaOfWorkStep';
+ import PracticeAreaStep from './PracticeAreaStep';
+ import DescriptionStep from './DescriptionStep';
+ import FolderStructureStep from './FolderStructureStep';
+ import DisputeValueStep from './DisputeValueStep';
+ import SourceStep from './SourceStep';
+ import OpponentDetailsStep from './OpponentDetailsStep';
+ import ReviewStep from './ReviewStep';
+ import { CompletionProvider } from './CompletionContext';
+ 
+ const practiceAreasByArea: { [key: string]: string[] } = {
+     Commercial: [
+         'Commercial',
+         'Director Rights & Dispute Advice',
+         'Shareholder Rights & Dispute Advice',
+         'Civil/Commercial Fraud Advice',
+         'Partnership Advice',
+         'Business Contract Dispute',
+         'Unpaid Loan Recovery',
+         'Contentious Probate',
+         'Statutory Demand - Drafting',
+         'Statutory Demand - Advising',
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 79f54432ca0ec677fc0dc5b4417f3d89f6c73014..57d006e5a8a36afa72a81422d15454243d0d190c 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -106,78 +107,86 @@ interface FlatMatterOpeningProps {
+     matterRef?: string;
+     hideClientSections?: boolean;
+     initialClientType?: string;
+ }
+ 
+ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+     poidData,
+     setPoidData,
      teamData,
      userInitials,
      instructionRef = '',
@@ -13,122 +59,85 @@ index 8ffcc02f8de3c6bc084d61c1ee3c5c1e6f84500e..1050bc3129057b0e4729f73b2e21d83d
      hideClientSections = false,
      initialClientType = '',
  }) => {
-     const [openStep, setOpenStep] = useState<number>(0);
- 
      const idExpiry = useMemo(() => {
          const d = new Date();
          d.setDate(d.getDate() + 30);
          return d.toLocaleDateString('en-GB');
      }, []);
  
-     // Client info
      const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-     const [supervisingPartner, setSupervisingPartner] = useState('');
-     const [originatingSolicitor, setOriginatingSolicitor] = useState('');
-     const [fundsReceived, setFundsReceived] = useState('');
-     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
-     const dateButtonRef = useRef<HTMLDivElement | null>(null);
--    // Use local team data with fallback to props
-+    // Use local team data with fallback to props. Include the whole team
-     const localTeamData = useMemo(() => {
--        return teamDataJson.filter(member => member.status === 'active');
-+        return teamDataJson; // no filtering so all members are available
-     }, []);
- 
++    const localTeamData = useMemo(() => localTeamDataJson, []);
+     const defaultPartnerOptions = ['Alex', 'Jonathan', 'Brendan', 'Laura', 'Sam'];
+     const partnerOptions = useMemo(() => {
+-        if (teamData) {
+-            const names = teamData
++        const activeTeam = teamData || localTeamData;
++        if (activeTeam) {
++            const names = activeTeam
+                 .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
+-                .map((t) => t.Nickname || t.First || '')
++                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
+                 .filter(Boolean);
+             return names.length ? names : defaultPartnerOptions;
+         }
+         return defaultPartnerOptions;
+-    }, [teamData]);
+-
++    }, [teamData, localTeamData]);
++    
      const teamMemberOptions = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         const options = activeTeam
--            .map((member: any) => member['Full Name'] || member.Nickname || member.First)
-+            .map((member: any) =>
-+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
-+            )
-             .filter(Boolean);
-         
-         // Debug logging
-         console.log('Active team data:', activeTeam);
-         console.log('Team member options:', options);
-         
-         return options;
-     }, [teamData, localTeamData]);
- 
-     // Create combined options for both partner and solicitor dropdowns
-     const partnerAndSolicitorOptions = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         return activeTeam
--            .filter((member: any) => 
-+            .filter((member: any) =>
-                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
-             )
--            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
-+            .map((member: any) =>
-+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
-+            )
-             .filter(Boolean);
-     }, [teamData, localTeamData]);
- 
+-        if (teamData) {
+-            return teamData.map((t) => t.Nickname || t.First || '').filter(Boolean);
++        const activeTeam = teamData || localTeamData;
++        if (activeTeam) {
++            return activeTeam
++                .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
++                .filter(Boolean);
+         }
+         return [] as string[];
+-    }, [teamData]);
+-
++    }, [teamData, localTeamData]);
++    
      const defaultTeamMember = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         if (activeTeam) {
--            const found = activeTeam.find((member: any) => 
-+            const found = activeTeam.find((member: any) =>
-                 (member.Initials || '').toLowerCase() === userInitials.toLowerCase()
+-        if (teamData) {
+-            const found = teamData.find(
+-                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase()
++        const activeTeam = teamData || localTeamData;
++        if (activeTeam) {
++            const found = activeTeam.find(
++                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase(),
              );
--            return found?.['Full Name'] || found?.Nickname || found?.First || '';
+-            return found?.Nickname || found?.First || '';
 +            if (found) {
-+                return (
-+                    found['Full Name'] ||
-+                    `${found.First || ''} ${found.Last || ''}`.trim()
-+                );
++                return found['Full Name'] || `${found.First || ''} ${found.Last || ''}`.trim();
 +            }
          }
          return '';
-     }, [teamData, localTeamData, userInitials]);
- 
-     // Update partner options from local data
-     const supervisingPartnerOptions = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         return activeTeam
-             .filter((member: any) => member.Role === 'Partner')
--            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
-+            .map((member: any) =>
-+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
-+            )
-             .filter(Boolean);
-     }, [teamData, localTeamData]);
- 
-     const originatingSolicitorOptions = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         return activeTeam
--            .filter((member: any) => 
-+            .filter((member: any) =>
-                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
-             )
--            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
-+            .map((member: any) =>
-+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
-+            )
-             .filter(Boolean);
-     }, [teamData, localTeamData]);
+-    }, [teamData, userInitials]);
++    }, [teamData, localTeamData, userInitials]);
  
      const [teamMember, setTeamMember] = useState(defaultTeamMember);
      useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
+     const [supervisingPartner, setSupervisingPartner] = useState('');
+     const [originatingSolicitor, setOriginatingSolicitor] = useState(defaultTeamMember);
+     useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
+     const [fundsReceived, setFundsReceived] = useState('');
+     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
+     const dateButtonRef = useRef<HTMLDivElement | null>(null);
  
-     // Workflow
      const [clientType, setClientType] = useState(initialClientType);
+     useEffect(() => setClientType(initialClientType), [initialClientType]);
  
-     useEffect(() => {
-         setClientType(initialClientType);
-     }, [initialClientType]);
      const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
      const [areaOfWork, setAreaOfWork] = useState('');
      const [practiceArea, setPracticeArea] = useState('');
- 
      const [description, setDescription] = useState('');
      const [folderStructure, setFolderStructure] = useState('');
      const [disputeValue, setDisputeValue] = useState('');
      const [source, setSource] = useState('');
      const [referrerName, setReferrerName] = useState('');
- 
      const [opponentName, setOpponentName] = useState('');
      const [opponentEmail, setOpponentEmail] = useState('');
      const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
+     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
