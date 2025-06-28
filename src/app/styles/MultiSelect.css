@@ -4,6 +4,7 @@
     border: 1px solid var(--helix-cta);
     border-radius: 0;
     overflow: hidden;
+    height: 40px;
 }
 
 .MultiSelect-segment {
@@ -13,6 +14,9 @@
     cursor: pointer;
     user-select: none;
     color: #061733 !important; /* Use a dark color for visibility on white */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .MultiSelect-segment:not(:last-child) {
@@ -53,10 +57,23 @@
     text-align: center;
     appearance: none;
     -webkit-appearance: none;
+    cursor: pointer;
+    color: #061733 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    padding: 8px 4px;
 }
 
 .team-select:focus {
     outline: none;
+    background-color: var(--helix-cta) !important;
+    color: #fff !important;
+}
+
+.team-select option {
+    background: #fff;
+    color: #061733;
+    padding: 8px;
 }
 
 .have-funds-bar {
@@ -65,6 +82,7 @@
     border: 1px solid var(--helix-cta);
     border-radius: 0;
     overflow: hidden;
+    height: 40px;
 }
 
 .have-funds-bar .MultiSelect-segment {
@@ -74,6 +92,9 @@
     cursor: pointer;
     user-select: none;
     color: #061733 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .have-funds-bar .MultiSelect-segment:not(:last-child) {
@@ -85,7 +106,42 @@
     color: #fff;
 }
 
+.partner-segment {
+    display: flex !important;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0 !important;
+    overflow: hidden;
+    height: 40px;
+}
+
 .partner-segment select,
 .partner-segment button {
+    flex: 1;
+    padding: 8px 4px !important;
+    text-align: center;
+    cursor: pointer;
+    color: #061733 !important;
     border-radius: 0 !important;
+    border: none;
+    background: transparent;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.partner-segment select:not(:last-child),
+.partner-segment button:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.partner-segment select:hover,
+.partner-segment button:hover,
+.partner-segment select:focus,
+.partner-segment button:focus {
+    background-color: var(--helix-cta) !important;
+    color: #fff !important;
+    outline: none;
 }

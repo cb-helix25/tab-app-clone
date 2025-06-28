@@ -6,6 +6,8 @@ import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
 import { colours } from '../../app/styles/colours';
 import '../../app/styles/NewMatters.css';
+// Import local team data
+import teamDataJson from '../../../data/team-sql-data.json';
 
 // Components for individual steps
 import ClientInfoStep from './MatterOpening/ClientInfoStep';
@@ -81,7 +83,7 @@ const practiceAreasByArea: { [key: string]: string[] } = {
     ],
 };
 
-const partnerOptions = ['Alex', 'Jonathan', 'Luke', 'Kanchel'];
+const partnerOptions = ['AC', 'JW', 'BR', 'LA', 'SP'];
 
 const getGroupColor = (group: string): string => {
     switch (group) {
@@ -166,17 +168,65 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [fundsReceived, setFundsReceived] = useState('');
     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
-    const teamMemberOptions = useMemo(
-        () => teamData?.map((t) => t.Nickname || t.First || '').filter(Boolean) || [],
-        [teamData]
-    );
+    // Use local team data with fallback to props
+    const localTeamData = useMemo(() => {
+        return teamDataJson.filter(member => member.status === 'active');
+    }, []);
+
+    const teamMemberOptions = useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        const options = activeTeam
+            .map((member: any) => member['Full Name'] || member.Nickname || member.First)
+            .filter(Boolean);
+        
+        // Debug logging
+        console.log('Active team data:', activeTeam);
+        console.log('Team member options:', options);
+        
+        return options;
+    }, [teamData, localTeamData]);
+
+    // Create combined options for both partner and solicitor dropdowns
+    const partnerAndSolicitorOptions = useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        return activeTeam
+            .filter((member: any) => 
+                ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
+            )
+            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .filter(Boolean);
+    }, [teamData, localTeamData]);
+
     const defaultTeamMember = useMemo(() => {
-        if (teamData) {
-            const found = teamData.find((t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase());
-            return found?.Nickname || found?.First || '';
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam) {
+            const found = activeTeam.find((member: any) => 
+                (member.Initials || '').toLowerCase() === userInitials.toLowerCase()
+            );
+            return found?.['Full Name'] || found?.Nickname || found?.First || '';
         }
         return '';
-    }, [teamData, userInitials]);
+    }, [teamData, localTeamData, userInitials]);
+
+    // Update partner options from local data
+    const supervisingPartnerOptions = useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        return activeTeam
+            .filter((member: any) => member.Role === 'Partner')
+            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .filter(Boolean);
+    }, [teamData, localTeamData]);
+
+    const originatingSolicitorOptions = useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        return activeTeam
+            .filter((member: any) => 
+                ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
+            )
+            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .filter(Boolean);
+    }, [teamData, localTeamData]);
+
     const [teamMember, setTeamMember] = useState(defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
 
@@ -353,7 +403,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
     ]);
 
     const renderStepContent = (step: StepKey) => {
-
         switch (step) {
             case 'clientInfo':
                 return (
@@ -372,7 +421,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         isDateCalloutOpen={isDateCalloutOpen}
                         setIsDateCalloutOpen={setIsDateCalloutOpen}
                         dateButtonRef={dateButtonRef}
-                        partnerOptions={partnerOptions}
+                        partnerOptions={partnerAndSolicitorOptions}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1

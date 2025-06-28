@@ -156,4 +156,162 @@
     border: none;
     border-top: 1px solid #e3e8ef;
     margin: 1rem 0;
-    width: 100%;   }
+    width: 100%;  
+}
+
+/* Override tag-button styling for funds question */
+.ms-Stack-inner.css-366 {
+    display: flex !important;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0 !important;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    height: 40px;
+}
+
+.ms-Stack-inner.css-366 .tag-button {
+    flex: 1;
+    padding: 8px 4px !important;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    color: #061733 !important;
+    border-radius: 0 !important;
+    border: none;
+    background: transparent;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ms-Stack-inner.css-366 .tag-button:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.ms-Stack-inner.css-366 .tag-button.active,
+.ms-Stack-inner.css-366 .tag-button:hover {
+    background-color: var(--helix-cta) !important;
+    color: #fff !important;
+}
+
+/* Override styling for Originating Solicitor and Supervising Partner selectors */
+.ms-Stack-inner:has(.partner-segment),
+.ms-Stack-inner:has([aria-label*="Solicitor"]),
+.ms-Stack-inner:has([aria-label*="Partner"]) {
+    display: flex !important;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0 !important;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    height: 40px;
+}
+
+.ms-Stack-inner:has(.partner-segment) .partner-segment,
+.ms-Stack-inner:has([aria-label*="Solicitor"]) > *,
+.ms-Stack-inner:has([aria-label*="Partner"]) > * {
+    border: none !important;
+    height: 100%;
+    flex: 1;
+}
+
+/* Style selects and buttons within partner/solicitor containers */
+.ms-Stack-inner:has(.partner-segment) select,
+.ms-Stack-inner:has(.partner-segment) button,
+.ms-Stack-inner:has([aria-label*="Solicitor"]) select,
+.ms-Stack-inner:has([aria-label*="Solicitor"]) button,
+.ms-Stack-inner:has([aria-label*="Partner"]) select,
+.ms-Stack-inner:has([aria-label*="Partner"]) button {
+    flex: 1 !important;
+    padding: 8px 4px !important;
+    text-align: center;
+    cursor: pointer;
+    color: #061733 !important;
+    border-radius: 0 !important;
+    border: none;
+    background: transparent;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.ms-Stack-inner:has(.partner-segment) select:not(:last-child),
+.ms-Stack-inner:has(.partner-segment) button:not(:last-child),
+.ms-Stack-inner:has([aria-label*="Solicitor"]) select:not(:last-child),
+.ms-Stack-inner:has([aria-label*="Solicitor"]) button:not(:last-child),
+.ms-Stack-inner:has([aria-label*="Partner"]) select:not(:last-child),
+.ms-Stack-inner:has([aria-label*="Partner"]) button:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.ms-Stack-inner:has(.partner-segment) select:hover,
+.ms-Stack-inner:has(.partner-segment) button:hover,
+.ms-Stack-inner:has([aria-label*="Solicitor"]) select:hover,
+.ms-Stack-inner:has([aria-label*="Solicitor"]) button:hover,
+.ms-Stack-inner:has([aria-label*="Partner"]) select:hover,
+.ms-Stack-inner:has([aria-label*="Partner"]) button:hover {
+    background-color: var(--helix-cta) !important;
+    color: #fff !important;
+}
+
+/* Additional targeting for partner and solicitor selectors */
+.input-bar,
+.MultiSelect-bar {
+    display: flex !important;
+    width: 100%;
+    border: 1px solid var(--helix-cta) !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+    height: 40px;
+    margin-bottom: 1rem;
+}
+
+.input-bar .MultiSelect-segment,
+.input-bar select,
+.input-bar button,
+.MultiSelect-bar .MultiSelect-segment,
+.MultiSelect-bar select,
+.MultiSelect-bar button {
+    flex: 1 !important;
+    padding: 8px 4px !important;
+    text-align: center;
+    cursor: pointer;
+    color: #061733 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    box-shadow: none !important;
+}
+
+.input-bar .MultiSelect-segment:not(:last-child),
+.input-bar select:not(:last-child),
+.input-bar button:not(:last-child),
+.MultiSelect-bar .MultiSelect-segment:not(:last-child),
+.MultiSelect-bar select:not(:last-child),
+.MultiSelect-bar button:not(:last-child) {
+    border-right: 1px solid var(--helix-cta) !important;
+}
+
+.input-bar .MultiSelect-segment:hover,
+.input-bar select:hover,
+.input-bar button:hover,
+.MultiSelect-bar .MultiSelect-segment:hover,
+.MultiSelect-bar select:hover,
+.MultiSelect-bar button:hover,
+.input-bar .MultiSelect-segment.active,
+.MultiSelect-bar .MultiSelect-segment.active {
+    background-color: var(--helix-cta) !important;
+    color: #fff !important;
+}
