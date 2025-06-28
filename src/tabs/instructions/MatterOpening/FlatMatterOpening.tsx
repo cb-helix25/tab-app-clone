@@ -98,6 +98,7 @@ interface FlatMatterOpeningProps {
     poidData: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
+    userInitials: string;
     instructionRef?: string;
     clientId?: string;
     feeEarner?: string;
@@ -111,6 +112,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     poidData,
     setPoidData,
     teamData,
+    userInitials,
     instructionRef = '',
     clientId = '',
     feeEarner,
@@ -137,6 +139,26 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         }
         return defaultPartnerOptions;
     }, [teamData]);
+
+    const teamMemberOptions = useMemo(() => {
+        if (teamData) {
+            return teamData.map((t) => t.Nickname || t.First || '').filter(Boolean);
+        }
+        return [] as string[];
+    }, [teamData]);
+
+    const defaultTeamMember = useMemo(() => {
+        if (teamData) {
+            const found = teamData.find(
+                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase()
+            );
+            return found?.Nickname || found?.First || '';
+        }
+        return '';
+    }, [teamData, userInitials]);
+
+    const [teamMember, setTeamMember] = useState(defaultTeamMember);
+    useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
     const [supervisingPartner, setSupervisingPartner] = useState('');
     const [originatingSolicitor, setOriginatingSolicitor] = useState('');
     const [fundsReceived, setFundsReceived] = useState('');
@@ -222,6 +244,9 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         <ClientInfoStep
                             selectedDate={selectedDate}
                             setSelectedDate={setSelectedDate}
+                            teamMember={teamMember}
+                            setTeamMember={setTeamMember}
+                            teamMemberOptions={teamMemberOptions}
                             supervisingPartner={supervisingPartner}
                             setSupervisingPartner={setSupervisingPartner}
                             originatingSolicitor={originatingSolicitor}

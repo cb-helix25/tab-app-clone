@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Stack } from '@fluentui/react';
 import StepHeader from '../StepHeader';
 import StepProgress from '../StepProgress';
@@ -83,6 +83,13 @@ const practiceAreasByArea: { [key: string]: string[] } = {
 
 const partnerOptions = ['Alex', 'Jonathan', 'Luke', 'Kanchel'];
 
+const getTeamMemberOptions = (teamData?: TeamData[] | null) => {
+    if (teamData) {
+        return teamData.map((t) => t.Nickname || t.First || '').filter(Boolean);
+    }
+    return [] as string[];
+};
+
 const getGroupColor = (group: string): string => {
     switch (group) {
         case 'Commercial':
@@ -115,6 +122,7 @@ interface MatterOpeningFlowProps {
     poidData: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
+    userInitials: string;
     instructionRef?: string;
     clientId?: string;
     feeEarner?: string;
@@ -141,6 +149,7 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
     poidData,
     setPoidData,
     teamData,
+    userInitials,
     instructionRef = '',
     clientId = '',
     feeEarner,
@@ -164,6 +173,18 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
     const [fundsReceived, setFundsReceived] = useState('');
     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
+    const teamMemberOptions = useMemo(() => getTeamMemberOptions(teamData), [teamData]);
+    const defaultTeamMember = useMemo(() => {
+        if (teamData) {
+            const found = teamData.find(
+                (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase()
+            );
+            return found?.Nickname || found?.First || '';
+        }
+        return '';
+    }, [teamData, userInitials]);
+    const [teamMember, setTeamMember] = useState(defaultTeamMember);
+    useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
     const [clientType, setClientType] = useState(initialClientType);
     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
     const [areaOfWork, setAreaOfWork] = useState('');
@@ -274,6 +295,9 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
                     <ClientInfoStep
                         selectedDate={selectedDate}
                         setSelectedDate={setSelectedDate}
+                        teamMember={teamMember}
+                        setTeamMember={setTeamMember}
+                        teamMemberOptions={teamMemberOptions}
                         supervisingPartner={supervisingPartner}
                         setSupervisingPartner={setSupervisingPartner}
                         originatingSolicitor={originatingSolicitor}

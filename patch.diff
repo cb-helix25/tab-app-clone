@@ -1,46 +1,56 @@
-diff --git a/src/tabs/transactions/OutstandingBalancesList.tsx b/src/tabs/transactions/OutstandingBalancesList.tsx
-index ce91b358737cd3c0c036fd56b3ae4d12b698d6c6..adf2733cc9654f5966cc19cb62a40ec23b3465af 100644
---- a/src/tabs/transactions/OutstandingBalancesList.tsx
-+++ b/src/tabs/transactions/OutstandingBalancesList.tsx
-@@ -1,40 +1,40 @@
- import React from 'react';
- import { Stack, Text, Link, Separator, Icon, TooltipHost } from '@fluentui/react';
- import { mergeStyles } from '@fluentui/react';
- import { colours } from '../../app/styles/colours';
- import { OutstandingClientBalance, Matter } from '../../app/functionality/types';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index ab7e0c03b5ab8b7900e4fc674adba054c50fa8a9..f27a39b9e3eaac5578ce16906107ccc9bcb7af57 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -562,50 +562,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+     gap: '16px',
+     maxWidth: '1200px',
+     width: '100%',
+     margin: '0 auto',
+     boxSizing: 'border-box',
+   });
  
- interface OutstandingBalancesListProps {
-   balances: OutstandingClientBalance[];
-   matters: Matter[];
- }
  
- const containerStyle = mergeStyles({
-   padding: '10px',
-   backgroundColor: colours.light.sectionBackground,
--  borderRadius: '8px',
-+  borderRadius: 0,
-   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-   marginBottom: '16px'
- });
+   const overviewColumnStyle = mergeStyles({
+     display: 'flex',
+     flexDirection: 'column',
+     gap: '24px',
+     maxWidth: '1200px',
+     width: '100%',
+     margin: '0 auto',
+     boxSizing: 'border-box',
+   });
  
- const headerStyle = mergeStyles({
-   padding: '8px',
-   borderBottom: `1px solid ${colours.light.border}`,
-   display: 'flex',
-   justifyContent: 'space-between',
-   alignItems: 'center'
- });
+   if (showNewMatterPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+         <FlatMatterOpening
+           poidData={selectedInstruction ? poidData : idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
++          userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
+     );
+   }
  
- // Matters styling
- const mattersContainerStyle = mergeStyles({
-   padding: '4px 8px',
-   marginTop: '4px',
-   marginBottom: '4px'
- });
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage onBack={function (): void {
+           throw new Error('Function not implemented.');
+         } } />
+       </Stack>
+     );
+   }
  
- const matterLinkStyle = mergeStyles({
-   fontWeight: 400,
-   fontSize: '14px',
-   textDecoration: 'none',
-   color: colours.highlight
- });
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === 'overview' && (

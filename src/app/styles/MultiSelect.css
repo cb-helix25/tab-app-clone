@@ -1,0 +1,91 @@
+.MultiSelect-bar {
+    display: flex;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.MultiSelect-segment {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    color: #061733 !important; /* Use a dark color for visibility on white */
+}
+
+.MultiSelect-segment:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.MultiSelect-segment.active {
+    background-color: var(--helix-cta);
+    color: #fff;
+}
+
+/* Input bar used for date and team selection */
+.input-bar {
+    display: flex;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0 !important;
+    overflow: hidden;
+    height: 40px;
+}
+
+.input-bar .MultiSelect-segment {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-bar .MultiSelect-segment:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.team-select {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.team-select:focus {
+    outline: none;
+}
+
+.have-funds-bar {
+    display: flex;
+    width: 100%;
+    border: 1px solid var(--helix-cta);
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.have-funds-bar .MultiSelect-segment {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    color: #061733 !important;
+}
+
+.have-funds-bar .MultiSelect-segment:not(:last-child) {
+    border-right: 1px solid var(--helix-cta);
+}
+
+.have-funds-bar .MultiSelect-segment.active {
+    background-color: var(--helix-cta);
+    color: #fff;
+}
+
+.partner-segment select,
+.partner-segment button {
+    border-radius: 0 !important;
+}

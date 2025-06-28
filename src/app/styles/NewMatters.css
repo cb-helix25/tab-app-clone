@@ -1,11 +1,12 @@
 /* Styles adapted from the reference checkout process */
-.workflow-container {
+.ms-Stack.workflow-container {
     width: 100%;
     /* Tighter outer padding to reclaim vertical space */
         padding: 10px;
         background: var(--helix-grey);
         min-height: 100vh;
         box-sizing: border-box;
+        border-radius: 0 !important;
     }
     
         .workflow-main {
@@ -13,7 +14,6 @@
             margin: 0 0 1.5rem 0;
             box-sizing: border-box;
             background: #fff;
-            border-radius: 8px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
             padding: 1rem;
         }
@@ -31,7 +31,6 @@
         background-color: var(--helix-grey);
         color: var(--helix-dark-blue);
         border: 1px solid transparent;
-        border-radius: 8px;
         cursor: pointer;
         transition: border-color 0.3s, background-color 0.3s, transform 0.3s;
         position: relative;
@@ -42,7 +41,6 @@
     .step-number {
         width: 28px;
         height: 28px;
-        border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;

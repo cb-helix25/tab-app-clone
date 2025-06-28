@@ -127,6 +127,7 @@ interface NewMattersProps {
     poidData: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
+    userInitials: string;
     instructionRef?: string;
     clientId?: string;
     feeEarner?: string;
@@ -141,6 +142,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     poidData,
     setPoidData,
     teamData,
+    userInitials,
     instructionRef = '',
     clientId = '',
     feeEarner,
@@ -164,6 +166,19 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [fundsReceived, setFundsReceived] = useState('');
     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
+    const teamMemberOptions = useMemo(
+        () => teamData?.map((t) => t.Nickname || t.First || '').filter(Boolean) || [],
+        [teamData]
+    );
+    const defaultTeamMember = useMemo(() => {
+        if (teamData) {
+            const found = teamData.find((t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase());
+            return found?.Nickname || found?.First || '';
+        }
+        return '';
+    }, [teamData, userInitials]);
+    const [teamMember, setTeamMember] = useState(defaultTeamMember);
+    useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
 
     // Workflow
     const [clientType, setClientType] = useState(initialClientType);
@@ -345,6 +360,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
                     <ClientInfoStep
                         selectedDate={selectedDate}
                         setSelectedDate={setSelectedDate}
+                        teamMember={teamMember}
+                        setTeamMember={setTeamMember}
+                        teamMemberOptions={teamMemberOptions}
                         supervisingPartner={supervisingPartner}
                         setSupervisingPartner={setSupervisingPartner}
                         originatingSolicitor={originatingSolicitor}

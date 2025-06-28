@@ -3,11 +3,14 @@ import { Stack, Text, PrimaryButton, Callout, DatePicker, mergeStyles } from '@f
 import TagButton from './TagButton';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import { colours } from '../../../app/styles/colours';
-import '../../../app/styles/PartnerBar.css';
+import '../../../app/styles/MultiSelect.css';
 
 interface ClientInfoStepProps {
     selectedDate: Date | null;
     setSelectedDate: (d: Date) => void;
+    teamMember: string;
+    setTeamMember: (s: string) => void;
+    teamMemberOptions: string[];
     supervisingPartner: string;
     setSupervisingPartner: (s: string) => void;
     originatingSolicitor: string;
@@ -24,6 +27,9 @@ interface ClientInfoStepProps {
 const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     selectedDate,
     setSelectedDate,
+    teamMember,
+    setTeamMember,
+    teamMemberOptions,
     supervisingPartner,
     setSupervisingPartner,
     originatingSolicitor,
@@ -44,35 +50,46 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
 
     return (
         <Stack tokens={{ childrenGap: 20 }}>
-            <div ref={dateButtonRef}>
-                <PrimaryButton
-                    text={selectedDate ? `Date: ${selectedDate.toLocaleDateString()}` : 'Select Date'}
-                    onClick={() => setIsDateCalloutOpen(!isDateCalloutOpen)}
-                    styles={{ root: { borderRadius: '20px', padding: '10px 20px' } }}
-                />
-                {isDateCalloutOpen && (
-                    <Callout target={dateButtonRef.current} onDismiss={() => setIsDateCalloutOpen(false)} setInitialFocus>
-                        <DatePicker
-                            value={selectedDate || undefined}
-                            onSelectDate={(date) => {
-                                if (date) setSelectedDate(date);
-                                setIsDateCalloutOpen(false);
-                            }}
-                            styles={{ root: { margin: 8, width: 200 } }}
-                        />
-                    </Callout>
-                )}
+            <div className="input-bar">
+                <div className="MultiSelect-segment" ref={dateButtonRef}>
+                    <PrimaryButton
+                        text={selectedDate ? `Date: ${selectedDate.toLocaleDateString()}` : 'Select Date'}
+                        onClick={() => setIsDateCalloutOpen(!isDateCalloutOpen)}
+                        styles={{ root: { borderRadius: 0, width: '100%', height: '100%' } }}
+                    />
+                    {isDateCalloutOpen && (
+                        <Callout target={dateButtonRef.current} onDismiss={() => setIsDateCalloutOpen(false)} setInitialFocus>
+                            <DatePicker
+                                value={selectedDate || undefined}
+                                onSelectDate={(date) => {
+                                    if (date) setSelectedDate(date);
+                                    setIsDateCalloutOpen(false);
+                                }}
+                                styles={{ root: { margin: 8, width: 200 } }}
+                            />
+                        </Callout>
+                    )}
+                </div>
+                <div className="MultiSelect-segment">
+                    <select className="team-select" value={teamMember} onChange={(e) => setTeamMember(e.target.value)}>
+                        {teamMemberOptions.map((name) => (
+                            <option key={name} value={name}>
+                                {name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
             <div className={separatorStyle} />
             <Stack>
                 <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
                     Select Supervising Partner
                 </Text>
-                <div className="partner-bar">
+                <div className="MultiSelect-bar">
                     {partnerOptions.map((name) => (
                         <div
                             key={name}
-                            className={`partner-segment${supervisingPartner === name ? ' active' : ''}`}
+                            className={`MultiSelect-segment${supervisingPartner === name ? ' active' : ''}`}
                             onClick={() => setSupervisingPartner(name)}
                         >
                             {name}
@@ -85,11 +102,11 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
                     Select Originating Solicitor
                 </Text>
-                <div className="partner-bar">
+                <div className="MultiSelect-bar">
                     {partnerOptions.map((name) => (
                         <div
                             key={name}
-                            className={`partner-segment${originatingSolicitor === name ? ' active' : ''}`}
+                            className={`MultiSelect-segment${originatingSolicitor === name ? ' active' : ''}`}
                             onClick={() => setOriginatingSolicitor(name)}
                         >
                             {name}

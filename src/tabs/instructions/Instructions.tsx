@@ -568,8 +568,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
 
   const overviewColumnStyle = mergeStyles({
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '24px',
     maxWidth: '1200px',
     width: '100%',
@@ -584,6 +584,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           poidData={selectedInstruction ? poidData : idVerificationOptions}
           setPoidData={setPoidData}
           teamData={teamData}
+          userInitials={userInitials}
           instructionRef={selectedInstruction?.InstructionRef}
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
