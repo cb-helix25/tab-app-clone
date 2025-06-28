@@ -1,6 +1,6 @@
 import React from 'react';
-import { Stack } from '@fluentui/react';
-import TagButton from './TagButton';
+import { Stack, Text } from '@fluentui/react';
+import '../../../app/styles/MultiSelect.css';
 
 interface PracticeAreaStepProps {
     options: string[];
@@ -11,21 +11,37 @@ interface PracticeAreaStepProps {
 }
 
 const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceArea, setPracticeArea, onContinue, groupColor }) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
+    <Stack tokens={{ childrenGap: 20 }}>
+        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
+            Select Practice Area
+        </Text>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
             {options.map((pa) => (
-                <TagButton
+                <div
                     key={pa}
-                    label={pa}
-                    active={practiceArea === pa}
+                    className={`MultiSelect-segment${practiceArea === pa ? ' active' : ''}`}
                     onClick={() => {
                         setPracticeArea(pa);
                         onContinue();
                     }}
-                    color={groupColor}
-                />
+                    style={{
+                        border: '1px solid var(--helix-cta)',
+                        height: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        color: practiceArea === pa ? '#fff' : '#061733',
+                        backgroundColor: practiceArea === pa ? 'var(--helix-cta)' : 'transparent',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                    }}
+                >
+                    {pa}
+                </div>
             ))}
-        </Stack>
+        </div>
     </Stack>
 );
 

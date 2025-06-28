@@ -1,6 +1,5 @@
 import React from 'react';
 import { Stack, Text, PrimaryButton, Callout, DatePicker, mergeStyles } from '@fluentui/react';
-import TagButton from './TagButton';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import { colours } from '../../../app/styles/colours';
 import '../../../app/styles/MultiSelect.css';
@@ -103,15 +102,15 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     Select Originating Solicitor
                 </Text>
                 <div className="MultiSelect-bar">
-                    {partnerOptions.map((name) => (
-                        <div
-                            key={name}
-                            className={`MultiSelect-segment${originatingSolicitor === name ? ' active' : ''}`}
-                            onClick={() => setOriginatingSolicitor(name)}
-                        >
-                            {name}
-                        </div>
-                    ))}
+                    <div className="MultiSelect-segment">
+                        <select className="team-select" value={originatingSolicitor} onChange={(e) => setOriginatingSolicitor(e.target.value)}>
+                            {teamMemberOptions.map((name) => (
+                                <option key={name} value={name}>
+                                    {name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </Stack>
             <div className={separatorStyle} />
@@ -119,11 +118,17 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
                     Have funds on account been received?
                 </Text>
-                <Stack horizontal wrap tokens={{ childrenGap: 10 }}>
+                <div className="MultiSelect-bar">
                     {['Yes', 'No', 'Not Required'].map((option) => (
-                        <TagButton key={option} label={option} active={fundsReceived === option} onClick={() => setFundsReceived(option)} color={colours.highlight} />
+                        <div
+                            key={option}
+                            className={`MultiSelect-segment${fundsReceived === option ? ' active' : ''}`}
+                            onClick={() => setFundsReceived(option)}
+                        >
+                            {option}
+                        </div>
                     ))}
-                </Stack>
+                </div>
             </Stack>
             <div className={separatorStyle} />
             <PrimaryButton text="Continue" onClick={onContinue} styles={sharedPrimaryButtonStyles} />

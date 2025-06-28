@@ -168,15 +168,17 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [fundsReceived, setFundsReceived] = useState('');
     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
-    // Use local team data with fallback to props
+    // Use local team data with fallback to props. Include the whole team
     const localTeamData = useMemo(() => {
-        return teamDataJson.filter(member => member.status === 'active');
+        return teamDataJson; // no filtering so all members are available
     }, []);
 
     const teamMemberOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         const options = activeTeam
-            .map((member: any) => member['Full Name'] || member.Nickname || member.First)
+            .map((member: any) =>
+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
+            )
             .filter(Boolean);
         
         // Debug logging
@@ -190,20 +192,27 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const partnerAndSolicitorOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         return activeTeam
-            .filter((member: any) => 
+            .filter((member: any) =>
                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
             )
-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .map((member: any) =>
+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
+            )
             .filter(Boolean);
     }, [teamData, localTeamData]);
 
     const defaultTeamMember = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         if (activeTeam) {
-            const found = activeTeam.find((member: any) => 
+            const found = activeTeam.find((member: any) =>
                 (member.Initials || '').toLowerCase() === userInitials.toLowerCase()
             );
-            return found?.['Full Name'] || found?.Nickname || found?.First || '';
+            if (found) {
+                return (
+                    found['Full Name'] ||
+                    `${found.First || ''} ${found.Last || ''}`.trim()
+                );
+            }
         }
         return '';
     }, [teamData, localTeamData, userInitials]);
@@ -213,17 +222,21 @@ const NewMatters: React.FC<NewMattersProps> = ({
         const activeTeam = teamData || localTeamData;
         return activeTeam
             .filter((member: any) => member.Role === 'Partner')
-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .map((member: any) =>
+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
+            )
             .filter(Boolean);
     }, [teamData, localTeamData]);
 
     const originatingSolicitorOptions = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         return activeTeam
-            .filter((member: any) => 
+            .filter((member: any) =>
                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
             )
-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
+            .map((member: any) =>
+                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
+            )
             .filter(Boolean);
     }, [teamData, localTeamData]);
 

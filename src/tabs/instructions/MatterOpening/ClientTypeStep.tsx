@@ -1,7 +1,6 @@
 import React from 'react';
-import { Stack } from '@fluentui/react';
-import TagButton from './TagButton';
-import { colours } from '../../../app/styles/colours';
+import { Stack, Text } from '@fluentui/react';
+import '../../../app/styles/MultiSelect.css';
 
 interface ClientTypeStepProps {
     clientType: string;
@@ -10,30 +9,31 @@ interface ClientTypeStepProps {
 }
 
 const options = [
-    { label: 'Individual', icon: 'Contact' },
-    { label: 'Company', icon: 'CityNext' },
-    { label: 'Multiple Individuals', icon: 'People' },
-    { label: 'Existing Client', icon: 'Folder' },
+    { label: 'Individual' },
+    { label: 'Company' },
+    { label: 'Multiple Individuals' },
+    { label: 'Existing Client' },
 ];
 
 const ClientTypeStep: React.FC<ClientTypeStepProps> = ({ clientType, setClientType, onContinue }) => (
     <Stack tokens={{ childrenGap: 20 }}>
-        <Stack horizontal wrap tokens={{ childrenGap: 20 }} horizontalAlign="center">
+        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
+            Select Client Type
+        </Text>
+        <div className="MultiSelect-bar">
             {options.map((opt) => (
-                <TagButton
+                <div
                     key={opt.label}
-                    label={opt.label}
-                    icon={opt.icon}
-                    active={clientType === opt.label}
+                    className={`MultiSelect-segment${clientType === opt.label ? ' active' : ''}`}
                     onClick={() => {
                         setClientType(opt.label);
                         onContinue();
                     }}
-                    styleVariant="clientType"
-                    color={colours.highlight}
-                />
+                >
+                    {opt.label}
+                </div>
             ))}
-        </Stack>
+        </div>
     </Stack>
 );
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Stack } from '@fluentui/react';
-import TagButton from './TagButton';
+import { Stack, Text } from '@fluentui/react';
+import '../../../app/styles/MultiSelect.css';
 
 interface AreaOfWorkStepProps {
     areaOfWork: string;
@@ -10,21 +10,24 @@ interface AreaOfWorkStepProps {
 }
 
 const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWork, onContinue, getGroupColor }) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
+    <Stack tokens={{ childrenGap: 20 }}>
+        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
+            Select Area of Work
+        </Text>
+        <div className="MultiSelect-bar">
             {['Commercial', 'Property', 'Construction', 'Employment'].map((area) => (
-                <TagButton
+                <div
                     key={area}
-                    label={area}
-                    active={areaOfWork === area}
+                    className={`MultiSelect-segment${areaOfWork === area ? ' active' : ''}`}
                     onClick={() => {
                         setAreaOfWork(area);
                         onContinue();
                     }}
-                    color={getGroupColor(area)}
-                />
+                >
+                    {area}
+                </div>
             ))}
-        </Stack>
+        </div>
     </Stack>
 );
 

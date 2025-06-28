@@ -1,8 +1,6 @@
 import React from 'react';
-import { Stack, PrimaryButton } from '@fluentui/react';
-import TagButton from './TagButton';
-import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
-import { colours } from '../../../app/styles/colours';
+import { Stack, Text } from '@fluentui/react';
+import '../../../app/styles/MultiSelect.css';
 
 interface FolderStructureStepProps {
     folderStructure: string;
@@ -12,21 +10,24 @@ interface FolderStructureStepProps {
 }
 
 const FolderStructureStep: React.FC<FolderStructureStepProps> = ({ folderStructure, setFolderStructure, onContinue, folderOptions }) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
+    <Stack tokens={{ childrenGap: 20 }}>
+        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
+            Select NetDocuments Folder Structure
+        </Text>
+        <div className="MultiSelect-bar">
             {folderOptions.map((option) => (
-                <TagButton
+                <div
                     key={option}
-                    label={option}
-                    active={folderStructure === option}
+                    className={`MultiSelect-segment${folderStructure === option ? ' active' : ''}`}
                     onClick={() => {
                         setFolderStructure(option);
                         onContinue();
                     }}
-                    color={colours.highlight}
-                />
+                >
+                    {option}
+                </div>
             ))}
-        </Stack>
+        </div>
     </Stack>
 );
 

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Stack, TextField, PrimaryButton } from '@fluentui/react';
-import TagButton from './TagButton';
+import { Stack, TextField, PrimaryButton, Text } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
-import { colours } from '../../../app/styles/colours';
+import '../../../app/styles/MultiSelect.css';
 
 interface SourceStepProps {
     source: string;
@@ -15,27 +14,31 @@ interface SourceStepProps {
 const sourceOptions = ['referral', 'organic search', 'paid search', 'your following', 'tbc'];
 
 const SourceStep: React.FC<SourceStepProps> = ({ source, setSource, referrerName, setReferrerName, onContinue }) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal wrap tokens={{ childrenGap: 10 }} horizontalAlign="center">
+    <Stack tokens={{ childrenGap: 20 }}>
+        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
+            Select Source
+        </Text>
+        <div className="MultiSelect-bar">
             {sourceOptions.map((option) => (
-                <TagButton
+                <div
                     key={option}
-                    label={option}
-                    active={source === option}
+                    className={`MultiSelect-segment${source === option ? ' active' : ''}`}
                     onClick={() => {
                         setSource(option);
                         if (option !== 'referral') setReferrerName('');
                     }}
-                    color={colours.highlight}
-                />
+                    style={{ textTransform: 'capitalize' }}
+                >
+                    {option}
+                </div>
             ))}
-        </Stack>
+        </div>
         {source === 'referral' && (
             <TextField
                 placeholder="Enter referrer's name"
                 value={referrerName}
                 onChange={(_, newVal) => setReferrerName(newVal || '')}
-                styles={{ root: { width: 400 } }}
+                styles={{ root: { width: '100%', maxWidth: 400, margin: '0 auto' } }}
             />
         )}
         <PrimaryButton

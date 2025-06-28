@@ -1,6 +1,7 @@
 import React from 'react';
-import { Stack, TextField, Toggle, PrimaryButton } from '@fluentui/react';
+import { Stack, TextField, PrimaryButton, Text } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
+import '../../../app/styles/MultiSelect.css';
 
 interface OpponentDetailsStepProps {
     opponentName: string;
@@ -39,7 +40,23 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
         <TextField placeholder="Opponent Solicitor" value={opponentSolicitorName} onChange={(_, v) => setOpponentSolicitorName(v || '')} styles={{ root: { width: 400 } }} />
         <TextField placeholder="Solicitor Company" value={opponentSolicitorCompany} onChange={(_, v) => setOpponentSolicitorCompany(v || '')} styles={{ root: { width: 400 } }} />
         <TextField placeholder="Solicitor Email" value={opponentSolicitorEmail} onChange={(_, v) => setOpponentSolicitorEmail(v || '')} styles={{ root: { width: 400 } }} />
-        <Toggle label="No Conflict of Interest" checked={noConflict} onChange={(_, val) => setNoConflict(!!val)} />
+        <Stack tokens={{ childrenGap: 10 }}>
+            <Text variant="mediumPlus">Confirm No Conflict of Interest</Text>
+            <div className="MultiSelect-bar">
+                <div
+                    className={`MultiSelect-segment${noConflict ? ' active' : ''}`}
+                    onClick={() => setNoConflict(true)}
+                >
+                    Confirmed - No Conflict
+                </div>
+                <div
+                    className={`MultiSelect-segment${!noConflict ? ' active' : ''}`}
+                    onClick={() => setNoConflict(false)}
+                >
+                    Not Confirmed
+                </div>
+            </div>
+        </Stack>
         <PrimaryButton text="Continue" onClick={onContinue} disabled={!noConflict} styles={sharedPrimaryButtonStyles} />
     </Stack>
 );

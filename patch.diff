@@ -1,56 +1,134 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index ab7e0c03b5ab8b7900e4fc674adba054c50fa8a9..f27a39b9e3eaac5578ce16906107ccc9bcb7af57 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -562,50 +562,51 @@ const Instructions: React.FC<InstructionsProps> = ({
-     gap: '16px',
-     maxWidth: '1200px',
-     width: '100%',
-     margin: '0 auto',
-     boxSizing: 'border-box',
-   });
+diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
+index 8ffcc02f8de3c6bc084d61c1ee3c5c1e6f84500e..1050bc3129057b0e4729f73b2e21d83d216c2761 100644
+--- a/src/tabs/instructions/NewMatters.tsx
++++ b/src/tabs/instructions/NewMatters.tsx
+@@ -146,106 +146,119 @@ const NewMatters: React.FC<NewMattersProps> = ({
+     teamData,
+     userInitials,
+     instructionRef = '',
+     clientId = '',
+     feeEarner,
+     stage = 'New Matter',
+     matterRef,
+     hideClientSections = false,
+     initialClientType = '',
+ }) => {
+     const [openStep, setOpenStep] = useState<number>(0);
  
+     const idExpiry = useMemo(() => {
+         const d = new Date();
+         d.setDate(d.getDate() + 30);
+         return d.toLocaleDateString('en-GB');
+     }, []);
  
-   const overviewColumnStyle = mergeStyles({
-     display: 'flex',
-     flexDirection: 'column',
-     gap: '24px',
-     maxWidth: '1200px',
-     width: '100%',
-     margin: '0 auto',
-     boxSizing: 'border-box',
-   });
+     // Client info
+     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+     const [supervisingPartner, setSupervisingPartner] = useState('');
+     const [originatingSolicitor, setOriginatingSolicitor] = useState('');
+     const [fundsReceived, setFundsReceived] = useState('');
+     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
+     const dateButtonRef = useRef<HTMLDivElement | null>(null);
+-    // Use local team data with fallback to props
++    // Use local team data with fallback to props. Include the whole team
+     const localTeamData = useMemo(() => {
+-        return teamDataJson.filter(member => member.status === 'active');
++        return teamDataJson; // no filtering so all members are available
+     }, []);
  
-   if (showNewMatterPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-         <FlatMatterOpening
-           poidData={selectedInstruction ? poidData : idVerificationOptions}
-           setPoidData={setPoidData}
-           teamData={teamData}
-+          userInitials={userInitials}
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={newMatterClientType}
-         />
-       </Stack>
-     );
-   }
+     const teamMemberOptions = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         const options = activeTeam
+-            .map((member: any) => member['Full Name'] || member.Nickname || member.First)
++            .map((member: any) =>
++                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
++            )
+             .filter(Boolean);
+         
+         // Debug logging
+         console.log('Active team data:', activeTeam);
+         console.log('Team member options:', options);
+         
+         return options;
+     }, [teamData, localTeamData]);
  
-   if (showRiskPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <RiskAssessmentPage onBack={function (): void {
-           throw new Error('Function not implemented.');
-         } } />
-       </Stack>
-     );
-   }
+     // Create combined options for both partner and solicitor dropdowns
+     const partnerAndSolicitorOptions = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         return activeTeam
+-            .filter((member: any) => 
++            .filter((member: any) =>
+                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
+             )
+-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
++            .map((member: any) =>
++                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
++            )
+             .filter(Boolean);
+     }, [teamData, localTeamData]);
  
-   return (
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === 'overview' && (
+     const defaultTeamMember = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         if (activeTeam) {
+-            const found = activeTeam.find((member: any) => 
++            const found = activeTeam.find((member: any) =>
+                 (member.Initials || '').toLowerCase() === userInitials.toLowerCase()
+             );
+-            return found?.['Full Name'] || found?.Nickname || found?.First || '';
++            if (found) {
++                return (
++                    found['Full Name'] ||
++                    `${found.First || ''} ${found.Last || ''}`.trim()
++                );
++            }
+         }
+         return '';
+     }, [teamData, localTeamData, userInitials]);
+ 
+     // Update partner options from local data
+     const supervisingPartnerOptions = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         return activeTeam
+             .filter((member: any) => member.Role === 'Partner')
+-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
++            .map((member: any) =>
++                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
++            )
+             .filter(Boolean);
+     }, [teamData, localTeamData]);
+ 
+     const originatingSolicitorOptions = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         return activeTeam
+-            .filter((member: any) => 
++            .filter((member: any) =>
+                 ['Partner', 'Associate Solicitor', 'Solicitor'].includes(member.Role)
+             )
+-            .map((member: any) => member.Initials || member['Full Name'] || member.Nickname || member.First)
++            .map((member: any) =>
++                member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
++            )
+             .filter(Boolean);
+     }, [teamData, localTeamData]);
+ 
+     const [teamMember, setTeamMember] = useState(defaultTeamMember);
+     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
+ 
+     // Workflow
+     const [clientType, setClientType] = useState(initialClientType);
+ 
+     useEffect(() => {
+         setClientType(initialClientType);
+     }, [initialClientType]);
+     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
+     const [areaOfWork, setAreaOfWork] = useState('');
+     const [practiceArea, setPracticeArea] = useState('');
+ 
+     const [description, setDescription] = useState('');
+     const [folderStructure, setFolderStructure] = useState('');
+     const [disputeValue, setDisputeValue] = useState('');
+     const [source, setSource] = useState('');
+     const [referrerName, setReferrerName] = useState('');
+ 
+     const [opponentName, setOpponentName] = useState('');
+     const [opponentEmail, setOpponentEmail] = useState('');
+     const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
