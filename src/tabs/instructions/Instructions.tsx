@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Stack,
   mergeStyles,
@@ -6,21 +6,21 @@ import {
   Pivot,
   PivotItem,
   Text,
-} from '@fluentui/react';
-import QuickActionsCard from '../home/QuickActionsCard';
-import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
-import { colours } from '../../app/styles/colours';
-import { dashboardTokens } from './componentTokens';
-import InstructionCard from './InstructionCard';
-import DealCard from './DealCard';
-import RiskComplianceCard from './RiskComplianceCard';
-import JointClientCard, { ClientInfo } from './JointClientCard';
-import type { DealSummary } from './JointClientCard';
-import { InstructionData, POID, TeamData } from '../../app/functionality/types';
-import localInstructionData from '../../localData/localInstructionData.json';
-import FlatMatterOpening from './MatterOpening/FlatMatterOpening';
-import RiskAssessmentPage from './RiskAssessmentPage';
+} from "@fluentui/react";
+import QuickActionsCard from "../home/QuickActionsCard";
+import { useTheme } from "../../app/functionality/ThemeContext";
+import { useNavigator } from "../../app/functionality/NavigatorContext";
+import { colours } from "../../app/styles/colours";
+import { dashboardTokens } from "./componentTokens";
+import InstructionCard from "./InstructionCard";
+import DealCard from "./DealCard";
+import RiskComplianceCard from "./RiskComplianceCard";
+import JointClientCard, { ClientInfo } from "./JointClientCard";
+import type { DealSummary } from "./JointClientCard";
+import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+import localInstructionData from "../../localData/localInstructionData.json";
+import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+import RiskAssessmentPage from "./RiskAssessmentPage";
 
 interface InstructionsProps {
   userInitials: string;
@@ -40,17 +40,20 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   /** Client type selection for the matter opening workflow */
-  const [newMatterClientType, setNewMatterClientType] = useState<string>('Individual');
-  const [selectedInstruction, setSelectedInstruction] = useState<any | null>(null);
-  const [activePivot, setActivePivot] = useState<string>('overview');
+  const [newMatterClientType, setNewMatterClientType] =
+    useState<string>("Individual");
+  const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
+    null,
+  );
+  const [activePivot, setActivePivot] = useState<string>("overview");
 
   const ACTION_BAR_HEIGHT = 48;
 
   const CLIENT_TYPE_OPTIONS = [
-    { label: 'Individual', icon: 'Contact' },
-    { label: 'Company', icon: 'CityNext' },
-    { label: 'Multiple Clients', icon: 'People' },
-    { label: 'Existing Client', icon: 'Folder' },
+    { label: "Individual", icon: "Contact" },
+    { label: "Company", icon: "CityNext" },
+    { label: "Multiple Clients", icon: "People" },
+    { label: "Existing Client", icon: "Folder" },
   ];
 
   const quickLinksStyle = (dark: boolean) =>
@@ -58,16 +61,16 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: '0 24px',
-      transition: 'background-color 0.3s',
-      display: 'flex',
-      flexDirection: 'row',
-      gap: '8px',
-      overflowX: 'auto',
-      alignItems: 'center',
+      padding: "0 24px",
+      transition: "background-color 0.3s",
+      display: "flex",
+      flexDirection: "row",
+      gap: "8px",
+      overflowX: "auto",
+      alignItems: "center",
       height: ACTION_BAR_HEIGHT,
       paddingBottom: 0,
-      position: 'sticky',
+      position: "sticky",
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
       borderTopLeftRadius: 0,
@@ -79,13 +82,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
-      padding: '0 24px',
-      display: 'flex',
-      flexDirection: 'row',
-      gap: '8px',
-      alignItems: 'center',
+      padding: "0 24px",
+      display: "flex",
+      flexDirection: "row",
+      gap: "8px",
+      alignItems: "center",
       height: ACTION_BAR_HEIGHT,
-      position: 'sticky',
+      position: "sticky",
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
     });
@@ -96,27 +99,27 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       boxShadow: dark
-        ? '0 2px 4px rgba(0,0,0,0.4)'
-        : '0 2px 4px rgba(0,0,0,0.1)',
+        ? "0 2px 4px rgba(0,0,0,0.4)"
+        : "0 2px 4px rgba(0,0,0,0.1)",
       borderTop: dark
-        ? '1px solid rgba(255,255,255,0.1)'
-        : '1px solid rgba(0,0,0,0.05)',
-      padding: '0 24px',
-      transition: 'background-color 0.3s',
-      position: 'sticky',
+        ? "1px solid rgba(255,255,255,0.1)"
+        : "1px solid rgba(0,0,0,0.05)",
+      padding: "0 24px",
+      transition: "background-color 0.3s",
+      position: "sticky",
       top: ACTION_BAR_HEIGHT * 2,
       zIndex: 998,
     });
 
   const useLocalData =
-    process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
-    window.location.hostname === 'localhost';
+    process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
+    window.location.hostname === "localhost";
 
   useEffect(() => {
     async function fetchData() {
       // During the pilot we always pull Lukasz's instructions so everyone
       // sees populated data regardless of their own initials.
-      const targetInitials = 'LZ';
+      const targetInitials = "LZ";
 
       if (useLocalData) {
         setInstructionData(localInstructionData as InstructionData[]);
@@ -126,7 +129,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
       if (!baseUrl || !path || !code) {
-        console.error('Missing env variables for instruction data');
+        console.error("Missing env variables for instruction data");
         return;
       }
 
@@ -137,10 +140,17 @@ const Instructions: React.FC<InstructionsProps> = ({
           const data = await res.json();
           setInstructionData(Array.isArray(data) ? data : [data]);
         } else {
-          console.error('Failed to fetch instructions for user', targetInitials);
+          console.error(
+            "Failed to fetch instructions for user",
+            targetInitials,
+          );
         }
       } catch (err) {
-        console.error('Error fetching instructions for user', targetInitials, err);
+        console.error(
+          "Error fetching instructions for user",
+          targetInitials,
+          err,
+        );
       }
     }
     fetchData();
@@ -161,7 +171,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         {showNewMatterPage || showRiskPage ? (
           <div className={detailNavStyle(isDarkMode)}>
             <IconButton
-              iconProps={{ iconName: 'ChevronLeft' }}
+              iconProps={{ iconName: "ChevronLeft" }}
               onClick={handleBack}
               className={backButtonStyle}
               title="Back"
@@ -176,7 +186,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   isDarkMode={isDarkMode}
                   onClick={() => setNewMatterClientType(opt.label)}
                   selected={newMatterClientType === opt.label}
-                  style={{ '--card-index': idx } as React.CSSProperties}
+                  style={{ "--card-index": idx } as React.CSSProperties}
                 />
               ))}
           </div>
@@ -189,39 +199,39 @@ const Instructions: React.FC<InstructionsProps> = ({
                 isDarkMode={isDarkMode}
                 onClick={() => {
                   setSelectedInstruction(null);
-                  setNewMatterClientType('Individual');
-                  setShowNewMatterPage(true);
-                }}
-                style={{ '--card-index': 0 } as React.CSSProperties}
-              />
-              <QuickActionsCard
-                title="EID Check"
-                icon="IdCheck"
-                isDarkMode={isDarkMode}
-                onClick={() => { }}
-                style={{ '--card-index': 1 } as React.CSSProperties}
-              />
-              <QuickActionsCard
-                title="Risk Assessment"
-                icon="Assessment"
-                isDarkMode={isDarkMode}
-                onClick={() => { }}
-                style={{ '--card-index': 2 } as React.CSSProperties}
-              />
-              <QuickActionsCard
-                title="Draft CCL"
-                icon="OpenFile"
-                isDarkMode={isDarkMode}
-                onClick={() => setShowRiskPage(true)}
-                style={{ '--card-index': 3 } as React.CSSProperties}
-              />
-            </div>
-            <div className={pivotBarStyle(isDarkMode)}>
-              <Pivot
-                className="navigatorPivot"
-                selectedKey={activePivot}
-                onLinkClick={(item) => {
-                  setActivePivot(item?.props.itemKey || 'overview');
+                    setNewMatterClientType("Individual");
+                    setShowNewMatterPage(true);
+                  }}
+                  style={{ "--card-index": 0 } as React.CSSProperties}
+                />
+                <QuickActionsCard
+                  title="EID Check"
+                  icon="IdCheck"
+                  isDarkMode={isDarkMode}
+                  onClick={() => { }}
+                  style={{ "--card-index": 1 } as React.CSSProperties}
+                />
+                <QuickActionsCard
+                  title="Risk Assessment"
+                  icon="Assessment"
+                  isDarkMode={isDarkMode}
+                  onClick={() => { }}
+                  style={{ "--card-index": 2 } as React.CSSProperties}
+                />
+                <QuickActionsCard
+                  title="Draft CCL"
+                  icon="OpenFile"
+                  isDarkMode={isDarkMode}
+                  onClick={() => setShowRiskPage(true)}
+                  style={{ "--card-index": 3 } as React.CSSProperties}
+                />
+              </div>
+              <div className={pivotBarStyle(isDarkMode)}>
+                <Pivot
+                  className="navigatorPivot"
+                  selectedKey={activePivot}
+                  onLinkClick={(item) => {
+                    setActivePivot(item?.props.itemKey || "overview");
                 }}
               >
                 <PivotItem headerText="Overview" itemKey="overview" />
@@ -232,7 +242,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
           </>
         )}
-      </>
+      </>,
     );
     return () => setContent(null);
   }, [
@@ -246,65 +256,72 @@ const Instructions: React.FC<InstructionsProps> = ({
   ]);
 
   const containerStyle = mergeStyles({
-    backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-    minHeight: '100vh',
-    boxSizing: 'border-box',
+    backgroundColor: isDarkMode
+      ? colours.dark.background
+      : colours.light.background,
+    minHeight: "100vh",
+    boxSizing: "border-box",
     color: isDarkMode ? colours.light.text : colours.dark.text,
   });
 
   const newMatterContainerStyle = mergeStyles(containerStyle, {
-    padding: '12px',
+    padding: "12px",
   });
 
   const backButtonStyle = mergeStyles({
     width: 32,
     height: 32,
     borderRadius: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f3f3f3',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
     marginRight: 8,
   });
 
   const sectionContainerStyle = (dark: boolean) =>
     mergeStyles({
-      backgroundColor: dark ? colours.dark.sectionBackground : colours.light.sectionBackground,
-      padding: '16px',
+      backgroundColor: dark
+        ? colours.dark.sectionBackground
+        : colours.light.sectionBackground,
+      padding: "16px",
       borderRadius: 0,
       boxShadow: dark
         ? `0 4px 12px ${colours.dark.border}`
         : `0 4px 12px ${colours.light.border}`,
-      width: '100%',
+      width: "100%",
     });
-
 
   const overviewItems = useMemo(() => {
     return instructionData.flatMap((prospect) => {
       const instructionItems = (prospect.instructions ?? []).map((inst) => {
         const dealsForInst = (prospect.deals ?? []).filter(
-          (d) => d.InstructionRef === inst.InstructionRef
+          (d) => d.InstructionRef === inst.InstructionRef,
         );
         const clientsForInst: ClientInfo[] = [];
-        (prospect.jointClients ?? prospect.joinedClients ?? []).forEach((jc) => {
-          if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
-            clientsForInst.push({
-              ClientEmail: jc.ClientEmail,
-              HasSubmitted: jc.HasSubmitted,
-              Lead: false,
-              deals: [
-                {
-                  DealId: jc.DealId,
-                  InstructionRef: inst.InstructionRef,
-                  ServiceDescription:
-                    dealsForInst.find((d) => d.DealId === jc.DealId)?.ServiceDescription,
-                  Status: dealsForInst.find((d) => d.DealId === jc.DealId)?.Status,
-                },
-              ],
-            });
-          }
-        });
+        (prospect.jointClients ?? prospect.joinedClients ?? []).forEach(
+          (jc) => {
+            if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+              clientsForInst.push({
+                ClientEmail: jc.ClientEmail,
+                HasSubmitted: jc.HasSubmitted,
+                Lead: false,
+                deals: [
+                  {
+                    DealId: jc.DealId,
+                    InstructionRef: inst.InstructionRef,
+                    ServiceDescription: dealsForInst.find(
+                      (d) => d.DealId === jc.DealId,
+                    )?.ServiceDescription,
+                    Status: dealsForInst.find((d) => d.DealId === jc.DealId)
+                      ?.Status,
+                  },
+                ],
+              });
+            }
+          },
+        );
         dealsForInst.forEach((d) => {
           if (d.LeadClientEmail) {
             clientsForInst.push({
@@ -329,12 +346,14 @@ const Instructions: React.FC<InstructionsProps> = ({
         ];
         const eidSource = [
           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-          ...((inst as any).electronicIDChecks ?? (inst as any).idVerifications ?? []),
+          ...((inst as any).electronicIDChecks ??
+            (inst as any).idVerifications ??
+            []),
         ];
         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
         const docs = prospect.documents?.filter(
-          (d) => d.InstructionRef === inst.InstructionRef
+          (d) => d.InstructionRef === inst.InstructionRef,
         );
         return {
           instruction: inst,
@@ -356,9 +375,9 @@ const Instructions: React.FC<InstructionsProps> = ({
   const unlinkedDeals = useMemo(
     () =>
       instructionData.flatMap((p) =>
-        (p.deals ?? []).filter((d) => !d.InstructionRef)
+        (p.deals ?? []).filter((d) => !d.InstructionRef),
       ),
-    [instructionData]
+    [instructionData],
   );
 
   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -370,9 +389,9 @@ const Instructions: React.FC<InstructionsProps> = ({
           ...d,
           firstName: p.instructions?.[0]?.FirstName,
           jointClients: p.jointClients ?? p.joinedClients ?? [],
-        }))
+        })),
       ),
-    [instructionData]
+    [instructionData],
   );
   const clients: ClientInfo[] = useMemo(() => {
     const map: Record<string, ClientInfo> = {};
@@ -381,8 +400,11 @@ const Instructions: React.FC<InstructionsProps> = ({
       deals.forEach((d) => {
         if (d.LeadClientEmail) {
           const key = d.LeadClientEmail;
-          const entry =
-            map[key] || { ClientEmail: key, Lead: true, deals: [] as DealSummary[] };
+          const entry = map[key] || {
+            ClientEmail: key,
+            Lead: true,
+            deals: [] as DealSummary[],
+          };
           entry.Lead = true;
           (entry.deals as DealSummary[]).push({
             DealId: d.DealId,
@@ -395,13 +417,12 @@ const Instructions: React.FC<InstructionsProps> = ({
       });
       (p.jointClients ?? p.joinedClients ?? []).forEach((jc) => {
         const key = jc.ClientEmail;
-        const entry =
-          map[key] || {
-            ClientEmail: jc.ClientEmail,
-            HasSubmitted: jc.HasSubmitted,
-            Lead: false,
-            deals: [] as DealSummary[],
-          };
+        const entry = map[key] || {
+          ClientEmail: jc.ClientEmail,
+          HasSubmitted: jc.HasSubmitted,
+          Lead: false,
+          deals: [] as DealSummary[],
+        };
         entry.HasSubmitted = jc.HasSubmitted;
         const deal = deals.find((dd) => dd.DealId === jc.DealId);
         if (deal) {
@@ -466,7 +487,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         return riskSource.map((r: any) => {
           const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);
           const instruction = instructions.find(
-            (i: any) => i.InstructionRef === r.MatterId
+            (i: any) => i.InstructionRef === r.MatterId,
           );
           const deal = deals.find((d: any) => d.InstructionRef === r.MatterId);
           return {
@@ -479,7 +500,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           };
         });
       }),
-    [instructionData]
+    [instructionData],
   );
 
   const idVerificationOptions = useMemo(() => {
@@ -498,12 +519,14 @@ const Instructions: React.FC<InstructionsProps> = ({
         if (!v || seen.has(v.InternalId)) return [];
         seen.add(v.InternalId);
         const instRef = v.InstructionRef ?? v.MatterId;
-        const inst = instructions.find((i: any) => i.InstructionRef === instRef);
+        const inst = instructions.find(
+          (i: any) => i.InstructionRef === instRef,
+        );
         const merged: any = { ...v };
         delete merged.EIDRawResponse;
         return [
           {
-            poid_id: String(v.InternalId ?? ''),
+            poid_id: String(v.InternalId ?? ""),
             prefix: inst?.Title,
             first: inst?.FirstName,
             last: inst?.LastName,
@@ -539,7 +562,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
-    setNewMatterClientType(inst?.ClientType || 'Individual');
+    setNewMatterClientType(inst?.ClientType || "Individual");
     setShowNewMatterPage(true);
   };
 
@@ -549,39 +572,38 @@ const Instructions: React.FC<InstructionsProps> = ({
   };
 
   const handleEIDCheck = (inst: any) => {
-    console.log('EID check for', inst.InstructionRef);
+    console.log("EID check for", inst.InstructionRef);
   };
 
   const handleOpenInstruction = (ref: string) => {
-    setActivePivot('overview');
+    setActivePivot("overview");
   };
 
   const gridContainerStyle = mergeStyles({
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '16px',
-    maxWidth: '1200px',
-    width: '100%',
-    margin: '0 auto',
-    boxSizing: 'border-box',
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "16px",
+    maxWidth: "1200px",
+    width: "100%",
+    margin: "0 auto",
+    boxSizing: "border-box",
   });
 
-
   const overviewColumnStyle = mergeStyles({
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '24px',
-    maxWidth: '1200px',
-    width: '100%',
-    margin: '0 auto',
-    boxSizing: 'border-box',
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: "24px",
+    maxWidth: "1200px",
+    width: "100%",
+    margin: "0 auto",
+    boxSizing: "border-box",
   });
 
   if (showNewMatterPage) {
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
-          poidData={selectedInstruction ? poidData : idVerificationOptions}
+          poidData={idVerificationOptions}
           setPoidData={setPoidData}
           teamData={teamData}
           userInitials={userInitials}
@@ -598,9 +620,11 @@ const Instructions: React.FC<InstructionsProps> = ({
   if (showRiskPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
-        <RiskAssessmentPage onBack={function (): void {
-          throw new Error('Function not implemented.');
-        } } />
+        <RiskAssessmentPage
+          onBack={function (): void {
+            throw new Error("Function not implemented.");
+          }}
+        />
       </Stack>
     );
   }
@@ -609,7 +633,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className={sectionContainerStyle(isDarkMode)}>
-          {activePivot === 'overview' && (
+          {activePivot === "overview" && (
             <div className={overviewColumnStyle}>
               {overviewItems.map((item, idx) => {
                 const row = Math.floor(idx / 2);
@@ -631,7 +655,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                     animationDelay={animationDelay}
                     expanded
                     onOpenMatter={() => handleOpenMatter(item.instruction)}
-                    onRiskAssessment={() => handleRiskAssessment(item.instruction)}
+                    onRiskAssessment={() =>
+                      handleRiskAssessment(item.instruction)
+                    }
                     onEIDCheck={() => handleEIDCheck(item.instruction)}
                   />
 
@@ -652,30 +678,34 @@ const Instructions: React.FC<InstructionsProps> = ({
               })}
             </div>
           )}
-          {activePivot === 'deals' && (
+          {activePivot === "deals" && (
             <div className={gridContainerStyle}>
               {deals.map((deal, idx) => {
                 const row = Math.floor(idx / 4);
                 const col = idx % 4;
                 const animationDelay = row * 0.2 + col * 0.1;
-                const isClosed = String(deal.Status).toLowerCase() === 'closed';
+                const isClosed = String(deal.Status).toLowerCase() === "closed";
                 return (
                   <DealCard
                     key={idx}
                     deal={deal}
                     animationDelay={animationDelay}
                     onFollowUp={
-                      isClosed ? undefined : () => console.log('Follow up', deal.DealId)
+                      isClosed
+                        ? undefined
+                        : () => console.log("Follow up", deal.DealId)
                     }
                     onOpenInstruction={
-                      deal.InstructionRef ? () => handleOpenInstruction(deal.InstructionRef) : undefined
+                      deal.InstructionRef
+                        ? () => handleOpenInstruction(deal.InstructionRef)
+                        : undefined
                     }
                   />
                 );
               })}
             </div>
           )}
-          {activePivot === 'clients' && (
+          {activePivot === "clients" && (
             <div className={gridContainerStyle}>
               {clients.map((c, idx) => {
                 const row = Math.floor(idx / 4);
@@ -692,13 +722,18 @@ const Instructions: React.FC<InstructionsProps> = ({
               })}
             </div>
           )}
-          {activePivot === 'risk' && (
+          {activePivot === "risk" && (
             <>
-              <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: 8 } }}>
+              <Text
+                variant="mediumPlus"
+                styles={{ root: { fontWeight: 600, marginBottom: 8 } }}
+              >
                 Risk &amp; Compliance
               </Text>
               <div className={gridContainerStyle}>
-                {riskComplianceData.length === 0 && <Text>No risk data available.</Text>}
+                {riskComplianceData.length === 0 && (
+                  <Text>No risk data available.</Text>
+                )}
                 {riskComplianceData.map((r, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
@@ -708,7 +743,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                       key={idx}
                       data={r}
                       animationDelay={animationDelay}
-                      onOpenInstruction={() => handleOpenInstruction(r.MatterId)}
+                      onOpenInstruction={() =>
+                        handleOpenInstruction(r.MatterId)
+                      }
                     />
                   );
                 })}
