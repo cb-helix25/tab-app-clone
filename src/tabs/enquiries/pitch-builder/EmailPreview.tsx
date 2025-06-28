@@ -10,6 +10,7 @@ import {
   PrimaryButton,
   DefaultButton,
   Checkbox,
+  IconButton,
 } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import {
@@ -161,8 +162,7 @@ function formatCurrency(val?: string): string {
       onDismiss={onDismiss}
       type={PanelType.custom}
       customWidth="600px"
-      headerText="Email Preview"
-      closeButtonAriaLabel="Close"
+      hasCloseButton={false}
       styles={{
         main: {
           padding: '12px',
@@ -175,18 +175,29 @@ function formatCurrency(val?: string): string {
       }}
     >
       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
-        <Separator />
-        {/* Combined summary section */}
-        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}>
-          <Text variant="medium">
-            <strong style={{ color: colours.cta }}>
-              You're sending an email to {fullName || 'N/A'}
-            </strong>
-            <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
-            {enquiry.Point_of_Contact || 'N/A'}
+        {/* Header with close button */}
+        <Stack
+          horizontal
+          verticalAlign="center"
+          styles={{ root: { justifyContent: 'space-between' } }}
+        >
+          <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+            You're sending an email to {fullName || 'N/A'}
           </Text>
-          <Text variant="small">
-            This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're responding on the same day.
+          <IconButton
+            iconProps={{ iconName: 'Cancel' }}
+            ariaLabel="Close preview"
+            onClick={onDismiss}
+          />
+        </Stack>
+
+        {/* Combined summary section */}
+        <Stack
+          tokens={{ childrenGap: 8 }}
+          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
+        >
+          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
+            {enquiry.Point_of_Contact || 'N/A'}
           </Text>
           <Stack tokens={{ childrenGap: 8 }}>
             <Stack tokens={{ childrenGap: 4 }}>
@@ -237,13 +248,13 @@ function formatCurrency(val?: string): string {
         <Separator />
 
         {/* Body */}
-        <Stack tokens={{ childrenGap: 6 }}>
-          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
+        <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
+          <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight, marginBottom: 5 } }}>
             Body:
           </Text>
           <div
             ref={previewRef}
-            style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}
+            style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}
             dangerouslySetInnerHTML={{ __html: finalBody }}
           />
         </Stack>

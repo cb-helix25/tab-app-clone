@@ -33,6 +33,7 @@ import {
   getTemplateBlocks,
   TemplateSet,
   getTemplateSetLabel,
+  getDatabaseBlocksData,
 } from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
@@ -451,9 +452,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         } catch (err) {
           console.error('Failed to load blocks', err);
         }
-        const fallback = getTemplateBlocks('Database');
-        setBlocks(fallback);
-        return fallback;
+        const fallbackData = getDatabaseBlocksData();
+        setBlocks(fallbackData.blocks);
+        setSavedSnippets(fallbackData.savedSnippets);
+        return fallbackData.blocks;
       } else {
         const result = getTemplateBlocks(newSet);
         setBlocks(result);
