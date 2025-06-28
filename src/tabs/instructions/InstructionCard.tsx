@@ -384,7 +384,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             title: verifyIdComplete ? 'ID Verified' : undefined,
                             icon: iconMap.eid,
                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                            complete: verifyIdComplete,
+                            status: verifyIdComplete ? 'complete' : 'ready',
                         },
                         {
                             key: 'risk',
@@ -392,23 +392,23 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             title: riskAssessed ? 'Risk Assessed' : undefined,
                             icon: iconMap.risk,
                             onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
-                            complete: riskAssessed,
+                            status: !verifyIdComplete ? 'pending' : riskAssessed ? 'complete' : 'ready',
                         },
                         {
                             key: 'matter',
                             label: 'Open Matter',
                             icon: iconMap.matter,
                             onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
-                            disabled: openDisabled,
+                            status: !riskAssessed || !openMatterReady ? 'pending' : 'ready',
                         },
                     ].map((tab) => (
                         <button
                             key={tab.key}
                             type="button"
-                            className={`bottom-tab ${activeTab === tab.key ? 'active' : ''}${tab.complete ? ' complete' : ''}`}
+                            className={`bottom-tab ${tab.status} ${activeTab === tab.key ? 'active' : ''}`}
                             onClick={tab.onClick}
                             aria-label={tab.label}
-                            disabled={tab.disabled}
+                            disabled={tab.status === 'pending'}
                             title={tab.title}
                         >
                             <span className="icon-hover">

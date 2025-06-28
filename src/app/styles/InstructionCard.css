@@ -150,48 +150,47 @@
         transform: scaleY(1);
 }
 
+
 .bottom-tabs {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 40px;
     display: flex;
+    gap: 8px;
+    padding: 8px;
     border-top: 1px solid #e1dfdd;
-    overflow: hidden;
+    background: #fff;
 }
 
 .bottom-tab {
-    flex: 1 1 20%;
+    flex: 0 0 auto;
+    min-width: 90px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #e1dfdd;
+    border-radius: 4px;
     background-color: #F4F4F6;
     color: #061733;
-    border: none;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     font-weight: 500;
     cursor: pointer;
     gap: 4px;
     position: relative;
-    padding: 0 4px;
-    height: 100%;
-        transition:
-            background-color 0.2s ease-in-out,
-            color 0.2s ease-in-out,
-            flex-basis 0.4s ease-in-out,
-            padding-left 0.4s ease-in-out;
-    }
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
     
     .bottom-tab .icon-filled {
         display: none;
         transition: transform 0.2s;
-    
     }
-    
+
     .bottom-tab .icon-outline,
     .bottom-tab .icon-filled {
         font-size: 16px;
-}
+    }
 
 .icon-hover {
     display: inline-flex;
@@ -199,12 +198,10 @@
     justify-content: center;
 }
 
-.bottom-tab:hover {
+
+.bottom-tab.ready:hover {
     background-color: #f7f7f9;
     color: #3690CE;
-    flex-basis: 60%;
-        padding-left: 12px;
-        justify-content: flex-start;
 }
 
 .bottom-tab:active {
@@ -214,13 +211,11 @@
 .bottom-tab.active {
     background-color: #D65541;
     color: #ffffff;
-    flex-basis: 60%;
-        padding-left: 12px;
-        justify-content: flex-start;
 }
 
+
 .bottom-tab.active .icon-outline,
-.bottom-tab:hover .icon-outline {
+.bottom-tab.ready:hover .icon-outline {
     display: none;
 }
 
@@ -237,12 +232,10 @@
     cursor: default;
 }
 
+
 .bottom-tab.complete:hover {
     background-color: #f0f9f0;
     color: #20b26c;
-    flex-basis: 20%;
-    padding-left: 4px;
-    justify-content: center;
 }
 
 .bottom-tab.complete .icon-outline {
@@ -254,13 +247,8 @@
     color: #20b26c;
 }
 
-.bottom-tab.complete:hover .label {
-    max-width: 0;
-    opacity: 0;
-    margin-left: 0;
-}
 
-.bottom-tab:hover .icon-filled {
+.bottom-tab.ready:hover .icon-filled {
     display: inline-block;
     transform: scale(1.1);
     color: #3690CE;
@@ -268,21 +256,10 @@
 
 .bottom-tab .label {
     display: inline-flex;
-        align-items: center;
-        overflow: hidden;
-        max-width: 0;
-        opacity: 0;
-        margin-left: 0;
-        transition: max-width 0.4s ease-in-out, opacity 0.4s ease-in-out, margin-left 0.4s ease-in-out;
-        white-space: nowrap;
-    }
-    
-    .bottom-tab.active .label,
-    .bottom-tab:hover .label {
-        max-width: 120px;
-        opacity: 1;
-        margin-left: 6px;
-    }
+    align-items: center;
+    margin-left: 4px;
+    white-space: nowrap;
+}
     
     /* make the icon container round & animatable */
     .instructionCard .bottom-tab .icon-hover {
@@ -292,7 +269,7 @@
 }
 
 /* hover: border, solid fill, scale up & pop */
-.instructionCard .bottom-tab:hover .icon-hover {
+.instructionCard .bottom-tab.ready:hover .icon-hover {
     transform: scale(1.2);
     animation: quickPop 0.3s ease-out;
 }

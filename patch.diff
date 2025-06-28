@@ -1,106 +1,71 @@
 diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 37e92e52392336bb2c3f587e133560dd713ee9e0..3c76de5d7a0e891a518948d26dc70cb2580ce910 100644
+index 0900c58d673c7a62fc25148f9e951ba3e0da4af8..efe552c91c89ba820c5e819bbb495490f9eb040a 100644
 --- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
 +++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -139,133 +139,143 @@ const previewRef = React.useRef<HTMLDivElement>(null);
-     '1_day': '1 day',
-     '2_days': '2 days',
-     '3_days': '3 days',
-     '7_days': '7 days',
-     '14_days': '14 days',
-     '30_days': '30 days',
-   };
- 
- function formatCurrency(val?: string): string {
-   if (!val) return 'N/A';
-   const num = parseFloat(val.replace(/,/g, ''));
-   if (isNaN(num)) return val;
-   return num.toLocaleString('en-GB', {
-     style: 'currency',
-     currency: 'GBP',
-     minimumFractionDigits: 2,
-   });
- }
- 
-   return (
-     <Panel
-       isOpen={isPreviewOpen}
-       onDismiss={onDismiss}
-       type={PanelType.custom}
-       customWidth="600px"
--      headerText="Email Preview"
--      closeButtonAriaLabel="Close"
-+      hasCloseButton={false}
-       styles={{
-         main: {
-           padding: '12px',
-           backgroundColor: colours.light.previewBackground,
-           color: colours.light.text,
-           display: 'flex',
-           flexDirection: 'column',
-           height: '100%',
+@@ -174,77 +174,63 @@ function formatCurrency(val?: string): string {
          },
        }}
      >
        <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
--        <Separator />
-+        {/* Header with close button */}
-+        <Stack
-+          horizontal
-+          verticalAlign="center"
-+          styles={{ root: { justifyContent: 'space-between' } }}
-+        >
-+          <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-+            You're sending an email to {fullName || 'N/A'}
-+          </Text>
-+          <IconButton
-+            iconProps={{ iconName: 'Cancel' }}
-+            ariaLabel="Close preview"
-+            onClick={onDismiss}
-+          />
-+        </Stack>
-+
-         {/* Combined summary section */}
--        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}>
--          <Text variant="medium">
--            <strong style={{ color: colours.cta }}>
--              You're sending an email to {fullName || 'N/A'}
--            </strong>
--            <span style={{ color: colours.greyText, margin: '0 8px' }}>•</span>
-+        <Stack
-+          tokens={{ childrenGap: 8 }}
-+          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
-+        >
-+          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
-             {enquiry.Point_of_Contact || 'N/A'}
+         {/* Header with close button */}
+         <Stack
+           horizontal
+           verticalAlign="center"
+           styles={{ root: { justifyContent: 'space-between' } }}
+         >
+           <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+             You're sending an email to {fullName || 'N/A'}
            </Text>
--          <Text variant="small">
--            This is {enquiry.First_Name || 'the prospect'}'s first enquiry. You're responding on the same day.
+           <IconButton
+             iconProps={{ iconName: 'Cancel' }}
+             ariaLabel="Close preview"
+             onClick={onDismiss}
+           />
+         </Stack>
+ 
+         {/* Combined summary section */}
+         <Stack
+           tokens={{ childrenGap: 8 }}
+           styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
+         >
+-          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
+-            {enquiry.Point_of_Contact || 'N/A'}
 -          </Text>
            <Stack tokens={{ childrenGap: 8 }}>
-             <Stack tokens={{ childrenGap: 4 }}>
-               <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-                 Deal Details
-               </Text>
-               <Text variant="medium">
-                 <strong>Service:</strong> {serviceDescription || 'N/A'}
-               </Text>
-               <Text variant="medium">
-                 <strong>Amount:</strong> {formatCurrency(amount)}
-               </Text>
-               {clients && clients.length > 0 && (
-                 <Stack tokens={{ childrenGap: 2 }}>
-                   <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
-                     <strong>Clients Requiring ID:</strong>
+-            <Stack tokens={{ childrenGap: 4 }}>
+-              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
+-                Deal Details
+-              </Text>
+-              <Text variant="medium">
+-                <strong>Service:</strong> {serviceDescription || 'N/A'}
+-              </Text>
+-              <Text variant="medium">
+-                <strong>Amount:</strong> {formatCurrency(amount)}
+-              </Text>
+-              {clients && clients.length > 0 && (
+-                <Stack tokens={{ childrenGap: 2 }}>
+-                  <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
+-                    <strong>Clients Requiring ID:</strong>
++            {clients && clients.length > 0 && (
++              <Stack tokens={{ childrenGap: 2 }}>
++                <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
++                  <strong>Clients Requiring ID:</strong>
++                </Text>
++                {clients.map((c, idx) => (
++                  <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
++                    {c.firstName} {c.lastName} - {c.email}
                    </Text>
-                   {clients.map((c, idx) => (
-                     <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
-                       {c.firstName} {c.lastName} - {c.email}
-                     </Text>
-                   ))}
-                 </Stack>
-               )}
-             </Stack>
+-                  {clients.map((c, idx) => (
+-                    <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
+-                      {c.firstName} {c.lastName} - {c.email}
+-                    </Text>
+-                  ))}
+-                </Stack>
+-              )}
+-            </Stack>
++                ))}
++              </Stack>
++            )}
              <Stack tokens={{ childrenGap: 4 }}>
                <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
                  Subject
@@ -126,38 +91,3 @@ index 37e92e52392336bb2c3f587e133560dd713ee9e0..3c76de5d7a0e891a518948d26dc70cb2
          <Separator />
  
          {/* Body */}
--        <Stack tokens={{ childrenGap: 6 }}>
--          <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-+        <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
-+          <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight, marginBottom: 5 } }}>
-             Body:
-           </Text>
-           <div
-             ref={previewRef}
--            style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}
-+            style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}
-             dangerouslySetInnerHTML={{ __html: finalBody }}
-           />
-         </Stack>
- 
-         {/*
-           Attachments preview disabled. Retained code for future use.
-         {attachments.length > 0 && (
-           <>
-             <Separator />
-             <Stack tokens={{ childrenGap: 6 }}>
-               <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-                 Attachments:
-               </Text>
-               <Stack tokens={{ childrenGap: 5 }}>
-                 {attachments.map((att: string) => (
-                   <Text key={att} variant="medium">
-                     - {att}
-                   </Text>
-                 ))}
-               </Stack>
-             </Stack>
-           </>
-         )}
-         */}
- 

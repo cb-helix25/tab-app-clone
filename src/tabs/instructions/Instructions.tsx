@@ -21,6 +21,7 @@ import { InstructionData, POID, TeamData } from "../../app/functionality/types";
 import localInstructionData from "../../localData/localInstructionData.json";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
+import EIDCheckPage from "./EIDCheckPage";
 
 interface InstructionsProps {
   userInitials: string;
@@ -39,6 +40,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+  const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
   /** Client type selection for the matter opening workflow */
   const [newMatterClientType, setNewMatterClientType] =
     useState<string>("Individual");
@@ -162,13 +164,15 @@ const Instructions: React.FC<InstructionsProps> = ({
       setSelectedInstruction(null);
     } else if (showRiskPage) {
       setShowRiskPage(false);
+    } else if (showEIDPage) {
+      setShowEIDPage(false);
     }
   };
 
   useEffect(() => {
     setContent(
       <>
-        {showNewMatterPage || showRiskPage ? (
+        {showNewMatterPage || showRiskPage || showEIDPage ? (
           <div className={detailNavStyle(isDarkMode)}>
             <IconButton
               iconProps={{ iconName: "ChevronLeft" }}
@@ -208,7 +212,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                   title="EID Check"
                   icon="IdCheck"
                   isDarkMode={isDarkMode}
-                  onClick={() => { }}
+                  onClick={() => {
+                    setSelectedInstruction(null);
+                    setShowEIDPage(true);
+                  }}
                   style={{ "--card-index": 1 } as React.CSSProperties}
                 />
                 <QuickActionsCard
@@ -252,6 +259,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     activePivot,
     showNewMatterPage,
     showRiskPage,
+    showEIDPage,
     newMatterClientType,
   ]);
 
@@ -572,7 +580,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   };
 
   const handleEIDCheck = (inst: any) => {
-    console.log("EID check for", inst.InstructionRef);
+    setSelectedInstruction(inst);
+    setShowEIDPage(true);
   };
 
   const handleOpenInstruction = (ref: string) => {
@@ -625,6 +634,14 @@ const Instructions: React.FC<InstructionsProps> = ({
             throw new Error("Function not implemented.");
           }}
         />
+      </Stack>
+    );
+  }
+
+  if (showEIDPage) {
+    return (
+      <Stack tokens={dashboardTokens} className={containerStyle}>
+        <EIDCheckPage poidData={idVerificationOptions} onBack={handleBack} />
       </Stack>
     );
   }

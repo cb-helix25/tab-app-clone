@@ -3117,6 +3117,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           serviceDescription={serviceDescription}
           clients={dealClients}
           to={to}
+          cc={cc}
+          bcc={bcc}
           autoInsertedBlocks={autoInsertedBlocks}
           editedBlocks={editedBlocks}
           amount={amount}

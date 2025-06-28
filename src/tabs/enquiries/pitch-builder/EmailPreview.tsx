@@ -66,6 +66,8 @@ interface EmailPreviewProps {
   serviceDescription?: string;
   clients?: { firstName: string; lastName: string; email: string }[];
   to: string;
+  cc?: string;
+  bcc?: string;
   autoInsertedBlocks: { [key: string]: boolean };
   editedBlocks: { [key: string]: boolean };
   sendEmail: () => void;
@@ -90,6 +92,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   serviceDescription,
   clients,
   to,
+  cc,
+  bcc,
   autoInsertedBlocks,
   editedBlocks,
   sendEmail,
@@ -172,24 +176,49 @@ function formatCurrency(val?: string): string {
           flexDirection: 'column',
           height: '100%',
         },
+        commands: { display: 'none' },
       }}
     >
       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
         {/* Header with close button */}
-        <Stack
-          horizontal
-          verticalAlign="center"
-          styles={{ root: { justifyContent: 'space-between' } }}
-        >
-          <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-            You're sending an email to {fullName || 'N/A'}
-          </Text>
-          <IconButton
-            iconProps={{ iconName: 'Cancel' }}
-            ariaLabel="Close preview"
-            onClick={onDismiss}
-          />
+        <Stack tokens={{ childrenGap: 4 }}>
+          <Stack
+            horizontal
+            verticalAlign="center"
+            styles={{ root: { justifyContent: 'space-between' } }}
+          >
+            <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+              You're sending an email to {fullName || 'N/A'}
+            </Text>
+            <IconButton
+              iconProps={{ iconName: 'Cancel' }}
+              ariaLabel="Close preview"
+              onClick={onDismiss}
+            />
+          </Stack>
+          <Stack tokens={{ childrenGap: 2 }}>
+            <Text variant="medium">{to}</Text>
+            {cc && (
+              <Text variant="small" styles={{ root: { color: colours.greyText } }}>
+                CC: {cc}
+              </Text>
+            )}
+            {bcc && (
+              <Text variant="small" styles={{ root: { color: colours.greyText } }}>
+                BCC: {bcc}
+              </Text>
+            )}
+          </Stack>
         </Stack>
+
+        <MessageBar
+          messageBarType={MessageBarType.warning}
+          isMultiline={false}
+          styles={{ root: { borderRadius: 0 } }}
+        >
+          You're requesting {formatCurrency(amount)} on account for{' '}
+          {serviceDescription || 'N/A'}.
+        </MessageBar>
 
         {/* Combined summary section */}
         <Stack
@@ -201,9 +230,6 @@ function formatCurrency(val?: string): string {
           </Text>
           <Stack tokens={{ childrenGap: 8 }}>
             <Stack tokens={{ childrenGap: 4 }}>
-              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-                Deal Details
-              </Text>
               <Text variant="medium">
                 <strong>Service:</strong> {serviceDescription || 'N/A'}
               </Text>
@@ -223,14 +249,6 @@ function formatCurrency(val?: string): string {
                 </Stack>
               )}
             </Stack>
-            <Stack tokens={{ childrenGap: 4 }}>
-              <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-                Subject
-              </Text>
-              <Text variant="medium" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
-                {subject || 'N/A'}
-              </Text>
-            </Stack>
           </Stack>
         </Stack>
 
@@ -246,6 +264,9 @@ function formatCurrency(val?: string): string {
           </MessageBar>
         )}
         <Separator />
+        <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
+          {subject || 'N/A'}
+        </Text>
 
         {/* Body */}
         <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
