@@ -34,7 +34,7 @@
     width: 100%;
     border: 1px solid var(--helix-cta);
     border-radius: 0 !important;
-    overflow: hidden;
+  overflow: visible;
     height: 40px;
 }
 
@@ -50,19 +50,13 @@
 }
 
 .team-select {
-    width: 100%;
-    height: 100%;
+    appearance: menulist;
+    -webkit-appearance: menulist;
+    background: white;
     border: none;
-    background: transparent;
-    text-align: center;
-    appearance: none;
-    -webkit-appearance: none;
-    cursor: pointer;
-    color: #061733 !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    padding: 8px 4px;
-}
+    /* container already has border */
+    padding: 0 1rem;
+    /* give room for arrow */ }
 
 .team-select:focus {
     outline: none;
@@ -152,9 +146,9 @@
     padding: 0.25rem 0.5rem;
     font-weight: 600;
     color: var(--helix-dark-blue);
-    margin-bottom: -1px;
-    /* overlap with bar */
-}
+    /* remove this: margin-bottom: -1px; */
+    margin-bottom: 0.5rem;
+    /* ← add positive spacing */ }
 
 .opponent-section {
     border: 1px solid var(--helix-grey);

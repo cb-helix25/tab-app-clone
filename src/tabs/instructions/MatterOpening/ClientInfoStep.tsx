@@ -115,7 +115,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             </Stack>
             <div className={separatorStyle} />
             <Stack>
-            <div className="question-banner">Have funds on account been received?</div>
+                <div className="question-banner">Have funds on account been received?</div>
                 <div className="have-funds-bar">
                     {['Yes', 'No', 'Not Required'].map((option) => (
                         <div
