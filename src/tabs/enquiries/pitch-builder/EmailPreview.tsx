@@ -20,7 +20,7 @@ import {
   sharedDraftConfirmedButtonStyles,
 } from '../../../app/styles/ButtonStyles';
 import { componentTokens } from '../../../app/styles/componentTokens';
-import greyHelix from '../../../assets/grey helix mark.png';
+import markWhite from '../../../assets/markwhite.svg';
 import {
   removeHighlightSpans,
   markUnfilledPlaceholders,
@@ -173,14 +173,21 @@ function formatCurrency(val?: string): string {
   const panelStyles = {
     padding: '12px',
     backgroundColor: colours.light.previewBackground,
-    backgroundImage: `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url(${greyHelix})`,
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'center 80px',
-    backgroundSize: '70%',
     color: colours.light.text,
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+  } as const;
+
+  const bodyStyles = {
+    whiteSpace: 'pre-wrap',
+    maxHeight: '60vh',
+    overflowY: 'auto',
+    backgroundImage: `url(${markWhite})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 20px top 0',
+    backgroundSize: '180px',
+    backgroundColor: colours.light.previewBackground,
   } as const;
 
   return (
@@ -244,7 +251,7 @@ function formatCurrency(val?: string): string {
         <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
           <div
             ref={previewRef}
-            style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}
+            style={bodyStyles}
             dangerouslySetInnerHTML={{ __html: finalBody }}
           />
         </Stack>

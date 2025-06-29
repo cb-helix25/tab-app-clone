@@ -1,114 +1,58 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 96cfa80de297671373ef38688395aa4482fef2ce..e8cce4b3cc8231e7c7f1bc705cfc0ab5b5e176b4 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -1,48 +1,48 @@
- import React from 'react';
- import {
-   Stack,
-   Text,
-   MessageBar,
-   MessageBarType,
-   Separator,
-   Panel,
-   PanelType,
-   PrimaryButton,
-   DefaultButton,
-   Checkbox,
-   IconButton,
-   mergeStyles,
- } from '@fluentui/react';
- import { colours } from '../../../app/styles/colours';
- import {
-   sharedPrimaryButtonStyles,
-   sharedDefaultButtonStyles,
-   sharedDraftConfirmedButtonStyles,
- } from '../../../app/styles/ButtonStyles';
- import { componentTokens } from '../../../app/styles/componentTokens';
--import greyHelix from '../../../assets/grey helix mark.png';
-+import markWhite from '../../../assets/markwhite.svg';
- import {
-   removeHighlightSpans,
-   markUnfilledPlaceholders,
-   removeUnfilledPlaceholders,
-   applyDynamicSubstitutions,
-   convertDoubleBreaksToParagraphs,
- } from './emailUtils';
- import ExperimentalAssistant from './ExperimentalAssistant';
- import { isInTeams } from '../../../app/functionality/isInTeams';
- import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+diff --git a/api/src/functions/getSnippetEdits.ts b/api/src/functions/getSnippetEdits.ts
+index e9dc54082183bfd08cebde55633e61b6b28e1f1a..fdafbc5e4951b94993ac2d6a64f7f0a3688f5a85 100644
+--- a/api/src/functions/getSnippetEdits.ts
++++ b/api/src/functions/getSnippetEdits.ts
+@@ -2,50 +2,53 @@ import {
+     app,
+     HttpRequest,
+     HttpResponseInit,
+     InvocationContext,
+ } from "@azure/functions";
+ import { DefaultAzureCredential } from "@azure/identity";
+ import { SecretClient } from "@azure/keyvault-secrets";
  
- function escapeRegExp(str: string): string {
-   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
- }
+ export async function getSnippetEditsHandler(
+     req: HttpRequest,
+     context: InvocationContext,
+ ): Promise<HttpResponseInit> {
+     context.log("--- Function getSnippetEdits invoked ---");
+     context.log(`HTTP Method: ${req.method}`);
  
- function removeAutoInsertedBlocks(
-   html: string,
-   autoBlocks: { [key: string]: boolean },
-   editedBlocks: { [key: string]: boolean }
- ): string {
-   let result = html;
-   Object.keys(autoBlocks).forEach((title) => {
-     if (!autoBlocks[title]) return;
-     if (editedBlocks[title]) return;
-     const escaped = escapeRegExp(title);
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 96cfa80de297671373ef38688395aa4482fef2ce..e8cce4b3cc8231e7c7f1bc705cfc0ab5b5e176b4 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -151,53 +151,53 @@ const previewRef = React.useRef<HTMLDivElement>(null);
-     '30_days': '30 days',
-   };
+     if (req.method !== "GET") {
+         return { status: 405, body: "Method not allowed" };
+     }
  
- function formatCurrency(val?: string): string {
-   if (!val) return 'N/A';
-   const num = parseFloat(val.replace(/,/g, ''));
-   if (isNaN(num)) return val;
-   return num.toLocaleString('en-GB', {
-     style: 'currency',
-     currency: 'GBP',
-     minimumFractionDigits: 2,
-   });
- }
+     const baseUrl =
+         process.env.SNIPPET_EDITS_BASE_URL ||
+         "https://instructions-vnet-functions.azurewebsites.net/api/fetchSnippetEdits";
+     context.log(`Using base URL: ${baseUrl}`);
  
-   const subjectBannerClass = mergeStyles('subject-banner', {
-     background: componentTokens.infoBanner.background,
-     borderLeft: componentTokens.infoBanner.borderLeft,
-     padding: componentTokens.infoBanner.padding,
-     fontSize: '0.875rem',
-     fontWeight: 600,
-   });
+     let code = process.env.SNIPPET_EDITS_CODE;
++    if (code) {
++        context.log('Using snippet edits code from environment variable');
++    }
+     if (!code) {
+         const secretName =
+             process.env.SNIPPET_EDITS_CODE_SECRET || "fetchSnippetEdits-code";
+         context.log(
+             `Retrieving snippet edits function code from Key Vault secret: ${secretName}`,
+         );
+         const vaultUrl =
+             process.env.KEY_VAULT_URL || "https://helix-keys.vault.azure.net/";
+         const secretClient = new SecretClient(
+             vaultUrl,
+             new DefaultAzureCredential(),
+         );
+         try {
+             const secret = await secretClient.getSecret(secretName);
+             code = secret.value;
+             context.log("Successfully retrieved snippet edits code from Key Vault.");
+         } catch (err) {
+             context.error("Failed to retrieve snippet edits code", err);
+             return { status: 500, body: "Unable to retrieve snippet edits code" };
+         }
+     }
  
-   const panelStyles = {
-     padding: '12px',
-     backgroundColor: colours.light.previewBackground,
--    backgroundImage: `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url(${greyHelix})`,
-+    backgroundImage: `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url(${markWhite})`,
-     backgroundRepeat: 'no-repeat',
--    backgroundPosition: 'center 80px',
-+    backgroundPosition: 'calc(100% - 40px) 30px',
-     backgroundSize: '70%',
-     color: colours.light.text,
-     display: 'flex',
-     flexDirection: 'column',
-     height: '100%',
-   } as const;
+     const url = `${baseUrl}?code=${code}`;
+     context.log(`Calling snippet edits service at: ${url}`);
  
-   return (
-     <Panel
-       isOpen={isPreviewOpen}
-       onDismiss={onDismiss}
-       type={PanelType.custom}
-       customWidth="600px"
-       hasCloseButton={false}
-       styles={{
-         main: panelStyles,
-         commands: { display: 'none' },
-       }}
-     >
-       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
-         {/* Header with close button */}
-         <Stack tokens={{ childrenGap: 4 }}>
-           <Stack
-             horizontal
-             verticalAlign="center"
