@@ -1,4 +1,5 @@
-const { app } = require("@azure/functions");
+// Use the same v3 programming model as other functions
+// rather than the newer "app" style to avoid runtime errors
 const { DefaultAzureCredential } = require("@azure/identity");
 const { SecretClient } = require("@azure/keyvault-secrets");
 
@@ -28,19 +29,17 @@ async function actionSnippetHandler(req, context) {
 
     if (req.method !== "POST") {
         return { status: 405, body: "Method not allowed" };
-      }
+    }
 
-    let body;
-    try {
-        body = await req.json();
-    } catch {
+    const body = req.body;
+    if (!body) {
         return { status: 400, body: "Invalid JSON" };
-      }
+    }
 
     const { action, payload } = body || {};
     if (!action) {
         return { status: 400, body: "Missing action" };
-      }
+    }
 
     await ensureDbPassword();
     const pool = await getSqlPool();
@@ -71,8 +70,8 @@ async function actionSnippetHandler(req, context) {
                 .input("IsNew", sql.Bit, payload.isNew ? 1 : 0)
                 .input("ProposedBy", sql.NVarChar(50), payload.proposedBy)
                 .query(q);
-            return { status: 200, body: JSON.stringify({ ok: true }) };    
-    }
+            return { status: 200, body: JSON.stringify({ ok: true }) };
+        }
 
         case "approveSnippetEdit": {
             const { editId, approvedBy, reviewNotes } = payload;
@@ -104,7 +103,7 @@ async function actionSnippetHandler(req, context) {
                 .input("BlockId", sql.Int, edit.ProposedBlockId)
                 .input("SnippetId", sql.Int, edit.SnippetId)
                 .input("ApprovedBy", sql.NVarChar(50), approvedBy)
-                .query(update);  
+                .query(update);
 
             await pool
                 .request()
@@ -121,10 +120,7 @@ async function actionSnippetHandler(req, context) {
     }
 }
 
-app.http("actionSnippet", {
-    methods: ["POST"],
-    authLevel: "function",
-    handler: actionSnippetHandler,
-});
-
-module.exports = app;
+module.exports = async function (context, req) {
+    const result = await actionSnippetHandler(req, context);
+    context.res = result;
+};
