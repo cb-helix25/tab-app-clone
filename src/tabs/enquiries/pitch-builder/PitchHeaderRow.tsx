@@ -75,13 +75,13 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 12,
-    gap: 6,
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+    padding: 10,
+    gap: 4,
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
     borderRadius: 8,
     backgroundColor: isDarkMode
-      ? colours.dark.sectionBackground
-      : '#fafafa',
+      ? colours.dark.cardBackground
+      : '#ffffff',
   };
 
   const enquiryNotesContainer = mergeStyles(sectionStyle);
@@ -199,8 +199,9 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const headerRowStyle = mergeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: 16,
+    gap: 12,
     width: '100%',
+    marginBottom: 12,
   });
 
   const dealSideContainerStyle = (saved: boolean) =>
@@ -212,7 +213,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     });
 
   return (
-    <Stack tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
+    <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
       <div className={headerRowStyle}>
         {/* Enquiry Details */}
         <div className={enquiryNotesContainer}>

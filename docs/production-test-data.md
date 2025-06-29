@@ -2,6 +2,15 @@
 
 This script populates the core tables used by the Instructions dashboard with deterministic values.  
 Run the SQL found in `infra/sql/insert_production_test_data.sql` on a clean database to seed deals, instructions, joint clients, documents and ID verification records.
+Before executing the script on an existing database, delete any old rows or truncate the tables to avoid conflicts.
+
+```sql
+TRUNCATE TABLE dbo.Deals;
+TRUNCATE TABLE dbo.Instructions;
+TRUNCATE TABLE dbo.Documents;
+TRUNCATE TABLE dbo.IDVerifications;
+```
+
 
 The dataset mirrors the sample JSON shipped with the project so the front end displays complete information for each stage:
 

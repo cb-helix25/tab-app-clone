@@ -240,11 +240,11 @@ const addingClientRef = useRef(false);
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 12,
-    gap: 6,
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+    padding: 10,
+    gap: 4,
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
     borderRadius: 8,
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#fafafa',
+    backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
   };
 
   const labelStyle = mergeStyles({

@@ -1,4 +1,5 @@
 -- Insert data for Deals table
+DELETE FROM dbo.Deals;
 INSERT INTO dbo.Deals
     (DealId, InstructionRef, ProspectId, Passcode, ServiceDescription, Amount, AreaOfWork, PitchedBy, PitchedDate, PitchedTime, PitchValidUntil, Status, IsMultiClient, LeadClientId, LeadClientEmail, CloseDate, CloseTime)
 VALUES
@@ -7,6 +8,7 @@ VALUES
     (12, NULL, 22338, '00000', 'test item', 1.00, 'commercial', 'LZ', '2025-06-20T00:00:00', '13:50:07', '2025-07-04T00:00:00', 'pitched', 1, 22338, 'lz@helix-law.com', NULL, NULL);
 
 -- Insert data for DealJointClients table
+DELETE FROM dbo.DealJointClients;
 INSERT INTO dbo.DealJointClients
     (DealJointClientId, DealId, ClientEmail, HasSubmitted, SubmissionDateTime)
 VALUES
@@ -14,6 +16,7 @@ VALUES
     (31, 7, '002@helix-law.com', 0, NULL);
 
 -- Insert data for Instructions table
+DELETE FROM dbo.Instructions;
 INSERT INTO dbo.Instructions
     (
     InstructionRef, Stage, ClientType, HelixContact, ConsentGiven, InternalStatus, SubmissionDate, SubmissionTime, LastUpdated, ClientId, RelatedClientId, MatterId, Title, FirstName, LastName, Nationality, NationalityAlpha2, DOB, Gender, Phone, Email, PassportNumber, DriversLicenseNumber, IdType, HouseNumber, Street, City, County, Postcode, Country, CountryCode, CompanyName, CompanyNumber, CompanyHouseNumber, CompanyStreet, CompanyCity, CompanyCounty, CompanyPostcode, CompanyCountry, CompanyCountryCode, Notes, PaymentMethod, PaymentResult, PaymentAmount, PaymentProduct, AliasId, OrderId, SHASign, PaymentTimestamp)
@@ -36,6 +39,7 @@ VALUES
     ('HLX-22338-9131', 'initialised', NULL, NULL, 0, 'pitch', '2025-06-25T00:00:00', '20:42:27.6928016', '2025-06-25T20:42:27.6932099', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1.00, 'test item', NULL, NULL, NULL, NULL);
 
 -- Insert data for Documents table
+DELETE FROM dbo.Documents;
 INSERT INTO dbo.Documents
     (DocumentId, InstructionRef, DocumentType, FileName, BlobUrl, FileSizeBytes, UploadedBy, UploadedAt, Notes)
 VALUES
@@ -44,6 +48,7 @@ VALUES
     (23, 'HLX-22338-4581', NULL, 'helix background blue.jpg', 'https://instructionfiles.blob.core.windows.net/instruction-files/22338/HLX-22338-4581/helix%20background%20blue.jpg', NULL, NULL, '2025-06-20T14:29:34.189018', NULL);
 
 -- Insert data for IDVerifications table
+DELETE FROM dbo.IDVerifications;
 INSERT INTO dbo.IDVerifications
     (InternalId, InstructionRef, MatterId, DealJointClientId, ClientId, ProspectId, ClientEmail, IsLeadClient, AdditionalIDDate, AdditionalIDTime, EIDCheckId, EIDProvider, EIDStatus, EIDScore, EIDRawResponse, EIDCheckedDate, EIDCheckedTime, CheckExpiry, EIDOverallResult, PEPAndSanctionsCheckResult, AddressVerificationResult)
 VALUES
