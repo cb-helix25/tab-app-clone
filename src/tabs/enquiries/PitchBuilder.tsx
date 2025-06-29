@@ -775,7 +775,45 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [savedSnippets, setSavedSnippets] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    handleTemplateSetChange('Database');
+    const saved = sessionStorage.getItem('pitchBuilderState');
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (state.templateSet) {
+          setTemplateSet(state.templateSet);
+        } else {
+          handleTemplateSetChange('Database');
+        }
+        if (state.serviceDescription) setServiceDescription(state.serviceDescription);
+        if (state.selectedOption) setSelectedOption(state.selectedOption);
+        if (state.amount) setAmount(state.amount);
+        if (state.subject) setSubject(state.subject);
+        if (state.to) setTo(state.to);
+        if (state.cc) setCc(state.cc);
+        if (state.bcc) setBcc(state.bcc);
+        if (state.attachments) setAttachments(state.attachments);
+        if (state.followUp) setFollowUp(state.followUp);
+        if (state.activeTab) setActiveTab(state.activeTab);
+        if (state.selectedTemplateOptions) setSelectedTemplateOptions(state.selectedTemplateOptions);
+        if (state.insertedBlocks) setInsertedBlocks(state.insertedBlocks);
+        if (state.autoInsertedBlocks) setAutoInsertedBlocks(state.autoInsertedBlocks);
+        if (state.lockedBlocks) setLockedBlocks(state.lockedBlocks);
+        if (state.pinnedBlocks) setPinnedBlocks(state.pinnedBlocks);
+        if (state.editedBlocks) setEditedBlocks(state.editedBlocks);
+        if (state.editedSnippets) setEditedSnippets(state.editedSnippets);
+        if (state.originalBlockContent) setOriginalBlockContent(state.originalBlockContent);
+        if (state.originalSnippetContent) setOriginalSnippetContent(state.originalSnippetContent);
+        if (state.hiddenBlocks) setHiddenBlocks(state.hiddenBlocks);
+        if (state.blocks) setBlocks(state.blocks);
+        if (state.savedSnippets) setSavedSnippets(state.savedSnippets);
+        if (state.body) setBody(state.body);
+      } catch (e) {
+        console.error('Failed to parse saved pitch builder state', e);
+        handleTemplateSetChange('Database');
+      }
+    } else {
+      handleTemplateSetChange('Database');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2881,6 +2919,63 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   const filteredAttachments = getFilteredAttachments();
+
+  useEffect(() => {
+    return () => {
+      const state = {
+        templateSet,
+        serviceDescription,
+        selectedOption,
+        amount,
+        subject,
+        to,
+        cc,
+        bcc,
+        body,
+        attachments,
+        followUp,
+        activeTab,
+        selectedTemplateOptions,
+        insertedBlocks,
+        autoInsertedBlocks,
+        lockedBlocks,
+        pinnedBlocks,
+        editedBlocks,
+        editedSnippets,
+        originalBlockContent,
+        originalSnippetContent,
+        hiddenBlocks,
+        blocks,
+        savedSnippets,
+      };
+      sessionStorage.setItem('pitchBuilderState', JSON.stringify(state));
+    };
+  }, [
+    templateSet,
+    serviceDescription,
+    selectedOption,
+    amount,
+    subject,
+    to,
+    cc,
+    bcc,
+    body,
+    attachments,
+    followUp,
+    activeTab,
+    selectedTemplateOptions,
+    insertedBlocks,
+    autoInsertedBlocks,
+    lockedBlocks,
+    pinnedBlocks,
+    editedBlocks,
+    editedSnippets,
+    originalBlockContent,
+    originalSnippetContent,
+    hiddenBlocks,
+    blocks,
+    savedSnippets,
+  ]);
 
   return (
     <Stack className={containerStyle}>

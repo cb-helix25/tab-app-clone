@@ -37,6 +37,13 @@ const customTheme = createTheme({
 const inTeams = isInTeams();
 const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
+// Clear persisted pitch builder state when the page is refreshed or closed
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    sessionStorage.removeItem('pitchBuilderState');
+  });
+}
+
 // Simple localStorage caching with a 15 minute TTL
 const CACHE_TTL = 15 * 60 * 1000;
 

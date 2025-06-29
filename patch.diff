@@ -1,143 +1,49 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 88c248985674cd0b009bb9c76c1445461315c473..ff6404545548a2eeb190a37efd64b437523c7f92 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -68,51 +68,50 @@ interface EmailPreviewProps {
-   to: string;
-   cc?: string;
-   bcc?: string;
-   autoInsertedBlocks: { [key: string]: boolean };
-   editedBlocks: { [key: string]: boolean };
-   sendEmail: () => void;
-   handleDraftEmail: () => void;
-   isSuccessVisible: boolean;
-   isDraftConfirmed: boolean;
-   amount?: string;
-   passcode?: string;
+diff --git a/src/app/styles/MultiSelect.css b/src/app/styles/MultiSelect.css
+index 132d970cff4375e6a37fb98e84e520892b55fced..9e4bfa1e61456050f0da767d02dd266d76f3ef16 100644
+--- a/src/app/styles/MultiSelect.css
++++ b/src/app/styles/MultiSelect.css
+@@ -122,26 +122,43 @@
+     text-align: center;
+     cursor: pointer;
+     color: #061733 !important;
+     border-radius: 0 !important;
+     border: none;
+     background: transparent;
+     font-size: 16px !important;
+     font-weight: 600 !important;
+     display: flex;
+     align-items: center;
+     justify-content: center;
  }
  
- const EmailPreview: React.FC<EmailPreviewProps> = ({
-   isPreviewOpen,
-   onDismiss,
-   enquiry,
-   subject,
-   body,
-   templateBlocks,
-   attachments,
-   followUp,
-   fullName,
-   userData,
-   serviceDescription,
--  clients,
-   to,
-   cc,
-   bcc,
-   autoInsertedBlocks,
-   editedBlocks,
-   sendEmail,
-   handleDraftEmail,
-   isSuccessVisible,
-   isDraftConfirmed,
-   amount,
-   passcode,
- }) => {
-   // Strip blocks auto inserted by the system unless edited
-   const withoutAutoBlocks = removeAutoInsertedBlocks(
-     body,
-     autoInsertedBlocks,
-     editedBlocks
-   );
-   
-   // Process body HTML using imported functions
-   const sanitized = removeHighlightSpans(withoutAutoBlocks);
-   const substituted = applyDynamicSubstitutions(
-     sanitized,
-     userData,
-     enquiry,
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 88c248985674cd0b009bb9c76c1445461315c473..ff6404545548a2eeb190a37efd64b437523c7f92 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -198,81 +197,51 @@ function formatCurrency(val?: string): string {
-           </Stack>
-           <Stack tokens={{ childrenGap: 2 }}>
-             <Text variant="medium">{to}</Text>
-             {cc && (
-               <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                 CC: {cc}
-               </Text>
-             )}
-             {bcc && (
-               <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                 BCC: {bcc}
-               </Text>
-             )}
-           </Stack>
-         </Stack>
+ .partner-segment select:not(:last-child),
+ .partner-segment button:not(:last-child) {
+     border-right: 1px solid var(--helix-cta);
+ }
  
-         <MessageBar
-           messageBarType={MessageBarType.warning}
-           isMultiline={false}
-           styles={{ root: { borderRadius: 0 } }}
-         >
-           You're requesting {formatCurrency(amount)} on account for{' '}
-           {serviceDescription || 'N/A'}.
-         </MessageBar>
- 
--        {/* Combined summary section */}
--        <Stack
--          tokens={{ childrenGap: 8 }}
--          styles={{ root: { backgroundColor: colours.grey, padding: 8, borderRadius: 4 } }}
--        >
--          <Text variant="medium" styles={{ root: { color: colours.greyText } }}>
--            {enquiry.Point_of_Contact || 'N/A'}
--          </Text>
--          <Stack tokens={{ childrenGap: 8 }}>
--            <Stack tokens={{ childrenGap: 4 }}>
--              <Text variant="medium">
--                <strong>Service:</strong> {serviceDescription || 'N/A'}
--              </Text>
--              <Text variant="medium">
--                <strong>Amount:</strong> {formatCurrency(amount)}
--              </Text>
--              {clients && clients.length > 0 && (
--                <Stack tokens={{ childrenGap: 2 }}>
--                  <Text variant="medium" styles={{ root: { marginTop: 6 } }}>
--                    <strong>Clients Requiring ID:</strong>
--                  </Text>
--                  {clients.map((c, idx) => (
--                    <Text key={idx} variant="medium" styles={{ root: { marginLeft: 12 } }}>
--                      {c.firstName} {c.lastName} - {c.email}
--                    </Text>
--                  ))}
--                </Stack>
--              )}
--            </Stack>
--          </Stack>
--        </Stack>
-+        {/* Removed duplicate summary section */}
- 
-         {isSuccessVisible && (
-           <MessageBar
-             messageBarType={MessageBarType.success}
-             isMultiline={false}
-             onDismiss={() => {}}
-             dismissButtonAriaLabel="Close"
-             styles={{ root: { borderRadius: 0, marginTop: '10px' } }}
-           >
-             Email drafted successfully!
-           </MessageBar>
-         )}
-         <Separator />
-         <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-           {subject || 'N/A'}
-         </Text>
- 
-         {/* Body */}
-         <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
-           <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight, marginBottom: 5 } }}>
-             Body:
-           </Text>
-           <div
-             ref={previewRef}
-             style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}
+ .partner-segment select:hover,
+ .partner-segment button:hover,
+ .partner-segment select:focus,
+ .partner-segment button:focus {
+     background-color: var(--helix-cta) !important;
+     color: #fff !important;
+     outline: none;
+-}
++}.question-banner {
++    background: linear-gradient(to right, #ffffff, var(--helix-grey));
++    border-left: 3px solid var(--helix-cta);
++    padding: 0.25rem 0.5rem;
++    font-weight: 600;
++    color: var(--helix-dark-blue);
++    margin-bottom: -1px; /* overlap with bar */
++}
++
++.opponent-section {
++    border: 1px solid var(--helix-grey);
++    background: #fff;
++    padding: 0.5rem;
++    border-radius: 4px;
++    display: flex;
++    flex-direction: column;
++    gap: 0.5rem;
++}

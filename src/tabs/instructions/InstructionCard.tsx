@@ -78,7 +78,9 @@ interface InstructionCardProps {
     deals?: DealInfo[];
     clients?: ClientInfo[];
     prospectId?: number;
-    risk?: { RiskAssessmentResult?: string; RiskScore?: number } | null;
+    risk?: {
+        MatterId: string; RiskAssessmentResult?: string; RiskScore?: number 
+} | null;
     eid?: { EIDStatus?: string } | null;
     compliance?: any | null;
     documentCount?: number;
@@ -186,7 +188,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const idStatus = verifyIdStatus === 'complete' ? 'verified'
         : verifyIdStatus === 'review' ? 'review'
             : 'pending';
-    const riskAssessed = Boolean(risk?.RiskAssessmentResult);
+    const riskAssessed = Boolean(
+        risk &&
+        risk.MatterId === instruction.InstructionRef &&
+        risk.RiskAssessmentResult
+    );
     const openMatterReady = paymentComplete && riskAssessed && verifyIdStatus === 'complete';
     // Allow opening a new matter directly from the card even if some
     // prerequisite checks are outstanding. The navigator already shows
