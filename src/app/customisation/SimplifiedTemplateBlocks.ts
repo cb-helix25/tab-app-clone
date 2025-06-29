@@ -76,7 +76,7 @@ export const templateBlocks: TemplateBlock[] = [
       { label: 'Required Documents', previewText: 'The contract; Any relevant correspondence; Settlement Agreement; Shareholders\' Agreement; Financial Statements; Invoices or Asset Information' },
       {
         label: 'Instruct Helix Law - Pitch',
-        previewText: `Please confirm your instructions by clicking <b style='background-color:#FFF4CC;padding:2px 4px;'>INSTRUCT <a href="[InstructLink]" target="_blank" style='color:#D65541;text-decoration:none;font-weight:bold;'>HELIX LAW</a></b>. This single link will verify your identity, request the key documents and take funds on account in a quick and transparent checkout process: [CheckoutLink]. Once complete we'll open a file immediately and send you our Client Care Letter setting out the terms of our retainer. If you have any queries I'm very happy to discuss them without charge.`,
+        previewText: `Please confirm your instructions by clicking <a href="[InstructLink]" target="_blank" class="insert-placeholder" data-insert>INSTRUCT HELIX LAW</a>. This single link will verify your identity, request the key documents and take funds on account in a quick and transparent checkout process: [CheckoutLink]. Once complete we'll open a file immediately and send you our Client Care Letter setting out the terms of our retainer. If you have any queries I'm very happy to discuss them without charge.`,
       },
       { label: 'Meeting Link', previewText: `You are welcome to schedule a meeting using the link below:\n\nhttps://calendly.com/helixlaw-fe` },
     ],

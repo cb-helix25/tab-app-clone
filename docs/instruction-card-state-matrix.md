@@ -1,6 +1,6 @@
 # Instruction Card State Matrix
 
-This table summarises how the dashboard renders each instruction card depending on deal and ID status. It reflects the latest UI rules.
+This table summarises how the dashboard renders each instruction card depending on deal and ID status. Each scenario occupies a single row so the overview shows one clear example of each state.
 
 | Scenario | Deal | ID | Pay | Docs | Notes |
 |---------|------|----|-----|------|-------|

@@ -1,119 +1,129 @@
 diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
 --- a/src/tabs/instructions/Instructions.tsx
 +++ b/src/tabs/instructions/Instructions.tsx
-@@ -1,46 +1,48 @@
- import React, { useEffect, useState, useMemo, useRef } from "react";
- import {
-   Stack,
-   mergeStyles,
-   IconButton,
-   Pivot,
-   PivotItem,
-   Text,
- } from "@fluentui/react";
- import QuickActionsCard from "../home/QuickActionsCard";
- import { useTheme } from "../../app/functionality/ThemeContext";
- import { useNavigator } from "../../app/functionality/NavigatorContext";
- import { colours } from "../../app/styles/colours";
- import { dashboardTokens } from "./componentTokens";
- import InstructionCard from "./InstructionCard";
- import DealCard from "./DealCard";
- import RiskComplianceCard from "./RiskComplianceCard";
- import JointClientCard, { ClientInfo } from "./JointClientCard";
- import type { DealSummary } from "./JointClientCard";
- import { InstructionData, POID, TeamData } from "../../app/functionality/types";
- import localInstructionData from "../../localData/localInstructionData.json";
-+import localInstructionCards from "../../localData/localInstructionCards.json";
-+import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
- import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
- import RiskAssessmentPage from "./RiskAssessmentPage";
- import EIDCheckPage from "./EIDCheckPage";
+@@ -285,51 +285,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+     width: 32,
+     height: 32,
+     borderRadius: 0,
+     display: "flex",
+     alignItems: "center",
+     justifyContent: "center",
+     backgroundColor: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+     boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+     marginRight: 8,
+   });
  
- interface InstructionsProps {
-   userInitials: string;
-   poidData: POID[];
-   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
-   teamData?: TeamData[] | null;
- }
- const Instructions: React.FC<InstructionsProps> = ({
-   userInitials,
-   poidData,
-   setPoidData,
-   teamData,
- }) => {
-   const { isDarkMode } = useTheme();
-   const { setContent } = useNavigator();
-   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
-   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
-   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
-   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
-   /** Client type selection for the matter opening workflow */
-   const [newMatterClientType, setNewMatterClientType] =
-     useState<string>("Individual");
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -223,50 +225,53 @@ const Instructions: React.FC<InstructionsProps> = ({
-                   icon="Assessment"
-                   isDarkMode={isDarkMode}
-                   onClick={() => { }}
-                   style={{ "--card-index": 2 } as React.CSSProperties}
-                 />
-                 <QuickActionsCard
-                   title="Draft CCL"
-                   icon="OpenFile"
-                   isDarkMode={isDarkMode}
-                   onClick={() => setShowRiskPage(true)}
-                   style={{ "--card-index": 3 } as React.CSSProperties}
-                 />
-               </div>
-               <div className={pivotBarStyle(isDarkMode)}>
-                 <Pivot
-                   className="navigatorPivot"
-                   selectedKey={activePivot}
-                   onLinkClick={(item) => {
-                     setActivePivot(item?.props.itemKey || "overview");
-                 }}
-               >
-                 <PivotItem headerText="Overview" itemKey="overview" />
-                 <PivotItem headerText="Deals" itemKey="deals" />
-                 <PivotItem headerText="Clients" itemKey="clients" />
-                 <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-+                {useLocalData && (
-+                  <PivotItem headerText="Scenarios" itemKey="states" />
-+                )}
-               </Pivot>
-             </div>
-           </>
-         )}
-       </>,
-     );
-     return () => setContent(null);
-   }, [
-     setContent,
-     isDarkMode,
-     instructionData,
-     activePivot,
-     showNewMatterPage,
-     showRiskPage,
-     showEIDPage,
-     newMatterClientType,
-   ]);
+   const sectionContainerStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       padding: "16px",
+       borderRadius: 0,
+       boxShadow: dark
+         ? `0 4px 12px ${colours.dark.border}`
+         : `0 4px 12px ${colours.light.border}`,
+       width: "100%",
+     });
  
-   const containerStyle = mergeStyles({
-     backgroundColor: isDarkMode
-       ? colours.dark.background
-       : colours.light.background,
-     minHeight: "100vh",
-     boxSizing: "border-box",
-     color: isDarkMode ? colours.light.text : colours.dark.text,
+   const overviewItems = useMemo(() => {
+-    return instructionData.flatMap((prospect) => {
++    const items = instructionData.flatMap((prospect) => {
+       const instructionItems = (prospect.instructions ?? []).map((inst) => {
+         const dealsForInst = (prospect.deals ?? []).filter(
+           (d) => d.InstructionRef === inst.InstructionRef,
+         );
+         const clientsForInst: ClientInfo[] = [];
+         (prospect.jointClients ?? prospect.joinedClients ?? []).forEach(
+           (jc) => {
+             if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+               clientsForInst.push({
+                 ClientEmail: jc.ClientEmail,
+                 HasSubmitted: jc.HasSubmitted,
+                 Lead: false,
+                 deals: [
+                   {
+                     DealId: jc.DealId,
+                     InstructionRef: inst.InstructionRef,
+                     ServiceDescription: dealsForInst.find(
+                       (d) => d.DealId === jc.DealId,
+                     )?.ServiceDescription,
+                     Status: dealsForInst.find((d) => d.DealId === jc.DealId)
+                       ?.Status,
+                   },
+                 ],
+               });
+             }
 diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
 --- a/src/tabs/instructions/Instructions.tsx
 +++ b/src/tabs/instructions/Instructions.tsx
-@@ -546,50 +551,55 @@ const Instructions: React.FC<InstructionsProps> = ({
+@@ -361,50 +361,59 @@ const Instructions: React.FC<InstructionsProps> = ({
+           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
+           ...((inst as any).electronicIDChecks ??
+             (inst as any).idVerifications ??
+             []),
+         ];
+         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
+         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
+         const docs = prospect.documents?.filter(
+           (d) => d.InstructionRef === inst.InstructionRef,
+         );
+         return {
+           instruction: inst,
+           deal,
+           deals: dealsForInst,
+           clients: clientsForInst,
+           risk,
+           eid,
+           documents: docs,
+           prospectId: prospect.prospectId,
+           documentCount: docs ? docs.length : 0,
+         };
+       });
+ 
+       return instructionItems;
+     });
++
++    const unique: Record<string, typeof items[number]> = {};
++    items.forEach((item) => {
++      const ref = item.instruction?.InstructionRef as string | undefined;
++      if (ref && !unique[ref]) {
++        unique[ref] = item;
++      }
++    });
++    return Object.values(unique);
+   }, [instructionData]);
+ 
+   const unlinkedDeals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).filter((d) => !d.InstructionRef),
+       ),
+     [instructionData],
+   );
+ 
+   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+ 
+   const deals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).map((d) => ({
+           ...d,
+           firstName: p.instructions?.[0]?.FirstName,
+           jointClients: p.jointClients ?? p.joinedClients ?? [],
+         })),
+       ),
+     [instructionData],
+   );
+   const clients: ClientInfo[] = useMemo(() => {
+     const map: Record<string, ClientInfo> = {};
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -551,85 +560,100 @@ const Instructions: React.FC<InstructionsProps> = ({
              email: inst?.Email,
              passport_number: inst?.PassportNumber,
              drivers_license_number: inst?.DriversLicenseNumber,
@@ -139,11 +149,20 @@ index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57ae
      });
    }, [instructionData]);
  
-+  const instructionCardStates = useMemo(
-+    () => localInstructionCards as InstructionStateData[],
-+    []
-+  );
-+
+-  const instructionCardStates = useMemo(
+-    () => localInstructionCards as InstructionStateData[],
+-    []
+-  );
++  const instructionCardStates = useMemo(() => {
++    const map = new Map<string, InstructionStateData>();
++    (localInstructionCards as InstructionStateData[]).forEach((state) => {
++      if (!map.has(state.scenario)) {
++        map.set(state.scenario, state);
++      }
++    });
++    return Array.from(map.values());
++  }, []);
+ 
    const handleOpenMatter = (inst: any) => {
      setSelectedInstruction(inst);
      setNewMatterClientType(inst?.ClientType || "Individual");
@@ -169,12 +188,51 @@ index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57ae
      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
      gap: "16px",
      maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
+ 
++  const scenariosContainerStyle = mergeStyles({
++    display: "grid",
++    gridTemplateColumns: "1fr",
++    gap: "16px",
++    maxWidth: "600px",
++    width: "100%",
++    margin: "0 auto",
++    boxSizing: "border-box",
++  });
++
+   const overviewColumnStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "repeat(2, 1fr)",
+     gap: "24px",
+     maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
+ 
+   if (showNewMatterPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+         <FlatMatterOpening
+           poidData={idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
+           userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
 diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
 --- a/src/tabs/instructions/Instructions.tsx
 +++ b/src/tabs/instructions/Instructions.tsx
-@@ -751,32 +761,39 @@ const Instructions: React.FC<InstructionsProps> = ({
-               >
+@@ -762,38 +786,38 @@ const Instructions: React.FC<InstructionsProps> = ({
                  Risk &amp; Compliance
                </Text>
                <div className={gridContainerStyle}>
@@ -199,13 +257,14 @@ index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57ae
                </div>
              </>
            )}
-+          {activePivot === "states" && (
-+            <div className={gridContainerStyle}>
-+              {instructionCardStates.map((state, idx) => (
-+                <InstructionStateCard key={idx} data={state} />
-+              ))}
-+            </div>
-+          )}
+           {activePivot === "states" && (
+-            <div className={gridContainerStyle}>
++            <div className={scenariosContainerStyle}>
+               {instructionCardStates.map((state, idx) => (
+                 <InstructionStateCard key={idx} data={state} />
+               ))}
+             </div>
+           )}
          </div>
        </Stack>
      </section>

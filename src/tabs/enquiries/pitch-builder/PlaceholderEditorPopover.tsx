@@ -36,12 +36,11 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
             target={target}
             onDismiss={onDismiss}
             setInitialFocus
-            directionalHint={DirectionalHint.bottomLeftEdge}
+            directionalHint={DirectionalHint.bottomCenter}
             isBeakVisible={false}
-            gapSpace={12}
-            styles={{ root: { width: 700 } }}
+            gapSpace={4}
         >
-            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: '16px 20px' } }}>
+            <Stack tokens={{ childrenGap: 8 }} styles={{ root: { padding: '8px 12px' } }}>
                 <span className="placeholder-context">{before}</span>
                 <TextField
                     value={value}
@@ -52,14 +51,14 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
                     styles={{
                         fieldGroup: {
                             border: '1px solid #ccc',
-                            borderRadius: 0,
+                            borderRadius: 4,
                             backgroundColor: '#ffffff',
                         },
                         field: {
-                            fontSize: 16,
-                            padding: '12px 16px',
+                            fontSize: 14,
+                            padding: '8px 10px',
                             fontWeight: 400,
-                            borderRadius: 0,
+                            borderRadius: 4,
                             boxShadow: 'none',
                         },
                     }}
@@ -70,10 +69,10 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
                         text="Save"
                         styles={{
                             root: {
-                                padding: '12px 28px',
-                                fontSize: 14,
+                                padding: '6px 16px',
+                                fontSize: 13,
                                 fontWeight: 600,
-                                borderRadius: 0,
+                                borderRadius: 4,
                             },
                             label: { textTransform: 'none' },
                         }}
@@ -84,13 +83,7 @@ const PlaceholderEditorPopover: React.FC<PlaceholderEditorPopoverProps> = ({
         </Callout>
     );
 
-    return ReactDOM.createPortal(
-        <>
-            <div className="placeholder-editor-overlay" onClick={onDismiss} />
-            {callout}
-        </>,
-        document.body
-    );
+    return ReactDOM.createPortal(callout, document.body);
 };
 
 export default PlaceholderEditorPopover;

@@ -214,27 +214,15 @@ function formatCurrency(val?: string): string {
           </Stack>
           <Stack tokens={{ childrenGap: 2 }}>
             <Text variant="medium">{to}</Text>
-            {cc && (
-              <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                CC: {cc}
-              </Text>
-            )}
-            {bcc && (
-              <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                BCC: {bcc}
-              </Text>
-            )}
+            {cc && <Text variant="medium">CC: {cc}</Text>}
+            {bcc && <Text variant="medium">BCC: {bcc}</Text>}
           </Stack>
         </Stack>
 
-        <MessageBar
-          messageBarType={MessageBarType.warning}
-          isMultiline={false}
-          styles={{ root: { borderRadius: 0 } }}
-        >
+        <div className={subjectBannerClass}>
           You're requesting {formatCurrency(amount)} on account for{' '}
           {serviceDescription || 'N/A'}.
-        </MessageBar>
+        </div>
 
         {/* Removed duplicate summary section */}
 

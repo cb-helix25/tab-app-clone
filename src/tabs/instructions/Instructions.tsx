@@ -307,7 +307,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
 
   const overviewItems = useMemo(() => {
-    return instructionData.flatMap((prospect) => {
+    const items = instructionData.flatMap((prospect) => {
       const instructionItems = (prospect.instructions ?? []).map((inst) => {
         const dealsForInst = (prospect.deals ?? []).filter(
           (d) => d.InstructionRef === inst.InstructionRef,
@@ -383,6 +383,15 @@ const Instructions: React.FC<InstructionsProps> = ({
 
       return instructionItems;
     });
+
+    const unique: Record<string, typeof items[number]> = {};
+    items.forEach((item) => {
+      const ref = item.instruction?.InstructionRef as string | undefined;
+      if (ref && !unique[ref]) {
+        unique[ref] = item;
+      }
+    });
+    return Object.values(unique);
   }, [instructionData]);
 
   const unlinkedDeals = useMemo(
@@ -573,10 +582,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
   }, [instructionData]);
 
-  const instructionCardStates = useMemo(
-    () => localInstructionCards as InstructionStateData[],
-    []
-  );
+  const instructionCardStates = useMemo(() => {
+    const map = new Map<string, InstructionStateData>();
+    (localInstructionCards as InstructionStateData[]).forEach((state) => {
+      if (!map.has(state.scenario)) {
+        map.set(state.scenario, state);
+      }
+    });
+    return Array.from(map.values());
+  }, []);
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
@@ -603,6 +617,16 @@ const Instructions: React.FC<InstructionsProps> = ({
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "16px",
     maxWidth: "1200px",
+    width: "100%",
+    margin: "0 auto",
+    boxSizing: "border-box",
+  });
+
+  const scenariosContainerStyle = mergeStyles({
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: "16px",
+    maxWidth: "600px",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",
@@ -784,7 +808,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             </>
           )}
           {activePivot === "states" && (
-            <div className={gridContainerStyle}>
+            <div className={scenariosContainerStyle}>
               {instructionCardStates.map((state, idx) => (
                 <InstructionStateCard key={idx} data={state} />
               ))}
