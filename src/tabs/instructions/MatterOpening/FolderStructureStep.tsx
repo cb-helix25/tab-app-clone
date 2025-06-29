@@ -10,10 +10,8 @@ interface FolderStructureStepProps {
 }
 
 const FolderStructureStep: React.FC<FolderStructureStepProps> = ({ folderStructure, setFolderStructure, onContinue, folderOptions }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
-        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Select NetDocuments Folder Structure
-        </Text>
+    <Stack tokens={{ childrenGap: 12 }}>
+        <div className="question-banner">Select NetDocuments Folder Structure</div>
         <div className="MultiSelect-bar">
             {folderOptions.map((option) => (
                 <div

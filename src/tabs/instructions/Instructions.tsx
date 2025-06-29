@@ -641,7 +641,11 @@ const Instructions: React.FC<InstructionsProps> = ({
   if (showEIDPage) {
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
-        <EIDCheckPage poidData={idVerificationOptions} onBack={handleBack} />
+        <EIDCheckPage
+          poidData={idVerificationOptions}
+          instruction={selectedInstruction}
+          onBack={handleBack}
+        />
       </Stack>
     );
   }

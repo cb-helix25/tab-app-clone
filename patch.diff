@@ -1,49 +1,61 @@
-diff --git a/src/app/styles/MultiSelect.css b/src/app/styles/MultiSelect.css
-index 132d970cff4375e6a37fb98e84e520892b55fced..9e4bfa1e61456050f0da767d02dd266d76f3ef16 100644
---- a/src/app/styles/MultiSelect.css
-+++ b/src/app/styles/MultiSelect.css
-@@ -122,26 +122,43 @@
-     text-align: center;
-     cursor: pointer;
-     color: #061733 !important;
-     border-radius: 0 !important;
-     border: none;
-     background: transparent;
-     font-size: 16px !important;
-     font-weight: 600 !important;
-     display: flex;
-     align-items: center;
-     justify-content: center;
- }
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 4bcc509c3fec86413edd7667a5ed1e5505b4200e..55f399a21e8bc5caa066183e49cc5823b88a62ab 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -619,51 +619,55 @@ const Instructions: React.FC<InstructionsProps> = ({
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
+     );
+   }
  
- .partner-segment select:not(:last-child),
- .partner-segment button:not(:last-child) {
-     border-right: 1px solid var(--helix-cta);
- }
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage
+           onBack={() => setShowRiskPage(false)}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+         />
+       </Stack>
+     );
+   }
  
- .partner-segment select:hover,
- .partner-segment button:hover,
- .partner-segment select:focus,
- .partner-segment button:focus {
-     background-color: var(--helix-cta) !important;
-     color: #fff !important;
-     outline: none;
--}
-+}.question-banner {
-+    background: linear-gradient(to right, #ffffff, var(--helix-grey));
-+    border-left: 3px solid var(--helix-cta);
-+    padding: 0.25rem 0.5rem;
-+    font-weight: 600;
-+    color: var(--helix-dark-blue);
-+    margin-bottom: -1px; /* overlap with bar */
-+}
-+
-+.opponent-section {
-+    border: 1px solid var(--helix-grey);
-+    background: #fff;
-+    padding: 0.5rem;
-+    border-radius: 4px;
-+    display: flex;
-+    flex-direction: column;
-+    gap: 0.5rem;
-+}
+   if (showEIDPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+-        <EIDCheckPage poidData={idVerificationOptions} onBack={handleBack} />
++        <EIDCheckPage
++          poidData={idVerificationOptions}
++          instruction={selectedInstruction}
++          onBack={handleBack}
++        />
+       </Stack>
+     );
+   }
+ 
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard
+                     key={idx}
+                     instruction={item.instruction as any}
+                     deal={(item as any).deal}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={(item as any).risk}
+                     eid={(item as any).eid}
+                     compliance={undefined}
+                     documents={item.documents}

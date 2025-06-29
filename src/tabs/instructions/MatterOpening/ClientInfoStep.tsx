@@ -44,11 +44,11 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     const separatorStyle = mergeStyles({
         height: '1px',
         backgroundColor: colours.light.border,
-        margin: '1rem 0',
+        margin: '0.5rem 0',
     });
 
     return (
-        <Stack tokens={{ childrenGap: 20 }}>
+        <Stack tokens={{ childrenGap: 12 }}>
             <div className="input-bar">
                 <div className="MultiSelect-segment" ref={dateButtonRef}>
                     <PrimaryButton
@@ -81,9 +81,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             </div>
             <div className={separatorStyle} />
             <Stack>
-                <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
-                    Select Supervising Partner
-                </Text>
+                <div className="question-banner">Select Supervising Partner</div>
                 <div className="MultiSelect-bar">
                     {partnerOptions.map((name) => (
                         <div
@@ -98,9 +96,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             </Stack>
             <div className={separatorStyle} />
             <Stack aria-label="Solicitor">
-                <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
-                    Select Originating Solicitor
-                </Text>
+                <div className="question-banner">Select Originating Solicitor</div>
                 <div className="input-bar">
                     <div className="MultiSelect-segment">
                         <select
@@ -119,9 +115,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             </Stack>
             <div className={separatorStyle} />
             <Stack>
-                <Text variant="mediumPlus" style={{ marginBottom: 6 }}>
-                    Have funds on account been received?
-                </Text>
+            <div className="question-banner">Have funds on account been received?</div>
                 <div className="have-funds-bar">
                     {['Yes', 'No', 'Not Required'].map((option) => (
                         <div

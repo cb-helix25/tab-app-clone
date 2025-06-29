@@ -157,13 +157,15 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     
     const defaultTeamMember = useMemo(() => {
         const activeTeam = teamData || localTeamData;
-        if (activeTeam) {
+        if (activeTeam && activeTeam.length > 0) {
             const found = activeTeam.find(
                 (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase(),
             );
             if (found) {
                 return found['Full Name'] || `${found.First || ''} ${found.Last || ''}`.trim();
             }
+            const first = activeTeam[0];
+            return first['Full Name'] || `${first.First || ''} ${first.Last || ''}`.trim();
         }
         return '';
     }, [teamData, localTeamData, userInitials]);

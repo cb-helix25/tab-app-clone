@@ -175,11 +175,15 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
     const teamMemberOptions = useMemo(() => getTeamMemberOptions(teamData), [teamData]);
     const defaultTeamMember = useMemo(() => {
-        if (teamData) {
+        if (teamData && teamData.length > 0) {
             const found = teamData.find(
                 (t) => (t.Initials || '').toLowerCase() === userInitials.toLowerCase()
             );
-            return found?.Nickname || found?.First || '';
+            if (found) {
+                return found.Nickname || found.First || '';
+            }
+            const first = teamData[0];
+            return first.Nickname || first.First || '';
         }
         return '';
     }, [teamData, userInitials]);

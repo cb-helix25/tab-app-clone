@@ -5,15 +5,30 @@ import { dashboardTokens } from './componentTokens';
 
 interface EIDCheckPageProps {
     poidData: POID[];
+    instruction?: any;
     onBack: () => void;
 }
 
-const EIDCheckPage: React.FC<EIDCheckPageProps> = ({ poidData, onBack }) => {
-    const pending = useMemo(() => poidData.filter((p) => !(p as any).EIDCheckId), [poidData]);
-    const [selectedId, setSelectedId] = useState<string | undefined>();
-    const [manualEmail, setManualEmail] = useState('');
+const EIDCheckPage: React.FC<EIDCheckPageProps> = ({ poidData, instruction, onBack }) => {
+    const pending = useMemo(
+        () => poidData.filter((p) => !(p as any).EIDCheckId),
+        [poidData],
+    );
 
-    const options: IDropdownOption[] = pending.map((p) => ({
+    const filtered = useMemo(
+        () =>
+            instruction
+                ? pending.filter((p) => p.matter_id === instruction.InstructionRef)
+                : pending,
+        [pending, instruction],
+    );
+
+    const [selectedId, setSelectedId] = useState<string | undefined>(
+        () => filtered[0]?.poid_id,
+    );
+    const [manualEmail, setManualEmail] = useState(instruction?.Email ?? '');
+
+    const options: IDropdownOption[] = filtered.map((p) => ({
         key: p.poid_id,
         text: `${p.first ?? ''} ${p.last ?? ''}`.trim() || String(p.poid_id),
     }));
@@ -23,7 +38,7 @@ const EIDCheckPage: React.FC<EIDCheckPageProps> = ({ poidData, onBack }) => {
     return (
         <Stack tokens={dashboardTokens}>
             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
-            {pending.length > 0 && (
+            {filtered.length > 0 && (
                 <>
                     <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, marginBottom: 8 } }}>
                         Choose Proof of ID Submission

@@ -3,19 +3,33 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     padding: 16px 20px !important;
     width: 90vw !important;
-    max-width: 300px !important;
+    max-width: 320px !important;
     background-color: #ffffff !important;
 }
 
 .snippet-edit-callout .ms-TextField {
     margin-bottom: 12px !important;
+    width: 100% !important;
 }
 
 .snippet-edit-callout .ms-TextField-fieldGroup {
+    border: 1px solid #ccc !important;
     border-radius: 0 !important;
+    background-color: #ffffff !important;
+}
+
+.snippet-edit-callout .ms-TextField-field {
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+    font-weight: 400 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
 }
 
 .snippet-edit-callout .ms-Button {
+    padding: 12px 28px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
     border-radius: 0 !important;
     text-transform: none !important;
 }

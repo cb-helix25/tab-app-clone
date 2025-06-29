@@ -30,14 +30,14 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     handlePoidClick,
     onConfirm,
 }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
+    <Stack tokens={{ childrenGap: 12 }}>
         <SearchBox
             placeholder="Search by name or ID..."
             value={poidSearchTerm}
             onChange={(_, newValue) => setPoidSearchTerm(newValue || '')}
             styles={{ root: { width: 400, marginBottom: 20 } }}
         />
-        <Stack horizontal tokens={{ childrenGap: 20 }}>
+        <Stack horizontal tokens={{ childrenGap: 12 }}>
             <div style={{ flex: 1 }} className="grid" ref={poidGridRef as any}>
                 {filteredPoidData.slice(0, visiblePoidCount).map((poid) => (
                     <div key={poid.poid_id} onClick={() => handlePoidClick(poid)} role="button" tabIndex={0}>

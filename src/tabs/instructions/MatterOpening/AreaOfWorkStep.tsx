@@ -10,10 +10,8 @@ interface AreaOfWorkStepProps {
 }
 
 const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWork, onContinue, getGroupColor }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
-        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Select Area of Work
-        </Text>
+    <Stack tokens={{ childrenGap: 12 }}>
+        <div className="question-banner">Select Area of Work</div>
         <div className="MultiSelect-bar">
             {['Commercial', 'Property', 'Construction', 'Employment'].map((area) => (
                 <div

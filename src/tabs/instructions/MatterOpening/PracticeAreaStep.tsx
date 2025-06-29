@@ -11,10 +11,8 @@ interface PracticeAreaStepProps {
 }
 
 const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceArea, setPracticeArea, onContinue, groupColor }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
-        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Select Practice Area
-        </Text>
+    <Stack tokens={{ childrenGap: 12 }}>
+        <div className="question-banner">Select Practice Area</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
             {options.map((pa) => (
                 <div

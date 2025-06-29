@@ -53,7 +53,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                 {summaryComplete ? null : (
                     <div className="review-actions">
                         <button className="cta-declare-btn" disabled={!detailsConfirmed} onClick={handleSubmit}>
-                            Confirm Identity and Open a Matter
+                            Open Matter
                         </button>
                     </div>
                 )}

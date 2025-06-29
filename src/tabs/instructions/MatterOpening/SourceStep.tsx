@@ -14,10 +14,8 @@ interface SourceStepProps {
 const sourceOptions = ['referral', 'organic search', 'paid search', 'your following', 'tbc'];
 
 const SourceStep: React.FC<SourceStepProps> = ({ source, setSource, referrerName, setReferrerName, onContinue }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
-        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Select Source
-        </Text>
+    <Stack tokens={{ childrenGap: 12 }}>
+        <div className="question-banner">Select Source</div>
         <div className="MultiSelect-bar">
             {sourceOptions.map((option) => (
                 <div

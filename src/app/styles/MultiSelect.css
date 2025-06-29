@@ -145,3 +145,23 @@
     color: #fff !important;
     outline: none;
 }
+
+.question-banner {
+    background: linear-gradient(to right, #ffffff, var(--helix-grey));
+    border-left: 3px solid var(--helix-cta);
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+    color: var(--helix-dark-blue);
+    margin-bottom: -1px;
+    /* overlap with bar */
+}
+
+.opponent-section {
+    border: 1px solid var(--helix-grey);
+    background: #fff;
+    padding: 0.5rem;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}

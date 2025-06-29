@@ -39,43 +39,45 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const { isDarkMode } = useTheme();
   return (
     <Stack tokens={{ childrenGap: 12 }}>
-      <BubbleTextField
-        value={opponentName}
-        onChange={(_, v) => setOpponentName(v || "")}
-        placeholder="Opponent Name"
-        ariaLabel="Opponent Name"
-        isDarkMode={isDarkMode}
-      />
-      <BubbleTextField
-        value={opponentEmail}
-        onChange={(_, v) => setOpponentEmail(v || "")}
-        placeholder="Opponent Email"
-        ariaLabel="Opponent Email"
-        isDarkMode={isDarkMode}
-      />
-      <BubbleTextField
-        value={opponentSolicitorName}
-        onChange={(_, v) => setOpponentSolicitorName(v || "")}
-        placeholder="Solicitor Name"
-        ariaLabel="Solicitor Name"
-        isDarkMode={isDarkMode}
-      />
-      <BubbleTextField
-        value={opponentSolicitorCompany}
-        onChange={(_, v) => setOpponentSolicitorCompany(v || "")}
-        placeholder="Solicitor Company"
-        ariaLabel="Solicitor Company"
-        isDarkMode={isDarkMode}
-      />
-      <BubbleTextField
-        value={opponentSolicitorEmail}
-        onChange={(_, v) => setOpponentSolicitorEmail(v || "")}
-        placeholder="Solicitor Email"
-        ariaLabel="Solicitor Email"
-        isDarkMode={isDarkMode}
-      />
+      <div className="opponent-section">
+        <BubbleTextField
+          value={opponentName}
+          onChange={(_, v) => setOpponentName(v || "")}
+          placeholder="Opponent Name"
+          ariaLabel="Opponent Name"
+          isDarkMode={isDarkMode}
+        />
+        <BubbleTextField
+          value={opponentEmail}
+          onChange={(_, v) => setOpponentEmail(v || "")}
+          placeholder="Opponent Email"
+          ariaLabel="Opponent Email"
+          isDarkMode={isDarkMode}
+        />
+        <BubbleTextField
+          value={opponentSolicitorName}
+          onChange={(_, v) => setOpponentSolicitorName(v || "")}
+          placeholder="Solicitor Name"
+          ariaLabel="Solicitor Name"
+          isDarkMode={isDarkMode}
+        />
+        <BubbleTextField
+          value={opponentSolicitorCompany}
+          onChange={(_, v) => setOpponentSolicitorCompany(v || "")}
+          placeholder="Solicitor Company"
+          ariaLabel="Solicitor Company"
+          isDarkMode={isDarkMode}
+        />
+        <BubbleTextField
+          value={opponentSolicitorEmail}
+          onChange={(_, v) => setOpponentSolicitorEmail(v || "")}
+          placeholder="Solicitor Email"
+          ariaLabel="Solicitor Email"
+          isDarkMode={isDarkMode}
+        />
+      </div>
       <Stack tokens={{ childrenGap: 10 }}>
-        <Text variant="mediumPlus">Confirm No Conflict of Interest</Text>
+        <div className="question-banner">Confirm No Conflict of Interest</div>
         <div className="MultiSelect-bar">
           <div
             className={`MultiSelect-segment${noConflict ? " active" : ""}`}

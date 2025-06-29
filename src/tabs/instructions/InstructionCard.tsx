@@ -199,6 +199,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     // the relevant warnings so we no longer disable the action here.
     const openDisabled = false;
 
+    const verifyIdLabel = verifyIdStatus === 'complete'
+        ? 'ID Verified'
+        : verifyIdStatus === 'review'
+            ? 'Review ID'
+            : 'Verify ID';
+    const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
+        ? 'ready'
+        : verifyIdStatus;
+
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>(() => {
         if (verifyIdStatus !== 'complete') return 'eid';
         if (!riskAssessed || !openMatterReady) return 'risk';
@@ -385,11 +394,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     {[
                         {
                             key: 'eid',
-                            label: 'Verify ID',
+                            label: verifyIdLabel,
                             title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
                             icon: iconMap.eid,
                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                            status: verifyIdStatus,
+                            status: verifyTabStatus,
                         },
                         {
                             key: 'risk',

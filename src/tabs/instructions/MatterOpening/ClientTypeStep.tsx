@@ -16,10 +16,8 @@ const options = [
 ];
 
 const ClientTypeStep: React.FC<ClientTypeStepProps> = ({ clientType, setClientType, onContinue }) => (
-    <Stack tokens={{ childrenGap: 20 }}>
-        <Text variant="mediumPlus" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Select Client Type
-        </Text>
+    <Stack tokens={{ childrenGap: 12 }}>
+        <div className="question-banner">Select Client Type</div>
         <div className="MultiSelect-bar">
             {options.map((opt) => (
                 <div

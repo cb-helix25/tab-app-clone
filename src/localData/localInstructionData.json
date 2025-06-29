@@ -468,8 +468,8 @@
       {
         "MatterId": "HLX-22338-4843",
         "EIDCheckId": "id-3",
-        "EIDStatus": "completed",
-        "EIDOverallResult": "Failed",
+        "EIDStatus": "pending",
+        "EIDOverallResult": "Pending",
         "PEPAndSanctionsCheckResult": "Passed",
         "AddressVerificationResult": "Passed",
         "EIDCheckedDate": "2025-06-27"
