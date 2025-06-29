@@ -1,143 +1,215 @@
-diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
-index e8aa08e3aefc9ad1f732ed77c0e5a6d056433dd7..5ff96d9c10991e5cde5d905b6976a5e1eeae634f 100644
---- a/src/tabs/instructions/InstructionOverview.tsx
-+++ b/src/tabs/instructions/InstructionOverview.tsx
-@@ -1,28 +1,28 @@
- import React from 'react';
- import { mergeStyles } from '@fluentui/react';
--import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown } from 'react-icons/fa';
-+import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown, FaExclamationTriangle } from 'react-icons/fa';
- import InstructionCard from './InstructionCard';
- import { cardStyles } from './componentTokens';
- import { ClientInfo } from './JointClientCard';
- import '../../app/styles/InstructionDashboard.css';
- import '../../app/styles/InstructionCard.css';
- import '../../app/styles/InstructionOverview.css';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1,46 +1,48 @@
+ import React, { useEffect, useState, useMemo, useRef } from "react";
+ import {
+   Stack,
+   mergeStyles,
+   IconButton,
+   Pivot,
+   PivotItem,
+   Text,
+ } from "@fluentui/react";
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+ import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+ import localInstructionData from "../../localData/localInstructionData.json";
++import localInstructionCards from "../../localData/localInstructionCards.json";
++import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
  
- interface InstructionOverviewProps {
-     instruction?: any;
-     deal?: any;
-     deals: any[];
-     clients: ClientInfo[];
-     risk?: any;
-     eid?: any;
-     compliance?: any;
-     prospectId?: number;
-     passcode?: string;
-     documentCount?: number;
-     animationDelay?: number;
-     expanded: boolean;
-     onToggle: () => void;
-     onOpenMatter?: () => void;
-     onRiskAssessment?: () => void;
-     onEIDCheck?: () => void;
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
  }
-diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
-index e8aa08e3aefc9ad1f732ed77c0e5a6d056433dd7..5ff96d9c10991e5cde5d905b6976a5e1eeae634f 100644
---- a/src/tabs/instructions/InstructionOverview.tsx
-+++ b/src/tabs/instructions/InstructionOverview.tsx
-@@ -55,93 +55,103 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
-     });
- 
-     const stage = instruction?.Stage ?? 'deal pending';
-     const eidStatus = eid?.EIDStatus ?? '-';
-     const eidResult = eid?.EIDOverallResult?.toLowerCase();
-     const complianceStatus = compliance?.Status ?? '-';
- 
-     const proofOfIdComplete = Boolean(
-         instruction?.PassportNumber || instruction?.DriversLicenseNumber,
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] =
+     useState<string>("Individual");
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -223,50 +225,53 @@ const Instructions: React.FC<InstructionsProps> = ({
+                   icon="Assessment"
+                   isDarkMode={isDarkMode}
+                   onClick={() => { }}
+                   style={{ "--card-index": 2 } as React.CSSProperties}
+                 />
+                 <QuickActionsCard
+                   title="Draft CCL"
+                   icon="OpenFile"
+                   isDarkMode={isDarkMode}
+                   onClick={() => setShowRiskPage(true)}
+                   style={{ "--card-index": 3 } as React.CSSProperties}
+                 />
+               </div>
+               <div className={pivotBarStyle(isDarkMode)}>
+                 <Pivot
+                   className="navigatorPivot"
+                   selectedKey={activePivot}
+                   onLinkClick={(item) => {
+                     setActivePivot(item?.props.itemKey || "overview");
+                 }}
+               >
+                 <PivotItem headerText="Overview" itemKey="overview" />
+                 <PivotItem headerText="Deals" itemKey="deals" />
+                 <PivotItem headerText="Clients" itemKey="clients" />
+                 <PivotItem headerText="Risk & Compliance" itemKey="risk" />
++                {useLocalData && (
++                  <PivotItem headerText="Scenarios" itemKey="states" />
++                )}
+               </Pivot>
+             </div>
+           </>
+         )}
+       </>,
      );
-     const paymentStatusRaw = instruction?.PaymentResult?.toLowerCase();
-     const paymentComplete = paymentStatusRaw === 'successful';
-     const paymentFailed = paymentStatusRaw === 'failed';
-     const documentsComplete = documentCount > 0;
+     return () => setContent(null);
+   }, [
+     setContent,
+     isDarkMode,
+     instructionData,
+     activePivot,
+     showNewMatterPage,
+     showRiskPage,
+     showEIDPage,
+     newMatterClientType,
+   ]);
  
-     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
+   const containerStyle = mergeStyles({
+     backgroundColor: isDarkMode
+       ? colours.dark.background
+       : colours.light.background,
+     minHeight: "100vh",
+     boxSizing: "border-box",
+     color: isDarkMode ? colours.light.text : colours.dark.text,
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -546,50 +551,55 @@ const Instructions: React.FC<InstructionsProps> = ({
+             email: inst?.Email,
+             passport_number: inst?.PassportNumber,
+             drivers_license_number: inst?.DriversLicenseNumber,
+             house_building_number: inst?.HouseNumber,
+             street: inst?.Street,
+             city: inst?.City,
+             county: inst?.County,
+             post_code: inst?.Postcode,
+             country: inst?.Country,
+             country_code: inst?.CountryCode,
+             company_number: inst?.CompanyNumber,
+             company_house_building_number: inst?.CompanyHouseNumber,
+             company_street: inst?.CompanyStreet,
+             company_city: inst?.CompanyCity,
+             company_county: inst?.CompanyCounty,
+             company_post_code: inst?.CompanyPostcode,
+             company_country: inst?.CompanyCountry,
+             company_country_code: inst?.CompanyCountryCode,
+             ...merged,
+           },
+         ];
+       });
+     });
+   }, [instructionData]);
  
-     let idStatus = 'pending';
-     const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
-     if (proofOfIdComplete) {
-         if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
-         else if (eidVerified) idStatus = 'verified';
-         else idStatus = 'review';
-     }
- 
-+    const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
-+    const riskStatus = riskResult
-+        ? ['low', 'pass', 'approved'].includes(riskResult)
-+            ? 'complete'
-+            : 'flagged'
-+        : 'pending';
++  const instructionCardStates = useMemo(
++    () => localInstructionCards as InstructionStateData[],
++    []
++  );
 +
-     const summaryData = [
-         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
-         { key: 'id', label: 'Proof of ID', status: idStatus },
-         {
-             key: 'pay',
-             label: 'Pay',
-             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
-         },
-         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-+        { key: 'risk', label: 'Risk', status: riskStatus },
-     ];
+   const handleOpenMatter = (inst: any) => {
+     setSelectedInstruction(inst);
+     setNewMatterClientType(inst?.ClientType || "Individual");
+     setShowNewMatterPage(true);
+   };
  
-     const primaryDeal = deal ?? deals[0];
-     const leadName = instruction
-         ? (instruction.FirstName || instruction.LastName)
-             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
-             : instruction.CompanyName ?? clients.find((c) => c.Lead)?.ClientEmail ?? ''
-         : primaryDeal?.ServiceDescription ?? '';
+   const handleRiskAssessment = (inst: any) => {
+     setSelectedInstruction(inst);
+     setShowRiskPage(true);
+   };
  
-     return (
-         <div className={containerClass} style={style}>
-             <button type="button" className="overview-toggle" onClick={onToggle}>
-                 <div className="dashboard-header">
-                     {instruction ? instruction.InstructionRef : 'Deal Pending'}
-                     {leadName && <span className="lead-client">{leadName}</span>}
-                     <span className="instruction-stage">{stage}</span>
-                     <FaChevronDown className="chevron" />
-                 </div>
-                 {!instruction && (prospectId || passcode) && (
-                     <div className="lead-client">
-                         {prospectId && <>Prospect {prospectId}</>}
-                         {prospectId && passcode && ' · '}
-                         {passcode && <>Passcode {passcode}</>}
-                     </div>
+   const handleEIDCheck = (inst: any) => {
+     setSelectedInstruction(inst);
+     setShowEIDPage(true);
+   };
+ 
+   const handleOpenInstruction = (ref: string) => {
+     setActivePivot("overview");
+   };
+ 
+   const gridContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+     gap: "16px",
+     maxWidth: "1200px",
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 55f399a21e8bc5caa066183e49cc5823b88a62ab..fe1e141c071ccb9ef492f36fdcfa57aeec76e0ec 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -751,32 +761,39 @@ const Instructions: React.FC<InstructionsProps> = ({
+               >
+                 Risk &amp; Compliance
+               </Text>
+               <div className={gridContainerStyle}>
+                 {riskComplianceData.length === 0 && (
+                   <Text>No risk data available.</Text>
                  )}
-                 <div className="status-row">
-                     {summaryData.map((d, i) => {
-                         const status = (d.status ?? '').toString().toLowerCase();
-                         const icon = d.status
-                             ? ['complete', 'closed', 'verified', 'approved'].includes(status)
-                                 ? <FaCheckCircle />
-                                 : status === 'failed'
-                                     ? <FaTimesCircle />
--                                    : <FaClock />
-+                                    : status === 'flagged'
-+                                        ? <FaExclamationTriangle />
-+                                        : <FaClock />
-                             : null;
-                         return (
-                             <div key={i} className={`status-item ${d.key}`}>
-                                 <span className="status-label">{d.label}</span>
-                                 <span className={`status-value ${status}`}>{icon}</span>
-                             </div>
-                         );
-                     })}
-                 </div>
-             </button>
-             {expanded && (
-                 <InstructionCard
-                     instruction={instruction as any}
-                     deal={deal}
-                     deals={deals}
-                     clients={clients}
-                     prospectId={prospectId}
-                     risk={risk}
-                     eid={eid}
-                     compliance={compliance}
-                     documentCount={documentCount}
-                     expanded
-                     onOpenMatter={onOpenMatter}
-                     onRiskAssessment={onRiskAssessment}
-                     onEIDCheck={onEIDCheck}
+                 {riskComplianceData.map((r, idx) => {
+                   const row = Math.floor(idx / 4);
+                   const col = idx % 4;
+                   const animationDelay = row * 0.2 + col * 0.1;
+                   return (
+                     <RiskComplianceCard
+                       key={idx}
+                       data={r}
+                       animationDelay={animationDelay}
+                       onOpenInstruction={() =>
+                         handleOpenInstruction(r.MatterId)
+                       }
+                     />
+                   );
+                 })}
+               </div>
+             </>
+           )}
++          {activePivot === "states" && (
++            <div className={gridContainerStyle}>
++              {instructionCardStates.map((state, idx) => (
++                <InstructionStateCard key={idx} data={state} />
++              ))}
++            </div>
++          )}
+         </div>
+       </Stack>
+     </section>
+   );
+ };
+ 
+ export default Instructions;

@@ -19,6 +19,8 @@ import JointClientCard, { ClientInfo } from "./JointClientCard";
 import type { DealSummary } from "./JointClientCard";
 import { InstructionData, POID, TeamData } from "../../app/functionality/types";
 import localInstructionData from "../../localData/localInstructionData.json";
+import localInstructionCards from "../../localData/localInstructionCards.json";
+import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
@@ -245,6 +247,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                 <PivotItem headerText="Deals" itemKey="deals" />
                 <PivotItem headerText="Clients" itemKey="clients" />
                 <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+                  {useLocalData && (
+                    <PivotItem headerText="Scenarios" itemKey="states" />
+                  )}
               </Pivot>
             </div>
           </>
@@ -568,6 +573,11 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
   }, [instructionData]);
 
+  const instructionCardStates = useMemo(
+    () => localInstructionCards as InstructionStateData[],
+    []
+  );
+
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
     setNewMatterClientType(inst?.ClientType || "Individual");
@@ -772,6 +782,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                 })}
               </div>
             </>
+          )}
+          {activePivot === "states" && (
+            <div className={gridContainerStyle}>
+              {instructionCardStates.map((state, idx) => (
+                <InstructionStateCard key={idx} data={state} />
+              ))}
+            </div>
           )}
         </div>
       </Stack>
