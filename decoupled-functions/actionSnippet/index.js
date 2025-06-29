@@ -29,17 +29,17 @@ async function actionSnippetHandler(req, context) {
 
     if (req.method !== "POST") {
         return { status: 405, body: "Method not allowed" };
-    }
+      }
 
     const body = req.body;
     if (!body) {
         return { status: 400, body: "Invalid JSON" };
-    }
+      }
 
     const { action, payload } = body || {};
     if (!action) {
         return { status: 400, body: "Missing action" };
-    }
+      }
 
     await ensureDbPassword();
     const pool = await getSqlPool();
@@ -70,8 +70,8 @@ async function actionSnippetHandler(req, context) {
                 .input("IsNew", sql.Bit, payload.isNew ? 1 : 0)
                 .input("ProposedBy", sql.NVarChar(50), payload.proposedBy)
                 .query(q);
-            return { status: 200, body: JSON.stringify({ ok: true }) };
-        }
+            return { status: 200, body: JSON.stringify({ ok: true }) };    
+    }
 
         case "approveSnippetEdit": {
             const { editId, approvedBy, reviewNotes } = payload;
@@ -103,7 +103,7 @@ async function actionSnippetHandler(req, context) {
                 .input("BlockId", sql.Int, edit.ProposedBlockId)
                 .input("SnippetId", sql.Int, edit.SnippetId)
                 .input("ApprovedBy", sql.NVarChar(50), approvedBy)
-                .query(update);
+                .query(update);  
 
             await pool
                 .request()

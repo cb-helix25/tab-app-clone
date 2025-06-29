@@ -2772,18 +2772,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const headerWrapperStyle = mergeStyles({
     backgroundColor: 'transparent',
-    padding: 12,
+    padding: 8,
     borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#ddd'}`,
   });
 
   const bodyWrapperStyle = mergeStyles({
-    padding: 20,
+    padding: 16,
     backgroundColor: '#fff',
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '12px',
     position: 'relative',
   });
 

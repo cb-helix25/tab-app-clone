@@ -75,7 +75,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 10,
+    padding: 8,
     gap: 4,
     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
     borderRadius: 8,
@@ -199,9 +199,9 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const headerRowStyle = mergeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: 12,
+    gap: 8,
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 8,
   });
 
   const dealSideContainerStyle = (saved: boolean) =>
@@ -213,7 +213,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     });
 
   return (
-    <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '100%' } }}>
       <div className={headerRowStyle}>
         {/* Enquiry Details */}
         <div className={enquiryNotesContainer}>
@@ -282,7 +282,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
               <Stack
                 horizontal
                 wrap
-                  tokens={{ childrenGap: 12 }}
+                  tokens={{ childrenGap: 8 }}
                   verticalAlign="end"
                   styles={{ root: { width: '100%' } }}
                 >
@@ -386,7 +386,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                   )}
                 </Stack>
                 {(!showCc || !showBcc) && (
-                  <Stack horizontal tokens={{ childrenGap: 8 }}>
+                  <Stack horizontal tokens={{ childrenGap: 6 }}>
                     {!showCc && (
                       <span
                         className={toggleCcBccStyle}

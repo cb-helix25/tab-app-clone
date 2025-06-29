@@ -240,7 +240,7 @@ const addingClientRef = useRef(false);
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 10,
+    padding: 8,
     gap: 4,
     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
     borderRadius: 8,
@@ -395,13 +395,13 @@ useLayoutEffect(() => {
     display: 'flex',
     flexWrap: 'wrap',
     flexDirection: 'row',
-    columnGap: '10px',
-    rowGap: '10px',
+    columnGap: '8px',
+    rowGap: '8px',
     width: '100%',
   });
 
   return (
-    <Stack tokens={{ childrenGap: 14 }} className={rootStackStyle}>
+    <Stack tokens={{ childrenGap: 10 }} className={rootStackStyle}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
 
       {/* Service Description, Amount and Expiry */}
