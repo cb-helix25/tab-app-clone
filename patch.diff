@@ -1,274 +1,630 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -285,51 +285,51 @@ const Instructions: React.FC<InstructionsProps> = ({
-     width: 32,
-     height: 32,
-     borderRadius: 0,
-     display: "flex",
-     alignItems: "center",
-     justifyContent: "center",
-     backgroundColor: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-     boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-     marginRight: 8,
-   });
- 
-   const sectionContainerStyle = (dark: boolean) =>
-     mergeStyles({
-       backgroundColor: dark
-         ? colours.dark.sectionBackground
-         : colours.light.sectionBackground,
-       padding: "16px",
-       borderRadius: 0,
-       boxShadow: dark
-         ? `0 4px 12px ${colours.dark.border}`
-         : `0 4px 12px ${colours.light.border}`,
-       width: "100%",
-     });
- 
-   const overviewItems = useMemo(() => {
--    return instructionData.flatMap((prospect) => {
-+    const items = instructionData.flatMap((prospect) => {
-       const instructionItems = (prospect.instructions ?? []).map((inst) => {
-         const dealsForInst = (prospect.deals ?? []).filter(
-           (d) => d.InstructionRef === inst.InstructionRef,
-         );
-         const clientsForInst: ClientInfo[] = [];
-         (prospect.jointClients ?? prospect.joinedClients ?? []).forEach(
-           (jc) => {
-             if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
-               clientsForInst.push({
-                 ClientEmail: jc.ClientEmail,
-                 HasSubmitted: jc.HasSubmitted,
-                 Lead: false,
-                 deals: [
-                   {
-                     DealId: jc.DealId,
-                     InstructionRef: inst.InstructionRef,
-                     ServiceDescription: dealsForInst.find(
-                       (d) => d.DealId === jc.DealId,
-                     )?.ServiceDescription,
-                     Status: dealsForInst.find((d) => d.DealId === jc.DealId)
-                       ?.Status,
-                   },
-                 ],
-               });
-             }
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -361,50 +361,59 @@ const Instructions: React.FC<InstructionsProps> = ({
-           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-           ...((inst as any).electronicIDChecks ??
-             (inst as any).idVerifications ??
-             []),
-         ];
-         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-         const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
-         const docs = prospect.documents?.filter(
-           (d) => d.InstructionRef === inst.InstructionRef,
-         );
-         return {
-           instruction: inst,
-           deal,
-           deals: dealsForInst,
-           clients: clientsForInst,
-           risk,
-           eid,
-           documents: docs,
-           prospectId: prospect.prospectId,
-           documentCount: docs ? docs.length : 0,
-         };
-       });
- 
-       return instructionItems;
-     });
-+
-+    const unique: Record<string, typeof items[number]> = {};
-+    items.forEach((item) => {
-+      const ref = item.instruction?.InstructionRef as string | undefined;
-+      if (ref && !unique[ref]) {
-+        unique[ref] = item;
+diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
+index ba976a6354f8976ac9cc3b5ddfdcb7eb60605298..aa17e500f64b90966a82b4a9628c1ecb0a48c18f 100644
+--- a/src/localData/localInstructionData.json
++++ b/src/localData/localInstructionData.json
+@@ -1,488 +1,180 @@
+ [
+   {
+-    "prospectId": 22338,
+-    "deals": [
+-      {
+-        "DealId": 7,
+-        "InstructionRef": "HLX-22338-3927",
+-        "ProspectId": 22338,
+-        "Passcode": "54321",
+-        "ServiceDescription": "bespoke contract  review and letter",
+-        "Amount": 1,
+-        "AreaOfWork": "commercial",
+-        "PitchedBy": "LZ",
+-        "PitchedDate": "2025-06-20T00:00:00",
+-        "PitchedTime": "13:50:07",
+-        "PitchValidUntil": "2025-07-04T00:00:00",
+-        "Status": "pitched",
+-        "IsMultiClient": "1",
+-        "LeadClientId": 22338,
+-        "LeadClientEmail": "lz@helix-law.com",
+-        "CloseDate": "2025-07-05T00:00:00",
+-        "CloseTime": "13:00:00"
+-      },
+-      {
+-        "DealId": 8,
+-        "InstructionRef": "HLX-22338-4843",
+-        "ProspectId": 22338,
+-        "Passcode": "12345",
+-        "ServiceDescription": "bespoke contract  review and letter",
+-        "Amount": 1,
+-        "AreaOfWork": "commercial",
+-        "PitchedBy": "LZ",
+-        "PitchedDate": "2025-06-20T00:00:00",
+-        "PitchedTime": "13:50:07",
+-        "PitchValidUntil": "2025-07-04T00:00:00",
+-        "Status": "closed",
+-        "IsMultiClient": "1",
+-        "LeadClientId": 22338,
+-        "LeadClientEmail": "lz@helix-law.com",
+-        "CloseDate": "2025-06-20T00:00:00",
+-        "CloseTime": "14:00:00"
+-      },
++    "prospectId": 1,
++    "deals": [],
++    "jointClients": [],
++    "instructions": [
+       {
+-        "DealId": 9,
+-        "InstructionRef": null,
+-        "ProspectId": 22338,
+-        "Passcode": "99999",
+-        "ServiceDescription": "draft property contract",
+-        "Amount": 1,
+-        "AreaOfWork": "property",
+-        "PitchedBy": "LZ",
+-        "PitchedDate": "2025-07-01T00:00:00",
+-        "PitchedTime": "10:00:00",
+-        "PitchValidUntil": "2025-07-15T00:00:00",
+-        "Status": "pitched",
+-        "IsMultiClient": "1",
+-        "LeadClientId": 22338,
+-        "LeadClientEmail": "lz@helix-law.com",
+-        "CloseDate": null,
+-        "CloseTime": null
+-      },
++        "InstructionRef": "HLX-1-PRE",
++        "Stage": "initialised",
++        "PaymentResult": null
 +      }
-+    });
-+    return Object.values(unique);
-   }, [instructionData]);
- 
-   const unlinkedDeals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).filter((d) => !d.InstructionRef),
-       ),
-     [instructionData],
-   );
- 
-   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
- 
-   const deals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).map((d) => ({
-           ...d,
-           firstName: p.instructions?.[0]?.FirstName,
-           jointClients: p.jointClients ?? p.joinedClients ?? [],
-         })),
-       ),
-     [instructionData],
-   );
-   const clients: ClientInfo[] = useMemo(() => {
-     const map: Record<string, ClientInfo> = {};
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -551,85 +560,100 @@ const Instructions: React.FC<InstructionsProps> = ({
-             email: inst?.Email,
-             passport_number: inst?.PassportNumber,
-             drivers_license_number: inst?.DriversLicenseNumber,
-             house_building_number: inst?.HouseNumber,
-             street: inst?.Street,
-             city: inst?.City,
-             county: inst?.County,
-             post_code: inst?.Postcode,
-             country: inst?.Country,
-             country_code: inst?.CountryCode,
-             company_number: inst?.CompanyNumber,
-             company_house_building_number: inst?.CompanyHouseNumber,
-             company_street: inst?.CompanyStreet,
-             company_city: inst?.CompanyCity,
-             company_county: inst?.CompanyCounty,
-             company_post_code: inst?.CompanyPostcode,
-             company_country: inst?.CompanyCountry,
-             company_country_code: inst?.CompanyCountryCode,
-             ...merged,
-           },
-         ];
-       });
-     });
-   }, [instructionData]);
- 
--  const instructionCardStates = useMemo(
--    () => localInstructionCards as InstructionStateData[],
--    []
--  );
-+  const instructionCardStates = useMemo(() => {
-+    const map = new Map<string, InstructionStateData>();
-+    (localInstructionCards as InstructionStateData[]).forEach((state) => {
-+      if (!map.has(state.scenario)) {
-+        map.set(state.scenario, state);
++    ],
++    "documents": [],
++    "riskAssessments": [],
++    "electronicIDChecks": [],
++    "idVerifications": []
++  },
++  {
++    "prospectId": 2,
++    "deals": [],
++    "jointClients": [],
++    "instructions": [
+       {
+-        "DealId": 10,
+-        "InstructionRef": null,
+-        "ProspectId": 22338,
+-        "Passcode": "88888",
+-        "ServiceDescription": "employment contract review",
+-        "Amount": 2,
+-        "AreaOfWork": "employment",
+-        "PitchedBy": "LZ",
+-        "PitchedDate": "2025-07-02T00:00:00",
+-        "PitchedTime": "11:00:00",
+-        "PitchValidUntil": "2025-07-16T00:00:00",
+-        "Status": "pitched",
+-        "IsMultiClient": "0",
+-        "LeadClientId": 22338,
+-        "LeadClientEmail": "lz@helix-law.com",
+-        "CloseDate": null,
+-        "CloseTime": null
++        "InstructionRef": "HLX-2-IDONLY",
++        "Stage": "poid",
++        "PassportNumber": "AA1234567",
++        "PaymentResult": null
+       }
+     ],
+-    "jointClients": [
++    "documents": [],
++    "riskAssessments": [],
++    "electronicIDChecks": [
+       {
+-        "DealJointClientId": 30,
+-        "DealId": 7,
+-        "ClientEmail": "001@helix-law.com",
+-        "HasSubmitted": "0",
+-        "SubmissionDateTime": null
+-      },
++        "MatterId": "HLX-2-IDONLY",
++        "EIDStatus": "completed",
++        "EIDOverallResult": "Passed"
 +      }
-+    });
-+    return Array.from(map.values());
-+  }, []);
- 
-   const handleOpenMatter = (inst: any) => {
-     setSelectedInstruction(inst);
-     setNewMatterClientType(inst?.ClientType || "Individual");
-     setShowNewMatterPage(true);
-   };
- 
-   const handleRiskAssessment = (inst: any) => {
-     setSelectedInstruction(inst);
-     setShowRiskPage(true);
-   };
- 
-   const handleEIDCheck = (inst: any) => {
-     setSelectedInstruction(inst);
-     setShowEIDPage(true);
-   };
- 
-   const handleOpenInstruction = (ref: string) => {
-     setActivePivot("overview");
-   };
- 
-   const gridContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-     gap: "16px",
-     maxWidth: "1200px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-+  const scenariosContainerStyle = mergeStyles({
-+    display: "grid",
-+    gridTemplateColumns: "1fr",
-+    gap: "16px",
-+    maxWidth: "600px",
-+    width: "100%",
-+    margin: "0 auto",
-+    boxSizing: "border-box",
-+  });
-+
-   const overviewColumnStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "repeat(2, 1fr)",
-     gap: "24px",
-     maxWidth: "1200px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-   if (showNewMatterPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-         <FlatMatterOpening
-           poidData={idVerificationOptions}
-           setPoidData={setPoidData}
-           teamData={teamData}
-           userInitials={userInitials}
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={newMatterClientType}
-         />
-       </Stack>
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 69b2d73a7c85c2a1991d541c6f3268e0251810d6..d79e872a713ffe1a77554cab99a7a81c5a056a43 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -762,38 +786,38 @@ const Instructions: React.FC<InstructionsProps> = ({
-                 Risk &amp; Compliance
-               </Text>
-               <div className={gridContainerStyle}>
-                 {riskComplianceData.length === 0 && (
-                   <Text>No risk data available.</Text>
-                 )}
-                 {riskComplianceData.map((r, idx) => {
-                   const row = Math.floor(idx / 4);
-                   const col = idx % 4;
-                   const animationDelay = row * 0.2 + col * 0.1;
-                   return (
-                     <RiskComplianceCard
-                       key={idx}
-                       data={r}
-                       animationDelay={animationDelay}
-                       onOpenInstruction={() =>
-                         handleOpenInstruction(r.MatterId)
-                       }
-                     />
-                   );
-                 })}
-               </div>
-             </>
-           )}
-           {activePivot === "states" && (
--            <div className={gridContainerStyle}>
-+            <div className={scenariosContainerStyle}>
-               {instructionCardStates.map((state, idx) => (
-                 <InstructionStateCard key={idx} data={state} />
-               ))}
-             </div>
-           )}
-         </div>
-       </Stack>
-     </section>
-   );
- };
- 
- export default Instructions;
++    ],
++    "idVerifications": []
++  },
++  {
++    "prospectId": 3,
++    "deals": [
+       {
+-        "DealJointClientId": 31,
+-        "DealId": 7,
+-        "ClientEmail": "002@helix-law.com",
+-        "HasSubmitted": "0",
+-        "SubmissionDateTime": null
++        "DealId": 1,
++        "InstructionRef": "HLX-3-OPTDOC",
++        "Status": "closed"
+       }
+     ],
++    "jointClients": [],
+     "instructions": [
+       {
+-        "InstructionRef": "HLX-22338-3927",
+-        "Stage": "poid",
+-        "ClientType": "Company",
+-        "HelixContact": "LZ",
+-        "ConsentGiven": "1",
+-        "InternalStatus": "poid",
+-        "SubmissionDate": "2025-06-16T00:00:00",
+-        "SubmissionTime": "06:06:19.1406386",
+-        "LastUpdated": "2025-06-16T06:06:19.1406386",
+-        "ClientId": null,
+-        "RelatedClientId": null,
+-        "MatterId": null,
+-        "Title": "Mr",
+-        "FirstName": "Luke",
+-        "LastName": "Zemanek",
+-        "Nationality": "The Netherlands",
+-        "NationalityAlpha2": null,
+-        "DOB": "1996-09-11T00:00:00",
+-        "Gender": "Male",
+-        "Phone": "+447 783949281",
+-        "Email": "lz@helix-law.com",
+-        "PassportNumber": "dfsdfsd",
+-        "DriversLicenseNumber": null,
+-        "IdType": "passport",
+-        "HouseNumber": "103",
+-        "Street": "Croxden Way Street",
+-        "City": "Eastbourne",
+-        "County": "East Sussex",
+-        "Postcode": "BN22 0UN",
+-        "Country": "United Kingdom",
+-        "CountryCode": "GB",
+-        "CompanyName": "Helix Law Ltd",
+-        "CompanyNumber": "07845461",
+-        "CompanyHouseNumber": "21",
+-        "CompanyStreet": "Second Floor, Britannia House, Station Street",
+-        "CompanyCity": "Brighton",
+-        "CompanyCounty": "East Sussex",
+-        "CompanyPostcode": "BN1 4DE",
+-        "CompanyCountry": "United Kingdom",
+-        "CompanyCountryCode": "GB",
+-        "Notes": null,
+-        "PaymentMethod": "card",
+-        "PaymentResult": "successful",
+-        "PaymentAmount": 0.5,
+-        "PaymentProduct": "Test service description",
+-        "AliasId": "A1",
+-        "OrderId": "ORD3927",
+-        "SHASign": "SIG3927",
+-        "PaymentTimestamp": "2025-06-16T07:00:00"
+-      },
++        "InstructionRef": "HLX-3-OPTDOC",
++        "Stage": "completed",
++        "PassportNumber": "BB1234567",
++        "PaymentResult": "successful"
++      }
++    ],
++    "documents": [],
++    "riskAssessments": [],
++    "electronicIDChecks": [
+       {
+-        "InstructionRef": "HLX-22338-4581",
+-        "Stage": "poid",
+-        "ClientType": null,
+-        "HelixContact": null,
+-        "ConsentGiven": "0",
+-        "InternalStatus": "pitch",
+-        "SubmissionDate": "2025-06-20T00:00:00",
+-        "SubmissionTime": "14:27:58.3809635",
+-        "LastUpdated": "2025-06-20T14:27:58.3809635",
+-        "ClientId": null,
+-        "RelatedClientId": null,
+-        "MatterId": null,
+-        "Title": null,
+-        "FirstName": null,
+-        "LastName": null,
+-        "Nationality": null,
+-        "NationalityAlpha2": null,
+-        "DOB": null,
+-        "Gender": null,
+-        "Phone": null,
+-        "Email": null,
+-        "PassportNumber": "A98765432",
+-        "DriversLicenseNumber": null,
+-        "IdType": "passport",
+-        "HouseNumber": null,
+-        "Street": null,
+-        "City": null,
+-        "County": null,
+-        "Postcode": null,
+-        "Country": null,
+-        "CountryCode": null,
+-        "CompanyName": null,
+-        "CompanyNumber": null,
+-        "CompanyHouseNumber": null,
+-        "CompanyStreet": null,
+-        "CompanyCity": null,
+-        "CompanyCounty": null,
+-        "CompanyPostcode": null,
+-        "CompanyCountry": null,
+-        "CompanyCountryCode": null,
+-        "Notes": null,
+-        "PaymentMethod": "card",
+-        "PaymentResult": "successful",
+-        "PaymentAmount": 1,
+-        "PaymentProduct": "bespoke contract  review and letter",
+-        "AliasId": null,
+-        "OrderId": null,
+-        "SHASign": null,
+-        "PaymentTimestamp": "2025-06-20T14:30:00"
+-      },
++        "MatterId": "HLX-3-OPTDOC",
++        "EIDStatus": "completed",
++        "EIDOverallResult": "Passed"
++      }
++    ],
++    "idVerifications": []
++  },
++  {
++    "prospectId": 4,
++    "deals": [
+       {
+-        "InstructionRef": "HLX-22338-4843",
+-        "Stage": "completed",
+-        "ClientType": "Company",
+-        "HelixContact": "LZ",
+-        "ConsentGiven": "1",
+-        "InternalStatus": "paid",
+-        "SubmissionDate": "2025-06-15T00:00:00",
+-        "SubmissionTime": "19:42:28.4070419",
+-        "LastUpdated": "2025-06-15T19:43:55.7306937",
+-        "ClientId": null,
+-        "RelatedClientId": null,
+-        "MatterId": null,
+-        "Title": "Mr",
+-        "FirstName": "Luke",
+-        "LastName": "Zemanek",
+-        "Nationality": "Rwanda",
+-        "NationalityAlpha2": null,
+-        "DOB": "1996-09-11T00:00:00",
+-        "Gender": "Male",
+-        "Phone": "+447 783949281",
+-        "Email": "lz@helix-law.com",
+-        "PassportNumber": "sfsdf",
+-        "DriversLicenseNumber": null,
+-        "IdType": "passport",
+-        "HouseNumber": "103",
+-        "Street": "Croxden Way",
+-        "City": "Eastbourne",
+-        "County": "East Sussex",
+-        "Postcode": "BN22 0UN",
+-        "Country": "United Kingdom",
+-        "CountryCode": "GB",
+-        "CompanyName": "Helix Law Ltd",
+-        "CompanyNumber": "07845461",
+-        "CompanyHouseNumber": "21",
+-        "CompanyStreet": "Second Floor, Britannia House, Station Street",
+-        "CompanyCity": "Brighton",
+-        "CompanyCounty": "East Sussex",
+-        "CompanyPostcode": "BN1 4DE",
+-        "CompanyCountry": "United Kingdom",
+-        "CompanyCountryCode": "GB",
+-        "Notes": null,
+-        "PaymentMethod": "card",
+-        "PaymentResult": "successful",
+-        "PaymentAmount": 0.5,
+-        "PaymentProduct": "Test service description",
+-        "AliasId": "E913B740-D2DF-4459-AD69-FAE03654599F",
+-        "OrderId": "HLX-22338-4843",
+-        "SHASign": "9F1A7F78F47CE5D952EA6808F0A8C138618B5F57764BDA806779717D62D5AA35",
+-        "PaymentTimestamp": "2025-06-15T19:43:55.724"
+-      },
++        "DealId": 2,
++        "InstructionRef": "HLX-4-PAYFAIL",
++        "Status": "closed"
++      }
++    ],
++    "jointClients": [],
++    "instructions": [
+       {
+-        "InstructionRef": "HLX-22338-7385",
++        "InstructionRef": "HLX-4-PAYFAIL",
+         "Stage": "completed",
+-        "ClientType": "Company",
+-        "HelixContact": "LZ",
+-        "ConsentGiven": "1",
+-        "InternalStatus": "attempted-payment",
+-        "SubmissionDate": "2025-06-15T00:00:00",
+-        "SubmissionTime": "19:43:55.7240000",
+-        "LastUpdated": "2025-06-15T19:43:55.724",
+-        "ClientId": null,
+-        "RelatedClientId": null,
+-        "MatterId": null,
+-        "Title": "Mr",
+-        "FirstName": "Luke",
+-        "LastName": "Zemanek",
+-        "Nationality": "Rwanda",
+-        "NationalityAlpha2": null,
+-        "DOB": "1996-09-11T00:00:00",
+-        "Gender": "Male",
+-        "Phone": "+447 783949281",
+-        "Email": "lz@helix-law.com",
+-        "PassportNumber": "sfsdf",
+-        "DriversLicenseNumber": null,
+-        "IdType": "passport",
+-        "HouseNumber": "103",
+-        "Street": "Croxden Way",
+-        "City": "Eastbourne",
+-        "County": "East Sussex",
+-        "Postcode": "BN22 0UN",
+-        "Country": "United Kingdom",
+-        "CountryCode": "GB",
+-        "CompanyName": "Helix Law Ltd",
+-        "CompanyNumber": "07845461",
+-        "CompanyHouseNumber": "21",
+-        "CompanyStreet": "Second Floor, Britannia House, Station Street",
+-        "CompanyCity": "Brighton",
+-        "CompanyCounty": "East Sussex",
+-        "CompanyPostcode": "BN1 4DE",
+-        "CompanyCountry": "United Kingdom",
+-        "CompanyCountryCode": "GB",
+-        "Notes": null,
+-        "PaymentMethod": "card",
+-        "PaymentResult": "failed",
+-        "PaymentAmount": 0.5,
+-        "PaymentProduct": "Test service description",
+-        "AliasId": "E913B740-D2DF-4459-AD69-FAE03654599F",
+-        "OrderId": "HLX-22338-4843",
+-        "SHASign": "9F1A7F78F47CE5D952EA6808F0A8C138618B5F57764BDA806779717D62D5AA35",
+-        "PaymentTimestamp": "2025-06-15T19:43:55.724"
++        "PassportNumber": "CC1234567",
++        "PaymentResult": "failed"
+       }
+     ],
+     "documents": [
+       {
+-        "DocumentId": 21,
+-        "InstructionRef": "HLX-22338-4581",
+-        "DocumentType": null,
+-        "FileName": "grey helix mark.png",
+-        "BlobUrl": "https://instructionfiles.blob.core.windows.net/instruction-files/22338/HLX-22338-4581/grey%20helix%20mark.png",
+-        "FileSizeBytes": null,
+-        "UploadedBy": null,
+-        "UploadedAt": "2025-06-20T14:29:32.9051517",
+-        "Notes": null
+-      },
+-      {
+-        "DocumentId": 22,
+-        "InstructionRef": "HLX-22338-4581",
+-        "DocumentType": null,
+-        "FileName": "avatar_highlight_gradient.png",
+-        "BlobUrl": "https://instructionfiles.blob.core.windows.net/instruction-files/22338/HLX-22338-4581/avatar_highlight_gradient.png",
+-        "FileSizeBytes": null,
+-        "UploadedBy": null,
+-        "UploadedAt": "2025-06-20T14:29:33.2463745",
+-        "Notes": null
+-      },
++        "DocumentId": 1,
++        "InstructionRef": "HLX-4-PAYFAIL",
++        "FileName": "doc.pdf"
++      }
++    ],
++    "riskAssessments": [],
++    "electronicIDChecks": [
+       {
+-        "DocumentId": 23,
+-        "InstructionRef": "HLX-22338-4581",
+-        "DocumentType": null,
+-        "FileName": "helix background blue.jpg",
+-        "BlobUrl": "https://instructionfiles.blob.core.windows.net/instruction-files/22338/HLX-22338-4581/helix%20background%20blue.jpg",
+-        "FileSizeBytes": null,
+-        "UploadedBy": null,
+-        "UploadedAt": "2025-06-20T14:29:34.189018",
+-        "Notes": null
++        "MatterId": "HLX-4-PAYFAIL",
++        "EIDStatus": "completed",
++        "EIDOverallResult": "Passed"
+       }
+     ],
+-    "riskAssessments": [
++    "idVerifications": []
++  },
++  {
++    "prospectId": 5,
++    "deals": [
+       {
+-        "MatterId": "HLX-22338-3927",
+-        "RiskAssessor": "Local Tester",
+-        "ComplianceDate": "2025-06-27",
+-        "RiskAssessmentResult": "Low",
+-        "RiskScore": 5,
+-        "TransactionRiskLevel": "Low Risk",
+-        "ClientRiskFactorsConsidered": true,
+-        "TransactionRiskFactorsConsidered": true,
+-        "FirmWideAMLPolicyConsidered": true,
+-        "FirmWideSanctionsRiskConsidered": true
+-      },
++        "DealId": 3,
++        "InstructionRef": "HLX-5-ALLGOOD",
++        "Status": "closed"
++      }
++    ],
++    "jointClients": [],
++    "instructions": [
+       {
+-        "MatterId": "HLX-22338-4581",
+-        "RiskAssessor": "Local Tester",
+-        "ComplianceDate": "2025-06-27",
+-        "RiskAssessmentResult": "Low",
+-        "RiskScore": 10,
+-        "TransactionRiskLevel": "Low Risk",
+-        "ClientRiskFactorsConsidered": true,
+-        "TransactionRiskFactorsConsidered": true,
+-        "FirmWideAMLPolicyConsidered": true,
+-        "FirmWideSanctionsRiskConsidered": true
+-      },
++        "InstructionRef": "HLX-5-ALLGOOD",
++        "Stage": "completed",
++        "PassportNumber": "DD1234567",
++        "PaymentResult": "successful"
++      }
++    ],
++    "documents": [
+       {
+-        "MatterId": "HLX-22338-4843",
+-        "RiskAssessor": "Local Tester",
+-        "ComplianceDate": "2025-06-27",
+-        "RiskAssessmentResult": "Medium",
+-        "RiskScore": 15,
+-        "TransactionRiskLevel": "Medium Risk",
+-        "ClientRiskFactorsConsidered": true,
+-        "TransactionRiskFactorsConsidered": true,
+-        "FirmWideAMLPolicyConsidered": true,
+-        "FirmWideSanctionsRiskConsidered": true
+-      },
++        "DocumentId": 2,
++        "InstructionRef": "HLX-5-ALLGOOD",
++        "FileName": "doc.pdf"
++      }
++    ],
++    "riskAssessments": [
+       {
+-        "MatterId": "HLX-22338-7385",
+-        "RiskAssessor": "Local Tester",
+-        "ComplianceDate": "2025-06-27",
+-        "RiskAssessmentResult": "High",
+-        "RiskScore": 20,
+-        "TransactionRiskLevel": "High Risk",
+-        "ClientRiskFactorsConsidered": true,
+-        "TransactionRiskFactorsConsidered": true,
+-        "FirmWideAMLPolicyConsidered": true,
+-        "FirmWideSanctionsRiskConsidered": true
++        "MatterId": "HLX-5-ALLGOOD",
++        "RiskAssessmentResult": "Low"
+       }
+     ],
+     "electronicIDChecks": [
+       {
+-        "MatterId": "HLX-22338-3927",
+-        "EIDStatus": "verified"
+-      },
+-      {
+-        "MatterId": "HLX-22338-4581",
+-        "EIDStatus": "pending"
+-      },
+-      {
+-        "MatterId": "HLX-22338-4843",
+-        "EIDStatus": "verified"
+-      },
+-      {
+-        "MatterId": "HLX-22338-7385",
+-        "EIDStatus": "verified"
++        "MatterId": "HLX-5-ALLGOOD",
++        "EIDStatus": "completed",
++        "EIDOverallResult": "Passed"
+       }
+     ],
+-    "compliance": [
+-      {
+-        "MatterId": "HLX-22338-3927",
+-        "ComplianceDate": "2025-06-27",
+-        "ComplianceExpiry": "2026-06-27",
+-        "CheckId": 1,
+-        "CheckResult": "pass",
+-        "PEPandSanctionsCheckResult": "Passed",
+-        "AddressVerificationCheckResult": "Passed",
+-        "Status": "pass"
+-      },
+-      {
+-        "MatterId": "HLX-22338-4581",
+-        "ComplianceDate": "2025-06-27",
+-        "ComplianceExpiry": "2026-06-27",
+-        "CheckId": 2,
+-        "CheckResult": "pass",
+-        "PEPandSanctionsCheckResult": "Passed",
+-        "AddressVerificationCheckResult": "Failed",
+-        "Status": "pass"
+-      },
+-      {
+-        "MatterId": "HLX-22338-4843",
+-        "ComplianceDate": "2025-06-27",
+-        "ComplianceExpiry": "2026-06-27",
+-        "CheckId": 3,
+-        "CheckResult": "pending",
+-        "PEPandSanctionsCheckResult": "Passed",
+-        "AddressVerificationCheckResult": "Passed",
+-        "Status": "pending"
+-      },
++    "idVerifications": []
++  },
++  {
++    "prospectId": 6,
++    "deals": [
+       {
+-        "MatterId": "HLX-22338-7385",
+-        "ComplianceDate": "2025-06-27",
+-        "ComplianceExpiry": "2026-06-27",
+-        "CheckId": 4,
+-        "CheckResult": "fail",
+-        "PEPandSanctionsCheckResult": "Failed",
+-        "AddressVerificationCheckResult": "Failed",
+-        "Status": "fail"
++        "DealId": 4,
++        "InstructionRef": "HLX-6-IDREVIEW",
++        "Status": "closed"
+       }
+     ],
+-    "idVerifications": [
+-      {
+-        "MatterId": "HLX-22338-3927",
+-        "EIDCheckId": "id-1",
+-        "EIDStatus": "completed",
+-        "EIDOverallResult": "Review",
+-        "PEPAndSanctionsCheckResult": "Passed",
+-        "AddressVerificationResult": "Passed",
+-        "EIDCheckedDate": "2025-06-27"
+-      },
++    "jointClients": [],
++    "instructions": [
+       {
+-        "MatterId": "HLX-22338-4581",
+-        "EIDCheckId": "id-2",
+-        "EIDStatus": "completed",
+-        "EIDOverallResult": "Passed",
+-        "PEPAndSanctionsCheckResult": "Failed",
+-        "AddressVerificationResult": "Review",
+-        "EIDCheckedDate": "2025-06-27"
+-      },
++        "InstructionRef": "HLX-6-IDREVIEW",
++        "Stage": "completed",
++        "PassportNumber": "EE1234567",
++        "PaymentResult": "successful"
++      }
++    ],
++    "documents": [
+       {
+-        "MatterId": "HLX-22338-4843",
+-        "EIDCheckId": "id-3",
+-        "EIDStatus": "pending",
+-        "EIDOverallResult": "Pending",
+-        "PEPAndSanctionsCheckResult": "Passed",
+-        "AddressVerificationResult": "Passed",
+-        "EIDCheckedDate": "2025-06-27"
+-      },
++        "DocumentId": 3,
++        "InstructionRef": "HLX-6-IDREVIEW",
++        "FileName": "doc.pdf"
++      }
++    ],
++    "riskAssessments": [],
++    "electronicIDChecks": [
+       {
+-        "MatterId": "HLX-22338-7385",
+-        "EIDCheckId": "id-4",
++        "MatterId": "HLX-6-IDREVIEW",
+         "EIDStatus": "completed",
+-        "EIDOverallResult": "Review",
+-        "PEPAndSanctionsCheckResult": "Failed",
+-        "AddressVerificationResult": "Review",
+-        "EIDCheckedDate": "2025-06-27"
++        "EIDOverallResult": "Review"
+       }
+-    ]
++    ],
++    "idVerifications": []
+   }
+ ]
