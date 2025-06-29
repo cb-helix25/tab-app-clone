@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import {
     Callout,
     TextField,
+    ITextFieldStyles,
     PrimaryButton,
     Checkbox,
     Stack,
@@ -31,17 +32,17 @@ const SnippetEditPopover: React.FC<SnippetEditPopoverProps> = ({ target, onSave,
         return () => document.removeEventListener('keydown', handleKey);
     }, [onDismiss]);
 
-    const textFieldStyles = {
+    const textFieldStyles: Partial<ITextFieldStyles> = {
         fieldGroup: {
             border: '1px solid #ccc',
-            borderRadius: '0px',
+            borderRadius: 0,
             backgroundColor: '#ffffff',
         },
         field: {
-            fontSize: '14px',
+            fontSize: 14,
             padding: '8px 12px',
             fontWeight: '400',
-            borderRadius: '0',
+            borderRadius: 0,
             boxShadow: 'none',
         },
     };
