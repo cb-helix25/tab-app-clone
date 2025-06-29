@@ -1,16 +1,18 @@
 # Instruction Card State Matrix
 
-This table summarises how the dashboard renders each instruction card depending on deal and ID status. Each scenario occupies a single row so the overview shows one clear example of each state.
+This table summarises how the instruction dashboard renders each card. Use it
+alongside `local-instruction-scenarios.md` to understand which steps should be
+complete for the action buttons to become active.
 
-| Scenario | Deal | ID | Pay | Docs | Notes |
-|---------|------|----|-----|------|-------|
-| **ID-only (no deal)** | pending | ✓ | disabled | disabled | Proof of ID received but no deal pitched yet |
-| **Pre-deal** | pending | pending | pending | pending | Neither deal nor ID provided |
-| **Deal closed, optional docs** | ✓ | ✓ | ✓ | `None` or ✓ | Payment and ID passed. Docs may be optional |
-| **Deal closed, payment failed** | ✓ | ✓ | ✗ | ✓ | Deal finished but payment unsuccessful |
-| **Deal closed, all good** | ✓ | ✓ | ✓ | ✓ | All checks complete. ID action label becomes **ID Verified** |
-| **Deal closed, ID needs review** | ✓ | review | ✓ | ✓ | ID requires manual review. Action label becomes **Review ID** |
+| Scenario | Deal | ID | Pay | Docs | Risk | Notes |
+|---------|------|----|-----|------|------|-------|
+| **Pre-deal** | pending | pending | pending | pending | pending | Deal pitched but nothing completed |
+| **ID started** | pending | pending | pending | pending | pending | Proof of ID supplied but EID check pending |
+| **Deal closed, optional docs** | closed | ✓ | ✓ | optional | ✓ | Payment, ID and risk complete. Docs optional |
+| **ID review, payment succeeded** | closed | review | ✓ | none | pending | Payment processed, ID flagged for review |
+| **ID review, payment failed** | closed | review | ✗ | none | pending | Payment failed, ID requires review |
+| **Deal closed, all good** | closed | ✓ | ✓ | ✓ | ✓ | All checks complete – Open Matter enabled |
 
-Additional rules:
-- A new **Risk** step appears in the status row. It shows a ✓ when the assessment result is low risk and a warning icon when flagged.
-- The **Open Matter** button is enabled only once the Deal is closed and ID, Payment and Documents are all complete.
+The **Open Matter** button only becomes available when the deal is closed,
+payment succeeded, documents received, the EID result has **Passed** and the
+risk assessment is complete.

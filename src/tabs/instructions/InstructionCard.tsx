@@ -196,7 +196,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             : 'flagged'
         : 'pending';
     const riskAssessed = riskStatus !== 'pending';
-    const openMatterReady = !dealOpen && paymentComplete && documentsComplete && verifyIdStatus === 'complete';
+    const openMatterReady =
+        !dealOpen &&
+        paymentComplete &&
+        documentsComplete &&
+        verifyIdStatus === 'complete' &&
+        riskStatus === 'complete';
     // Allow opening a new matter directly from the card even if some
     // prerequisite checks are outstanding. The navigator already shows
     // the relevant warnings so we no longer disable the action here.

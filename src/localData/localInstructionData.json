@@ -1,7 +1,13 @@
 [
   {
     "prospectId": 1,
-    "deals": [],
+    "deals": [
+      {
+        "DealId": 5,
+        "InstructionRef": "HLX-1-PRE",
+        "Status": "pitched"
+      }
+    ],
     "jointClients": [],
     "instructions": [
       {
@@ -17,11 +23,17 @@
   },
   {
     "prospectId": 2,
-    "deals": [],
+    "deals": [
+      {
+        "DealId": 6,
+        "InstructionRef": "HLX-2-START",
+        "Status": "pitched"
+      }
+    ],
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-2-IDONLY",
+        "InstructionRef": "HLX-2-START",
         "Stage": "poid",
         "PassportNumber": "AA1234567",
         "PaymentResult": null
@@ -29,13 +41,7 @@
     ],
     "documents": [],
     "riskAssessments": [],
-    "electronicIDChecks": [
-      {
-        "MatterId": "HLX-2-IDONLY",
-        "EIDStatus": "completed",
-        "EIDOverallResult": "Passed"
-      }
-    ],
+    "electronicIDChecks": [],
     "idVerifications": []
   },
   {
@@ -56,8 +62,19 @@
         "PaymentResult": "successful"
       }
     ],
-    "documents": [],
-    "riskAssessments": [],
+    "documents": [
+      {
+        "DocumentId": 4,
+        "InstructionRef": "HLX-3-OPTDOC",
+        "FileName": "doc.pdf"
+      }
+    ],
+    "riskAssessments": [
+      {
+        "MatterId": "HLX-3-OPTDOC",
+        "RiskAssessmentResult": "Low"
+      }
+    ],
     "electronicIDChecks": [
       {
         "MatterId": "HLX-3-OPTDOC",
@@ -72,32 +89,26 @@
     "deals": [
       {
         "DealId": 2,
-        "InstructionRef": "HLX-4-PAYFAIL",
+        "InstructionRef": "HLX-4-REVIEWOK",
         "Status": "closed"
       }
     ],
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-4-PAYFAIL",
+        "InstructionRef": "HLX-4-REVIEWOK",
         "Stage": "completed",
         "PassportNumber": "CC1234567",
-        "PaymentResult": "failed"
+        "PaymentResult": "successful"
       }
     ],
-    "documents": [
-      {
-        "DocumentId": 1,
-        "InstructionRef": "HLX-4-PAYFAIL",
-        "FileName": "doc.pdf"
-      }
-    ],
+    "documents": [],
     "riskAssessments": [],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-4-PAYFAIL",
+        "MatterId": "HLX-4-REVIEWOK",
         "EIDStatus": "completed",
-        "EIDOverallResult": "Passed"
+        "EIDOverallResult": "Review"
       }
     ],
     "idVerifications": []
@@ -107,37 +118,26 @@
     "deals": [
       {
         "DealId": 3,
-        "InstructionRef": "HLX-5-ALLGOOD",
+        "InstructionRef": "HLX-5-REVIEWFAIL",
         "Status": "closed"
       }
     ],
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-5-ALLGOOD",
+        "InstructionRef": "HLX-5-REVIEWFAIL",
         "Stage": "completed",
         "PassportNumber": "DD1234567",
-        "PaymentResult": "successful"
+        "PaymentResult": "failed"
       }
     ],
-    "documents": [
-      {
-        "DocumentId": 2,
-        "InstructionRef": "HLX-5-ALLGOOD",
-        "FileName": "doc.pdf"
-      }
-    ],
-    "riskAssessments": [
-      {
-        "MatterId": "HLX-5-ALLGOOD",
-        "RiskAssessmentResult": "Low"
-      }
-    ],
+    "documents": [],
+    "riskAssessments": [],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-5-ALLGOOD",
+        "MatterId": "HLX-5-REVIEWFAIL",
         "EIDStatus": "completed",
-        "EIDOverallResult": "Passed"
+        "EIDOverallResult": "Review"
       }
     ],
     "idVerifications": []
@@ -147,14 +147,14 @@
     "deals": [
       {
         "DealId": 4,
-        "InstructionRef": "HLX-6-IDREVIEW",
+        "InstructionRef": "HLX-6-ALLGOOD",
         "Status": "closed"
       }
     ],
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-6-IDREVIEW",
+        "InstructionRef": "HLX-6-ALLGOOD",
         "Stage": "completed",
         "PassportNumber": "EE1234567",
         "PaymentResult": "successful"
@@ -162,17 +162,22 @@
     ],
     "documents": [
       {
-        "DocumentId": 3,
-        "InstructionRef": "HLX-6-IDREVIEW",
+        "DocumentId": 2,
+        "InstructionRef": "HLX-6-ALLGOOD",
         "FileName": "doc.pdf"
       }
     ],
-    "riskAssessments": [],
+    "riskAssessments": [
+      {
+        "MatterId": "HLX-6-ALLGOOD",
+        "RiskAssessmentResult": "Low"
+      }
+    ],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-6-IDREVIEW",
+        "MatterId": "HLX-6-ALLGOOD",
         "EIDStatus": "completed",
-        "EIDOverallResult": "Review"
+        "EIDOverallResult": "Passed"
       }
     ],
     "idVerifications": []

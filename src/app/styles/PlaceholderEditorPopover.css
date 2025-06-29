@@ -1,54 +1,20 @@
-.placeholder-editor-callout .ms-Callout {
-    border-radius: 4px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-    padding: 8px 12px !important;
-    width: auto !important;
-    max-width: 320px !important;
-    background-color: #ffffff !important;
-    min-height: initial !important;
-    overflow: visible !important;
+.placeholder-editor-modal {
+    background: #ffffff;
+    color: #000000;
+    width: 90vw;
+    max-width: 700px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.placeholder-editor-callout .ms-TextField {
-    margin-bottom: 8px !important;
-    font-size: 14px !important;
-    width: 100% !important;
-    min-height: 32px !important;
+.placeholder-editor-modal .ms-TextField {
+    margin-bottom: 20px;
+    width: 100%;
 }
 
-.placeholder-editor-callout .ms-TextField-fieldGroup {
-    border: 1px solid #ccc !important;
-    border-radius: 4px !important;
-    background-color: #ffffff !important;
-    min-height: 32px !important;
-}
-
-.placeholder-editor-callout .ms-TextField-field {
-    font-size: 14px !important;
-    padding: 8px 10px !important;
-    font-weight: 400 !important;
-    border-radius: 4px !important;
-    resize: vertical !important;
-    min-height: 60px !important;
-    max-height: 200px !important;
-    overflow-y: auto !important;
-}
-
-/* Ensure the buttons inside the callout are properly styled */
-.placeholder-editor-callout .ms-Button {
-    padding: 6px 16px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    border-radius: 4px !important;
-    text-transform: none !important;
-}
-
-@keyframes fadeInOverlay {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+.placeholder-editor-modal .ms-Button {
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 0;
+    text-transform: none;
 }

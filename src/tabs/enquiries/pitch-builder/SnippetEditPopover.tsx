@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import {
-    Callout,
     TextField,
     ITextFieldStyles,
     PrimaryButton,
     Checkbox,
     Stack,
-    DirectionalHint,
     Text,
 } from '@fluentui/react';
+import PopoverContainer from '../../../components/PopoverContainer';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import '../../../app/styles/SnippetEditPopover.css';
 
@@ -47,57 +45,44 @@ const SnippetEditPopover: React.FC<SnippetEditPopoverProps> = ({ target, onSave,
         },
     };
 
-    const callout = (
-        <Callout
-            className="snippet-edit-callout"
-            target={target}
-            onDismiss={onDismiss}
-            setInitialFocus
-            directionalHint={DirectionalHint.bottomLeftEdge}
-            isBeakVisible={false}
-            gapSpace={12}
-            styles={{ root: { width: 320 } }}
-        >
-            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: '16px 20px' } }}>
-                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                    Snippet Details
-                </Text>
-                <Text variant="small">Provide a label and sort order.</Text>
-                <TextField
-                    label="Label"
-                    value={label}
-                    onChange={(_, v) => setLabel(v || '')}
-                    styles={textFieldStyles}
+    const content = (
+        <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: '16px 20px' } }}>
+            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+                Snippet Details
+            </Text>
+            <Text variant="small">Provide a label and sort order.</Text>
+            <TextField
+                label="Label"
+                value={label}
+                onChange={(_, v) => setLabel(v || '')}
+                styles={textFieldStyles}
+            />
+            <TextField
+                label="Sort Order"
+                type="number"
+                value={String(sortOrder)}
+                onChange={(_, v) => setSortOrder(Number(v))}
+                styles={textFieldStyles}
+            />
+            <Checkbox
+                label="Create as new snippet"
+                checked={isNew}
+                onChange={(_, checked) => setIsNew(!!checked)}
+            />
+            <Stack horizontal horizontalAlign="end">
+                <PrimaryButton
+                    text="Save"
+                    styles={sharedPrimaryButtonStyles}
+                    onClick={() => onSave({ label, sortOrder, isNew })}
                 />
-                <TextField
-                    label="Sort Order"
-                    type="number"
-                    value={String(sortOrder)}
-                    onChange={(_, v) => setSortOrder(Number(v))}
-                    styles={textFieldStyles}
-                />
-                <Checkbox
-                    label="Create as new snippet"
-                    checked={isNew}
-                    onChange={(_, checked) => setIsNew(!!checked)}
-                />
-                <Stack horizontal horizontalAlign="end">
-                    <PrimaryButton
-                        text="Save"
-                        styles={sharedPrimaryButtonStyles}
-                        onClick={() => onSave({ label, sortOrder, isNew })}
-                    />
-                </Stack>
             </Stack>
-        </Callout>
+        </Stack>
     );
 
-    return ReactDOM.createPortal(
-        <>
-            <div className="snippet-edit-overlay" onClick={onDismiss} />
-            {callout}
-        </>,
-        document.body
+    return (
+        <PopoverContainer target={target} onDismiss={onDismiss} width={320} className="snippet-edit-modal">
+            {content}
+        </PopoverContainer>
     );
 };
 

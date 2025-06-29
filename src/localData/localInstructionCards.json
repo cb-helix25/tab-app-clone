@@ -1,15 +1,5 @@
 [
     {
-        "scenario": "ID-only (no deal)",
-        "deal": "pending",
-        "id": "complete",
-        "pay": "disabled",
-        "docs": "disabled",
-        "risk": "pending",
-        "openMatter": false,
-        "notes": "Proof of ID received but no deal pitched yet"
-    },
-    {
         "scenario": "Pre-deal",
         "deal": "pending",
         "id": "pending",
@@ -17,7 +7,17 @@
         "docs": "pending",
         "risk": "pending",
         "openMatter": false,
-        "notes": "Neither deal nor ID provided"
+        "notes": "Deal pitched but nothing completed"
+    },
+    {
+        "scenario": "ID started",
+        "deal": "pending",
+        "id": "pending",
+        "pay": "pending",
+        "docs": "pending",
+        "risk": "pending",
+        "openMatter": false,
+        "notes": "Proof of ID received but EID not yet complete"
     },
     {
         "scenario": "Deal closed, optional docs",
@@ -25,19 +25,29 @@
         "id": "complete",
         "pay": "complete",
         "docs": "optional",
-        "risk": "pending",
-        "openMatter": false,
-        "notes": "Payment and ID passed. Docs may be optional"
+        "risk": "complete",
+        "openMatter": true,
+        "notes": "All mandatory steps complete. Docs optional but provided."
     },
     {
-        "scenario": "Deal closed, payment failed",
+        "scenario": "ID review, payment succeeded",
         "deal": "complete",
-        "id": "complete",
-        "pay": "failed",
-        "docs": "complete",
+        "id": "review",
+        "pay": "complete",
+        "docs": "pending",
         "risk": "pending",
         "openMatter": false,
-        "notes": "Deal finished but payment unsuccessful"
+        "notes": "EID flagged for review. Payment processed."
+    },
+    {
+        "scenario": "ID review, payment failed",
+        "deal": "complete",
+        "id": "review",
+        "pay": "failed",
+        "docs": "pending",
+        "risk": "pending",
+        "openMatter": false,
+        "notes": "Payment unsuccessful and ID requires manual review."
     },
     {
         "scenario": "Deal closed, all good",
@@ -48,15 +58,5 @@
         "risk": "complete",
         "openMatter": true,
         "notes": "All checks complete. ID action label becomes ID Verified"
-    },
-    {
-        "scenario": "Deal closed, ID needs review",
-        "deal": "complete",
-        "id": "review",
-        "pay": "complete",
-        "docs": "complete",
-        "risk": "pending",
-        "openMatter": false,
-        "notes": "ID requires manual review. Action label becomes Review ID"
     }
 ]
