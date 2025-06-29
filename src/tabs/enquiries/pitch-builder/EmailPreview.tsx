@@ -11,6 +11,7 @@ import {
   DefaultButton,
   Checkbox,
   IconButton,
+  mergeStyles,
 } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import {
@@ -18,6 +19,8 @@ import {
   sharedDefaultButtonStyles,
   sharedDraftConfirmedButtonStyles,
 } from '../../../app/styles/ButtonStyles';
+import { componentTokens } from '../../../app/styles/componentTokens';
+import greyHelix from '../../../assets/grey helix mark.png';
 import {
   removeHighlightSpans,
   markUnfilledPlaceholders,
@@ -159,6 +162,27 @@ function formatCurrency(val?: string): string {
   });
 }
 
+  const subjectBannerClass = mergeStyles('subject-banner', {
+    background: componentTokens.infoBanner.background,
+    borderLeft: componentTokens.infoBanner.borderLeft,
+    padding: componentTokens.infoBanner.padding,
+    fontSize: '0.875rem',
+    fontWeight: 600,
+  });
+
+  const panelStyles = {
+    padding: '12px',
+    backgroundColor: colours.light.previewBackground,
+    backgroundImage: `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url(${greyHelix})`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center 80px',
+    backgroundSize: '70%',
+    color: colours.light.text,
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  } as const;
+
   return (
     <Panel
       isOpen={isPreviewOpen}
@@ -167,14 +191,7 @@ function formatCurrency(val?: string): string {
       customWidth="600px"
       hasCloseButton={false}
       styles={{
-        main: {
-          padding: '12px',
-          backgroundColor: colours.light.previewBackground,
-          color: colours.light.text,
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-        },
+        main: panelStyles,
         commands: { display: 'none' },
       }}
     >
@@ -233,15 +250,10 @@ function formatCurrency(val?: string): string {
           </MessageBar>
         )}
         <Separator />
-        <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-          {subject || 'N/A'}
-        </Text>
+        <div className={subjectBannerClass}>{subject || 'N/A'}</div>
 
         {/* Body */}
         <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
-          <Text variant="medium" styles={{ root: { fontWeight: 600, color: colours.highlight, marginBottom: 5 } }}>
-            Body:
-          </Text>
           <div
             ref={previewRef}
             style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}

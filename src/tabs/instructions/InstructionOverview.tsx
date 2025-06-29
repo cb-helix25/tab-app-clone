@@ -1,6 +1,6 @@
 import React from 'react';
 import { mergeStyles } from '@fluentui/react';
-import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown } from 'react-icons/fa';
+import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown, FaExclamationTriangle } from 'react-icons/fa';
 import InstructionCard from './InstructionCard';
 import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
@@ -77,6 +77,13 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
         else idStatus = 'review';
     }
 
+    const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
+    const riskStatus = riskResult
+        ? ['low', 'pass', 'approved'].includes(riskResult)
+            ? 'complete'
+            : 'flagged'
+        : 'pending';
+
     const summaryData = [
         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
         { key: 'id', label: 'Proof of ID', status: idStatus },
@@ -86,6 +93,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
         },
         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
+        { key: 'risk', label: 'Risk', status: riskStatus },
     ];
 
     const primaryDeal = deal ?? deals[0];
@@ -119,7 +127,9 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
                                 ? <FaCheckCircle />
                                 : status === 'failed'
                                     ? <FaTimesCircle />
-                                    : <FaClock />
+                                    : status === 'flagged'
+                                        ? <FaExclamationTriangle />
+                                        : <FaClock />
                             : null;
                         return (
                             <div key={i} className={`status-item ${d.key}`}>

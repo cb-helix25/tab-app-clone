@@ -1,61 +1,143 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 4bcc509c3fec86413edd7667a5ed1e5505b4200e..55f399a21e8bc5caa066183e49cc5823b88a62ab 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -619,51 +619,55 @@ const Instructions: React.FC<InstructionsProps> = ({
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={newMatterClientType}
-         />
-       </Stack>
-     );
-   }
+diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
+index e8aa08e3aefc9ad1f732ed77c0e5a6d056433dd7..5ff96d9c10991e5cde5d905b6976a5e1eeae634f 100644
+--- a/src/tabs/instructions/InstructionOverview.tsx
++++ b/src/tabs/instructions/InstructionOverview.tsx
+@@ -1,28 +1,28 @@
+ import React from 'react';
+ import { mergeStyles } from '@fluentui/react';
+-import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown } from 'react-icons/fa';
++import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown, FaExclamationTriangle } from 'react-icons/fa';
+ import InstructionCard from './InstructionCard';
+ import { cardStyles } from './componentTokens';
+ import { ClientInfo } from './JointClientCard';
+ import '../../app/styles/InstructionDashboard.css';
+ import '../../app/styles/InstructionCard.css';
+ import '../../app/styles/InstructionOverview.css';
  
-   if (showRiskPage) {
+ interface InstructionOverviewProps {
+     instruction?: any;
+     deal?: any;
+     deals: any[];
+     clients: ClientInfo[];
+     risk?: any;
+     eid?: any;
+     compliance?: any;
+     prospectId?: number;
+     passcode?: string;
+     documentCount?: number;
+     animationDelay?: number;
+     expanded: boolean;
+     onToggle: () => void;
+     onOpenMatter?: () => void;
+     onRiskAssessment?: () => void;
+     onEIDCheck?: () => void;
+ }
+diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
+index e8aa08e3aefc9ad1f732ed77c0e5a6d056433dd7..5ff96d9c10991e5cde5d905b6976a5e1eeae634f 100644
+--- a/src/tabs/instructions/InstructionOverview.tsx
++++ b/src/tabs/instructions/InstructionOverview.tsx
+@@ -55,93 +55,103 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
+     });
+ 
+     const stage = instruction?.Stage ?? 'deal pending';
+     const eidStatus = eid?.EIDStatus ?? '-';
+     const eidResult = eid?.EIDOverallResult?.toLowerCase();
+     const complianceStatus = compliance?.Status ?? '-';
+ 
+     const proofOfIdComplete = Boolean(
+         instruction?.PassportNumber || instruction?.DriversLicenseNumber,
+     );
+     const paymentStatusRaw = instruction?.PaymentResult?.toLowerCase();
+     const paymentComplete = paymentStatusRaw === 'successful';
+     const paymentFailed = paymentStatusRaw === 'failed';
+     const documentsComplete = documentCount > 0;
+ 
+     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
+ 
+     let idStatus = 'pending';
+     const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
+     if (proofOfIdComplete) {
+         if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
+         else if (eidVerified) idStatus = 'verified';
+         else idStatus = 'review';
+     }
+ 
++    const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
++    const riskStatus = riskResult
++        ? ['low', 'pass', 'approved'].includes(riskResult)
++            ? 'complete'
++            : 'flagged'
++        : 'pending';
++
+     const summaryData = [
+         { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
+         { key: 'id', label: 'Proof of ID', status: idStatus },
+         {
+             key: 'pay',
+             label: 'Pay',
+             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
+         },
+         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
++        { key: 'risk', label: 'Risk', status: riskStatus },
+     ];
+ 
+     const primaryDeal = deal ?? deals[0];
+     const leadName = instruction
+         ? (instruction.FirstName || instruction.LastName)
+             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
+             : instruction.CompanyName ?? clients.find((c) => c.Lead)?.ClientEmail ?? ''
+         : primaryDeal?.ServiceDescription ?? '';
+ 
      return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <RiskAssessmentPage
-           onBack={() => setShowRiskPage(false)}
-           instructionRef={selectedInstruction?.InstructionRef}
-           riskAssessor={userInitials}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showEIDPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
--        <EIDCheckPage poidData={idVerificationOptions} onBack={handleBack} />
-+        <EIDCheckPage
-+          poidData={idVerificationOptions}
-+          instruction={selectedInstruction}
-+          onBack={handleBack}
-+        />
-       </Stack>
-     );
-   }
- 
-   return (
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === "overview" && (
-             <div className={overviewColumnStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionCard
-                     key={idx}
-                     instruction={item.instruction as any}
-                     deal={(item as any).deal}
-                     deals={item.deals}
-                     clients={item.clients}
-                     risk={(item as any).risk}
-                     eid={(item as any).eid}
-                     compliance={undefined}
-                     documents={item.documents}
+         <div className={containerClass} style={style}>
+             <button type="button" className="overview-toggle" onClick={onToggle}>
+                 <div className="dashboard-header">
+                     {instruction ? instruction.InstructionRef : 'Deal Pending'}
+                     {leadName && <span className="lead-client">{leadName}</span>}
+                     <span className="instruction-stage">{stage}</span>
+                     <FaChevronDown className="chevron" />
+                 </div>
+                 {!instruction && (prospectId || passcode) && (
+                     <div className="lead-client">
+                         {prospectId && <>Prospect {prospectId}</>}
+                         {prospectId && passcode && ' · '}
+                         {passcode && <>Passcode {passcode}</>}
+                     </div>
+                 )}
+                 <div className="status-row">
+                     {summaryData.map((d, i) => {
+                         const status = (d.status ?? '').toString().toLowerCase();
+                         const icon = d.status
+                             ? ['complete', 'closed', 'verified', 'approved'].includes(status)
+                                 ? <FaCheckCircle />
+                                 : status === 'failed'
+                                     ? <FaTimesCircle />
+-                                    : <FaClock />
++                                    : status === 'flagged'
++                                        ? <FaExclamationTriangle />
++                                        : <FaClock />
+                             : null;
+                         return (
+                             <div key={i} className={`status-item ${d.key}`}>
+                                 <span className="status-label">{d.label}</span>
+                                 <span className={`status-value ${status}`}>{icon}</span>
+                             </div>
+                         );
+                     })}
+                 </div>
+             </button>
+             {expanded && (
+                 <InstructionCard
+                     instruction={instruction as any}
+                     deal={deal}
+                     deals={deals}
+                     clients={clients}
+                     prospectId={prospectId}
+                     risk={risk}
+                     eid={eid}
+                     compliance={compliance}
+                     documentCount={documentCount}
+                     expanded
+                     onOpenMatter={onOpenMatter}
+                     onRiskAssessment={onRiskAssessment}
+                     onEIDCheck={onEIDCheck}

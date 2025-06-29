@@ -4,8 +4,13 @@ import { POID, TeamData } from '../../app/functionality/types';
 import StepHeader from './StepHeader';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
-import { colours } from '../../app/styles/colours';
 import '../../app/styles/NewMatters.css';
+import {
+    practiceAreasByArea,
+    getGroupColor,
+    stepTitles,
+    StepKey,
+} from './MatterOpening/config';
 // Import local team data
 import teamDataJson from '../../../data/team-sql-data.json';
 
@@ -23,107 +28,6 @@ import OpponentDetailsStep from './MatterOpening/OpponentDetailsStep';
 import ReviewStep from './MatterOpening/ReviewStep';
 import { CompletionProvider } from './MatterOpening/CompletionContext';
 
-const practiceAreasByArea: { [key: string]: string[] } = {
-    Commercial: [
-        'Commercial',
-        'Director Rights & Dispute Advice',
-        'Shareholder Rights & Dispute Advice',
-        'Civil/Commercial Fraud Advice',
-        'Partnership Advice',
-        'Business Contract Dispute',
-        'Unpaid Loan Recovery',
-        'Contentious Probate',
-        'Statutory Demand - Drafting',
-        'Statutory Demand - Advising',
-        'Winding Up Petition Advice',
-        'Bankruptcy Petition Advice',
-        'Injunction Advice',
-        'Intellectual Property',
-        'Professional Negligence',
-        'Unpaid Invoice/Debt Dispute',
-        'Commercial Contract - Drafting',
-        'Company Restoration',
-        'Small Claim Advice',
-        'Trust Advice',
-        'Terms and Conditions - Drafting',
-    ],
-    Construction: [
-        'Final Account Recovery',
-        'Retention Recovery Advice',
-        'Adjudication Advice & Dispute',
-        'Construction Contract Advice',
-        'Interim Payment Recovery',
-        'Contract Dispute',
-    ],
-    Property: [
-        'Landlord & Tenant – Commercial Dispute',
-        'Landlord & Tenant – Residential Dispute',
-        'Boundary and Nuisance Advice',
-        'Trust of Land (Tolata) Advice',
-        'Service Charge Recovery & Dispute Advice',
-        'Breach of Lease Advice',
-        'Terminal Dilapidations Advice',
-        'Investment Sale and Ownership – Advice',
-        'Trespass',
-        'Right of Way',
-    ],
-    Employment: [
-        'Employment Contract - Drafting',
-        'Employment Retainer Instruction',
-        'Settlement Agreement - Drafting',
-        'Settlement Agreement - Advising',
-        'Handbook - Drafting',
-        'Policy - Drafting',
-        'Redundancy - Advising',
-        'Sick Leave - Advising',
-        'Disciplinary - Advising',
-        'Restrictive Covenant Advice',
-        'Post Termination Dispute',
-        'Employment Tribunal Claim - Advising',
-    ],
-};
-
-const partnerOptions = ['AC', 'JW', 'BR', 'LA', 'SP'];
-
-const getGroupColor = (group: string): string => {
-    switch (group) {
-        case 'Commercial':
-            return colours.highlight;
-        case 'Construction':
-            return colours.orange;
-        case 'Property':
-            return colours.green;
-        case 'Employment':
-            return colours.yellow;
-        default:
-            return colours.red;
-    }
-};
-
-type StepKey =
-    | 'clientInfo'
-    | 'poidSelection'
-    | 'areaOfWork'
-    | 'practiceArea'
-    | 'description'
-    | 'folderStructure'
-    | 'disputeValue'
-    | 'source'
-    | 'opponentDetails'
-    | 'review';
-
-const stepTitles: { [key in StepKey]: string } = {
-    clientInfo: 'Main Details',
-    poidSelection: 'Choose Proof of Identity',
-    areaOfWork: 'Select Area of Work',
-    practiceArea: 'Select Practice Area',
-    description: 'Enter Description',
-    folderStructure: 'Select NetDocuments Folder Structure',
-    disputeValue: 'Select Value of the Dispute',
-    source: 'Select Source & Confirm Referrer (if applicable)',
-    opponentDetails: 'Confirm Opponent Details',
-    review: 'Review & Build Matter',
-};
 
 interface NewMattersProps {
     poidData: POID[];

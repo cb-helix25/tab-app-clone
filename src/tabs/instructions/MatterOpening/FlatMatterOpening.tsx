@@ -3,8 +3,12 @@ import { Stack } from '@fluentui/react';
 import { POID, TeamData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
 import ClientHub from '../ClientHub';
-import { colours } from '../../../app/styles/colours';
 import '../../../app/styles/NewMatters.css';
+import {
+    practiceAreasByArea,
+    getGroupColor,
+    partnerOptions as defaultPartners,
+} from './config';
 import localTeamDataJson from '../../../localData/team-sql-data.json';
 
 import ClientInfoStep from './ClientInfoStep';
@@ -18,82 +22,6 @@ import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 import ReviewStep from './ReviewStep';
 import { CompletionProvider } from './CompletionContext';
-
-const practiceAreasByArea: { [key: string]: string[] } = {
-    Commercial: [
-        'Commercial',
-        'Director Rights & Dispute Advice',
-        'Shareholder Rights & Dispute Advice',
-        'Civil/Commercial Fraud Advice',
-        'Partnership Advice',
-        'Business Contract Dispute',
-        'Unpaid Loan Recovery',
-        'Contentious Probate',
-        'Statutory Demand - Drafting',
-        'Statutory Demand - Advising',
-        'Winding Up Petition Advice',
-        'Bankruptcy Petition Advice',
-        'Injunction Advice',
-        'Intellectual Property',
-        'Professional Negligence',
-        'Unpaid Invoice/Debt Dispute',
-        'Commercial Contract - Drafting',
-        'Company Restoration',
-        'Small Claim Advice',
-        'Trust Advice',
-        'Terms and Conditions - Drafting',
-    ],
-    Construction: [
-        'Final Account Recovery',
-        'Retention Recovery Advice',
-        'Adjudication Advice & Dispute',
-        'Construction Contract Advice',
-        'Interim Payment Recovery',
-        'Contract Dispute',
-    ],
-    Property: [
-        'Landlord & Tenant – Commercial Dispute',
-        'Landlord & Tenant – Residential Dispute',
-        'Boundary and Nuisance Advice',
-        'Trust of Land (Tolata) Advice',
-        'Service Charge Recovery & Dispute Advice',
-        'Breach of Lease Advice',
-        'Terminal Dilapidations Advice',
-        'Investment Sale and Ownership – Advice',
-        'Trespass',
-        'Right of Way',
-    ],
-    Employment: [
-        'Employment Contract - Drafting',
-        'Employment Retainer Instruction',
-        'Settlement Agreement - Drafting',
-        'Settlement Agreement - Advising',
-        'Handbook - Drafting',
-        'Policy - Drafting',
-        'Redundancy - Advising',
-        'Sick Leave - Advising',
-        'Disciplinary - Advising',
-        'Restrictive Covenant Advice',
-        'Post Termination Dispute',
-        'Employment Tribunal Claim - Advising',
-    ],
-};
-
-
-const getGroupColor = (group: string): string => {
-    switch (group) {
-        case 'Commercial':
-            return colours.highlight;
-        case 'Construction':
-            return colours.orange;
-        case 'Property':
-            return colours.green;
-        case 'Employment':
-            return colours.yellow;
-        default:
-            return colours.red;
-    }
-};
 
 interface FlatMatterOpeningProps {
     poidData: POID[];
@@ -132,8 +60,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const localTeamData = useMemo(() => localTeamDataJson, []);
-    const defaultPartnerOptions = ['Alex', 'Jonathan', 'Brendan', 'Laura', 'Sam'];
-    const partnerOptions = useMemo(() => {
+    const defaultPartnerOptions = defaultPartners;
+    const partnerOptionsList = useMemo(() => {
         const activeTeam = teamData || localTeamData;
         if (activeTeam) {
             const names = activeTeam
@@ -270,7 +198,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             isDateCalloutOpen={isDateCalloutOpen}
                             setIsDateCalloutOpen={setIsDateCalloutOpen}
                             dateButtonRef={dateButtonRef}
-                            partnerOptions={partnerOptions}
+                            partnerOptions={partnerOptionsList}
                         />
                         {showPoidSelection && (
                             <>

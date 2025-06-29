@@ -10,6 +10,7 @@ import {
     FaCheckCircle,
     FaClock,
     FaTimesCircle,
+    FaExclamationTriangle,
 } from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
@@ -188,12 +189,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const idStatus = verifyIdStatus === 'complete' ? 'verified'
         : verifyIdStatus === 'review' ? 'review'
             : 'pending';
-    const riskAssessed = Boolean(
-        risk &&
-        risk.MatterId === instruction.InstructionRef &&
-        risk.RiskAssessmentResult
-    );
-    const openMatterReady = paymentComplete && riskAssessed && verifyIdStatus === 'complete';
+    const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
+    const riskStatus = riskResultRaw
+        ? ['low', 'pass', 'approved'].includes(riskResultRaw)
+            ? 'complete'
+            : 'flagged'
+        : 'pending';
+    const riskAssessed = riskStatus !== 'pending';
+    const openMatterReady = !dealOpen && paymentComplete && documentsComplete && verifyIdStatus === 'complete';
     // Allow opening a new matter directly from the card even if some
     // prerequisite checks are outstanding. The navigator already shows
     // the relevant warnings so we no longer disable the action here.
@@ -251,6 +254,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
         },
         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
+        { key: 'risk', label: 'Risk', status: riskStatus },
     ];
 
     return (
@@ -292,7 +296,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             ? <FaCheckCircle />
                             : status === 'failed'
                                 ? <FaTimesCircle />
-                                : <FaClock />
+                                : status === 'flagged'
+                                    ? <FaExclamationTriangle />
+                                    : <FaClock />
                         : null;
                     return (
                         <div

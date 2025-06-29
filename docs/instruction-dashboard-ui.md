@@ -15,13 +15,14 @@ These actions use the shared `QuickActionsCard` component so the look and feel m
 
 ## Instruction Cards
 
-Each instruction card displays a status row with individual clocks for key checks:
+Each instruction card displays a status row with individual icons for the main checks:
 
 - **ID** – proof of identity provided.
 - **Pay** – payment taken and confirmed.
 - **Docs** – engagement documents uploaded.
-- **EID** – electronic ID verification result.
-- **Comp.** – compliance review outcome.
+- **Risk** – matter risk assessment.
+
+The risk step shows a check mark when the assessment result is low risk and a warning icon when any rule is flagged.
 
 Each item shows a check mark when complete, a cross on failure and a clock while pending. This ensures solicitors can quickly see whether mandatory checks have been completed before opening a matter.
 
@@ -29,6 +30,9 @@ Three action tabs now sit along the bottom edge of each card. Only the
 selected tab expands to show its label while the others collapse down to
 icons. They appear in the order **EID Check**, **Risk Assessment** and
 finally **Open Matter** so a user is guided through each step in turn.
+
+The **Open Matter** button only becomes active once the Deal is closed and the
+ID, Payment and Documents steps all show a completed state.
 
 The **Open Matter** tab now launches the matter opening workflow directly
 from a card. Previously users had to use the navigator action to start a
