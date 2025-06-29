@@ -364,7 +364,10 @@ const Instructions: React.FC<InstructionsProps> = ({
             []),
         ];
         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-        const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
+        const eids = eidSource.filter(
+          (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
+        );
+        const eid = eids[0];
         const docs = prospect.documents?.filter(
           (d) => d.InstructionRef === inst.InstructionRef,
         );
@@ -375,6 +378,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           clients: clientsForInst,
           risk,
           eid,
+          eids,
           documents: docs,
           prospectId: prospect.prospectId,
           documentCount: docs ? docs.length : 0,
@@ -703,6 +707,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     clients={item.clients}
                     risk={(item as any).risk}
                     eid={(item as any).eid}
+                    eids={(item as any).eids}
                     compliance={undefined}
                     documents={item.documents}
                     prospectId={item.prospectId}

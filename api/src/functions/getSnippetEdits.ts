@@ -30,8 +30,10 @@ export async function getSnippetEditsHandler(
         context.log(
             `Retrieving snippet edits function code from Key Vault secret: ${secretName}`,
         );
+        const vaultUrl =
+            process.env.KEY_VAULT_URL || "https://helix-keys.vault.azure.net/";
         const secretClient = new SecretClient(
-            "https://helix-keys.vault.azure.net/",
+            vaultUrl,
             new DefaultAzureCredential(),
         );
         try {

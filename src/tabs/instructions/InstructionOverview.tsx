@@ -15,6 +15,7 @@ interface InstructionOverviewProps {
     clients: ClientInfo[];
     risk?: any;
     eid?: any;
+    eids?: any[];
     compliance?: any;
     prospectId?: number;
     passcode?: string;
@@ -34,6 +35,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
     clients,
     risk,
     eid,
+    eids,
     compliance,
     prospectId,
     passcode,
@@ -149,6 +151,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
                     prospectId={prospectId}
                     risk={risk}
                     eid={eid}
+                    eids={eids}
                     compliance={compliance}
                     documentCount={documentCount}
                     expanded

@@ -83,6 +83,7 @@ interface InstructionCardProps {
         MatterId: string; RiskAssessmentResult?: string; RiskScore?: number 
 } | null;
     eid?: { EIDStatus?: string } | null;
+    eids?: any[];
     compliance?: any | null;
     documentCount?: number;
     documents?: any[];
@@ -109,6 +110,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     prospectId,
     risk,
     eid,
+    eids,
     compliance,
     documentCount,
     documents,
@@ -331,12 +333,23 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                 {prospectId != null && (
                                     <li><strong>Prospect ID:</strong> {prospectId}</li>
                                 )}
-                                {deal &&
-                                    Object.entries(deal).map(([k, v]) =>
-                                        v != null ? (
-                                            <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                        ) : null
-                                    )}
+                                {(deals && deals.length > 0
+                                    ? deals
+                                    : deal
+                                        ? [deal]
+                                        : [])
+                                    .map((d, idx) => (
+                                        <React.Fragment key={idx}>
+                                            {deals && deals.length > 1 && (
+                                                <li><em>Deal {idx + 1}</em></li>
+                                            )}
+                                            {Object.entries(d).map(([k, v]) =>
+                                                v != null ? (
+                                                    <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
+                                                ) : null
+                                            )}
+                                        </React.Fragment>
+                                    ))}
                             </ul>
                         </div>
                     )}
@@ -349,6 +362,23 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                         <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                     ) : null
                                 )}
+                                {(eids && eids.length > 0
+                                    ? eids
+                                    : eid
+                                        ? [eid]
+                                        : []
+                                ).map((e, idx) => (
+                                    <React.Fragment key={idx}>
+                                        {eids && eids.length > 1 && (
+                                            <li><em>ID Verification {idx + 1}</em></li>
+                                        )}
+                                        {Object.entries(e).map(([k, v]) => (
+                                            v != null ? (
+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
+                                            ) : null
+                                        ))}
+                                    </React.Fragment>
+                                ))}
                             </ul>
                         </div>
                     )}

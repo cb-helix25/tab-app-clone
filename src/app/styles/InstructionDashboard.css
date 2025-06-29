@@ -47,8 +47,7 @@
     border: 1px solid #e3e8ef;
 }
 
-.status-item.clients .status-value,
-.status-item.risk .status-value {
+.status-item.clients .status-value {
     color: var(--helix-dark-blue, #061733);
 }
 
