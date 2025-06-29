@@ -15,9 +15,9 @@ DELETE FROM dbo.DealJointClients;
 INSERT INTO dbo.DealJointClients
     (DealJointClientId, DealId, ClientEmail, HasSubmitted, SubmissionDateTime)
 VALUES
-    (30, 7, '001@helix-law.com', 0, NULL),
-    (31, 7, '002@helix-law.com', 0, NULL);
-    
+    (30, 6, '001@helix-law.com', 0, NULL),
+    (31, 6, '002@helix-law.com', 0, NULL);
+
 -- Insert data for Instructions table
 DELETE FROM dbo.Instructions;
 INSERT INTO dbo.Instructions
@@ -41,6 +41,42 @@ VALUES
 
 -- Insert data for IDVerifications table
 DELETE FROM dbo.IDVerifications;
--- No ID verification records for local test data
+SET IDENTITY_INSERT dbo.IDVerifications ON;
+INSERT INTO dbo.IDVerifications
+    (InternalId, InstructionRef, MatterId, DealJointClientId, ClientId, ProspectId,
+    ClientEmail, IsLeadClient, AdditionalIDDate, AdditionalIDTime, EIDCheckId,
+    EIDProvider, EIDStatus, EIDScore, EIDRawResponse, EIDCheckedDate, EIDCheckedTime,
+    CheckExpiry, EIDOverallResult, PEPAndSanctionsCheckResult, AddressVerificationResult)
+VALUES
+    (1, 'HLX-22338-4241', NULL, NULL, NULL, 22338, 'shyamsai@yahoo.com', 0, NULL, NULL,
+        '593d308b-293f-498d-91a7-3b20a3182f51', 'tiller', 'completed', NULL, '...see docs...',
+        '2025-06-25', '11:50:27.9910000', '2025-12-25', 'Review', 'Passed', 'Review'),
+    (2, 'HLX-22355-4242', NULL, NULL, NULL, 22355, 'sylvia.hughes@helixlaw.com', 1, '2025-06-12',
+        '09:25:43.1234567', 'a1b2c3d4-e5f6-7890-abcd-111111111111', 'tiller', 'completed',
+        NULL, NULL, '2025-06-12', '09:25:43.1234567', '2025-12-12', 'Passed', 'Passed', 'Passed'),
+    (3, 'HLX-22360-4243', NULL, NULL, NULL, 22360, 'naveed.khan@helixlaw.com', 0, NULL, NULL,
+        'b2c3d4e5-f6a1-8901-bcde-222222222222', 'tiller', 'completed', NULL, NULL, '2025-06-18',
+        '11:15:29', '2025-12-18', 'Review', 'Passed', 'Review'),
+    (4, 'HLX-22361-4244', NULL, NULL, NULL, 22361, 'dana.miller@helixlaw.com', 1, '2025-05-30',
+        '14:10:10.0101010', 'c3d4e5f6-a1b2-9012-cdef-333333333333', 'tiller', 'completed',
+        NULL, NULL, '2025-05-30', '14:10:10.0101010', '2025-11-30', 'Passed', 'Passed', 'Passed'),
+    (5, 'HLX-22365-4245', NULL, NULL, NULL, 22365, 'michael.chen@helixlaw.com', 0, NULL, NULL,
+        'd4e5f6a1-b2c3-0123-def0-444444444444', 'tiller', 'completed', NULL, NULL, '2025-06-22',
+        '16:45:00', '2025-12-22', 'Review', 'Passed', 'Review');
+SET IDENTITY_INSERT dbo.IDVerifications OFF;
 
--- RiskAssessment table currently has no data.
+-- Insert data for RiskAssessment table
+DELETE FROM dbo.RiskAssessment;
+INSERT INTO dbo.RiskAssessment
+    (MatterId, InstructionRef, RiskAssessor, ComplianceDate, ComplianceExpiry,
+    ClientType, ClientType_Value, DestinationOfFunds, DestinationOfFunds_Value,
+    FundsType, FundsType_Value, HowWasClientIntroduced, HowWasClientIntroduced_Value,
+    Limitation, Limitation_Value, SourceOfFunds, SourceOfFunds_Value, ValueOfInstruction,
+    ValueOfInstruction_Value, RiskAssessmentResult, RiskScore, RiskScoreIncrementBy,
+    TransactionRiskLevel, ClientRiskFactorsConsidered, TransactionRiskFactorsConsidered,
+    FirmWideAMLPolicyConsidered, FirmWideSanctionsRiskConsidered)
+VALUES
+    ('HLX-3-OPTDOC', 'HLX-3-OPTDOC', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Low', NULL, NULL, NULL, 0, 0, 0, 0),
+    ('HLX-6-ALLGOOD', 'HLX-6-ALLGOOD', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Low', NULL, NULL, NULL, 0, 0, 0, 0);
