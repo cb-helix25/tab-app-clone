@@ -235,15 +235,16 @@ const addingClientRef = useRef(false);
     setIsSaved(true);
   };
 
+  // Shared card style matching the header sections
   const sectionStyle = {
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 16,
-    gap: 8,
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 0,
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    padding: 12,
+    gap: 6,
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+    borderRadius: 8,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#fafafa',
   };
 
   const labelStyle = mergeStyles({
@@ -380,11 +381,12 @@ useLayoutEffect(() => {
   const rootStackStyle = mergeStyles(sectionStyle, {
     height: '100%',
     transition: 'box-shadow 0.2s ease',
+    borderRadius: 8,
     selectors: {
       ':hover': {
         boxShadow: isDarkMode
-          ? '0 2px 6px rgba(0,0,0,0.3)'
-          : '0 2px 6px rgba(0,0,0,0.15)',
+          ? '0 2px 4px rgba(0,0,0,0.3)'
+          : '0 2px 4px rgba(0,0,0,0.1)',
       },
     },
   });

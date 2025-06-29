@@ -1,127 +1,181 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index d79e872a713ffe1a77554cab99a7a81c5a056a43..811b9b49c6351ca2f48f588d6b06e340a65997cc 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -342,61 +342,65 @@ const Instructions: React.FC<InstructionsProps> = ({
-               Lead: true,
-               deals: [
-                 {
-                   DealId: d.DealId,
-                   InstructionRef: d.InstructionRef,
-                   ServiceDescription: d.ServiceDescription,
-                   Status: d.Status,
-                 },
-               ],
-             });
-           }
-         });
-         const deal = dealsForInst[0];
+diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+index 8097508e55e7caeaeae4603eae2e55c9e0f448c1..afb0d9713b160548550c69f0e51659e918068be3 100644
+--- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
++++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+@@ -48,89 +48,90 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
+   enquiry,
+   to,
+   setTo,
+   cc,
+   setCc,
+   bcc,
+   setBcc,
+   subject,
+   setSubject,
+   serviceDescription,
+   setServiceDescription,
+   selectedOption,
+   setSelectedOption,
+   SERVICE_OPTIONS,
+   amount,
+   handleAmountChange,
+   handleAmountBlur,
+   handleDealFormSubmit,
+   dealId,
+   clientIds,
+   isDarkMode,
+ }) => {
  
-         const riskSource = [
-           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
-           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
-         ];
-         const eidSource = [
-           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-           ...((inst as any).electronicIDChecks ??
-             (inst as any).idVerifications ??
-             []),
-         ];
-         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
--        const eid = eidSource.find((e) => e.MatterId === inst.InstructionRef);
-+        const eids = eidSource.filter(
-+          (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
-+        );
-+        const eid = eids[0];
-         const docs = prospect.documents?.filter(
-           (d) => d.InstructionRef === inst.InstructionRef,
-         );
-         return {
-           instruction: inst,
-           deal,
-           deals: dealsForInst,
-           clients: clientsForInst,
-           risk,
-           eid,
-+          eids,
-           documents: docs,
-           prospectId: prospect.prospectId,
-           documentCount: docs ? docs.length : 0,
-         };
-       });
+   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
  
-       return instructionItems;
++  // Generic card style used across enquiry, email and deal sections
+   const sectionStyle = {
+     display: 'flex',
+     flexDirection: 'column' as const,
+     width: '100%',
+-    padding: 16,           // more padding
+-    gap: 8,                // consistent gap
+-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+-    borderRadius: 4,       // slight rounding
++    padding: 12,
++    gap: 6,
++    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
++    borderRadius: 8,
+     backgroundColor: isDarkMode
+       ? colours.dark.sectionBackground
+-      : colours.light.sectionBackground,
+-  };;
++      : '#fafafa',
++  };
+ 
+   const enquiryNotesContainer = mergeStyles(sectionStyle);
+ 
+   const enquiryNotesHeader = mergeStyles({
+     color: labelColour,
+     fontWeight: 600,
+     fontSize: 13,
+     lineHeight: 1.2,
+     marginBottom: 8,    // ↑ more breathing room under the title
+   });
+ 
+   const enquiryNotesContent = mergeStyles({
+     whiteSpace: 'pre-wrap',
+     fontSize: 14,
+     color: labelColour,
+     display: 'flex',
+     flexDirection: 'column',
+     gap: 4,
+   });
+ 
+   const notesContainerStyle = mergeStyles({
+-    background: '#ffffff',
+-    border: `1px solid ${colours.light.border}`,
+-    borderRadius: 0,
++    background: isDarkMode ? colours.dark.cardBackground : '#fff',
++    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
++    borderRadius: 8,
+     padding: 12,
+     fontSize: 14,
+-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
++    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+     width: '100%',
+   });
+ 
+   const notesTextStyle = mergeStyles({
+     fontFamily: 'Raleway',
+   });
+ 
+   const intakeContainer = mergeStyles(sectionStyle);
+ 
+   const intakeHeader = mergeStyles({
+     color: labelColour,
+     fontWeight: 600,
+     fontSize: 13,
+     marginBottom: 8,    // ↑ match the enquiry title spacing
+     display: 'flex',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+   });
+ 
+   const toggleCcBccStyle = mergeStyles({
+     color: colours.greyText,
+     cursor: 'pointer',
+     fontSize: 12,
+     marginTop: 6,
+     selectors: {
+diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+index 8097508e55e7caeaeae4603eae2e55c9e0f448c1..afb0d9713b160548550c69f0e51659e918068be3 100644
+--- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
++++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+@@ -172,65 +173,64 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
+   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+ 
+   const copy = (text?: string) => {
+     if (!text) return;
+     navigator.clipboard
+       .writeText(text)
+       .then(() => {
+         setCopySuccess('Copied!');
+         setTimeout(() => setCopySuccess(null), 2000);
+       })
+       .catch((err) => console.error('Failed to copy: ', err));
+   };
+ 
+   // Previously aligned the subject field with the amount input using
+   // calculated spacing. With the simplified layout we use static spacing
+   // so this effect is no longer required.
+ 
+   useEffect(() => {
+     if (cc && !showCc) {
+       setShowCc(true);
+     }
+   }, [cc, showCc]);
+ 
+ 
+ 
++  // Layout grid keeping sections compact and aligned
+   const headerRowStyle = mergeStyles({
+-    display: 'flex',
+-    flexDirection: 'column',
+-    width: '100%',
++    display: 'grid',
++    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+     gap: 16,
+-    '@media (min-width: 768px)': {
+-      flexDirection: 'row',
+-    },
++    width: '100%',
+   });
+ 
+   const dealSideContainerStyle = (saved: boolean) =>
+     mergeStyles({
+       width: '100%',
+-      border: saved ? `2px solid ${colours.green}` : 'none',
++      border: saved ? `1px solid ${colours.green}` : `1px solid transparent`,
+       opacity: saved ? 0.6 : 1,
++      borderRadius: 8,
      });
- 
-     const unique: Record<string, typeof items[number]> = {};
-     items.forEach((item) => {
-       const ref = item.instruction?.InstructionRef as string | undefined;
-       if (ref && !unique[ref]) {
-         unique[ref] = item;
-       }
-     });
-     return Object.values(unique);
-   }, [instructionData]);
- 
-   const unlinkedDeals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).filter((d) => !d.InstructionRef),
-       ),
-     [instructionData],
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index d79e872a713ffe1a77554cab99a7a81c5a056a43..811b9b49c6351ca2f48f588d6b06e340a65997cc 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -681,50 +685,51 @@ const Instructions: React.FC<InstructionsProps> = ({
-           onBack={handleBack}
-         />
-       </Stack>
-     );
-   }
  
    return (
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === "overview" && (
-             <div className={overviewColumnStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionCard
-                     key={idx}
-                     instruction={item.instruction as any}
-                     deal={(item as any).deal}
-                     deals={item.deals}
-                     clients={item.clients}
-                     risk={(item as any).risk}
-                     eid={(item as any).eid}
-+                    eids={(item as any).eids}
-                     compliance={undefined}
-                     documents={item.documents}
-                     prospectId={item.prospectId}
-                     documentCount={item.documentCount ?? 0}
-                     animationDelay={animationDelay}
-                     expanded
-                     onOpenMatter={() => handleOpenMatter(item.instruction)}
-                     onRiskAssessment={() =>
-                       handleRiskAssessment(item.instruction)
-                     }
-                     onEIDCheck={() => handleEIDCheck(item.instruction)}
-                   />
- 
-                 );
-               })}
-               {unlinkedDeals.map((deal, idx) => {
-                 const base = overviewItems.length + idx;
-                 const row = Math.floor(base / 2);
-                 const col = base % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <DealCard
-                     key={`unlinked-${idx}`}
-                     deal={deal}
-                     animationDelay={animationDelay}
+     <Stack tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
+       <div className={headerRowStyle}>
+         {/* Enquiry Details */}
+         <div className={enquiryNotesContainer}>
+           <div className={enquiryNotesHeader}>Enquiry Details</div>
+           <Stack className={enquiryNotesContent}>
+             <div className={detailRowStyle}>
+               <span className={detailLabelStyle}>Name:</span>
+               <span className={detailValueStyle}>
+                 {enquiry.First_Name} {enquiry.Last_Name}
+               </span>
+               <IconButton
+                 iconProps={{ iconName: 'Copy' }}
+                 styles={{ root: { background: 'none', padding: 0 } }}
+                 ariaLabel="Copy Name"
+                 onClick={() =>
+                   copy(`${enquiry.First_Name ?? ''} ${enquiry.Last_Name ?? ''}`.trim())
+                 }
+               />
+             </div>
+             {enquiry.Email && (
+               <div className={detailRowStyle}>

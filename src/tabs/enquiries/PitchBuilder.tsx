@@ -2771,12 +2771,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   });
 
   const headerWrapperStyle = mergeStyles({
-    backgroundColor: colours.sectionBackground,
-    padding: 8,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    border: `1px solid ${isDarkMode ? colours.dark.cardHover : colours.light.cardHover}`,
-    borderBottom: 'none',
+    backgroundColor: 'transparent',
+    padding: 16,
+    borderBottom: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
   });
 
   const bodyWrapperStyle = mergeStyles({

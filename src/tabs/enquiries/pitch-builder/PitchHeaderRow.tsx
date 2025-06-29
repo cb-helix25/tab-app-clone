@@ -70,18 +70,19 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
 
+  // Generic card style used across enquiry, email and deal sections
   const sectionStyle = {
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 16,           // more padding
-    gap: 8,                // consistent gap
-    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-    borderRadius: 4,       // slight rounding
+    padding: 12,
+    gap: 6,
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+    borderRadius: 8,
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
-      : colours.light.sectionBackground,
-  };;
+      : '#fafafa',
+  };
 
   const enquiryNotesContainer = mergeStyles(sectionStyle);
 
@@ -103,12 +104,12 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   });
 
   const notesContainerStyle = mergeStyles({
-    background: '#ffffff',
-    border: `1px solid ${colours.light.border}`,
-    borderRadius: 0,
+    background: isDarkMode ? colours.dark.cardBackground : '#fff',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+    borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
     width: '100%',
   });
 
@@ -194,21 +195,20 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
 
 
 
+  // Layout grid keeping sections compact and aligned
   const headerRowStyle = mergeStyles({
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: 16,
-    '@media (min-width: 768px)': {
-      flexDirection: 'row',
-    },
+    width: '100%',
   });
 
   const dealSideContainerStyle = (saved: boolean) =>
     mergeStyles({
       width: '100%',
-      border: saved ? `2px solid ${colours.green}` : 'none',
+      border: saved ? `1px solid ${colours.green}` : `1px solid transparent`,
       opacity: saved ? 0.6 : 1,
+      borderRadius: 8,
     });
 
   return (
