@@ -57,9 +57,9 @@ module.exports = async function (context, req) {
         e.ProposedBy AS submittedBy,
         e.ReviewNotes AS reviewNotes,
         e.Status AS status
-      FROM DefaultSnippetEdits e
-      JOIN DefaultBlockSnippets s ON e.SnippetId = s.SnippetId
-      JOIN DefaultBlocks b ON s.BlockId = b.BlockId
+      FROM dbo.DefaultSnippetEdits e
+      JOIN dbo.DefaultBlockSnippets s ON e.SnippetId = s.SnippetId
+      JOIN dbo.DefaultBlocks b ON s.BlockId = b.BlockId
       WHERE e.Status = 'pending'
       ORDER BY e.EditId
     `);
