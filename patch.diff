@@ -1,302 +1,112 @@
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -947,56 +947,58 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-   // Tracks which blocks have been inserted
-   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
-   const [autoInsertedBlocks, setAutoInsertedBlocks] = useState<{ [key: string]: boolean }>({});
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index b84438bee3156b13bbdceb688e751ce5c5296de0..a0f08e708b8a37a2023a7e71e57f5cd4f2f61e1f 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1,49 +1,49 @@
+ import React, { useEffect, useState, useMemo, useRef } from "react";
+ import {
+   Stack,
+   mergeStyles,
+   IconButton,
+   Pivot,
+   PivotItem,
+   Text,
+ } from "@fluentui/react";
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+ import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+-import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
++import MatterOpeningFlow from "./MatterOpening/MatterOpeningFlow";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
+ import "../../app/styles/InstructionsBanner.css";
  
-   const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+ }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] =
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index b84438bee3156b13bbdceb688e751ce5c5296de0..a0f08e708b8a37a2023a7e71e57f5cd4f2f61e1f 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -665,51 +665,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+   });
  
-   const [pinnedBlocks, setPinnedBlocks] = useState<{ [key: string]: boolean }>({});
+   const scenariosContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "1fr",
+     gap: "16px",
+     maxWidth: "600px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
  
-   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
-   const [editedSnippets, setEditedSnippets] = useState<{
-     [key: string]: { [label: string]: boolean };
-   }>({});
-   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
-   const [originalSnippetContent, setOriginalSnippetContent] = useState<{
-     [key: string]: { [label: string]: string };
-   }>({});
-   const [hoveredOpstion, setHoveredOption] = useState<string | null>(null);
+   const overviewColumnStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "repeat(2, 1fr)",
+     gap: "24px",
+     maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
  
-   // Placeholder editing popover state
-   const [placeholderEdit, setPlaceholderEdit] = useState<{
-     span: HTMLElement;
-     target: HTMLElement;
-     before: string;
-     after: string;
-     text: string;
-+    blockTitle?: string;
-   } | null>(null);
- 
-   const [snippetEdit, setSnippetEdit] = useState<{
-     blockTitle: string;
-     target: HTMLElement;
-   } | null>(null);
-+  const [pendingOptionText, setPendingOptionText] = useState<string>('');
- 
-   function getNeighboringWords(span: HTMLElement, count: number = 3) {
-     const gather = (node: Node | null, words: string[], dir: 'prev' | 'next') => {
-       while (node && words.length < count) {
-         if (node.nodeType === Node.TEXT_NODE) {
-           const parts = (node.textContent || '')
-             .trim()
-             .split(/\s+/)
-             .filter(Boolean);
-           if (dir === 'prev') {
-             for (let i = parts.length - 1; i >= 0 && words.length < count; i--) {
-               words.unshift(parts[i]);
-             }
-           } else {
-             for (let i = 0; i < parts.length && words.length < count; i++) {
-               words.push(parts[i]);
-             }
-           }
-         }
-         node = dir === 'prev' ? node.previousSibling : node.nextSibling;
-       }
-     };
- 
-     const before: string[] = [];
-     const after: string[] = [];
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1164,56 +1166,60 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-           setBody(editor.innerHTML);
-         }
-       }
-       target && target.classList.remove('drag-over');
-       setDragSentence(null);
-     };
- 
-     editor.addEventListener('dragstart', handleDragStart);
-     editor.addEventListener('dragover', handleDragOver);
-     editor.addEventListener('dragleave', handleDragLeave);
-     editor.addEventListener('drop', handleDrop);
-     return () => {
-       editor.removeEventListener('dragstart', handleDragStart);
-       editor.removeEventListener('dragover', handleDragOver);
-       editor.removeEventListener('dragleave', handleDragLeave);
-       editor.removeEventListener('drop', handleDrop);
-     };
-   }, [dragSentence]);
- 
-   useEffect(() => {
-     const editor = bodyEditorRef.current;
-     if (!editor) return;
- 
-     const openPlaceholderEditor = (ph: HTMLElement) => {
-       const { before, after } = getNeighboringWords(ph);
-+      const blockEl = ph.closest('[data-block-title]') as HTMLElement | null;
-+      const blockTitle = blockEl?.getAttribute('data-block-title') || undefined;
-+      const placeholderText = ph.textContent || '';
-       setPlaceholderEdit({
-         span: ph,
-         target: ph,
-         before,
-         after,
--        text: ph.textContent || '',
-+        text: placeholderText,
-+        blockTitle,
-       });
-     };
- 
-     const handleDblClick = (e: MouseEvent) => {
-       const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
-       if (ph) {
-         e.preventDefault();
-         openPlaceholderEditor(ph);
-       }
-     };
- 
-     const handleKeyDown = (e: KeyboardEvent) => {
-       if (e.key === 'Enter') {
-         const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
-         if (ph) {
-           e.preventDefault();
-           openPlaceholderEditor(ph);
-         }
-       }
-     };
- 
-     editor.addEventListener('dblclick', handleDblClick);
-     editor.addEventListener('keydown', handleKeyDown, true);
-     return () => {
-       editor.removeEventListener('dblclick', handleDblClick);
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1844,50 +1850,78 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-     const block = blocks.find(b => b.title === blockTitle);
-     const blockId = block?.blockId;
-     try {
-       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
-       await fetch(url, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           snippetId,
-           proposedContent: snippetHtml,
-           proposedLabel: label,
-           proposedSortOrder: sortOrder,
-           proposedBlockId: blockId,
-           isNew,
-           proposedBy: userInitials
-         })
-       });
-       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
-       showToast('Snippet saved', 'success');
-     } catch (err) {
-       console.error('Failed to save snippet', err);
-       showToast('Save failed', 'error');
-     }
+   if (showNewMatterPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+-        <FlatMatterOpening
++        <MatterOpeningFlow
+           poidData={idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
+           userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
+     );
    }
  
-+  async function submitPlaceholderOption(
-+    blockTitle: string,
-+    text: string,
-+    label?: string,
-+    sortOrder?: number,
-+    isNew?: boolean,
-+  ) {
-+    try {
-+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
-+      await fetch(url, {
-+        method: 'POST',
-+        headers: { 'Content-Type': 'application/json' },
-+        body: JSON.stringify({
-+          proposedContent: text,
-+          proposedLabel: label,
-+          proposedSortOrder: sortOrder,
-+          proposedBlockId: undefined,
-+          isNew,
-+          proposedBy: userInitials,
-+        }),
-+      });
-+      showToast('Option submitted', 'success');
-+    } catch (err) {
-+      console.error('Failed to submit option', err);
-+      showToast('Save failed', 'error');
-+    }
-+  }
-+
-   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
-     if (!bodyEditorRef.current) return;
-     const span = bodyEditorRef.current.querySelector(
-       `span[data-inserted="${block.title}"]`
-     ) as HTMLElement | null;
-     if (!span) return;
-     const snippets = Array.from(
-       span.querySelectorAll('div[data-snippet]')
-     ) as HTMLElement[];
-     const target = snippets.find(
-       (el) => el.getAttribute('data-snippet') === optionLabel
-     );
-     if (target) target.remove();
-     setOriginalSnippetContent((prev) => {
-       const blockMap = { ...(prev[block.title] || {}) };
-       delete blockMap[optionLabel];
-       return { ...prev, [block.title]: blockMap };
-     });
-     setEditedSnippets((prev) => {
-       const blockMap = { ...(prev[block.title] || {}) };
-       delete blockMap[optionLabel];
-       return { ...prev, [block.title]: blockMap };
-     });
- 
-     const optionDiv = span.querySelector('div.option-choices');
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -3203,68 +3237,83 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-                     } else {
-                       handleClearBlock(removeConfirm.block);
-                     }
-                     setRemoveConfirm(null);
-                   }}
-                 />
-                 <DefaultButton
-                   text="Cancel"
-                   styles={sharedDefaultButtonStyles}
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     setRemoveConfirm(null);
-                   }}
-                 />
-               </Stack>
-             </Stack>
-           </Callout>
-         )}
- 
-         {placeholderEdit && (
-           <PlaceholderEditorPopover
-             target={placeholderEdit.target}
-             initialText={placeholderEdit.text}
-             before={placeholderEdit.before}
-             after={placeholderEdit.after}
-+            onAddOption={(text) => {
-+              setSnippetEdit({ blockTitle: placeholderEdit.blockTitle || '', target: placeholderEdit.target });
-+              setPendingOptionText(text);
-+            }}
-             onDismiss={() => setPlaceholderEdit(null)}
-             onSave={(val) => {
-               const span = placeholderEdit.span;
-               const textNode = document.createTextNode(val);
-               span.replaceWith(textNode);
-               setBody(bodyEditorRef.current?.innerHTML || '');
-               setPlaceholderEdit(null);
-             }}
-           />
-         )}
- 
-         {snippetEdit && (
-           <SnippetEditPopover
-             target={snippetEdit.target}
--            onDismiss={() => setSnippetEdit(null)}
-+            previewText={pendingOptionText}
-+            onDismiss={() => {
-+              setSnippetEdit(null);
-+              setPendingOptionText('');
-+            }}
-             onSave={({ label, sortOrder, isNew }) => {
--              saveCustomSnippet(snippetEdit.blockTitle, label, sortOrder, isNew);
-+              submitPlaceholderOption(
-+                snippetEdit.blockTitle,
-+                pendingOptionText,
-+                label,
-+                sortOrder,
-+                isNew,
-+              );
-               setSnippetEdit(null);
-+              setPendingOptionText('');
-             }}
-           />
-         )}
- 
-         {/* Row: Preview and Reset Buttons */}
-         <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
-           <PrimaryButton
-             text="Preview Email"
-             onClick={togglePreview}
-             styles={sharedPrimaryButtonStyles}
-             ariaLabel="Preview Email"
-             iconProps={{ iconName: 'Preview' }}
-           />
-           <DefaultButton
-             text="Reset"
-             onClick={resetForm}
-             styles={sharedDefaultButtonStyles}
-             ariaLabel="Reset Form"
-             iconProps={{ iconName: 'Refresh' }}
-           />
-         </Stack>
- 
-         {/* Preview Panel */}
-         <EmailPreview
-           isPreviewOpen={isPreviewOpen}
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage
+           onBack={() => {
+             setShowRiskPage(false);
+             setSelectedRisk(null);
+           }}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}

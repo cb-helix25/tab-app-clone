@@ -565,7 +565,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   );
 
   const idVerificationOptions = useMemo(() => {
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     return instructionData.flatMap((p) => {
       const instructions = p.instructions ?? [];
       const all: any[] = [
@@ -575,45 +575,49 @@ const Instructions: React.FC<InstructionsProps> = ({
       instructions.forEach((inst: any) => {
         all.push(...(inst.electronicIDChecks ?? []));
         all.push(...(inst.idVerifications ?? []));
+        if (inst.PassportNumber || inst.DriversLicenseNumber) {
+          all.push({ ...inst, fromInstruction: true });
+        }
       });
       return all.flatMap((v) => {
-        if (!v || seen.has(v.InternalId)) return [];
-        seen.add(v.InternalId);
+        if (!v) return [];
+        const key = String(v.InternalId ?? v.MatterId ?? v.InstructionRef ?? "");
+        if (seen.has(key)) return [];
+        seen.add(key);
         const instRef = v.InstructionRef ?? v.MatterId;
-        const inst = instructions.find(
-          (i: any) => i.InstructionRef === instRef,
-        );
-        const merged: any = { ...v };
+        const inst = instructions.find((i: any) => i.InstructionRef === instRef) ?? (v.fromInstruction ? v : null);
+        const merged: any = { ...inst, ...v };
         delete merged.EIDRawResponse;
         return [
           {
-            poid_id: String(v.InternalId ?? ""),
-            prefix: inst?.Title,
-            first: inst?.FirstName,
-            last: inst?.LastName,
-            company_name: inst?.CompanyName,
-            nationality: inst?.Nationality,
-            nationality_iso: inst?.NationalityAlpha2,
-            date_of_birth: inst?.DOB,
-            best_number: inst?.Phone,
-            email: inst?.Email,
-            passport_number: inst?.PassportNumber,
-            drivers_license_number: inst?.DriversLicenseNumber,
-            house_building_number: inst?.HouseNumber,
-            street: inst?.Street,
-            city: inst?.City,
-            county: inst?.County,
-            post_code: inst?.Postcode,
-            country: inst?.Country,
-            country_code: inst?.CountryCode,
-            company_number: inst?.CompanyNumber,
-            company_house_building_number: inst?.CompanyHouseNumber,
-            company_street: inst?.CompanyStreet,
-            company_city: inst?.CompanyCity,
-            company_county: inst?.CompanyCounty,
-            company_post_code: inst?.CompanyPostcode,
-            company_country: inst?.CompanyCountry,
-            company_country_code: inst?.CompanyCountryCode,
+            poid_id: String(merged.InternalId ?? key),
+            prefix: merged.Title,
+            first: merged.FirstName,
+            last: merged.LastName,
+            company_name: merged.CompanyName,
+            nationality: merged.Nationality,
+            nationality_iso: merged.NationalityAlpha2,
+            date_of_birth: merged.DOB,
+            best_number: merged.Phone,
+            email: merged.Email,
+            passport_number: merged.PassportNumber,
+            drivers_license_number: merged.DriversLicenseNumber,
+            house_building_number: merged.HouseNumber,
+            street: merged.Street,
+            city: merged.City,
+            county: merged.County,
+            post_code: merged.Postcode,
+            country: merged.Country,
+            country_code: merged.CountryCode,
+            company_number: merged.CompanyNumber,
+            company_house_building_number: merged.CompanyHouseNumber,
+            company_street: merged.CompanyStreet,
+            company_city: merged.CompanyCity,
+            company_county: merged.CompanyCounty,
+            company_post_code: merged.CompanyPostcode,
+            company_country: merged.CompanyCountry,
+            company_country_code: merged.CompanyCountryCode,
+            stage: merged.Stage,
             ...merged,
           },
         ];

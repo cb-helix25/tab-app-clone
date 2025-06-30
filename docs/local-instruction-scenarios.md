@@ -4,6 +4,13 @@ This document describes the sample instruction records bundled with the project.
 They are used when running the application locally so developers can see how each
 card state should behave before the real API integration is wired up.
 
+### POID sample records
+
+`src/localData/localInstructionData.json` now provides example `idVerifications`
+linked to the instruction references. Launching the new matter workflow while
+developing locally will load these records into the POID selection step so you
+can pick one of the test proofs of identity.
+
 ## Scenario Overview
 
 | Scenario | Deal | Proof of ID | Payment | Documents | Risk | Notes |

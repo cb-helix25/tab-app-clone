@@ -42,7 +42,18 @@
     "documents": [],
     "riskAssessments": [],
     "electronicIDChecks": [],
-    "idVerifications": []
+    "idVerifications": [
+      {
+        "MatterId": "HLX-2-START",
+        "InternalId": 201,
+        "EIDCheckId": "id-201",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Passed",
+        "PEPAndSanctionsCheckResult": "Passed",
+        "AddressVerificationResult": "Passed",
+        "EIDCheckedDate": "2024-01-01"
+      }
+    ]
   },
   {
     "prospectId": 3,
@@ -82,7 +93,18 @@
         "EIDOverallResult": "Passed"
       }
     ],
-    "idVerifications": []
+    "idVerifications": [
+      {
+        "MatterId": "HLX-3-OPTDOC",
+        "InternalId": 301,
+        "EIDCheckId": "id-301",
+        "EIDStatus": "completed",
+        "EIDOverallResult": "Passed",
+        "PEPAndSanctionsCheckResult": "Passed",
+        "AddressVerificationResult": "Passed",
+        "EIDCheckedDate": "2024-02-01"
+      }
+    ]
   },
   {
     "prospectId": 4,

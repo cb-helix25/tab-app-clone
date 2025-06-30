@@ -1882,6 +1882,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   ) {
     try {
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+      const block = blocks.find(b => b.title === blockTitle);
+      const blockId = block?.blockId;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1889,7 +1891,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           proposedContent: text,
           proposedLabel: label,
           proposedSortOrder: sortOrder,
-          proposedBlockId: undefined,
+          proposedBlockId: blockId,
           isNew,
           proposedBy: userInitials,
         }),
