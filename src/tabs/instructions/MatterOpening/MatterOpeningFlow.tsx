@@ -26,6 +26,7 @@ import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 import ReviewStep from './ReviewStep';
 import { CompletionProvider } from './CompletionContext';
+import idVerifications from '../../../localData/localIdVerifications.json';
 
 
 
@@ -38,7 +39,7 @@ const getTeamMemberOptions = (teamData?: TeamData[] | null) => {
 
 
 interface MatterOpeningFlowProps {
-    poidData: POID[];
+    poidData?: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
     userInitials: string;
@@ -66,6 +67,40 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
     initialClientType = '',
 }) => {
     const [currentStep, setCurrentStep] = useState<StepKey>('clientInfo');
+
+    const defaultPoidData: POID[] = useMemo(
+        () =>
+            (idVerifications as any[]).map((v) => ({
+                poid_id: String(v.InternalId),
+                first: v.FirstName,
+                last: v.LastName,
+                email: v.Email,
+                nationality: v.Nationality,
+                nationality_iso: v.NationalityAlpha2,
+                date_of_birth: v.DOB,
+                passport_number: v.PassportNumber,
+                drivers_license_number: v.DriversLicenseNumber,
+                house_building_number: v.HouseNumber,
+                street: v.Street,
+                city: v.City,
+                county: v.County,
+                post_code: v.Postcode,
+                country: v.Country,
+                country_code: v.CountryCode,
+                company_name: v.CompanyName,
+                company_number: v.CompanyNumber,
+                company_house_building_number: v.CompanyHouseNumber,
+                company_street: v.CompanyStreet,
+                company_city: v.CompanyCity,
+                company_county: v.CompanyCounty,
+                company_post_code: v.CompanyPostcode,
+                company_country: v.CompanyCountry,
+                company_country_code: v.CompanyCountryCode,
+            })) as POID[],
+        []
+    );
+    const effectivePoidData: POID[] =
+        poidData && poidData.length > 0 ? poidData : defaultPoidData;
 
     const idExpiry = useMemo(() => {
         const d = new Date();
@@ -133,7 +168,7 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
         return order;
     }, [instructionRef]);
 
-    const filteredPoidData = poidData.filter((poid) => {
+    const filteredPoidData = effectivePoidData.filter((poid) => {
         const term = poidSearchTerm.toLowerCase();
         return (
             poid.poid_id.toLowerCase().includes(term) ||
@@ -225,7 +260,7 @@ const MatterOpeningFlow: React.FC<MatterOpeningFlowProps> = ({
             case 'poidSelection':
                 return (
                     <PoidSelectionStep
-                        poidData={poidData}
+                        poidData={effectivePoidData}
                         teamData={teamData}
                         filteredPoidData={filteredPoidData}
                         visiblePoidCount={visiblePoidCount}

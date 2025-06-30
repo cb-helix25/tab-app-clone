@@ -22,9 +22,10 @@ import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 import ReviewStep from './ReviewStep';
 import { CompletionProvider } from './CompletionContext';
+import idVerifications from '../../../localData/localIdVerifications.json';
 
 interface FlatMatterOpeningProps {
-    poidData: POID[];
+    poidData?: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
     userInitials: string;
@@ -57,6 +58,39 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, []);
 
     const showPoidSelection = !instructionRef;
+    const defaultPoidData: POID[] = useMemo(
+        () =>
+            (idVerifications as any[]).map((v) => ({
+                poid_id: String(v.InternalId),
+                first: v.FirstName,
+                last: v.LastName,
+                email: v.Email,
+                nationality: v.Nationality,
+                nationality_iso: v.NationalityAlpha2,
+                date_of_birth: v.DOB,
+                passport_number: v.PassportNumber,
+                drivers_license_number: v.DriversLicenseNumber,
+                house_building_number: v.HouseNumber,
+                street: v.Street,
+                city: v.City,
+                county: v.County,
+                post_code: v.Postcode,
+                country: v.Country,
+                country_code: v.CountryCode,
+                company_name: v.CompanyName,
+                company_number: v.CompanyNumber,
+                company_house_building_number: v.CompanyHouseNumber,
+                company_street: v.CompanyStreet,
+                company_city: v.CompanyCity,
+                company_county: v.CompanyCounty,
+                company_post_code: v.CompanyPostcode,
+                company_country: v.CompanyCountry,
+                company_country_code: v.CompanyCountryCode,
+            })) as POID[],
+        []
+    );
+    const effectivePoidData: POID[] =
+        poidData && poidData.length > 0 ? poidData : defaultPoidData;
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const localTeamData = useMemo(() => localTeamDataJson, []);
@@ -130,7 +164,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const poidGridRef = useRef<HTMLDivElement | null>(null);
     const [activePoid, setActivePoid] = useState<POID | null>(null);
 
-    const filteredPoidData = poidData.filter((poid) => {
+    const filteredPoidData = effectivePoidData.filter((poid) => {
         const term = poidSearchTerm.toLowerCase();
         return (
             poid.poid_id.toLowerCase().includes(term) ||
@@ -156,7 +190,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         if (selectedPoidIds.includes(poid.poid_id)) {
             setSelectedPoidIds((prev) => prev.filter((id) => id !== poid.poid_id));
             if (activePoid && activePoid.poid_id === poid.poid_id) {
-                const remaining = poidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
+                const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
                 setActivePoid(remaining || null);
             }
         } else {
@@ -203,7 +237,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         {showPoidSelection && (
                             <>
                                 <PoidSelectionStep
-                                    poidData={poidData}
+                                    poidData={effectivePoidData}
                                     teamData={teamData}
                                     filteredPoidData={filteredPoidData}
                                     visiblePoidCount={visiblePoidCount}

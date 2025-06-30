@@ -1,80 +1,302 @@
-diff --git a/decoupled-functions/actionSnippet/index.js b/decoupled-functions/actionSnippet/index.js
-index 89889528107f6b2603f56a30ada9751c9e2e19f2..df4ae7a3f8325d22dcb800245e1a587323ad16b2 100644
---- a/decoupled-functions/actionSnippet/index.js
-+++ b/decoupled-functions/actionSnippet/index.js
-@@ -45,57 +45,74 @@ async function actionSnippetHandler(req, context) {
-     context.log('Database password ensured');
-     const pool = await getSqlPool();
-     context.log('SQL pool acquired');
-     // Use the "pitchbuilder" schema by default. This allows running
-     // locally without setting DB_SCHEMA explicitly while still
-     // working with the shared pitchbuilder database.
-     const schema = process.env.DB_SCHEMA || 'pitchbuilder';
-     context.log(`Processing action: ${action}`);
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -947,56 +947,58 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+   // Tracks which blocks have been inserted
+   const [insertedBlocks, setInsertedBlocks] = useState<{ [key: string]: boolean }>({});
+   const [autoInsertedBlocks, setAutoInsertedBlocks] = useState<{ [key: string]: boolean }>({});
  
-     switch (action) {
-         case "getSnippetBlocks": {
-             context.log('Fetching snippet blocks');
-             const blocksRes = await pool.request().query(`SELECT * FROM ${schema}.DefaultBlocks ORDER BY BlockId`);
-             const blocks = blocksRes.recordset || [];
-             for (const b of blocks) {
-                 const snips = await pool.request()
-                     .input("BlockId", sql.Int, b.BlockId)
-                     .query(`SELECT * FROM ${schema}.DefaultBlockSnippets WHERE BlockId=@BlockId AND IsApproved=1 ORDER BY SortOrder`);
-                 b.snippets = snips.recordset || [];
+   const [lockedBlocks, setLockedBlocks] = useState<{ [key: string]: boolean }>({});
+ 
+   const [pinnedBlocks, setPinnedBlocks] = useState<{ [key: string]: boolean }>({});
+ 
+   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
+   const [editedSnippets, setEditedSnippets] = useState<{
+     [key: string]: { [label: string]: boolean };
+   }>({});
+   const [originalBlockContent, setOriginalBlockContent] = useState<{ [key: string]: string }>({});
+   const [originalSnippetContent, setOriginalSnippetContent] = useState<{
+     [key: string]: { [label: string]: string };
+   }>({});
+   const [hoveredOpstion, setHoveredOption] = useState<string | null>(null);
+ 
+   // Placeholder editing popover state
+   const [placeholderEdit, setPlaceholderEdit] = useState<{
+     span: HTMLElement;
+     target: HTMLElement;
+     before: string;
+     after: string;
+     text: string;
++    blockTitle?: string;
+   } | null>(null);
+ 
+   const [snippetEdit, setSnippetEdit] = useState<{
+     blockTitle: string;
+     target: HTMLElement;
+   } | null>(null);
++  const [pendingOptionText, setPendingOptionText] = useState<string>('');
+ 
+   function getNeighboringWords(span: HTMLElement, count: number = 3) {
+     const gather = (node: Node | null, words: string[], dir: 'prev' | 'next') => {
+       while (node && words.length < count) {
+         if (node.nodeType === Node.TEXT_NODE) {
+           const parts = (node.textContent || '')
+             .trim()
+             .split(/\s+/)
+             .filter(Boolean);
+           if (dir === 'prev') {
+             for (let i = parts.length - 1; i >= 0 && words.length < count; i--) {
+               words.unshift(parts[i]);
              }
-             context.log(`Fetched ${blocks.length} blocks`);
-             return { status: 200, body: JSON.stringify(blocks), headers: { "Content-Type": "application/json" } };
+           } else {
+             for (let i = 0; i < parts.length && words.length < count; i++) {
+               words.push(parts[i]);
+             }
+           }
          }
-         case "submitSnippetEdit": {
-             context.log('Submitting snippet edit');
--            const snippetId = payload.snippetId ?? payload.SnippetId;
-+            let snippetId = payload.snippetId ?? payload.SnippetId;
-             const content = payload.proposedContent ?? payload.ProposedContent;
-             const label = payload.proposedLabel ?? payload.ProposedLabel;
-             const sortOrder = payload.proposedSortOrder ?? payload.ProposedSortOrder;
-             const blockId = payload.proposedBlockId ?? payload.ProposedBlockId;
-             const isNew = payload.isNew ?? payload.IsNew;
-             const proposedBy = payload.proposedBy ?? payload.ProposedBy;
-+
-+            if (isNew && (snippetId === undefined || snippetId === null)) {
-+                const insertSnippet = `INSERT INTO ${schema}.DefaultBlockSnippets
-+                    (BlockId, Label, Content, SortOrder, CreatedBy)
-+                    OUTPUT INSERTED.SnippetId
-+                    VALUES (@BlockId, @Label, @Content, @SortOrder, @CreatedBy)`;
-+                const res = await pool
-+                    .request()
-+                    .input("BlockId", sql.Int, blockId)
-+                    .input("Label", sql.NVarChar(100), label || "")
-+                    .input("Content", sql.NVarChar(sql.MAX), content)
-+                    .input("SortOrder", sql.Int, sortOrder ?? 0)
-+                    .input("CreatedBy", sql.NVarChar(50), proposedBy)
-+                    .query(insertSnippet);
-+                snippetId = res.recordset[0].SnippetId;
-+                context.log(`New snippet created with id ${snippetId}`);
-+            }
-             const q = `INSERT INTO ${schema}.DefaultSnippetEdits
-             (SnippetId, ProposedContent, ProposedLabel, ProposedSortOrder, ProposedBlockId, IsNew, ProposedBy)
-             VALUES (@SnippetId, @Content, @Label, @SortOrder, @BlockId, @IsNew, @ProposedBy)`;
-             await pool
-                 .request()
-                 .input("SnippetId", sql.Int, snippetId)
-                 .input("Content", sql.NVarChar(sql.MAX), content)
-                 .input("Label", sql.NVarChar(100), label || null)
-                 .input("SortOrder", sql.Int, sortOrder ?? null)
-                 .input("BlockId", sql.Int, blockId ?? null)
-                 .input("IsNew", sql.Bit, isNew ? 1 : 0)
-                 .input("ProposedBy", sql.NVarChar(50), proposedBy)
-                 .query(q);
-             context.log('Snippet edit inserted');
-             return { status: 200, body: JSON.stringify({ ok: true }) };
-         }
+         node = dir === 'prev' ? node.previousSibling : node.nextSibling;
+       }
+     };
  
-         case "approveSnippetEdit": {
-             const editId = payload.editId ?? payload.EditId;
-             const approvedBy = payload.approvedBy ?? payload.ApprovedBy;
-             const reviewNotes = payload.reviewNotes ?? payload.ReviewNotes;
-             context.log(`Approving snippet edit ${editId}`);
-             const editRes = await pool
-                 .request()
-                 .input("EditId", sql.Int, editId)
+     const before: string[] = [];
+     const after: string[] = [];
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1164,56 +1166,60 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+           setBody(editor.innerHTML);
+         }
+       }
+       target && target.classList.remove('drag-over');
+       setDragSentence(null);
+     };
+ 
+     editor.addEventListener('dragstart', handleDragStart);
+     editor.addEventListener('dragover', handleDragOver);
+     editor.addEventListener('dragleave', handleDragLeave);
+     editor.addEventListener('drop', handleDrop);
+     return () => {
+       editor.removeEventListener('dragstart', handleDragStart);
+       editor.removeEventListener('dragover', handleDragOver);
+       editor.removeEventListener('dragleave', handleDragLeave);
+       editor.removeEventListener('drop', handleDrop);
+     };
+   }, [dragSentence]);
+ 
+   useEffect(() => {
+     const editor = bodyEditorRef.current;
+     if (!editor) return;
+ 
+     const openPlaceholderEditor = (ph: HTMLElement) => {
+       const { before, after } = getNeighboringWords(ph);
++      const blockEl = ph.closest('[data-block-title]') as HTMLElement | null;
++      const blockTitle = blockEl?.getAttribute('data-block-title') || undefined;
++      const placeholderText = ph.textContent || '';
+       setPlaceholderEdit({
+         span: ph,
+         target: ph,
+         before,
+         after,
+-        text: ph.textContent || '',
++        text: placeholderText,
++        blockTitle,
+       });
+     };
+ 
+     const handleDblClick = (e: MouseEvent) => {
+       const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
+       if (ph) {
+         e.preventDefault();
+         openPlaceholderEditor(ph);
+       }
+     };
+ 
+     const handleKeyDown = (e: KeyboardEvent) => {
+       if (e.key === 'Enter') {
+         const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
+         if (ph) {
+           e.preventDefault();
+           openPlaceholderEditor(ph);
+         }
+       }
+     };
+ 
+     editor.addEventListener('dblclick', handleDblClick);
+     editor.addEventListener('keydown', handleKeyDown, true);
+     return () => {
+       editor.removeEventListener('dblclick', handleDblClick);
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1844,50 +1850,78 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+     const block = blocks.find(b => b.title === blockTitle);
+     const blockId = block?.blockId;
+     try {
+       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+       await fetch(url, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           snippetId,
+           proposedContent: snippetHtml,
+           proposedLabel: label,
+           proposedSortOrder: sortOrder,
+           proposedBlockId: blockId,
+           isNew,
+           proposedBy: userInitials
+         })
+       });
+       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
+       showToast('Snippet saved', 'success');
+     } catch (err) {
+       console.error('Failed to save snippet', err);
+       showToast('Save failed', 'error');
+     }
+   }
+ 
++  async function submitPlaceholderOption(
++    blockTitle: string,
++    text: string,
++    label?: string,
++    sortOrder?: number,
++    isNew?: boolean,
++  ) {
++    try {
++      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
++      await fetch(url, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          proposedContent: text,
++          proposedLabel: label,
++          proposedSortOrder: sortOrder,
++          proposedBlockId: undefined,
++          isNew,
++          proposedBy: userInitials,
++        }),
++      });
++      showToast('Option submitted', 'success');
++    } catch (err) {
++      console.error('Failed to submit option', err);
++      showToast('Save failed', 'error');
++    }
++  }
++
+   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
+     if (!bodyEditorRef.current) return;
+     const span = bodyEditorRef.current.querySelector(
+       `span[data-inserted="${block.title}"]`
+     ) as HTMLElement | null;
+     if (!span) return;
+     const snippets = Array.from(
+       span.querySelectorAll('div[data-snippet]')
+     ) as HTMLElement[];
+     const target = snippets.find(
+       (el) => el.getAttribute('data-snippet') === optionLabel
+     );
+     if (target) target.remove();
+     setOriginalSnippetContent((prev) => {
+       const blockMap = { ...(prev[block.title] || {}) };
+       delete blockMap[optionLabel];
+       return { ...prev, [block.title]: blockMap };
+     });
+     setEditedSnippets((prev) => {
+       const blockMap = { ...(prev[block.title] || {}) };
+       delete blockMap[optionLabel];
+       return { ...prev, [block.title]: blockMap };
+     });
+ 
+     const optionDiv = span.querySelector('div.option-choices');
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3667848ceb2d1dea4ea094714f31cc76097e68bd..f5f5f93245e1188c9c0f635fd8324f25a8fe517d 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -3203,68 +3237,83 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+                     } else {
+                       handleClearBlock(removeConfirm.block);
+                     }
+                     setRemoveConfirm(null);
+                   }}
+                 />
+                 <DefaultButton
+                   text="Cancel"
+                   styles={sharedDefaultButtonStyles}
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setRemoveConfirm(null);
+                   }}
+                 />
+               </Stack>
+             </Stack>
+           </Callout>
+         )}
+ 
+         {placeholderEdit && (
+           <PlaceholderEditorPopover
+             target={placeholderEdit.target}
+             initialText={placeholderEdit.text}
+             before={placeholderEdit.before}
+             after={placeholderEdit.after}
++            onAddOption={(text) => {
++              setSnippetEdit({ blockTitle: placeholderEdit.blockTitle || '', target: placeholderEdit.target });
++              setPendingOptionText(text);
++            }}
+             onDismiss={() => setPlaceholderEdit(null)}
+             onSave={(val) => {
+               const span = placeholderEdit.span;
+               const textNode = document.createTextNode(val);
+               span.replaceWith(textNode);
+               setBody(bodyEditorRef.current?.innerHTML || '');
+               setPlaceholderEdit(null);
+             }}
+           />
+         )}
+ 
+         {snippetEdit && (
+           <SnippetEditPopover
+             target={snippetEdit.target}
+-            onDismiss={() => setSnippetEdit(null)}
++            previewText={pendingOptionText}
++            onDismiss={() => {
++              setSnippetEdit(null);
++              setPendingOptionText('');
++            }}
+             onSave={({ label, sortOrder, isNew }) => {
+-              saveCustomSnippet(snippetEdit.blockTitle, label, sortOrder, isNew);
++              submitPlaceholderOption(
++                snippetEdit.blockTitle,
++                pendingOptionText,
++                label,
++                sortOrder,
++                isNew,
++              );
+               setSnippetEdit(null);
++              setPendingOptionText('');
+             }}
+           />
+         )}
+ 
+         {/* Row: Preview and Reset Buttons */}
+         <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
+           <PrimaryButton
+             text="Preview Email"
+             onClick={togglePreview}
+             styles={sharedPrimaryButtonStyles}
+             ariaLabel="Preview Email"
+             iconProps={{ iconName: 'Preview' }}
+           />
+           <DefaultButton
+             text="Reset"
+             onClick={resetForm}
+             styles={sharedDefaultButtonStyles}
+             ariaLabel="Reset Form"
+             iconProps={{ iconName: 'Refresh' }}
+           />
+         </Stack>
+ 
+         {/* Preview Panel */}
+         <EmailPreview
+           isPreviewOpen={isPreviewOpen}

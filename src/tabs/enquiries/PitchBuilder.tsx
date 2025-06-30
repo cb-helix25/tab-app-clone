@@ -55,6 +55,7 @@ import PitchHeaderRow from './pitch-builder/PitchHeaderRow';
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
 import PlaceholderEditorPopover from './pitch-builder/PlaceholderEditorPopover';
 import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
+import { placeholderSuggestions } from '../../app/customisation/InsertSuggestions';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
   convertDoubleBreaksToParagraphs,
@@ -969,12 +970,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     before: string;
     after: string;
     text: string;
+    blockTitle?: string;
   } | null>(null);
 
   const [snippetEdit, setSnippetEdit] = useState<{
     blockTitle: string;
     target: HTMLElement;
   } | null>(null);
+  const [pendingOptionText, setPendingOptionText] = useState<string>('');
 
   function getNeighboringWords(span: HTMLElement, count: number = 3) {
     const gather = (node: Node | null, words: string[], dir: 'prev' | 'next') => {
@@ -1186,12 +1189,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     const openPlaceholderEditor = (ph: HTMLElement) => {
       const { before, after } = getNeighboringWords(ph);
+      const blockEl = ph.closest('[data-block-title]') as HTMLElement | null;
+      const blockTitle = blockEl?.getAttribute('data-block-title') || undefined;
+      const placeholderText = ph.textContent || '';
       setPlaceholderEdit({
         span: ph,
         target: ph,
         before,
         after,
-        text: ph.textContent || '',
+        text: placeholderText,
+        blockTitle,
       });
     };
 
@@ -1862,6 +1869,34 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       showToast('Snippet saved', 'success');
     } catch (err) {
       console.error('Failed to save snippet', err);
+      showToast('Save failed', 'error');
+    }
+  }
+
+  async function submitPlaceholderOption(
+    blockTitle: string,
+    text: string,
+    label?: string,
+    sortOrder?: number,
+    isNew?: boolean,
+  ) {
+    try {
+      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposedContent: text,
+          proposedLabel: label,
+          proposedSortOrder: sortOrder,
+          proposedBlockId: undefined,
+          isNew,
+          proposedBy: userInitials,
+        }),
+      });
+      showToast('Option submitted', 'success');
+    } catch (err) {
+      console.error('Failed to submit option', err);
       showToast('Save failed', 'error');
     }
   }
@@ -3225,6 +3260,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             initialText={placeholderEdit.text}
             before={placeholderEdit.before}
             after={placeholderEdit.after}
+            onAddOption={(text) => {
+              setSnippetEdit({ blockTitle: placeholderEdit.blockTitle || '', target: placeholderEdit.target });
+              setPendingOptionText(text);
+            }}
             onDismiss={() => setPlaceholderEdit(null)}
             onSave={(val) => {
               const span = placeholderEdit.span;
@@ -3239,10 +3278,21 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         {snippetEdit && (
           <SnippetEditPopover
             target={snippetEdit.target}
-            onDismiss={() => setSnippetEdit(null)}
-            onSave={({ label, sortOrder, isNew }) => {
-              saveCustomSnippet(snippetEdit.blockTitle, label, sortOrder, isNew);
+            previewText={pendingOptionText}
+            onDismiss={() => {
               setSnippetEdit(null);
+              setPendingOptionText('');
+            }}
+            onSave={({ label, sortOrder, isNew }) => {
+              submitPlaceholderOption(
+                snippetEdit.blockTitle,
+                pendingOptionText,
+                label,
+                sortOrder,
+                isNew,
+              );
+              setSnippetEdit(null);
+              setPendingOptionText('');
             }}
           />
         )}

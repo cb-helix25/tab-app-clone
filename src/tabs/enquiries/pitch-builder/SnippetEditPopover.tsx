@@ -15,9 +15,10 @@ type SnippetEditPopoverProps = {
     target: HTMLElement;
     onSave: (data: { label: string; sortOrder: number; isNew: boolean }) => void;
     onDismiss: () => void;
+    previewText?: string;
 };
 
-const SnippetEditPopover: React.FC<SnippetEditPopoverProps> = ({ target, onSave, onDismiss }) => {
+const SnippetEditPopover: React.FC<SnippetEditPopoverProps> = ({ target, onSave, onDismiss, previewText }) => {
     const [label, setLabel] = useState('');
     const [sortOrder, setSortOrder] = useState<number>(0);
     const [isNew, setIsNew] = useState(false);
@@ -50,6 +51,11 @@ const SnippetEditPopover: React.FC<SnippetEditPopoverProps> = ({ target, onSave,
             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
                 Snippet Details
             </Text>
+            {previewText && (
+                <Text variant="small" styles={{ root: { whiteSpace: 'pre-wrap' } }}>
+                    {previewText}
+                </Text>
+            )}
             <Text variant="small">Provide a label and sort order.</Text>
             <TextField
                 label="Label"

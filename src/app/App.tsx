@@ -10,6 +10,7 @@ import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomBooking, SoundproofPodBooking } from './functionality/types';
+import localIdVerifications from '../localData/localIdVerifications.json';
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -44,7 +45,34 @@ const App: React.FC<AppProps> = ({
   const isDarkMode = teamsContext?.theme === 'dark';
 
   // Existing state and callbacks (unchanged)
-  const [poidData, setPoidData] = useState<POID[]>([]);
+  const initialPoidData: POID[] = (localIdVerifications as any[]).map((v) => ({
+    poid_id: String(v.InternalId),
+    first: v.FirstName,
+    last: v.LastName,
+    email: v.Email,
+    nationality: v.Nationality,
+    nationality_iso: v.NationalityAlpha2,
+    date_of_birth: v.DOB,
+    passport_number: v.PassportNumber,
+    drivers_license_number: v.DriversLicenseNumber,
+    house_building_number: v.HouseNumber,
+    street: v.Street,
+    city: v.City,
+    county: v.County,
+    post_code: v.Postcode,
+    country: v.Country,
+    country_code: v.CountryCode,
+    company_name: v.CompanyName,
+    company_number: v.CompanyNumber,
+    company_house_building_number: v.CompanyHouseNumber,
+    company_street: v.CompanyStreet,
+    company_city: v.CompanyCity,
+    company_county: v.CompanyCounty,
+    company_post_code: v.CompanyPostcode,
+    company_country: v.CompanyCountry,
+    company_country_code: v.CompanyCountryCode,
+  }));
+  const [poidData, setPoidData] = useState<POID[]>(initialPoidData);
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
