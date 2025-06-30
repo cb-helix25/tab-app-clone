@@ -138,3 +138,29 @@ These tables allow multiple approved snippets for each placeholder and maintain 
 ## Inserting v2 blocks
 
 The file `infra/sql/insert_v2_blocks.sql` contains the data inserts for the current v2 block set used by the editor.
+
+## Sample placeholder snippet data
+
+`create_simplified_snippets.sql` seeds a few placeholder snippets for local development. To load similar data in another environment, run the statements below or execute `infra/sql/insert_placeholder_sample_data.sql`.
+
+```sql
+INSERT INTO pitchbuilder.PlaceholderSnippets
+    (BlockId, Placeholder, Label, Content, SortOrder, IsApproved, CreatedBy)
+VALUES
+    (1, 'introName', 'introName', '[Name]', 1, 1, 'seed'),
+    (2, 'closingSignOff', 'closingSignOff', 'Kind regards', 1, 1, 'seed');
+
+INSERT INTO pitchbuilder.PlaceholderSnippetVersions
+    (PlaceholderSnippetId, VersionNumber, Label, Content, SortOrder, BlockId, Placeholder, ApprovedBy, ApprovedAt)
+SELECT
+    PlaceholderSnippetId,
+    Version,
+    Label,
+    Content,
+    SortOrder,
+    BlockId,
+    Placeholder,
+    'seed',
+    SYSUTCDATETIME()
+FROM pitchbuilder.PlaceholderSnippets;
+```

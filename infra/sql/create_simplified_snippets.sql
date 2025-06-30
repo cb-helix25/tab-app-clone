@@ -178,3 +178,29 @@ INSERT INTO pitchbuilder.DefaultSnippetEdits
     (SnippetId, ProposedContent, ProposedLabel, ProposedBy)
 VALUES
     (1, 'Hi {name}, hope all is well!', 'Friendly intro v2', 'tester');
+
+-- Sample placeholder snippets
+INSERT INTO pitchbuilder.PlaceholderSnippets
+    (BlockId, Placeholder, Label, Content, SortOrder, IsApproved, CreatedBy)
+VALUES
+    (1, 'introName', 'introName', '[Name]', 1, 1, 'seed'),
+    (2, 'closingSignOff', 'closingSignOff', 'Kind regards', 1, 1, 'seed');
+
+INSERT INTO pitchbuilder.PlaceholderSnippetVersions
+    (PlaceholderSnippetId, VersionNumber, Label, Content, SortOrder, BlockId, Placeholder, ApprovedBy, ApprovedAt)
+SELECT
+    PlaceholderSnippetId,
+    Version,
+    Label,
+    Content,
+    SortOrder,
+    BlockId,
+    Placeholder,
+    'seed' AS ApprovedBy,
+    SYSUTCDATETIME() AS ApprovedAt
+FROM pitchbuilder.PlaceholderSnippets;
+
+INSERT INTO pitchbuilder.PlaceholderSnippetEdits
+    (PlaceholderSnippetId, ProposedContent, ProposedLabel, ProposedBy)
+VALUES
+    (1, '[New Name]', 'introName', 'tester');

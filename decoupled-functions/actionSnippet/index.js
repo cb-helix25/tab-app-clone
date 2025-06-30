@@ -279,6 +279,7 @@ async function actionSnippetHandler(req, context) {
             context.log('Snippet edit deleted');
             return { status: 200, body: JSON.stringify({ ok: true }) };
         }
+
         case "deletePlaceholderSnippetEdit": {
             const editId = payload.editId ?? payload.EditId;
             context.log(`Deleting placeholder snippet edit ${editId}`);
