@@ -1412,16 +1412,27 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
         text = wrapInsertPlaceholders(text);
         const escLabel = opt.replace(/'/g, "&#39;");
+        // grab the ID if there is one
+        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
         const sentences = text
           .split(/(?<=[.!?])\s+/)
           .filter((s) => s.trim().length > 0)
-          .map(
-            (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-          )
+          .map(s => {
+            const trimmed = s.trim();
+            return `<span data-sentence contenteditable="true">
+            <span class="sentence-handle" draggable="true" contenteditable="false">
+              <i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i>
+            </span>
+            <span class="sentence-delete" contenteditable="false">
+              <i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i>
+            </span>
+            ${trimmed}
+          </span>`;
+          })
           .join(' ');
-        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+        // inject it into your wrapper DIV
         const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+        
         snippetHtml.push(html);
         snippetMap[opt] = html;
       });
@@ -1653,9 +1664,31 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     setOriginalSnippetContent((prev) => {
       const blockMap = { ...(prev[block.title] || {}) };
+      // remove the old entry
       delete blockMap[previous];
-      const idAttr = option.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
-      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}"${idAttr} style="margin-bottom:4px;">${text}</div>`;
+
+      // build the new HTML, including data-snippet-id if present
+      if (option.snippetId) {
+        blockMap[replacement] = `
+          <div
+            data-snippet="${replacement.replace(/'/g, "&#39;")}"
+            data-snippet-id="${option.snippetId}"
+            style="margin-bottom:4px;"
+          >
+            ${text}
+          </div>
+        `;
+      } else {
+        blockMap[replacement] = `
+          <div
+            data-snippet="${replacement.replace(/'/g, "&#39;")}"
+            style="margin-bottom:4px;"
+          >
+            ${text}
+          </div>
+        `;
+      }
+
       return { ...prev, [block.title]: blockMap };
     });
     setEditedSnippets((prev) => {
