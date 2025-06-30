@@ -492,7 +492,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (bodyEditorRef.current) {
         bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
       }
-      autoInsertDefaultBlocks(blocksToUse);
+      autoInsertDefaultBlocks(blocksToUse, newSet);
     });
   }
 
@@ -893,7 +893,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     if (blocks.length > 0 && Object.keys(insertedBlocks).length === 0) {
-      autoInsertDefaultBlocks(blocks.filter(b => !hiddenBlocks[b.title]));
+      autoInsertDefaultBlocks(blocks.filter(b => !hiddenBlocks[b.title]), templateSet);
     }
   }, [blocks]);
 
@@ -2716,7 +2716,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     'Closing',
   ];
 
-  function autoInsertDefaultBlocks(blocksToUse: TemplateBlock[] = templateBlocks) {
+  function autoInsertDefaultBlocks(
+    blocksToUse: TemplateBlock[] = templateBlocks,
+    currentSet: TemplateSet = templateSet,
+  ) {
+    if (currentSet !== 'Production') return;
+
     blocksToUse.forEach((block) => {
       if (
         DEFAULT_SINGLE_OPTION_BLOCKS.includes(block.title) &&

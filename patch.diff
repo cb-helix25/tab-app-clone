@@ -1,232 +1,77 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -22,50 +22,51 @@ import localInstructionData from "../../localData/localInstructionData.json";
- import localInstructionCards from "../../localData/localInstructionCards.json";
- import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
- import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
- import RiskAssessmentPage from "./RiskAssessmentPage";
- import EIDCheckPage from "./EIDCheckPage";
- import "../../app/styles/InstructionsBanner.css";
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..5910dd4f758f5087b115dff56504f20f673e61f1 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -403,50 +403,72 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                             <div className="detail-summary">Payment</div>
+                             <ul className="detail-list">
+                                 {Object.entries(instruction)
+                                     .filter(([k]) =>
+                                         k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
+                                     )
+                                     .map(([k, v]) =>
+                                         v != null ? (
+                                             <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                         ) : null
+                                     )}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'docs' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Documents</div>
+                             <ul className="detail-list">
+                                 <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
+                                 {documents?.map((d, idx) => (
+                                     <li key={idx}><strong>{d.FileName}</strong></li>
+                                 ))}
+                             </ul>
+                         </div>
+                     )}
++                    {selectedStatus === 'risk' && (
++                        <div className="detail-group open">
++                            <div className="detail-summary">Risk Assessment</div>
++                            <ul className="detail-list">
++                                {(instruction.riskAssessments ?? (risk ? [risk] : [])).map((r: any, idx: number) => (
++                                    <React.Fragment key={idx}>
++                                        {instruction.riskAssessments && instruction.riskAssessments.length > 1 && (
++                                            <li><em>Assessment {idx + 1}</em></li>
++                                        )}
++                                        {Object.entries(r).map(([k, v]) => (
++                                            v != null ? (
++                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
++                                            ) : null
++                                        ))}
++                                    </React.Fragment>
++                                ))}
++                                {(instruction.riskAssessments?.length ?? (risk ? 1 : 0)) === 0 && (
++                                    <li>No risk assessment data.</li>
++                                )}
++                            </ul>
++                        </div>
++                    )}
+                     {selectedStatus === 'eid' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">EID Check</div>
+                             <ul className="detail-list">
+                                 {eid && Object.entries(eid).map(([k,v]) => (
+                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                 ))}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'comp' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Compliance</div>
+                             <ul className="detail-list">
+                                 {compliance && Object.entries(compliance).map(([k,v]) => (
+                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                 ))}
+                             </ul>
+                         </div>
+                     )}
+                 </div>
  
- interface InstructionsProps {
-   userInitials: string;
-   poidData: POID[];
-   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
-   teamData?: TeamData[] | null;
- }
- const Instructions: React.FC<InstructionsProps> = ({
-   userInitials,
-   poidData,
-   setPoidData,
-   teamData,
- }) => {
-   const { isDarkMode } = useTheme();
-   const { setContent } = useNavigator();
-   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
-   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
-   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
-   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
-+  const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
-   /** Client type selection for the matter opening workflow */
-   const [newMatterClientType, setNewMatterClientType] =
-     useState<string>("Individual");
-   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
-     null,
-   );
-   const [activePivot, setActivePivot] = useState<string>("overview");
- 
-   const ACTION_BAR_HEIGHT = 48;
- 
-   const CLIENT_TYPE_OPTIONS = [
-     { label: "Individual", icon: "Contact" },
-     { label: "Company", icon: "CityNext" },
-     { label: "Multiple Clients", icon: "People" },
-     { label: "Existing Client", icon: "Folder" },
-   ];
- 
-   const quickLinksStyle = (dark: boolean) =>
-     mergeStyles({
-       backgroundColor: dark
-         ? colours.dark.sectionBackground
-         : colours.light.sectionBackground,
-       padding: "0 24px",
-       transition: "background-color 0.3s",
-       display: "flex",
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -614,52 +615,55 @@ const Instructions: React.FC<InstructionsProps> = ({
-             company_country: inst?.CompanyCountry,
-             company_country_code: inst?.CompanyCountryCode,
-             ...merged,
-           },
-         ];
-       });
-     });
-   }, [instructionData]);
- 
-   const instructionCardStates = useMemo(() => {
-     const map = new Map<string, InstructionStateData>();
-     (localInstructionCards as InstructionStateData[]).forEach((state) => {
-       if (!map.has(state.scenario)) {
-         map.set(state.scenario, state);
-       }
-     });
-     return Array.from(map.values());
-   }, []);
- 
-   const handleOpenMatter = (inst: any) => {
-     setSelectedInstruction(inst);
-     setNewMatterClientType(inst?.ClientType || "Individual");
-     setShowNewMatterPage(true);
-   };
- 
--  const handleRiskAssessment = (inst: any) => {
--    setSelectedInstruction(inst);
-+  const handleRiskAssessment = (item: any) => {
-+    if (item) {
-+      setSelectedInstruction(item.instruction ?? item);
-+      setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
-+    }
-     setShowRiskPage(true);
-   };
- 
-   const handleEIDCheck = (inst: any) => {
-     setSelectedInstruction(inst);
-     setShowEIDPage(true);
-   };
- 
-   const handleOpenInstruction = (ref: string) => {
-     setActivePivot("overview");
-   };
- 
-   const gridContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-     gap: "16px",
-     maxWidth: "1200px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-   const scenariosContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "1fr",
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -680,103 +684,106 @@ const Instructions: React.FC<InstructionsProps> = ({
-     boxSizing: "border-box",
-   });
- 
-   if (showNewMatterPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-         <FlatMatterOpening
-           poidData={idVerificationOptions}
-           setPoidData={setPoidData}
-           teamData={teamData}
-           userInitials={userInitials}
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={newMatterClientType}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showRiskPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <RiskAssessmentPage
--          onBack={() => setShowRiskPage(false)}
-+          onBack={() => {
-+            setShowRiskPage(false);
-+            setSelectedRisk(null);
-+          }}
-           instructionRef={selectedInstruction?.InstructionRef}
-           riskAssessor={userInitials}
--          existingRisk={selectedInstruction?.riskAssessments?.[0] ?? null}
-+          existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showEIDPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <EIDCheckPage
-           poidData={idVerificationOptions}
-           instruction={selectedInstruction}
-           onBack={handleBack}
-         />
-       </Stack>
-     );
-   }
- 
-   return (
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className="disclaimer animate-disclaimer">
-           <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
-         </div>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === "overview" && (
-             <div className={overviewColumnStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionCard
-                     key={idx}
-                     instruction={item.instruction as any}
-                     deal={(item as any).deal}
-                     deals={item.deals}
-                     clients={item.clients}
-                     risk={(item as any).risk}
-                     eid={(item as any).eid}
-                     eids={(item as any).eids}
-                     compliance={undefined}
-                     documents={item.documents}
-                     prospectId={item.prospectId}
-                     documentCount={item.documentCount ?? 0}
-                     animationDelay={animationDelay}
-                     expanded
-                     onOpenMatter={() => handleOpenMatter(item.instruction)}
-                     onRiskAssessment={() =>
--                      handleRiskAssessment(item.instruction)
-+                      handleRiskAssessment(item)
-                     }
-                     onEIDCheck={() => handleEIDCheck(item.instruction)}
-                   />
- 
-                 );
-               })}
-               {unlinkedDeals.map((deal, idx) => {
-                 const base = overviewItems.length + idx;
-                 const row = Math.floor(base / 2);
-                 const col = base % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <DealCard
-                     key={`unlinked-${idx}`}
-                     deal={deal}
-                     animationDelay={animationDelay}
-                   />
-                 );
-               })}
-             </div>
-           )}
-           {activePivot === "deals" && (
-             <div className={gridContainerStyle}>
-               {deals.map((deal, idx) => {
-                 const row = Math.floor(idx / 4);
+                 <div className="bottom-tabs">
+                     {[
+                         {
