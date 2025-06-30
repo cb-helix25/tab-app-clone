@@ -34,6 +34,7 @@ import {
   TemplateSet,
   getTemplateSetLabel,
   getDatabaseBlocksData,
+  compileBlocks,
 } from '../../app/customisation/TemplateBlockSets';
 import { availableAttachments, AttachmentOption } from '../../app/customisation/Attachments';
 import {
@@ -445,9 +446,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
-            setBlocks(data.blocks || []);
-            setSavedSnippets(data.savedSnippets || {});
-            return data.blocks || [];
+            const compiled = compileBlocks(data);
+            setBlocks(compiled);
+            setSavedSnippets((data as any).savedSnippets || {});
+            return compiled;
           }
         } catch (err) {
           console.error('Failed to load blocks', err);

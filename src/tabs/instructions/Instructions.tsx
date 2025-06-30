@@ -360,6 +360,12 @@ const Instructions: React.FC<InstructionsProps> = ({
           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
         ];
+        dealsForInst.forEach((d) => {
+          if (d.instruction) {
+            riskSource.push(...(d.instruction.riskAssessments ?? []));
+            riskSource.push(...(d.instruction.compliance ?? []));
+          }
+        });
         const eidSource = [
           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
           ...((inst as any).electronicIDChecks ??
@@ -515,6 +521,28 @@ const Instructions: React.FC<InstructionsProps> = ({
               EIDStatus: eid.EIDStatus,
             });
           });
+        });
+        deals.forEach((d: any) => {
+          if (d.instruction) {
+            riskSource.push(...(d.instruction.riskAssessments ?? []));
+            riskSource.push(...(d.instruction.compliance ?? []));
+            const instEids: any[] = [
+              ...(d.instruction.electronicIDChecks ?? []),
+              ...(d.instruction.idVerifications ?? []),
+            ];
+            eidSource.push(...instEids);
+            instEids.forEach((eid: any) => {
+              riskSource.push({
+                MatterId: eid.InstructionRef ?? d.InstructionRef,
+                ComplianceDate: eid.EIDCheckedDate,
+                CheckId: eid.EIDCheckId,
+                CheckResult: eid.EIDOverallResult,
+                PEPandSanctionsCheckResult: eid.PEPAndSanctionsCheckResult,
+                AddressVerificationCheckResult: eid.AddressVerificationResult,
+                EIDStatus: eid.EIDStatus,
+              });
+            });
+          }
         });
         return riskSource.map((r: any) => {
           const eid = eidSource.find((e: any) => e.MatterId === r.MatterId);

@@ -44,4 +44,44 @@ export function getDatabaseBlocksData(): DatabaseBlocksData {
   return databaseBlocksData;
 }
 
+export interface RawSnippet {
+  SnippetId?: number;
+  snippetId?: number;
+  Label?: string;
+  label?: string;
+  Content?: string;
+  content?: string;
+  SortOrder?: number;
+  sortOrder?: number;
+}
+
+export interface RawBlock {
+  BlockId?: number;
+  blockId?: number;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  Placeholder?: string;
+  placeholder?: string;
+  snippets?: RawSnippet[];
+  options?: RawSnippet[];
+}
+
+export function compileBlocks(raw: RawBlock[] | { blocks: RawBlock[] }): TemplateBlock[] {
+  const blocksArray: RawBlock[] = Array.isArray(raw)
+    ? raw
+    : (raw as any).blocks || [];
+  return blocksArray.map((b) => ({
+    title: b.Title || b.title || '',
+    description: b.Description || b.description || '',
+    placeholder: b.Placeholder || b.placeholder || '',
+    isMultiSelect: true,
+    options: (b.snippets || b.options || []).map((s) => ({
+      label: s.Label || s.label || '',
+      previewText: s.Content || s.content || '',
+    })),
+  }));
+}
+
 export type { TemplateBlock, TemplateOption };
