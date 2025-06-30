@@ -5,7 +5,7 @@ This file lists the SQL statements used to create the tables that support the sn
 ## Table definitions
 
 ```sql
-CREATE TABLE dbo.DefaultBlocks (
+CREATE TABLE pitchbuilder.DefaultBlocks (
     BlockId INT IDENTITY(1,1) PRIMARY KEY,
     Title NVARCHAR(100) NOT NULL,
     Description NVARCHAR(400) NULL,
@@ -19,16 +19,16 @@ CREATE TABLE dbo.DefaultBlocks (
 The **DefaultBlocks** table stores the high level blocks that appear in the editor. Each block has a title, optional description and placeholder.
 
 ```sql
-CREATE TABLE dbo.EditStatuses (
+CREATE TABLE pitchbuilder.EditStatuses (
     Status NVARCHAR(20) PRIMARY KEY
 );
 ```
 `EditStatuses` acts as a lookup to enforce valid status values for snippet edits.
 
 ```sql
-CREATE TABLE dbo.DefaultBlockSnippets (
+CREATE TABLE pitchbuilder.DefaultBlockSnippets (
     SnippetId INT IDENTITY(1,1) PRIMARY KEY,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL DEFAULT 0,
@@ -45,14 +45,14 @@ CREATE TABLE dbo.DefaultBlockSnippets (
 `DefaultBlockSnippets` holds the actual snippet text for each block. A snippet may have multiple versions over time.
 
 ```sql
-CREATE TABLE dbo.DefaultBlockSnippetVersions (
+CREATE TABLE pitchbuilder.DefaultBlockSnippetVersions (
     VersionId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlockSnippets(SnippetId),
     VersionNumber INT NOT NULL,
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     ApprovedBy NVARCHAR(50) NULL,
     ApprovedAt DATETIME2 NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
@@ -61,17 +61,17 @@ CREATE TABLE dbo.DefaultBlockSnippetVersions (
 Each approved change creates an entry in **DefaultBlockSnippetVersions** so that prior text can be retrieved.
 
 ```sql
-CREATE TABLE dbo.DefaultSnippetEdits (
+CREATE TABLE pitchbuilder.DefaultSnippetEdits (
     EditId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlockSnippets(SnippetId),
     ProposedContent NVARCHAR(MAX) NOT NULL,
     ProposedLabel NVARCHAR(100) NULL,
     ProposedSortOrder INT NULL,
-    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    ProposedBlockId INT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     IsNew BIT NOT NULL DEFAULT 0,
     ProposedBy NVARCHAR(50) NOT NULL,
     ProposedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    Status NVARCHAR(20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES dbo.EditStatuses(Status),
+    Status NVARCHAR(20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES pitchbuilder.EditStatuses(Status),
     ReviewNotes NVARCHAR(400) NULL,
     ReviewedBy NVARCHAR(50) NULL,
     ReviewedAt DATETIME2 NULL
@@ -84,9 +84,9 @@ The **SnippetEdits** table stores pending modifications to snippets. Once review
 Blocks may also contain editable placeholders. The following tables mirror the block snippet structure but store snippet options scoped to a specific placeholder within a block.
 
 ```sql
-CREATE TABLE dbo.PlaceholderSnippets (
+CREATE TABLE pitchbuilder.PlaceholderSnippets (
     PlaceholderSnippetId INT IDENTITY(1,1) PRIMARY KEY,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     Placeholder NVARCHAR(100) NOT NULL,
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
@@ -101,32 +101,32 @@ CREATE TABLE dbo.PlaceholderSnippets (
     ApprovedAt DATETIME2 NULL
 );
 
-CREATE TABLE dbo.PlaceholderSnippetVersions (
+CREATE TABLE pitchbuilder.PlaceholderSnippetVersions (
     VersionId INT IDENTITY(1,1) PRIMARY KEY,
-    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.PlaceholderSnippets(PlaceholderSnippetId),
+    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.PlaceholderSnippets(PlaceholderSnippetId),
     VersionNumber INT NOT NULL,
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     Placeholder NVARCHAR(100) NOT NULL,
     ApprovedBy NVARCHAR(50) NULL,
     ApprovedAt DATETIME2 NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 
-CREATE TABLE dbo.PlaceholderSnippetEdits (
+CREATE TABLE pitchbuilder.PlaceholderSnippetEdits (
     EditId INT IDENTITY(1,1) PRIMARY KEY,
-    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.PlaceholderSnippets(PlaceholderSnippetId),
+    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES pitchbuilder.PlaceholderSnippets(PlaceholderSnippetId),
     ProposedContent NVARCHAR(MAX) NOT NULL,
     ProposedLabel NVARCHAR(100) NULL,
     ProposedSortOrder INT NULL,
-    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    ProposedBlockId INT NULL FOREIGN KEY REFERENCES pitchbuilder.DefaultBlocks(BlockId),
     ProposedPlaceholder NVARCHAR(100) NULL,
     IsNew BIT NOT NULL DEFAULT 0,
     ProposedBy NVARCHAR(50) NOT NULL,
     ProposedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    Status NVARCHAR(20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES dbo.EditStatuses(Status),
+    Status NVARCHAR(20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES pitchbuilder.EditStatuses(Status),
     ReviewNotes NVARCHAR(400) NULL,
     ReviewedBy NVARCHAR(50) NULL,
     ReviewedAt DATETIME2 NULL
