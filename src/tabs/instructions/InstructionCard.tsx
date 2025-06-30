@@ -190,14 +190,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         : deal?.ServiceDescription ?? '';
 
     const eidPassed = eidResult === 'passed' || eidResult === 'pass';
-    const verifyIdStatus = !eid || eidStatus === 'pending'
-        ? 'pending'
-        : eidPassed
-            ? 'complete'
-            : 'review';
-    const idStatus = verifyIdStatus === 'complete' ? 'verified'
-        : verifyIdStatus === 'review' ? 'review'
-            : 'pending';
+    let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
+    if (!eid || eidStatus === 'pending') {
+        verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
+    } else if (eidPassed) {
+        verifyIdStatus = 'complete';
+    } else {
+        verifyIdStatus = 'review';
+    }
+    const idStatus = verifyIdStatus === 'complete'
+        ? 'verified'
+        : verifyIdStatus === 'review'
+            ? 'review'
+            : verifyIdStatus === 'received'
+                ? 'received'
+                : 'pending';
     const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
     const riskStatus = riskResultRaw
         ? ['low', 'pass', 'approved'].includes(riskResultRaw)

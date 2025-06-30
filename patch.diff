@@ -1,55 +1,78 @@
-diff --git a/api/src/functions/getSnippetBlocks.ts b/api/src/functions/getSnippetBlocks.ts
-index 3ee962a10a577f04a8c396a768d211f6fec4f097..f41a41099b063d862e36c8ec21234660b38050e0 100644
---- a/api/src/functions/getSnippetBlocks.ts
-+++ b/api/src/functions/getSnippetBlocks.ts
-@@ -15,49 +15,49 @@ export async function getSnippetBlocksHandler(req: HttpRequest, context: Invocat
-         "https://instructions-vnet-functions.azurewebsites.net/api/actionSnippet";
-     context.log(`Using base URL: ${baseUrl}`);
- 
-     let code = process.env.ACTION_SNIPPET_CODE;
-     if (!code) {
-         const secretName = process.env.ACTION_SNIPPET_CODE_SECRET || "actionSnippetFunction-code";
-         context.log(`Retrieving blocks function code from Key Vault secret: ${secretName}`);
-         const secretClient = new SecretClient("https://helix-keys.vault.azure.net/", new DefaultAzureCredential());
-         try {
-             const secret = await secretClient.getSecret(secretName);
-             code = secret.value;
-             context.log("Successfully retrieved blocks function code from Key Vault");
-         } catch (err) {
-             context.error("Failed to retrieve blocks function code", err);
-             return { status: 500, body: "Unable to retrieve blocks function code" };
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index de7ee5797fcbaf8b51c8d2c16dfe5d4b3b9dabe4..a2a9231f7203b2352df150cbbebe144e356fa993 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -168,58 +168,65 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+             } catch {
+                 return String(value);
+             }
          }
-     }
+         return String(value);
+     };
  
-     const url = `${baseUrl}?code=${code}`;
-     context.log(`Calling blocks service at: ${url}`);
+     const proofOfIdComplete = Boolean(
+         instruction.PassportNumber || instruction.DriversLicenseNumber
+     );
+     const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
+     const paymentComplete = paymentStatusRaw === 'successful';
+     const paymentFailed = paymentStatusRaw === 'failed';
+     const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
+     const eidStatus = (eid?.EIDStatus || '').toLowerCase();
+     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
+     const complianceStatus = (compliance as any)?.Status ?? '-';
+     const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
+     const leadName = instruction
+         ? (instruction.FirstName || instruction.LastName)
+             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
+             : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
+         : deal?.ServiceDescription ?? '';
  
-     try {
-         const response = await fetch(url, {
-             method: "POST",
-             headers: { "Content-Type": "application/json" },
--            body: JSON.stringify({ action: "getSimplifiedBlocks" }),
-+            body: JSON.stringify({ action: "getSnippetBlocks" }),
-         });
-         context.log(`Blocks service responded with ${response.status} ${response.statusText}`);
-         if (!response.ok) {
-             const text = await response.text();
-             context.error("Blocks function error:", text);
-             return { status: 500, body: "Failed to fetch snippet blocks" };
-         }
-         const data = await response.text();
-         context.log("Blocks service response length:", data.length);
-         return { status: 200, body: data, headers: { "Content-Type": "application/json" } };
-     } catch (err) {
-         context.error("Error calling blocks function", err);
-         return { status: 500, body: "Error calling blocks service" };
-     }
- }
+     const eidPassed = eidResult === 'passed' || eidResult === 'pass';
+-    const verifyIdStatus = !eid || eidStatus === 'pending'
+-        ? 'pending'
+-        : eidPassed
+-            ? 'complete'
+-            : 'review';
+-    const idStatus = verifyIdStatus === 'complete' ? 'verified'
+-        : verifyIdStatus === 'review' ? 'review'
+-            : 'pending';
++    let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
++    if (!eid || eidStatus === 'pending') {
++        verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
++    } else if (eidPassed) {
++        verifyIdStatus = 'complete';
++    } else {
++        verifyIdStatus = 'review';
++    }
++    const idStatus = verifyIdStatus === 'complete'
++        ? 'verified'
++        : verifyIdStatus === 'review'
++            ? 'review'
++            : verifyIdStatus === 'received'
++                ? 'received'
++                : 'pending';
+     const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
+     const riskStatus = riskResultRaw
+         ? ['low', 'pass', 'approved'].includes(riskResultRaw)
+             ? 'complete'
+             : 'flagged'
+         : 'pending';
+     const riskAssessed = riskStatus !== 'pending';
+     const openMatterReady =
+         !dealOpen &&
+         paymentComplete &&
+         documentsComplete &&
+         verifyIdStatus === 'complete' &&
+         riskStatus === 'complete';
+     // Allow opening a new matter directly from the card even if some
+     // prerequisite checks are outstanding. The navigator already shows
+     // the relevant warnings so we no longer disable the action here.
+     const openDisabled = false;
  
- app.http("getSnippetBlocks", {
-     methods: ["GET"],
-     authLevel: "function",
-     handler: getSnippetBlocksHandler,
- });
- 
- export default app;
+     const verifyIdLabel = verifyIdStatus === 'complete'
+         ? 'ID Verified'
+         : verifyIdStatus === 'review'
+             ? 'Review ID'
+             : 'Verify ID';
+     const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
+         ? 'ready'
