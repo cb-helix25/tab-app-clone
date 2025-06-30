@@ -435,6 +435,18 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             </ul>
                         </div>
                     )}
+                    {selectedStatus === 'risk' && (
+                        <div className="detail-group open">
+                            <div className="detail-summary">Risk Assessment</div>
+                            <ul className="detail-list">
+                                {risk && Object.entries(risk).map(([k, v]) => (
+                                    v != null ? (
+                                        <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                    ) : null
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     {selectedStatus === 'comp' && (
                         <div className="detail-group open">
                             <div className="detail-summary">Compliance</div>

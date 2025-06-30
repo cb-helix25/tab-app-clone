@@ -1,18 +1,8 @@
 diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..5910dd4f758f5087b115dff56504f20f673e61f1 100644
+index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..19b48c6de761b548d59561e30c60666a29db49a8 100644
 --- a/src/tabs/instructions/InstructionCard.tsx
 +++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -403,50 +403,72 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                             <div className="detail-summary">Payment</div>
-                             <ul className="detail-list">
-                                 {Object.entries(instruction)
-                                     .filter(([k]) =>
-                                         k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
-                                     )
-                                     .map(([k, v]) =>
-                                         v != null ? (
-                                             <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                         ) : null
+@@ -413,50 +413,62 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                      )}
                              </ul>
                          </div>
@@ -28,28 +18,6 @@ index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..5910dd4f758f5087b115dff56504f20f
                              </ul>
                          </div>
                      )}
-+                    {selectedStatus === 'risk' && (
-+                        <div className="detail-group open">
-+                            <div className="detail-summary">Risk Assessment</div>
-+                            <ul className="detail-list">
-+                                {(instruction.riskAssessments ?? (risk ? [risk] : [])).map((r: any, idx: number) => (
-+                                    <React.Fragment key={idx}>
-+                                        {instruction.riskAssessments && instruction.riskAssessments.length > 1 && (
-+                                            <li><em>Assessment {idx + 1}</em></li>
-+                                        )}
-+                                        {Object.entries(r).map(([k, v]) => (
-+                                            v != null ? (
-+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
-+                                            ) : null
-+                                        ))}
-+                                    </React.Fragment>
-+                                ))}
-+                                {(instruction.riskAssessments?.length ?? (risk ? 1 : 0)) === 0 && (
-+                                    <li>No risk assessment data.</li>
-+                                )}
-+                            </ul>
-+                        </div>
-+                    )}
                      {selectedStatus === 'eid' && (
                          <div className="detail-group open">
                              <div className="detail-summary">EID Check</div>
@@ -60,6 +28,18 @@ index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..5910dd4f758f5087b115dff56504f20f
                              </ul>
                          </div>
                      )}
++                    {selectedStatus === 'risk' && (
++                        <div className="detail-group open">
++                            <div className="detail-summary">Risk Assessment</div>
++                            <ul className="detail-list">
++                                {risk && Object.entries(risk).map(([k, v]) => (
++                                    v != null ? (
++                                        <li key={k}><strong>{k}:</strong> {String(v)}</li>
++                                    ) : null
++                                ))}
++                            </ul>
++                        </div>
++                    )}
                      {selectedStatus === 'comp' && (
                          <div className="detail-group open">
                              <div className="detail-summary">Compliance</div>
@@ -75,3 +55,13 @@ index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..5910dd4f758f5087b115dff56504f20f
                  <div className="bottom-tabs">
                      {[
                          {
+                             key: 'eid',
+                             label: verifyIdLabel,
+                             title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
+                             icon: iconMap.eid,
+                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
+                             status: verifyTabStatus,
+                         },
+                         {
+                             key: 'risk',
+                             label: 'Assess Risk',
