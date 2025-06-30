@@ -86,6 +86,61 @@ CREATE TABLE dbo.DefaultSnippetEdits
 
 CREATE INDEX IX_DefaultSnippetEdits_SnippetId ON dbo.DefaultSnippetEdits(SnippetId);
 
+CREATE TABLE dbo.PlaceholderSnippets
+(
+    PlaceholderSnippetId INT IDENTITY(1,1) PRIMARY KEY,
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    Placeholder NVARCHAR(100) NOT NULL,
+    Label NVARCHAR(100) NOT NULL,
+    Content NVARCHAR(MAX) NOT NULL,
+    SortOrder INT NOT NULL DEFAULT 0,
+    Version INT NOT NULL DEFAULT 1,
+    IsApproved BIT NOT NULL DEFAULT 0,
+    CreatedBy NVARCHAR(50) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedBy NVARCHAR(50) NULL,
+    UpdatedAt DATETIME2 NULL,
+    ApprovedBy NVARCHAR(50) NULL,
+    ApprovedAt DATETIME2 NULL
+);
+
+CREATE INDEX IX_PlaceholderSnippets_BlockId ON dbo.PlaceholderSnippets(BlockId);
+
+CREATE TABLE dbo.PlaceholderSnippetVersions
+(
+    VersionId INT IDENTITY(1,1) PRIMARY KEY,
+    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.PlaceholderSnippets(PlaceholderSnippetId),
+    VersionNumber INT NOT NULL,
+    Label NVARCHAR(100) NOT NULL,
+    Content NVARCHAR(MAX) NOT NULL,
+    SortOrder INT NOT NULL,
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    Placeholder NVARCHAR(100) NOT NULL,
+    ApprovedBy NVARCHAR(50) NULL,
+    ApprovedAt DATETIME2 NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+CREATE TABLE dbo.PlaceholderSnippetEdits
+(
+    EditId INT IDENTITY(1,1) PRIMARY KEY,
+    PlaceholderSnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.PlaceholderSnippets(PlaceholderSnippetId),
+    ProposedContent NVARCHAR(MAX) NOT NULL,
+    ProposedLabel NVARCHAR(100) NULL,
+    ProposedSortOrder INT NULL,
+    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
+    ProposedPlaceholder NVARCHAR(100) NULL,
+    IsNew BIT NOT NULL DEFAULT 0,
+    ProposedBy NVARCHAR(50) NOT NULL,
+    ProposedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    Status NVARCHAR(20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES dbo.EditStatuses(Status),
+    ReviewNotes NVARCHAR(400) NULL,
+    ReviewedBy NVARCHAR(50) NULL,
+    ReviewedAt DATETIME2 NULL
+);
+
+CREATE INDEX IX_PlaceholderSnippetEdits_PlaceholderSnippetId ON dbo.PlaceholderSnippetEdits(PlaceholderSnippetId);
+
 GO
 
 -- ---------------------------------------------------------------
