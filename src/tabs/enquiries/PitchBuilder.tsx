@@ -776,13 +776,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     const saved = sessionStorage.getItem('pitchBuilderState');
+    let initialSet: TemplateSet = 'Database';
     if (saved) {
       try {
         const state = JSON.parse(saved);
         if (state.templateSet) {
           setTemplateSet(state.templateSet);
-        } else {
-          handleTemplateSetChange('Database');
+          initialSet = state.templateSet;
         }
         if (state.serviceDescription) setServiceDescription(state.serviceDescription);
         if (state.selectedOption) setSelectedOption(state.selectedOption);
@@ -809,11 +809,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         if (state.body) setBody(state.body);
       } catch (e) {
         console.error('Failed to parse saved pitch builder state', e);
-        handleTemplateSetChange('Database');
+        initialSet = 'Database';
       }
-    } else {
-      handleTemplateSetChange('Database');
     }
+    handleTemplateSetChange(initialSet);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
