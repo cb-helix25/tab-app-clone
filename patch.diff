@@ -1,264 +1,80 @@
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1397,88 +1397,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-           if (!option) return;
-           text = option.previewText.trim().replace(/\n/g, '<br />');
+diff --git a/decoupled-functions/actionSnippet/index.js b/decoupled-functions/actionSnippet/index.js
+index 89889528107f6b2603f56a30ada9751c9e2e19f2..df4ae7a3f8325d22dcb800245e1a587323ad16b2 100644
+--- a/decoupled-functions/actionSnippet/index.js
++++ b/decoupled-functions/actionSnippet/index.js
+@@ -45,57 +45,74 @@ async function actionSnippetHandler(req, context) {
+     context.log('Database password ensured');
+     const pool = await getSqlPool();
+     context.log('SQL pool acquired');
+     // Use the "pitchbuilder" schema by default. This allows running
+     // locally without setting DB_SCHEMA explicitly while still
+     // working with the shared pitchbuilder database.
+     const schema = process.env.DB_SCHEMA || 'pitchbuilder';
+     context.log(`Processing action: ${action}`);
+ 
+     switch (action) {
+         case "getSnippetBlocks": {
+             context.log('Fetching snippet blocks');
+             const blocksRes = await pool.request().query(`SELECT * FROM ${schema}.DefaultBlocks ORDER BY BlockId`);
+             const blocks = blocksRes.recordset || [];
+             for (const b of blocks) {
+                 const snips = await pool.request()
+                     .input("BlockId", sql.Int, b.BlockId)
+                     .query(`SELECT * FROM ${schema}.DefaultBlockSnippets WHERE BlockId=@BlockId AND IsApproved=1 ORDER BY SortOrder`);
+                 b.snippets = snips.recordset || [];
+             }
+             context.log(`Fetched ${blocks.length} blocks`);
+             return { status: 200, body: JSON.stringify(blocks), headers: { "Content-Type": "application/json" } };
          }
-         if (text === null) return;
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = opt.replace(/'/g, "&#39;");
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(
-             (s) =>
-               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-           )
-           .join(' ');
--        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
-+        const idAttr = option?.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
-+        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
-         snippetHtml.push(html);
-         snippetMap[opt] = html;
-       });
-     } else if (typeof selectedOption === 'string') {
- 
-       let text: string | null = null;
-+      let optObj: TemplateOption | undefined;
-       if (selectedOption === '__saved') {
-         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-       } else {
--        const option = block.options.find((o) => o.label === selectedOption);
--        if (option) {
--          text = option.previewText.trim().replace(/\n/g, '<br />');
-+        optObj = block.options.find((o) => o.label === selectedOption);
-+        if (optObj) {
-+          text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         case "submitSnippetEdit": {
+             context.log('Submitting snippet edit');
+-            const snippetId = payload.snippetId ?? payload.SnippetId;
++            let snippetId = payload.snippetId ?? payload.SnippetId;
+             const content = payload.proposedContent ?? payload.ProposedContent;
+             const label = payload.proposedLabel ?? payload.ProposedLabel;
+             const sortOrder = payload.proposedSortOrder ?? payload.ProposedSortOrder;
+             const blockId = payload.proposedBlockId ?? payload.ProposedBlockId;
+             const isNew = payload.isNew ?? payload.IsNew;
+             const proposedBy = payload.proposedBy ?? payload.ProposedBy;
++
++            if (isNew && (snippetId === undefined || snippetId === null)) {
++                const insertSnippet = `INSERT INTO ${schema}.DefaultBlockSnippets
++                    (BlockId, Label, Content, SortOrder, CreatedBy)
++                    OUTPUT INSERTED.SnippetId
++                    VALUES (@BlockId, @Label, @Content, @SortOrder, @CreatedBy)`;
++                const res = await pool
++                    .request()
++                    .input("BlockId", sql.Int, blockId)
++                    .input("Label", sql.NVarChar(100), label || "")
++                    .input("Content", sql.NVarChar(sql.MAX), content)
++                    .input("SortOrder", sql.Int, sortOrder ?? 0)
++                    .input("CreatedBy", sql.NVarChar(50), proposedBy)
++                    .query(insertSnippet);
++                snippetId = res.recordset[0].SnippetId;
++                context.log(`New snippet created with id ${snippetId}`);
++            }
+             const q = `INSERT INTO ${schema}.DefaultSnippetEdits
+             (SnippetId, ProposedContent, ProposedLabel, ProposedSortOrder, ProposedBlockId, IsNew, ProposedBy)
+             VALUES (@SnippetId, @Content, @Label, @SortOrder, @BlockId, @IsNew, @ProposedBy)`;
+             await pool
+                 .request()
+                 .input("SnippetId", sql.Int, snippetId)
+                 .input("Content", sql.NVarChar(sql.MAX), content)
+                 .input("Label", sql.NVarChar(100), label || null)
+                 .input("SortOrder", sql.Int, sortOrder ?? null)
+                 .input("BlockId", sql.Int, blockId ?? null)
+                 .input("IsNew", sql.Bit, isNew ? 1 : 0)
+                 .input("ProposedBy", sql.NVarChar(50), proposedBy)
+                 .query(q);
+             context.log('Snippet edit inserted');
+             return { status: 200, body: JSON.stringify({ ok: true }) };
          }
-       }
-       if (text !== null) {
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = selectedOption.replace(/'/g, "&#39;");
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(
-             (s) =>
-               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-           )
-           .join(' ');
--        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
-+        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-+        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
-         snippetHtml.push(html);
-         snippetMap[selectedOption] = html;
-       }
  
-     }
- 
-     const replacementText = snippetHtml.join('');
-     let selectedLabel = '';
-     if (block.isMultiSelect && isStringArray(selectedOption)) {
-       selectedLabel = selectedOption.join(', ');
-     } else if (typeof selectedOption === 'string') {
-       selectedLabel = selectedOption;
-     }
-     const containerTag = 'span';
-     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
-     const innerHTML = cleanTemplateString(replacementText);
-     const styledInnerHTML = innerHTML.replace(
-       /<p>/g,
-       `<p style="margin: 0;">`
-     );
-     const optionsHtml = block.options
-       .map(o => {
-         const isSel = block.isMultiSelect && Array.isArray(selectedOption)
-           ? (selectedOption as string[]).includes(o.label)
-           : selectedOption === o.label;
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1618,77 +1621,71 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-     if (!span) return;
-     const snippetEls = Array.from(
-       span.querySelectorAll('div[data-snippet]')
-     ) as HTMLElement[];
-     const targetEl = snippetEls.find(
-       (el) => el.getAttribute('data-snippet') === previous
-     );
-     if (!targetEl) return;
- 
-     const option = block.options.find((o) => o.label === replacement);
-     if (!option) return;
-     let text = option.previewText.trim().replace(/\n/g, '<br />');
-     text = applyDynamicSubstitutions(
-       text,
-       userData,
-       enquiry,
-       amount,
-       dealPasscode,
-       dealPasscode
-         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-         : undefined
-     );
-     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-     text = wrapInsertPlaceholders(text);
-     targetEl.setAttribute('data-snippet', replacement);
-+    if (option.snippetId) {
-+      targetEl.setAttribute('data-snippet-id', String(option.snippetId));
-+    } else {
-+      targetEl.removeAttribute('data-snippet-id');
-+    }
-     targetEl.innerHTML = `${text}`;
- 
-     setOriginalSnippetContent((prev) => {
-       const blockMap = { ...(prev[block.title] || {}) };
-       delete blockMap[previous];
--      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`;
-+      const idAttr = option.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
-+      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}"${idAttr} style="margin-bottom:4px;">${text}</div>`;
-       return { ...prev, [block.title]: blockMap };
-     });
-     setEditedSnippets((prev) => {
-       const blockMap = { ...(prev[block.title] || {}) } as { [label: string]: boolean };
-       delete blockMap[previous];
-       blockMap[replacement] = false;
-       return { ...prev, [block.title]: blockMap };
-     });
- 
--    setOriginalSnippetContent((prev) => ({
--      ...prev,
--      [block.title]: {
--        ...(prev[block.title] || {}),
--        [replacement]: `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`,
--      },
--    }));
--    setEditedSnippets((prev) => ({
--      ...prev,
--      [block.title]: { ...(prev[block.title] || {}), [replacement]: false },
--    }));
--
-     const optionDiv = span.querySelector('div.option-choices');
-     if (optionDiv) {
-       const currentSelected = block.isMultiSelect
-         ? (selectedTemplateOptions[block.title] as string[])
-         : selectedTemplateOptions[block.title];
-       const newSelected = block.isMultiSelect
-         ? (currentSelected as string[]).map((opt) =>
-           opt === previous ? replacement : opt
-         )
-         : replacement;
-       const optionsHtml = block.options
-         .filter((o) =>
-           block.isMultiSelect && Array.isArray(newSelected)
-             ? !(newSelected as string[]).includes(o.label)
-             : newSelected !== o.label
-         )
-         .map((o) => {
-           const safe = o.label.replace(/'/g, "&#39;");
-           return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
-         })
-         .join(' ');
-       const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-       const savedChoice = savedSnippet ? `<span class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</span>` : '';
-       const optionListContent = [optionsHtml, savedChoice]
-         .filter(Boolean)
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1786,56 +1783,68 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-             ? (newSelected as string[]).includes(o.label)
-             : newSelected === o.label;
-           return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
-         })
-         .join('');
-       const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-       const savedChoice = savedSnippet ? `<div class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>` : '';
-       optionDiv.innerHTML = optionsHtml + savedChoice;
-     }
- 
-     const updatedHtml = span.innerHTML;
-     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
-     setBody(bodyEditorRef.current.innerHTML);
-     setBody(bodyEditorRef.current.innerHTML);
-   }
- 
-   async function saveCustomSnippet(blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) {
-     if (!bodyEditorRef.current) return;
-     const span = bodyEditorRef.current.querySelector(
-       `span[data-inserted="${blockTitle}"]`
-     ) as HTMLElement | null;
-     if (!span) return;
-     const main = span.querySelector('.block-main') as HTMLElement | null;
-     if (!main) return;
-     const snippetHtml = main.innerHTML;
-+    const firstSnippet = main.querySelector('div[data-snippet-id]') as HTMLElement | null;
-+    const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
-+    const block = blocks.find(b => b.title === blockTitle);
-+    const blockId = block?.blockId;
-     try {
-       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
-       await fetch(url, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
--        body: JSON.stringify({ blockTitle, html: snippetHtml, label, sortOrder, isNew })
-+        body: JSON.stringify({
-+          snippetId,
-+          proposedContent: snippetHtml,
-+          proposedLabel: label,
-+          proposedSortOrder: sortOrder,
-+          proposedBlockId: blockId,
-+          isNew,
-+          proposedBy: userInitials
-+        })
-       });
-       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
-       showToast('Snippet saved', 'success');
-     } catch (err) {
-       console.error('Failed to save snippet', err);
-       showToast('Save failed', 'error');
-     }
-   }
- 
-   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
-     if (!bodyEditorRef.current) return;
-     const span = bodyEditorRef.current.querySelector(
-       `span[data-inserted="${block.title}"]`
-     ) as HTMLElement | null;
-     if (!span) return;
-     const snippets = Array.from(
-       span.querySelectorAll('div[data-snippet]')
-     ) as HTMLElement[];
-     const target = snippets.find(
-       (el) => el.getAttribute('data-snippet') === optionLabel
-     );
-     if (target) target.remove();
-     setOriginalSnippetContent((prev) => {
-       const blockMap = { ...(prev[block.title] || {}) };
-       delete blockMap[optionLabel];
+         case "approveSnippetEdit": {
+             const editId = payload.editId ?? payload.EditId;
+             const approvedBy = payload.approvedBy ?? payload.ApprovedBy;
+             const reviewNotes = payload.reviewNotes ?? payload.ReviewNotes;
+             context.log(`Approving snippet edit ${editId}`);
+             const editRes = await pool
+                 .request()
+                 .input("EditId", sql.Int, editId)
