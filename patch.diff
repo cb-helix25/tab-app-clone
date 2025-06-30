@@ -1,78 +1,170 @@
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index de7ee5797fcbaf8b51c8d2c16dfe5d4b3b9dabe4..a2a9231f7203b2352df150cbbebe144e356fa993 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -168,58 +168,65 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-             } catch {
-                 return String(value);
-             }
+diff --git a/decoupled-functions/fetchInstructionData/index.js b/decoupled-functions/fetchInstructionData/index.js
+index b90f3c0503e10602ff30c974590f5dd7ad841553..c350a7ddabc1a8755d17038bd13638ed5c35a0bb 100644
+--- a/decoupled-functions/fetchInstructionData/index.js
++++ b/decoupled-functions/fetchInstructionData/index.js
+@@ -56,145 +56,165 @@ module.exports = async function (context, req) {
+         .input('initials', sql.NVarChar, initials)
+         .query('SELECT * FROM Deals WHERE PitchedBy=@initials ORDER BY DealId DESC');
+       deals = dealsResult.recordset || [];
+ 
+       for (const d of deals) {
+         const jointRes = await pool.request()
+           .input('dealId', sql.Int, d.DealId)
+           .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+         d.jointClients = jointRes.recordset || [];
+ 
+         if (d.InstructionRef) {
+           const instRes = await pool.request()
+             .input('ref', sql.NVarChar, d.InstructionRef)
+             .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+           const inst = instRes.recordset[0] || null;
+           if (inst) {
+             const docRes = await pool.request()
+               .input('ref', sql.NVarChar, d.InstructionRef)
+               .query('SELECT FileName, BlobUrl FROM Documents WHERE InstructionRef=@ref');
+             inst.documents = docRes.recordset || [];
+ 
+             const riskRes = await pool.request()
+               .input('ref', sql.NVarChar, d.InstructionRef)
+               .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+             inst.idVerifications = riskRes.recordset || [];
++
++            const riskAssessRes = await pool.request()
++              .input('ref', sql.NVarChar, d.InstructionRef)
++              .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
++            inst.riskAssessments = riskAssessRes.recordset || [];
+             d.instruction = inst;
+           }
          }
-         return String(value);
-     };
+       }
+     }
  
-     const proofOfIdComplete = Boolean(
-         instruction.PassportNumber || instruction.DriversLicenseNumber
-     );
-     const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
-     const paymentComplete = paymentStatusRaw === 'successful';
-     const paymentFailed = paymentStatusRaw === 'failed';
-     const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
-     const eidStatus = (eid?.EIDStatus || '').toLowerCase();
-     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
-     const complianceStatus = (compliance as any)?.Status ?? '-';
-     const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
-     const leadName = instruction
-         ? (instruction.FirstName || instruction.LastName)
-             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
-             : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
-         : deal?.ServiceDescription ?? '';
+     // ─── Single deal by ID when requested ───────────────────────────────
+     let deal = null;
+     if (dealId != null) {
+       const dealRes = await pool.request()
+         .input('dealId', sql.Int, dealId)
+         .query('SELECT * FROM Deals WHERE DealId=@dealId');
+       deal = dealRes.recordset[0] || null;
+       if (deal) {
+         const jointRes = await pool.request()
+           .input('dealId', sql.Int, dealId)
+           .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+         deal.jointClients = jointRes.recordset || [];
  
-     const eidPassed = eidResult === 'passed' || eidResult === 'pass';
--    const verifyIdStatus = !eid || eidStatus === 'pending'
--        ? 'pending'
--        : eidPassed
--            ? 'complete'
--            : 'review';
--    const idStatus = verifyIdStatus === 'complete' ? 'verified'
--        : verifyIdStatus === 'review' ? 'review'
--            : 'pending';
-+    let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
-+    if (!eid || eidStatus === 'pending') {
-+        verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
-+    } else if (eidPassed) {
-+        verifyIdStatus = 'complete';
-+    } else {
-+        verifyIdStatus = 'review';
-+    }
-+    const idStatus = verifyIdStatus === 'complete'
-+        ? 'verified'
-+        : verifyIdStatus === 'review'
-+            ? 'review'
-+            : verifyIdStatus === 'received'
-+                ? 'received'
-+                : 'pending';
-     const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
-     const riskStatus = riskResultRaw
-         ? ['low', 'pass', 'approved'].includes(riskResultRaw)
-             ? 'complete'
-             : 'flagged'
-         : 'pending';
-     const riskAssessed = riskStatus !== 'pending';
-     const openMatterReady =
-         !dealOpen &&
-         paymentComplete &&
-         documentsComplete &&
-         verifyIdStatus === 'complete' &&
-         riskStatus === 'complete';
-     // Allow opening a new matter directly from the card even if some
-     // prerequisite checks are outstanding. The navigator already shows
-     // the relevant warnings so we no longer disable the action here.
-     const openDisabled = false;
+         if (deal.InstructionRef) {
+           const instRes = await pool.request()
+             .input('ref', sql.NVarChar, deal.InstructionRef)
+             .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+           const inst = instRes.recordset[0] || null;
+           if (inst) {
+             const docRes = await pool.request()
+               .input('ref', sql.NVarChar, deal.InstructionRef)
+               .query('SELECT FileName, BlobUrl FROM Documents WHERE InstructionRef=@ref');
+             inst.documents = docRes.recordset || [];
  
-     const verifyIdLabel = verifyIdStatus === 'complete'
-         ? 'ID Verified'
-         : verifyIdStatus === 'review'
-             ? 'Review ID'
-             : 'Verify ID';
-     const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
-         ? 'ready'
+             const riskRes = await pool.request()
+               .input('ref', sql.NVarChar, deal.InstructionRef)
+               .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+             inst.idVerifications = riskRes.recordset || [];
++
++            const riskAssessRes = await pool.request()
++              .input('ref', sql.NVarChar, deal.InstructionRef)
++              .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
++            inst.riskAssessments = riskAssessRes.recordset || [];
+             deal.instruction = inst;
+           }
+         }
+       }
+ 
+     }
+ 
+     // ─── Instructions for this user ──────────────────────────────────────
+     let instructions = [];
+     const allIdVerifications = [];
+     if (initials) {
+       const instrResult = await pool.request()
+         .input('initials', sql.NVarChar, initials)
+         .query('SELECT * FROM Instructions WHERE HelixContact=@initials ORDER BY InstructionRef DESC');
+       instructions = instrResult.recordset || [];
+ 
+       for (const inst of instructions) {
+         const docRes = await pool.request()
+           .input('ref', sql.NVarChar, inst.InstructionRef)
+           .query('SELECT FileName, BlobUrl FROM Documents WHERE InstructionRef=@ref');
+         inst.documents = docRes.recordset || [];
+ 
+         const riskRes = await pool.request()
+           .input('ref', sql.NVarChar, inst.InstructionRef)
+           .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+         inst.idVerifications = riskRes.recordset || [];
++
++        const riskAssessRes = await pool.request()
++          .input('ref', sql.NVarChar, inst.InstructionRef)
++          .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
++        inst.riskAssessments = riskAssessRes.recordset || [];
+         allIdVerifications.push(...inst.idVerifications);
+ 
+         const dealRes = await pool.request()
+           .input('ref', sql.NVarChar, inst.InstructionRef)
+           .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
+         const d = dealRes.recordset[0];
+         if (d) {
+           const jointRes = await pool.request()
+             .input('dealId', sql.Int, d.DealId)
+             .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+           d.jointClients = jointRes.recordset || [];
+           inst.deal = d;
+         }
+       }
+     }
+ 
+     // ─── Single instruction by reference when requested ─────────────────
+     let instruction = null;
+     if (instructionRef) {
+       const instRes = await pool.request()
+         .input('ref', sql.NVarChar, instructionRef)
+         .query('SELECT * FROM Instructions WHERE InstructionRef=@ref');
+       instruction = instRes.recordset[0] || null;
+ 
+       if (instruction) {
+         const docRes = await pool.request()
+           .input('ref', sql.NVarChar, instructionRef)
+           .query('SELECT FileName, BlobUrl FROM Documents WHERE InstructionRef=@ref');
+         instruction.documents = docRes.recordset || [];
+ 
+         const riskRes = await pool.request()
+           .input('ref', sql.NVarChar, instructionRef)
+           .query('SELECT * FROM IDVerifications WHERE InstructionRef=@ref ORDER BY InternalId DESC');
+         instruction.idVerifications = riskRes.recordset || [];
+ 
++        const riskAssessRes = await pool.request()
++          .input('ref', sql.NVarChar, instructionRef)
++          .query('SELECT * FROM RiskAssessment WHERE InstructionRef=@ref ORDER BY ComplianceDate DESC');
++        instruction.riskAssessments = riskAssessRes.recordset || [];
++
+         const dealRes = await pool.request()
+           .input('ref', sql.NVarChar, instructionRef)
+           .query('SELECT * FROM Deals WHERE InstructionRef=@ref');
+         const d = dealRes.recordset[0];
+         if (d) {
+           const jointRes = await pool.request()
+             .input('dealId', sql.Int, d.DealId)
+             .query('SELECT * FROM DealJointClients WHERE DealId=@dealId ORDER BY DealJointClientId');
+           d.jointClients = jointRes.recordset || [];
+           instruction.deal = d;
+         }
+       }
+     }
+ 
+     // ─── ID verifications by ProspectId or instruction refs ─────────────
+     let idVerifications = [];
+     if (prospectId != null) {
+       const riskRes = await pool.request()
+         .input('pid', sql.Int, prospectId)
+         .query('SELECT * FROM IDVerifications WHERE ProspectId=@pid ORDER BY InternalId DESC');
+       idVerifications = riskRes.recordset || [];
+     } else if (initials) {
+       idVerifications = allIdVerifications;
+     }
+ 

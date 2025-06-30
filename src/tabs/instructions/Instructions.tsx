@@ -371,9 +371,12 @@ const Instructions: React.FC<InstructionsProps> = ({
           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
         );
         const eid = eids[0];
-        const docs = prospect.documents?.filter(
+        let docs = prospect.documents?.filter(
           (d) => d.InstructionRef === inst.InstructionRef,
         );
+        if ((!docs || docs.length === 0) && Array.isArray((inst as any).documents)) {
+          docs = (inst as any).documents;
+        }
         return {
           instruction: inst,
           deal,

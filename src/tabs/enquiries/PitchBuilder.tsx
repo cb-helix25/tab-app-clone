@@ -462,6 +462,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         return result;
       }
     };
+    setSelectedTemplateOptions({});
+    setInsertedBlocks({});
+    setAutoInsertedBlocks({});
+    setLockedBlocks({});
+    setPinnedBlocks({});
+    setEditedBlocks({});
+    setOriginalBlockContent({});
     loadBlocks().then((newBlocks) => {
       const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
         b => !hiddenBlocks[b.title]
@@ -470,14 +477,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (bodyEditorRef.current) {
         bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
       }
+      autoInsertDefaultBlocks(blocksToUse);
     });
-    setSelectedTemplateOptions({});
-    setInsertedBlocks({});
-    setAutoInsertedBlocks({});
-    setLockedBlocks({});
-    setPinnedBlocks({});
-    setEditedBlocks({});
-    setOriginalBlockContent({});
   }
 
   // Service options
@@ -874,8 +875,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   );
 
   useEffect(() => {
-    // No automatic insertion of default options
-  }, [enquiry.Area_of_Work]);
+    if (blocks.length > 0 && Object.keys(insertedBlocks).length === 0) {
+      autoInsertDefaultBlocks(blocks.filter(b => !hiddenBlocks[b.title]));
+    }
+  }, [blocks]);
 
   // Attachments, followUp, preview, error states, etc...
   const [attachments, setAttachments] = useState<string[]>([]);
