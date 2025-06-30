@@ -1390,12 +1390,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (block.isMultiSelect && isStringArray(selectedOption)) {
       selectedOption.forEach((opt) => {
         let text: string | null = null;
+        let optObj: TemplateOption | undefined;
         if (opt === '__saved') {
           text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
         } else {
-          const option = block.options.find((o) => o.label === opt);
-          if (!option) return;
-          text = option.previewText.trim().replace(/\n/g, '<br />');
+          optObj = block.options.find((o) => o.label === opt);
+          if (!optObj) return;
+          text = optObj.previewText.trim().replace(/\n/g, '<br />');
         }
         if (text === null) return;
         text = applyDynamicSubstitutions(
@@ -1419,19 +1420,21 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
           )
           .join(' ');
-        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
         snippetHtml.push(html);
         snippetMap[opt] = html;
       });
     } else if (typeof selectedOption === 'string') {
 
       let text: string | null = null;
+      let optObj: TemplateOption | undefined;
       if (selectedOption === '__saved') {
         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
       } else {
-        const option = block.options.find((o) => o.label === selectedOption);
-        if (option) {
-          text = option.previewText.trim().replace(/\n/g, '<br />');
+        optObj = block.options.find((o) => o.label === selectedOption);
+        if (optObj) {
+          text = optObj.previewText.trim().replace(/\n/g, '<br />');
         }
       }
       if (text !== null) {
@@ -1456,7 +1459,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
           )
           .join(' ');
-        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
         snippetHtml.push(html);
         snippetMap[selectedOption] = html;
       }
@@ -1640,12 +1644,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
     text = wrapInsertPlaceholders(text);
     targetEl.setAttribute('data-snippet', replacement);
+    if (option.snippetId) {
+      targetEl.setAttribute('data-snippet-id', String(option.snippetId));
+    } else {
+      targetEl.removeAttribute('data-snippet-id');
+    }
     targetEl.innerHTML = `${text}`;
 
     setOriginalSnippetContent((prev) => {
       const blockMap = { ...(prev[block.title] || {}) };
       delete blockMap[previous];
-      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`;
+      const idAttr = option.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
+      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}"${idAttr} style="margin-bottom:4px;">${text}</div>`;
       return { ...prev, [block.title]: blockMap };
     });
     setEditedSnippets((prev) => {
@@ -1654,18 +1664,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       blockMap[replacement] = false;
       return { ...prev, [block.title]: blockMap };
     });
-
-    setOriginalSnippetContent((prev) => ({
-      ...prev,
-      [block.title]: {
-        ...(prev[block.title] || {}),
-        [replacement]: `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`,
-      },
-    }));
-    setEditedSnippets((prev) => ({
-      ...prev,
-      [block.title]: { ...(prev[block.title] || {}), [replacement]: false },
-    }));
 
     const optionDiv = span.querySelector('div.option-choices');
     if (optionDiv) {
@@ -1808,12 +1806,24 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const main = span.querySelector('.block-main') as HTMLElement | null;
     if (!main) return;
     const snippetHtml = main.innerHTML;
+    const firstSnippet = main.querySelector('div[data-snippet-id]') as HTMLElement | null;
+    const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
+    const block = blocks.find(b => b.title === blockTitle);
+    const blockId = block?.blockId;
     try {
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blockTitle, html: snippetHtml, label, sortOrder, isNew })
+        body: JSON.stringify({
+          snippetId,
+          proposedContent: snippetHtml,
+          proposedLabel: label,
+          proposedSortOrder: sortOrder,
+          proposedBlockId: blockId,
+          isNew,
+          proposedBy: userInitials
+        })
       });
       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
       showToast('Snippet saved', 'success');

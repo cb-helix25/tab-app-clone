@@ -1,8 +1,8 @@
 diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
 --- a/src/tabs/enquiries/PitchBuilder.tsx
 +++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1393,88 +1393,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+@@ -1397,88 +1397,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
            if (!option) return;
            text = option.previewText.trim().replace(/\n/g, '<br />');
          }
@@ -100,10 +100,10 @@ index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfc
            ? (selectedOption as string[]).includes(o.label)
            : selectedOption === o.label;
 diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
 --- a/src/tabs/enquiries/PitchBuilder.tsx
 +++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1614,77 +1617,71 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+@@ -1618,77 +1621,71 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
      if (!span) return;
      const snippetEls = Array.from(
        span.querySelectorAll('div[data-snippet]')
@@ -189,10 +189,10 @@ index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfc
        const optionListContent = [optionsHtml, savedChoice]
          .filter(Boolean)
 diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+index b83f3d6a30f15188ea4ea21ed697096f349110a7..3aaece2c242bd39626b5ecff69383f67a93bc384 100644
 --- a/src/tabs/enquiries/PitchBuilder.tsx
 +++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1782,56 +1779,68 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+@@ -1786,56 +1783,68 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
              ? (newSelected as string[]).includes(o.label)
              : newSelected === o.label;
            return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
