@@ -1,58 +1,66 @@
-diff --git a/api/src/functions/getSnippetEdits.ts b/api/src/functions/getSnippetEdits.ts
-index e9dc54082183bfd08cebde55633e61b6b28e1f1a..fdafbc5e4951b94993ac2d6a64f7f0a3688f5a85 100644
---- a/api/src/functions/getSnippetEdits.ts
-+++ b/api/src/functions/getSnippetEdits.ts
-@@ -2,50 +2,53 @@ import {
-     app,
-     HttpRequest,
-     HttpResponseInit,
-     InvocationContext,
- } from "@azure/functions";
- import { DefaultAzureCredential } from "@azure/identity";
- import { SecretClient } from "@azure/keyvault-secrets";
+diff --git a/decoupled-functions/fetchSnippetEdits/index.js b/decoupled-functions/fetchSnippetEdits/index.js
+index 8562a826b7d3121f5f0339e555cdea1c41234942..9cebfcbc005bff153ac5bb1b446e3bd05e0be644 100644
+--- a/decoupled-functions/fetchSnippetEdits/index.js
++++ b/decoupled-functions/fetchSnippetEdits/index.js
+@@ -18,58 +18,61 @@ async function ensureDbPassword() {
+     if (!passwordPromise) {
+         const secretName = process.env.DB_PASSWORD_SECRET || 'instructionsadmin-password';
+         passwordPromise = secretClient.getSecret(secretName).then(s => {
+             process.env.DB_PASSWORD = s.value;
+             return s.value;
+         });
+     }
+     return passwordPromise;
+ }
  
- export async function getSnippetEditsHandler(
-     req: HttpRequest,
-     context: InvocationContext,
- ): Promise<HttpResponseInit> {
-     context.log("--- Function getSnippetEdits invoked ---");
-     context.log(`HTTP Method: ${req.method}`);
+ module.exports = async function (context, req) {
+     context.log('fetchSnippetEdits function invoked');
  
-     if (req.method !== "GET") {
-         return { status: 405, body: "Method not allowed" };
+     if (req.method !== 'POST') {
+         context.res = { status: 405, body: 'Method not allowed' };
+         return;
      }
  
-     const baseUrl =
-         process.env.SNIPPET_EDITS_BASE_URL ||
-         "https://instructions-vnet-functions.azurewebsites.net/api/fetchSnippetEdits";
-     context.log(`Using base URL: ${baseUrl}`);
- 
-     let code = process.env.SNIPPET_EDITS_CODE;
-+    if (code) {
-+        context.log('Using snippet edits code from environment variable');
-+    }
-     if (!code) {
-         const secretName =
-             process.env.SNIPPET_EDITS_CODE_SECRET || "fetchSnippetEdits-code";
-         context.log(
-             `Retrieving snippet edits function code from Key Vault secret: ${secretName}`,
-         );
-         const vaultUrl =
-             process.env.KEY_VAULT_URL || "https://helix-keys.vault.azure.net/";
-         const secretClient = new SecretClient(
-             vaultUrl,
-             new DefaultAzureCredential(),
-         );
-         try {
-             const secret = await secretClient.getSecret(secretName);
-             code = secret.value;
-             context.log("Successfully retrieved snippet edits code from Key Vault.");
-         } catch (err) {
-             context.error("Failed to retrieve snippet edits code", err);
-             return { status: 500, body: "Unable to retrieve snippet edits code" };
-         }
+     const body = req.body || {};
+     if (body.action !== 'getSnippetEdits') {
+         context.res = { status: 400, body: 'Invalid action' };
+         return;
      }
  
-     const url = `${baseUrl}?code=${code}`;
-     context.log(`Calling snippet edits service at: ${url}`);
+     try {
++        context.log('Ensuring database password');
+         await ensureDbPassword();
+         const pool = await getSqlPool();
++        context.log('SQL pool acquired, executing query');
  
+         const result = await pool.request().query(`
+       SELECT
+         e.EditId AS id,
+         b.Title AS blockTitle,
+         e.ProposedContent AS proposedText,
+         e.ProposedLabel AS proposedLabel,
+         e.ProposedSortOrder AS proposedSortOrder,
+         e.ProposedBlockId AS proposedBlockId,
+         e.IsNew AS isNew,
+         e.ProposedBy AS submittedBy,
+         e.ReviewNotes AS reviewNotes,
+         e.Status AS status
+       FROM SnippetEdits e
+       JOIN SimplifiedBlockSnippets s ON e.SnippetId = s.SnippetId
+       JOIN SimplifiedBlocks b ON s.BlockId = b.BlockId
+       WHERE e.Status = 'pending'
+       ORDER BY e.EditId
+     `);
+ 
+         const edits = result.recordset || [];
++        context.log(`Query returned ${edits.length} edits`);
+         context.res = {
+             status: 200,
+             body: JSON.stringify(edits),
+             headers: { 'Content-Type': 'application/json' }
+         };
+     } catch (err) {
+         context.log.error('fetchSnippetEdits error', err);
+         context.res = { status: 500, body: 'Failed to fetch snippet edits' };
+     }
+ };

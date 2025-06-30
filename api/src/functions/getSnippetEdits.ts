@@ -66,7 +66,7 @@ export async function getSnippetEditsHandler(
             );
             return { status: 500, body: "Failed to fetch snippet edits" };
         }
-        context.log("Snippet edits service response:", text);
+        context.log("Snippet edits service response length:", text.length);
         return {
             status: 200,
             body: text,
