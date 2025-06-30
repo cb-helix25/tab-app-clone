@@ -2278,15 +2278,25 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   const approveSnippet = async (id: number, approve: boolean) => {
     try {
-      const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_CODE}`;
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, approve })
-      });
+      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      if (approve) {
+        const approveUrl = `${baseUrl}/${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_CODE}`;
+        await fetch(approveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editId: id, approvedBy: userInitials })
+        });
+      } else {
+        const deleteUrl = `${baseUrl}/${process.env.REACT_APP_DELETE_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_DELETE_SNIPPET_EDIT_CODE}`;
+        await fetch(deleteUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editId: id })
+        });
+      }
       setSnippetEdits(prev => prev.filter(e => e.id !== id));
     } catch (err) {
-      console.error('Failed to approve snippet', err);
+      console.error('Failed to update snippet edit', err);
     }
   };
 

@@ -76,10 +76,12 @@ export function compileBlocks(raw: RawBlock[] | { blocks: RawBlock[] }): Templat
     title: b.Title || b.title || '',
     description: b.Description || b.description || '',
     placeholder: b.Placeholder || b.placeholder || '',
+    blockId: b.BlockId ?? b.blockId,
     isMultiSelect: true,
     options: (b.snippets || b.options || []).map((s) => ({
       label: s.Label || s.label || '',
       previewText: s.Content || s.content || '',
+      snippetId: s.SnippetId ?? s.snippetId,
     })),
   }));
 }

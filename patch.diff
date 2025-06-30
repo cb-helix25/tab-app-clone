@@ -1,211 +1,264 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ad40dd584df811c0199dd25a537201910f5cd2ab..dd720824b221362fddb7b1edd02af0d265d97057 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -1,39 +1,40 @@
- import React from 'react';
- import {
-   Stack,
-   Text,
-   MessageBar,
-   MessageBarType,
-   Separator,
-   Panel,
-   PanelType,
-   PrimaryButton,
-   DefaultButton,
-   Checkbox,
-   IconButton,
-   mergeStyles,
-+  Link,
- } from '@fluentui/react';
- import { colours } from '../../../app/styles/colours';
- import {
-   sharedPrimaryButtonStyles,
-   sharedDefaultButtonStyles,
-   sharedDraftConfirmedButtonStyles,
- } from '../../../app/styles/ButtonStyles';
- import { componentTokens } from '../../../app/styles/componentTokens';
- import markWhite from '../../../assets/markwhite.svg';
- import {
-   removeHighlightSpans,
-   markUnfilledPlaceholders,
-   removeUnfilledPlaceholders,
-   applyDynamicSubstitutions,
-   convertDoubleBreaksToParagraphs,
- } from './emailUtils';
- import ExperimentalAssistant from './ExperimentalAssistant';
- import { isInTeams } from '../../../app/functionality/isInTeams';
- import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1393,88 +1393,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+           if (!option) return;
+           text = option.previewText.trim().replace(/\n/g, '<br />');
+         }
+         if (text === null) return;
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = opt.replace(/'/g, "&#39;");
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(
+             (s) =>
+               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
+           )
+           .join(' ');
+-        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
++        const idAttr = option?.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
++        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+         snippetHtml.push(html);
+         snippetMap[opt] = html;
+       });
+     } else if (typeof selectedOption === 'string') {
  
- function escapeRegExp(str: string): string {
-   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
- }
+       let text: string | null = null;
++      let optObj: TemplateOption | undefined;
+       if (selectedOption === '__saved') {
+         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
+       } else {
+-        const option = block.options.find((o) => o.label === selectedOption);
+-        if (option) {
+-          text = option.previewText.trim().replace(/\n/g, '<br />');
++        optObj = block.options.find((o) => o.label === selectedOption);
++        if (optObj) {
++          text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         }
+       }
+       if (text !== null) {
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = selectedOption.replace(/'/g, "&#39;");
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(
+             (s) =>
+               `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
+           )
+           .join(' ');
+-        const html = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
++        const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
++        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+         snippetHtml.push(html);
+         snippetMap[selectedOption] = html;
+       }
  
- function removeAutoInsertedBlocks(
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ad40dd584df811c0199dd25a537201910f5cd2ab..dd720824b221362fddb7b1edd02af0d265d97057 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -119,50 +120,54 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
-     userData,
-     enquiry,
-     amount,
-     passcode,
-     passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
-   );
-   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
-   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
- const previewRef = React.useRef<HTMLDivElement>(null);
- 
-   const [isAiOpen, setIsAiOpen] = React.useState(false);
-   const [isConfirmed, setIsConfirmed] = React.useState(false);
-   React.useEffect(() => {
-     if (isPreviewOpen) {
-       setIsConfirmed(false);
      }
-   }, [isPreviewOpen]);
-   const inTeams = isInTeams();
-   const useLocalData =
-     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
-   const allowedInitials = ['LZ', 'AC'];
-   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
-   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
-   const showAiAssistButton = false;
  
-+  const checkoutPreviewUrl = passcode
-+    ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}`
-+    : process.env.REACT_APP_CHECKOUT_URL || '#';
-+
-   // Example follow-up options (you may wish to pass these in or centralise them)
-   const followUpOptions: { [key: string]: string } = {
-     '1_day': '1 day',
-     '2_days': '2 days',
-     '3_days': '3 days',
-     '7_days': '7 days',
-     '14_days': '14 days',
-     '30_days': '30 days',
-   };
+     const replacementText = snippetHtml.join('');
+     let selectedLabel = '';
+     if (block.isMultiSelect && isStringArray(selectedOption)) {
+       selectedLabel = selectedOption.join(', ');
+     } else if (typeof selectedOption === 'string') {
+       selectedLabel = selectedOption;
+     }
+     const containerTag = 'span';
+     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
+     const innerHTML = cleanTemplateString(replacementText);
+     const styledInnerHTML = innerHTML.replace(
+       /<p>/g,
+       `<p style="margin: 0;">`
+     );
+     const optionsHtml = block.options
+       .map(o => {
+         const isSel = block.isMultiSelect && Array.isArray(selectedOption)
+           ? (selectedOption as string[]).includes(o.label)
+           : selectedOption === o.label;
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1614,77 +1617,71 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+     if (!span) return;
+     const snippetEls = Array.from(
+       span.querySelectorAll('div[data-snippet]')
+     ) as HTMLElement[];
+     const targetEl = snippetEls.find(
+       (el) => el.getAttribute('data-snippet') === previous
+     );
+     if (!targetEl) return;
  
- function formatCurrency(val?: string): string {
-   if (!val) return 'N/A';
-   const num = parseFloat(val.replace(/,/g, ''));
-   if (isNaN(num)) return val;
-   return num.toLocaleString('en-GB', {
-     style: 'currency',
-     currency: 'GBP',
-     minimumFractionDigits: 2,
-   });
- }
+     const option = block.options.find((o) => o.label === replacement);
+     if (!option) return;
+     let text = option.previewText.trim().replace(/\n/g, '<br />');
+     text = applyDynamicSubstitutions(
+       text,
+       userData,
+       enquiry,
+       amount,
+       dealPasscode,
+       dealPasscode
+         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+         : undefined
+     );
+     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+     text = wrapInsertPlaceholders(text);
+     targetEl.setAttribute('data-snippet', replacement);
++    if (option.snippetId) {
++      targetEl.setAttribute('data-snippet-id', String(option.snippetId));
++    } else {
++      targetEl.removeAttribute('data-snippet-id');
++    }
+     targetEl.innerHTML = `${text}`;
  
-   const subjectBannerClass = mergeStyles('subject-banner', {
-     background: componentTokens.infoBanner.background,
-     borderLeft: componentTokens.infoBanner.borderLeft,
-     padding: componentTokens.infoBanner.padding,
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ad40dd584df811c0199dd25a537201910f5cd2ab..dd720824b221362fddb7b1edd02af0d265d97057 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -173,51 +178,51 @@ function formatCurrency(val?: string): string {
-   const panelStyles = {
-     padding: '12px',
-     backgroundColor: colours.light.previewBackground,
-     color: colours.light.text,
-     display: 'flex',
-     flexDirection: 'column',
-     height: '100%',
-   } as const;
+     setOriginalSnippetContent((prev) => {
+       const blockMap = { ...(prev[block.title] || {}) };
+       delete blockMap[previous];
+-      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`;
++      const idAttr = option.snippetId ? ` data-snippet-id="${option.snippetId}"` : '';
++      blockMap[replacement] = `<div data-snippet="${replacement.replace(/'/g, "&#39;")}"${idAttr} style="margin-bottom:4px;">${text}</div>`;
+       return { ...prev, [block.title]: blockMap };
+     });
+     setEditedSnippets((prev) => {
+       const blockMap = { ...(prev[block.title] || {}) } as { [label: string]: boolean };
+       delete blockMap[previous];
+       blockMap[replacement] = false;
+       return { ...prev, [block.title]: blockMap };
+     });
  
-   const bodyStyles = {
-     whiteSpace: 'pre-wrap',
-     maxHeight: '60vh',
-     overflowY: 'auto',
-     backgroundImage: `url(${markWhite})`,
-     backgroundRepeat: 'no-repeat',
-     backgroundPosition: 'right 20px top 0',
-     backgroundSize: '180px',
-     backgroundColor: colours.light.previewBackground,
-   } as const;
+-    setOriginalSnippetContent((prev) => ({
+-      ...prev,
+-      [block.title]: {
+-        ...(prev[block.title] || {}),
+-        [replacement]: `<div data-snippet="${replacement.replace(/'/g, "&#39;")}" style="margin-bottom:4px;">${text}</div>`,
+-      },
+-    }));
+-    setEditedSnippets((prev) => ({
+-      ...prev,
+-      [block.title]: { ...(prev[block.title] || {}), [replacement]: false },
+-    }));
+-
+     const optionDiv = span.querySelector('div.option-choices');
+     if (optionDiv) {
+       const currentSelected = block.isMultiSelect
+         ? (selectedTemplateOptions[block.title] as string[])
+         : selectedTemplateOptions[block.title];
+       const newSelected = block.isMultiSelect
+         ? (currentSelected as string[]).map((opt) =>
+           opt === previous ? replacement : opt
+         )
+         : replacement;
+       const optionsHtml = block.options
+         .filter((o) =>
+           block.isMultiSelect && Array.isArray(newSelected)
+             ? !(newSelected as string[]).includes(o.label)
+             : newSelected !== o.label
+         )
+         .map((o) => {
+           const safe = o.label.replace(/'/g, "&#39;");
+           return `<span class="option-choice" data-block-title="${block.title}" data-option-label="${safe}">${o.label}</span>`;
+         })
+         .join(' ');
+       const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
+       const savedChoice = savedSnippet ? `<span class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</span>` : '';
+       const optionListContent = [optionsHtml, savedChoice]
+         .filter(Boolean)
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 3c18df6755a102150215dbfb973a55eacc6385a3..0f6f6beea95af94793cbd986c4250bfcb1160733 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1782,56 +1779,68 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+             ? (newSelected as string[]).includes(o.label)
+             : newSelected === o.label;
+           return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
+         })
+         .join('');
+       const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
+       const savedChoice = savedSnippet ? `<div class="option-choice" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>` : '';
+       optionDiv.innerHTML = optionsHtml + savedChoice;
+     }
  
-   return (
-     <Panel
-       isOpen={isPreviewOpen}
-       onDismiss={onDismiss}
-       type={PanelType.custom}
--      customWidth="600px"
-+      customWidth="50%"
-       hasCloseButton={false}
-       styles={{
-         main: panelStyles,
-         commands: { display: 'none' },
-       }}
-     >
-       <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
-         {/* Header with close button */}
-         <Stack tokens={{ childrenGap: 4 }}>
-           <Stack
-             horizontal
-             verticalAlign="center"
-             styles={{ root: { justifyContent: 'space-between' } }}
-           >
-             <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-               You're sending an email to {fullName || 'N/A'}
-             </Text>
-             <IconButton
-               iconProps={{ iconName: 'Cancel' }}
-               ariaLabel="Close preview"
-               onClick={onDismiss}
-             />
-           </Stack>
-           <Stack tokens={{ childrenGap: 2 }}>
-             <Text variant="medium">{to}</Text>
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index ad40dd584df811c0199dd25a537201910f5cd2ab..dd720824b221362fddb7b1edd02af0d265d97057 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -315,37 +320,45 @@ function formatCurrency(val?: string): string {
-             disabled={!isConfirmed || isDraftConfirmed}
-             iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
-           />
-         </Stack>
-         {canUseAi && showAiAssistButton && (
-           <DefaultButton
-             text="AI Assist"
-             styles={sharedDefaultButtonStyles}
-             onClick={() => setIsAiOpen(true)}
-             iconProps={{ iconName: 'Robot' }}
-             title="Send this email to OpenAI for suggestions"
-           />
-         )}
-         <DefaultButton
-           text="Copy to Clipboard"
-           styles={sharedDefaultButtonStyles}
-           onClick={() => {
-             const tempDiv = document.createElement('div');
-             tempDiv.innerHTML = finalBody;
-             navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
-           }}
-           iconProps={{ iconName: 'Copy' }}
-           title="Copy the email preview text to your clipboard"
-         />
-       </Stack>
-+      <Link
-+        href={checkoutPreviewUrl}
-+        target="_blank"
-+        rel="noopener noreferrer"
-+        styles={{ root: { marginTop: 10, display: 'inline-block' } }}
-+      >
-+        Preview Checkout Link
-+      </Link>
-       {canUseAi && showAiAssistButton && (
-         <ExperimentalAssistant
-           isOpen={isAiOpen}
-           onDismiss={() => setIsAiOpen(false)}
-           emailText={`Subject: ${subject}\n\n${previewRef.current?.innerText || ''}`}
-         />
-       )}
-     </Panel>
-   );
- };
+     const updatedHtml = span.innerHTML;
+     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
+     setBody(bodyEditorRef.current.innerHTML);
+     setBody(bodyEditorRef.current.innerHTML);
+   }
  
- export default EmailPreview;
+   async function saveCustomSnippet(blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) {
+     if (!bodyEditorRef.current) return;
+     const span = bodyEditorRef.current.querySelector(
+       `span[data-inserted="${blockTitle}"]`
+     ) as HTMLElement | null;
+     if (!span) return;
+     const main = span.querySelector('.block-main') as HTMLElement | null;
+     if (!main) return;
+     const snippetHtml = main.innerHTML;
++    const firstSnippet = main.querySelector('div[data-snippet-id]') as HTMLElement | null;
++    const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
++    const block = blocks.find(b => b.title === blockTitle);
++    const blockId = block?.blockId;
+     try {
+       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_SUBMIT_SNIPPET_EDIT_CODE}`;
+       await fetch(url, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({ blockTitle, html: snippetHtml, label, sortOrder, isNew })
++        body: JSON.stringify({
++          snippetId,
++          proposedContent: snippetHtml,
++          proposedLabel: label,
++          proposedSortOrder: sortOrder,
++          proposedBlockId: blockId,
++          isNew,
++          proposedBy: userInitials
++        })
+       });
+       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
+       showToast('Snippet saved', 'success');
+     } catch (err) {
+       console.error('Failed to save snippet', err);
+       showToast('Save failed', 'error');
+     }
+   }
+ 
+   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
+     if (!bodyEditorRef.current) return;
+     const span = bodyEditorRef.current.querySelector(
+       `span[data-inserted="${block.title}"]`
+     ) as HTMLElement | null;
+     if (!span) return;
+     const snippets = Array.from(
+       span.querySelectorAll('div[data-snippet]')
+     ) as HTMLElement[];
+     const target = snippets.find(
+       (el) => el.getAttribute('data-snippet') === optionLabel
+     );
+     if (target) target.remove();
+     setOriginalSnippetContent((prev) => {
+       const blockMap = { ...(prev[block.title] || {}) };
+       delete blockMap[optionLabel];

@@ -7,6 +7,8 @@ export interface TemplateBlock {
   description: string;
   placeholder: string;
   isMultiSelect?: boolean;
+  /** Database BlockId when loaded from the snippet service */
+  blockId?: number;
   options: TemplateOption[];
   dropdownStyles?: IStyleFunctionOrObject<IDropdownStyleProps, IDropdownStyles>;
 }
@@ -14,6 +16,8 @@ export interface TemplateBlock {
 export interface TemplateOption {
   label: string;
   previewText: string;
+  /** Database SnippetId when loaded from the snippet service */
+  snippetId?: number;
 }
 
 export const templateBlocks: TemplateBlock[] = [
