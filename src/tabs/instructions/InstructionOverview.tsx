@@ -24,7 +24,7 @@ interface InstructionOverviewProps {
     expanded: boolean;
     onToggle: () => void;
     onOpenMatter?: () => void;
-    onRiskAssessment?: () => void;
+    onRiskAssessment?: (item?: any) => void;
     onEIDCheck?: () => void;
 }
 

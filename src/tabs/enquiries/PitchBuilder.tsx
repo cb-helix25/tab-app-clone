@@ -441,6 +441,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setTemplateSet(newSet);
     const loadBlocks = async (): Promise<TemplateBlock[]> => {
       if (newSet === 'Database') {
+        const stored = sessionStorage.getItem('prefetchedBlocksData');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            const compiled = compileBlocks(parsed);
+            setBlocks(compiled);
+            setSavedSnippets((parsed as any).savedSnippets || {});
+            sessionStorage.removeItem('prefetchedBlocksData');
+            return compiled;
+          } catch (e) {
+            console.error('Failed to parse prefetched blocks', e);
+          }
+        }
         try {
           const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
           const res = await fetch(url);
@@ -548,6 +561,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (highlight || isInserted) {
         if (lockedBlocks[blockTitle]) {
           bg = lockedBg;
+        } else if (highlight && !isInserted) {
+          bg = blueBg;
         } else if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
           bg = blueBg;
         } else if (autoInsertedBlocks[blockTitle]) {

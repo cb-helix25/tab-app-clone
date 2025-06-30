@@ -1,129 +1,232 @@
-diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
-index 9ed884b1d7b31f31a4a702feb18ab3d0a5e473cd..8d193ddbfe80469bdfec7f4ea3ed89066628629f 100644
---- a/src/tabs/instructions/RiskAssessmentPage.tsx
-+++ b/src/tabs/instructions/RiskAssessmentPage.tsx
-@@ -1,89 +1,111 @@
- import React, { useState } from 'react';
- import { Stack, PrimaryButton } from '@fluentui/react';
- import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
- import { dashboardTokens } from './componentTokens';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -22,50 +22,51 @@ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
+ import "../../app/styles/InstructionsBanner.css";
  
- interface RiskAssessmentPageProps {
-     onBack: () => void;
-     instructionRef?: string;
-     riskAssessor?: string;
-+    /** Existing risk assessment data to display when available */
-+    existingRisk?: any | null;
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
  }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
++  const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] =
+     useState<string>("Individual");
+   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
+     null,
+   );
+   const [activePivot, setActivePivot] = useState<string>("overview");
  
--const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor }) => {
-+const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
-     const [riskCore, setRiskCore] = useState<RiskCore>({
--        clientType: '',
--        destinationOfFunds: '',
--        fundsType: '',
--        clientIntroduced: '',
--        limitation: '',
--        sourceOfFunds: '',
--        valueOfInstruction: '',
-+        clientType: existingRisk?.ClientType ?? '',
-+        destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
-+        fundsType: existingRisk?.FundsType ?? '',
-+        clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
-+        limitation: existingRisk?.Limitation ?? '',
-+        sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
-+        valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
+   const ACTION_BAR_HEIGHT = 48;
+ 
+   const CLIENT_TYPE_OPTIONS = [
+     { label: "Individual", icon: "Contact" },
+     { label: "Company", icon: "CityNext" },
+     { label: "Multiple Clients", icon: "People" },
+     { label: "Existing Client", icon: "Folder" },
+   ];
+ 
+   const quickLinksStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       padding: "0 24px",
+       transition: "background-color 0.3s",
+       display: "flex",
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -614,52 +615,55 @@ const Instructions: React.FC<InstructionsProps> = ({
+             company_country: inst?.CompanyCountry,
+             company_country_code: inst?.CompanyCountryCode,
+             ...merged,
+           },
+         ];
+       });
      });
--    const [consideredClientRisk, setConsideredClientRisk] = useState(false);
--    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(false);
--    const [transactionRiskLevel, setTransactionRiskLevel] = useState('');
--    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(false);
--    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(false);
-+    const [consideredClientRisk, setConsideredClientRisk] = useState(
-+        !!existingRisk?.ClientRiskFactorsConsidered,
-+    );
-+    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(
-+        !!existingRisk?.TransactionRiskFactorsConsidered,
-+    );
-+    const [transactionRiskLevel, setTransactionRiskLevel] = useState(
-+        existingRisk?.TransactionRiskLevel ?? '',
-+    );
-+    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(
-+        !!existingRisk?.FirmWideSanctionsRiskConsidered,
-+    );
-+    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(
-+        !!existingRisk?.FirmWideAMLPolicyConsidered,
-+    );
+   }, [instructionData]);
  
-     const isComplete = () =>
-         Object.values(riskCore).every((v) => v !== '') &&
-         consideredClientRisk &&
-         consideredTransactionRisk &&
-         transactionRiskLevel !== '' &&
-         consideredFirmWideSanctions &&
-         consideredFirmWideAML;
+   const instructionCardStates = useMemo(() => {
+     const map = new Map<string, InstructionStateData>();
+     (localInstructionCards as InstructionStateData[]).forEach((state) => {
+       if (!map.has(state.scenario)) {
+         map.set(state.scenario, state);
+       }
+     });
+     return Array.from(map.values());
+   }, []);
  
-     const handleContinue = async () => {
-         if (!isComplete()) return;
-         try {
-             await fetch('/api/insertRiskAssessment', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({
-                     InstructionRef: instructionRef,
-                     RiskAssessor: riskAssessor,
-                     ClientType: riskCore.clientType,
-                     DestinationOfFunds: riskCore.destinationOfFunds,
-                     FundsType: riskCore.fundsType,
-                     HowWasClientIntroduced: riskCore.clientIntroduced,
-                     Limitation: riskCore.limitation,
-                     SourceOfFunds: riskCore.sourceOfFunds,
-                     ValueOfInstruction: riskCore.valueOfInstruction,
-                     TransactionRiskLevel: transactionRiskLevel,
-                     ClientRiskFactorsConsidered: consideredClientRisk,
-                     TransactionRiskFactorsConsidered: consideredTransactionRisk,
-                     FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
-                     FirmWideAMLPolicyConsidered: consideredFirmWideAML,
-                     RiskAssessmentResult: transactionRiskLevel.replace(' Risk', ''),
-                 }),
-             });
-         } catch (err) {
-             console.error('❌ Risk assessment submit failed', err);
-         }
-         onBack();
-     };
+   const handleOpenMatter = (inst: any) => {
+     setSelectedInstruction(inst);
+     setNewMatterClientType(inst?.ClientType || "Individual");
+     setShowNewMatterPage(true);
+   };
  
+-  const handleRiskAssessment = (inst: any) => {
+-    setSelectedInstruction(inst);
++  const handleRiskAssessment = (item: any) => {
++    if (item) {
++      setSelectedInstruction(item.instruction ?? item);
++      setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
++    }
+     setShowRiskPage(true);
+   };
+ 
+   const handleEIDCheck = (inst: any) => {
+     setSelectedInstruction(inst);
+     setShowEIDPage(true);
+   };
+ 
+   const handleOpenInstruction = (ref: string) => {
+     setActivePivot("overview");
+   };
+ 
+   const gridContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+     gap: "16px",
+     maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
+ 
+   const scenariosContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "1fr",
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index b49ae9e0e0c14e74fd1705f85e994f2500ba1799..b84438bee3156b13bbdceb688e751ce5c5296de0 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -680,103 +684,106 @@ const Instructions: React.FC<InstructionsProps> = ({
+     boxSizing: "border-box",
+   });
+ 
+   if (showNewMatterPage) {
      return (
-         <Stack tokens={dashboardTokens}>
-             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
-+            {existingRisk && (
-+                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
-+                    <h3>Existing Assessment</h3>
-+                    <ul className="detail-list">
-+                        {Object.entries(existingRisk).map(([k, v]) => (
-+                            v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
-+                        ))}
-+                    </ul>
-+                </Stack>
-+            )}
-             <RiskAssessment
-                 riskCore={riskCore}
-                 setRiskCore={setRiskCore}
-                 consideredClientRisk={consideredClientRisk}
-                 setConsideredClientRisk={setConsideredClientRisk}
-                 consideredTransactionRisk={consideredTransactionRisk}
-                 setConsideredTransactionRisk={setConsideredTransactionRisk}
-                 transactionRiskLevel={transactionRiskLevel}
-                 setTransactionRiskLevel={setTransactionRiskLevel}
-                 consideredFirmWideSanctions={consideredFirmWideSanctions}
-                 setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
-                 consideredFirmWideAML={consideredFirmWideAML}
-                 setConsideredFirmWideAML={setConsideredFirmWideAML}
-                 onContinue={handleContinue}
-                 isComplete={isComplete}
-             />
-         </Stack>
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+         <FlatMatterOpening
+           poidData={idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
+           userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
      );
- };
+   }
  
- export default RiskAssessmentPage;
+   if (showRiskPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage
+-          onBack={() => setShowRiskPage(false)}
++          onBack={() => {
++            setShowRiskPage(false);
++            setSelectedRisk(null);
++          }}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+-          existingRisk={selectedInstruction?.riskAssessments?.[0] ?? null}
++          existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
+         />
+       </Stack>
+     );
+   }
+ 
+   if (showEIDPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <EIDCheckPage
+           poidData={idVerificationOptions}
+           instruction={selectedInstruction}
+           onBack={handleBack}
+         />
+       </Stack>
+     );
+   }
+ 
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className="disclaimer animate-disclaimer">
+           <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
+         </div>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard
+                     key={idx}
+                     instruction={item.instruction as any}
+                     deal={(item as any).deal}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={(item as any).risk}
+                     eid={(item as any).eid}
+                     eids={(item as any).eids}
+                     compliance={undefined}
+                     documents={item.documents}
+                     prospectId={item.prospectId}
+                     documentCount={item.documentCount ?? 0}
+                     animationDelay={animationDelay}
+                     expanded
+                     onOpenMatter={() => handleOpenMatter(item.instruction)}
+                     onRiskAssessment={() =>
+-                      handleRiskAssessment(item.instruction)
++                      handleRiskAssessment(item)
+                     }
+                     onEIDCheck={() => handleEIDCheck(item.instruction)}
+                   />
+ 
+                 );
+               })}
+               {unlinkedDeals.map((deal, idx) => {
+                 const base = overviewItems.length + idx;
+                 const row = Math.floor(base / 2);
+                 const col = base % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <DealCard
+                     key={`unlinked-${idx}`}
+                     deal={deal}
+                     animationDelay={animationDelay}
+                   />
+                 );
+               })}
+             </div>
+           )}
+           {activePivot === "deals" && (
+             <div className={gridContainerStyle}>
+               {deals.map((deal, idx) => {
+                 const row = Math.floor(idx / 4);

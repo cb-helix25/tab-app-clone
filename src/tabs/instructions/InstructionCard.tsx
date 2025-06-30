@@ -89,7 +89,7 @@ interface InstructionCardProps {
     documents?: any[];
     animationDelay?: number;
     onOpenMatter?: () => void;
-    onRiskAssessment?: () => void;
+    onRiskAssessment?: (item?: any) => void;
     onEIDCheck?: () => void;
     innerRef?: React.Ref<HTMLDivElement>;
     expanded?: boolean;
@@ -462,7 +462,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             label: 'Assess Risk',
                             title: riskAssessed ? 'Risk Assessed' : undefined,
                             icon: iconMap.risk,
-                            onClick: () => { setActiveTab('risk'); onRiskAssessment?.(); },
+                            onClick: () => { setActiveTab('risk'); onRiskAssessment?.({ instruction, risk }); },
                             status: riskAssessed ? 'complete' : 'ready',
                         },
                         {

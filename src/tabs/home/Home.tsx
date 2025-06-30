@@ -873,9 +873,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Pending snippet edits for approval
   const [snippetEdits, setSnippetEdits] = useState<SnippetEdit[]>([]);
 
-  // Fetch pending snippet edits
+  // Fetch pending snippet edits and prefetch snippet blocks
   useEffect(() => {
-    const fetchEdits = async () => {
+    const fetchEditsAndBlocks = async () => {
       try {
         const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
         const res = await fetch(url);
@@ -886,8 +886,21 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       } catch (err) {
         console.error('Failed to fetch snippet edits', err);
       }
+
+      if (!sessionStorage.getItem('prefetchedBlocksData')) {
+        try {
+          const blocksUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+          const blocksRes = await fetch(blocksUrl);
+          if (blocksRes.ok) {
+            const data = await blocksRes.json();
+            sessionStorage.setItem('prefetchedBlocksData', JSON.stringify(data));
+          }
+        } catch (err) {
+          console.error('Failed to prefetch snippet blocks', err);
+        }
+      }
     };
-    fetchEdits();
+    fetchEditsAndBlocks();
   }, []);
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);

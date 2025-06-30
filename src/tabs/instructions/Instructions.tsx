@@ -44,6 +44,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+  const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   /** Client type selection for the matter opening workflow */
   const [newMatterClientType, setNewMatterClientType] =
     useState<string>("Individual");
@@ -636,8 +637,11 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowNewMatterPage(true);
   };
 
-  const handleRiskAssessment = (inst: any) => {
-    setSelectedInstruction(inst);
+  const handleRiskAssessment = (item: any) => {
+    if (item) {
+      setSelectedInstruction(item.instruction ?? item);
+      setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
+    }
     setShowRiskPage(true);
   };
 
@@ -702,10 +706,13 @@ const Instructions: React.FC<InstructionsProps> = ({
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <RiskAssessmentPage
-          onBack={() => setShowRiskPage(false)}
+          onBack={() => {
+            setShowRiskPage(false);
+            setSelectedRisk(null);
+          }}
           instructionRef={selectedInstruction?.InstructionRef}
           riskAssessor={userInitials}
-          existingRisk={selectedInstruction?.riskAssessments?.[0] ?? null}
+          existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
         />
       </Stack>
     );
@@ -754,7 +761,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     expanded
                     onOpenMatter={() => handleOpenMatter(item.instruction)}
                     onRiskAssessment={() =>
-                      handleRiskAssessment(item.instruction)
+                      handleRiskAssessment(item)
                     }
                     onEIDCheck={() => handleEIDCheck(item.instruction)}
                   />
