@@ -81,7 +81,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
 
     const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
     const riskStatus = riskResult
-        ? ['low', 'pass', 'approved'].includes(riskResult)
+        ? ['low', 'low risk', 'pass', 'approved'].includes(riskResult)
             ? 'complete'
             : 'flagged'
         : 'pending';

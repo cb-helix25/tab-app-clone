@@ -1,67 +1,133 @@
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 4bcc8ffce440750dbb2a63ec7706202b9ae30fee..19b48c6de761b548d59561e30c60666a29db49a8 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -413,50 +413,62 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                                     )}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'docs' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Documents</div>
-                             <ul className="detail-list">
-                                 <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
-                                 {documents?.map((d, idx) => (
-                                     <li key={idx}><strong>{d.FileName}</strong></li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'eid' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">EID Check</div>
-                             <ul className="detail-list">
-                                 {eid && Object.entries(eid).map(([k,v]) => (
-                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-+                    {selectedStatus === 'risk' && (
-+                        <div className="detail-group open">
-+                            <div className="detail-summary">Risk Assessment</div>
-+                            <ul className="detail-list">
-+                                {risk && Object.entries(risk).map(([k, v]) => (
-+                                    v != null ? (
-+                                        <li key={k}><strong>{k}:</strong> {String(v)}</li>
-+                                    ) : null
-+                                ))}
-+                            </ul>
-+                        </div>
-+                    )}
-                     {selectedStatus === 'comp' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Compliance</div>
-                             <ul className="detail-list">
-                                 {compliance && Object.entries(compliance).map(([k,v]) => (
-                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                 </div>
+diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
+index 8d193ddbfe80469bdfec7f4ea3ed89066628629f..cdc8052a889a49e9a8d97493e6146e43288f7e1e 100644
+--- a/src/tabs/instructions/RiskAssessmentPage.tsx
++++ b/src/tabs/instructions/RiskAssessmentPage.tsx
+@@ -1,94 +1,126 @@
+ import React, { useState } from 'react';
+ import { Stack, PrimaryButton } from '@fluentui/react';
+ import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
+ import { dashboardTokens } from './componentTokens';
  
-                 <div className="bottom-tabs">
-                     {[
-                         {
-                             key: 'eid',
-                             label: verifyIdLabel,
-                             title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
-                             icon: iconMap.eid,
-                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                             status: verifyTabStatus,
-                         },
-                         {
-                             key: 'risk',
-                             label: 'Assess Risk',
+ interface RiskAssessmentPageProps {
+     onBack: () => void;
+     instructionRef?: string;
+     riskAssessor?: string;
+     /** Existing risk assessment data to display when available */
+     existingRisk?: any | null;
+ }
+ 
+ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
+     const [riskCore, setRiskCore] = useState<RiskCore>({
+         clientType: existingRisk?.ClientType ?? '',
++        clientTypeValue: existingRisk?.ClientType_Value ?? 0,
+         destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
++        destinationOfFundsValue: existingRisk?.DestinationOfFunds_Value ?? 0,
+         fundsType: existingRisk?.FundsType ?? '',
++        fundsTypeValue: existingRisk?.FundsType_Value ?? 0,
+         clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
++        clientIntroducedValue: existingRisk?.HowWasClientIntroduced_Value ?? 0,
+         limitation: existingRisk?.Limitation ?? '',
++        limitationValue: existingRisk?.Limitation_Value ?? 0,
+         sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
++        sourceOfFundsValue: existingRisk?.SourceOfFunds_Value ?? 0,
+         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
++        valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
+     });
+     const [consideredClientRisk, setConsideredClientRisk] = useState(
+         !!existingRisk?.ClientRiskFactorsConsidered,
+     );
+     const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(
+         !!existingRisk?.TransactionRiskFactorsConsidered,
+     );
+     const [transactionRiskLevel, setTransactionRiskLevel] = useState(
+         existingRisk?.TransactionRiskLevel ?? '',
+     );
+     const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(
+         !!existingRisk?.FirmWideSanctionsRiskConsidered,
+     );
+     const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(
+         !!existingRisk?.FirmWideAMLPolicyConsidered,
+     );
+ 
+     const isComplete = () =>
+-        Object.values(riskCore).every((v) => v !== '') &&
++        Object.values(riskCore).every((v) => v !== '' && v !== 0) &&
+         consideredClientRisk &&
+         consideredTransactionRisk &&
+         transactionRiskLevel !== '' &&
+         consideredFirmWideSanctions &&
+         consideredFirmWideAML;
+ 
+     const handleContinue = async () => {
+         if (!isComplete()) return;
+         try {
++            const riskScore =
++                riskCore.clientTypeValue +
++                riskCore.destinationOfFundsValue +
++                riskCore.fundsTypeValue +
++                riskCore.clientIntroducedValue +
++                riskCore.limitationValue +
++                riskCore.sourceOfFundsValue +
++                riskCore.valueOfInstructionValue;
++
++            let riskResult = 'Low Risk';
++            if (riskCore.limitationValue === 3 || riskScore >= 16) {
++                riskResult = 'High Risk';
++            } else if (riskScore >= 11) {
++                riskResult = 'Medium Risk';
++            }
++
+             await fetch('/api/insertRiskAssessment', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     InstructionRef: instructionRef,
+                     RiskAssessor: riskAssessor,
+                     ClientType: riskCore.clientType,
++                    ClientType_Value: riskCore.clientTypeValue,
+                     DestinationOfFunds: riskCore.destinationOfFunds,
++                    DestinationOfFunds_Value: riskCore.destinationOfFundsValue,
+                     FundsType: riskCore.fundsType,
++                    FundsType_Value: riskCore.fundsTypeValue,
+                     HowWasClientIntroduced: riskCore.clientIntroduced,
++                    HowWasClientIntroduced_Value: riskCore.clientIntroducedValue,
+                     Limitation: riskCore.limitation,
++                    Limitation_Value: riskCore.limitationValue,
+                     SourceOfFunds: riskCore.sourceOfFunds,
++                    SourceOfFunds_Value: riskCore.sourceOfFundsValue,
+                     ValueOfInstruction: riskCore.valueOfInstruction,
++                    ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
+                     TransactionRiskLevel: transactionRiskLevel,
+                     ClientRiskFactorsConsidered: consideredClientRisk,
+                     TransactionRiskFactorsConsidered: consideredTransactionRisk,
+                     FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
+                     FirmWideAMLPolicyConsidered: consideredFirmWideAML,
+-                    RiskAssessmentResult: transactionRiskLevel.replace(' Risk', ''),
++                    RiskScore: riskScore,
++                    RiskScoreIncrementBy: riskScore,
++                    RiskAssessmentResult: riskResult,
+                 }),
+             });
+         } catch (err) {
+             console.error('❌ Risk assessment submit failed', err);
+         }
+         onBack();
+     };
+ 
+     return (
+         <Stack tokens={dashboardTokens}>
+             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
+             {existingRisk && (
+                 <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
+                     <h3>Existing Assessment</h3>
+                     <ul className="detail-list">
+                         {Object.entries(existingRisk).map(([k, v]) => (
+                             v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
+                         ))}
+                     </ul>
+                 </Stack>
+             )}
+             <RiskAssessment
+                 riskCore={riskCore}
+                 setRiskCore={setRiskCore}
+                 consideredClientRisk={consideredClientRisk}

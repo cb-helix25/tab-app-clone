@@ -4,12 +4,19 @@ import { sharedPrimaryButtonStyles } from '../app/styles/ButtonStyles';
 
 export interface RiskCore {
     clientType: string;
+    clientTypeValue: number;
     destinationOfFunds: string;
+    destinationOfFundsValue: number;
     fundsType: string;
+    fundsTypeValue: number;
     clientIntroduced: string;
+    clientIntroducedValue: number;
     limitation: string;
+    limitationValue: number;
     sourceOfFunds: string;
+    sourceOfFundsValue: number;
     valueOfInstruction: string;
+    valueOfInstructionValue: number;
 }
 
 export interface RiskAssessmentProps {
@@ -29,10 +36,46 @@ export interface RiskAssessmentProps {
     isComplete: () => boolean;
   }
 
-const riskOptions = [
-    { key: 'Low', text: 'Low' },
-    { key: 'Medium', text: 'Medium' },
-    { key: 'High', text: 'High' },
+const clientTypeOptions = [
+    { key: 1, text: 'Individual or Company registered in England and Wales with Companies House' },
+    { key: 2, text: 'Group Company or Subsidiary, Trust' },
+    { key: 3, text: 'Non UK Company' },
+];
+
+const destinationOfFundsOptions = [
+    { key: 1, text: 'Client within UK' },
+    { key: 2, text: 'Client in EU/3rd party in UK' },
+    { key: 3, text: 'Outwith UK or Client outwith EU' },
+];
+
+const fundsTypeOptions = [
+    { key: 1, text: 'Personal Cheque, BACS' },
+    { key: 2, text: 'Cash payment if less than £1,000' },
+    { key: 3, text: 'Cash payment above £1,000' },
+];
+
+const introducedOptions = [
+    { key: 1, text: 'Existing client introduction, personal introduction' },
+    { key: 2, text: 'Internet Enquiry' },
+    { key: 3, text: 'Other' },
+];
+
+const limitationOptions = [
+    { key: 1, text: 'There is no applicable limitation period' },
+    { key: 2, text: 'There is greater than 6 months to the expiry of the limitation period' },
+    { key: 3, text: 'There is less than 6 months to limitation expiry' },
+];
+
+const sourceOfFundsOptions = [
+    { key: 1, text: "Clients named account" },
+    { key: 2, text: "3rd Party UK or Client's EU account" },
+    { key: 3, text: "Any other account" },
+];
+
+const valueOfInstructionOptions = [
+    { key: 1, text: 'Less than £10,000' },
+    { key: 2, text: '£10,000 to £500,000' },
+    { key: 3, text: 'Above £500,000' },
 ];
 
 const RiskAssessment: React.FC<RiskAssessmentProps> = ({
@@ -54,13 +97,97 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
         <Stack horizontal tokens={{ childrenGap: 40 }}>
             <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
-                <Dropdown label="Client Type" placeholder="Select option" options={riskOptions} selectedKey={riskCore.clientType} onChange={(_, o) => setRiskCore({ ...riskCore, clientType: o?.key as string })} />
-                <Dropdown label="Destination of Funds" placeholder="Select option" options={riskOptions} selectedKey={riskCore.destinationOfFunds} onChange={(_, o) => setRiskCore({ ...riskCore, destinationOfFunds: o?.key as string })} />
-                <Dropdown label="Funds Type" placeholder="Select option" options={riskOptions} selectedKey={riskCore.fundsType} onChange={(_, o) => setRiskCore({ ...riskCore, fundsType: o?.key as string })} />
-                <Dropdown label="How was Client Introduced?" placeholder="Select option" options={riskOptions} selectedKey={riskCore.clientIntroduced} onChange={(_, o) => setRiskCore({ ...riskCore, clientIntroduced: o?.key as string })} />
-                <Dropdown label="Limitation" placeholder="Select option" options={riskOptions} selectedKey={riskCore.limitation} onChange={(_, o) => setRiskCore({ ...riskCore, limitation: o?.key as string })} />
-                <Dropdown label="Source of Funds" placeholder="Select option" options={riskOptions} selectedKey={riskCore.sourceOfFunds} onChange={(_, o) => setRiskCore({ ...riskCore, sourceOfFunds: o?.key as string })} />
-                <Dropdown label="Value of Instruction" placeholder="Select option" options={riskOptions} selectedKey={riskCore.valueOfInstruction} onChange={(_, o) => setRiskCore({ ...riskCore, valueOfInstruction: o?.key as string })} />
+                <Dropdown
+                    label="Client Type"
+                    placeholder="Select option"
+                    options={clientTypeOptions}
+                    selectedKey={riskCore.clientTypeValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            clientType: o?.text || '',
+                            clientTypeValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="Destination of Funds"
+                    placeholder="Select option"
+                    options={destinationOfFundsOptions}
+                    selectedKey={riskCore.destinationOfFundsValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            destinationOfFunds: o?.text || '',
+                            destinationOfFundsValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="Funds Type"
+                    placeholder="Select option"
+                    options={fundsTypeOptions}
+                    selectedKey={riskCore.fundsTypeValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            fundsType: o?.text || '',
+                            fundsTypeValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="How was Client Introduced?"
+                    placeholder="Select option"
+                    options={introducedOptions}
+                    selectedKey={riskCore.clientIntroducedValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            clientIntroduced: o?.text || '',
+                            clientIntroducedValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="Limitation"
+                    placeholder="Select option"
+                    options={limitationOptions}
+                    selectedKey={riskCore.limitationValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            limitation: o?.text || '',
+                            limitationValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="Source of Funds"
+                    placeholder="Select option"
+                    options={sourceOfFundsOptions}
+                    selectedKey={riskCore.sourceOfFundsValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            sourceOfFunds: o?.text || '',
+                            sourceOfFundsValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
+                <Dropdown
+                    label="Value of Instruction"
+                    placeholder="Select option"
+                    options={valueOfInstructionOptions}
+                    selectedKey={riskCore.valueOfInstructionValue}
+                    onChange={(_, o) =>
+                        setRiskCore({
+                            ...riskCore,
+                            valueOfInstruction: o?.text || '',
+                            valueOfInstructionValue: Number(o?.key) || 0,
+                        })
+                    }
+                />
             </Stack>
             <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
                 <Toggle label="I have considered client risk factors" checked={consideredClientRisk} onChange={(_, c) => setConsideredClientRisk(!!c)} />

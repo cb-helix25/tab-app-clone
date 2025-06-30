@@ -207,7 +207,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 : 'pending';
     const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
     const riskStatus = riskResultRaw
-        ? ['low', 'pass', 'approved'].includes(riskResultRaw)
+        ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw)
             ? 'complete'
             : 'flagged'
         : 'pending';
