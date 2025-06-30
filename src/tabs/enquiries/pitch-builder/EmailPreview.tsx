@@ -12,6 +12,7 @@ import {
   Checkbox,
   IconButton,
   mergeStyles,
+  Link,
 } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import {
@@ -141,6 +142,10 @@ const previewRef = React.useRef<HTMLDivElement>(null);
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
   const showAiAssistButton = false;
 
+  const checkoutPreviewUrl = passcode
+    ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}`
+    : process.env.REACT_APP_CHECKOUT_URL || '#';
+
   // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
     '1_day': '1 day',
@@ -195,7 +200,7 @@ function formatCurrency(val?: string): string {
       isOpen={isPreviewOpen}
       onDismiss={onDismiss}
       type={PanelType.custom}
-      customWidth="600px"
+      customWidth="50%"
       hasCloseButton={false}
       styles={{
         main: panelStyles,
@@ -337,6 +342,14 @@ function formatCurrency(val?: string): string {
           title="Copy the email preview text to your clipboard"
         />
       </Stack>
+      <Link
+        href={checkoutPreviewUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        styles={{ root: { marginTop: 10, display: 'inline-block' } }}
+      >
+        Preview Checkout Link
+      </Link>
       {canUseAi && showAiAssistButton && (
         <ExperimentalAssistant
           isOpen={isAiOpen}

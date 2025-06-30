@@ -492,7 +492,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (bodyEditorRef.current) {
         bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
       }
-      autoInsertDefaultBlocks(blocksToUse, newSet);
+      // v1 templates should no longer auto select any blocks
+      // autoInsertDefaultBlocks(blocksToUse, newSet);
     });
   }
 
@@ -891,11 +892,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
   );
 
+  // Disable automatic insertion of default blocks for v1
+  /*
   useEffect(() => {
     if (blocks.length > 0 && Object.keys(insertedBlocks).length === 0) {
       autoInsertDefaultBlocks(blocks.filter(b => !hiddenBlocks[b.title]), templateSet);
     }
   }, [blocks]);
+  */
 
   // Attachments, followUp, preview, error states, etc...
   const [attachments, setAttachments] = useState<string[]>([]);
