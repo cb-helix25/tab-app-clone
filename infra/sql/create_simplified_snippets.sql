@@ -1,7 +1,7 @@
--- SQL schema for pitch builder simplified blocks and snippet edits
+-- SQL schema for pitch builder default blocks and snippet edits
 -- Tables live in the same database as the Instructions app
 
-CREATE TABLE dbo.SimplifiedBlocks
+CREATE TABLE dbo.DefaultBlocks
 (
     BlockId INT IDENTITY(1,1) PRIMARY KEY,
     Title NVARCHAR(100) NOT NULL,
@@ -27,10 +27,10 @@ VALUES
     ('rejected');
 
 
-CREATE TABLE dbo.SimplifiedBlockSnippets
+CREATE TABLE dbo.DefaultBlockSnippets
 (
     SnippetId INT IDENTITY(1,1) PRIMARY KEY,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL DEFAULT 0,
@@ -44,38 +44,38 @@ CREATE TABLE dbo.SimplifiedBlockSnippets
     ApprovedAt DATETIME2 NULL
 );
 
-CREATE INDEX IX_SimplifiedBlockSnippets_BlockId ON dbo.SimplifiedBlockSnippets(BlockId);
+CREATE INDEX IX_DefaultBlockSnippets_BlockId ON dbo.DefaultBlockSnippets(BlockId);
 
-CREATE TABLE dbo.SimplifiedBlockSnippetVersions
+CREATE TABLE dbo.DefaultBlockSnippetVersions
 (
     VersionId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
     VersionNumber INT NOT NULL,
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
     ApprovedBy NVARCHAR(50) NULL,
     ApprovedAt DATETIME2 NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 
-CREATE TABLE dbo.SnippetEdits
+CREATE TABLE dbo.DefaultSnippetEdits
 (
     EditId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
     ProposedContent NVARCHAR(MAX) NOT NULL,
 
-ProposedLabel NVARCHAR
+    ProposedLabel NVARCHAR
 (100) NULL,
     ProposedSortOrder INT NULL,
-    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks
+    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks
 (BlockId),
     IsNew BIT NOT NULL DEFAULT 0,
     ProposedBy NVARCHAR(50) NOT NULL,
     ProposedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
-Status NVARCHAR
+    Status NVARCHAR
 (20) NOT NULL DEFAULT 'pending' FOREIGN KEY REFERENCES dbo.EditStatuses
 (Status),
     ReviewNotes NVARCHAR
@@ -84,7 +84,7 @@ Status NVARCHAR
     ReviewedAt DATETIME2 NULL
 );
 
-CREATE INDEX IX_SnippetEdits_SnippetId ON dbo.SnippetEdits(SnippetId);
+CREATE INDEX IX_DefaultSnippetEdits_SnippetId ON dbo.DefaultSnippetEdits(SnippetId);
 
 GO
 
@@ -92,13 +92,13 @@ GO
 -- Sample data to support local development and testing
 -- ---------------------------------------------------------------
 
-INSERT INTO dbo.SimplifiedBlocks
+INSERT INTO dbo.DefaultBlocks
     (Title, Description, Placeholder, CreatedBy)
 VALUES
     ('Opening', 'Introductory lines', 'intro', 'seed'),
     ('Closing', 'Sign-off lines', 'closing', 'seed');
 
-INSERT INTO dbo.SimplifiedBlockSnippets
+INSERT INTO dbo.DefaultBlockSnippets
     (BlockId, Label, Content, SortOrder, IsApproved, CreatedBy)
 VALUES
     (1, 'Friendly intro', 'Hi there, hope you are well.', 1, 1, 'seed'),
@@ -106,7 +106,7 @@ VALUES
     (2, 'Thanks', 'Thanks for your time.', 1, 1, 'seed'),
     (2, 'Looking forward', 'I look forward to hearing from you.', 2, 1, 'seed');
 
-INSERT INTO dbo.SimplifiedBlockSnippetVersions
+INSERT INTO dbo.DefaultBlockSnippetVersions
     (SnippetId, VersionNumber, Label, Content, SortOrder, BlockId, ApprovedBy, ApprovedAt)
 SELECT
     SnippetId,
@@ -117,9 +117,9 @@ SELECT
     BlockId,
     'seed' AS ApprovedBy,
     SYSUTCDATETIME() AS ApprovedAt
-FROM dbo.SimplifiedBlockSnippets;
+FROM dbo.DefaultBlockSnippets;
 
-INSERT INTO dbo.SnippetEdits
+INSERT INTO dbo.DefaultSnippetEdits
     (SnippetId, ProposedContent, ProposedLabel, ProposedBy)
 VALUES
     (1, 'Hi {name}, hope all is well!', 'Friendly intro v2', 'tester');

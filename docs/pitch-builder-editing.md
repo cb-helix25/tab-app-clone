@@ -34,7 +34,7 @@ The snippet library now supports a more robust editing process:
 * Each proposed change may include updated label, sort order or even a new block assignment. Setting `IsNew` allows a brand new snippet to be added for review.
 * Allowed edit statuses (`pending`, `approved`, `rejected`) are enforced via a lookup table so typos cannot slip into the database.
 * Approvers can capture reasons in a `ReviewNotes` column when accepting or rejecting an edit.
-* Every time a snippet is approved the prior version is stored in `SimplifiedBlockSnippetVersions` along with its version number.
+* Every time a snippet is approved the prior version is stored in `DefaultBlockSnippetVersions` along with its version number.
 
 These upgrades make it easier to refine the library over time while preserving a full history of changes.
 

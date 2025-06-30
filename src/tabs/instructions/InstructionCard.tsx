@@ -153,7 +153,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
     const formatValue = (key: string, value: any) => {
-        if (!value) return null;
+        if (value === null || value === undefined) return null;
         const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
         if (dateKeys.includes(key) && typeof value === 'string') {
             try {
@@ -162,7 +162,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 return value;
             }
         }
-        return value;
+        if (typeof value === 'object') {
+            try {
+                return JSON.stringify(value);
+            } catch {
+                return String(value);
+            }
+        }
+        return String(value);
     };
 
     const proofOfIdComplete = Boolean(
@@ -357,11 +364,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">ID Details</div>
                             <ul className="detail-list">
-                                {Object.entries(instruction).map(([k, v]) =>
-                                    v != null ? (
-                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                    ) : null
-                                )}
+                                {Object.entries(instruction)
+                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v))
+                                    .map(([k, v]) => (
+                                        v != null ? (
+                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                        ) : null
+                                    ))}
                                 {(eids && eids.length > 0
                                     ? eids
                                     : eid

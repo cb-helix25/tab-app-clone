@@ -37,7 +37,7 @@ export async function getSnippetBlocksHandler(req: HttpRequest, context: Invocat
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "getSimplifiedBlocks" }),
+            body: JSON.stringify({ action: "getSnippetBlocks" }),
         });
         context.log(`Blocks service responded with ${response.status} ${response.statusText}`);
         if (!response.ok) {

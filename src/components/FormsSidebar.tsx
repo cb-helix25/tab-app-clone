@@ -199,7 +199,7 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
                 >
                     <Text variant="large">Forms</Text>
                     <IconButton
-                        iconProps={{ iconName: "CollapseAll" }}
+                        iconProps={{ iconName: "DoubleChevronUp" }}
                         onClick={collapseAll}
                         ariaLabel="Collapse All"
                     />

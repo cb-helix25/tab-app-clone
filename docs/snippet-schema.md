@@ -5,7 +5,7 @@ This file lists the SQL statements used to create the tables that support the sn
 ## Table definitions
 
 ```sql
-CREATE TABLE dbo.SimplifiedBlocks (
+CREATE TABLE dbo.DefaultBlocks (
     BlockId INT IDENTITY(1,1) PRIMARY KEY,
     Title NVARCHAR(100) NOT NULL,
     Description NVARCHAR(400) NULL,
@@ -16,7 +16,7 @@ CREATE TABLE dbo.SimplifiedBlocks (
     UpdatedAt DATETIME2 NULL
 );
 ```
-The **SimplifiedBlocks** table stores the high level blocks that appear in the editor. Each block has a title, optional description and placeholder.
+The **DefaultBlocks** table stores the high level blocks that appear in the editor. Each block has a title, optional description and placeholder.
 
 ```sql
 CREATE TABLE dbo.EditStatuses (
@@ -26,9 +26,9 @@ CREATE TABLE dbo.EditStatuses (
 `EditStatuses` acts as a lookup to enforce valid status values for snippet edits.
 
 ```sql
-CREATE TABLE dbo.SimplifiedBlockSnippets (
+CREATE TABLE dbo.DefaultBlockSnippets (
     SnippetId INT IDENTITY(1,1) PRIMARY KEY,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL DEFAULT 0,
@@ -42,32 +42,32 @@ CREATE TABLE dbo.SimplifiedBlockSnippets (
     ApprovedAt DATETIME2 NULL
 );
 ```
-`SimplifiedBlockSnippets` holds the actual snippet text for each block. A snippet may have multiple versions over time.
+`DefaultBlockSnippets` holds the actual snippet text for each block. A snippet may have multiple versions over time.
 
 ```sql
-CREATE TABLE dbo.SimplifiedBlockSnippetVersions (
+CREATE TABLE dbo.DefaultBlockSnippetVersions (
     VersionId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
     VersionNumber INT NOT NULL,
     Label NVARCHAR(100) NOT NULL,
     Content NVARCHAR(MAX) NOT NULL,
     SortOrder INT NOT NULL,
-    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks(BlockId),
+    BlockId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
     ApprovedBy NVARCHAR(50) NULL,
     ApprovedAt DATETIME2 NULL,
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 ```
-Each approved change creates an entry in **SimplifiedBlockSnippetVersions** so that prior text can be retrieved.
+Each approved change creates an entry in **DefaultBlockSnippetVersions** so that prior text can be retrieved.
 
 ```sql
-CREATE TABLE dbo.SnippetEdits (
+CREATE TABLE dbo.DefaultSnippetEdits (
     EditId INT IDENTITY(1,1) PRIMARY KEY,
-    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlockSnippets(SnippetId),
+    SnippetId INT NOT NULL FOREIGN KEY REFERENCES dbo.DefaultBlockSnippets(SnippetId),
     ProposedContent NVARCHAR(MAX) NOT NULL,
     ProposedLabel NVARCHAR(100) NULL,
     ProposedSortOrder INT NULL,
-    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.SimplifiedBlocks(BlockId),
+    ProposedBlockId INT NULL FOREIGN KEY REFERENCES dbo.DefaultBlocks(BlockId),
     IsNew BIT NOT NULL DEFAULT 0,
     ProposedBy NVARCHAR(50) NOT NULL,
     ProposedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
