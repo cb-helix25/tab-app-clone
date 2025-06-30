@@ -7,11 +7,11 @@ import {
 import { DefaultAzureCredential } from "@azure/identity";
 import { SecretClient } from "@azure/keyvault-secrets";
 
-export async function submitSnippetEditHandler(
+export async function deleteSnippetEditHandler(
     req: HttpRequest,
     context: InvocationContext,
 ): Promise<HttpResponseInit> {
-    context.log("--- Function submitSnippetEdit invoked ---");
+    context.log("--- Function deleteSnippetEdit invoked ---");
     context.log(`HTTP Method: ${req.method}`);
 
     if (req.method !== "POST") {
@@ -41,66 +41,60 @@ export async function submitSnippetEditHandler(
                 "Successfully retrieved snippet function code from Key Vault.",
             );
         } catch (err) {
-            context.error("Failed to retrieve snippet edit code", err);
-            return { status: 500, body: "Unable to retrieve snippet edit code" };
+            context.error("Failed to retrieve delete snippet code", err);
+            return { status: 500, body: "Unable to retrieve delete snippet code" };
         }
     }
 
     const url = `${baseUrl}?code=${code}`;
-    context.log(`Calling snippet edit service at: ${url}`);
+    context.log(`Calling delete snippet service at: ${url}`);
 
     let body: any;
     try {
         body = await req.json();
-        context.log("Parsed request body for snippet edit.");
+        context.log("Parsed request body for delete snippet edit.");
     } catch (err) {
         context.error("Invalid JSON in request", err);
         return { status: 400, body: "Invalid JSON" };
     }
 
     const payload = {
-        snippetId: body.snippetId ?? body.SnippetId,
-        proposedContent: body.proposedContent ?? body.ProposedContent,
-        proposedLabel: body.proposedLabel ?? body.ProposedLabel,
-        proposedSortOrder: body.proposedSortOrder ?? body.ProposedSortOrder,
-        proposedBlockId: body.proposedBlockId ?? body.ProposedBlockId,
-        isNew: body.isNew ?? body.IsNew,
-        proposedBy: body.proposedBy ?? body.ProposedBy,
+        editId: body.editId ?? body.EditId,
     };
 
     try {
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "submitSnippetEdit", payload }),
+            body: JSON.stringify({ action: "deleteSnippetEdit", payload }),
         });
         context.log(
-            `Snippet edit service responded with ${response.status} ${response.statusText}`,
+            `Delete snippet service responded with ${response.status} ${response.statusText}`,
         );
         const text = await response.text();
         if (!response.ok) {
             context.error(
-                `Snippet edit service error (status ${response.status})`,
+                `Delete snippet service error (status ${response.status})`,
                 text,
             );
-            return { status: 500, body: "Failed to submit snippet edit" };
+            return { status: 500, body: "Failed to delete snippet edit" };
         }
-        context.log("Snippet edit service response:", text);
+        context.log("Delete snippet service response:", text);
         return {
             status: 200,
             body: text,
             headers: { "Content-Type": "application/json" },
         };
     } catch (err) {
-        context.error("Error calling snippet edit service", err);
-        return { status: 500, body: "Error calling snippet edit service" };
+        context.error("Error calling delete snippet service", err);
+        return { status: 500, body: "Error calling delete snippet service" };
     }
 }
 
-app.http("submitSnippetEdit", {
+app.http("deleteSnippetEdit", {
     methods: ["POST"],
     authLevel: "function",
-    handler: submitSnippetEditHandler,
+    handler: deleteSnippetEditHandler,
 });
 
 export default app;

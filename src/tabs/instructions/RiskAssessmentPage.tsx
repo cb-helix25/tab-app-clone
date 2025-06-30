@@ -28,6 +28,12 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
     });
+    const [complianceDate, setComplianceDate] = useState<Date | undefined>(
+        existingRisk?.ComplianceDate ? new Date(existingRisk.ComplianceDate) : new Date(),
+    );
+    const [complianceExpiry, setComplianceExpiry] = useState<Date | undefined>(
+        existingRisk?.ComplianceExpiry ? new Date(existingRisk.ComplianceExpiry) : undefined,
+    );
     const [consideredClientRisk, setConsideredClientRisk] = useState(
         !!existingRisk?.ClientRiskFactorsConsidered,
     );
@@ -46,6 +52,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
 
     const isComplete = () =>
         Object.values(riskCore).every((v) => v !== '' && v !== 0) &&
+        complianceDate !== undefined &&
+        complianceExpiry !== undefined &&
         consideredClientRisk &&
         consideredTransactionRisk &&
         transactionRiskLevel !== '' &&
@@ -77,6 +85,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                 body: JSON.stringify({
                     InstructionRef: instructionRef,
                     RiskAssessor: riskAssessor,
+                    ComplianceDate: complianceDate?.toISOString().split('T')[0],
+                    ComplianceExpiry: complianceExpiry?.toISOString().split('T')[0],
                     ClientType: riskCore.clientType,
                     ClientType_Value: riskCore.clientTypeValue,
                     DestinationOfFunds: riskCore.destinationOfFunds,
@@ -123,6 +133,10 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
             <RiskAssessment
                 riskCore={riskCore}
                 setRiskCore={setRiskCore}
+                complianceDate={complianceDate}
+                setComplianceDate={setComplianceDate}
+                complianceExpiry={complianceExpiry}
+                setComplianceExpiry={setComplianceExpiry}
                 consideredClientRisk={consideredClientRisk}
                 setConsideredClientRisk={setConsideredClientRisk}
                 consideredTransactionRisk={consideredTransactionRisk}

@@ -58,11 +58,17 @@ export async function approveSnippetEditHandler(
     return { status: 400, body: "Invalid JSON" };
   }
 
+  const payload = {
+    editId: body.editId ?? body.EditId,
+    approvedBy: body.approvedBy ?? body.ApprovedBy,
+    reviewNotes: body.reviewNotes ?? body.ReviewNotes,
+  };
+
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "approveSnippetEdit", payload: body }),
+      body: JSON.stringify({ action: "approveSnippetEdit", payload }),
     });
     context.log(
       `Approve snippet service responded with ${response.status} ${response.statusText}`,

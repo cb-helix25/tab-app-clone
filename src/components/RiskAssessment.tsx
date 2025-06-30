@@ -1,5 +1,12 @@
 import React from 'react';
-import { Stack, Dropdown, Toggle, PrimaryButton } from '@fluentui/react';
+import {
+    Stack,
+    Dropdown,
+    Toggle,
+    PrimaryButton,
+    DatePicker,
+    IDatePickerStyles,
+} from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../app/styles/ButtonStyles';
 
 export interface RiskCore {
@@ -22,6 +29,10 @@ export interface RiskCore {
 export interface RiskAssessmentProps {
     riskCore: RiskCore;
     setRiskCore: React.Dispatch<React.SetStateAction<RiskCore>>;
+    complianceDate: Date | undefined;
+    setComplianceDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+    complianceExpiry: Date | undefined;
+    setComplianceExpiry: React.Dispatch<React.SetStateAction<Date | undefined>>;
     consideredClientRisk: boolean;
     setConsideredClientRisk: React.Dispatch<React.SetStateAction<boolean>>;
     consideredTransactionRisk: boolean;
@@ -78,9 +89,34 @@ const valueOfInstructionOptions = [
     { key: 3, text: 'Above £500,000' },
 ];
 
+const datePickerStyles: Partial<IDatePickerStyles> = {
+    root: { width: 300 },
+    textField: {
+        width: '100%',
+        borderRadius: '0',
+        selectors: {
+            '& .ms-TextField-fieldGroup': {
+                border: '1px solid #8a8886',
+                background: 'transparent',
+                borderRadius: '0',
+                height: '32px',
+            },
+            '& .ms-TextField-field': {
+                padding: '0 12px',
+                height: '100%',
+            },
+        },
+    },
+    icon: { right: 8 },
+};
+
 const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     riskCore,
     setRiskCore,
+    complianceDate,
+    setComplianceDate,
+    complianceExpiry,
+    setComplianceExpiry,
     consideredClientRisk,
     setConsideredClientRisk,
     consideredTransactionRisk,
@@ -97,6 +133,20 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
         <Stack horizontal tokens={{ childrenGap: 40 }}>
             <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
+                <DatePicker
+                    label="Compliance Date"
+                    value={complianceDate}
+                    onSelectDate={(d) => setComplianceDate(d || undefined)}
+                    formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
+                    styles={datePickerStyles}
+                />
+                <DatePicker
+                    label="Compliance Expiry"
+                    value={complianceExpiry}
+                    onSelectDate={(d) => setComplianceExpiry(d || undefined)}
+                    formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
+                    styles={datePickerStyles}
+                />
                 <Dropdown
                     label="Client Type"
                     placeholder="Select option"
