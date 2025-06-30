@@ -705,6 +705,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           onBack={() => setShowRiskPage(false)}
           instructionRef={selectedInstruction?.InstructionRef}
           riskAssessor={userInitials}
+          existingRisk={selectedInstruction?.riskAssessments?.[0] ?? null}
         />
       </Stack>
     );

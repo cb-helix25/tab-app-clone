@@ -7,23 +7,35 @@ interface RiskAssessmentPageProps {
     onBack: () => void;
     instructionRef?: string;
     riskAssessor?: string;
+    /** Existing risk assessment data to display when available */
+    existingRisk?: any | null;
 }
 
-const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor }) => {
+const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
     const [riskCore, setRiskCore] = useState<RiskCore>({
-        clientType: '',
-        destinationOfFunds: '',
-        fundsType: '',
-        clientIntroduced: '',
-        limitation: '',
-        sourceOfFunds: '',
-        valueOfInstruction: '',
+        clientType: existingRisk?.ClientType ?? '',
+        destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
+        fundsType: existingRisk?.FundsType ?? '',
+        clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
+        limitation: existingRisk?.Limitation ?? '',
+        sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
+        valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
     });
-    const [consideredClientRisk, setConsideredClientRisk] = useState(false);
-    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(false);
-    const [transactionRiskLevel, setTransactionRiskLevel] = useState('');
-    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(false);
-    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(false);
+    const [consideredClientRisk, setConsideredClientRisk] = useState(
+        !!existingRisk?.ClientRiskFactorsConsidered,
+    );
+    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(
+        !!existingRisk?.TransactionRiskFactorsConsidered,
+    );
+    const [transactionRiskLevel, setTransactionRiskLevel] = useState(
+        existingRisk?.TransactionRiskLevel ?? '',
+    );
+    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(
+        !!existingRisk?.FirmWideSanctionsRiskConsidered,
+    );
+    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(
+        !!existingRisk?.FirmWideAMLPolicyConsidered,
+    );
 
     const isComplete = () =>
         Object.values(riskCore).every((v) => v !== '') &&
@@ -66,6 +78,16 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
     return (
         <Stack tokens={dashboardTokens}>
             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
+            {existingRisk && (
+                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
+                    <h3>Existing Assessment</h3>
+                    <ul className="detail-list">
+                        {Object.entries(existingRisk).map(([k, v]) => (
+                            v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
+                        ))}
+                    </ul>
+                </Stack>
+            )}
             <RiskAssessment
                 riskCore={riskCore}
                 setRiskCore={setRiskCore}
