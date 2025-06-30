@@ -1,0 +1,19 @@
+.disclaimer {
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 4px solid #ffd700;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 0;
+    text-align: center;
+}
+
+.disclaimer p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.animate-disclaimer {
+    animation: fadeInDown 0.5s ease-out forwards;
+}

@@ -24,6 +24,7 @@ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCa
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
+import "../../app/styles/InstructionsBanner.css";
 
 interface InstructionsProps {
   userInitials: string;
@@ -122,8 +123,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   useEffect(() => {
     async function fetchData() {
       // During the pilot we always pull Lukasz's instructions so everyone
-      // sees populated data regardless of their own initials.
-      const targetInitials = "LZ";
+      // sees populated data regardless of their own initials. Once testing is
+      // complete we'll request each user's own data.
+      const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
+      const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
 
       if (useLocalData) {
         setInstructionData(localInstructionData as InstructionData[]);
@@ -691,6 +694,9 @@ const Instructions: React.FC<InstructionsProps> = ({
   return (
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
+        <div className="disclaimer animate-disclaimer">
+          <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
+        </div>
         <div className={sectionContainerStyle(isDarkMode)}>
           {activePivot === "overview" && (
             <div className={overviewColumnStyle}>

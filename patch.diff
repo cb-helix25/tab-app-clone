@@ -1,66 +1,175 @@
-diff --git a/decoupled-functions/fetchSnippetEdits/index.js b/decoupled-functions/fetchSnippetEdits/index.js
-index 8562a826b7d3121f5f0339e555cdea1c41234942..9cebfcbc005bff153ac5bb1b446e3bd05e0be644 100644
---- a/decoupled-functions/fetchSnippetEdits/index.js
-+++ b/decoupled-functions/fetchSnippetEdits/index.js
-@@ -18,58 +18,61 @@ async function ensureDbPassword() {
-     if (!passwordPromise) {
-         const secretName = process.env.DB_PASSWORD_SECRET || 'instructionsadmin-password';
-         passwordPromise = secretClient.getSecret(secretName).then(s => {
-             process.env.DB_PASSWORD = s.value;
-             return s.value;
-         });
-     }
-     return passwordPromise;
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 811b9b49c6351ca2f48f588d6b06e340a65997cc..2e48c57d9291c0fe0d659d05b1e096c91d72c1dd 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -2,50 +2,51 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
+ import {
+   Stack,
+   mergeStyles,
+   IconButton,
+   Pivot,
+   PivotItem,
+   Text,
+ } from "@fluentui/react";
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+ import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
++import "../../app/styles/InstructionsBanner.css";
+ 
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
  }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+   /** Client type selection for the matter opening workflow */
+   const [newMatterClientType, setNewMatterClientType] =
+     useState<string>("Individual");
+   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
+     null,
+   );
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 811b9b49c6351ca2f48f588d6b06e340a65997cc..2e48c57d9291c0fe0d659d05b1e096c91d72c1dd 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -100,52 +101,54 @@ const Instructions: React.FC<InstructionsProps> = ({
+   const pivotBarStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       boxShadow: dark
+         ? "0 2px 4px rgba(0,0,0,0.4)"
+         : "0 2px 4px rgba(0,0,0,0.1)",
+       borderTop: dark
+         ? "1px solid rgba(255,255,255,0.1)"
+         : "1px solid rgba(0,0,0,0.05)",
+       padding: "0 24px",
+       transition: "background-color 0.3s",
+       position: "sticky",
+       top: ACTION_BAR_HEIGHT * 2,
+       zIndex: 998,
+     });
  
- module.exports = async function (context, req) {
-     context.log('fetchSnippetEdits function invoked');
+   const useLocalData =
+     process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
+     window.location.hostname === "localhost";
  
-     if (req.method !== 'POST') {
-         context.res = { status: 405, body: 'Method not allowed' };
+   useEffect(() => {
+     async function fetchData() {
+       // During the pilot we always pull Lukasz's instructions so everyone
+-      // sees populated data regardless of their own initials.
+-      const targetInitials = "LZ";
++      // sees populated data regardless of their own initials. Once testing is
++      // complete we'll request each user's own data.
++      const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
++      const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
+ 
+       if (useLocalData) {
+         setInstructionData(localInstructionData as InstructionData[]);
          return;
-     }
- 
-     const body = req.body || {};
-     if (body.action !== 'getSnippetEdits') {
-         context.res = { status: 400, body: 'Invalid action' };
+       }
+       const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
+       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
+       if (!baseUrl || !path || !code) {
+         console.error("Missing env variables for instruction data");
          return;
-     }
+       }
  
-     try {
-+        context.log('Ensuring database password');
-         await ensureDbPassword();
-         const pool = await getSqlPool();
-+        context.log('SQL pool acquired, executing query');
+       try {
+         const url = `${baseUrl}/${path}?code=${code}&initials=${targetInitials}`;
+         const res = await fetch(url);
+         if (res.ok) {
+           const data = await res.json();
+           setInstructionData(Array.isArray(data) ? data : [data]);
+         } else {
+           console.error(
+             "Failed to fetch instructions for user",
+             targetInitials,
+           );
+         }
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 811b9b49c6351ca2f48f588d6b06e340a65997cc..2e48c57d9291c0fe0d659d05b1e096c91d72c1dd 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -669,50 +672,53 @@ const Instructions: React.FC<InstructionsProps> = ({
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage
+           onBack={() => setShowRiskPage(false)}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+         />
+       </Stack>
+     );
+   }
  
-         const result = await pool.request().query(`
-       SELECT
-         e.EditId AS id,
-         b.Title AS blockTitle,
-         e.ProposedContent AS proposedText,
-         e.ProposedLabel AS proposedLabel,
-         e.ProposedSortOrder AS proposedSortOrder,
-         e.ProposedBlockId AS proposedBlockId,
-         e.IsNew AS isNew,
-         e.ProposedBy AS submittedBy,
-         e.ReviewNotes AS reviewNotes,
-         e.Status AS status
-       FROM SnippetEdits e
-       JOIN SimplifiedBlockSnippets s ON e.SnippetId = s.SnippetId
-       JOIN SimplifiedBlocks b ON s.BlockId = b.BlockId
-       WHERE e.Status = 'pending'
-       ORDER BY e.EditId
-     `);
+   if (showEIDPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <EIDCheckPage
+           poidData={idVerificationOptions}
+           instruction={selectedInstruction}
+           onBack={handleBack}
+         />
+       </Stack>
+     );
+   }
  
-         const edits = result.recordset || [];
-+        context.log(`Query returned ${edits.length} edits`);
-         context.res = {
-             status: 200,
-             body: JSON.stringify(edits),
-             headers: { 'Content-Type': 'application/json' }
-         };
-     } catch (err) {
-         context.log.error('fetchSnippetEdits error', err);
-         context.res = { status: 500, body: 'Failed to fetch snippet edits' };
-     }
- };
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
++        <div className="disclaimer animate-disclaimer">
++          <p>Note: This module is visible only to Luke, Kelly, Ben, Alex and Jonathan.</p>
++        </div>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard
+                     key={idx}
+                     instruction={item.instruction as any}
+                     deal={(item as any).deal}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={(item as any).risk}
+                     eid={(item as any).eid}
+                     eids={(item as any).eids}
+                     compliance={undefined}
+                     documents={item.documents}
+                     prospectId={item.prospectId}
+                     documentCount={item.documentCount ?? 0}
+                     animationDelay={animationDelay}
+                     expanded
+                     onOpenMatter={() => handleOpenMatter(item.instruction)}
+                     onRiskAssessment={() =>

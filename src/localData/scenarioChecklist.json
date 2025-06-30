@@ -1,0 +1,1736 @@
+﻿{
+    "localV3Blocks.json":  {
+                               "blocks":  [
+                                              {
+                                                  "title":  "Introduction",
+                                                  "description":  "Acknowledge the enquiry.",
+                                                  "placeholder":  "[FE Introduction Placeholder]",
+                                                  "isMultiSelect":  true,
+                                                  "options":  [
+                                                                  {
+                                                                      "label":  "Standard Acknowledgment",
+                                                                      "previewText":  "Thank you for your enquiry to Helix Law. We’re a specialist firm of solicitors only dealing with litigation of disputes and we act nationally. We often deal with disputes such as yours and I am confident we are well-placed to assist in relation to your matter."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Follow-Up After Call",
+                                                                      "previewText":  "Thank you for your enquiry and for your time on the phone earlier. It was good speaking with you.\n\nThe purpose of this email is to briefly follow up on our conversation."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Missed Call Acknowledgment",
+                                                                      "previewText":  "Thank you for your enquiry to Helix Law. I have tried to call you to discuss your matter but was unable to reach you.\n\nAs a starting point, if you prefer, please email me a brief summary of the background and current position. I will briefly review the content and will come back to you and we can take it from there."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Apology for Delay",
+                                                                      "previewText":  "Thank you for your enquiry to Helix Law. Please accept my apology for the slight delay in my contacting you.\n\nI have only limited information regarding your dispute. As a starting point please can you email me a brief summary of the background and current position. I will briefly review the content and will come back to you and we can take it from there."
+                                                                  }
+                                                              ]
+                                              },
+                                              {
+                                                  "title":  "Issue Summary",
+                                                  "description":  "Summarise the dispute and possible remedies.",
+                                                  "placeholder":  "[Issue Summary Placeholder]",
+                                                  "isMultiSelect":  true,
+                                                  "options":  [
+                                                                  {
+                                                                      "label":  "The Dispute",
+                                                                      "previewText":  "The Dispute\n\nYou have provided an initial outline of the position that [INSERT]"
+                                                                  },
+                                                                  {
+                                                                      "label":  "Current Position and Problems",
+                                                                      "previewText":  "We have discussed that you are [INSERT]. You have a dispute with [INSERT] because [INSERT] and have confirmed that [INSERT].\n\nThe dispute with [INSERT] situation creates difficulty for you for obvious reasons, including because [INSERT].\n\nIn addition to the above, additional problems arise and need to be addressed, such as [INSERT]."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Potential Causes of Action and Remedies",
+                                                                      "previewText":  "Potential Causes of Action and Remedies\n\nAssuming that you can evidence the position above, then there are likely to be the following causes of action.\n\nIt is vital that we work together to strategically position you around the following key areas:\n\nX\nY\nZ\n\nI am experienced in dealing with this type of issue and am happy to assist you and the key is from this point on to carefully position you so that you are in a sufficiently strong position that you can force the Defendants to reach a sensible commercial settlement or if they will not do so proceed to court and obtain the same or a better result, while of course putting you in the best possible position to recover the costs you incur in the litigation from them.\n\nIn the context of a dispute worth in the high hundreds of thousands or millions, from a cost v benefit analysis, my initial view is it stacks up for you to incur the costs for the initial review below."
+                                                                  }
+                                                              ]
+                                              },
+                                              {
+                                                  "title":  "Scope \u0026 Cost",
+                                                  "description":  "Outline our proposed work and costs.",
+                                                  "placeholder":  "[Scope \u0026 Cost Placeholder]",
+                                                  "isMultiSelect":  true,
+                                                  "options":  [
+                                                                  {
+                                                                      "label":  "Initial Review \u0026 Advice",
+                                                                      "previewText":  "Initial Steps- Review and Advice\n\nI am experienced in dealing with this type of issue and am happy to assist you. At this initial stage it is necessary and incredibly important to review the background and current position so that we can then advise on your best next steps.\n\nThis will require an initial review of core documents such as [INSERT the contracts, notices, demands, accounts, relevant correspondence set out below] so that we can be as clear as possible on the factual position with companies house and land registry. I then anticipate being able to provide initial advice on your current position and best next steps."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Shareholder or Statutory Demand",
+                                                                      "previewText":  "In the above context I need to review your situation and the background and current position in more detail, including documents that are relevant to your situation. This will enable me to provide you with initial advice on your current position and your best next steps.\n\nTo assist me in completing the review please provide the relevant documents and a brief summary. On receipt I will confirm our time and cost estimate for our review and advice."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Cost Estimate",
+                                                                      "previewText":  "We charge on a time recorded basis and record all time in 6 minute units. This includes for emails in and out and telephone attendances, and all steps on your behalf. I am a [Position] and my hourly rate is [Rate]. We work as a team and a number of colleagues may assist in relation to various steps in relation to your matter, at different times. Their time will be recorded and charged on the basis of their hourly rates as applicable from time to time â€“ these are all lower than £395+VAT. For the initial work and review above you will need to budget in the region of approximately [Amount] + VAT. This is an estimate and not a fixed fee; the cost will ultimately depend on the time spent including the scale of documents and enquiries received from you."
+                                                                  },
+                                                                  {
+                                                                      "label":  "CFA",
+                                                                      "previewText":  "I am aware that you are seeking alternative funding regarding your matter commonly known as a Conditional Fee Agreement, or \u0027no win, no fee\u0027 agreement. We are not obliged to offer this form of funding but I am happy to consider doing so. This is subject to us entering into a separate funding agreement between us (a contract). Transparently we only offer no win, no fee funding where it stacks up for you and for us and we need to be sufficiently confident in your prospects of success. At this initial stage please therefore provide the initial documents and information I have requested to enable me to initially briefly review whether this will be appropriate."
+                                                                  }
+                                                              ]
+                                              },
+                                              {
+                                                  "title":  "Next Steps",
+                                                  "description":  "Required documents and how to instruct us.",
+                                                  "placeholder":  "[Next Steps Placeholder]",
+                                                  "isMultiSelect":  true,
+                                                  "options":  [
+                                                                  {
+                                                                      "label":  "Required Documents",
+                                                                      "previewText":  "The contract; Any relevant correspondence; Settlement Agreement; Shareholders\u0027 Agreement; Financial Statements; Invoices or Asset Information"
+                                                                  },
+                                                                  {
+                                                                      "label":  "Instruct Helix Law - Pitch",
+                                                                      "previewText":  "Please confirm your instructions by clicking \u003ca href=\"[InstructLink]\" target=\"_blank\" class=\"insert-placeholder\" data-insert\u003eINSTRUCT HELIX LAW\u003c/a\u003e. This single link will verify your identity, request the key documents and take funds on account in a quick and transparent checkout process: [CheckoutLink]. Once complete we\u0027ll open a file immediately and send you our Client Care Letter setting out the terms of our retainer. If you have any queries I\u0027m very happy to discuss them without charge."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Meeting Link",
+                                                                      "previewText":  "You are welcome to schedule a meeting using the link below:\n\nhttps://calendly.com/helixlaw-fe"
+                                                                  }
+                                                              ]
+                                              },
+                                              {
+                                                  "title":  "Closing",
+                                                  "description":  "Final notes and optional review request.",
+                                                  "placeholder":  "[Closing Placeholder]",
+                                                  "isMultiSelect":  true,
+                                                  "options":  [
+                                                                  {
+                                                                      "label":  "Closing",
+                                                                      "previewText":  "I hope the above helps and look forward to helping resolve your matter.\n\nThere is obviously some degree of complexity factually and legally in relation to your matter. We’re a specialist team and I hope to assist you navigate the process effectively to achieve a positive outcome.\n\nTo be clear, when you have completed the above steps we will review the position and at our discretion will open a file. We will then set out the terms of our retainer and file with you and will ask you to confirm that those terms are accepted. Only at that stage will a retainer be confirmed between us. Although unusual, we may decline to act for you for any reason in which case any monies paid by you will be returned without charge. I hope the above makes sense and is clear but don\u0027t hesitate to contact me if you have any queries and I will be happy to help."
+                                                                  },
+                                                                  {
+                                                                      "label":  "Request for Review",
+                                                                      "previewText":  "I hope the above [and our call] is useful and of course come back to me if I can help you further.\n\nIn the meantime, I’m wondering if you can help me by providing a brief positive Google review of me and Helix Law. We’re a small but specialist team, and this would make a huge difference to us.\n\nIf you don’t mind, please can you give us a brief 5* positive review at the following link:\n\nhttp://bit.ly/2gGwyNJ\n\nYou will need to be signed into Google.\n\nMany thanks in advance."
+                                                                  }
+                                                              ]
+                                              }
+                                          ],
+                               "savedSnippets":  {
+
+                                                 }
+                           },
+    "team-sql-data.json":  {
+                               "value":  [
+                                             {
+                                                 "Created Date":  "2013-10-30T00:00:00",
+                                                 "Created Time":  "09:39:34",
+                                                 "Full Name":  "Alex Cook",
+                                                 "Last":  "Cook",
+                                                 "First":  "Alex",
+                                                 "Nickname":  "Alex",
+                                                 "Initials":  "AC",
+                                                 "Email":  "ac@helix-law.com",
+                                                 "Entra ID":  "f46fed2c-0775-49a7-9fb4-721b813c84ff",
+                                                 "Clio ID":  "142961",
+                                                 "Rate":  395.00,
+                                                 "Role":  "Partner",
+                                                 "ASANA_ID":  "1207129476831713",
+                                                 "ASANAUser_ID":  "1203749513286984",
+                                                 "ASANAPending_ID":  "1207172851971726",
+                                                 "ASANAInProgress_ID":  "1207172851971727",
+                                                 "ASANATeam_ID":  "1207163713256331",
+                                                 "AOW":  "Commercial, Property, Construction, Employment",
+                                                 "ASANAClient_ID":  "1207473086558770",
+                                                 "holiday_entitlement":  30.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-10-02T00:00:00",
+                                                 "Created Time":  "09:00:00",
+                                                 "Full Name":  "Anouszka Taverna",
+                                                 "Last":  "Taverna",
+                                                 "First":  "Anouszka",
+                                                 "Nickname":  "Nush",
+                                                 "Initials":  "AT",
+                                                 "Email":  "at@helix-law.com",
+                                                 "Entra ID":  "efb0d9cd-9d40-45ec-9426-474aaf0c174d",
+                                                 "Clio ID":  "292675",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1208453714850027",
+                                                 "ASANAUser_ID":  "1208331087531723",
+                                                 "ASANAPending_ID":  "1208453714850035",
+                                                 "ASANAInProgress_ID":  "1208453714850036",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Property, Commercial",
+                                                 "ASANAClient_ID":  "1208467462174940",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-07-02T00:00:00",
+                                                 "Created Time":  "10:38:57",
+                                                 "Full Name":  "Billy Leith",
+                                                 "Last":  "Leith",
+                                                 "First":  "Billy",
+                                                 "Nickname":  "Billy",
+                                                 "Initials":  "BL",
+                                                 "Email":  "bl@helix-law.com",
+                                                 "Entra ID":  "90f348e3-1679-4024-abd0-46aac6fe21e3",
+                                                 "Clio ID":  "253432",
+                                                 "Rate":  0.00,
+                                                 "Role":  "Non-solicitor",
+                                                 "ASANA_ID":  "1207132244328637",
+                                                 "ASANAUser_ID":  "1206555888579596",
+                                                 "ASANAPending_ID":  "1207214034406073",
+                                                 "ASANAInProgress_ID":  "1207214034406075",
+                                                 "ASANATeam_ID":  "1207163713256345",
+                                                 "AOW":  "Operations 1",
+                                                 "ASANAClient_ID":  "1207480845632443",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2020-11-11T00:00:00",
+                                                 "Created Time":  "14:11:32",
+                                                 "Full Name":  "Bianca O\u0027Donnell",
+                                                 "Last":  "O\u0027Donnell",
+                                                 "First":  "Bianca",
+                                                 "Nickname":  "Bianca",
+                                                 "Initials":  "BOD",
+                                                 "Email":  "bod@helix-law.com",
+                                                 "Entra ID":  "e419f631-ee7a-458b-bc68-00fabda6e8fb",
+                                                 "Clio ID":  "141719",
+                                                 "Rate":  285.00,
+                                                 "Role":  "Solicitor",
+                                                 "ASANA_ID":  "1207132244328644",
+                                                 "ASANAUser_ID":  "1203758580581102",
+                                                 "ASANAPending_ID":  "1207172851971716",
+                                                 "ASANAInProgress_ID":  "1207172851971717",
+                                                 "ASANATeam_ID":  "1207163713256369",
+                                                 "AOW":  "Property, Commercial",
+                                                 "ASANAClient_ID":  "1207513724459066",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2017-06-14T00:00:00",
+                                                 "Created Time":  "15:38:27",
+                                                 "Full Name":  "Brendan Rimmer",
+                                                 "Last":  "Rimmer",
+                                                 "First":  "Brendan",
+                                                 "Nickname":  "Brendan",
+                                                 "Initials":  "BR",
+                                                 "Email":  "br@helix-law.com",
+                                                 "Entra ID":  "f79e3226-0652-4eb5-8594-a48e7e8d253b",
+                                                 "Clio ID":  "143000",
+                                                 "Rate":  395.00,
+                                                 "Role":  "Partner",
+                                                 "ASANA_ID":  "1207132244328651",
+                                                 "ASANAUser_ID":  "1203758280999236",
+                                                 "ASANAPending_ID":  "1207172851971728",
+                                                 "ASANAInProgress_ID":  "1207172851971729",
+                                                 "ASANATeam_ID":  "1207163713256331",
+                                                 "AOW":  "Commercial, Property",
+                                                 "ASANAClient_ID":  "1207513542473687",
+                                                 "holiday_entitlement":  30.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2022-02-22T00:00:00",
+                                                 "Created Time":  "16:35:58",
+                                                 "Full Name":  "Christopher Smith",
+                                                 "Last":  "Smith",
+                                                 "First":  "Christopher",
+                                                 "Nickname":  "Chris",
+                                                 "Initials":  "CS",
+                                                 "Email":  "cs@helix-law.com",
+                                                 "Entra ID":  "ba341208-aa5a-4f3c-92f1-00d1905e0425",
+                                                 "Clio ID":  "142979",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Solicitor",
+                                                 "ASANA_ID":  "1207132244328658",
+                                                 "ASANAUser_ID":  "1203772292837042",
+                                                 "ASANAPending_ID":  "1209348735819298",
+                                                 "ASANAInProgress_ID":  "1209348735819297",
+                                                 "ASANATeam_ID":  "1207163713256369",
+                                                 "AOW":  "Construction",
+                                                 "ASANAClient_ID":  "1207513435153648",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2021-03-29T00:00:00",
+                                                 "Created Time":  "15:02:49",
+                                                 "Full Name":  "Edward Lamptey",
+                                                 "Last":  "Lamptey",
+                                                 "First":  "Edward",
+                                                 "Nickname":  "Ed",
+                                                 "Initials":  "EL",
+                                                 "Email":  "el@helix-law.com",
+                                                 "Entra ID":  "6a4fe2be-2d04-4758-a20e-b69b74035815",
+                                                 "Clio ID":  "142973",
+                                                 "Rate":  285.00,
+                                                 "Role":  "Solicitor",
+                                                 "ASANA_ID":  "1207132244328665",
+                                                 "ASANAUser_ID":  "1203763793946053",
+                                                 "ASANAPending_ID":  "1207172851971718",
+                                                 "ASANAInProgress_ID":  "1207172851971719",
+                                                 "ASANATeam_ID":  "1207163713256369",
+                                                 "AOW":  "Construction",
+                                                 "ASANAClient_ID":  "1207504196915856",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "inactive"
+                                             },
+                                             {
+                                                 "Created Date":  "2023-08-11T00:00:00",
+                                                 "Created Time":  "16:52:28",
+                                                 "Full Name":  "Edwin Vass",
+                                                 "Last":  "Vass",
+                                                 "First":  "Edwin",
+                                                 "Nickname":  "Edwin",
+                                                 "Initials":  "EV",
+                                                 "Email":  "ev@helix-law.com",
+                                                 "Entra ID":  "3a781ee5-61a2-463f-9535-973499f2783d",
+                                                 "Clio ID":  "239620",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207143486848775",
+                                                 "ASANAUser_ID":  "1205977475760022",
+                                                 "ASANAPending_ID":  "1207172851971706",
+                                                 "ASANAInProgress_ID":  "1207172851971707",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Property, Commercial",
+                                                 "ASANAClient_ID":  "1207599509628152",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2015-10-11T00:00:00",
+                                                 "Created Time":  "09:41:42",
+                                                 "Full Name":  "Fiona Wheeler",
+                                                 "Last":  "Wheeler",
+                                                 "First":  "Fiona",
+                                                 "Nickname":  "Fi",
+                                                 "Initials":  "FW",
+                                                 "Email":  "fw@helix-law.com",
+                                                 "Entra ID":  "d39c29e1-6cfe-4376-8021-aebc873fd9e7",
+                                                 "Clio ID":  "141713",
+                                                 "Rate":  285.00,
+                                                 "Role":  "Associate Solicitor",
+                                                 "ASANA_ID":  "1207132244328672",
+                                                 "ASANAUser_ID":  "1203756612173825",
+                                                 "ASANAPending_ID":  "1207172851971722",
+                                                 "ASANAInProgress_ID":  "1207172851971723",
+                                                 "ASANATeam_ID":  "1207129476831736",
+                                                 "AOW":  "Employment, Property",
+                                                 "ASANAClient_ID":  "1207506936113173",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-09-02T00:00:00",
+                                                 "Created Time":  "09:00:00",
+                                                 "Full Name":  "Imogen Loveridge",
+                                                 "Last":  "Loveridge",
+                                                 "First":  "Imogen",
+                                                 "Nickname":  "Immy",
+                                                 "Initials":  "IL",
+                                                 "Email":  "il@helix-law.com",
+                                                 "Entra ID":  "bc78a8ad-e8bf-4067-89e2-5c800c356383",
+                                                 "Clio ID":  "287303",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207132244328679",
+                                                 "ASANAUser_ID":  "1208100945209814",
+                                                 "ASANAPending_ID":  "1208210952202174",
+                                                 "ASANAInProgress_ID":  "1208210952202173",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Property, Commercial",
+                                                 "ASANAClient_ID":  "1208222491065265",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2011-12-21T00:00:00",
+                                                 "Created Time":  "08:56:43",
+                                                 "Full Name":  "Jonathan Waters",
+                                                 "Last":  "Waters",
+                                                 "First":  "Jonathan",
+                                                 "Nickname":  "Jonathan",
+                                                 "Initials":  "JW",
+                                                 "Email":  "jw@helix-law.com",
+                                                 "Entra ID":  "0abc0ceb-0268-448b-b497-25c8fd6ae0be",
+                                                 "Clio ID":  "137557",
+                                                 "Rate":  395.00,
+                                                 "Role":  "Partner",
+                                                 "ASANA_ID":  "1207132244328693",
+                                                 "ASANAUser_ID":  "1203409452681568",
+                                                 "ASANAPending_ID":  "1207172851971731",
+                                                 "ASANAInProgress_ID":  "1207172851971732",
+                                                 "ASANATeam_ID":  "1207163713256331",
+                                                 "AOW":  "Commercial, Property, Construction, Employment",
+                                                 "ASANAClient_ID":  "1207531581457191",
+                                                 "holiday_entitlement":  30.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2021-08-26T00:00:00",
+                                                 "Created Time":  "08:48:39",
+                                                 "Full Name":  "Joshua Whitcombe",
+                                                 "Last":  "Whitcombe",
+                                                 "First":  "Joshua",
+                                                 "Nickname":  "Josh",
+                                                 "Initials":  "JWH",
+                                                 "Email":  "jwh@helix-law.com",
+                                                 "Entra ID":  "a4da04a0-a141-4dda-8cfa-9a781392b4e3",
+                                                 "Clio ID":  "142424",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Solicitor",
+                                                 "ASANA_ID":  "1207132244328700",
+                                                 "ASANAUser_ID":  "1203749626858983",
+                                                 "ASANAPending_ID":  "1207443376959404",
+                                                 "ASANAInProgress_ID":  "1207443376959403",
+                                                 "ASANATeam_ID":  "1207163713256369",
+                                                 "AOW":  "Construction",
+                                                 "ASANAClient_ID":  "1207506844737183",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2018-12-19T00:00:00",
+                                                 "Created Time":  "13:49:36",
+                                                 "Full Name":  "Jennifer Williams",
+                                                 "Last":  "Williams",
+                                                 "First":  "Jennifer",
+                                                 "Nickname":  "Jenny",
+                                                 "Initials":  "JWS",
+                                                 "Email":  "jws@helix-law.com",
+                                                 "Entra ID":  "d98bb871-003a-40a6-8fbe-5e3d0c8b1236",
+                                                 "Clio ID":  "142967",
+                                                 "Rate":  0.00,
+                                                 "Role":  "Non-solicitor",
+                                                 "ASANA_ID":  "1207132244328686",
+                                                 "ASANAUser_ID":  "1203336670016421",
+                                                 "ASANAPending_ID":  "1207214034406071",
+                                                 "ASANAInProgress_ID":  "1207214034406072",
+                                                 "ASANATeam_ID":  "1207163713256345",
+                                                 "AOW":  "Operations 1",
+                                                 "ASANAClient_ID":  "1207480823189450",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "inactive"
+                                             },
+                                             {
+                                                 "Created Date":  "2014-03-06T00:00:00",
+                                                 "Created Time":  "09:21:57",
+                                                 "Full Name":  "Kanchel White",
+                                                 "Last":  "White",
+                                                 "First":  "Kanchel",
+                                                 "Nickname":  "Kanchel",
+                                                 "Initials":  "KW",
+                                                 "Email":  "kw@helix-law.com",
+                                                 "Entra ID":  "f85e514e-91a3-4d5f-a0e0-2122faa999bc",
+                                                 "Clio ID":  "141611",
+                                                 "Rate":  0.00,
+                                                 "Role":  "Non-solicitor",
+                                                 "ASANA_ID":  "1207132244328707",
+                                                 "ASANAUser_ID":  "1203336030510561",
+                                                 "ASANAPending_ID":  "1207214034406069",
+                                                 "ASANAInProgress_ID":  "1207214034406070",
+                                                 "ASANATeam_ID":  "1207163713256345",
+                                                 "AOW":  "Operations 2, Accounts",
+                                                 "ASANAClient_ID":  "1207480980812797",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2014-02-24T00:00:00",
+                                                 "Created Time":  "10:15:36",
+                                                 "Full Name":  "Laura Albon",
+                                                 "Last":  "Albon",
+                                                 "First":  "Laura",
+                                                 "Nickname":  "Laura",
+                                                 "Initials":  "LA",
+                                                 "Email":  "la@helix-law.com",
+                                                 "Entra ID":  "f4eded2f-8fb0-4c09-a5ea-31a3f4078709",
+                                                 "Clio ID":  "142970",
+                                                 "Rate":  395.00,
+                                                 "Role":  "Partner",
+                                                 "ASANA_ID":  "1207132244328714",
+                                                 "ASANAUser_ID":  "1203749496440663",
+                                                 "ASANAPending_ID":  "1207172851971733",
+                                                 "ASANAInProgress_ID":  "1207172851971734",
+                                                 "ASANATeam_ID":  "1207163713256331",
+                                                 "AOW":  "Property",
+                                                 "ASANAClient_ID":  "1207527492874786",
+                                                 "holiday_entitlement":  30.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2017-03-20T00:00:00",
+                                                 "Created Time":  "10:11:09",
+                                                 "Full Name":  "Lukasz Zemanek",
+                                                 "Last":  "Zemanek",
+                                                 "First":  "Lukasz",
+                                                 "Nickname":  "Luke",
+                                                 "Initials":  "LZ",
+                                                 "Email":  "lz@helix-law.com",
+                                                 "Entra ID":  "8318a6fd-47aa-4792-855d-4d82a3a9ac7c",
+                                                 "Clio ID":  "141740",
+                                                 "Rate":  0.00,
+                                                 "Role":  "Non-solicitor",
+                                                 "ASANA_ID":  "1207129476831699",
+                                                 "ASANAUser_ID":  "1203336817680917",
+                                                 "ASANAPending_ID":  "1207214034406067",
+                                                 "ASANAInProgress_ID":  "1207214034406068",
+                                                 "ASANATeam_ID":  "1204962032378888",
+                                                 "AOW":  "Construction, Marketing, Operations 2, Automation",
+                                                 "ASANAClient_ID":  "1207527383143252",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2019-02-15T00:00:00",
+                                                 "Created Time":  "15:02:27",
+                                                 "Full Name":  "Richard Chapman",
+                                                 "Last":  "Chapman",
+                                                 "First":  "Richard",
+                                                 "Nickname":  "Richard",
+                                                 "Initials":  "RC",
+                                                 "Email":  "rc@helix-law.com",
+                                                 "Entra ID":  "17c48608-2fcc-4d37-9888-a01d39eab223",
+                                                 "Clio ID":  "143006",
+                                                 "Rate":  285.00,
+                                                 "Role":  "Associate Solicitor",
+                                                 "ASANA_ID":  "1207132244328721",
+                                                 "ASANAUser_ID":  "1203749675165296",
+                                                 "ASANAPending_ID":  "1207172851971724",
+                                                 "ASANAInProgress_ID":  "1207172851971725",
+                                                 "ASANATeam_ID":  "1207129476831736",
+                                                 "AOW":  "Commercial, Property",
+                                                 "ASANAClient_ID":  "1207504057673737",
+                                                 "holiday_entitlement":  25.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-05-03T00:00:00",
+                                                 "Created Time":  "13:57:11",
+                                                 "Full Name":  "Ryan Choi",
+                                                 "Last":  "Choi",
+                                                 "First":  "Ryan",
+                                                 "Nickname":  "Ryan",
+                                                 "Initials":  "RCH",
+                                                 "Email":  "rch@helix-law.com",
+                                                 "Entra ID":  "ca6a294d-ef76-4a09-868e-bfbe334011e7",
+                                                 "Clio ID":  "261610",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207132244328728",
+                                                 "ASANAUser_ID":  "1206833085397900",
+                                                 "ASANAPending_ID":  "1207172851971708",
+                                                 "ASANAInProgress_ID":  "1207172851971709",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Commercial, Property",
+                                                 "ASANAClient_ID":  "1207504510358368",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2017-09-22T00:00:00",
+                                                 "Created Time":  "12:15:26",
+                                                 "Full Name":  "Sam Packwood",
+                                                 "Last":  "Packwood",
+                                                 "First":  "Sam",
+                                                 "Nickname":  "Sam",
+                                                 "Initials":  "SP",
+                                                 "Email":  "sp@helix-law.com",
+                                                 "Entra ID":  "55354c77-72b9-4a0b-adcb-cc301112167a",
+                                                 "Clio ID":  "142964",
+                                                 "Rate":  285.00,
+                                                 "Role":  "Partner",
+                                                 "ASANA_ID":  "1207132244328735",
+                                                 "ASANAUser_ID":  "1203749919622216",
+                                                 "ASANAPending_ID":  "1207172851971735",
+                                                 "ASANAInProgress_ID":  "1207172851971736",
+                                                 "ASANATeam_ID":  "1207163713256331",
+                                                 "AOW":  "Commercial, Property",
+                                                 "ASANAClient_ID":  "1207455270442465",
+                                                 "holiday_entitlement":  30.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2023-07-24T00:00:00",
+                                                 "Created Time":  "15:01:37",
+                                                 "Full Name":  "Sophie West",
+                                                 "Last":  "West",
+                                                 "First":  "Sophie",
+                                                 "Nickname":  "Sophie",
+                                                 "Initials":  "SW",
+                                                 "Email":  "sw@helix-law.com",
+                                                 "Entra ID":  "60cbd65f-c32d-4760-9d34-6c1c6a8b50d5",
+                                                 "Clio ID":  "216223",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207132244328742",
+                                                 "ASANAUser_ID":  "1205159829008662",
+                                                 "ASANAPending_ID":  "1207172851971710",
+                                                 "ASANAInProgress_ID":  "1207172851971711",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Construction",
+                                                 "ASANAClient_ID":  "1207504339510613",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-04-03T00:00:00",
+                                                 "Created Time":  "09:00:57",
+                                                 "Full Name":  "Tristan Makin",
+                                                 "Last":  "Makin",
+                                                 "First":  "Tristan",
+                                                 "Nickname":  "Tristan",
+                                                 "Initials":  "TM",
+                                                 "Email":  "tm@helix-law.com",
+                                                 "Entra ID":  "24e2179d-1b87-4f54-880d-b9a14779d984",
+                                                 "Clio ID":  "261613",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207132244328749",
+                                                 "ASANAUser_ID":  "1206833087790809",
+                                                 "ASANAPending_ID":  "1207172851971712",
+                                                 "ASANAInProgress_ID":  "1207172851971713",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Construction",
+                                                 "ASANAClient_ID":  "1207504382328645",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "inactive"
+                                             },
+                                             {
+                                                 "Created Date":  "2024-06-03T00:00:00",
+                                                 "Created Time":  "09:00:00",
+                                                 "Full Name":  "Zoe-Ann Kelly",
+                                                 "Last":  "Kelly",
+                                                 "First":  "Zoe-Ann",
+                                                 "Nickname":  "Zoe-Ann",
+                                                 "Initials":  "ZK",
+                                                 "Email":  "zk@helix-law.com",
+                                                 "Entra ID":  "e861eaac-3c1e-4125-a124-d818104c2003",
+                                                 "Clio ID":  "271393",
+                                                 "Rate":  195.00,
+                                                 "Role":  "Paralegal",
+                                                 "ASANA_ID":  "1207132244328756",
+                                                 "ASANAUser_ID":  "1207370607273925",
+                                                 "ASANAPending_ID":  "1207467707367500",
+                                                 "ASANAInProgress_ID":  "1207467707367499",
+                                                 "ASANATeam_ID":  "1207129476831722",
+                                                 "AOW":  "Property, Commercial",
+                                                 "ASANAClient_ID":  "1207529952021260",
+                                                 "holiday_entitlement":  20.0,
+                                                 "status":  "active"
+                                             }
+                                         ],
+                               "Count":  22
+                           },
+    "localTransactions.json":  {
+                                   "value":  [
+                                                 {
+                                                     "intake_id":  1,
+                                                     "intake_date":  "2024-06-01",
+                                                     "transaction_id":  "TXN001",
+                                                     "matter_ref":  "MTR-001",
+                                                     "matter_description":  "Property Purchase",
+                                                     "fe":  "LZ",
+                                                     "amount":  1500.0,
+                                                     "transaction_date":  "2024-06-02",
+                                                     "from_client":  true,
+                                                     "money_sender":  null,
+                                                     "type":  "deposit",
+                                                     "status":  "requested",
+                                                     "task_id":  null
+                                                 },
+                                                 {
+                                                     "intake_id":  2,
+                                                     "intake_date":  "2024-06-05",
+                                                     "transaction_id":  "TXN002",
+                                                     "matter_ref":  "MTR-002",
+                                                     "matter_description":  "Contract Drafting",
+                                                     "fe":  "AC",
+                                                     "amount":  2500.0,
+                                                     "transaction_date":  "2024-06-06",
+                                                     "from_client":  false,
+                                                     "money_sender":  "Client B",
+                                                     "type":  "payment",
+                                                     "status":  "transfer",
+                                                     "task_id":  "task-002"
+                                                 },
+                                                 {
+                                                     "intake_id":  3,
+                                                     "intake_date":  "2024-06-07",
+                                                     "transaction_id":  "TXN003",
+                                                     "matter_ref":  "MTR-003",
+                                                     "matter_description":  "Litigation",
+                                                     "fe":  "LZ",
+                                                     "amount":  500.0,
+                                                     "transaction_date":  "2024-06-08",
+                                                     "from_client":  true,
+                                                     "money_sender":  null,
+                                                     "type":  "deposit",
+                                                     "status":  "processed",
+                                                     "task_id":  null
+                                                 }
+                                             ],
+                                   "Count":  3
+                               },
+    "localInstructionData.json":  {
+                                      "value":  [
+                                                    {
+                                                        "prospectId":  1,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  5,
+                                                                          "InstructionRef":  "HLX-1-PRE",
+                                                                          "Status":  "pitched"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-1-PRE",
+                                                                                 "Stage":  "initialised",
+                                                                                 "PaymentResult":  null
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+
+                                                                      ],
+                                                        "riskAssessments":  [
+
+                                                                            ],
+                                                        "electronicIDChecks":  [
+
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    },
+                                                    {
+                                                        "prospectId":  2,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  6,
+                                                                          "InstructionRef":  "HLX-2-START",
+                                                                          "Status":  "pitched"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-2-START",
+                                                                                 "Stage":  "poid",
+                                                                                 "PassportNumber":  "AA1234567",
+                                                                                 "PaymentResult":  null
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+
+                                                                      ],
+                                                        "riskAssessments":  [
+
+                                                                            ],
+                                                        "electronicIDChecks":  [
+
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    },
+                                                    {
+                                                        "prospectId":  3,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  1,
+                                                                          "InstructionRef":  "HLX-3-OPTDOC",
+                                                                          "Status":  "closed"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-3-OPTDOC",
+                                                                                 "Stage":  "completed",
+                                                                                 "PassportNumber":  "BB1234567",
+                                                                                 "PaymentResult":  "successful"
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+                                                                          {
+                                                                              "DocumentId":  4,
+                                                                              "InstructionRef":  "HLX-3-OPTDOC",
+                                                                              "FileName":  "doc.pdf"
+                                                                          }
+                                                                      ],
+                                                        "riskAssessments":  [
+                                                                                {
+                                                                                    "MatterId":  "HLX-3-OPTDOC",
+                                                                                    "RiskAssessmentResult":  "Low"
+                                                                                }
+                                                                            ],
+                                                        "electronicIDChecks":  [
+                                                                                   {
+                                                                                       "MatterId":  "HLX-3-OPTDOC",
+                                                                                       "EIDStatus":  "completed",
+                                                                                       "EIDOverallResult":  "Passed"
+                                                                                   }
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    },
+                                                    {
+                                                        "prospectId":  4,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  2,
+                                                                          "InstructionRef":  "HLX-4-REVIEWOK",
+                                                                          "Status":  "closed"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-4-REVIEWOK",
+                                                                                 "Stage":  "completed",
+                                                                                 "PassportNumber":  "CC1234567",
+                                                                                 "PaymentResult":  "successful"
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+
+                                                                      ],
+                                                        "riskAssessments":  [
+
+                                                                            ],
+                                                        "electronicIDChecks":  [
+                                                                                   {
+                                                                                       "MatterId":  "HLX-4-REVIEWOK",
+                                                                                       "EIDStatus":  "completed",
+                                                                                       "EIDOverallResult":  "Review"
+                                                                                   }
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    },
+                                                    {
+                                                        "prospectId":  5,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  3,
+                                                                          "InstructionRef":  "HLX-5-REVIEWFAIL",
+                                                                          "Status":  "closed"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-5-REVIEWFAIL",
+                                                                                 "Stage":  "completed",
+                                                                                 "PassportNumber":  "DD1234567",
+                                                                                 "PaymentResult":  "failed"
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+
+                                                                      ],
+                                                        "riskAssessments":  [
+
+                                                                            ],
+                                                        "electronicIDChecks":  [
+                                                                                   {
+                                                                                       "MatterId":  "HLX-5-REVIEWFAIL",
+                                                                                       "EIDStatus":  "completed",
+                                                                                       "EIDOverallResult":  "Review"
+                                                                                   }
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    },
+                                                    {
+                                                        "prospectId":  6,
+                                                        "deals":  [
+                                                                      {
+                                                                          "DealId":  4,
+                                                                          "InstructionRef":  "HLX-6-ALLGOOD",
+                                                                          "Status":  "closed"
+                                                                      }
+                                                                  ],
+                                                        "jointClients":  [
+
+                                                                         ],
+                                                        "instructions":  [
+                                                                             {
+                                                                                 "InstructionRef":  "HLX-6-ALLGOOD",
+                                                                                 "Stage":  "completed",
+                                                                                 "PassportNumber":  "EE1234567",
+                                                                                 "PaymentResult":  "successful"
+                                                                             }
+                                                                         ],
+                                                        "documents":  [
+                                                                          {
+                                                                              "DocumentId":  2,
+                                                                              "InstructionRef":  "HLX-6-ALLGOOD",
+                                                                              "FileName":  "doc.pdf"
+                                                                          }
+                                                                      ],
+                                                        "riskAssessments":  [
+                                                                                {
+                                                                                    "MatterId":  "HLX-6-ALLGOOD",
+                                                                                    "RiskAssessmentResult":  "Low"
+                                                                                }
+                                                                            ],
+                                                        "electronicIDChecks":  [
+                                                                                   {
+                                                                                       "MatterId":  "HLX-6-ALLGOOD",
+                                                                                       "EIDStatus":  "completed",
+                                                                                       "EIDOverallResult":  "Passed"
+                                                                                   }
+                                                                               ],
+                                                        "idVerifications":  [
+
+                                                                            ]
+                                                    }
+                                                ],
+                                      "Count":  6
+                                  },
+    "localWipClio.json":  {
+                              "current_week":  {
+                                                   "daily_data":  {
+                                                                      "2025-06-23":  {
+                                                                                         "total_hours":  2,
+                                                                                         "total_amount":  200
+                                                                                     },
+                                                                      "2025-06-24":  {
+                                                                                         "total_hours":  3,
+                                                                                         "total_amount":  300
+                                                                                     },
+                                                                      "2025-06-25":  {
+                                                                                         "total_hours":  4,
+                                                                                         "total_amount":  400
+                                                                                     },
+                                                                      "2025-06-26":  {
+                                                                                         "total_hours":  5,
+                                                                                         "total_amount":  500
+                                                                                     },
+                                                                      "2025-06-27":  {
+                                                                                         "total_hours":  1,
+                                                                                         "total_amount":  100
+                                                                                     }
+                                                                  },
+                                                   "daily_average_hours":  3,
+                                                   "daily_average_amount":  300
+                                               },
+                              "last_week":  {
+                                                "daily_data":  {
+                                                                   "2025-06-16":  {
+                                                                                      "total_hours":  1,
+                                                                                      "total_amount":  100
+                                                                                  },
+                                                                   "2025-06-17":  {
+                                                                                      "total_hours":  2,
+                                                                                      "total_amount":  200
+                                                                                  },
+                                                                   "2025-06-18":  {
+                                                                                      "total_hours":  2.5,
+                                                                                      "total_amount":  250
+                                                                                  },
+                                                                   "2025-06-19":  {
+                                                                                      "total_hours":  3,
+                                                                                      "total_amount":  300
+                                                                                  },
+                                                                   "2025-06-20":  {
+                                                                                      "total_hours":  0,
+                                                                                      "total_amount":  0
+                                                                                  }
+                                                               },
+                                                "daily_average_hours":  1.7,
+                                                "daily_average_amount":  170
+                                            }
+                          },
+    "localRecovered.json":  {
+                                "totalPaymentAllocated":  5000
+                            },
+    "localAnnualLeave.json":  {
+                                  "annual_leave":  [
+                                                       {
+                                                           "person":  "Lukasz Zemanek",
+                                                           "start_date":  "2024-04-15",
+                                                           "end_date":  "2024-04-16",
+                                                           "reason":  "Holiday",
+                                                           "status":  "approved",
+                                                           "id":  "1",
+                                                           "approvers":  [
+                                                                             "JD",
+                                                                             "AC"
+                                                                         ]
+                                                       }
+                                                   ],
+                                  "future_leave":  [
+
+                                                   ],
+                                  "user_details":  {
+                                                       "totals":  {
+
+                                                                  }
+                                                   },
+                                  "all_data":  [
+
+                                               ]
+                              },
+    "localUserData.json":  {
+                               "value":  [
+                                             {
+                                                 "First":  "Lukasz",
+                                                 "Last":  "Zemanek",
+                                                 "Full Name":  "Lukasz Zemanek",
+                                                 "Nickname":  "Luke",
+                                                 "Initials":  "LZ",
+                                                 "Email":  "lz@helix-law.com",
+                                                 "Role":  "Non-solicitor",
+                                                 "Rate":  1000.0
+                                             }
+                                         ],
+                               "Count":  1
+                           },
+    "localAttendance.json":  {
+                                 "attendance":  [
+                                                    {
+                                                        "name":  "Alex Cook",
+                                                        "level":  "Partner",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Anouszka Taverna",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Billy Leith",
+                                                        "level":  "Non-solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Bianca O\u0027Donnell",
+                                                        "level":  "Solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Brendan Rimmer",
+                                                        "level":  "Partner",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Christopher Smith",
+                                                        "level":  "Solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Thu"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Edwin Vass",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Fiona Wheeler",
+                                                        "level":  "Associate Solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue,Wed,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Imogen Loveridge",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Jonathan Waters",
+                                                        "level":  "Partner",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Wed,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Tue,Wed,Thu"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Joshua Whitcombe",
+                                                        "level":  "Solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Kanchel White",
+                                                        "level":  "Non-solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Laura Albon",
+                                                        "level":  "Partner",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Tue,Wed,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Lukasz Zemanek",
+                                                        "level":  "Non-solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Richard Chapman",
+                                                        "level":  "Associate Solicitor",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Ryan Choi",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Sam Packwood",
+                                                        "level":  "Partner",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Wed,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Sophie West",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue,Wed,Thu,Fri"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Thu,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    },
+                                                    {
+                                                        "name":  "Zoe-Ann Kelly",
+                                                        "level":  "Paralegal",
+                                                        "weeks":  {
+                                                                      "Monday, 16/06/2025 - Sunday, 22/06/2025":  {
+                                                                                                                      "iso":  25,
+                                                                                                                      "attendance":  "Tue,Wed,Thu"
+                                                                                                                  },
+                                                                      "Monday, 23/06/2025 - Sunday, 29/06/2025":  {
+                                                                                                                      "iso":  26,
+                                                                                                                      "attendance":  "Mon,Tue,Wed,Fri"
+                                                                                                                  }
+                                                                  }
+                                                    }
+                                                ],
+                                 "team":  [
+                                              {
+                                                  "First":  "Alex",
+                                                  "Initials":  "AC",
+                                                  "Entra ID":  "f46fed2c-0775-49a7-9fb4-721b813c84ff",
+                                                  "Nickname":  "Alex"
+                                              },
+                                              {
+                                                  "First":  "Anouszka",
+                                                  "Initials":  "AT",
+                                                  "Entra ID":  "efb0d9cd-9d40-45ec-9426-474aaf0c174d",
+                                                  "Nickname":  "Nush"
+                                              },
+                                              {
+                                                  "First":  "Billy",
+                                                  "Initials":  "BL",
+                                                  "Entra ID":  "90f348e3-1679-4024-abd0-46aac6fe21e3",
+                                                  "Nickname":  "Billy"
+                                              },
+                                              {
+                                                  "First":  "Bianca",
+                                                  "Initials":  "BOD",
+                                                  "Entra ID":  "e419f631-ee7a-458b-bc68-00fabda6e8fb",
+                                                  "Nickname":  "Bianca"
+                                              },
+                                              {
+                                                  "First":  "Brendan",
+                                                  "Initials":  "BR",
+                                                  "Entra ID":  "f79e3226-0652-4eb5-8594-a48e7e8d253b",
+                                                  "Nickname":  "Brendan"
+                                              },
+                                              {
+                                                  "First":  "Christopher",
+                                                  "Initials":  "CS",
+                                                  "Entra ID":  "ba341208-aa5a-4f3c-92f1-00d1905e0425",
+                                                  "Nickname":  "Chris"
+                                              },
+                                              {
+                                                  "First":  "Edwin",
+                                                  "Initials":  "EV",
+                                                  "Entra ID":  "3a781ee5-61a2-463f-9535-973499f2783d",
+                                                  "Nickname":  "Edwin"
+                                              },
+                                              {
+                                                  "First":  "Fiona",
+                                                  "Initials":  "FW",
+                                                  "Entra ID":  "d39c29e1-6cfe-4376-8021-aebc873fd9e7",
+                                                  "Nickname":  "Fi"
+                                              },
+                                              {
+                                                  "First":  "Imogen",
+                                                  "Initials":  "IL",
+                                                  "Entra ID":  "bc78a8ad-e8bf-4067-89e2-5c800c356383",
+                                                  "Nickname":  "Immy"
+                                              },
+                                              {
+                                                  "First":  "Jonathan",
+                                                  "Initials":  "JW",
+                                                  "Entra ID":  "0abc0ceb-0268-448b-b497-25c8fd6ae0be",
+                                                  "Nickname":  "Jonathan"
+                                              },
+                                              {
+                                                  "First":  "Joshua",
+                                                  "Initials":  "JWH",
+                                                  "Entra ID":  "a4da04a0-a141-4dda-8cfa-9a781392b4e3",
+                                                  "Nickname":  "Josh"
+                                              },
+                                              {
+                                                  "First":  "Kanchel",
+                                                  "Initials":  "KW",
+                                                  "Entra ID":  "f85e514e-91a3-4d5f-a0e0-2122faa999bc",
+                                                  "Nickname":  "Kanchel"
+                                              },
+                                              {
+                                                  "First":  "Laura",
+                                                  "Initials":  "LA",
+                                                  "Entra ID":  "f4eded2f-8fb0-4c09-a5ea-31a3f4078709",
+                                                  "Nickname":  "Laura"
+                                              },
+                                              {
+                                                  "First":  "Lukasz",
+                                                  "Initials":  "LZ",
+                                                  "Entra ID":  "8318a6fd-47aa-4792-855d-4d82a3a9ac7c",
+                                                  "Nickname":  "Luke"
+                                              },
+                                              {
+                                                  "First":  "Richard",
+                                                  "Initials":  "RC",
+                                                  "Entra ID":  "17c48608-2fcc-4d37-9888-a01d39eab223",
+                                                  "Nickname":  "Richard"
+                                              },
+                                              {
+                                                  "First":  "Ryan",
+                                                  "Initials":  "RCH",
+                                                  "Entra ID":  "ca6a294d-ef76-4a09-868e-bfbe334011e7",
+                                                  "Nickname":  "Ryan"
+                                              },
+                                              {
+                                                  "First":  "Sam",
+                                                  "Initials":  "SP",
+                                                  "Entra ID":  "55354c77-72b9-4a0b-adcb-cc301112167a",
+                                                  "Nickname":  "Sam"
+                                              },
+                                              {
+                                                  "First":  "Sophie",
+                                                  "Initials":  "SW",
+                                                  "Entra ID":  "60cbd65f-c32d-4760-9d34-6c1c6a8b50d5",
+                                                  "Nickname":  "Sophie"
+                                              },
+                                              {
+                                                  "First":  "Zoe-Ann",
+                                                  "Initials":  "ZK",
+                                                  "Entra ID":  "e861eaac-3c1e-4125-a124-d818104c2003",
+                                                  "Nickname":  "Zoe-Ann"
+                                              }
+                                          ]
+                             },
+    "scenarioChecklist.json":  {
+
+                               },
+    "localPrevRecovered.json":  {
+                                    "totalPaymentAllocated":  4500
+                                },
+    "localOutstandingBalances.json":  {
+                                          "meta":  {
+                                                       "paging":  {
+
+                                                                  },
+                                                       "records":  2
+                                                   },
+                                          "data":  [
+                                                       {
+                                                           "id":  1,
+                                                           "created_at":  "2025-05-01",
+                                                           "updated_at":  "2025-06-01",
+                                                           "associated_matter_ids":  [
+                                                                                         1
+                                                                                     ],
+                                                           "contact":  {
+                                                                           "name":  "Client A"
+                                                                       },
+                                                           "total_outstanding_balance":  1500.0,
+                                                           "last_payment_date":  "2025-05-15",
+                                                           "last_shared_date":  null,
+                                                           "newest_issued_bill_due_date":  "2025-06-15",
+                                                           "pending_payments_total":  0,
+                                                           "reminders_enabled":  true,
+                                                           "currency":  {
+                                                                            "id":  1
+                                                                        },
+                                                           "outstanding_bills":  [
+                                                                                     {
+                                                                                         "id":  101,
+                                                                                         "number":  "INV-001",
+                                                                                         "issued_at":  "2025-05-01",
+                                                                                         "created_at":  "2025-05-01",
+                                                                                         "due_at":  "2025-05-15",
+                                                                                         "total":  1500.0,
+                                                                                         "paid":  500.0,
+                                                                                         "paid_at":  "2025-05-10",
+                                                                                         "pending":  0,
+                                                                                         "due":  1000.0,
+                                                                                         "state":  "sent",
+                                                                                         "kind":  "invoice"
+                                                                                     }
+                                                                                 ]
+                                                       },
+                                                       {
+                                                           "id":  2,
+                                                           "created_at":  "2025-04-01",
+                                                           "updated_at":  "2025-06-01",
+                                                           "associated_matter_ids":  [
+                                                                                         2
+                                                                                     ],
+                                                           "contact":  {
+                                                                           "name":  "Client B"
+                                                                       },
+                                                           "total_outstanding_balance":  2000.0,
+                                                           "last_payment_date":  "2025-04-20",
+                                                           "last_shared_date":  null,
+                                                           "newest_issued_bill_due_date":  "2025-06-20",
+                                                           "pending_payments_total":  0,
+                                                           "reminders_enabled":  false,
+                                                           "currency":  {
+                                                                            "id":  1
+                                                                        },
+                                                           "outstanding_bills":  [
+                                                                                     {
+                                                                                         "id":  102,
+                                                                                         "number":  "INV-002",
+                                                                                         "issued_at":  "2025-04-01",
+                                                                                         "created_at":  "2025-04-01",
+                                                                                         "due_at":  "2025-04-15",
+                                                                                         "total":  2000.0,
+                                                                                         "paid":  0.0,
+                                                                                         "pending":  0,
+                                                                                         "due":  2000.0,
+                                                                                         "state":  "sent",
+                                                                                         "kind":  "invoice"
+                                                                                     }
+                                                                                 ]
+                                                       }
+                                                   ]
+                                      },
+    "localTillerResponses.json":  {
+                                      "value":  [
+                                                    {
+                                                        "matterRef":  "HLX-22338-3927",
+                                                        "checkTypeId":  1,
+                                                        "result":  "fail",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-3927",
+                                                        "checkTypeId":  2,
+                                                        "result":  "pending",
+                                                        "status":  "complete"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-3927",
+                                                        "checkTypeId":  3,
+                                                        "result":  "pass",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4581",
+                                                        "checkTypeId":  1,
+                                                        "result":  "pending",
+                                                        "status":  "complete"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4581",
+                                                        "checkTypeId":  2,
+                                                        "result":  "pass",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4581",
+                                                        "checkTypeId":  3,
+                                                        "result":  "fail",
+                                                        "status":  "complete"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4843",
+                                                        "checkTypeId":  1,
+                                                        "result":  "pass",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4843",
+                                                        "checkTypeId":  2,
+                                                        "result":  "fail",
+                                                        "status":  "complete"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-4843",
+                                                        "checkTypeId":  3,
+                                                        "result":  "pending",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-7385",
+                                                        "checkTypeId":  1,
+                                                        "result":  "fail",
+                                                        "status":  "complete"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-7385",
+                                                        "checkTypeId":  2,
+                                                        "result":  "pending",
+                                                        "status":  "error"
+                                                    },
+                                                    {
+                                                        "matterRef":  "HLX-22338-7385",
+                                                        "checkTypeId":  3,
+                                                        "result":  "pass",
+                                                        "status":  "complete"
+                                                    }
+                                                ],
+                                      "Count":  12
+                                  },
+    "localInstructionCards.json":  {
+                                       "value":  [
+                                                     {
+                                                         "scenario":  "Pre-deal",
+                                                         "deal":  "pending",
+                                                         "id":  "pending",
+                                                         "pay":  "pending",
+                                                         "docs":  "pending",
+                                                         "risk":  "pending",
+                                                         "openMatter":  false,
+                                                         "notes":  "Deal pitched but nothing completed"
+                                                     },
+                                                     {
+                                                         "scenario":  "ID started",
+                                                         "deal":  "pending",
+                                                         "id":  "pending",
+                                                         "pay":  "pending",
+                                                         "docs":  "pending",
+                                                         "risk":  "pending",
+                                                         "openMatter":  false,
+                                                         "notes":  "Proof of ID received but EID not yet complete"
+                                                     },
+                                                     {
+                                                         "scenario":  "Deal closed, optional docs",
+                                                         "deal":  "complete",
+                                                         "id":  "complete",
+                                                         "pay":  "complete",
+                                                         "docs":  "optional",
+                                                         "risk":  "complete",
+                                                         "openMatter":  true,
+                                                         "notes":  "All mandatory steps complete. Docs optional but provided."
+                                                     },
+                                                     {
+                                                         "scenario":  "ID review, payment succeeded",
+                                                         "deal":  "complete",
+                                                         "id":  "review",
+                                                         "pay":  "complete",
+                                                         "docs":  "pending",
+                                                         "risk":  "pending",
+                                                         "openMatter":  false,
+                                                         "notes":  "EID flagged for review. Payment processed."
+                                                     },
+                                                     {
+                                                         "scenario":  "ID review, payment failed",
+                                                         "deal":  "complete",
+                                                         "id":  "review",
+                                                         "pay":  "failed",
+                                                         "docs":  "pending",
+                                                         "risk":  "pending",
+                                                         "openMatter":  false,
+                                                         "notes":  "Payment unsuccessful and ID requires manual review."
+                                                     },
+                                                     {
+                                                         "scenario":  "Deal closed, all good",
+                                                         "deal":  "complete",
+                                                         "id":  "complete",
+                                                         "pay":  "complete",
+                                                         "docs":  "complete",
+                                                         "risk":  "complete",
+                                                         "openMatter":  true,
+                                                         "notes":  "All checks complete. ID action label becomes ID Verified"
+                                                     }
+                                                 ],
+                                       "Count":  6
+                                   },
+    "localMatters.json":  {
+                              "value":  [
+                                            {
+                                                "DisplayNumber":  "MTR-001",
+                                                "OpenDate":  "2025-06-10",
+                                                "MonthYear":  "Jun 2025",
+                                                "YearMonthNumeric":  202506,
+                                                "ClientID":  "C001",
+                                                "ClientName":  "Client One",
+                                                "ClientPhone":  "1234567890",
+                                                "ClientEmail":  "client1@example.com",
+                                                "Status":  "Open",
+                                                "UniqueID":  1,
+                                                "Description":  "Sample matter description one.",
+                                                "PracticeArea":  "Commercial",
+                                                "Source":  "Referral",
+                                                "Referrer":  "Referrer One",
+                                                "ResponsibleSolicitor":  "Alex Cook",
+                                                "OriginatingSolicitor":  "Alex Cook",
+                                                "SupervisingPartner":  "Partner A",
+                                                "Opponent":  "Opponent A",
+                                                "OpponentSolicitor":  "Opponent Solicitor A",
+                                                "CloseDate":  "",
+                                                "ApproxValue":  "10000",
+                                                "mod_stamp":  "2025-06-10T12:00:00Z",
+                                                "method_of_contact":  "Email",
+                                                "CCL_date":  null,
+                                                "Rating":  "Good"
+                                            },
+                                            {
+                                                "DisplayNumber":  "MTR-002",
+                                                "OpenDate":  "2025-06-15",
+                                                "MonthYear":  "Jun 2025",
+                                                "YearMonthNumeric":  202506,
+                                                "ClientID":  "C002",
+                                                "ClientName":  "Client Two",
+                                                "ClientPhone":  "0987654321",
+                                                "ClientEmail":  "client2@example.com",
+                                                "Status":  "Open",
+                                                "UniqueID":  2,
+                                                "Description":  "Sample matter description two.",
+                                                "PracticeArea":  "Property",
+                                                "Source":  "Website",
+                                                "Referrer":  "",
+                                                "ResponsibleSolicitor":  "Alex Cook",
+                                                "OriginatingSolicitor":  "Alex Cook",
+                                                "SupervisingPartner":  "Partner B",
+                                                "Opponent":  "Opponent B",
+                                                "OpponentSolicitor":  "Opponent Solicitor B",
+                                                "CloseDate":  "",
+                                                "ApproxValue":  "5000",
+                                                "mod_stamp":  "2025-06-15T09:00:00Z",
+                                                "method_of_contact":  "Phone",
+                                                "CCL_date":  null,
+                                                "Rating":  "Neutral"
+                                            }
+                                        ],
+                              "Count":  2
+                          },
+    "localEnquiries.json":  {
+                                "value":  [
+                                              {
+                                                  "ID":  "1",
+                                                  "Date_Created":  "2025-06-24",
+                                                  "Touchpoint_Date":  "2025-06-26",
+                                                  "Email":  "client@example.com",
+                                                  "Area_of_Work":  "Commercial",
+                                                  "Type_of_Work":  "Contract",
+                                                  "Method_of_Contact":  "Email",
+                                                  "Point_of_Contact":  "lz@helix-law.com",
+                                                  "First_Name":  "Client",
+                                                  "Last_Name":  "One",
+                                                  "Initial_first_call_notes":  "Initial notes."
+                                              },
+                                              {
+                                                  "ID":  "2",
+                                                  "Date_Created":  "2025-06-23",
+                                                  "Touchpoint_Date":  "2025-06-24",
+                                                  "Email":  "client1@example.com",
+                                                  "Area_of_Work":  "Property",
+                                                  "Type_of_Work":  "Dispute",
+                                                  "Method_of_Contact":  "Phone",
+                                                  "Point_of_Contact":  "lz@helix-law.com",
+                                                  "First_Name":  "Client",
+                                                  "Last_Name":  "Two",
+                                                  "Initial_first_call_notes":  "Client1 enquiry example."
+                                              },
+                                              {
+                                                  "ID":  "3",
+                                                  "Date_Created":  "2025-06-19",
+                                                  "Touchpoint_Date":  "2025-06-19",
+                                                  "Email":  "client2@example.com",
+                                                  "Area_of_Work":  "Litigation",
+                                                  "Type_of_Work":  "Claim",
+                                                  "Method_of_Contact":  "Email",
+                                                  "Point_of_Contact":  "lz@helix-law.com",
+                                                  "First_Name":  "Client",
+                                                  "Last_Name":  "Three",
+                                                  "Initial_first_call_notes":  "Previous week enquiry."
+                                              },
+                                              {
+                                                  "ID":  "4",
+                                                  "Date_Created":  "2025-05-15",
+                                                  "Touchpoint_Date":  "2025-05-15",
+                                                  "Email":  "client3@example.com",
+                                                  "Area_of_Work":  "Commercial",
+                                                  "Type_of_Work":  "Advice",
+                                                  "Method_of_Contact":  "Referral",
+                                                  "Point_of_Contact":  "lz@helix-law.com",
+                                                  "First_Name":  "Client",
+                                                  "Last_Name":  "Four",
+                                                  "Initial_first_call_notes":  "Previous month enquiry."
+                                              }
+                                          ],
+                                "Count":  4
+                            }
+}
