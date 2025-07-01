@@ -392,9 +392,16 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: rgba(255, 255, 255, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(4px);
+      border-radius: 0;
       font-size: 12px;
+      line-height: 0;
+      padding: 0;
       width: 20px;
+      min-width: 20px;
       height: 20px;
+      min-height: 20px;
+      flex-shrink: 0;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     .sentence-delete:hover {
       background: rgba(255, 255, 255, 0.35);
@@ -415,9 +422,16 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: rgba(255, 255, 255, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.3);
       backdrop-filter: blur(4px);
+      border-radius: 0;
       font-size: 12px;
+      line-height: 0;
+      padding: 0;
       width: 20px;
+      min-width: 20px;
       height: 20px;
+      min-height: 20px;
+      flex-shrink: 0;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     .sentence-handle:hover {
       background: rgba(255, 255, 255, 0.35);
@@ -430,6 +444,11 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .sentence-handle i,
     .sentence-delete i {
       pointer-events: none;
+      transition: transform 0.1s ease;
+    }
+    .sentence-handle:hover i,
+    .sentence-delete:hover i {
+      transform: scale(1.1);
     }
     .drag-over {
       outline: 2px dashed ${colours.blue};

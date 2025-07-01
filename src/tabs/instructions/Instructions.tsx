@@ -915,7 +915,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                     prospectId={item.prospectId}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
-                    expanded
                     onOpenMatter={() => handleOpenMatter(item.instruction)}
                     onRiskAssessment={() =>
                       handleRiskAssessment(item)

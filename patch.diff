@@ -1,33 +1,334 @@
-diff --git a/docs/instruction-card-design.md b/docs/instruction-card-design.md
-index 7cfc199a7bd831765bf7f35c82c6aa93701077fd..9e8bd941be98a7d70155c5c6d3290ace98365336 100644
---- a/docs/instruction-card-design.md
-+++ b/docs/instruction-card-design.md
-@@ -15,27 +15,27 @@ Prospect 123
- └───────────────────────────────────────┘
- ```
+diff --git a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
+index 6ced1b7a9bbc54002ee62e2bf544ba666e73ecd6..5537a34adb4206a0dcffa7935b31804a7519407a 100644
+--- a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
++++ b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
+@@ -251,50 +251,98 @@ const addingClientRef = useRef(false);
+     fontWeight: '600',
+     color: isDarkMode ? colours.dark.text : colours.light.text,
+     paddingBottom: '5px',
+   });
  
- ## Styling
+   const intakeContainer = mergeStyles(sectionStyle);
  
- The component relies on `componentTokens.card` exported from `src/app/styles/componentTokens.ts` which defines the base padding, border radius and hover shadow used across the instruction app. Additional animation rules are defined in `src/app/styles/InstructionCard.css`.
+   const intakeHeader = mergeStyles({
+     color: isDarkMode ? '#fff' : colours.darkBlue,
+     fontWeight: 600,
+     fontSize: 13,
+     marginBottom: 8,
+     display: 'flex',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+   });
  
- Important styles include:
+   // Input fields for client details have a subtle left accent using the
+   // same colour as section headers to visually connect them without a
+   // full header bar.
+   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
+     borderLeft: `4px solid ${colours.darkBlue}`,
+     borderRadius: 0,
+   });
  
- - `padding: 20px` and `border-radius: 8px` for a neat card shape
- - `box-shadow: 0 2px 8px rgba(0,0,0,0.1)` with a stronger shadow on hover
- - `dropIn` keyframes so each card fades and slides into place
++  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
++
++  const dealFieldsContainer = mergeStyles(sectionStyle, {
++    flexDirection: 'row',
++    flexWrap: 'wrap',
++    gap: 0,
++    padding: 0,
++  });
++
++  const serviceFieldStyle = mergeStyles({
++    flexBasis: '40%',
++    flexGrow: 1,
++    minWidth: 250,
++    padding: 8,
++    display: 'flex',
++    flexDirection: 'column',
++    borderRight: `1px solid ${separatorColour}`,
++  });
++
++  const amountFieldStyle = mergeStyles({
++    flexBasis: '30%',
++    flexGrow: 1,
++    minWidth: 180,
++    padding: 8,
++    display: 'flex',
++    flexDirection: 'column',
++    borderRight: `1px solid ${separatorColour}`,
++    selectors: {
++      '@media (max-width: 610px)': {
++        borderRight: 'none',
++      },
++    },
++  });
++
++  const expiryFieldStyle = mergeStyles({
++    flexBasis: '30%',
++    flexGrow: 1,
++    minWidth: 180,
++    padding: 8,
++    display: 'flex',
++    flexDirection: 'column',
++    selectors: {
++      '@media (max-width: 610px)': {
++        borderTop: `1px solid ${separatorColour}`,
++      },
++    },
++  });
++
  
- By leveraging these tokens the instruction dashboard maintains a clean and high quality appearance that matches the existing design language.
+   const toggleContainer = mergeStyles({
+     display: 'flex',
+     border: `1px solid ${colours.darkBlue}`,
+     borderRadius: 0,
+   overflow: 'hidden',
+   cursor: 'pointer',
+   width: '100%',
+   marginTop: 8,
+   marginBottom: 8,
+   height: '100%', // allow stretching in parent flex row
+   alignItems: 'stretch', // children stretch vertically
+ });
  
- ## Action Points
+ const toggleHalf = (selected: boolean) =>
+   mergeStyles({
+     padding: '10px 16px',
+     flex: 1,
+     height: '100%',
+     backgroundColor: selected
+       ? colours.darkBlue
+       : isDarkMode
+       ? colours.dark.inputBackground
+       : colours.light.inputBackground,
+     color: selected ? '#fff' : isDarkMode ? colours.dark.text : colours.light.text,
+diff --git a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
+index 6ced1b7a9bbc54002ee62e2bf544ba666e73ecd6..5537a34adb4206a0dcffa7935b31804a7519407a 100644
+--- a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
++++ b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
+@@ -369,183 +417,167 @@ useLayoutEffect(() => {
+ }, [
+   amountBlurred,
+   clientsBlurred,
+   serviceDescription,
+   dealExpiry,
+   amount,
+   isMultiClient,
+   clients,
+   allClientFieldsFilled,
+   isSaved,
+ ]);
  
- Below the details list the card includes an "Action Points" section. This lists
- instruction‑specific tasks such as the electronic ID check status and the most
- recent risk assessment result so solicitors can quickly see what work remains.
- The action list sits beneath a divider at the bottom of the card.
+   const rootStackStyle = mergeStyles(sectionStyle, {
+     height: '100%',
+     transition: 'box-shadow 0.2s ease',
+     borderRadius: 8,
+     selectors: {
+       ':hover': {
+         boxShadow: isDarkMode
+           ? '0 2px 4px rgba(0,0,0,0.3)'
+           : '0 2px 4px rgba(0,0,0,0.1)',
+       },
+     },
+   });
  
- Below the action list the card exposes three actions as tabs positioned along
- the bottom edge. The currently selected tab expands to reveal its label while
- the other two shrink to just their icons. The tabs appear in the order
--**Verify an ID**, **Risk Assessment**, and finally **Open Matter** to guide users
-+**Verify an ID**, **Assess Risk**, and finally **Open Matter** to guide users
- through each step in sequence.
+-  const dealFieldsRow = mergeStyles({
+-    display: 'flex',
+-    flexWrap: 'wrap',
+-    flexDirection: 'row',
+-    columnGap: '8px',
+-    rowGap: '8px',
+-    width: '100%',
+-  });
+-
+   return (
+     <Stack tokens={{ childrenGap: 10 }} className={rootStackStyle}>
+       {error && <Text style={{ color: 'red' }}>{error}</Text>}
+ 
+       {/* Service Description, Amount and Expiry */}
+-      <Stack horizontal wrap className={dealFieldsRow}>
+-        <Stack styles={{ root: { flexBasis: '40%', flexGrow: 1, minWidth: 250 } }}>
+-          <div ref={descRef}>
+-            {!useBespoke ? (
+-              <Stack tokens={{ childrenGap: 6 }}>
+-                <div className={intakeContainer}>
++      <div className={dealFieldsContainer}>
++        <div className={serviceFieldStyle} ref={descRef}>
++          {!useBespoke ? (
++            <Stack tokens={{ childrenGap: 6 }}>
++                <div>
+                   <div className={intakeHeader}>Service Description</div>
+                   <Dropdown
+                     options={SERVICE_OPTIONS}
+                     styles={{
+                       dropdown: [
+                         dropdownStyle,
+                         { border: 'none', borderRadius: 0, width: '100%' },
+                       ],
+                     }}
+                     selectedKey={selectedOption?.key}
+                     onChange={(_, option) => {
+                       if (option?.key === 'Other') {
+                         setUseBespoke(true);
+                         setServiceDescription('');
+                         setSelectedOption(undefined);
+                       } else {
+                         setSelectedOption(option);
+                         setServiceDescription(option?.text || '');
+                       }
+                     }}
+                     required
+                   />
+                 </div>
+                 <span
+                   className={toggleFreehandStyle}
+                   onClick={() => {
+                     setUseBespoke(true);
+                     setServiceDescription('');
+                     setSelectedOption(undefined);
+                   }}
+                 >
+                   Use freehand description
+                 </span>
+               </Stack>
+             ) : (
+               <Stack>
+-                <div className={intakeContainer}>
++                <div>
+                   <div className={intakeHeader}>Freehand Description</div>
+                   <TextField
+                     multiline
+                     required
+                     autoAdjustHeight
+                     value={serviceDescription}
+                     onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
+                     styles={{
+                       fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
+                       prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
+-                    }}
+-                    maxLength={200}
+-                  />
+-                </div>
+-                <Text
+-                  variant="small"
+-                  styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
+-                >
+-                  {serviceDescription.length}/200 characters
+-                </Text>
+-                <span
+-                  onClick={() => setUseBespoke(false)}
+-                  style={{
+-                    color: colours.highlight,
+-                    cursor: 'pointer',
+-                    fontSize: 13,
+-                    marginTop: 6,
+                   }}
+-                >
+-                  ← Back to dropdown options
+-                </span>
+-              </Stack>
++                  maxLength={200}
++                />
++              </div>
++              <Text
++                variant="small"
++                styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
++              >
++                {serviceDescription.length}/200 characters
++              </Text>
++              <span
++                onClick={() => setUseBespoke(false)}
++                style={{
++                  color: colours.highlight,
++                  cursor: 'pointer',
++                  fontSize: 13,
++                  marginTop: 6,
++                }}
++              >
++                ← Back to dropdown options
++              </span>
++            </Stack>
+             )}
+           </div>
+-        </Stack>
+-
+-        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
+-          <div className={intakeContainer}>
+-            <div className={intakeHeader}>Amount (ex. VAT)</div>
+-            <div className={amountContainerStyle}>
+-              <span
+-                className={mergeStyles(prefixStyle, {
+-                  border: 'none',
++        <div className={amountFieldStyle}>
++          <div className={intakeHeader}>Amount (ex. VAT)</div>
++          <div className={amountContainerStyle}>
++            <span
++              className={mergeStyles(prefixStyle, {
++                border: 'none',
+                   background: 'transparent',
+                 })}
+               >
+                 £
+               </span>
+               <TextField
+                 required
+                 type="text"
+                 value={amount}
+                 onChange={handleAmountChange}
+                 onBlur={handleAmountBlur}
+                 styles={{
+                   root: { flexGrow: 1 },
+                   fieldGroup: amountInputStyle(true),
+                 }}
+                 inputMode="decimal"
+               />
+             </div>
+           </div>
+-        </Stack>
+ 
+-        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
+-          <div className={intakeContainer}>
+-            <div className={intakeHeader}>Deal Expiry</div>
+-            <TextField
+-              type="date"
+-              value={dealExpiry}
+-              onChange={(_, v) => setDealExpiry(v || '')}
+-              styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+-            />
+-          </div>
+-        </Stack>
+-      </Stack>
++        <div className={expiryFieldStyle}>
++          <div className={intakeHeader}>Deal Expiry</div>
++          <TextField
++            type="date"
++            value={dealExpiry}
++            onChange={(_, v) => setDealExpiry(v || '')}
++            styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
++          />
++        </div>
++      </div>
+       <div className={paymentInfoWrapper(showPaymentInfo || !!amountError)}>
+         <div className={paymentInfoClass(!!amountError, true)}>
+           {amountError || ''}
+         </div>
+         <div className={paymentInfoClass(showPaymentInfo && !amountError)}>
+           {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
+           {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
+         </div>
+       </div>
+ 
+       <PaymentPreview serviceDescription={serviceDescription} amount={amount} />
+ 
+       <Stack>
+         <div className={toggleContainer} aria-label="Select ID type">
+           <div
+             className={toggleHalf(!isMultiClient)}
+             onClick={() => setIsMultiClient(false)}
+           >
+             <Icon iconName="Contact" styles={{ root: { marginRight: 6 } }} />
+             Individual
+           </div>
+           <div
+             className={toggleHalf(isMultiClient)}
+             onClick={() => setIsMultiClient(true)}
+           >

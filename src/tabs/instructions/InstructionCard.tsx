@@ -247,7 +247,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         else setActiveTab('matter');
     }, [verifyIdStatus, riskAssessed, openMatterReady]);
 
-    const [selectedStatus, setSelectedStatus] = useState<string>('deal');
+    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
     const isPoid = stage === 'poid';
 
@@ -286,7 +286,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             <header
                 className="instruction-header"
                 onClick={() => {
-                    setCollapsed(!collapsed);
+                    const newState = !collapsed;
+                    setCollapsed(newState);
+                    if (newState) setSelectedStatus(null);
                     onToggle?.();
                 }}
             >
@@ -328,7 +330,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div
                             key={i}
                             className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
-                            onClick={() => setSelectedStatus(d.key)}
+                            onClick={() => {
+                                if (selectedStatus === d.key && !collapsed) {
+                                    setSelectedStatus(null);
+                                    setCollapsed(true);
+                                } else {
+                                    setSelectedStatus(d.key);
+                                    setCollapsed(false);
+                                }
+                            }}
                         >
                             <span className="status-label">{d.label}</span>
                             {icon ? (
