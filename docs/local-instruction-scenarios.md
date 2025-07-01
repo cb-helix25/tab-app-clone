@@ -22,7 +22,7 @@ can pick one of the test proofs of identity.
 | **ID review, payment failed** | closed | review | failed | none | pending | Payment failed and ID requires review |
 | **Deal closed, all good** | closed | complete | complete | complete | complete | Everything complete – Open Matter becomes available |
 
-Action buttons reflect these states. "Verify ID" changes to **Review ID** when
+Action buttons reflect these states. "Verify an ID" changes to **Review ID** when
 the EID result is not `Passed`. "Assess Risk" becomes **Risk Assessed** once the
 risk assessment returns a low or approved result. The **Open Matter** button only
 enables when the deal is closed, payment succeeded, documents uploaded, ID has

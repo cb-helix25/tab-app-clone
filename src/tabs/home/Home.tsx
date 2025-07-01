@@ -137,13 +137,24 @@ export interface SnippetEdit {
   currentLabel?: string;
   currentSortOrder?: number;
   currentBlockId?: number;
+  currentCreatedBy?: string;
+  currentCreatedAt?: string;
+  currentUpdatedBy?: string;
+  currentUpdatedAt?: string;
+  currentApprovedBy?: string;
+  currentApprovedAt?: string;
+  currentIsApproved?: boolean;
+  currentVersion?: number;
   proposedText: string;
   proposedLabel?: string;
   proposedSortOrder?: number;
   proposedBlockId?: number;
   isNew?: boolean;
   submittedBy: string;
+  submittedAt?: string;
   reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   status?: string;
 }
 

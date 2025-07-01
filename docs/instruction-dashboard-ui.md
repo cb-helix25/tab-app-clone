@@ -7,7 +7,7 @@ This document outlines the new placeholders added to the instruction dashboard. 
 A sticky action bar now appears at the top of the Overview. It contains buttons for:
 
 - **New Matter** – open a matter against the selected instruction.
-- **EID Check** – placeholder for launching an electronic ID verification.
+- **Verify an ID** – placeholder for launching an electronic ID verification.
 - **Risk Assessment** – placeholder for performing a matter risk review.
 - **Draft CCL** – placeholder for generating a client care letter.
 
@@ -28,7 +28,7 @@ Each item shows a check mark when complete, a cross on failure and a clock while
 
 Three action tabs now sit along the bottom edge of each card. Only the
 selected tab expands to show its label while the others collapse down to
-icons. They appear in the order **EID Check**, **Risk Assessment** and
+icons. They appear in the order **Verify an ID**, **Risk Assessment** and
 finally **Open Matter** so a user is guided through each step in turn.
 
 The **Open Matter** button only becomes active once the Deal is closed and the

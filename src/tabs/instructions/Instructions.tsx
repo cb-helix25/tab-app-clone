@@ -215,7 +215,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   style={{ "--card-index": 0 } as React.CSSProperties}
                 />
                 <QuickActionsCard
-                  title="EID Check"
+                  title="Verify an ID"
                   icon="IdCheck"
                   isDarkMode={isDarkMode}
                   onClick={() => {

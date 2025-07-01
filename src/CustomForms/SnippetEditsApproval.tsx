@@ -16,13 +16,25 @@ export interface SnippetEdit {
     currentLabel?: string;
     currentSortOrder?: number;
     currentBlockId?: number;
+    currentCreatedBy?: string;
+    currentCreatedAt?: string;
+    currentUpdatedBy?: string;
+    currentUpdatedAt?: string;
+    currentApprovedBy?: string;
+    currentApprovedAt?: string;
+    currentIsApproved?: boolean;
+    currentVersion?: number;
     proposedText: string;
     proposedLabel?: string;
     proposedSortOrder?: number;
     proposedBlockId?: number;
     isNew?: boolean;
     submittedBy: string;
+    submittedAt?: string;
     reviewNotes?: string;
+    reviewedBy?: string;
+    reviewedAt?: string;
+    status?: string;
 }
 
 interface SnippetEditsApprovalProps {
@@ -88,6 +100,30 @@ const SnippetEditsApproval: React.FC<SnippetEditsApprovalProps> = ({
                         {edit.currentBlockId && (
                             <Text variant="small">Current block: {currentBlockTitle}</Text>
                         )}
+                        {edit.currentCreatedBy && (
+                            <Text variant="small">Created by {edit.currentCreatedBy}</Text>
+                        )}
+                        {edit.currentCreatedAt && (
+                            <Text variant="small">Created at {new Date(edit.currentCreatedAt).toLocaleString()}</Text>
+                        )}
+                        {edit.currentUpdatedBy && (
+                            <Text variant="small">Updated by {edit.currentUpdatedBy}</Text>
+                        )}
+                        {edit.currentUpdatedAt && (
+                            <Text variant="small">Updated at {new Date(edit.currentUpdatedAt).toLocaleString()}</Text>
+                        )}
+                        {edit.currentApprovedBy && (
+                            <Text variant="small">Approved by {edit.currentApprovedBy}</Text>
+                        )}
+                        {edit.currentApprovedAt && (
+                            <Text variant="small">Approved at {new Date(edit.currentApprovedAt).toLocaleString()}</Text>
+                        )}
+                        {typeof edit.currentVersion === 'number' && (
+                            <Text variant="small">Version: {edit.currentVersion}</Text>
+                        )}
+                        {edit.currentIsApproved !== undefined && (
+                            <Text variant="small">Is approved: {edit.currentIsApproved ? 'Yes' : 'No'}</Text>
+                        )}
                         <Text>Current text:</Text>
                         <Text variant="small">{edit.currentText}</Text>
                         <Text variant="medium">Proposed changes</Text>
@@ -101,9 +137,19 @@ const SnippetEditsApproval: React.FC<SnippetEditsApprovalProps> = ({
                         )}
                         {edit.isNew && <Text variant="small">New snippet</Text>}
                         <Text variant="small">Submitted by {edit.submittedBy}</Text>
+                        {edit.submittedAt && (
+                            <Text variant="small">Submitted at {new Date(edit.submittedAt).toLocaleString()}</Text>
+                        )}
                         {edit.reviewNotes && (
                             <Text variant="small">Notes: {edit.reviewNotes}</Text>
                         )}
+                        {edit.reviewedBy && (
+                            <Text variant="small">Reviewed by {edit.reviewedBy}</Text>
+                        )}
+                        {edit.reviewedAt && (
+                            <Text variant="small">Reviewed at {new Date(edit.reviewedAt).toLocaleString()}</Text>
+                        )}
+                        {edit.status && <Text variant="small">Status: {edit.status}</Text>}
                         <Stack horizontal tokens={{ childrenGap: 8 }}>
                             <DefaultButton
                                 text="Approve"

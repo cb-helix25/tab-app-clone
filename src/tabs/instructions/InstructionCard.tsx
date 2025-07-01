@@ -227,7 +227,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         ? 'ID Verified'
         : verifyIdStatus === 'review'
             ? 'Review ID'
-            : 'Verify ID';
+            : 'Verify an ID';
     const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
         ? 'ready'
         : verifyIdStatus;
@@ -427,7 +427,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     )}
                     {selectedStatus === 'eid' && (
                         <div className="detail-group open">
-                            <div className="detail-summary">EID Check</div>
+                            <div className="detail-summary">Verify an ID</div>
                             <ul className="detail-list">
                                 {eid && Object.entries(eid).map(([k,v]) => (
                                     <li key={k}><strong>{k}:</strong> {String(v)}</li>

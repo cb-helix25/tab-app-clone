@@ -1,351 +1,57 @@
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index d10e368766d02952e3c47ad8dfc4eae9b329bb7c..17982bb58f8a36abae86e618d738c437414c723c 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -347,78 +347,78 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
-       padding: 2px 4px;
-       border-radius: 6px;
-       border: 1px dashed ${colours.darkBlue};
-       font-style: italic;
-       cursor: pointer;
-       transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
-     }
-     .insert-placeholder:hover,
-     .insert-placeholder:focus {
-       background: ${colours.blue};
-       color: #ffffff;
-       box-shadow: 0 0 0 2px ${colours.blue}80;
-       transform: scale(1.05);
-       outline: none;
-     }
-     .sentence-delete {
-       margin-right: 6px;
-       cursor: pointer;
-       user-select: none;
-       color: ${colours.red};
-       display: inline-flex;
-       align-items: center;
-       justify-content: center;
-       border: 1px solid ${colours.greyText};
-       background: ${colours.grey};
--      padding: 2px 4px;
--      border-radius: 0;
-+      padding: 2px;
-+      border-radius: 4px;
-       font-size: 18px;
--      width: 24px;
--      height: 24px;
-+      width: 28px;
-+      height: 28px;
-     }
-     .sentence-delete:hover {
-       background: ${colours.highlightBlue};
-     }
-     .sentence-delete:active {
-       background: ${colours.blue};
-       color: #ffffff;
-     }
-     .sentence-handle {
-       cursor: grab;
-       margin-right: 6px;
-       user-select: none;
-       color: ${colours.greyText};
--      padding: 2px 4px;
-+      padding: 2px;
-       border: 1px solid ${colours.greyText};
-       display: inline-flex;
-       align-items: center;
-       justify-content: center;
-       font-size: 18px;
-       background: ${colours.grey};
--      border-radius: 0;
--      width: 24px;
--      height: 24px;
-+      border-radius: 4px;
-+      width: 28px;
-+      height: 28px;
-     }
-     .sentence-handle:hover {
-       background: ${colours.highlightBlue};
-     }
-     .sentence-handle:active {
-       cursor: grabbing;
-       background: ${colours.blue};
-       color: #ffffff;
-     }
-     .sentence-handle i,
-     .sentence-delete i {
-       pointer-events: none;
-     }
-     .drag-over {
-       outline: 2px dashed ${colours.blue};
-       background: ${colours.highlightBlue};
-       border-radius: 0;
-     }
-     @keyframes fadeInScale {
-       from { opacity: 0; transform: scale(0.95); }
-       to { opacity: 1; transform: scale(1); }
-     }
-     @keyframes fadeInBlockLabel {
-       from { opacity: 0; }
-       to { opacity: 1; }
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index d10e368766d02952e3c47ad8dfc4eae9b329bb7c..17982bb58f8a36abae86e618d738c437414c723c 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -654,51 +654,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-     const spans = bodyEditorRef.current?.querySelectorAll(
-       `span[data-inserted="${blockTitle}"]`
-     ) as NodeListOf<HTMLElement> | null;
-     if (!spans) return;
- 
-     const currentlyPinned = !!pinnedBlocks[blockTitle];
-     const newPinned = !currentlyPinned;
- 
-     spans.forEach(span => {
-       const container = span as HTMLElement;
-       const sidebar = span.querySelector('.block-sidebar') as HTMLElement | null;
-       if (!sidebar) return;
- 
-       if (newPinned) {
-         sidebar.classList.add('pinned');
-         container.classList.add('pinned');
-       } else {
-         sidebar.classList.remove('pinned');
-         container.classList.remove('pinned');
-       }
- 
-       const icon = sidebar.querySelector('.pin-toggle i') as HTMLElement | null;
-       const pinBtn = sidebar.querySelector('.pin-toggle') as HTMLElement | null;
-       const handleIcon = sidebar.querySelector('.sidebar-handle i') as HTMLElement | null;
-       if (icon) {
--        icon.className = `ms-Icon ms-Icon--${newPinned ? 'Pinned' : 'Pin'}`;
-+        icon.className = 'ms-Icon ms-Icon--Pin';
-       }
-       if (handleIcon) {
-         handleIcon.className = `ms-Icon ms-Icon--${newPinned ? 'ChevronRight' : 'ChevronLeft'}`;
-       }
-       if (pinBtn) {
-         if (newPinned) pinBtn.classList.add('pinned');
-         else pinBtn.classList.remove('pinned');
-       }
-     });
- 
-     setPinnedBlocks(prev => {
-       const updated = { ...prev, [blockTitle]: newPinned };
-       if (!newPinned) delete updated[blockTitle];
-       return updated;
-     });
- 
-     if (bodyEditorRef.current) {
-       setBody(bodyEditorRef.current.innerHTML);
-     }
-   }
- 
-   function openSnippetOptions(
-     e: MouseEvent,
-     blockTitle: string,
-     snippetLabel: string
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index d10e368766d02952e3c47ad8dfc4eae9b329bb7c..17982bb58f8a36abae86e618d738c437414c723c 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1406,138 +1406,138 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-           text = optObj.previewText.trim().replace(/\n/g, '<br />');
-         }
-         if (text === null) return;
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = opt.replace(/'/g, "&#39;");
-         // grab the ID if there is one
-         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(s => {
-             const trimmed = s.trim();
-             return `<span data-sentence contenteditable="true">
-             <span class="sentence-handle" draggable="true" contenteditable="false">
--              <i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i>
-+              <i class="ms-Icon ms-Icon--GripperBarVertical" aria-hidden="true"></i>
-             </span>
-             <span class="sentence-delete" contenteditable="false">
-               <i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i>
-             </span>
-             ${trimmed}
-           </span>`;
-           })
-           .join(' ');
-         // inject it into your wrapper DIV
-         const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
-         
-         snippetHtml.push(html);
-         snippetMap[opt] = html;
-       });
-     } else if (typeof selectedOption === 'string') {
- 
-       let text: string | null = null;
-       let optObj: TemplateOption | undefined;
-       if (selectedOption === '__saved') {
-         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-       } else {
-         optObj = block.options.find((o) => o.label === selectedOption);
-         if (optObj) {
-           text = optObj.previewText.trim().replace(/\n/g, '<br />');
-         }
-       }
-       if (text !== null) {
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = selectedOption.replace(/'/g, "&#39;");
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(
-             (s) =>
--              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-+              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperBarVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-           )
-           .join(' ');
-         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-         const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
-         snippetHtml.push(html);
-         snippetMap[selectedOption] = html;
-       }
- 
-     }
- 
-     const replacementText = snippetHtml.join('');
-     let selectedLabel = '';
-     if (block.isMultiSelect && isStringArray(selectedOption)) {
-       selectedLabel = selectedOption.join(', ');
-     } else if (typeof selectedOption === 'string') {
-       selectedLabel = selectedOption;
-     }
-     const containerTag = 'span';
-     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
-     const innerHTML = cleanTemplateString(replacementText);
-     const styledInnerHTML = innerHTML.replace(
-       /<p>/g,
-       `<p style="margin: 0;">`
-     );
-     const optionsHtml = block.options
-       .map(o => {
-         const isSel = block.isMultiSelect && Array.isArray(selectedOption)
-           ? (selectedOption as string[]).includes(o.label)
-           : selectedOption === o.label;
-         return `<div class="option-choice${isSel ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="${o.label}">${o.label}</div>`;
-       })
-       .join('');
-     const savedSnippet = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-     const savedChoice = savedSnippet
-       ? `<div class="option-choice${selectedOption === '__saved' ? ' selected' : ''}" data-block-title="${block.title}" data-option-label="__saved">Saved Snippet</div>`
-       : '';
-     const optionsHtmlCombined = optionsHtml + savedChoice;
-     const labelText = `${block.title} (${getTemplateSetLabel(templateSet)}: ${selectedLabel})`;
-     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
-     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
--    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
-+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedClass}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--Pin"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
-     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
- 
- 
-     // Simplified hover handlers to directly call highlightBlock
-     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
- 
-     setBody((prevBody) => {
-       const existingBlockRegex = new RegExp(
-         `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
-         'g'
-       );
-       if (existingBlockRegex.test(prevBody)) {
-         if (append) {
-           return prevBody.replace(existingBlockRegex, (match) =>
-             match.replace(
-               `<!--END_BLOCK:${block.title}-->`,
-               `${highlightedReplacement}<!--END_BLOCK:${block.title}-->`
-             )
-           );
-         }
-         return prevBody.replace(existingBlockRegex, wrappedHTML);
-       }
-       const tempDiv = document.createElement('div');
-       tempDiv.innerHTML = prevBody;
-       const target = tempDiv.querySelector(
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index d10e368766d02952e3c47ad8dfc4eae9b329bb7c..17982bb58f8a36abae86e618d738c437414c723c 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1764,51 +1764,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-     const main = span.querySelector('.block-main') as HTMLElement | null;
-     if (!main) return;
- 
-     const option = block.options.find((o) => o.label === optionLabel);
-     if (!option) return;
- 
-     let text = option.previewText.trim().replace(/\n/g, '<br />');
-     text = applyDynamicSubstitutions(
-       text,
-       userData,
-       enquiry,
-       amount,
-       dealPasscode,
-       dealPasscode
-         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-         : undefined
-     );
-     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-     text = wrapInsertPlaceholders(text);
-     const escLabel = optionLabel.replace(/'/g, "&#39;");
-     const sentences = text
-       .split(/(?<=[.!?])\s+/)
-       .filter((s) => s.trim().length > 0)
-       .map(
-         (s) =>
--          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-+          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperBarVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-       )
-       .join(' ');
-     const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
- 
-     main.insertAdjacentHTML('beforeend', snippetHtml);
- 
-     setOriginalSnippetContent((prev) => ({
-       ...prev,
-       [block.title]: {
-         ...(prev[block.title] || {}),
-         [optionLabel]: snippetHtml,
-       },
-     }));
-     setEditedSnippets((prev) => ({
-       ...prev,
-       [block.title]: { ...(prev[block.title] || {}), [optionLabel]: false },
-     }));
- 
-     const optionDiv = span.querySelector('div.option-choices');
-     if (optionDiv) {
-       const currentSelected = block.isMultiSelect
-         ? (selectedTemplateOptions[block.title] as string[])
-         : selectedTemplateOptions[block.title];
-       const newSelected = block.isMultiSelect
-         ? [
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index df7376df17b67883022fc7c36d955f28b7210bc6..0e0fc5842cccf4b3756c005db0ebbc984f0c2bfd 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -193,51 +193,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+                   key={opt.label}
+                   title={opt.label}
+                   icon={opt.icon}
+                   isDarkMode={isDarkMode}
+                   onClick={() => setNewMatterClientType(opt.label)}
+                   selected={newMatterClientType === opt.label}
+                   style={{ "--card-index": idx } as React.CSSProperties}
+                 />
+               ))}
+           </div>
+         ) : (
+           <>
+             <div className={quickLinksStyle(isDarkMode)}>
+               <QuickActionsCard
+                 title="New Matter"
+                 icon="Calendar"
+                 isDarkMode={isDarkMode}
+                 onClick={() => {
+                   setSelectedInstruction(null);
+                     setNewMatterClientType("Individual");
+                     setShowNewMatterPage(true);
+                   }}
+                   style={{ "--card-index": 0 } as React.CSSProperties}
+                 />
+                 <QuickActionsCard
+-                  title="EID Check"
++                  title="Verify an ID"
+                   icon="IdCheck"
+                   isDarkMode={isDarkMode}
+                   onClick={() => {
+                     setSelectedInstruction(null);
+                     setShowEIDPage(true);
+                   }}
+                   style={{ "--card-index": 1 } as React.CSSProperties}
+                 />
+                 <QuickActionsCard
+                   title="Risk Assessment"
+                   icon="Assessment"
+                   isDarkMode={isDarkMode}
+                   onClick={() => { }}
+                   style={{ "--card-index": 2 } as React.CSSProperties}
+                 />
+                 <QuickActionsCard
+                   title="Draft CCL"
+                   icon="OpenFile"
+                   isDarkMode={isDarkMode}
+                   onClick={() => setShowRiskPage(true)}
+                   style={{ "--card-index": 3 } as React.CSSProperties}
+                 />
+               </div>
+               <div className={pivotBarStyle(isDarkMode)}>
+                 <Pivot

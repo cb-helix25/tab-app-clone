@@ -1,22 +1,24 @@
 /* Styles adapted from the reference checkout process */
 .ms-Stack.workflow-container {
     width: 100%;
-    /* Tighter outer padding to reclaim vertical space */
-        padding: 10px;
-        background: var(--helix-grey);
-        min-height: 100vh;
-        box-sizing: border-box;
-        border-radius: 0 !important;
-    }
+    padding: 10px;
+    background: var(--helix-grey);
+    min-height: 100vh;
+    box-sizing: border-box;
+    border-radius: 0 !important;
+    display: flex;
+    justify-content: center;
+}
     
-        .workflow-main {
-            width: 100%;
-            margin: 0 0 1.5rem 0;
-            box-sizing: border-box;
-            background: #fff;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            padding: 1rem;
-        }
+    .workflow-main {
+        width: 100%;
+        max-width: 960px;
+        margin: 0 auto 1.5rem;
+        box-sizing: border-box;
+        background: #fff;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        padding: 1rem;
+    }
     
     .step-section {
         margin-bottom: 4px;
@@ -26,8 +28,7 @@
         display: flex;
         justify-content: flex-start;
         align-items: center;
-        /* Slightly tighter padding for headers */
-        padding: 6px 10px;
+        padding: 4px 8px;
         background-color: var(--helix-grey);
         color: var(--helix-dark-blue);
         border: 1px solid transparent;
@@ -39,8 +40,8 @@
     }
     
     .step-number {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -49,19 +50,19 @@
     color: var(--helix-dark-blue);
 }
 
-.step-header .step-title {
-    flex-grow: 1;
-    font-size: 18px;
-    font-weight: 600;
-    color: inherit;
-    display: flex;
-    align-items: center;
-    margin: 0;
-}
+    .step-header .step-title {
+        flex-grow: 1;
+        font-size: 16px;
+        font-weight: 600;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
 
 .step-header .toggle-icon {
     margin-left: 8px;
-    font-size: 18px;
+    font-size: 16px;
     color: inherit;
 }
 
@@ -144,19 +145,19 @@
     background: #fff;
 }
 
-.step-content {
-    padding: 6px;
-        border: 2px solid rgba(211, 211, 211, 0.5);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.09);
-        border-radius: 4px;
+    .step-content {
+        padding: 0.75rem;
+        border: 1px solid #e3e8ef;
+        box-shadow: none;
+        border-radius: 0 0 4px 4px;
         background: #fff;
     }
 
 .form-separator {
     border: none;
     border-top: 1px solid #e3e8ef;
-    margin: 1rem 0;
-    width: 100%;  
+    margin: 0.75rem 0;
+    width: 100%;
 }
 
 /* Override tag-button styling for funds question */
