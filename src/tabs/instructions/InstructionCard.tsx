@@ -153,7 +153,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
     const formatValue = (key: string, value: any) => {
-        if (value === null || value === undefined) return null;
+        if (value === null || value === undefined) return '';
         const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
         if (dateKeys.includes(key) && typeof value === 'string') {
             try {
@@ -357,11 +357,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                             {deals && deals.length > 1 && (
                                                 <li><em>Deal {idx + 1}</em></li>
                                             )}
-                                            {Object.entries(d).map(([k, v]) =>
-                                                v != null ? (
-                                                    <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
-                                                ) : null
-                                            )}
+                                            {Object.entries(d).map(([k, v]) => (
+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                            ))}
                                         </React.Fragment>
                                     ))}
                             </ul>
@@ -372,11 +370,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <div className="detail-summary">ID Details</div>
                             <ul className="detail-list">
                                 {Object.entries(instruction)
-                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v))
+                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v) || v === null)
                                     .map(([k, v]) => (
-                                        v != null ? (
-                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                        ) : null
+                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                     ))}
                                 {(eids && eids.length > 0
                                     ? eids
@@ -388,11 +384,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                         {eids && eids.length > 1 && (
                                             <li><em>ID Verification {idx + 1}</em></li>
                                         )}
-                                        {Object.entries(e).map(([k, v]) => (
-                                            v != null ? (
-                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
-                                            ) : null
-                                        ))}
+                                         {Object.entries(e).map(([k, v]) => (
+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                         ))}
                                     </React.Fragment>
                                 ))}
                             </ul>
@@ -406,11 +400,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                     .filter(([k]) =>
                                         k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
                                     )
-                                    .map(([k, v]) =>
-                                        v != null ? (
-                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                        ) : null
-                                    )}
+                                    .map(([k, v]) => (
+                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                    ))}
                             </ul>
                         </div>
                     )}
@@ -425,12 +417,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                             <li><em>Document {idx + 1}</em></li>
                                         )}
                                         {Object.entries(d).map(([k, v]) => (
-                                            v != null ? (
-                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
-                                            ) : null
+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
                                         ))}
                                     </React.Fragment>
                                 ))}
+                                {clients && clients.length > 0 && (
+                                    <React.Fragment>
+                                        <li><em>Joint Clients</em></li>
+                                        {clients.map((c, cidx) => (
+                                            <React.Fragment key={`c-${cidx}`}>
+                                                {Object.entries(c).map(([k, v]) => (
+                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </React.Fragment>
+                                )}
                             </ul>
                         </div>
                     )}
@@ -438,9 +440,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">Verify an ID</div>
                             <ul className="detail-list">
-                                {eid && Object.entries(eid).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                ))}
+                                 {eid && Object.entries(eid).map(([k,v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                 ))}
                             </ul>
                         </div>
                     )}
@@ -448,11 +450,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">Risk Assessment</div>
                             <ul className="detail-list">
-                                {risk && Object.entries(risk).map(([k, v]) => (
-                                    v != null ? (
-                                        <li key={k}><strong>{k}:</strong> {String(v)}</li>
-                                    ) : null
-                                ))}
+                                 {risk && Object.entries(risk).map(([k, v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                 ))}
                             </ul>
                         </div>
                     )}
@@ -460,8 +460,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         <div className="detail-group open">
                             <div className="detail-summary">Compliance</div>
                             <ul className="detail-list">
-                                {compliance && Object.entries(compliance).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
+                                 {compliance && Object.entries(compliance).map(([k,v]) => (
+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
                                 ))}
                             </ul>
                         </div>

@@ -19,7 +19,17 @@
         "LeadClientId": 1,
         "LeadClientEmail": "test@example.com",
         "CloseDate": null,
-        "CloseTime": null
+        "CloseTime": null,
+        "jointClients": [
+          {
+            "DealJointClientId": 10,
+            "DealId": 5,
+            "ClientEmail": "joint1@example.com",
+            "HasSubmitted": false,
+            "SubmissionDateTime": null
+          }
+        ],
+        "documents": []
       }
     ],
     "jointClients": [],
@@ -101,7 +111,36 @@
         "LeadClientId": 2,
         "LeadClientEmail": "test@example.com",
         "CloseDate": null,
-        "CloseTime": null
+        "CloseTime": null,
+        "jointClients": [
+          {
+            "DealJointClientId": 30,
+            "DealId": 6,
+            "ClientEmail": "001@helix-law.com",
+            "HasSubmitted": false,
+            "SubmissionDateTime": null
+          },
+          {
+            "DealJointClientId": 31,
+            "DealId": 6,
+            "ClientEmail": "002@helix-law.com",
+            "HasSubmitted": false,
+            "SubmissionDateTime": null
+          }
+        ],
+        "documents": [
+          {
+            "DocumentId": 5,
+            "InstructionRef": "HLX-2-START",
+            "DocumentType": null,
+            "FileName": "payslip.pdf",
+            "BlobUrl": "https://example.com/doc5.pdf",
+            "FileSizeBytes": null,
+            "UploadedBy": null,
+            "UploadedAt": "2025-01-03T09:00:00",
+            "Notes": null
+          }
+        ]
       }
     ],
     "jointClients": [
@@ -222,7 +261,9 @@
         "LeadClientId": 3,
         "LeadClientEmail": "test@example.com",
         "CloseDate": "2025-02-01",
-        "CloseTime": "10:00:00"
+        "CloseTime": "10:00:00",
+        "jointClients": [],
+        "documents": []
       }
     ],
     "jointClients": [],
@@ -376,7 +417,9 @@
         "LeadClientId": 4,
         "LeadClientEmail": "test@example.com",
         "CloseDate": "2025-02-01",
-        "CloseTime": "10:00:00"
+        "CloseTime": "10:00:00",
+        "jointClients": [],
+        "documents": []
       }
     ],
     "jointClients": [],
@@ -488,7 +531,9 @@
         "LeadClientId": 5,
         "LeadClientEmail": "test@example.com",
         "CloseDate": "2025-02-01",
-        "CloseTime": "10:00:00"
+        "CloseTime": "10:00:00",
+        "jointClients": [],
+        "documents": []
       }
     ],
     "jointClients": [],
@@ -600,7 +645,21 @@
         "LeadClientId": 6,
         "LeadClientEmail": "test@example.com",
         "CloseDate": "2025-02-01",
-        "CloseTime": "10:00:00"
+        "CloseTime": "10:00:00",
+        "jointClients": [],
+        "documents": [
+          {
+            "DocumentId": 6,
+            "InstructionRef": "HLX-6-ALLGOOD",
+            "DocumentType": null,
+            "FileName": "poid.pdf",
+            "BlobUrl": "https://example.com/doc6.pdf",
+            "FileSizeBytes": null,
+            "UploadedBy": null,
+            "UploadedAt": "2025-01-02T12:00:00",
+            "Notes": null
+          }
+        ]
       }
     ],
     "jointClients": [],

@@ -341,16 +341,17 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
       color: #ffffff;
     }
-    .insert-placeholder {
-      background: ${colours.highlightBlue};
-      color: ${colours.darkBlue};
-      padding: 2px 4px;
-      border-radius: 6px;
-      border: 1px dashed ${colours.darkBlue};
-      font-style: italic;
-      cursor: pointer;
-      transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
-    }
+  .insert-placeholder {
+    background: ${colours.highlightBlue};
+    color: ${colours.darkBlue};
+    padding: 2px 4px;
+    border-radius: 6px;
+    border: 1px dashed ${colours.darkBlue};
+    font-style: italic;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    display: inline; /* ✅ Add this line */
+  }
     .insert-placeholder:hover,
     .insert-placeholder:focus {
       background: ${colours.blue};
