@@ -328,6 +328,10 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-sidebar .pin-toggle.pinned i {
       transform: rotate(45deg);
     }
+    .block-sidebar .overlay-toggle.active {
+      background: ${colours.blue};
+      color: #ffffff;
+    }
     .block-sidebar .option-choices {
       display: flex;
       flex-direction: column;
@@ -384,17 +388,19 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: ${colours.grey};
-      border-radius: 4px;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(4px);
       font-size: 12px;
       width: 20px;
       height: 20px;
     }
     .sentence-delete:hover {
-      background: ${colours.highlightBlue};
+      background: rgba(255, 255, 255, 0.35);
     }
     .sentence-delete:active {
-      background: ${colours.blue};
+      background: rgba(255, 255, 255, 0.45);
       color: #ffffff;
     }
     .sentence-handle {
@@ -405,18 +411,20 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: ${colours.grey};
-      border-radius: 4px;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(4px);
       font-size: 12px;
       width: 20px;
       height: 20px;
     }
     .sentence-handle:hover {
-      background: ${colours.highlightBlue};
+      background: rgba(255, 255, 255, 0.35);
     }
     .sentence-handle:active {
       cursor: grabbing;
-      background: ${colours.blue};
+      background: rgba(255, 255, 255, 0.45);
       color: #ffffff;
     }
     .sentence-handle i,
@@ -712,17 +720,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   function toggleSidebarOverlayMode() {
-    setOverlaySidebars(prev => {
+    setOverlaySidebars((prev) => {
       const newVal = !prev;
       if (newVal) document.body.classList.add('sidebar-overlay');
       else document.body.classList.remove('sidebar-overlay');
       localStorage.setItem('sidebarOverlay', newVal ? 'true' : 'false');
       const sidebars = bodyEditorRef.current?.querySelectorAll('.block-sidebar') as NodeListOf<HTMLElement> | null;
       if (sidebars) {
-        sidebars.forEach(sb => {
-          const icon = sb.querySelector('.overlay-toggle i') as HTMLElement | null;
+        sidebars.forEach((sb) => {
+          const toggle = sb.querySelector('.overlay-toggle') as HTMLElement | null;
+          const icon = toggle?.querySelector('i') as HTMLElement | null;
           if (icon) {
             icon.className = `ms-Icon ms-Icon--${newVal ? 'DockRight' : 'DockLeft'}`;
+          }
+          if (toggle) {
+            if (newVal) toggle.classList.add('active');
+            else toggle.classList.remove('active');
           }
         });
       }
@@ -1012,10 +1025,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
     const sidebars = bodyEditorRef.current?.querySelectorAll('.block-sidebar') as NodeListOf<HTMLElement> | null;
     if (sidebars) {
-      sidebars.forEach(sb => {
-        const icon = sb.querySelector('.overlay-toggle i') as HTMLElement | null;
+      sidebars.forEach((sb) => {
+        const toggle = sb.querySelector('.overlay-toggle') as HTMLElement | null;
+        const icon = toggle?.querySelector('i') as HTMLElement | null;
         if (icon) {
           icon.className = `ms-Icon ms-Icon--${overlaySidebars ? 'DockRight' : 'DockLeft'}`;
+        }
+        if (toggle) {
+          if (overlaySidebars) toggle.classList.add('active');
+          else toggle.classList.remove('active');
         }
       });
     }
@@ -1589,7 +1607,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
     const overlayIcon = overlaySidebars ? 'DockRight' : 'DockLeft';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'ChevronRight' : 'ChevronLeft'}"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedBlocks[block.title] ? ' pinned' : ''}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn overlay-toggle" onclick="window.toggleSidebarOverlayMode()"><i class="ms-Icon ms-Icon--${overlayIcon}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
+    const overlayActive = overlaySidebars ? ' active' : '';
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'ChevronRight' : 'ChevronLeft'}"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedBlocks[block.title] ? ' pinned' : ''}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn overlay-toggle${overlayActive}" onclick="window.toggleSidebarOverlayMode()"><i class="ms-Icon ms-Icon--${overlayIcon}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 

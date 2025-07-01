@@ -242,7 +242,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   style={{ "--card-index": 1 } as React.CSSProperties}
                 />
                 <QuickActionsCard
-                  title="Risk Assessment"
+                  title="Assess Risk"
                   icon="Assessment"
                   isDarkMode={isDarkMode}
                   onClick={() => {
@@ -694,6 +694,12 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowEIDPage(true);
   };
 
+  const handleDraftCCL = (inst: any) => {
+    setSelectedInstruction(inst);
+    setPendingInstructionRef('');
+    setShowDraftCCLPage(true);
+  };
+
   const handleOpenInstruction = (ref: string) => {
     setActivePivot("overview");
   };
@@ -719,9 +725,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   });
 
   const overviewColumnStyle = mergeStyles({
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "24px",
+    columnCount: 2,
+    columnGap: "24px",
     maxWidth: "1200px",
     width: "100%",
     margin: "0 auto",
@@ -916,6 +921,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                       handleRiskAssessment(item)
                     }
                     onEIDCheck={() => handleEIDCheck(item.instruction)}
+                    onDraftCCL={() => handleDraftCCL(item.instruction)}
                   />
 
                 );

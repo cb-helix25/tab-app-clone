@@ -91,6 +91,7 @@ interface InstructionCardProps {
     onOpenMatter?: () => void;
     onRiskAssessment?: (item?: any) => void;
     onEIDCheck?: () => void;
+    onDraftCCL?: () => void;
     innerRef?: React.Ref<HTMLDivElement>;
     expanded?: boolean;
     onToggle?: () => void;
@@ -100,6 +101,7 @@ const iconMap = {
     eid: { outline: FaRegIdBadge, filled: FaIdBadge },
     risk: { outline: MdOutlineAssessment, filled: MdAssessment },
     matter: { outline: FaRegFileAlt, filled: FaFileAlt },
+    ccl: { outline: FaRegFileAlt, filled: FaFileAlt },
 };
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
@@ -118,6 +120,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     onOpenMatter,
     onRiskAssessment,
     onEIDCheck,
+    onDraftCCL,
     innerRef,
     expanded = false,
     onToggle,
@@ -232,7 +235,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         ? 'ready'
         : verifyIdStatus;
 
-    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter'>(() => {
+    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl'>(() => {
         if (verifyIdStatus !== 'complete') return 'eid';
         if (!riskAssessed || !openMatterReady) return 'risk';
         return 'matter';
@@ -448,7 +451,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     )}
                     {selectedStatus === 'risk' && (
                         <div className="detail-group open">
-                            <div className="detail-summary">Risk Assessment</div>
+                            <div className="detail-summary">Assess Risk</div>
                             <ul className="detail-list">
                                  {risk && Object.entries(risk).map(([k, v]) => (
                                     <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
@@ -492,6 +495,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             icon: iconMap.matter,
                             onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
                             status: openMatterReady ? 'ready' : 'pending',
+                        },
+                        {
+                            key: 'ccl',
+                            label: 'Draft CCL',
+                            icon: iconMap.ccl,
+                            onClick: () => { setActiveTab('ccl'); onDraftCCL?.(); },
+                            status: 'ready',
                         },
                     ].map((tab) => (
                         <button
