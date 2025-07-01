@@ -145,7 +145,8 @@
     
         .detail-group.open .detail-list,
         .detail-group.open .action-list {
-        max-height: 500px;
+        max-height: none;
+        overflow: visible;
         opacity: 1;
         transform: scaleY(1);
 }

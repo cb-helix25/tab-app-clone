@@ -1,231 +1,177 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 4b65516066e92d49a7b3142f51b12d6ede0e73f9..734d3115a4aa754aa0e9f0d032600ac32ab9c736 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -295,186 +295,198 @@ const Instructions: React.FC<InstructionsProps> = ({
-     backgroundColor: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-     boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-     marginRight: 8,
-   });
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 26bbb807c9d69b55a41441d07b1f33aa4925510a..08cc896196c14ac160be5a6326856e169b9ce4b3 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -336,154 +336,154 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                         </div>
+                     );
+                 })}
+             </div>
  
-   const sectionContainerStyle = (dark: boolean) =>
-     mergeStyles({
-       backgroundColor: dark
-         ? colours.dark.sectionBackground
-         : colours.light.sectionBackground,
-       padding: "16px",
-       borderRadius: 0,
-       boxShadow: dark
-         ? `0 4px 12px ${colours.dark.border}`
-         : `0 4px 12px ${colours.light.border}`,
-       width: "100%",
-     });
+             <div className="card-content">
+                 <div className="instruction-details">
+                     {selectedStatus === 'deal' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Deal Info</div>
+                             <ul className="detail-list">
+                                 {prospectId != null && (
+                                     <li><strong>Prospect ID:</strong> {prospectId}</li>
+                                 )}
+                                 {(deals && deals.length > 0
+                                     ? deals
+                                     : deal
+                                         ? [deal]
+                                         : [])
+                                     .map((d, idx) => (
+                                         <React.Fragment key={idx}>
+                                             {deals && deals.length > 1 && (
+                                                 <li><em>Deal {idx + 1}</em></li>
+                                             )}
+                                             {Object.entries(d).map(([k, v]) => (
+-                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                             ))}
+                                         </React.Fragment>
+                                     ))}
++                                {clients && clients.length > 0 && (
++                                    <React.Fragment>
++                                        <li><em>Joint Clients</em></li>
++                                        {clients.map((c, cidx) => (
++                                            <React.Fragment key={`c-${cidx}`}>
++                                                {Object.entries(c).map(([k, v]) => (
++                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
++                                                ))}
++                                            </React.Fragment>
++                                        ))}
++                                    </React.Fragment>
++                                )}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'id' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">ID Details</div>
+                             <ul className="detail-list">
+                                 {Object.entries(instruction)
+                                     .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v) || v === null)
+                                     .map(([k, v]) => (
+                                         <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                     ))}
+                                 {(eids && eids.length > 0
+                                     ? eids
+                                     : eid
+                                         ? [eid]
+                                         : []
+                                 ).map((e, idx) => (
+                                     <React.Fragment key={idx}>
+                                         {eids && eids.length > 1 && (
+                                             <li><em>ID Verification {idx + 1}</em></li>
+                                         )}
+                                          {Object.entries(e).map(([k, v]) => (
+-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                          ))}
+                                     </React.Fragment>
+                                 ))}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'pay' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Payment</div>
+                             <ul className="detail-list">
+                                 {Object.entries(instruction)
+                                     .filter(([k]) =>
+                                         k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
+                                     )
+                                     .map(([k, v]) => (
+                                         <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                     ))}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'docs' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Documents</div>
+                             <ul className="detail-list">
+                                 <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
+                                 {documents?.map((d, idx) => (
+                                     <React.Fragment key={idx}>
+                                         {documents.length > 1 && (
+                                             <li><em>Document {idx + 1}</em></li>
+                                         )}
+                                         {Object.entries(d).map(([k, v]) => (
+-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                         ))}
+                                     </React.Fragment>
+                                 ))}
+-                                {clients && clients.length > 0 && (
+-                                    <React.Fragment>
+-                                        <li><em>Joint Clients</em></li>
+-                                        {clients.map((c, cidx) => (
+-                                            <React.Fragment key={`c-${cidx}`}>
+-                                                {Object.entries(c).map(([k, v]) => (
+-                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+-                                                ))}
+-                                            </React.Fragment>
+-                                        ))}
+-                                    </React.Fragment>
+-                                )}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'eid' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Verify an ID</div>
+                             <ul className="detail-list">
+                                  {eid && Object.entries(eid).map(([k,v]) => (
+-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                  ))}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'risk' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Risk Assessment</div>
+                             <ul className="detail-list">
+                                  {risk && Object.entries(risk).map(([k, v]) => (
+-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                  ))}
+                             </ul>
+                         </div>
+                     )}
+                     {selectedStatus === 'comp' && (
+                         <div className="detail-group open">
+                             <div className="detail-summary">Compliance</div>
+                             <ul className="detail-list">
+                                  {compliance && Object.entries(compliance).map(([k,v]) => (
+-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
++                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                 ))}
+                             </ul>
+                         </div>
+                     )}
+                 </div>
  
-   const overviewItems = useMemo(() => {
-     const items = instructionData.flatMap((prospect) => {
-       const instructionItems = (prospect.instructions ?? []).map((inst) => {
-         const dealsForInst = (prospect.deals ?? []).filter(
-           (d) => d.InstructionRef === inst.InstructionRef,
-         );
-         const clientsForInst: ClientInfo[] = [];
--        (prospect.jointClients ?? prospect.joinedClients ?? []).forEach(
--          (jc) => {
--            if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
--              clientsForInst.push({
--                ClientEmail: jc.ClientEmail,
--                HasSubmitted: jc.HasSubmitted,
--                Lead: false,
--                deals: [
--                  {
--                    DealId: jc.DealId,
--                    InstructionRef: inst.InstructionRef,
--                    ServiceDescription: dealsForInst.find(
--                      (d) => d.DealId === jc.DealId,
--                    )?.ServiceDescription,
--                    Status: dealsForInst.find((d) => d.DealId === jc.DealId)
--                      ?.Status,
--                  },
--                ],
--              });
--            }
--          },
--        );
-+        const prospectClients = [
-+          ...(prospect.jointClients ?? prospect.joinedClients ?? []),
-+          ...dealsForInst.flatMap((d) => d.jointClients ?? []),
-+        ];
-+        prospectClients.forEach((jc) => {
-+          if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
-+            clientsForInst.push({
-+              ClientEmail: jc.ClientEmail,
-+              HasSubmitted: jc.HasSubmitted,
-+              Lead: false,
-+              deals: [
-+                {
-+                  DealId: jc.DealId,
-+                  InstructionRef: inst.InstructionRef,
-+                  ServiceDescription: dealsForInst.find(
-+                    (d) => d.DealId === jc.DealId,
-+                  )?.ServiceDescription,
-+                  Status: dealsForInst.find((d) => d.DealId === jc.DealId)?.Status,
-+                },
-+              ],
-+            });
-+          }
-+        });
-         dealsForInst.forEach((d) => {
-           if (d.LeadClientEmail) {
-             clientsForInst.push({
-               ClientEmail: d.LeadClientEmail,
-               Lead: true,
-               deals: [
-                 {
-                   DealId: d.DealId,
-                   InstructionRef: d.InstructionRef,
-                   ServiceDescription: d.ServiceDescription,
-                   Status: d.Status,
-                 },
-               ],
-             });
-           }
-         });
-         const deal = dealsForInst[0];
- 
-         const riskSource = [
-           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
-           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
-         ];
-         dealsForInst.forEach((d) => {
-           if (d.instruction) {
-             riskSource.push(...(d.instruction.riskAssessments ?? []));
-             riskSource.push(...(d.instruction.compliance ?? []));
-           }
-         });
-         const eidSource = [
-           ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-           ...((inst as any).electronicIDChecks ??
-             (inst as any).idVerifications ??
-             []),
-+          ...dealsForInst.flatMap((d) => [
-+            ...(d.instruction?.electronicIDChecks ?? []),
-+            ...(d.instruction?.idVerifications ?? []),
-+          ]),
-         ];
-         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-         const eids = eidSource.filter(
-           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
-         );
-         const eid = eids[0];
--        let docs = (inst as any).documents;
--        if ((!docs || docs.length === 0) && dealsForInst[0]?.instruction?.documents) {
--          docs = dealsForInst[0].instruction.documents;
--        }
-+        const docs = [
-+          ...(prospect.documents ?? []),
-+          ...((inst as any).documents ?? []),
-+          ...dealsForInst.flatMap((d) => [
-+            ...(d.documents ?? []),
-+            ...(d.instruction?.documents ?? []),
-+          ]),
-+        ];
-         return {
-           instruction: inst,
-           deal,
-           deals: dealsForInst,
-           clients: clientsForInst,
-           risk,
-           eid,
-           eids,
-           documents: docs,
-           prospectId: prospect.prospectId,
-           documentCount: docs ? docs.length : 0,
-         };
-       });
- 
-       return instructionItems;
-     });
- 
-     const unique: Record<string, typeof items[number]> = {};
-     items.forEach((item) => {
-       const ref = item.instruction?.InstructionRef as string | undefined;
-       if (ref && !unique[ref]) {
-         unique[ref] = item;
-       }
-     });
-     return Object.values(unique);
-   }, [instructionData]);
- 
-   const unlinkedDeals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).filter((d) => !d.InstructionRef),
-       ),
-     [instructionData],
-   );
- 
-   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
- 
-   const deals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).map((d) => ({
-           ...d,
-           firstName: p.instructions?.[0]?.FirstName,
--          jointClients: p.jointClients ?? p.joinedClients ?? [],
-+          jointClients: [
-+            ...(p.jointClients ?? p.joinedClients ?? []),
-+            ...(d.jointClients ?? []),
-+          ],
-         })),
-       ),
-     [instructionData],
-   );
-   const clients: ClientInfo[] = useMemo(() => {
-     const map: Record<string, ClientInfo> = {};
-     instructionData.forEach((p) => {
-       const deals = p.deals ?? [];
-       deals.forEach((d) => {
-         if (d.LeadClientEmail) {
-           const key = d.LeadClientEmail;
-           const entry = map[key] || {
-             ClientEmail: key,
-             Lead: true,
-             deals: [] as DealSummary[],
-           };
-           entry.Lead = true;
-           (entry.deals as DealSummary[]).push({
-             DealId: d.DealId,
-             InstructionRef: d.InstructionRef,
-             ServiceDescription: d.ServiceDescription,
-             Status: d.Status,
-           });
-           map[key] = entry;
-         }
-       });
--      (p.jointClients ?? p.joinedClients ?? []).forEach((jc) => {
-+      [...(p.jointClients ?? p.joinedClients ?? []), ...deals.flatMap((d) => d.jointClients ?? [])].forEach((jc) => {
-         const key = jc.ClientEmail;
-         const entry = map[key] || {
-           ClientEmail: jc.ClientEmail,
-           HasSubmitted: jc.HasSubmitted,
-           Lead: false,
-           deals: [] as DealSummary[],
-         };
-         entry.HasSubmitted = jc.HasSubmitted;
-         const deal = deals.find((dd) => dd.DealId === jc.DealId);
-         if (deal) {
-           (entry.deals as DealSummary[]).push({
-             DealId: deal.DealId,
-             InstructionRef: deal.InstructionRef,
-             ServiceDescription: deal.ServiceDescription,
-             Status: deal.Status,
-           });
-         }
-         map[key] = entry;
-       });
-     });
-     return Object.values(map);
-   }, [instructionData]);
- 
-   const riskComplianceData = useMemo(
-     () =>
+                 <div className="bottom-tabs">
+                     {[
+                         {
+                             key: 'eid',
+                             label: verifyIdLabel,
+                             title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
+                             icon: iconMap.eid,
+                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
+                             status: verifyTabStatus,
+                         },
+                         {
+                             key: 'risk',
+                             label: 'Assess Risk',
+                             title: riskAssessed ? 'Risk Assessed' : undefined,
+                             icon: iconMap.risk,
+                             onClick: () => { setActiveTab('risk'); onRiskAssessment?.({ instruction, risk }); },
+                             status: riskAssessed ? 'complete' : 'ready',
+                         },
+                         {

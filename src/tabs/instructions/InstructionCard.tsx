@@ -358,10 +358,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                                 <li><em>Deal {idx + 1}</em></li>
                                             )}
                                             {Object.entries(d).map(([k, v]) => (
-                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                             ))}
                                         </React.Fragment>
                                     ))}
+                                {clients && clients.length > 0 && (
+                                    <React.Fragment>
+                                        <li><em>Joint Clients</em></li>
+                                        {clients.map((c, cidx) => (
+                                            <React.Fragment key={`c-${cidx}`}>
+                                                {Object.entries(c).map(([k, v]) => (
+                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </React.Fragment>
+                                )}
                             </ul>
                         </div>
                     )}
@@ -385,7 +397,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                             <li><em>ID Verification {idx + 1}</em></li>
                                         )}
                                          {Object.entries(e).map(([k, v]) => (
-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                          ))}
                                     </React.Fragment>
                                 ))}
@@ -417,22 +429,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                             <li><em>Document {idx + 1}</em></li>
                                         )}
                                         {Object.entries(d).map(([k, v]) => (
-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                         ))}
                                     </React.Fragment>
                                 ))}
-                                {clients && clients.length > 0 && (
-                                    <React.Fragment>
-                                        <li><em>Joint Clients</em></li>
-                                        {clients.map((c, cidx) => (
-                                            <React.Fragment key={`c-${cidx}`}>
-                                                {Object.entries(c).map(([k, v]) => (
-                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </React.Fragment>
-                                )}
                             </ul>
                         </div>
                     )}
@@ -441,7 +441,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <div className="detail-summary">Verify an ID</div>
                             <ul className="detail-list">
                                  {eid && Object.entries(eid).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                  ))}
                             </ul>
                         </div>
@@ -451,7 +451,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <div className="detail-summary">Risk Assessment</div>
                             <ul className="detail-list">
                                  {risk && Object.entries(risk).map(([k, v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                  ))}
                             </ul>
                         </div>
@@ -461,7 +461,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <div className="detail-summary">Compliance</div>
                             <ul className="detail-list">
                                  {compliance && Object.entries(compliance).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
+                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
                                 ))}
                             </ul>
                         </div>
