@@ -1,57 +1,316 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index df7376df17b67883022fc7c36d955f28b7210bc6..0e0fc5842cccf4b3756c005db0ebbc984f0c2bfd 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -193,51 +193,51 @@ const Instructions: React.FC<InstructionsProps> = ({
-                   key={opt.label}
-                   title={opt.label}
-                   icon={opt.icon}
-                   isDarkMode={isDarkMode}
-                   onClick={() => setNewMatterClientType(opt.label)}
-                   selected={newMatterClientType === opt.label}
-                   style={{ "--card-index": idx } as React.CSSProperties}
-                 />
-               ))}
-           </div>
-         ) : (
-           <>
-             <div className={quickLinksStyle(isDarkMode)}>
-               <QuickActionsCard
-                 title="New Matter"
-                 icon="Calendar"
-                 isDarkMode={isDarkMode}
-                 onClick={() => {
-                   setSelectedInstruction(null);
-                     setNewMatterClientType("Individual");
-                     setShowNewMatterPage(true);
-                   }}
-                   style={{ "--card-index": 0 } as React.CSSProperties}
-                 />
-                 <QuickActionsCard
--                  title="EID Check"
-+                  title="Verify an ID"
-                   icon="IdCheck"
-                   isDarkMode={isDarkMode}
-                   onClick={() => {
-                     setSelectedInstruction(null);
-                     setShowEIDPage(true);
-                   }}
-                   style={{ "--card-index": 1 } as React.CSSProperties}
-                 />
-                 <QuickActionsCard
-                   title="Risk Assessment"
-                   icon="Assessment"
-                   isDarkMode={isDarkMode}
-                   onClick={() => { }}
-                   style={{ "--card-index": 2 } as React.CSSProperties}
-                 />
-                 <QuickActionsCard
-                   title="Draft CCL"
-                   icon="OpenFile"
-                   isDarkMode={isDarkMode}
-                   onClick={() => setShowRiskPage(true)}
-                   style={{ "--card-index": 3 } as React.CSSProperties}
-                 />
-               </div>
-               <div className={pivotBarStyle(isDarkMode)}>
-                 <Pivot
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 8a6f87d62ca429abffed5932de89903efcefca51..ae3d34abb90900f738cdba3c7aff7d3332e222c0 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -343,87 +343,89 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
+     }
+     .insert-placeholder {
+       background: ${colours.highlightBlue};
+       color: ${colours.darkBlue};
+       padding: 2px 4px;
+       border-radius: 6px;
+       border: 1px dashed ${colours.darkBlue};
+       font-style: italic;
+       cursor: pointer;
+       transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+     }
+     .insert-placeholder:hover,
+     .insert-placeholder:focus {
+       background: ${colours.blue};
+       color: #ffffff;
+       box-shadow: 0 0 0 2px ${colours.blue}80;
+       transform: scale(1.05);
+       outline: none;
+     }
+     [data-sentence] {
+       display: inline-flex;
+       align-items: center;
+       gap: 4px;
+     }
+     .sentence-delete {
+-      margin-right: 6px;
++      margin-right: 4px;
+       cursor: pointer;
+       user-select: none;
+       color: ${colours.red};
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       border: 1px solid ${colours.greyText};
+       background: ${colours.grey};
+-      padding: 2px 4px;
++      padding: 2px;
+       border-radius: 0;
+-      font-size: 18px;
+-      width: 24px;
+-      height: 24px;
++      font-size: 14px;
++      width: 20px;
++      height: 20px;
++      line-height: 1;
+     }
+     .sentence-delete:hover {
+       background: ${colours.highlightBlue};
+     }
+     .sentence-delete:active {
+       background: ${colours.blue};
+       color: #ffffff;
+     }
+     .sentence-handle {
+       cursor: grab;
+-      margin-right: 6px;
++      margin-right: 4px;
+       user-select: none;
+       color: ${colours.greyText};
+-      padding: 2px 4px;
++      padding: 2px;
+       border: 1px solid ${colours.greyText};
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+-      font-size: 18px;
++      font-size: 14px;
+       background: ${colours.grey};
+       border-radius: 0;
+-      width: 24px;
+-      height: 24px;
++      width: 20px;
++      height: 20px;
++      line-height: 1;
+     }
+     .sentence-handle:hover {
+       background: ${colours.highlightBlue};
+     }
+     .sentence-handle:active {
+       cursor: grabbing;
+       background: ${colours.blue};
+       color: #ffffff;
+     }
+     .sentence-handle i,
+     .sentence-delete i {
+       pointer-events: none;
+     }
+     .drag-over {
+       outline: 2px dashed ${colours.blue};
+       background: ${colours.highlightBlue};
+       border-radius: 0;
+     }
+     @keyframes fadeInScale {
+       from { opacity: 0; transform: scale(0.95); }
+       to { opacity: 1; transform: scale(1); }
+     }
+     @keyframes fadeInBlockLabel {
+       from { opacity: 0; }
+       to { opacity: 1; }
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 8a6f87d62ca429abffed5932de89903efcefca51..ae3d34abb90900f738cdba3c7aff7d3332e222c0 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -659,51 +661,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+     const spans = bodyEditorRef.current?.querySelectorAll(
+       `span[data-inserted="${blockTitle}"]`
+     ) as NodeListOf<HTMLElement> | null;
+     if (!spans) return;
+ 
+     const currentlyPinned = !!pinnedBlocks[blockTitle];
+     const newPinned = !currentlyPinned;
+ 
+     spans.forEach(span => {
+       const container = span as HTMLElement;
+       const sidebar = span.querySelector('.block-sidebar') as HTMLElement | null;
+       if (!sidebar) return;
+ 
+       if (newPinned) {
+         sidebar.classList.add('pinned');
+         container.classList.add('pinned');
+       } else {
+         sidebar.classList.remove('pinned');
+         container.classList.remove('pinned');
+       }
+ 
+       const icon = sidebar.querySelector('.pin-toggle i') as HTMLElement | null;
+       const pinBtn = sidebar.querySelector('.pin-toggle') as HTMLElement | null;
+       const handleIcon = sidebar.querySelector('.sidebar-handle i') as HTMLElement | null;
+       if (icon) {
+-        icon.className = `ms-Icon ms-Icon--${newPinned ? 'Pinned' : 'Pin'}`;
++        icon.className = 'ms-Icon ms-Icon--Pin';
+       }
+       if (handleIcon) {
+         handleIcon.className = `ms-Icon ms-Icon--${newPinned ? 'ChevronRight' : 'ChevronLeft'}`;
+       }
+       if (pinBtn) {
+         if (newPinned) pinBtn.classList.add('pinned');
+         else pinBtn.classList.remove('pinned');
+       }
+     });
+ 
+     setPinnedBlocks(prev => {
+       const updated = { ...prev, [blockTitle]: newPinned };
+       if (!newPinned) delete updated[blockTitle];
+       return updated;
+     });
+ 
+     if (bodyEditorRef.current) {
+       setBody(bodyEditorRef.current.innerHTML);
+     }
+   }
+ 
+   function openSnippetOptions(
+     e: MouseEvent,
+     blockTitle: string,
+     snippetLabel: string
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 8a6f87d62ca429abffed5932de89903efcefca51..ae3d34abb90900f738cdba3c7aff7d3332e222c0 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1436,91 +1438,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+           optObj = block.options.find((o) => o.label === opt);
+           if (!optObj) return;
+           text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         }
+         if (text === null) return;
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = opt.replace(/'/g, "&#39;");
+         // grab the ID if there is one
+         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(s => {
+             const trimmed = s.trim();
+-            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</span>`;
++            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--ReOrderDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Dismiss" aria-hidden="true"></i></span>${trimmed}</span>`;
+           })
+           .join(' ');
+         // inject it into your wrapper DIV
+         const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+         
+         snippetHtml.push(html);
+         snippetMap[opt] = html;
+       });
+     } else if (typeof selectedOption === 'string') {
+ 
+       let text: string | null = null;
+       let optObj: TemplateOption | undefined;
+       if (selectedOption === '__saved') {
+         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
+       } else {
+         optObj = block.options.find((o) => o.label === selectedOption);
+         if (optObj) {
+           text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         }
+       }
+       if (text !== null) {
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = selectedOption.replace(/'/g, "&#39;");
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(
+             (s) =>
+-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
++              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--ReOrderDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Dismiss" aria-hidden="true"></i></span>${s.trim()}</span>`
+           )
+           .join(' ');
+         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+         const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+         snippetHtml.push(html);
+         snippetMap[selectedOption] = html;
+       }
+ 
+     }
+ 
+     const replacementText = snippetHtml.join('');
+     let selectedLabel = '';
+     if (block.isMultiSelect && isStringArray(selectedOption)) {
+       selectedLabel = selectedOption.join(', ');
+     } else if (typeof selectedOption === 'string') {
+       selectedLabel = selectedOption;
+     }
+     const containerTag = 'span';
+     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
+     const innerHTML = cleanTemplateString(replacementText);
+     const styledInnerHTML = innerHTML.replace(
+       /<p>/g,
+       `<p style="margin: 0;">`
+     );
+     const optionsHtml = block.options
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 8a6f87d62ca429abffed5932de89903efcefca51..ae3d34abb90900f738cdba3c7aff7d3332e222c0 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1789,51 +1791,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+     const main = span.querySelector('.block-main') as HTMLElement | null;
+     if (!main) return;
+ 
+     const option = block.options.find((o) => o.label === optionLabel);
+     if (!option) return;
+ 
+     let text = option.previewText.trim().replace(/\n/g, '<br />');
+     text = applyDynamicSubstitutions(
+       text,
+       userData,
+       enquiry,
+       amount,
+       dealPasscode,
+       dealPasscode
+         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+         : undefined
+     );
+     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+     text = wrapInsertPlaceholders(text);
+     const escLabel = optionLabel.replace(/'/g, "&#39;");
+     const sentences = text
+       .split(/(?<=[.!?])\s+/)
+       .filter((s) => s.trim().length > 0)
+       .map(
+         (s) =>
+-          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
++          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--ReOrderDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Dismiss" aria-hidden="true"></i></span>${s.trim()}</span>`
+       )
+       .join(' ');
+     const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+ 
+     main.insertAdjacentHTML('beforeend', snippetHtml);
+ 
+     setOriginalSnippetContent((prev) => ({
+       ...prev,
+       [block.title]: {
+         ...(prev[block.title] || {}),
+         [optionLabel]: snippetHtml,
+       },
+     }));
+     setEditedSnippets((prev) => ({
+       ...prev,
+       [block.title]: { ...(prev[block.title] || {}), [optionLabel]: false },
+     }));
+ 
+     const optionDiv = span.querySelector('div.option-choices');
+     if (optionDiv) {
+       const currentSelected = block.isMultiSelect
+         ? (selectedTemplateOptions[block.title] as string[])
+         : selectedTemplateOptions[block.title];
+       const newSelected = block.isMultiSelect
+         ? [
