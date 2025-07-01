@@ -59,6 +59,18 @@
     color: var(--helix-highlight, #3690CE);
 }
 
+.status-value.received {
+    color: var(--helix-highlight, #3690CE);
+}
+
+.status-value.review {
+    color: var(--helix-red, #d65541);
+}
+
+.status-value.verified {
+    color: var(--helix-green, #107c10);
+}
+
 .status-value.failed {
     color: var(--helix-red, #d65541);
 }

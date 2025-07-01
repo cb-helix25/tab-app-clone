@@ -1,7 +1,7 @@
 .dealCard {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
     height: 100%;
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
@@ -11,7 +11,7 @@
 .deal-details {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     flex: 1 1 auto;
 }
 
@@ -24,12 +24,30 @@
     gap: 2px;
 }
 
+.data-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 8px;
+    row-gap: 2px;
+    margin-top: 4px;
+}
+
+.data-grid dt {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.data-grid dd {
+    margin: 0;
+    word-break: break-word;
+}
+
 .deal-cta {
     margin-top: 8px;
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    }
+}
     
         .deal-amount {
             font-weight: 600;

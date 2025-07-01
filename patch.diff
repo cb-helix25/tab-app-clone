@@ -1,107 +1,116 @@
-diff --git a/src/index.tsx b/src/index.tsx
-index 7e28a41841efaf282b36c389da5aca04baf1fcef..41fb0ba600a2e3faadbb6fafd2694eb00f9598f8 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -197,76 +197,84 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
+diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
+index 3199d3eae4d383553ebceb25ae77cc17118b9431..35710b7be162872c557dc2b5840728eee28b4fbb 100644
+--- a/src/tabs/instructions/InstructionOverview.tsx
++++ b/src/tabs/instructions/InstructionOverview.tsx
+@@ -48,108 +48,109 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
+     onEIDCheck,
+ }) => {
+     const style: React.CSSProperties = {
+         '--animation-delay': `${animationDelay}s`,
+     } as React.CSSProperties;
+ 
+     const containerClass = mergeStyles('instruction-overview', cardStyles.root, expanded && 'expanded', {
+         padding: 0,
+         overflow: 'hidden',
+     });
+ 
+     const stage = instruction?.Stage ?? 'deal pending';
+     const eidStatus = eid?.EIDStatus ?? '-';
+     const eidResult = eid?.EIDOverallResult?.toLowerCase();
+     const complianceStatus = compliance?.Status ?? '-';
+ 
+     const proofOfIdComplete = Boolean(
+         instruction?.PassportNumber || instruction?.DriversLicenseNumber,
+     );
+     const paymentStatusRaw = instruction?.PaymentResult?.toLowerCase();
+     const paymentComplete = paymentStatusRaw === 'successful';
+     const paymentFailed = paymentStatusRaw === 'failed';
+     const documentsComplete = documentCount > 0;
+ 
+     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
++    const dealMissing = deals.length === 0;
+ 
+     let idStatus = 'pending';
+     const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
+     if (proofOfIdComplete) {
+         if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
+         else if (eidVerified) idStatus = 'verified';
+         else idStatus = 'review';
      }
-     const data: TeamData[] = await response.json();
-     setCachedData(cacheKey, data);
-     return data;
-   } catch (error) {
-     console.error('Error fetching team data:', error);
-     return null;
-   }
- }
  
- // Main component
- const AppWithContext: React.FC = () => {
-   const [teamsContext, setTeamsContext] = useState<microsoftTeams.Context | null>(null);
-   const [userData, setUserData] = useState<UserData[] | null>(null);
-   const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
-   const [matters, setMatters] = useState<Matter[] | null>(null);
-   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
-   const [loading, setLoading] = useState(true);
-   const [error, setError] = useState<string | null>(null);
+     const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
+     const riskStatus = riskResult
+         ? ['low', 'low risk', 'pass', 'approved'].includes(riskResult)
+             ? 'complete'
+             : 'flagged'
+         : 'pending';
  
-   useEffect(() => {
-     const initializeTeamsAndFetchData = async () => {
-       if (inTeams && !useLocalData) {
-         try {
-           microsoftTeams.initialize();
--          microsoftTeams.getContext(async (ctx) => {
-+          microsoftTeams.getContext((ctx) => {
-             setTeamsContext(ctx);
+     const summaryData = [
+-        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
++        { key: 'deal', label: 'Deal', status: dealMissing ? 'failed' : dealOpen ? 'open' : 'closed' },
+         { key: 'id', label: 'Proof of ID', status: idStatus },
+         {
+             key: 'pay',
+             label: 'Pay',
+             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
+         },
+         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
+         { key: 'risk', label: 'Risk', status: riskStatus },
+     ];
  
--            const objectId = ctx.userObjectId || '';
--            if (!objectId) throw new Error('Missing Teams context objectId.');
-+            (async () => {
-+              try {
-+                const objectId = ctx.userObjectId || '';
-+                if (!objectId) throw new Error('Missing Teams context objectId.');
+     const primaryDeal = deal ?? deals[0];
+     const leadName = instruction
+         ? (instruction.FirstName || instruction.LastName)
+             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
+             : instruction.CompanyName ?? clients.find((c) => c.Lead)?.ClientEmail ?? ''
+         : primaryDeal?.ServiceDescription ?? '';
  
--            const { dateFrom, dateTo } = getDateRange();
-+                const { dateFrom, dateTo } = getDateRange();
- 
--            // 1. Fetch user data first to get full name
--            const userDataRes = await fetchUserData(objectId);
--            setUserData(userDataRes);
-+                // 1. Fetch user data first to get full name
-+                const userDataRes = await fetchUserData(objectId);
-+                setUserData(userDataRes);
- 
--            const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
-+                const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
- 
--            // 2. In parallel, fetch enquiries, matters, and team data
--            const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
--              fetchEnquiries('anyone', dateFrom, dateTo),
--              fetchMatters(fullName),
--              fetchTeamData(),
--            ]);
-+                // 2. In parallel, fetch enquiries, matters, and team data
-+                const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
-+                  fetchEnquiries('anyone', dateFrom, dateTo),
-+                  fetchMatters(fullName),
-+                  fetchTeamData(),
-+                ]);
- 
--            setEnquiries(enquiriesRes);
--            setMatters(mattersRes);
--            setTeamData(teamDataRes);
-+                setEnquiries(enquiriesRes);
-+                setMatters(mattersRes);
-+                setTeamData(teamDataRes);
- 
--            setLoading(false);
-+                setLoading(false);
-+              } catch (err: any) {
-+                console.error('Error initializing or fetching data:', err);
-+                setError(err.message || 'Unknown error occurred.');
-+                setLoading(false);
-+              }
-+            })();
-           });
-         } catch (err: any) {
-           console.error('Error initializing or fetching data:', err);
-           setError(err.message || 'Unknown error occurred.');
- 
-           setLoading(false);
-         }
-       } else {
-         console.warn('Using local sample data for development.');
-         setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
-         setUserData(localUserData as UserData[]);
-         setEnquiries(localEnquiries as Enquiry[]);
-         setMatters(localMatters as unknown as Matter[]);
-         setTeamData(null);
-         setLoading(false);
-       }
-     };
- 
-     initializeTeamsAndFetchData();
-   }, []);
- 
-   return (
-     <App
-       teamsContext={teamsContext}
-       userData={userData}
+     return (
+         <div className={containerClass} style={style}>
+             <button type="button" className="overview-toggle" onClick={onToggle}>
+                 <div className="dashboard-header">
+                     {instruction ? instruction.InstructionRef : 'Deal Pending'}
+                     {leadName && <span className="lead-client">{leadName}</span>}
+                     <span className="instruction-stage">{stage}</span>
+                     <FaChevronDown className="chevron" />
+                 </div>
+                 {!instruction && (prospectId || passcode) && (
+                     <div className="lead-client">
+                         {prospectId && <>Prospect {prospectId}</>}
+                         {prospectId && passcode && ' · '}
+                         {passcode && <>Passcode {passcode}</>}
+                     </div>
+                 )}
+                 <div className="status-row">
+                     {summaryData.map((d, i) => {
+                         const status = (d.status ?? '').toString().toLowerCase();
+                         const icon = d.status
+                             ? ['complete', 'closed', 'verified', 'approved'].includes(status)
+                                 ? <FaCheckCircle />
+-                                : status === 'failed'
++                                : ['failed', 'review'].includes(status)
+                                     ? <FaTimesCircle />
+                                     : status === 'flagged'
+                                         ? <FaExclamationTriangle />
+                                         : <FaClock />
+                             : null;
+                         return (
+                             <div key={i} className={`status-item ${d.key}`}>
+                                 <span className="status-label">{d.label}</span>
+                                 <span className={`status-value ${status}`}>{icon}</span>
+                             </div>
+                         );
+                     })}
+                 </div>
+             </button>
+             {expanded && (
+                 <InstructionCard
+                     instruction={instruction as any}
+                     deal={deal}
+                     deals={deals}
+                     clients={clients}
+                     prospectId={prospectId}
+                     risk={risk}
+                     eid={eid}
+                     eids={eids}
+                     compliance={compliance}

@@ -70,6 +70,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
     const documentsComplete = documentCount > 0;
 
     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
+    const dealMissing = deals.length === 0;
 
     let idStatus = 'pending';
     const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
@@ -87,7 +88,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
         : 'pending';
 
     const summaryData = [
-        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
+        { key: 'deal', label: 'Deal', status: dealMissing ? 'failed' : dealOpen ? 'open' : 'closed' },
         { key: 'id', label: 'Proof of ID', status: idStatus },
         {
             key: 'pay',
@@ -127,7 +128,7 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
                         const icon = d.status
                             ? ['complete', 'closed', 'verified', 'approved'].includes(status)
                                 ? <FaCheckCircle />
-                                : status === 'failed'
+                                : ['failed', 'review'].includes(status)
                                     ? <FaTimesCircle />
                                     : status === 'flagged'
                                         ? <FaExclamationTriangle />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { mergeStyles } from '@fluentui/react';
 import { format } from 'date-fns';
 import {
@@ -186,6 +186,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
     const complianceStatus = (compliance as any)?.Status ?? '-';
     const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
+    const dealMissing = (deals ?? []).length === 0;
     const leadName = instruction
         ? (instruction.FirstName || instruction.LastName)
             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
@@ -221,6 +222,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         documentsComplete &&
         verifyIdStatus === 'complete' &&
         riskStatus === 'complete';
+    const openMatterStatus: 'pending' | 'ready' | 'complete' =
+        dealOpen ? 'complete' : openMatterReady ? 'ready' : 'pending';
     // Allow opening a new matter directly from the card even if some
     // prerequisite checks are outstanding. The navigator already shows
     // the relevant warnings so we no longer disable the action here.
@@ -237,17 +240,34 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl'>(() => {
         if (verifyIdStatus !== 'complete') return 'eid';
-        if (!riskAssessed || !openMatterReady) return 'risk';
-        return 'matter';
+        if (!riskAssessed) return 'risk';
+        if (openMatterReady || dealOpen) return 'matter';
+        return 'risk';
     });
 
     useEffect(() => {
         if (verifyIdStatus !== 'complete') setActiveTab('eid');
-        else if (!riskAssessed || !openMatterReady) setActiveTab('risk');
-        else setActiveTab('matter');
-    }, [verifyIdStatus, riskAssessed, openMatterReady]);
+        else if (!riskAssessed) setActiveTab('risk');
+        else if (openMatterReady || dealOpen) setActiveTab('matter');
+        else setActiveTab('risk');
+    }, [verifyIdStatus, riskAssessed, openMatterReady, dealOpen]);
 
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const tabsRef = useRef<HTMLDivElement>(null);
+    const [compact, setCompact] = useState(true);
+
+    useLayoutEffect(() => {
+        function updateCompact() {
+            const el = tabsRef.current;
+            if (!el) return;
+            const width = el.offsetWidth;
+            const needed = 4 * 90 + 3 * 8; // four tabs, min width plus gap
+            setCompact(width < needed);
+        }
+        updateCompact();
+        window.addEventListener('resize', updateCompact);
+        return () => window.removeEventListener('resize', updateCompact);
+    }, []);
 
     const isPoid = stage === 'poid';
 
@@ -270,7 +290,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     });
 
     const statusData = [
-        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
+        { key: 'deal', label: 'Deal', status: dealMissing ? 'failed' : dealOpen ? 'open' : 'closed' },
         { key: 'id', label: 'Proof of ID', status: idStatus },
         {
             key: 'pay',
@@ -320,7 +340,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     const icon = d.status
                         ? ['complete', 'closed', 'verified', 'approved'].includes(status)
                             ? <FaCheckCircle />
-                            : status === 'failed'
+                            : ['failed', 'review'].includes(status)
                                 ? <FaTimesCircle />
                                 : status === 'flagged'
                                     ? <FaExclamationTriangle />
@@ -481,7 +501,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     )}
                 </div>
 
-                <div className="bottom-tabs">
+                <div className={`bottom-tabs${compact ? ' compact' : ''}`} ref={tabsRef}>
                     {[
                         {
                             key: 'eid',
@@ -504,7 +524,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             label: 'Open Matter',
                             icon: iconMap.matter,
                             onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
-                            status: openMatterReady ? 'ready' : 'pending',
+                            status: openMatterStatus,
                         },
                         {
                             key: 'ccl',

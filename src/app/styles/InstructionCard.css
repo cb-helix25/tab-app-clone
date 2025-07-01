@@ -162,11 +162,31 @@
     padding: 8px;
     border-top: 1px solid #e1dfdd;
     background: #fff;
+    justify-content: center;
+}
+
+.bottom-tabs.compact .label {
+    display: none;
+    opacity: 0;
+}
+
+.bottom-tabs.compact .bottom-tab {
+    max-width: 48px;
+}
+
+.bottom-tabs.compact .bottom-tab:hover {
+    max-width: 140px;
+}
+
+.bottom-tabs.compact .bottom-tab:hover .label {
+    display: inline-flex;
+    opacity: 1;
 }
 
 .bottom-tab {
-    flex: 0 0 auto;
-    min-width: 90px;
+    flex: 1 1 0;
+    min-width: 48px;
+    max-width: 140px;
     height: 32px;
     padding: 0 8px;
     border: 1px solid #e1dfdd;
@@ -180,7 +200,7 @@
     cursor: pointer;
     gap: 4px;
     position: relative;
-    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+    transition: flex-grow 0.2s ease, max-width 0.2s ease, background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .bottom-tab .icon-filled {
@@ -204,6 +224,7 @@
     background-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     color: #3690CE;
+    flex-grow: 1.5;
 }
 
 .bottom-tab:active {
@@ -215,6 +236,7 @@
 .bottom-tab.active {
     background-color: rgba(255, 255, 255, 0.1);
     color: var(--helix-highlight, #3690CE);
+    flex-grow: 1.5;
 }
 
 
@@ -226,7 +248,7 @@
 .bottom-tab.active .icon-filled {
     display: inline-block;
     transform: scale(1.1);
-    color: #ffffff;
+    color: var(--helix-highlight, #3690CE);
 }
 
 /* Completed action tabs remain collapsed with a check mark */
@@ -263,6 +285,7 @@
     align-items: center;
     margin-left: 4px;
     white-space: nowrap;
+    transition: opacity 0.2s ease;
 }
 
 /* make the icon container round & animatable */

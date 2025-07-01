@@ -1,18 +1,18 @@
 // src/index.tsx
 
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
-import './app/styles/index.css';
-import App from './app/App';
-import { createTheme, ThemeProvider } from '@fluentui/react';
-import { colours } from './app/styles/colours';
-import * as microsoftTeams from '@microsoft/teams-js';
-import { isInTeams } from './app/functionality/isInTeams';
-import { Matter, UserData, Enquiry, TeamData } from './app/functionality/types';
+import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
+import "./app/styles/index.css";
+import App from "./app/App";
+import { createTheme, ThemeProvider } from "@fluentui/react";
+import { colours } from "./app/styles/colours";
+import * as microsoftTeams from "@microsoft/teams-js";
+import { isInTeams } from "./app/functionality/isInTeams";
+import { Matter, UserData, Enquiry, TeamData } from "./app/functionality/types";
 // Local sample data used when REACT_APP_USE_LOCAL_DATA is set
-import localUserData from './localData/localUserData.json';
-import localEnquiries from './localData/localEnquiries.json';
-import localMatters from './localData/localMatters.json';
+import localUserData from "./localData/localUserData.json";
+import localEnquiries from "./localData/localEnquiries.json";
+import localMatters from "./localData/localMatters.json";
 
 // Define the custom Fluent UI theme
 const customTheme = createTheme({
@@ -26,22 +26,33 @@ const customTheme = createTheme({
     neutralPrimary: colours.websiteBlue,
   },
   fonts: {
-    small: { fontFamily: 'Raleway, sans-serif' },
-    medium: { fontFamily: 'Raleway, sans-serif' },
-    large: { fontFamily: 'Raleway, sans-serif' },
-    xLarge: { fontFamily: 'Raleway, sans-serif' },
+    small: { fontFamily: "Raleway, sans-serif" },
+    medium: { fontFamily: "Raleway, sans-serif" },
+    large: { fontFamily: "Raleway, sans-serif" },
+    xLarge: { fontFamily: "Raleway, sans-serif" },
   },
 });
 
 // Flag to decide whether to use local sample data instead of remote API
 const inTeams = isInTeams();
-const useLocalData = process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
+const useLocalData =
+  process.env.REACT_APP_USE_LOCAL_DATA === "true" || !inTeams;
 
 // Clear persisted pitch builder state when the page is refreshed or closed
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    sessionStorage.removeItem('pitchBuilderState');
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    sessionStorage.removeItem("pitchBuilderState");
   });
+
+  // Surface any unhandled promise rejections so they don't fail silently
+  if (!(window as any).__unhandledRejectionHandlerAdded) {
+    (window as any).__unhandledRejectionHandlerAdded = true;
+    window.addEventListener("unhandledrejection", (event) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      event.preventDefault();
+      alert("An unexpected error occurred. Check the console for details.");
+    });
+  }
 }
 
 // Simple localStorage caching with a 15 minute TTL
@@ -73,10 +84,14 @@ function setCachedData(key: string, data: unknown) {
 const getDateRange = () => {
   const now = new Date();
   const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1); // Increase range
-  const startDate = new Date(twelveMonthsAgo.getFullYear(), twelveMonthsAgo.getMonth(), 1);
+  const startDate = new Date(
+    twelveMonthsAgo.getFullYear(),
+    twelveMonthsAgo.getMonth(),
+    1,
+  );
   const endDate = now;
-  const formattedStartDate = startDate.toISOString().split('T')[0];
-  const formattedEndDate = endDate.toISOString().split('T')[0];
+  const formattedStartDate = startDate.toISOString().split("T")[0];
+  const formattedEndDate = endDate.toISOString().split("T")[0];
   return {
     dateFrom: formattedStartDate,
     dateTo: formattedEndDate,
@@ -92,30 +107,36 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userObjectId: objectId }),
-    }
+    },
   );
-  if (!response.ok) throw new Error(`Failed to fetch user data: ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Failed to fetch user data: ${response.status}`);
   const data = await response.json();
   setCachedData(cacheKey, data);
   return data;
 }
 
-async function fetchEnquiries(email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> {
+async function fetchEnquiries(
+  email: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<Enquiry[]> {
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, dateFrom, dateTo }),
-    }
+    },
   );
-  if (!response.ok) throw new Error(`Failed to fetch enquiries: ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Failed to fetch enquiries: ${response.status}`);
   const data = await response.json();
   setCachedData(cacheKey, data);
   return data;
@@ -129,41 +150,42 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   const response = await fetch(
     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fullName }),
-    }
+    },
   );
-  if (!response.ok) throw new Error(`Failed to fetch matters: ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Failed to fetch matters: ${response.status}`);
   const data = await response.json();
 
   const mapData = (items: any[]): Matter[] => {
     return items.map((item) => ({
-      DisplayNumber: item['Display Number'] || '',
-      OpenDate: item['Open Date'] || '',
-      MonthYear: item['MonthYear'] || '',
-      YearMonthNumeric: item['YearMonthNumeric'] || 0,
-      ClientID: item['Client ID'] || '',
-      ClientName: item['Client Name'] || '',
-      ClientPhone: item['Client Phone'] || '',
-      ClientEmail: item['Client Email'] || '',
-      Status: item['Status'] || '',
-      UniqueID: item['Unique ID'] || '',
-      Description: item['Description'] || '',
-      PracticeArea: item['Practice Area'] || '',
-      Source: item['Source'] || '',
-      Referrer: item['Referrer'] || '',
-      ResponsibleSolicitor: item['Responsible Solicitor'] || '',
-      OriginatingSolicitor: item['Originating Solicitor'] || '',
-      SupervisingPartner: item['Supervising Partner'] || '',
-      Opponent: item['Opponent'] || '',
-      OpponentSolicitor: item['Opponent Solicitor'] || '',
-      CloseDate: item['Close Date'] || '',
-      ApproxValue: item['Approx. Value'] || '',
-      mod_stamp: item['mod_stamp'] || '',
-      method_of_contact: item['method_of_contact'] || '',
-      CCL_date: item['CCL_date'] || null,
-      Rating: item['Rating'] as 'Good' | 'Neutral' | 'Poor' | undefined,
+      DisplayNumber: item["Display Number"] || "",
+      OpenDate: item["Open Date"] || "",
+      MonthYear: item["MonthYear"] || "",
+      YearMonthNumeric: item["YearMonthNumeric"] || 0,
+      ClientID: item["Client ID"] || "",
+      ClientName: item["Client Name"] || "",
+      ClientPhone: item["Client Phone"] || "",
+      ClientEmail: item["Client Email"] || "",
+      Status: item["Status"] || "",
+      UniqueID: item["Unique ID"] || "",
+      Description: item["Description"] || "",
+      PracticeArea: item["Practice Area"] || "",
+      Source: item["Source"] || "",
+      Referrer: item["Referrer"] || "",
+      ResponsibleSolicitor: item["Responsible Solicitor"] || "",
+      OriginatingSolicitor: item["Originating Solicitor"] || "",
+      SupervisingPartner: item["Supervising Partner"] || "",
+      Opponent: item["Opponent"] || "",
+      OpponentSolicitor: item["Opponent Solicitor"] || "",
+      CloseDate: item["Close Date"] || "",
+      ApproxValue: item["Approx. Value"] || "",
+      mod_stamp: item["mod_stamp"] || "",
+      method_of_contact: item["method_of_contact"] || "",
+      CCL_date: item["CCL_date"] || null,
+      Rating: item["Rating"] as "Good" | "Neutral" | "Poor" | undefined,
     }));
   };
 
@@ -174,23 +196,23 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   } else if (Array.isArray(data.matters)) {
     fetchedMatters = mapData(data.matters);
   } else {
-    console.warn('Unexpected data format:', data);
+    console.warn("Unexpected data format:", data);
   }
   setCachedData(cacheKey, fetchedMatters);
   return fetchedMatters;
 }
 
 async function fetchTeamData(): Promise<TeamData[] | null> {
-  const cacheKey = 'teamData';
+  const cacheKey = "teamData";
   const cached = getCachedData<TeamData[]>(cacheKey);
   if (cached) return cached;
   try {
     const response = await fetch(
       `${process.env.REACT_APP_PROXY_BASE_URL}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
       {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      },
     );
     if (!response.ok) {
       throw new Error(`Failed to fetch team data: ${response.statusText}`);
@@ -199,14 +221,15 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
     setCachedData(cacheKey, data);
     return data;
   } catch (error) {
-    console.error('Error fetching team data:', error);
+    console.error("Error fetching team data:", error);
     return null;
   }
 }
 
 // Main component
 const AppWithContext: React.FC = () => {
-  const [teamsContext, setTeamsContext] = useState<microsoftTeams.Context | null>(null);
+  const [teamsContext, setTeamsContext] =
+    useState<microsoftTeams.Context | null>(null);
   const [userData, setUserData] = useState<UserData[] | null>(null);
   const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
   const [matters, setMatters] = useState<Matter[] | null>(null);
@@ -222,8 +245,8 @@ const AppWithContext: React.FC = () => {
           microsoftTeams.getContext(async (ctx) => {
             setTeamsContext(ctx);
 
-            const objectId = ctx.userObjectId || '';
-            if (!objectId) throw new Error('Missing Teams context objectId.');
+            const objectId = ctx.userObjectId || "";
+            if (!objectId) throw new Error("Missing Teams context objectId.");
 
             const { dateFrom, dateTo } = getDateRange();
 
@@ -231,11 +254,12 @@ const AppWithContext: React.FC = () => {
             const userDataRes = await fetchUserData(objectId);
             setUserData(userDataRes);
 
-            const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
+            const fullName =
+              `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || "";
 
             // 2. In parallel, fetch enquiries, matters, and team data
             const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
-              fetchEnquiries('anyone', dateFrom, dateTo),
+              fetchEnquiries("anyone", dateFrom, dateTo),
               fetchMatters(fullName),
               fetchTeamData(),
             ]);
@@ -247,14 +271,17 @@ const AppWithContext: React.FC = () => {
             setLoading(false);
           });
         } catch (err: any) {
-          console.error('Error initializing or fetching data:', err);
-          setError(err.message || 'Unknown error occurred.');
+          console.error("Error initializing or fetching data:", err);
+          setError(err.message || "Unknown error occurred.");
 
           setLoading(false);
         }
       } else {
-        console.warn('Using local sample data for development.');
-        setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
+        console.warn("Using local sample data for development.");
+        setTeamsContext({
+          userObjectId: "local",
+          theme: "default",
+        } as microsoftTeams.Context);
         setUserData(localUserData as UserData[]);
         setEnquiries(localEnquiries as Enquiry[]);
         setMatters(localMatters as unknown as Matter[]);
@@ -286,5 +313,5 @@ ReactDOM.render(
       <AppWithContext />
     </ThemeProvider>
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById("root"),
 );

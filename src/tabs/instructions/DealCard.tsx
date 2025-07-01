@@ -17,21 +17,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import '../../app/styles/DealCard.css';
 
 interface DealInfo {
-    CloseTime: any;
-    CloseDate: any;
-    InstructionRef?: string | null;
-    ServiceDescription?: string;
-    Amount?: number;
-    AreaOfWork?: string;
-    PitchedDate?: string;
-    PitchedTime?: string;
-    PitchedBy?: string;
-    Passcode?: string;
-    LeadClientEmail?: string;
-    PitchValidUntil?: string;
-    Status?: string;
-    firstName?: string;
-    jointClients?: { ClientEmail?: string; HasSubmitted?: string }[];
+    [key: string]: any;
 }
 
 interface DealCardProps {
@@ -217,34 +203,14 @@ const DealCard: React.FC<DealCardProps> = ({
                 </Text>
             )}
             <div className="deal-details">
-                <ul className="detail-list">
-                    {deal.AreaOfWork && (
-                        <li>
-                            <strong>Area:</strong> {deal.AreaOfWork}
-                        </li>
-                    )}
-                    {deal.PitchedBy && (
-                        <li>
-                            <strong>Pitched By:</strong> {deal.PitchedBy}
-                        </li>
-                    )}
-                    {deal.Passcode && (
-                        <li>
-                            <strong>Passcode:</strong> {deal.Passcode}
-                        </li>
-                    )}
-                    {deal.LeadClientEmail && (
-                        <li>
-                            <strong>Lead Client:</strong> {deal.LeadClientEmail}
-                        </li>
-                    )}
-                    {deal.PitchValidUntil && (
-                        <li>
-                            <strong>Valid Until:</strong>{' '}
-                            {new Date(deal.PitchValidUntil).toLocaleDateString()}
-                        </li>
-                    )}
-                </ul>
+                <dl className="data-grid">
+                    {Object.entries(deal).map(([k, v]) => (
+                        <React.Fragment key={k}>
+                            <dt>{k}</dt>
+                            <dd>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
+                        </React.Fragment>
+                    ))}
+                </dl>
                 {(formattedDate || deal.Status) && (
                     <div className="deal-footer">
                         {formattedDate && <span className="pitch-date">{formattedDate}</span>}
@@ -268,33 +234,6 @@ const DealCard: React.FC<DealCardProps> = ({
                                 )}
                             </span>
                         )}
-                    </div>
-                )}
-                {deal.jointClients && deal.jointClients.length > 0 && (
-                    <div className="joint-container">
-                        {deal.jointClients.map((jc, idx) => {
-                            const done = jc.HasSubmitted === '1';
-                            const jcStatus = done ? 'completed' : 'initialised';
-                            return (
-                                <div className="joint-banner" key={idx}>
-                                    Joint client: {jc.ClientEmail} - {jcStatus}
-                                    {done && (
-                                        <span className="completion-tick visible" aria-hidden="true">
-                                            <svg viewBox="0 0 24 24">
-                                                <polyline
-                                                    points="5,13 10,18 19,7"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="3"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })}
                     </div>
                 )}
             </div>

@@ -15,10 +15,7 @@ export interface DealSummary {
 
 
 export interface ClientInfo {
-    ClientEmail?: string;
-    HasSubmitted?: string;
-    Lead?: boolean;
-    deals?: DealSummary[];
+    [key: string]: any;
 }
 
 interface JointClientCardProps {
@@ -68,28 +65,18 @@ const JointClientCard: React.FC<JointClientCardProps> = ({
                     {statusText}
                 </Text>
             )}
-            {client.deals && client.deals.length > 0 && (
-                <ul className="detail-list">
-                    {client.deals.map((d) => (
-                        <li key={d.DealId}>
-                            {d.ServiceDescription}{' '}
-                            {d.Status && (
-                                <span style={{ color: colours.greyText }}>(
-                                    {d.Status})
-                                </span>
-                            )}
-                            {d.InstructionRef && onOpenInstruction && (
-                                <span
-                                    className="instruction-link"
-                                    onClick={() => onOpenInstruction(d.InstructionRef!)}
-                                >
-                                    {' '}- View
-                                </span>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <dl className="data-grid">
+                {Object.entries(client).map(([k, v]) => (
+                    <React.Fragment key={k}>
+                        <dt>{k}</dt>
+                        <dd>
+                            {Array.isArray(v) || typeof v === 'object'
+                                ? JSON.stringify(v)
+                                : String(v)}
+                        </dd>
+                    </React.Fragment>
+                ))}
+            </dl>
 
         </div>
     );
