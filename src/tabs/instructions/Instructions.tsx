@@ -317,28 +317,29 @@ const Instructions: React.FC<InstructionsProps> = ({
           (d) => d.InstructionRef === inst.InstructionRef,
         );
         const clientsForInst: ClientInfo[] = [];
-        (prospect.jointClients ?? prospect.joinedClients ?? []).forEach(
-          (jc) => {
-            if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
-              clientsForInst.push({
-                ClientEmail: jc.ClientEmail,
-                HasSubmitted: jc.HasSubmitted,
-                Lead: false,
-                deals: [
-                  {
-                    DealId: jc.DealId,
-                    InstructionRef: inst.InstructionRef,
-                    ServiceDescription: dealsForInst.find(
-                      (d) => d.DealId === jc.DealId,
-                    )?.ServiceDescription,
-                    Status: dealsForInst.find((d) => d.DealId === jc.DealId)
-                      ?.Status,
-                  },
-                ],
-              });
-            }
-          },
-        );
+        const prospectClients = [
+          ...(prospect.jointClients ?? prospect.joinedClients ?? []),
+          ...dealsForInst.flatMap((d) => d.jointClients ?? []),
+        ];
+        prospectClients.forEach((jc) => {
+          if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+            clientsForInst.push({
+              ClientEmail: jc.ClientEmail,
+              HasSubmitted: jc.HasSubmitted,
+              Lead: false,
+              deals: [
+                {
+                  DealId: jc.DealId,
+                  InstructionRef: inst.InstructionRef,
+                  ServiceDescription: dealsForInst.find(
+                    (d) => d.DealId === jc.DealId,
+                  )?.ServiceDescription,
+                  Status: dealsForInst.find((d) => d.DealId === jc.DealId)?.Status,
+                },
+              ],
+            });
+          }
+        });
         dealsForInst.forEach((d) => {
           if (d.LeadClientEmail) {
             clientsForInst.push({
@@ -372,16 +373,24 @@ const Instructions: React.FC<InstructionsProps> = ({
           ...((inst as any).electronicIDChecks ??
             (inst as any).idVerifications ??
             []),
+          ...dealsForInst.flatMap((d) => [
+            ...(d.instruction?.electronicIDChecks ?? []),
+            ...(d.instruction?.idVerifications ?? []),
+          ]),
         ];
         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
         const eids = eidSource.filter(
           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
         );
         const eid = eids[0];
-        let docs = (inst as any).documents;
-        if ((!docs || docs.length === 0) && dealsForInst[0]?.instruction?.documents) {
-          docs = dealsForInst[0].instruction.documents;
-        }
+        const docs = [
+          ...(prospect.documents ?? []),
+          ...((inst as any).documents ?? []),
+          ...dealsForInst.flatMap((d) => [
+            ...(d.documents ?? []),
+            ...(d.instruction?.documents ?? []),
+          ]),
+        ];
         return {
           instruction: inst,
           deal,
@@ -425,7 +434,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         (p.deals ?? []).map((d) => ({
           ...d,
           firstName: p.instructions?.[0]?.FirstName,
-          jointClients: p.jointClients ?? p.joinedClients ?? [],
+          jointClients: [
+            ...(p.jointClients ?? p.joinedClients ?? []),
+            ...(d.jointClients ?? []),
+          ],
         })),
       ),
     [instructionData],
@@ -452,7 +464,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           map[key] = entry;
         }
       });
-      (p.jointClients ?? p.joinedClients ?? []).forEach((jc) => {
+      [...(p.jointClients ?? p.joinedClients ?? []), ...deals.flatMap((d) => d.jointClients ?? [])].forEach((jc) => {
         const key = jc.ClientEmail;
         const entry = map[key] || {
           ClientEmail: jc.ClientEmail,

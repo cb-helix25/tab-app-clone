@@ -1,242 +1,63 @@
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 49c705c3fc9d161817050c4317cdb2d063118e74..37055d7ffdca018d2d3c28ae6a6c4fdf7e4ca431 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -131,51 +131,51 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-     useEffect(() => {
-         setCollapsed(!expanded);
-     }, [expanded]);
- 
-     const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
-         backgroundColor: colours.light.sectionBackground,
-         padding: componentTokens.card.base.padding,
-         boxShadow: isCompleted
-             ? `inset 0 0 8px ${colours.green}55, ${componentTokens.card.base.boxShadow}`
-             : componentTokens.card.base.boxShadow,
-         color: colours.light.text,
-         height: 'auto',
-         border: `2px solid ${isCompleted ? colours.green : 'transparent'}`,
-         opacity: isCompleted ? 0.6 : 1,
-         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
-         selectors: {
-             ':hover': {
-                 boxShadow: componentTokens.card.hover.boxShadow,
-                 transform: componentTokens.card.hover.transform,
-             },
-         },
-     });
- 
-     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
-     const formatValue = (key: string, value: any) => {
--        if (value === null || value === undefined) return null;
-+        if (value === null || value === undefined) return '';
-         const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
-         if (dateKeys.includes(key) && typeof value === 'string') {
-             try {
-                 return format(new Date(value), 'd MMM yyyy');
-             } catch {
-                 return value;
-             }
-         }
-         if (typeof value === 'object') {
-             try {
-                 return JSON.stringify(value);
-             } catch {
-                 return String(value);
-             }
-         }
-         return String(value);
-     };
- 
-     const proofOfIdComplete = Boolean(
-         instruction.PassportNumber || instruction.DriversLicenseNumber
-     );
-     const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
-     const paymentComplete = paymentStatusRaw === 'successful';
-     const paymentFailed = paymentStatusRaw === 'failed';
-     const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 49c705c3fc9d161817050c4317cdb2d063118e74..37055d7ffdca018d2d3c28ae6a6c4fdf7e4ca431 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -335,155 +335,155 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                             )}
-                         </div>
-                     );
-                 })}
-             </div>
- 
-             <div className="card-content">
-                 <div className="instruction-details">
-                     {selectedStatus === 'deal' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Deal Info</div>
-                             <ul className="detail-list">
-                                 {prospectId != null && (
-                                     <li><strong>Prospect ID:</strong> {prospectId}</li>
-                                 )}
-                                 {(deals && deals.length > 0
-                                     ? deals
-                                     : deal
-                                         ? [deal]
-                                         : [])
-                                     .map((d, idx) => (
-                                         <React.Fragment key={idx}>
-                                             {deals && deals.length > 1 && (
-                                                 <li><em>Deal {idx + 1}</em></li>
-                                             )}
--                                            {Object.entries(d).map(([k, v]) =>
--                                                v != null ? (
--                                                    <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
--                                                ) : null
--                                            )}
-+                                            {Object.entries(d).map(([k, v]) => (
-+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
-+                                            ))}
-                                         </React.Fragment>
-                                     ))}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'id' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">ID Details</div>
-                             <ul className="detail-list">
-                                 {Object.entries(instruction)
--                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v))
-+                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v) || v === null)
-                                     .map(([k, v]) => (
--                                        v != null ? (
--                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
--                                        ) : null
-+                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                     ))}
-                                 {(eids && eids.length > 0
-                                     ? eids
-                                     : eid
-                                         ? [eid]
-                                         : []
-                                 ).map((e, idx) => (
-                                     <React.Fragment key={idx}>
-                                         {eids && eids.length > 1 && (
-                                             <li><em>ID Verification {idx + 1}</em></li>
-                                         )}
-                                         {Object.entries(e).map(([k, v]) => (
--                                            v != null ? (
--                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
--                                            ) : null
-+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                         ))}
-                                     </React.Fragment>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'pay' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Payment</div>
-                             <ul className="detail-list">
-                                 {Object.entries(instruction)
-                                     .filter(([k]) =>
-                                         k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
-                                     )
--                                    .map(([k, v]) =>
--                                        v != null ? (
--                                            <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
--                                        ) : null
--                                    )}
-+                                    .map(([k, v]) => (
-+                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-+                                    ))
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'docs' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Documents</div>
-                             <ul className="detail-list">
-                                 <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
-                                 {documents?.map((d, idx) => (
-                                     <React.Fragment key={idx}>
-                                         {documents.length > 1 && (
-                                             <li><em>Document {idx + 1}</em></li>
-                                         )}
-                                         {Object.entries(d).map(([k, v]) => (
--                                            v != null ? (
--                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
--                                            ) : null
-+                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                         ))}
-                                     </React.Fragment>
-                                 ))}
-+                                {clients && clients.length > 0 && (
-+                                    <React.Fragment>
-+                                        <li><em>Joint Clients</em></li>
-+                                        {clients.map((c, cidx) => (
-+                                            <React.Fragment key={`c-${cidx}`}>
-+                                                {Object.entries(c).map(([k, v]) => (
-+                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {String(v ?? '')}</li>
-+                                                ))}
-+                                            </React.Fragment>
-+                                        ))}
-+                                    </React.Fragment>
-+                                )}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'eid' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Verify an ID</div>
-                             <ul className="detail-list">
-                                 {eid && Object.entries(eid).map(([k,v]) => (
--                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
-+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'risk' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Risk Assessment</div>
-                             <ul className="detail-list">
-                                 {risk && Object.entries(risk).map(([k, v]) => (
--                                    v != null ? (
--                                        <li key={k}><strong>{k}:</strong> {String(v)}</li>
--                                    ) : null
-+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                     {selectedStatus === 'comp' && (
-                         <div className="detail-group open">
-                             <div className="detail-summary">Compliance</div>
-                             <ul className="detail-list">
-                                 {compliance && Object.entries(compliance).map(([k,v]) => (
--                                    <li key={k}><strong>{k}:</strong> {String(v)}</li>
-+                                    <li key={k}><strong>{k}:</strong> {String(v ?? '')}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                     )}
-                 </div>
- 
-                 <div className="bottom-tabs">
-                     {[
-                         {
-                             key: 'eid',
-                             label: verifyIdLabel,
-                             title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
-                             icon: iconMap.eid,
-                             onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                             status: verifyTabStatus,
-                         },
-                         {
-                             key: 'risk',
-                             label: 'Assess Risk',
-                             title: riskAssessed ? 'Risk Assessed' : undefined,
-                             icon: iconMap.risk,
-                             onClick: () => { setActiveTab('risk'); onRiskAssessment?.({ instruction, risk }); },
-                             status: riskAssessed ? 'complete' : 'ready',
-                         },
-                         {
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 0526f79473b040bbb4509ff18242f0afa04c3158..e715d41ae6a7f2d6a19edd442d6554f917c0f11d 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -322,55 +322,56 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
+       color: #ffffff;
+       transform: scale(0.95);
+     }
+     .block-sidebar .pin-toggle i {
+       transition: transform 0.2s ease;
+     }
+     .block-sidebar .pin-toggle.pinned i {
+       transform: rotate(45deg);
+     }
+     .block-sidebar .option-choices {
+       display: flex;
+       flex-direction: column;
+       gap: 4px;
+     }
+     .block-container:hover .block-main,
+     .block-container.pinned .block-main {
+       margin-right: 260px;
+     }
+     .option-choice.selected {
+       background: ${colours.blue};
+       color: #ffffff;
+     }
+     .insert-placeholder {
+       background: ${colours.highlightBlue};
+       color: ${colours.darkBlue};
+-      padding: 2px 4px;
+-      border-radius: 6px;
++      padding: 0 4px;
++      border-radius: 4px;
+       border: 1px dashed ${colours.darkBlue};
+       font-style: italic;
+       cursor: pointer;
++      line-height: normal;
+       transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+     }
+     .insert-placeholder:hover,
+     .insert-placeholder:focus {
+       background: ${colours.blue};
+       color: #ffffff;
+       box-shadow: 0 0 0 2px ${colours.blue}80;
+       transform: scale(1.05);
+       outline: none;
+     }
+     [data-sentence] {
+       display: inline-flex;
+       align-items: baseline;
+       gap: 4px;
+     }
+     .snippet-wrapper {
+       display: inline;
+       margin-right: 4px;
+     }
+     .sentence-delete {
+       margin-right: 4px;
+       cursor: pointer;
+       user-select: none;
+       color: ${colours.red};
+       display: inline-flex;
