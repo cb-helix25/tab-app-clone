@@ -420,7 +420,16 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             <ul className="detail-list">
                                 <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
                                 {documents?.map((d, idx) => (
-                                    <li key={idx}><strong>{d.FileName}</strong></li>
+                                    <React.Fragment key={idx}>
+                                        {documents.length > 1 && (
+                                            <li><em>Document {idx + 1}</em></li>
+                                        )}
+                                        {Object.entries(d).map(([k, v]) => (
+                                            v != null ? (
+                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {String(v)}</li>
+                                            ) : null
+                                        ))}
+                                    </React.Fragment>
                                 ))}
                             </ul>
                         </div>
