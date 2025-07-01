@@ -51,11 +51,11 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
         <Stack tokens={dashboardTokens} className="workflow-container">
             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
             {inst && (
-                <iframe
-                    title="Client Care Letter"
-                    src="/docs/ccl.pdf"
-                    style={{ width: '100%', height: '80vh', border: 'none' }}
-                />
+            <iframe
+                title="Client Care Letter"
+                src={require('../../assets/ccl.pdf')}
+                style={{ width: '100%', height: '80vh', border: 'none' }}
+            />
             )}
         </Stack>
     );

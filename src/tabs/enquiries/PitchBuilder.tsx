@@ -337,6 +337,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     .block-container.pinned .block-main {
       margin-right: 260px;
     }
+    body.sidebar-overlay .block-container:hover .block-main,
+    body.sidebar-overlay .block-container.pinned .block-main {
+      margin-right: 0;
+    }
+    body.sidebar-overlay .block-sidebar {
+      z-index: 1000;
+    }
     .option-choice.selected {
       background: ${colours.blue};
       color: #ffffff;
@@ -704,6 +711,25 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
   }
 
+  function toggleSidebarOverlayMode() {
+    setOverlaySidebars(prev => {
+      const newVal = !prev;
+      if (newVal) document.body.classList.add('sidebar-overlay');
+      else document.body.classList.remove('sidebar-overlay');
+      localStorage.setItem('sidebarOverlay', newVal ? 'true' : 'false');
+      const sidebars = bodyEditorRef.current?.querySelectorAll('.block-sidebar') as NodeListOf<HTMLElement> | null;
+      if (sidebars) {
+        sidebars.forEach(sb => {
+          const icon = sb.querySelector('.overlay-toggle i') as HTMLElement | null;
+          if (icon) {
+            icon.className = `ms-Icon ms-Icon--${newVal ? 'DockRight' : 'DockLeft'}`;
+          }
+        });
+      }
+      return newVal;
+    });
+  }
+
   function openSnippetOptions(
     e: MouseEvent,
     blockTitle: string,
@@ -786,11 +812,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     (window as any).insertBlockOption = insertBlockOption;
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).saveCustomSnippet = saveCustomSnippet;
+    (window as any).toggleSidebarOverlayMode = toggleSidebarOverlayMode;
     (window as any).removeBlock = (title: string) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, templateBlocks]);
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, toggleSidebarOverlayMode, templateBlocks]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -963,6 +990,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const [pinnedBlocks, setPinnedBlocks] = useState<{ [key: string]: boolean }>({});
 
+  const [overlaySidebars, setOverlaySidebars] = useState<boolean>(() =>
+    localStorage.getItem('sidebarOverlay') === 'true'
+  );
+
   const [editedBlocks, setEditedBlocks] = useState<{ [key: string]: boolean }>({});
   const [editedSnippets, setEditedSnippets] = useState<{
     [key: string]: { [label: string]: boolean };
@@ -972,6 +1003,23 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     [key: string]: { [label: string]: string };
   }>({});
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (overlaySidebars) {
+      document.body.classList.add('sidebar-overlay');
+    } else {
+      document.body.classList.remove('sidebar-overlay');
+    }
+    const sidebars = bodyEditorRef.current?.querySelectorAll('.block-sidebar') as NodeListOf<HTMLElement> | null;
+    if (sidebars) {
+      sidebars.forEach(sb => {
+        const icon = sb.querySelector('.overlay-toggle i') as HTMLElement | null;
+        if (icon) {
+          icon.className = `ms-Icon ms-Icon--${overlaySidebars ? 'DockRight' : 'DockLeft'}`;
+        }
+      });
+    }
+  }, [overlaySidebars]);
 
   // Placeholder editing popover state
   const [placeholderEdit, setPlaceholderEdit] = useState<{
@@ -1540,7 +1588,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelText = `${block.title} (${getTemplateSetLabel(templateSet)}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'ChevronRight' : 'ChevronLeft'}"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedBlocks[block.title] ? ' pinned' : ''}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
+    const overlayIcon = overlaySidebars ? 'DockRight' : 'DockLeft';
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'ChevronRight' : 'ChevronLeft'}"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedBlocks[block.title] ? ' pinned' : ''}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn overlay-toggle" onclick="window.toggleSidebarOverlayMode()"><i class="ms-Icon ms-Icon--${overlayIcon}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 

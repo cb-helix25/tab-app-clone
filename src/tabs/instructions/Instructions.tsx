@@ -6,6 +6,9 @@ import {
   Pivot,
   PivotItem,
   Text,
+  Dropdown,
+  IDropdownOption,
+  PrimaryButton,
 } from "@fluentui/react";
 import QuickActionsCard from "../home/QuickActionsCard";
 import { useTheme } from "../../app/functionality/ThemeContext";
@@ -24,6 +27,7 @@ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCa
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
+import DraftCCLPage from "./DraftCCLPage";
 import "../../app/styles/InstructionsBanner.css";
 
 interface InstructionsProps {
@@ -44,12 +48,21 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+  const [showDraftCCLPage, setShowDraftCCLPage] = useState<boolean>(false);
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   /** Client type selection for the matter opening workflow */
   const [newMatterClientType, setNewMatterClientType] =
     useState<string>("Individual");
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
     null,
+  );
+  const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
+  const instructionOptions: IDropdownOption[] = useMemo(
+    () =>
+      instructionData
+        .flatMap((p) => p.instructions ?? [])
+        .map((i) => ({ key: i.InstructionRef, text: i.InstructionRef })),
+    [instructionData],
   );
   const [activePivot, setActivePivot] = useState<string>("overview");
 
@@ -168,17 +181,21 @@ const Instructions: React.FC<InstructionsProps> = ({
     if (showNewMatterPage) {
       setShowNewMatterPage(false);
       setSelectedInstruction(null);
+      setPendingInstructionRef('');
     } else if (showRiskPage) {
       setShowRiskPage(false);
+      setSelectedRisk(null);
     } else if (showEIDPage) {
       setShowEIDPage(false);
+    } else if (showDraftCCLPage) {
+      setShowDraftCCLPage(false);
     }
   };
 
   useEffect(() => {
     setContent(
       <>
-        {showNewMatterPage || showRiskPage || showEIDPage ? (
+        {showNewMatterPage || showRiskPage || showEIDPage || showDraftCCLPage ? (
           <div className={detailNavStyle(isDarkMode)}>
             <IconButton
               iconProps={{ iconName: "ChevronLeft" }}
@@ -228,14 +245,23 @@ const Instructions: React.FC<InstructionsProps> = ({
                   title="Risk Assessment"
                   icon="Assessment"
                   isDarkMode={isDarkMode}
-                  onClick={() => { }}
+                  onClick={() => {
+                    setSelectedInstruction(null);
+                    setSelectedRisk(null);
+                    setPendingInstructionRef('');
+                    setShowRiskPage(true);
+                  }}
                   style={{ "--card-index": 2 } as React.CSSProperties}
                 />
                 <QuickActionsCard
                   title="Draft CCL"
                   icon="OpenFile"
                   isDarkMode={isDarkMode}
-                  onClick={() => setShowRiskPage(true)}
+                  onClick={() => {
+                    setSelectedInstruction(null);
+                    setPendingInstructionRef('');
+                    setShowDraftCCLPage(true);
+                  }}
                   style={{ "--card-index": 3 } as React.CSSProperties}
                 />
               </div>
@@ -269,6 +295,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     showNewMatterPage,
     showRiskPage,
     showEIDPage,
+    showDraftCCLPage,
     newMatterClientType,
   ]);
 
@@ -648,6 +675,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
     setNewMatterClientType(inst?.ClientType || "Individual");
+    setPendingInstructionRef('');
     setShowNewMatterPage(true);
   };
 
@@ -656,11 +684,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       setSelectedInstruction(item.instruction ?? item);
       setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
     }
+    setPendingInstructionRef('');
     setShowRiskPage(true);
   };
 
   const handleEIDCheck = (inst: any) => {
     setSelectedInstruction(inst);
+    setPendingInstructionRef('');
     setShowEIDPage(true);
   };
 
@@ -699,6 +729,30 @@ const Instructions: React.FC<InstructionsProps> = ({
   });
 
   if (showNewMatterPage) {
+    if (!selectedInstruction) {
+      return (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+          <Dropdown
+            placeholder="Select Instruction"
+            options={instructionOptions}
+            selectedKey={pendingInstructionRef}
+            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+          />
+          <PrimaryButton
+            text="Start"
+            disabled={!pendingInstructionRef}
+            onClick={() => {
+              const inst = instructionData
+                .flatMap((p) => p.instructions ?? [])
+                .find((i) => i.InstructionRef === pendingInstructionRef);
+              if (inst) setSelectedInstruction(inst);
+            }}
+          />
+        </Stack>
+      );
+    }
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
@@ -717,6 +771,30 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   if (showRiskPage) {
+    if (!selectedInstruction) {
+      return (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+          <Dropdown
+            placeholder="Select Instruction"
+            options={instructionOptions}
+            selectedKey={pendingInstructionRef}
+            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+          />
+          <PrimaryButton
+            text="Start"
+            disabled={!pendingInstructionRef}
+            onClick={() => {
+              const inst = instructionData
+                .flatMap((p) => p.instructions ?? [])
+                .find((i) => i.InstructionRef === pendingInstructionRef);
+              if (inst) setSelectedInstruction(inst);
+            }}
+          />
+        </Stack>
+      );
+    }
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <RiskAssessmentPage
@@ -733,12 +811,72 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   if (showEIDPage) {
+    if (!selectedInstruction) {
+      return (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+          <Dropdown
+            placeholder="Select Instruction"
+            options={instructionOptions}
+            selectedKey={pendingInstructionRef}
+            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+          />
+          <PrimaryButton
+            text="Start"
+            disabled={!pendingInstructionRef}
+            onClick={() => {
+              const inst = instructionData
+                .flatMap((p) => p.instructions ?? [])
+                .find((i) => i.InstructionRef === pendingInstructionRef);
+              if (inst) setSelectedInstruction(inst);
+            }}
+          />
+        </Stack>
+      );
+    }
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <EIDCheckPage
           poidData={idVerificationOptions}
           instruction={selectedInstruction}
           onBack={handleBack}
+        />
+      </Stack>
+    );
+  }
+
+  if (showDraftCCLPage) {
+    if (!selectedInstruction) {
+      return (
+        <Stack tokens={dashboardTokens} className={containerStyle}>
+          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+          <Dropdown
+            placeholder="Select Instruction"
+            options={instructionOptions}
+            selectedKey={pendingInstructionRef}
+            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+          />
+          <PrimaryButton
+            text="Start"
+            disabled={!pendingInstructionRef}
+            onClick={() => {
+              const inst = instructionData
+                .flatMap((p) => p.instructions ?? [])
+                .find((i) => i.InstructionRef === pendingInstructionRef);
+              if (inst) setSelectedInstruction(inst);
+            }}
+          />
+        </Stack>
+      );
+    }
+    return (
+      <Stack tokens={dashboardTokens} className={containerStyle}>
+        <DraftCCLPage
+          onBack={() => setShowDraftCCLPage(false)}
+          instruction={selectedInstruction}
+          instructions={instructionData}
         />
       </Stack>
     );
