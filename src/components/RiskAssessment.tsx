@@ -1,13 +1,12 @@
 import React from 'react';
 import {
     Stack,
-    Dropdown,
-    Toggle,
     PrimaryButton,
     DatePicker,
     IDatePickerStyles,
 } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../app/styles/ButtonStyles';
+import BigOptionGroup from './BigOptionGroup';
 
 export interface RiskCore {
     clientType: string;
@@ -130,9 +129,9 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     onContinue,
     isComplete,
 }) => (
-    <Stack tokens={{ childrenGap: 20 }} horizontalAlign="center">
-        <Stack horizontal tokens={{ childrenGap: 40 }}>
-            <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
+    <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
+        <Stack horizontal tokens={{ childrenGap: 60 }}>
+            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: 300 } }}>
                 <DatePicker
                     label="Compliance Date"
                     value={complianceDate}
@@ -147,112 +146,128 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                     formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
                     styles={datePickerStyles}
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Client Type"
-                    placeholder="Select option"
                     options={clientTypeOptions}
                     selectedKey={riskCore.clientTypeValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            clientType: o?.text || '',
-                            clientTypeValue: Number(o?.key) || 0,
+                            clientType: t,
+                            clientTypeValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Destination of Funds"
-                    placeholder="Select option"
                     options={destinationOfFundsOptions}
                     selectedKey={riskCore.destinationOfFundsValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            destinationOfFunds: o?.text || '',
-                            destinationOfFundsValue: Number(o?.key) || 0,
+                            destinationOfFunds: t,
+                            destinationOfFundsValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Funds Type"
-                    placeholder="Select option"
                     options={fundsTypeOptions}
                     selectedKey={riskCore.fundsTypeValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            fundsType: o?.text || '',
-                            fundsTypeValue: Number(o?.key) || 0,
+                            fundsType: t,
+                            fundsTypeValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="How was Client Introduced?"
-                    placeholder="Select option"
                     options={introducedOptions}
                     selectedKey={riskCore.clientIntroducedValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            clientIntroduced: o?.text || '',
-                            clientIntroducedValue: Number(o?.key) || 0,
+                            clientIntroduced: t,
+                            clientIntroducedValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Limitation"
-                    placeholder="Select option"
                     options={limitationOptions}
                     selectedKey={riskCore.limitationValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            limitation: o?.text || '',
-                            limitationValue: Number(o?.key) || 0,
+                            limitation: t,
+                            limitationValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Source of Funds"
-                    placeholder="Select option"
                     options={sourceOfFundsOptions}
                     selectedKey={riskCore.sourceOfFundsValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            sourceOfFunds: o?.text || '',
-                            sourceOfFundsValue: Number(o?.key) || 0,
+                            sourceOfFunds: t,
+                            sourceOfFundsValue: Number(k) || 0,
                         })
                     }
                 />
-                <Dropdown
+                <BigOptionGroup
                     label="Value of Instruction"
-                    placeholder="Select option"
                     options={valueOfInstructionOptions}
                     selectedKey={riskCore.valueOfInstructionValue}
-                    onChange={(_, o) =>
+                    onChange={(k, t) =>
                         setRiskCore({
                             ...riskCore,
-                            valueOfInstruction: o?.text || '',
-                            valueOfInstructionValue: Number(o?.key) || 0,
+                            valueOfInstruction: t,
+                            valueOfInstructionValue: Number(k) || 0,
                         })
                     }
                 />
             </Stack>
-            <Stack tokens={{ childrenGap: 15 }} styles={{ root: { width: 300 } }}>
-                <Toggle label="I have considered client risk factors" checked={consideredClientRisk} onChange={(_, c) => setConsideredClientRisk(!!c)} />
-                <Toggle label="I have considered transaction risk factors" checked={consideredTransactionRisk} onChange={(_, c) => setConsideredTransactionRisk(!!c)} />
+            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: 300 } }}>
+                <BigOptionGroup
+                    label="I have considered client risk factors"
+                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                    selectedKey={consideredClientRisk ? 'yes' : 'no'}
+                    onChange={(k) => setConsideredClientRisk(k === 'yes')}
+                />
+                <BigOptionGroup
+                    label="I have considered transaction risk factors"
+                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                    selectedKey={consideredTransactionRisk ? 'yes' : 'no'}
+                    onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
+                />
                 {consideredTransactionRisk && (
-                    <Dropdown
+                    <BigOptionGroup
                         label="Transaction Risk Level"
-                        placeholder="Select risk level"
-                        options={[{ key: 'Low Risk', text: 'Low Risk' }, { key: 'Medium Risk', text: 'Medium Risk' }, { key: 'High Risk', text: 'High Risk' }]}
+                        options={[
+                            { key: 'Low Risk', text: 'Low Risk' },
+                            { key: 'Medium Risk', text: 'Medium Risk' },
+                            { key: 'High Risk', text: 'High Risk' },
+                        ]}
                         selectedKey={transactionRiskLevel}
-                        onChange={(_, o) => setTransactionRiskLevel(o?.key as string)}
+                        onChange={(k) => setTransactionRiskLevel(k as string)}
                     />
                 )}
-                <Toggle label="I have considered the Firm Wide Sanctions Risk Assessment" checked={consideredFirmWideSanctions} onChange={(_, c) => setConsideredFirmWideSanctions(!!c)} />
-                <Toggle label="I have considered the Firm Wide AML policy" checked={consideredFirmWideAML} onChange={(_, c) => setConsideredFirmWideAML(!!c)} />
+                <BigOptionGroup
+                    label="I have considered the Firm Wide Sanctions Risk Assessment"
+                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                    selectedKey={consideredFirmWideSanctions ? 'yes' : 'no'}
+                    onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
+                />
+                <BigOptionGroup
+                    label="I have considered the Firm Wide AML policy"
+                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                    selectedKey={consideredFirmWideAML ? 'yes' : 'no'}
+                    onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
+                />
             </Stack>
         </Stack>
         <PrimaryButton text="Continue" onClick={onContinue} disabled={!isComplete()} styles={sharedPrimaryButtonStyles} />

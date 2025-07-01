@@ -260,6 +260,7 @@ const addingClientRef = useRef(false);
     fontWeight: 600,
     fontSize: 13,
     marginBottom: 8,
+    padding: '0 4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -271,6 +272,58 @@ const addingClientRef = useRef(false);
   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
     borderLeft: `4px solid ${colours.darkBlue}`,
     borderRadius: 0,
+  });
+
+  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
+
+  const dealFieldsContainer = mergeStyles(sectionStyle, {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 0,
+    padding: 0,
+    borderRadius: 0,
+    selectors: {
+      '> div:last-child': { borderRight: 'none' },
+    },
+  });
+
+  const serviceFieldStyle = mergeStyles({
+    flexBasis: '40%',
+    flexGrow: 1,
+    minWidth: 250,
+    padding: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: `1px solid ${separatorColour}`,
+  });
+
+  const amountFieldStyle = mergeStyles({
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 180,
+    padding: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: `1px solid ${separatorColour}`,
+    selectors: {
+      '@media (max-width: 610px)': {
+        borderRight: 'none',
+      },
+    },
+  });
+
+  const expiryFieldStyle = mergeStyles({
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 180,
+    padding: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    selectors: {
+      '@media (max-width: 610px)': {
+        borderTop: `1px solid ${separatorColour}`,
+      },
+    },
   });
 
 
@@ -381,7 +434,7 @@ useLayoutEffect(() => {
   const rootStackStyle = mergeStyles(sectionStyle, {
     height: '100%',
     transition: 'box-shadow 0.2s ease',
-    borderRadius: 8,
+    borderRadius: 0,
     selectors: {
       ':hover': {
         boxShadow: isDarkMode
@@ -391,26 +444,16 @@ useLayoutEffect(() => {
     },
   });
 
-  const dealFieldsRow = mergeStyles({
-    display: 'flex',
-    flexWrap: 'wrap',
-    flexDirection: 'row',
-    columnGap: '8px',
-    rowGap: '8px',
-    width: '100%',
-  });
-
   return (
     <Stack tokens={{ childrenGap: 10 }} className={rootStackStyle}>
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
 
       {/* Service Description, Amount and Expiry */}
-      <Stack horizontal wrap className={dealFieldsRow}>
-        <Stack styles={{ root: { flexBasis: '40%', flexGrow: 1, minWidth: 250 } }}>
-          <div ref={descRef}>
-            {!useBespoke ? (
-              <Stack tokens={{ childrenGap: 6 }}>
-                <div className={intakeContainer}>
+      <div className={dealFieldsContainer}>
+        <div className={serviceFieldStyle} ref={descRef}>
+          {!useBespoke ? (
+            <Stack tokens={{ childrenGap: 6 }}>
+                <div>
                   <div className={intakeHeader}>Service Description</div>
                   <Dropdown
                     options={SERVICE_OPTIONS}
@@ -447,7 +490,7 @@ useLayoutEffect(() => {
               </Stack>
             ) : (
               <Stack>
-                <div className={intakeContainer}>
+                <div>
                   <div className={intakeHeader}>Freehand Description</div>
                   <TextField
                     multiline
@@ -458,39 +501,36 @@ useLayoutEffect(() => {
                     styles={{
                       fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
                       prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
-                    }}
-                    maxLength={200}
-                  />
-                </div>
-                <Text
-                  variant="small"
-                  styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
-                >
-                  {serviceDescription.length}/200 characters
-                </Text>
-                <span
-                  onClick={() => setUseBespoke(false)}
-                  style={{
-                    color: colours.highlight,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    marginTop: 6,
                   }}
-                >
-                  ← Back to dropdown options
-                </span>
-              </Stack>
+                  maxLength={200}
+                />
+              </div>
+              <Text
+                variant="small"
+                styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
+              >
+                {serviceDescription.length}/200 characters
+              </Text>
+              <span
+                onClick={() => setUseBespoke(false)}
+                style={{
+                  color: colours.highlight,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  marginTop: 6,
+                }}
+              >
+                ← Back to dropdown options
+              </span>
+            </Stack>
             )}
           </div>
-        </Stack>
-
-        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
-          <div className={intakeContainer}>
-            <div className={intakeHeader}>Amount (ex. VAT)</div>
-            <div className={amountContainerStyle}>
-              <span
-                className={mergeStyles(prefixStyle, {
-                  border: 'none',
+        <div className={amountFieldStyle}>
+          <div className={intakeHeader}>Amount (ex. VAT)</div>
+          <div className={amountContainerStyle}>
+            <span
+              className={mergeStyles(prefixStyle, {
+                border: 'none',
                   background: 'transparent',
                 })}
               >
@@ -510,20 +550,17 @@ useLayoutEffect(() => {
               />
             </div>
           </div>
-        </Stack>
 
-        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
-          <div className={intakeContainer}>
-            <div className={intakeHeader}>Deal Expiry</div>
-            <TextField
-              type="date"
-              value={dealExpiry}
-              onChange={(_, v) => setDealExpiry(v || '')}
-              styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
-            />
-          </div>
-        </Stack>
-      </Stack>
+        <div className={expiryFieldStyle}>
+          <div className={intakeHeader}>Deal Expiry</div>
+          <TextField
+            type="date"
+            value={dealExpiry}
+            onChange={(_, v) => setDealExpiry(v || '')}
+            styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
+          />
+        </div>
+      </div>
       <div className={paymentInfoWrapper(showPaymentInfo || !!amountError)}>
         <div className={paymentInfoClass(!!amountError, true)}>
           {amountError || ''}

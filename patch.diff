@@ -1,334 +1,561 @@
-diff --git a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-index 6ced1b7a9bbc54002ee62e2bf544ba666e73ecd6..5537a34adb4206a0dcffa7935b31804a7519407a 100644
---- a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-+++ b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-@@ -251,50 +251,98 @@ const addingClientRef = useRef(false);
-     fontWeight: '600',
-     color: isDarkMode ? colours.dark.text : colours.light.text,
-     paddingBottom: '5px',
+diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+index 8320ed868523784430d34182e25aadbce4b78785..ef7a9fdab9960326352e8ad51dea5f88bd1ef950 100644
+--- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
++++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+@@ -62,176 +62,230 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
+   amount,
+   handleAmountChange,
+   handleAmountBlur,
+   handleDealFormSubmit,
+   dealId,
+   clientIds,
+   isDarkMode,
+ }) => {
+ 
+   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
+ 
+   // Generic card style used across enquiry, email and deal sections
+   const sectionStyle = {
+     display: 'flex',
+     flexDirection: 'column' as const,
+     width: '100%',
+     padding: 8,
+     gap: 4,
+     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
+     borderRadius: 8,
+     backgroundColor: isDarkMode
+       ? colours.dark.cardBackground
+       : '#ffffff',
+   };
+ 
+-  const enquiryNotesContainer = mergeStyles(sectionStyle);
++  const enquiryNotesContainer = mergeStyles(sectionStyle, { padding: 12 });
+ 
+   const enquiryNotesHeader = mergeStyles({
+     color: labelColour,
+     fontWeight: 600,
+     fontSize: 13,
+     lineHeight: 1.2,
+     marginBottom: 8,    // ↑ more breathing room under the title
+   });
+ 
+   const enquiryNotesContent = mergeStyles({
+     whiteSpace: 'pre-wrap',
+     fontSize: 14,
+     color: labelColour,
+     display: 'flex',
+     flexDirection: 'column',
+     gap: 4,
+   });
+ 
+   const notesContainerStyle = mergeStyles({
+     background: isDarkMode ? colours.dark.cardBackground : '#fff',
+     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
+-    borderRadius: 8,
++    borderRadius: 0,
+     padding: 12,
+     fontSize: 14,
+     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+     width: '100%',
+   });
+ 
+   const notesTextStyle = mergeStyles({
+     fontFamily: 'Raleway',
    });
  
    const intakeContainer = mergeStyles(sectionStyle);
  
    const intakeHeader = mergeStyles({
-     color: isDarkMode ? '#fff' : colours.darkBlue,
+     color: labelColour,
      fontWeight: 600,
      fontSize: 13,
-     marginBottom: 8,
+     marginBottom: 8,    // ↑ match the enquiry title spacing
++    padding: '0 4px',
      display: 'flex',
      alignItems: 'center',
      justifyContent: 'space-between',
    });
  
-   // Input fields for client details have a subtle left accent using the
-   // same colour as section headers to visually connect them without a
-   // full header bar.
-   const clientFieldGroupStyle = mergeStyles(inputFieldStyle, {
-     borderLeft: `4px solid ${colours.darkBlue}`,
-     borderRadius: 0,
+   const toggleCcBccStyle = mergeStyles({
+     color: colours.greyText,
+     cursor: 'pointer',
+     fontSize: 12,
+     marginTop: 6,
+     selectors: {
+       ':hover': { color: labelColour },
+ 
+     },
+   });
+ 
+   const detailRowStyle = mergeStyles({
+     display: 'flex',
+     alignItems: 'center',
+     gap: 4,
+     fontSize: 13,
+   });
+ 
+   const detailLabelStyle = mergeStyles({ fontWeight: 600 });
+ 
+   const detailValueStyle = mergeStyles({ flexGrow: 1, overflowWrap: 'anywhere' });
+ 
+   const copyBtnStyle = mergeStyles({
+     background: 'none',
+     border: 'none',
+     color: colours.highlight,
+     cursor: 'pointer',
+     padding: 0,
+     fontSize: 12,
+     selectors: { ':hover': { textDecoration: 'underline' } },
    });
  
 +  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
 +
-+  const dealFieldsContainer = mergeStyles(sectionStyle, {
++  const emailFieldsContainer = mergeStyles(sectionStyle, {
 +    flexDirection: 'row',
 +    flexWrap: 'wrap',
 +    gap: 0,
 +    padding: 0,
-+  });
-+
-+  const serviceFieldStyle = mergeStyles({
-+    flexBasis: '40%',
-+    flexGrow: 1,
-+    minWidth: 250,
-+    padding: 8,
-+    display: 'flex',
-+    flexDirection: 'column',
-+    borderRight: `1px solid ${separatorColour}`,
-+  });
-+
-+  const amountFieldStyle = mergeStyles({
-+    flexBasis: '30%',
-+    flexGrow: 1,
-+    minWidth: 180,
-+    padding: 8,
-+    display: 'flex',
-+    flexDirection: 'column',
-+    borderRight: `1px solid ${separatorColour}`,
++    borderRadius: 0,
 +    selectors: {
-+      '@media (max-width: 610px)': {
-+        borderRight: 'none',
-+      },
++      '> div:last-child': { borderRight: 'none' },
 +    },
 +  });
 +
-+  const expiryFieldStyle = mergeStyles({
-+    flexBasis: '30%',
++  const emailFieldBase = {
 +    flexGrow: 1,
-+    minWidth: 180,
 +    padding: 8,
 +    display: 'flex',
-+    flexDirection: 'column',
++    flexDirection: 'column' as const,
++  };
++
++  const toFieldStyle = mergeStyles(emailFieldBase, {
++    minWidth: 250,
++    borderRight: `1px solid ${separatorColour}`,
++  });
++
++  const ccFieldStyle = mergeStyles(emailFieldBase, {
++    minWidth: 250,
++    borderRight: `1px solid ${separatorColour}`,
 +    selectors: {
-+      '@media (max-width: 610px)': {
++      '@media (max-width: 650px)': {
++        borderRight: 'none',
 +        borderTop: `1px solid ${separatorColour}`,
 +      },
 +    },
 +  });
 +
++  const bccFieldStyle = mergeStyles(emailFieldBase, {
++    minWidth: 250,
++    borderRight: `1px solid ${separatorColour}`,
++    selectors: {
++      '@media (max-width: 650px)': {
++        borderRight: 'none',
++        borderTop: `1px solid ${separatorColour}`,
++      },
++    },
++  });
++
++  const subjectFieldStyle = mergeStyles(emailFieldBase, {
++    width: '100%',
++    minWidth: 250,
++    borderTop: `1px solid ${separatorColour}`,
++  });
++
+   const [showCc, setShowCc] = useState(!!cc);
+   const [showBcc, setShowBcc] = useState(false);
+   const toCcBccRef = useRef<HTMLDivElement>(null);
+   const subjectRef = useRef<HTMLDivElement>(null);
+   const [descHeight, setDescHeight] = useState(0);
+   // Static spacing below the enquiry notes
+   const notesSpacing = 8;
+   const [dealFormSaved, setDealFormSaved] = useState(false);
  
-   const toggleContainer = mergeStyles({
-     display: 'flex',
-     border: `1px solid ${colours.darkBlue}`,
-     borderRadius: 0,
-   overflow: 'hidden',
-   cursor: 'pointer',
-   width: '100%',
-   marginTop: 8,
-   marginBottom: 8,
-   height: '100%', // allow stretching in parent flex row
-   alignItems: 'stretch', // children stretch vertically
- });
+   const [copySuccess, setCopySuccess] = useState<string | null>(null);
  
- const toggleHalf = (selected: boolean) =>
-   mergeStyles({
-     padding: '10px 16px',
-     flex: 1,
-     height: '100%',
-     backgroundColor: selected
-       ? colours.darkBlue
-       : isDarkMode
-       ? colours.dark.inputBackground
-       : colours.light.inputBackground,
-     color: selected ? '#fff' : isDarkMode ? colours.dark.text : colours.light.text,
-diff --git a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-index 6ced1b7a9bbc54002ee62e2bf544ba666e73ecd6..5537a34adb4206a0dcffa7935b31804a7519407a 100644
---- a/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-+++ b/src/tabs/enquiries/pitch-builder/DealCaptureForm.tsx
-@@ -369,183 +417,167 @@ useLayoutEffect(() => {
- }, [
-   amountBlurred,
-   clientsBlurred,
-   serviceDescription,
-   dealExpiry,
-   amount,
-   isMultiClient,
-   clients,
-   allClientFieldsFilled,
-   isSaved,
- ]);
+   const copy = (text?: string) => {
+     if (!text) return;
+     navigator.clipboard
+       .writeText(text)
+       .then(() => {
+         setCopySuccess('Copied!');
+         setTimeout(() => setCopySuccess(null), 2000);
+       })
+       .catch((err) => console.error('Failed to copy: ', err));
+   };
  
-   const rootStackStyle = mergeStyles(sectionStyle, {
-     height: '100%',
-     transition: 'box-shadow 0.2s ease',
-     borderRadius: 8,
-     selectors: {
-       ':hover': {
-         boxShadow: isDarkMode
-           ? '0 2px 4px rgba(0,0,0,0.3)'
-           : '0 2px 4px rgba(0,0,0,0.1)',
-       },
-     },
+   // Previously aligned the subject field with the amount input using
+   // calculated spacing. With the simplified layout we use static spacing
+   // so this effect is no longer required.
+ 
+   useEffect(() => {
+     if (cc && !showCc) {
+       setShowCc(true);
+     }
+   }, [cc, showCc]);
+ 
+ 
+ 
+   // Layout grid keeping sections compact and aligned
+   const headerRowStyle = mergeStyles({
+     display: 'grid',
+     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+     gap: 8,
+     width: '100%',
+     marginBottom: 8,
    });
  
--  const dealFieldsRow = mergeStyles({
--    display: 'flex',
--    flexWrap: 'wrap',
--    flexDirection: 'row',
--    columnGap: '8px',
--    rowGap: '8px',
--    width: '100%',
--  });
--
-   return (
-     <Stack tokens={{ childrenGap: 10 }} className={rootStackStyle}>
-       {error && <Text style={{ color: 'red' }}>{error}</Text>}
+   const dealSideContainerStyle = (saved: boolean) =>
+     mergeStyles({
+       width: '100%',
+       border: saved ? `1px solid ${colours.green}` : `1px solid transparent`,
+       opacity: saved ? 0.6 : 1,
+-      borderRadius: 8,
++      borderRadius: 0,
+     });
  
-       {/* Service Description, Amount and Expiry */}
--      <Stack horizontal wrap className={dealFieldsRow}>
--        <Stack styles={{ root: { flexBasis: '40%', flexGrow: 1, minWidth: 250 } }}>
--          <div ref={descRef}>
--            {!useBespoke ? (
--              <Stack tokens={{ childrenGap: 6 }}>
--                <div className={intakeContainer}>
-+      <div className={dealFieldsContainer}>
-+        <div className={serviceFieldStyle} ref={descRef}>
-+          {!useBespoke ? (
-+            <Stack tokens={{ childrenGap: 6 }}>
-+                <div>
-                   <div className={intakeHeader}>Service Description</div>
-                   <Dropdown
-                     options={SERVICE_OPTIONS}
-                     styles={{
-                       dropdown: [
-                         dropdownStyle,
-                         { border: 'none', borderRadius: 0, width: '100%' },
-                       ],
-                     }}
-                     selectedKey={selectedOption?.key}
-                     onChange={(_, option) => {
-                       if (option?.key === 'Other') {
-                         setUseBespoke(true);
-                         setServiceDescription('');
-                         setSelectedOption(undefined);
-                       } else {
-                         setSelectedOption(option);
-                         setServiceDescription(option?.text || '');
-                       }
-                     }}
-                     required
-                   />
-                 </div>
-                 <span
-                   className={toggleFreehandStyle}
-                   onClick={() => {
-                     setUseBespoke(true);
-                     setServiceDescription('');
-                     setSelectedOption(undefined);
-                   }}
-                 >
-                   Use freehand description
-                 </span>
-               </Stack>
-             ) : (
-               <Stack>
--                <div className={intakeContainer}>
-+                <div>
-                   <div className={intakeHeader}>Freehand Description</div>
-                   <TextField
-                     multiline
-                     required
-                     autoAdjustHeight
-                     value={serviceDescription}
-                     onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
-                     styles={{
-                       fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
-                       prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
--                    }}
--                    maxLength={200}
--                  />
--                </div>
--                <Text
--                  variant="small"
--                  styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
--                >
--                  {serviceDescription.length}/200 characters
--                </Text>
--                <span
--                  onClick={() => setUseBespoke(false)}
--                  style={{
--                    color: colours.highlight,
--                    cursor: 'pointer',
--                    fontSize: 13,
--                    marginTop: 6,
-                   }}
--                >
--                  ← Back to dropdown options
--                </span>
--              </Stack>
-+                  maxLength={200}
-+                />
-+              </div>
-+              <Text
-+                variant="small"
-+                styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
-+              >
-+                {serviceDescription.length}/200 characters
-+              </Text>
-+              <span
-+                onClick={() => setUseBespoke(false)}
-+                style={{
-+                  color: colours.highlight,
-+                  cursor: 'pointer',
-+                  fontSize: 13,
-+                  marginTop: 6,
-+                }}
-+              >
-+                ← Back to dropdown options
-+              </span>
-+            </Stack>
-             )}
-           </div>
--        </Stack>
--
--        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
--          <div className={intakeContainer}>
--            <div className={intakeHeader}>Amount (ex. VAT)</div>
--            <div className={amountContainerStyle}>
--              <span
--                className={mergeStyles(prefixStyle, {
--                  border: 'none',
-+        <div className={amountFieldStyle}>
-+          <div className={intakeHeader}>Amount (ex. VAT)</div>
-+          <div className={amountContainerStyle}>
-+            <span
-+              className={mergeStyles(prefixStyle, {
-+                border: 'none',
-                   background: 'transparent',
-                 })}
-               >
-                 £
+   return (
+     <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '100%' } }}>
+       <div className={headerRowStyle}>
+         {/* Enquiry Details */}
+         <div className={enquiryNotesContainer}>
+           <div className={enquiryNotesHeader}>Enquiry Details</div>
+           <Stack className={enquiryNotesContent}>
+             <div className={detailRowStyle}>
+               <span className={detailLabelStyle}>Name:</span>
+               <span className={detailValueStyle}>
+                 {enquiry.First_Name} {enquiry.Last_Name}
                </span>
-               <TextField
-                 required
-                 type="text"
-                 value={amount}
-                 onChange={handleAmountChange}
-                 onBlur={handleAmountBlur}
-                 styles={{
-                   root: { flexGrow: 1 },
-                   fieldGroup: amountInputStyle(true),
-                 }}
-                 inputMode="decimal"
+               <IconButton
+                 iconProps={{ iconName: 'Copy' }}
+                 styles={{ root: { background: 'none', padding: 0 } }}
+                 ariaLabel="Copy Name"
+                 onClick={() =>
+                   copy(`${enquiry.First_Name ?? ''} ${enquiry.Last_Name ?? ''}`.trim())
+                 }
                />
              </div>
-           </div>
--        </Stack>
+             {enquiry.Email && (
+               <div className={detailRowStyle}>
+diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+index 8320ed868523784430d34182e25aadbce4b78785..ef7a9fdab9960326352e8ad51dea5f88bd1ef950 100644
+--- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
++++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
+@@ -257,201 +311,187 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
+                 />
+               </div>
+             )}
+             {enquiry.Secondary_Phone && (
+               <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
+             )}
+           </Stack>
+           {enquiry.Initial_first_call_notes && (
+             <div className={notesContainerStyle} style={{ marginTop: 12 }}>
+               <div className={enquiryNotesHeader}>Initial Notes</div>
+               <Text
+                 className={notesTextStyle}
+                 styles={{ root: { whiteSpace: 'pre-wrap' } }}
+               >
+                 {enquiry.Initial_first_call_notes}
+               </Text>
+             </div>
+           )}
+         </div>
  
--        <Stack styles={{ root: { flexBasis: '30%', flexGrow: 1, minWidth: 180 } }}>
--          <div className={intakeContainer}>
--            <div className={intakeHeader}>Deal Expiry</div>
--            <TextField
--              type="date"
--              value={dealExpiry}
--              onChange={(_, v) => setDealExpiry(v || '')}
--              styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
--            />
+         {/* Email Details */}
+         <div ref={toCcBccRef} className={enquiryNotesContainer}>
+           <div className={enquiryNotesHeader}>Email Details</div>
+           <div className={enquiryNotesContent}>
+             <Stack tokens={{ childrenGap: 6 }}>
+-              <Stack
+-                horizontal
+-                wrap
+-                  tokens={{ childrenGap: 8 }}
+-                  verticalAlign="end"
+-                  styles={{ root: { width: '100%' } }}
+-                >
+-                  <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
+-                    <div className={intakeContainer}>
+-                      <div className={intakeHeader}>To</div>
+-                      <TextField
+-                        value={to}
+-                        onChange={(_, val) => setTo(val || "")}
+-                        placeholder="Recipient email"
+-                        ariaLabel="To"
++              <div className={emailFieldsContainer}>
++                <div className={toFieldStyle}>
++                  <div className={intakeHeader}>To</div>
++                  <TextField
++                    value={to}
++                    onChange={(_, val) => setTo(val || "")}
++                    placeholder="Recipient email"
++                    ariaLabel="To"
++                    styles={{
++                      root: { margin: 0 },
++                      fieldGroup: [
++                        inputFieldStyle,
++                        { border: "none", borderRadius: 0 },
++                      ],
++                    }}
++                  />
++                </div>
++                {showCc && (
++                  <div className={ccFieldStyle}>
++                    <div className={intakeHeader}>
++                      CC
++                      <IconButton
++                        iconProps={{ iconName: "Cancel" }}
++                        ariaLabel="Hide CC"
++                        onClick={() => setShowCc(false)}
+                         styles={{
+-                          root: { margin: 0 },
+-                          fieldGroup: [
+-                            inputFieldStyle,
+-                            { border: "none", borderRadius: 0 },
+-                          ],
++                          root: {
++                            backgroundColor: "transparent",
++                            padding: 0,
++                            marginLeft: 4,
++                            height: 16,
++                            width: 16,
++                          },
++                          rootHovered: {
++                            backgroundColor: "transparent",
++                            color: colours.highlight,
++                          },
++                          icon: { fontSize: 12, color: labelColour },
+                         }}
+                       />
+                     </div>
+-                  </Stack.Item>
+-                  {showCc && (
+-                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
+-                      <div className={intakeContainer}>
+-                        <div className={intakeHeader}>
+-                          CC
+-                          <IconButton
+-                            iconProps={{ iconName: "Cancel" }}
+-                            ariaLabel="Hide CC"
+-                            onClick={() => setShowCc(false)}
+-                            styles={{
+-                              root: {
+-                                backgroundColor: "transparent",
+-                                padding: 0,
+-                                marginLeft: 4,
+-                                height: 16,
+-                                width: 16,
+-                              },
+-                              rootHovered: {
+-                                backgroundColor: "transparent",
+-                                color: colours.highlight,
+-                              },
+-                              icon: { fontSize: 12, color: labelColour },
+-                            }}
+-                          />
+-                        </div>
+-                        <TextField
+-                          value={cc}
+-                          onChange={(_, val) => setCc(val || "")}
+-                          placeholder="CC emails"
+-                          ariaLabel="CC"
+-                          styles={{
+-                            fieldGroup: [
+-                              inputFieldStyle,
+-                              { border: "none", borderRadius: 0 },
+-                            ],
+-                          }}
+-                        />
+-                      </div>
+-                    </Stack.Item>
+-                  )}
+-                  {showBcc && (
+-                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
+-                      <div className={intakeContainer}>
+-                        <div className={intakeHeader}>
+-                          BCC
+-                          <IconButton
+-                            iconProps={{ iconName: "Cancel" }}
+-                            ariaLabel="Hide BCC"
+-                            onClick={() => setShowBcc(false)}
+-                            styles={{
+-                              root: {
+-                                backgroundColor: "transparent",
+-                                padding: 0,
+-                                marginLeft: 4,
+-                                height: 16,
+-                                width: 16,
+-                              },
+-                              rootHovered: {
+-                                backgroundColor: "transparent",
+-                                color: colours.highlight,
+-                              },
+-                              icon: { fontSize: 12, color: labelColour },
+-                            }}
+-                          />
+-                        </div>
+-                        <TextField
+-                          value={bcc}
+-                          onChange={(_, val) => setBcc(val || "")}
+-                          placeholder="BCC emails"
+-                          ariaLabel="BCC"
+-                          styles={{
+-                            fieldGroup: [
+-                              inputFieldStyle,
+-                              { border: "none", borderRadius: 0 },
+-                            ],
+-                          }}
+-                        />
+-                      </div>
+-                    </Stack.Item>
+-                  )}
+-                </Stack>
+-                {(!showCc || !showBcc) && (
+-                  <Stack horizontal tokens={{ childrenGap: 6 }}>
+-                    {!showCc && (
+-                      <span
+-                        className={toggleCcBccStyle}
+-                        onClick={() => setShowCc(true)}
+-                      >
+-                        CC
+-                      </span>
+-                    )}
+-                    {!showBcc && (
+-                      <span
+-                        className={toggleCcBccStyle}
+-                        onClick={() => setShowBcc(true)}
+-                      >
+-                        BCC
+-                      </span>
+-                    )}
+-                  </Stack>
++                    <TextField
++                      value={cc}
++                      onChange={(_, val) => setCc(val || "")}
++                      placeholder="CC emails"
++                      ariaLabel="CC"
++                      styles={{
++                        fieldGroup: [
++                          inputFieldStyle,
++                          { border: "none", borderRadius: 0 },
++                        ],
++                      }}
++                    />
++                  </div>
+                 )}
+-                <Stack>
+-                  <div ref={subjectRef} className={intakeContainer}>
+-                    <div className={intakeHeader}>Subject</div>
++                {showBcc && (
++                  <div className={bccFieldStyle}>
++                    <div className={intakeHeader}>
++                      BCC
++                      <IconButton
++                        iconProps={{ iconName: "Cancel" }}
++                        ariaLabel="Hide BCC"
++                        onClick={() => setShowBcc(false)}
++                        styles={{
++                          root: {
++                            backgroundColor: "transparent",
++                            padding: 0,
++                            marginLeft: 4,
++                            height: 16,
++                            width: 16,
++                          },
++                          rootHovered: {
++                            backgroundColor: "transparent",
++                            color: colours.highlight,
++                          },
++                          icon: { fontSize: 12, color: labelColour },
++                        }}
++                      />
++                    </div>
+                     <TextField
+-                      value={subject}
+-                      onChange={(_, val) => setSubject(val || "")}
+-                      placeholder="Email subject"
+-                      ariaLabel="Subject"
++                      value={bcc}
++                      onChange={(_, val) => setBcc(val || "")}
++                      placeholder="BCC emails"
++                      ariaLabel="BCC"
+                       styles={{
+-                        root: { margin: 0 },
+                         fieldGroup: [
+                           inputFieldStyle,
+                           { border: "none", borderRadius: 0 },
+                         ],
+                       }}
+                     />
+                   </div>
++                )}
++                <div ref={subjectRef} className={subjectFieldStyle}>
++                  <div className={intakeHeader}>Subject</div>
++                  <TextField
++                    value={subject}
++                    onChange={(_, val) => setSubject(val || "")}
++                    placeholder="Email subject"
++                    ariaLabel="Subject"
++                    styles={{
++                      root: { margin: 0 },
++                      fieldGroup: [
++                        inputFieldStyle,
++                        { border: "none", borderRadius: 0 },
++                      ],
++                    }}
++                  />
++                </div>
++              </div>
++              {(!showCc || !showBcc) && (
++                <Stack horizontal tokens={{ childrenGap: 6 }}>
++                  {!showCc && (
++                    <span
++                      className={toggleCcBccStyle}
++                      onClick={() => setShowCc(true)}
++                    >
++                      CC
++                    </span>
++                  )}
++                  {!showBcc && (
++                    <span
++                      className={toggleCcBccStyle}
++                      onClick={() => setShowBcc(true)}
++                    >
++                      BCC
++                    </span>
++                  )}
+                 </Stack>
++              )}
+               </Stack>
+             </div>
 -          </div>
--        </Stack>
--      </Stack>
-+        <div className={expiryFieldStyle}>
-+          <div className={intakeHeader}>Deal Expiry</div>
-+          <TextField
-+            type="date"
-+            value={dealExpiry}
-+            onChange={(_, v) => setDealExpiry(v || '')}
-+            styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
-+          />
-+        </div>
-+      </div>
-       <div className={paymentInfoWrapper(showPaymentInfo || !!amountError)}>
-         <div className={paymentInfoClass(!!amountError, true)}>
-           {amountError || ''}
-         </div>
-         <div className={paymentInfoClass(showPaymentInfo && !amountError)}>
-           {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
-           {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
-         </div>
-       </div>
  
-       <PaymentPreview serviceDescription={serviceDescription} amount={amount} />
++          </div>
+         </div>
  
-       <Stack>
-         <div className={toggleContainer} aria-label="Select ID type">
-           <div
-             className={toggleHalf(!isMultiClient)}
-             onClick={() => setIsMultiClient(false)}
-           >
-             <Icon iconName="Contact" styles={{ root: { marginRight: 6 } }} />
-             Individual
-           </div>
-           <div
-             className={toggleHalf(isMultiClient)}
-             onClick={() => setIsMultiClient(true)}
-           >
+-      {/* Deal Capture Form */}
++        {/* Deal Capture Form */}
+       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
+         <DealCaptureForm
+           enquiry={enquiry}
+           onSubmit={handleDealFormSubmit}
+           areaOfWork={enquiry.Area_of_Work}
+           enquiryId={enquiry.ID}
+           dealId={dealId}
+           clientIds={clientIds}
+           onAmountChange={handleAmountChange}
+           onAmountBlur={handleAmountBlur}
+           serviceDescription={serviceDescription}
+           setServiceDescription={setServiceDescription}
+           selectedOption={selectedOption}
+           setSelectedOption={setSelectedOption}
+           onDescriptionHeightChange={setDescHeight}
+           onSavedChange={setDealFormSaved}
+         />
+       </Stack>
+       {copySuccess && (
+         <MessageBar
+           messageBarType={MessageBarType.success}
+           isMultiline={false}
+           onDismiss={() => setCopySuccess(null)}
+           dismissButtonAriaLabel="Close"
+           styles={{

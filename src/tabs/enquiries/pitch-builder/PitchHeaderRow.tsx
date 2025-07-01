@@ -84,7 +84,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
       : '#ffffff',
   };
 
-  const enquiryNotesContainer = mergeStyles(sectionStyle);
+  const enquiryNotesContainer = mergeStyles(sectionStyle, { padding: 12 });
 
   const enquiryNotesHeader = mergeStyles({
     color: labelColour,
@@ -106,7 +106,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   const notesContainerStyle = mergeStyles({
     background: isDarkMode ? colours.dark.cardBackground : '#fff',
     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
-    borderRadius: 8,
+    borderRadius: 0,
     padding: 12,
     fontSize: 14,
     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -124,6 +124,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     fontWeight: 600,
     fontSize: 13,
     marginBottom: 8,    // ↑ match the enquiry title spacing
+    padding: '0 4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -159,6 +160,59 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
     padding: 0,
     fontSize: 12,
     selectors: { ':hover': { textDecoration: 'underline' } },
+  });
+
+  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
+
+  const emailFieldsContainer = mergeStyles(sectionStyle, {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 0,
+    padding: 0,
+    borderRadius: 0,
+    selectors: {
+      '> div:last-child': { borderRight: 'none' },
+    },
+  });
+
+  const emailFieldBase = {
+    flexGrow: 1,
+    padding: 8,
+    display: 'flex',
+    flexDirection: 'column' as const,
+  };
+
+  const toFieldStyle = mergeStyles(emailFieldBase, {
+    minWidth: 250,
+    borderRight: `1px solid ${separatorColour}`,
+  });
+
+  const ccFieldStyle = mergeStyles(emailFieldBase, {
+    minWidth: 250,
+    borderRight: `1px solid ${separatorColour}`,
+    selectors: {
+      '@media (max-width: 650px)': {
+        borderRight: 'none',
+        borderTop: `1px solid ${separatorColour}`,
+      },
+    },
+  });
+
+  const bccFieldStyle = mergeStyles(emailFieldBase, {
+    minWidth: 250,
+    borderRight: `1px solid ${separatorColour}`,
+    selectors: {
+      '@media (max-width: 650px)': {
+        borderRight: 'none',
+        borderTop: `1px solid ${separatorColour}`,
+      },
+    },
+  });
+
+  const subjectFieldStyle = mergeStyles(emailFieldBase, {
+    width: '100%',
+    minWidth: 250,
+    borderTop: `1px solid ${separatorColour}`,
   });
 
   const [showCc, setShowCc] = useState(!!cc);
@@ -209,7 +263,7 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
       width: '100%',
       border: saved ? `1px solid ${colours.green}` : `1px solid transparent`,
       opacity: saved ? 0.6 : 1,
-      borderRadius: 8,
+      borderRadius: 0,
     });
 
   return (
@@ -279,142 +333,53 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
           <div className={enquiryNotesHeader}>Email Details</div>
           <div className={enquiryNotesContent}>
             <Stack tokens={{ childrenGap: 6 }}>
-              <Stack
-                horizontal
-                wrap
-                  tokens={{ childrenGap: 8 }}
-                  verticalAlign="end"
-                  styles={{ root: { width: '100%' } }}
-                >
-                  <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                    <div className={intakeContainer}>
-                      <div className={intakeHeader}>To</div>
-                      <TextField
-                        value={to}
-                        onChange={(_, val) => setTo(val || "")}
-                        placeholder="Recipient email"
-                        ariaLabel="To"
+              <div className={emailFieldsContainer}>
+                <div className={toFieldStyle}>
+                  <div className={intakeHeader}>To</div>
+                  <TextField
+                    value={to}
+                    onChange={(_, val) => setTo(val || "")}
+                    placeholder="Recipient email"
+                    ariaLabel="To"
+                    styles={{
+                      root: { margin: 0 },
+                      fieldGroup: [
+                        inputFieldStyle,
+                        { border: "none", borderRadius: 0 },
+                      ],
+                    }}
+                  />
+                </div>
+                {showCc && (
+                  <div className={ccFieldStyle}>
+                    <div className={intakeHeader}>
+                      CC
+                      <IconButton
+                        iconProps={{ iconName: "Cancel" }}
+                        ariaLabel="Hide CC"
+                        onClick={() => setShowCc(false)}
                         styles={{
-                          root: { margin: 0 },
-                          fieldGroup: [
-                            inputFieldStyle,
-                            { border: "none", borderRadius: 0 },
-                          ],
+                          root: {
+                            backgroundColor: "transparent",
+                            padding: 0,
+                            marginLeft: 4,
+                            height: 16,
+                            width: 16,
+                          },
+                          rootHovered: {
+                            backgroundColor: "transparent",
+                            color: colours.highlight,
+                          },
+                          icon: { fontSize: 12, color: labelColour },
                         }}
                       />
                     </div>
-                  </Stack.Item>
-                  {showCc && (
-                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                      <div className={intakeContainer}>
-                        <div className={intakeHeader}>
-                          CC
-                          <IconButton
-                            iconProps={{ iconName: "Cancel" }}
-                            ariaLabel="Hide CC"
-                            onClick={() => setShowCc(false)}
-                            styles={{
-                              root: {
-                                backgroundColor: "transparent",
-                                padding: 0,
-                                marginLeft: 4,
-                                height: 16,
-                                width: 16,
-                              },
-                              rootHovered: {
-                                backgroundColor: "transparent",
-                                color: colours.highlight,
-                              },
-                              icon: { fontSize: 12, color: labelColour },
-                            }}
-                          />
-                        </div>
-                        <TextField
-                          value={cc}
-                          onChange={(_, val) => setCc(val || "")}
-                          placeholder="CC emails"
-                          ariaLabel="CC"
-                          styles={{
-                            fieldGroup: [
-                              inputFieldStyle,
-                              { border: "none", borderRadius: 0 },
-                            ],
-                          }}
-                        />
-                      </div>
-                    </Stack.Item>
-                  )}
-                  {showBcc && (
-                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
-                      <div className={intakeContainer}>
-                        <div className={intakeHeader}>
-                          BCC
-                          <IconButton
-                            iconProps={{ iconName: "Cancel" }}
-                            ariaLabel="Hide BCC"
-                            onClick={() => setShowBcc(false)}
-                            styles={{
-                              root: {
-                                backgroundColor: "transparent",
-                                padding: 0,
-                                marginLeft: 4,
-                                height: 16,
-                                width: 16,
-                              },
-                              rootHovered: {
-                                backgroundColor: "transparent",
-                                color: colours.highlight,
-                              },
-                              icon: { fontSize: 12, color: labelColour },
-                            }}
-                          />
-                        </div>
-                        <TextField
-                          value={bcc}
-                          onChange={(_, val) => setBcc(val || "")}
-                          placeholder="BCC emails"
-                          ariaLabel="BCC"
-                          styles={{
-                            fieldGroup: [
-                              inputFieldStyle,
-                              { border: "none", borderRadius: 0 },
-                            ],
-                          }}
-                        />
-                      </div>
-                    </Stack.Item>
-                  )}
-                </Stack>
-                {(!showCc || !showBcc) && (
-                  <Stack horizontal tokens={{ childrenGap: 6 }}>
-                    {!showCc && (
-                      <span
-                        className={toggleCcBccStyle}
-                        onClick={() => setShowCc(true)}
-                      >
-                        CC
-                      </span>
-                    )}
-                    {!showBcc && (
-                      <span
-                        className={toggleCcBccStyle}
-                        onClick={() => setShowBcc(true)}
-                      >
-                        BCC
-                      </span>
-                    )}
-                  </Stack>
-                )}
-                <Stack>
-                  <div ref={subjectRef} className={intakeContainer}>
-                    <div className={intakeHeader}>Subject</div>
                     <TextField
-                      value={subject}
-                      onChange={(_, val) => setSubject(val || "")}
-                      placeholder="Email subject"
-                      ariaLabel="Subject"
+                      value={cc}
+                      onChange={(_, val) => setCc(val || "")}
+                      placeholder="CC emails"
+                      ariaLabel="CC"
                       styles={{
-                        root: { margin: 0 },
                         fieldGroup: [
                           inputFieldStyle,
                           { border: "none", borderRadius: 0 },
@@ -422,14 +387,89 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
                       }}
                     />
                   </div>
+                )}
+                {showBcc && (
+                  <div className={bccFieldStyle}>
+                    <div className={intakeHeader}>
+                      BCC
+                      <IconButton
+                        iconProps={{ iconName: "Cancel" }}
+                        ariaLabel="Hide BCC"
+                        onClick={() => setShowBcc(false)}
+                        styles={{
+                          root: {
+                            backgroundColor: "transparent",
+                            padding: 0,
+                            marginLeft: 4,
+                            height: 16,
+                            width: 16,
+                          },
+                          rootHovered: {
+                            backgroundColor: "transparent",
+                            color: colours.highlight,
+                          },
+                          icon: { fontSize: 12, color: labelColour },
+                        }}
+                      />
+                    </div>
+                    <TextField
+                      value={bcc}
+                      onChange={(_, val) => setBcc(val || "")}
+                      placeholder="BCC emails"
+                      ariaLabel="BCC"
+                      styles={{
+                        fieldGroup: [
+                          inputFieldStyle,
+                          { border: "none", borderRadius: 0 },
+                        ],
+                      }}
+                    />
+                  </div>
+                )}
+                <div ref={subjectRef} className={subjectFieldStyle}>
+                  <div className={intakeHeader}>Subject</div>
+                  <TextField
+                    value={subject}
+                    onChange={(_, val) => setSubject(val || "")}
+                    placeholder="Email subject"
+                    ariaLabel="Subject"
+                    styles={{
+                      root: { margin: 0 },
+                      fieldGroup: [
+                        inputFieldStyle,
+                        { border: "none", borderRadius: 0 },
+                      ],
+                    }}
+                  />
+                </div>
+              </div>
+              {(!showCc || !showBcc) && (
+                <Stack horizontal tokens={{ childrenGap: 6 }}>
+                  {!showCc && (
+                    <span
+                      className={toggleCcBccStyle}
+                      onClick={() => setShowCc(true)}
+                    >
+                      CC
+                    </span>
+                  )}
+                  {!showBcc && (
+                    <span
+                      className={toggleCcBccStyle}
+                      onClick={() => setShowBcc(true)}
+                    >
+                      BCC
+                    </span>
+                  )}
                 </Stack>
+              )}
               </Stack>
             </div>
-          </div>
 
+          </div>
         </div>
 
-      {/* Deal Capture Form */}
+        {/* Deal Capture Form */}
       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
         <DealCaptureForm
           enquiry={enquiry}
