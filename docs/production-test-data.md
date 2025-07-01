@@ -14,11 +14,12 @@ TRUNCATE TABLE dbo.IDVerifications;
 
 The dataset mirrors the sample JSON shipped with the project so the front end displays complete information for each stage:
 
-- **Deals** – three deals covering pitched and closed scenarios
-- **Instructions** – full range from initialised to completed with representative client details
-- **Documents** – file references for one instruction to exercise the document tab
-- **IDVerifications** – a mix of lead and joint client checks including long form raw responses
+- **Deals** – six deals covering pitched and closed scenarios
+- **Instructions** – records for every stage with representative client details
+- **Documents** – file references for multiple instructions so the document tab renders complete rows
+- **IDVerifications** – five example checks with full metadata and raw responses
+- **RiskAssessment** – baseline entries for two instructions
 
-Risk assessments intentionally remain empty.  Future agents can extend the script with inserts once those records are required.
+The dataset now mirrors the expanded local JSON files so the dashboard shows all available fields. Future agents can add more scenarios as needed.
 
 After running the SQL you can start the app using `REACT_APP_USE_LOCAL_DATA=false` to verify the dashboard renders correctly against the test database.

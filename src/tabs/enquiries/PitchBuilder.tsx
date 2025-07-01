@@ -361,24 +361,26 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     [data-sentence] {
       display: inline-flex;
-      align-items: center;
+      align-items: baseline;
       gap: 4px;
     }
+    .snippet-wrapper {
+      display: inline;
+      margin-right: 4px;
+    }
     .sentence-delete {
-      margin-right: 6px;
+      margin-right: 4px;
       cursor: pointer;
       user-select: none;
       color: ${colours.red};
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid ${colours.greyText};
       background: ${colours.grey};
-      padding: 2px 4px;
-      border-radius: 0;
-      font-size: 18px;
-      width: 24px;
-      height: 24px;
+      border-radius: 4px;
+      font-size: 12px;
+      width: 20px;
+      height: 20px;
     }
     .sentence-delete:hover {
       background: ${colours.highlightBlue};
@@ -389,19 +391,17 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     }
     .sentence-handle {
       cursor: grab;
-      margin-right: 6px;
+      margin-right: 4px;
       user-select: none;
       color: ${colours.greyText};
-      padding: 2px 4px;
-      border: 1px solid ${colours.greyText};
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
       background: ${colours.grey};
-      border-radius: 0;
-      width: 24px;
-      height: 24px;
+      border-radius: 4px;
+      font-size: 12px;
+      width: 20px;
+      height: 20px;
     }
     .sentence-handle:hover {
       background: ${colours.highlightBlue};
@@ -597,7 +597,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       span.style.fontWeight = 'normal';
       span.style.transform = `scale(${editorScale})`;
 
-      span.querySelectorAll('div[data-snippet]').forEach((snip) => {
+      span.querySelectorAll('[data-snippet]').forEach((snip) => {
         if (!(snip instanceof HTMLElement)) return;
         const label = snip.getAttribute('data-snippet') || '';
         let bg = autoInsertedBlocks[blockTitle]
@@ -1315,7 +1315,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (!span) return;
 
       const snippetEls = Array.from(
-        span.querySelectorAll('div[data-snippet]')
+        span.querySelectorAll('[data-snippet]')
       ) as HTMLElement[];
       snippetEls.forEach((el) => {
         const label = el.getAttribute('data-snippet') || '';
@@ -1462,7 +1462,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           })
           .join(' ');
         // inject it into your wrapper DIV
-        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+        const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
         
         snippetHtml.push(html);
         snippetMap[opt] = html;
@@ -1502,7 +1502,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           )
           .join(' ');
         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-        const html = `<div data-snippet="${escLabel}"${idAttr} style="margin-bottom:4px;">${sentences}</div>`;
+        const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
         snippetHtml.push(html);
         snippetMap[selectedOption] = html;
       }
@@ -1663,7 +1663,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     ) as HTMLElement | null;
     if (!span) return;
     const snippetEls = Array.from(
-      span.querySelectorAll('div[data-snippet]')
+      span.querySelectorAll('[data-snippet]')
     ) as HTMLElement[];
     const targetEl = snippetEls.find(
       (el) => el.getAttribute('data-snippet') === previous
@@ -1701,22 +1701,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       // build the new HTML, including data-snippet-id if present
       if (option.snippetId) {
         blockMap[replacement] = `
-          <div
+          <span
+            class="snippet-wrapper"
             data-snippet="${replacement.replace(/'/g, "&#39;")}"
             data-snippet-id="${option.snippetId}"
-            style="margin-bottom:4px;"
           >
             ${text}
-          </div>
+          </span>
         `;
       } else {
         blockMap[replacement] = `
-          <div
+          <span
+            class="snippet-wrapper"
             data-snippet="${replacement.replace(/'/g, "&#39;")}"
-            style="margin-bottom:4px;"
           >
             ${text}
-          </div>
+          </span>
         `;
       }
 
@@ -1814,7 +1814,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
       )
       .join(' ');
-    const snippetHtml = `<div data-snippet="${escLabel}" style="margin-bottom:4px;">${sentences}</div>`;
+    const snippetHtml = `<span class="snippet-wrapper" data-snippet="${escLabel}">${sentences}</span>`;
 
     main.insertAdjacentHTML('beforeend', snippetHtml);
 
@@ -1871,7 +1871,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const main = span.querySelector('.block-main') as HTMLElement | null;
     if (!main) return;
     const snippetHtml = main.innerHTML;
-    const firstSnippet = main.querySelector('div[data-snippet-id]') as HTMLElement | null;
+    const firstSnippet = main.querySelector('[data-snippet-id]') as HTMLElement | null;
     const snippetId = firstSnippet ? parseInt(firstSnippet.getAttribute('data-snippet-id') || '0', 10) : undefined;
     const block = blocks.find(b => b.title === blockTitle);
     const blockId = block?.blockId;
@@ -1938,7 +1938,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     ) as HTMLElement | null;
     if (!span) return;
     const snippets = Array.from(
-      span.querySelectorAll('div[data-snippet]')
+      span.querySelectorAll('[data-snippet]')
     ) as HTMLElement[];
     const target = snippets.find(
       (el) => el.getAttribute('data-snippet') === optionLabel
