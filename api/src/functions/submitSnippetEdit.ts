@@ -58,21 +58,48 @@ export async function submitSnippetEditHandler(
         return { status: 400, body: "Invalid JSON" };
     }
 
-    const payload = {
-        snippetId: body.snippetId ?? body.SnippetId,
-        proposedContent: body.proposedContent ?? body.ProposedContent,
-        proposedLabel: body.proposedLabel ?? body.ProposedLabel,
-        proposedSortOrder: body.proposedSortOrder ?? body.ProposedSortOrder,
-        proposedBlockId: body.proposedBlockId ?? body.ProposedBlockId,
-        isNew: body.isNew ?? body.IsNew,
-        proposedBy: body.proposedBy ?? body.ProposedBy,
-    };
+    const hasPlaceholder =
+        body.placeholderSnippetId !== undefined ||
+        body.PlaceholderSnippetId !== undefined ||
+        body.placeholder !== undefined ||
+        body.Placeholder !== undefined ||
+        body.proposedPlaceholder !== undefined ||
+        body.ProposedPlaceholder !== undefined;
 
+    const payload = hasPlaceholder
+        ? {
+            placeholderSnippetId:
+                body.placeholderSnippetId ?? body.PlaceholderSnippetId,
+            proposedContent: body.proposedContent ?? body.ProposedContent,
+            proposedLabel: body.proposedLabel ?? body.ProposedLabel,
+            proposedSortOrder: body.proposedSortOrder ?? body.ProposedSortOrder,
+            proposedBlockId: body.proposedBlockId ?? body.ProposedBlockId,
+            placeholder:
+                body.placeholder ??
+                body.Placeholder ??
+                body.proposedPlaceholder ??
+                body.ProposedPlaceholder,
+            isNew: body.isNew ?? body.IsNew,
+            proposedBy: body.proposedBy ?? body.ProposedBy,
+        }
+        : {
+            snippetId: body.snippetId ?? body.SnippetId,
+            proposedContent: body.proposedContent ?? body.ProposedContent,
+            proposedLabel: body.proposedLabel ?? body.ProposedLabel,
+            proposedSortOrder: body.proposedSortOrder ?? body.ProposedSortOrder,
+            proposedBlockId: body.proposedBlockId ?? body.ProposedBlockId,
+            isNew: body.isNew ?? body.IsNew,
+            proposedBy: body.proposedBy ?? body.ProposedBy,
+        };
+
+    const action = hasPlaceholder
+        ? "submitPlaceholderSnippetEdit"
+        : "submitSnippetEdit";
     try {
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "submitSnippetEdit", payload }),
+            body: JSON.stringify({ action, payload }),
         });
         context.log(
             `Snippet edit service responded with ${response.status} ${response.statusText}`,

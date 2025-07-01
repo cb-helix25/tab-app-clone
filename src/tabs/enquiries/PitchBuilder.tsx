@@ -359,6 +359,11 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       transform: scale(1.05);
       outline: none;
     }
+    [data-sentence] {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
     .sentence-delete {
       margin-right: 6px;
       cursor: pointer;
@@ -705,6 +710,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   ) {
     e.stopPropagation();
     e.preventDefault();
+    if (lockedBlocks[blockTitle]) return;
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (block) {
       setSnippetOptionsTarget(e.currentTarget as HTMLElement);
@@ -716,6 +722,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   function openSnippetEdit(e: MouseEvent, blockTitle: string) {
     e.stopPropagation();
     e.preventDefault();
+    if (lockedBlocks[blockTitle]) return;
     setSnippetEdit({ blockTitle, target: e.currentTarget as HTMLElement });
   }
 
@@ -728,6 +735,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   function insertBlockOption(blockTitle: string, optionLabel: string) {
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (!block) return;
+    if (lockedBlocks[blockTitle]) return;
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[blockTitle])
         ? ([...(selectedTemplateOptions[blockTitle] as string[])])
@@ -762,6 +770,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   function resetBlockOption(blockTitle: string) {
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (!block) return;
+    if (lockedBlocks[blockTitle]) return;
     const selected = selectedTemplateOptions[blockTitle];
     if (!selected) return;
     insertTemplateBlock(block, selected, true, false);
@@ -970,12 +979,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     before: string;
     after: string;
     text: string;
+    placeholder: string;
     blockTitle?: string;
   } | null>(null);
 
   const [snippetEdit, setSnippetEdit] = useState<{
     blockTitle: string;
     target: HTMLElement;
+    placeholder?: string;
   } | null>(null);
   const [pendingOptionText, setPendingOptionText] = useState<string>('');
 
@@ -1039,13 +1050,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const remove = (target as HTMLElement).closest('.remove-block');
       if (remove) {
         const blockTitle = remove.getAttribute('data-block-title');
-        if (blockTitle) hideTemplateBlock(blockTitle);
+        if (blockTitle && !lockedBlocks[blockTitle]) hideTemplateBlock(blockTitle);
         return;
       }
 
       const del = (target as HTMLElement).closest('.sentence-delete');
       if (del) {
         const sentence = del.closest('[data-sentence]');
+        const blockSpan = sentence?.closest('[data-inserted]') as HTMLElement | null;
+        if (blockSpan && lockedBlocks[blockSpan.getAttribute('data-inserted') || '']) return;
         if (sentence && editor.contains(sentence)) {
           sentence.remove();
           setBody(editor.innerHTML);
@@ -1058,6 +1071,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         const blockTitle = bubble.getAttribute('data-block-title');
         const optionLabel = bubble.getAttribute('data-option-label');
         if (blockTitle && optionLabel) {
+          if (lockedBlocks[blockTitle]) return;
           const block = templateBlocks.find((b) => b.title === blockTitle);
           if (!block) return;
           const isSelected = block.isMultiSelect
@@ -1088,6 +1102,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         const blockTitle = choice.getAttribute('data-block-title');
         const optionLabel = choice.getAttribute('data-option-label');
         if (blockTitle && optionLabel) {
+          if (lockedBlocks[blockTitle]) return;
           if (choice.classList.contains('reset-option')) {
             resetBlockOption(blockTitle);
             return;
@@ -1128,6 +1143,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const handleDragStart = (e: DragEvent) => {
       const handle = (e.target as HTMLElement).closest('.sentence-handle');
       if (!handle) return;
+      const blockSpan = handle.closest('[data-inserted]') as HTMLElement | null;
+      if (blockSpan && lockedBlocks[blockSpan.getAttribute('data-inserted') || '']) {
+        e.preventDefault();
+        return;
+      }
       const target = handle.parentElement as HTMLElement | null;
       if (target) {
         setDragSentence(target);
@@ -1137,6 +1157,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     const handleDragOver = (e: DragEvent) => {
       const target = (e.target as HTMLElement).closest('[data-sentence]');
+      const blockSpan = target?.closest('[data-inserted]') as HTMLElement | null;
+      if (blockSpan && lockedBlocks[blockSpan.getAttribute('data-inserted') || '']) {
+        return;
+      }
       if (target && dragSentence) {
         e.preventDefault();
         target.classList.add('drag-over');
@@ -1152,6 +1176,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     const handleDrop = (e: DragEvent) => {
       const target = (e.target as HTMLElement).closest('[data-sentence]') as HTMLElement | null;
+      const blockSpan = target?.closest('[data-inserted]') as HTMLElement | null;
+      if (blockSpan && lockedBlocks[blockSpan.getAttribute('data-inserted') || '']) {
+        target && target.classList.remove('drag-over');
+        setDragSentence(null);
+        return;
+      }
       if (target && dragSentence && target !== dragSentence) {
         e.preventDefault();
         const parent = target.parentElement;
@@ -1192,12 +1222,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const blockEl = ph.closest('[data-block-title]') as HTMLElement | null;
       const blockTitle = blockEl?.getAttribute('data-block-title') || undefined;
       const placeholderText = ph.textContent || '';
+      const placeholderAttr = ph.getAttribute('data-placeholder') || '';
       setPlaceholderEdit({
         span: ph,
         target: ph,
         before,
         after,
         text: placeholderText,
+        placeholder: placeholderAttr,
         blockTitle,
       });
     };
@@ -1426,15 +1458,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(s => {
             const trimmed = s.trim();
-            return `<span data-sentence contenteditable="true">
-            <span class="sentence-handle" draggable="true" contenteditable="false">
-              <i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i>
-            </span>
-            <span class="sentence-delete" contenteditable="false">
-              <i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i>
-            </span>
-            ${trimmed}
-          </span>`;
+            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</span>`;
           })
           .join(' ');
         // inject it into your wrapper DIV
@@ -1515,7 +1539,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const labelText = `${block.title} (${getTemplateSetLabel(templateSet)}: ${selectedLabel})`;
     const labelHTML = `<div class="block-label-display" contenteditable="false">${labelText}</div>`;
     const pinnedClass = pinnedBlocks[block.title] ? ' pinned' : '';
-    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--ChevronLeft"></i></div><div class="actions"><span class="icon-btn pin-toggle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
+    const controlsHTML = `<div class="block-sidebar${pinnedClass}" data-block-title="${block.title}" data-label="${labelText}"><div class="sidebar-handle" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'ChevronRight' : 'ChevronLeft'}"></i></div><div class="actions"><span class="icon-btn pin-toggle${pinnedBlocks[block.title] ? ' pinned' : ''}" onclick="window.toggleBlockSidebar('${block.title}')"><i class="ms-Icon ms-Icon--${pinnedBlocks[block.title] ? 'Pinned' : 'Pin'}"></i></span><span class="icon-btn" onclick="window.openSnippetEdit(event,'${block.title}')"><i class='ms-Icon ms-Icon--Save'></i></span><span class="icon-btn lock-toggle" onclick="window.toggleBlockLock('${block.title}')"><i class="ms-Icon ms-Icon--Unlock"></i></span><span class="icon-btn" onclick="window.removeBlock('${block.title}')"><i class="ms-Icon ms-Icon--Delete"></i></span></div><div class="option-choices">${optionsHtmlCombined}</div></div>`;
     const highlightedReplacement = `<${containerTag} class="block-container${pinnedClass}" style="${style}" data-inserted="${block.title}" data-placeholder="${block.placeholder}" contenteditable="true"><div class="block-main">${styledInnerHTML}${labelHTML}</div>${controlsHTML}</${containerTag}>`;
 
 
@@ -1756,6 +1780,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
   }
   function appendSnippetOption(block: TemplateBlock, optionLabel: string) {
+    if (lockedBlocks[block.title]) return;
     if (!bodyEditorRef.current) return;
     const span = bodyEditorRef.current.querySelector(
       `span[data-inserted="${block.title}"]`
@@ -1876,6 +1901,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   async function submitPlaceholderOption(
     blockTitle: string,
     text: string,
+    placeholder?: string,
     label?: string,
     sortOrder?: number,
     isNew?: boolean,
@@ -1892,6 +1918,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           proposedLabel: label,
           proposedSortOrder: sortOrder,
           proposedBlockId: blockId,
+          placeholder,
           isNew,
           proposedBy: userInitials,
         }),
@@ -1904,6 +1931,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   function removeSnippetOption(block: TemplateBlock, optionLabel: string) {
+    if (lockedBlocks[block.title]) return;
     if (!bodyEditorRef.current) return;
     const span = bodyEditorRef.current.querySelector(
       `span[data-inserted="${block.title}"]`
@@ -1952,6 +1980,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   function removeBlockOption(block: TemplateBlock, optionLabel: string) {
+    if (lockedBlocks[block.title]) return;
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[block.title])
         ? ([...(selectedTemplateOptions[block.title] as string[])])
@@ -1974,6 +2003,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   function hideTemplateBlock(title: string) {
     const block = templateBlocks.find(b => b.title === title);
     if (!block) return;
+    if (lockedBlocks[title]) return;
     setHiddenBlocks(prev => ({ ...prev, [title]: true }));
     if (bodyEditorRef.current) {
       const span = bodyEditorRef.current.querySelector(
@@ -3263,7 +3293,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             before={placeholderEdit.before}
             after={placeholderEdit.after}
             onAddOption={(text) => {
-              setSnippetEdit({ blockTitle: placeholderEdit.blockTitle || '', target: placeholderEdit.target });
+              setSnippetEdit({
+                blockTitle: placeholderEdit.blockTitle || '',
+                target: placeholderEdit.target,
+                placeholder: placeholderEdit.placeholder,
+              });
               setPendingOptionText(text);
             }}
             onDismiss={() => setPlaceholderEdit(null)}
@@ -3289,6 +3323,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               submitPlaceholderOption(
                 snippetEdit.blockTitle,
                 pendingOptionText,
+                snippetEdit.placeholder,
                 label,
                 sortOrder,
                 isNew,

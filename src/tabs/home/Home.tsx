@@ -131,7 +131,12 @@ interface AnnualLeaveRecord {
 
 export interface SnippetEdit {
   id: number;
+  snippetId: number;
   blockTitle: string;
+  currentText: string;
+  currentLabel?: string;
+  currentSortOrder?: number;
+  currentBlockId?: number;
   proposedText: string;
   proposedLabel?: string;
   proposedSortOrder?: number;
