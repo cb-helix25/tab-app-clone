@@ -1,561 +1,107 @@
-diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-index 8320ed868523784430d34182e25aadbce4b78785..ef7a9fdab9960326352e8ad51dea5f88bd1ef950 100644
---- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-@@ -62,176 +62,230 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
-   amount,
-   handleAmountChange,
-   handleAmountBlur,
-   handleDealFormSubmit,
-   dealId,
-   clientIds,
-   isDarkMode,
- }) => {
+diff --git a/src/index.tsx b/src/index.tsx
+index 7e28a41841efaf282b36c389da5aca04baf1fcef..41fb0ba600a2e3faadbb6fafd2694eb00f9598f8 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -197,76 +197,84 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
+     }
+     const data: TeamData[] = await response.json();
+     setCachedData(cacheKey, data);
+     return data;
+   } catch (error) {
+     console.error('Error fetching team data:', error);
+     return null;
+   }
+ }
  
-   const labelColour = isDarkMode ? '#fff' : colours.darkBlue;
- 
-   // Generic card style used across enquiry, email and deal sections
-   const sectionStyle = {
-     display: 'flex',
-     flexDirection: 'column' as const,
-     width: '100%',
-     padding: 8,
-     gap: 4,
-     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
-     borderRadius: 8,
-     backgroundColor: isDarkMode
-       ? colours.dark.cardBackground
-       : '#ffffff',
-   };
- 
--  const enquiryNotesContainer = mergeStyles(sectionStyle);
-+  const enquiryNotesContainer = mergeStyles(sectionStyle, { padding: 12 });
- 
-   const enquiryNotesHeader = mergeStyles({
-     color: labelColour,
-     fontWeight: 600,
-     fontSize: 13,
-     lineHeight: 1.2,
-     marginBottom: 8,    // ↑ more breathing room under the title
-   });
- 
-   const enquiryNotesContent = mergeStyles({
-     whiteSpace: 'pre-wrap',
-     fontSize: 14,
-     color: labelColour,
-     display: 'flex',
-     flexDirection: 'column',
-     gap: 4,
-   });
- 
-   const notesContainerStyle = mergeStyles({
-     background: isDarkMode ? colours.dark.cardBackground : '#fff',
-     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : '#e5e5e5'}`,
--    borderRadius: 8,
-+    borderRadius: 0,
-     padding: 12,
-     fontSize: 14,
-     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-     width: '100%',
-   });
- 
-   const notesTextStyle = mergeStyles({
-     fontFamily: 'Raleway',
-   });
- 
-   const intakeContainer = mergeStyles(sectionStyle);
- 
-   const intakeHeader = mergeStyles({
-     color: labelColour,
-     fontWeight: 600,
-     fontSize: 13,
-     marginBottom: 8,    // ↑ match the enquiry title spacing
-+    padding: '0 4px',
-     display: 'flex',
-     alignItems: 'center',
-     justifyContent: 'space-between',
-   });
- 
-   const toggleCcBccStyle = mergeStyles({
-     color: colours.greyText,
-     cursor: 'pointer',
-     fontSize: 12,
-     marginTop: 6,
-     selectors: {
-       ':hover': { color: labelColour },
- 
-     },
-   });
- 
-   const detailRowStyle = mergeStyles({
-     display: 'flex',
-     alignItems: 'center',
-     gap: 4,
-     fontSize: 13,
-   });
- 
-   const detailLabelStyle = mergeStyles({ fontWeight: 600 });
- 
-   const detailValueStyle = mergeStyles({ flexGrow: 1, overflowWrap: 'anywhere' });
- 
-   const copyBtnStyle = mergeStyles({
-     background: 'none',
-     border: 'none',
-     color: colours.highlight,
-     cursor: 'pointer',
-     padding: 0,
-     fontSize: 12,
-     selectors: { ':hover': { textDecoration: 'underline' } },
-   });
- 
-+  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
-+
-+  const emailFieldsContainer = mergeStyles(sectionStyle, {
-+    flexDirection: 'row',
-+    flexWrap: 'wrap',
-+    gap: 0,
-+    padding: 0,
-+    borderRadius: 0,
-+    selectors: {
-+      '> div:last-child': { borderRight: 'none' },
-+    },
-+  });
-+
-+  const emailFieldBase = {
-+    flexGrow: 1,
-+    padding: 8,
-+    display: 'flex',
-+    flexDirection: 'column' as const,
-+  };
-+
-+  const toFieldStyle = mergeStyles(emailFieldBase, {
-+    minWidth: 250,
-+    borderRight: `1px solid ${separatorColour}`,
-+  });
-+
-+  const ccFieldStyle = mergeStyles(emailFieldBase, {
-+    minWidth: 250,
-+    borderRight: `1px solid ${separatorColour}`,
-+    selectors: {
-+      '@media (max-width: 650px)': {
-+        borderRight: 'none',
-+        borderTop: `1px solid ${separatorColour}`,
-+      },
-+    },
-+  });
-+
-+  const bccFieldStyle = mergeStyles(emailFieldBase, {
-+    minWidth: 250,
-+    borderRight: `1px solid ${separatorColour}`,
-+    selectors: {
-+      '@media (max-width: 650px)': {
-+        borderRight: 'none',
-+        borderTop: `1px solid ${separatorColour}`,
-+      },
-+    },
-+  });
-+
-+  const subjectFieldStyle = mergeStyles(emailFieldBase, {
-+    width: '100%',
-+    minWidth: 250,
-+    borderTop: `1px solid ${separatorColour}`,
-+  });
-+
-   const [showCc, setShowCc] = useState(!!cc);
-   const [showBcc, setShowBcc] = useState(false);
-   const toCcBccRef = useRef<HTMLDivElement>(null);
-   const subjectRef = useRef<HTMLDivElement>(null);
-   const [descHeight, setDescHeight] = useState(0);
-   // Static spacing below the enquiry notes
-   const notesSpacing = 8;
-   const [dealFormSaved, setDealFormSaved] = useState(false);
- 
-   const [copySuccess, setCopySuccess] = useState<string | null>(null);
- 
-   const copy = (text?: string) => {
-     if (!text) return;
-     navigator.clipboard
-       .writeText(text)
-       .then(() => {
-         setCopySuccess('Copied!');
-         setTimeout(() => setCopySuccess(null), 2000);
-       })
-       .catch((err) => console.error('Failed to copy: ', err));
-   };
- 
-   // Previously aligned the subject field with the amount input using
-   // calculated spacing. With the simplified layout we use static spacing
-   // so this effect is no longer required.
+ // Main component
+ const AppWithContext: React.FC = () => {
+   const [teamsContext, setTeamsContext] = useState<microsoftTeams.Context | null>(null);
+   const [userData, setUserData] = useState<UserData[] | null>(null);
+   const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
+   const [matters, setMatters] = useState<Matter[] | null>(null);
+   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
  
    useEffect(() => {
-     if (cc && !showCc) {
-       setShowCc(true);
-     }
-   }, [cc, showCc]);
+     const initializeTeamsAndFetchData = async () => {
+       if (inTeams && !useLocalData) {
+         try {
+           microsoftTeams.initialize();
+-          microsoftTeams.getContext(async (ctx) => {
++          microsoftTeams.getContext((ctx) => {
+             setTeamsContext(ctx);
  
+-            const objectId = ctx.userObjectId || '';
+-            if (!objectId) throw new Error('Missing Teams context objectId.');
++            (async () => {
++              try {
++                const objectId = ctx.userObjectId || '';
++                if (!objectId) throw new Error('Missing Teams context objectId.');
  
+-            const { dateFrom, dateTo } = getDateRange();
++                const { dateFrom, dateTo } = getDateRange();
  
-   // Layout grid keeping sections compact and aligned
-   const headerRowStyle = mergeStyles({
-     display: 'grid',
-     gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-     gap: 8,
-     width: '100%',
-     marginBottom: 8,
-   });
+-            // 1. Fetch user data first to get full name
+-            const userDataRes = await fetchUserData(objectId);
+-            setUserData(userDataRes);
++                // 1. Fetch user data first to get full name
++                const userDataRes = await fetchUserData(objectId);
++                setUserData(userDataRes);
  
-   const dealSideContainerStyle = (saved: boolean) =>
-     mergeStyles({
-       width: '100%',
-       border: saved ? `1px solid ${colours.green}` : `1px solid transparent`,
-       opacity: saved ? 0.6 : 1,
--      borderRadius: 8,
-+      borderRadius: 0,
-     });
+-            const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
++                const fullName = `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || '';
+ 
+-            // 2. In parallel, fetch enquiries, matters, and team data
+-            const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
+-              fetchEnquiries('anyone', dateFrom, dateTo),
+-              fetchMatters(fullName),
+-              fetchTeamData(),
+-            ]);
++                // 2. In parallel, fetch enquiries, matters, and team data
++                const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
++                  fetchEnquiries('anyone', dateFrom, dateTo),
++                  fetchMatters(fullName),
++                  fetchTeamData(),
++                ]);
+ 
+-            setEnquiries(enquiriesRes);
+-            setMatters(mattersRes);
+-            setTeamData(teamDataRes);
++                setEnquiries(enquiriesRes);
++                setMatters(mattersRes);
++                setTeamData(teamDataRes);
+ 
+-            setLoading(false);
++                setLoading(false);
++              } catch (err: any) {
++                console.error('Error initializing or fetching data:', err);
++                setError(err.message || 'Unknown error occurred.');
++                setLoading(false);
++              }
++            })();
+           });
+         } catch (err: any) {
+           console.error('Error initializing or fetching data:', err);
+           setError(err.message || 'Unknown error occurred.');
+ 
+           setLoading(false);
+         }
+       } else {
+         console.warn('Using local sample data for development.');
+         setTeamsContext({ userObjectId: 'local', theme: 'default' } as microsoftTeams.Context);
+         setUserData(localUserData as UserData[]);
+         setEnquiries(localEnquiries as Enquiry[]);
+         setMatters(localMatters as unknown as Matter[]);
+         setTeamData(null);
+         setLoading(false);
+       }
+     };
+ 
+     initializeTeamsAndFetchData();
+   }, []);
  
    return (
-     <Stack tokens={{ childrenGap: 8 }} styles={{ root: { width: '100%' } }}>
-       <div className={headerRowStyle}>
-         {/* Enquiry Details */}
-         <div className={enquiryNotesContainer}>
-           <div className={enquiryNotesHeader}>Enquiry Details</div>
-           <Stack className={enquiryNotesContent}>
-             <div className={detailRowStyle}>
-               <span className={detailLabelStyle}>Name:</span>
-               <span className={detailValueStyle}>
-                 {enquiry.First_Name} {enquiry.Last_Name}
-               </span>
-               <IconButton
-                 iconProps={{ iconName: 'Copy' }}
-                 styles={{ root: { background: 'none', padding: 0 } }}
-                 ariaLabel="Copy Name"
-                 onClick={() =>
-                   copy(`${enquiry.First_Name ?? ''} ${enquiry.Last_Name ?? ''}`.trim())
-                 }
-               />
-             </div>
-             {enquiry.Email && (
-               <div className={detailRowStyle}>
-diff --git a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-index 8320ed868523784430d34182e25aadbce4b78785..ef7a9fdab9960326352e8ad51dea5f88bd1ef950 100644
---- a/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-+++ b/src/tabs/enquiries/pitch-builder/PitchHeaderRow.tsx
-@@ -257,201 +311,187 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
-                 />
-               </div>
-             )}
-             {enquiry.Secondary_Phone && (
-               <Text>Alt Phone: {enquiry.Secondary_Phone}</Text>
-             )}
-           </Stack>
-           {enquiry.Initial_first_call_notes && (
-             <div className={notesContainerStyle} style={{ marginTop: 12 }}>
-               <div className={enquiryNotesHeader}>Initial Notes</div>
-               <Text
-                 className={notesTextStyle}
-                 styles={{ root: { whiteSpace: 'pre-wrap' } }}
-               >
-                 {enquiry.Initial_first_call_notes}
-               </Text>
-             </div>
-           )}
-         </div>
- 
-         {/* Email Details */}
-         <div ref={toCcBccRef} className={enquiryNotesContainer}>
-           <div className={enquiryNotesHeader}>Email Details</div>
-           <div className={enquiryNotesContent}>
-             <Stack tokens={{ childrenGap: 6 }}>
--              <Stack
--                horizontal
--                wrap
--                  tokens={{ childrenGap: 8 }}
--                  verticalAlign="end"
--                  styles={{ root: { width: '100%' } }}
--                >
--                  <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
--                    <div className={intakeContainer}>
--                      <div className={intakeHeader}>To</div>
--                      <TextField
--                        value={to}
--                        onChange={(_, val) => setTo(val || "")}
--                        placeholder="Recipient email"
--                        ariaLabel="To"
-+              <div className={emailFieldsContainer}>
-+                <div className={toFieldStyle}>
-+                  <div className={intakeHeader}>To</div>
-+                  <TextField
-+                    value={to}
-+                    onChange={(_, val) => setTo(val || "")}
-+                    placeholder="Recipient email"
-+                    ariaLabel="To"
-+                    styles={{
-+                      root: { margin: 0 },
-+                      fieldGroup: [
-+                        inputFieldStyle,
-+                        { border: "none", borderRadius: 0 },
-+                      ],
-+                    }}
-+                  />
-+                </div>
-+                {showCc && (
-+                  <div className={ccFieldStyle}>
-+                    <div className={intakeHeader}>
-+                      CC
-+                      <IconButton
-+                        iconProps={{ iconName: "Cancel" }}
-+                        ariaLabel="Hide CC"
-+                        onClick={() => setShowCc(false)}
-                         styles={{
--                          root: { margin: 0 },
--                          fieldGroup: [
--                            inputFieldStyle,
--                            { border: "none", borderRadius: 0 },
--                          ],
-+                          root: {
-+                            backgroundColor: "transparent",
-+                            padding: 0,
-+                            marginLeft: 4,
-+                            height: 16,
-+                            width: 16,
-+                          },
-+                          rootHovered: {
-+                            backgroundColor: "transparent",
-+                            color: colours.highlight,
-+                          },
-+                          icon: { fontSize: 12, color: labelColour },
-                         }}
-                       />
-                     </div>
--                  </Stack.Item>
--                  {showCc && (
--                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
--                      <div className={intakeContainer}>
--                        <div className={intakeHeader}>
--                          CC
--                          <IconButton
--                            iconProps={{ iconName: "Cancel" }}
--                            ariaLabel="Hide CC"
--                            onClick={() => setShowCc(false)}
--                            styles={{
--                              root: {
--                                backgroundColor: "transparent",
--                                padding: 0,
--                                marginLeft: 4,
--                                height: 16,
--                                width: 16,
--                              },
--                              rootHovered: {
--                                backgroundColor: "transparent",
--                                color: colours.highlight,
--                              },
--                              icon: { fontSize: 12, color: labelColour },
--                            }}
--                          />
--                        </div>
--                        <TextField
--                          value={cc}
--                          onChange={(_, val) => setCc(val || "")}
--                          placeholder="CC emails"
--                          ariaLabel="CC"
--                          styles={{
--                            fieldGroup: [
--                              inputFieldStyle,
--                              { border: "none", borderRadius: 0 },
--                            ],
--                          }}
--                        />
--                      </div>
--                    </Stack.Item>
--                  )}
--                  {showBcc && (
--                    <Stack.Item grow styles={{ root: { minWidth: 250 } }}>
--                      <div className={intakeContainer}>
--                        <div className={intakeHeader}>
--                          BCC
--                          <IconButton
--                            iconProps={{ iconName: "Cancel" }}
--                            ariaLabel="Hide BCC"
--                            onClick={() => setShowBcc(false)}
--                            styles={{
--                              root: {
--                                backgroundColor: "transparent",
--                                padding: 0,
--                                marginLeft: 4,
--                                height: 16,
--                                width: 16,
--                              },
--                              rootHovered: {
--                                backgroundColor: "transparent",
--                                color: colours.highlight,
--                              },
--                              icon: { fontSize: 12, color: labelColour },
--                            }}
--                          />
--                        </div>
--                        <TextField
--                          value={bcc}
--                          onChange={(_, val) => setBcc(val || "")}
--                          placeholder="BCC emails"
--                          ariaLabel="BCC"
--                          styles={{
--                            fieldGroup: [
--                              inputFieldStyle,
--                              { border: "none", borderRadius: 0 },
--                            ],
--                          }}
--                        />
--                      </div>
--                    </Stack.Item>
--                  )}
--                </Stack>
--                {(!showCc || !showBcc) && (
--                  <Stack horizontal tokens={{ childrenGap: 6 }}>
--                    {!showCc && (
--                      <span
--                        className={toggleCcBccStyle}
--                        onClick={() => setShowCc(true)}
--                      >
--                        CC
--                      </span>
--                    )}
--                    {!showBcc && (
--                      <span
--                        className={toggleCcBccStyle}
--                        onClick={() => setShowBcc(true)}
--                      >
--                        BCC
--                      </span>
--                    )}
--                  </Stack>
-+                    <TextField
-+                      value={cc}
-+                      onChange={(_, val) => setCc(val || "")}
-+                      placeholder="CC emails"
-+                      ariaLabel="CC"
-+                      styles={{
-+                        fieldGroup: [
-+                          inputFieldStyle,
-+                          { border: "none", borderRadius: 0 },
-+                        ],
-+                      }}
-+                    />
-+                  </div>
-                 )}
--                <Stack>
--                  <div ref={subjectRef} className={intakeContainer}>
--                    <div className={intakeHeader}>Subject</div>
-+                {showBcc && (
-+                  <div className={bccFieldStyle}>
-+                    <div className={intakeHeader}>
-+                      BCC
-+                      <IconButton
-+                        iconProps={{ iconName: "Cancel" }}
-+                        ariaLabel="Hide BCC"
-+                        onClick={() => setShowBcc(false)}
-+                        styles={{
-+                          root: {
-+                            backgroundColor: "transparent",
-+                            padding: 0,
-+                            marginLeft: 4,
-+                            height: 16,
-+                            width: 16,
-+                          },
-+                          rootHovered: {
-+                            backgroundColor: "transparent",
-+                            color: colours.highlight,
-+                          },
-+                          icon: { fontSize: 12, color: labelColour },
-+                        }}
-+                      />
-+                    </div>
-                     <TextField
--                      value={subject}
--                      onChange={(_, val) => setSubject(val || "")}
--                      placeholder="Email subject"
--                      ariaLabel="Subject"
-+                      value={bcc}
-+                      onChange={(_, val) => setBcc(val || "")}
-+                      placeholder="BCC emails"
-+                      ariaLabel="BCC"
-                       styles={{
--                        root: { margin: 0 },
-                         fieldGroup: [
-                           inputFieldStyle,
-                           { border: "none", borderRadius: 0 },
-                         ],
-                       }}
-                     />
-                   </div>
-+                )}
-+                <div ref={subjectRef} className={subjectFieldStyle}>
-+                  <div className={intakeHeader}>Subject</div>
-+                  <TextField
-+                    value={subject}
-+                    onChange={(_, val) => setSubject(val || "")}
-+                    placeholder="Email subject"
-+                    ariaLabel="Subject"
-+                    styles={{
-+                      root: { margin: 0 },
-+                      fieldGroup: [
-+                        inputFieldStyle,
-+                        { border: "none", borderRadius: 0 },
-+                      ],
-+                    }}
-+                  />
-+                </div>
-+              </div>
-+              {(!showCc || !showBcc) && (
-+                <Stack horizontal tokens={{ childrenGap: 6 }}>
-+                  {!showCc && (
-+                    <span
-+                      className={toggleCcBccStyle}
-+                      onClick={() => setShowCc(true)}
-+                    >
-+                      CC
-+                    </span>
-+                  )}
-+                  {!showBcc && (
-+                    <span
-+                      className={toggleCcBccStyle}
-+                      onClick={() => setShowBcc(true)}
-+                    >
-+                      BCC
-+                    </span>
-+                  )}
-                 </Stack>
-+              )}
-               </Stack>
-             </div>
--          </div>
- 
-+          </div>
-         </div>
- 
--      {/* Deal Capture Form */}
-+        {/* Deal Capture Form */}
-       <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
-         <DealCaptureForm
-           enquiry={enquiry}
-           onSubmit={handleDealFormSubmit}
-           areaOfWork={enquiry.Area_of_Work}
-           enquiryId={enquiry.ID}
-           dealId={dealId}
-           clientIds={clientIds}
-           onAmountChange={handleAmountChange}
-           onAmountBlur={handleAmountBlur}
-           serviceDescription={serviceDescription}
-           setServiceDescription={setServiceDescription}
-           selectedOption={selectedOption}
-           setSelectedOption={setSelectedOption}
-           onDescriptionHeightChange={setDescHeight}
-           onSavedChange={setDealFormSaved}
-         />
-       </Stack>
-       {copySuccess && (
-         <MessageBar
-           messageBarType={MessageBarType.success}
-           isMultiline={false}
-           onDismiss={() => setCopySuccess(null)}
-           dismissButtonAriaLabel="Close"
-           styles={{
+     <App
+       teamsContext={teamsContext}
+       userData={userData}

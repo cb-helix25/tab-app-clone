@@ -80,6 +80,12 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
+      boxShadow: dark
+        ? "0 2px 4px rgba(0,0,0,0.4)"
+        : "0 2px 4px rgba(0,0,0,0.1)",
+      borderTop: dark
+        ? "1px solid rgba(255,255,255,0.1)"
+        : "1px solid rgba(0,0,0,0.05)",
       padding: "0 24px",
       transition: "background-color 0.3s",
       display: "flex",
@@ -101,6 +107,12 @@ const Instructions: React.FC<InstructionsProps> = ({
       backgroundColor: dark
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
+      boxShadow: dark
+        ? "0 2px 4px rgba(0,0,0,0.4)"
+        : "0 2px 4px rgba(0,0,0,0.1)",
+      borderTop: dark
+        ? "1px solid rgba(255,255,255,0.1)"
+        : "1px solid rgba(0,0,0,0.05)",
       padding: "0 24px",
       display: "flex",
       flexDirection: "row",
