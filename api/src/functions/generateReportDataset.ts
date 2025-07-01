@@ -480,7 +480,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
   const config = {
     server: sqlServer,
     authentication: {
-      type: "default",
+      type: "default" as const,
       options: {
         userName: process.env.SQL_USER || "helix-database-server",
         password: password,
@@ -526,7 +526,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
 
         request.on("row", (columns) => {
           const row: UserData = {};
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string | number; }; value: any; }) => {
             row[column.metadata.colName] = column.value;
           });
           result.push(row);
@@ -568,7 +568,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
 
         request.on("row", (columns) => {
           const row: TeamData = {};
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string | number; }; value: any; }) => {
             row[column.metadata.colName] = column.value;
           });
           result.push(row);
@@ -600,7 +600,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
 
         request.on("row", (columns) => {
           const row: EnquiryData = {};
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string | number; }; value: any; }) => {
             row[column.metadata.colName] = column.value;
           });
           result.push(row);
@@ -627,7 +627,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
 
         request.on("row", (columns) => {
           const row: MatterData = {};
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string | number; }; value: any; }) => {
             row[column.metadata.colName] = column.value;
           });
           result.push(row);
@@ -709,7 +709,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             bill: undefined,
             billed: undefined,
         };
-        columns.forEach((column) => {
+        columns.forEach((column: { metadata: { colName: string; }; value: any; }) => {
             assignWIPColumnValue(row, column.metadata.colName, column.value);
         });
         // Round up quantity_in_hours to one decimal place for SQL WIP
@@ -787,7 +787,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             bill: undefined,
             billed: undefined,
         };
-        columns.forEach((column) => {
+        columns.forEach((column: { metadata: { colName: string; }; value: any; }) => {
             assignWIPColumnValue(row, column.metadata.colName, column.value);
         });
         // Round up quantity_in_hours to one decimal place for SQL WIP (standalone)
@@ -862,7 +862,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             payment_allocated: 0,
             payment_date: "",
           };
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string; }; value: any; }) => {
             assignColumnValue(row, column.metadata.colName as keyof CollectedTimeData, column.value);
           });
           result.push(row);
@@ -1011,7 +1011,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             risk_assessor: undefined,
             risk_assessment_date: undefined,
           };
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string; }; value: any; }) => {
             assignPOIDColumnValue(row, column.metadata.colName as keyof POID, column.value);
           });
           result.push(row);
@@ -1052,7 +1052,7 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
             type: "",
             status: null,
           };
-          columns.forEach((column) => {
+          columns.forEach((column: { metadata: { colName: string; }; value: any; }) => {
             assignTransactionColumnValue(row, column.metadata.colName as keyof Transaction, column.value);
           });
           result.push(row);

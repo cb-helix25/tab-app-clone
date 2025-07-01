@@ -223,8 +223,8 @@ async function queryTeamDataFromSQL(config: any, context: InvocationContext): Pr
             });
 
             request.on("row", (columns) => {
-                const initials = columns.find(col => col.metadata.colName === 'Initials')?.value;
-                const aow = columns.find(col => col.metadata.colName === 'AOW')?.value;
+                const initials = columns.find((col: { metadata: { colName: string; }; }) => col.metadata.colName === 'Initials')?.value;
+                const aow = columns.find((col: { metadata: { colName: string; }; }) => col.metadata.colName === 'AOW')?.value;
                 if (initials) {
                     teamAowMap.set(initials, aow || null);
                 }
@@ -301,7 +301,7 @@ async function queryAnnualLeave(config: any, context: InvocationContext): Promis
 
             sqlRequest.on("row", (columns) => {
                 const entry: any = {};
-                columns.forEach((col) => {
+                columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
                     entry[col.metadata.colName] = col.value;
                 });
 
@@ -382,7 +382,7 @@ async function queryFutureLeave(config: any, context: InvocationContext): Promis
 
             sqlRequest.on("row", (columns) => {
                 const entry: any = {};
-                columns.forEach((col) => {
+                columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
                     entry[col.metadata.colName] = col.value;
                 });
 
@@ -459,7 +459,7 @@ async function queryAllAnnualLeave(config: any, context: InvocationContext): Pro
 
             sqlRequest.on("row", (columns) => {
                 const entry: any = {};
-                columns.forEach((col) => {
+                columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
                     entry[col.metadata.colName] = col.value;
                 });
 
@@ -555,7 +555,7 @@ async function queryUserAnnualLeave(initials: string, config: any, context: Invo
 
             sqlRequest.on("row", (columns) => {
                 const entry: any = {};
-                columns.forEach((col) => {
+                columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
                     entry[col.metadata.colName] = col.value;
                 });
 
