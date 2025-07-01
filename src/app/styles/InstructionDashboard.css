@@ -76,7 +76,8 @@
 }
 
 .status-value.open {
-    color: var(--helix-cta, #d65541);
+    /* Display open deals with a blue highlight instead of the CTA red */
+        color: var(--helix-highlight, #3690CE);
 }
 
 .status-value.closed {

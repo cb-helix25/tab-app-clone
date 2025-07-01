@@ -1,116 +1,58 @@
-diff --git a/src/tabs/instructions/InstructionOverview.tsx b/src/tabs/instructions/InstructionOverview.tsx
-index 3199d3eae4d383553ebceb25ae77cc17118b9431..35710b7be162872c557dc2b5840728eee28b4fbb 100644
---- a/src/tabs/instructions/InstructionOverview.tsx
-+++ b/src/tabs/instructions/InstructionOverview.tsx
-@@ -48,108 +48,109 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
-     onEIDCheck,
- }) => {
-     const style: React.CSSProperties = {
-         '--animation-delay': `${animationDelay}s`,
-     } as React.CSSProperties;
+diff --git a/src/app/styles/InstructionDashboard.css b/src/app/styles/InstructionDashboard.css
+index f2124640741f67a71659398f44e5cc4f1fd9a8e1..004d6c52c97be42d10022e148dae9a06a3f399ac 100644
+--- a/src/app/styles/InstructionDashboard.css
++++ b/src/app/styles/InstructionDashboard.css
+@@ -42,51 +42,52 @@
+ .status-item {
+     flex: 1 1 80px;
+     background: var(--helix-light, #f4f4f6);
+     padding: 4px 6px;
+     text-align: center;
+     border: 1px solid #e3e8ef;
+ }
  
-     const containerClass = mergeStyles('instruction-overview', cardStyles.root, expanded && 'expanded', {
-         padding: 0,
-         overflow: 'hidden',
-     });
+ .status-item.clients .status-value {
+     color: var(--helix-dark-blue, #061733);
+ }
  
-     const stage = instruction?.Stage ?? 'deal pending';
-     const eidStatus = eid?.EIDStatus ?? '-';
-     const eidResult = eid?.EIDOverallResult?.toLowerCase();
-     const complianceStatus = compliance?.Status ?? '-';
+ .status-value.complete {
+     color: var(--helix-green, #107c10);
+ }
  
-     const proofOfIdComplete = Boolean(
-         instruction?.PassportNumber || instruction?.DriversLicenseNumber,
-     );
-     const paymentStatusRaw = instruction?.PaymentResult?.toLowerCase();
-     const paymentComplete = paymentStatusRaw === 'successful';
-     const paymentFailed = paymentStatusRaw === 'failed';
-     const documentsComplete = documentCount > 0;
+ .status-value.pending {
+     color: var(--helix-highlight, #3690CE);
+ }
  
-     const dealOpen = deals.some((d) => d.Status?.toLowerCase() !== 'closed');
-+    const dealMissing = deals.length === 0;
+ .status-value.failed {
+     color: var(--helix-red, #d65541);
+ }
  
-     let idStatus = 'pending';
-     const eidVerified = eidResult === 'passed' || eidResult === 'pass' || eidStatus.toLowerCase() === 'verified';
-     if (proofOfIdComplete) {
-         if (!eid || eidStatus.toLowerCase() === 'pending') idStatus = 'received';
-         else if (eidVerified) idStatus = 'verified';
-         else idStatus = 'review';
+ .status-value.open {
+-    color: var(--helix-cta, #d65541);
++    /* Display open deals with a blue highlight instead of the CTA red */
++    color: var(--helix-highlight, #3690CE);
+ }
+ 
+ .status-value.closed {
+     color: var(--helix-green, #107c10);
+ }
+ 
+ .jump-link {
+     color: var(--helix-highlight, #0078d4);
+     cursor: pointer;
+     font-size: 12px;
+ }
+ 
+ .status-label {
+     font-size: 12px;
+     color: var(--helix-dark-blue, #061733);
+ }
+ 
+ .status-value {
+     font-weight: 600;
+     display: flex;
+         justify-content: center;
      }
- 
-     const riskResult = risk?.RiskAssessmentResult?.toString().toLowerCase();
-     const riskStatus = riskResult
-         ? ['low', 'low risk', 'pass', 'approved'].includes(riskResult)
-             ? 'complete'
-             : 'flagged'
-         : 'pending';
- 
-     const summaryData = [
--        { key: 'deal', label: 'Deal', status: dealOpen ? 'open' : 'closed' },
-+        { key: 'deal', label: 'Deal', status: dealMissing ? 'failed' : dealOpen ? 'open' : 'closed' },
-         { key: 'id', label: 'Proof of ID', status: idStatus },
-         {
-             key: 'pay',
-             label: 'Pay',
-             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
-         },
-         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-         { key: 'risk', label: 'Risk', status: riskStatus },
-     ];
- 
-     const primaryDeal = deal ?? deals[0];
-     const leadName = instruction
-         ? (instruction.FirstName || instruction.LastName)
-             ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
-             : instruction.CompanyName ?? clients.find((c) => c.Lead)?.ClientEmail ?? ''
-         : primaryDeal?.ServiceDescription ?? '';
- 
-     return (
-         <div className={containerClass} style={style}>
-             <button type="button" className="overview-toggle" onClick={onToggle}>
-                 <div className="dashboard-header">
-                     {instruction ? instruction.InstructionRef : 'Deal Pending'}
-                     {leadName && <span className="lead-client">{leadName}</span>}
-                     <span className="instruction-stage">{stage}</span>
-                     <FaChevronDown className="chevron" />
-                 </div>
-                 {!instruction && (prospectId || passcode) && (
-                     <div className="lead-client">
-                         {prospectId && <>Prospect {prospectId}</>}
-                         {prospectId && passcode && ' · '}
-                         {passcode && <>Passcode {passcode}</>}
-                     </div>
-                 )}
-                 <div className="status-row">
-                     {summaryData.map((d, i) => {
-                         const status = (d.status ?? '').toString().toLowerCase();
-                         const icon = d.status
-                             ? ['complete', 'closed', 'verified', 'approved'].includes(status)
-                                 ? <FaCheckCircle />
--                                : status === 'failed'
-+                                : ['failed', 'review'].includes(status)
-                                     ? <FaTimesCircle />
-                                     : status === 'flagged'
-                                         ? <FaExclamationTriangle />
-                                         : <FaClock />
-                             : null;
-                         return (
-                             <div key={i} className={`status-item ${d.key}`}>
-                                 <span className="status-label">{d.label}</span>
-                                 <span className={`status-value ${status}`}>{icon}</span>
-                             </div>
-                         );
-                     })}
-                 </div>
-             </button>
-             {expanded && (
-                 <InstructionCard
-                     instruction={instruction as any}
-                     deal={deal}
-                     deals={deals}
-                     clients={clients}
-                     prospectId={prospectId}
-                     risk={risk}
-                     eid={eid}
-                     eids={eids}
-                     compliance={compliance}
+     
+     .status-value svg {
+         width: 16px;

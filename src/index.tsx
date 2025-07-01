@@ -14,6 +14,9 @@ import localUserData from "./localData/localUserData.json";
 import localEnquiries from "./localData/localEnquiries.json";
 import localMatters from "./localData/localMatters.json";
 
+import { initializeIcons } from "@fluentui/react";
+initializeIcons();
+
 // Define the custom Fluent UI theme
 const customTheme = createTheme({
   palette: {
