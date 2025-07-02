@@ -1,4 +1,4 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useCallback, useMemo } from 'react';
 import {
   Stack,
   IconButton,
@@ -20,6 +20,9 @@ import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/sty
 import { sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { getLeftoverPlaceholders } from './emailUtils';
 import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
+import { useEditorState, useKeyboardShortcuts } from './editorHooks';
+import { editorFormatter } from './editorEnhancements';
+import EnhancedPitchBuilderFeatures from './EnhancedPitchBuilderFeatures';
 
 // Sticky toolbar CSS injection
 if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
@@ -89,7 +92,7 @@ interface EditorAndTemplateBlocksProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) => {
+const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = React.memo((props) => {
   const {
     isDarkMode,
     body,
@@ -128,6 +131,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = (props) 
   const cheatSheetButtonRef = React.useRef<HTMLDivElement | null>(null);
   const [isActionsInfoOpen, setIsActionsInfoOpen] = React.useState(false);
   const actionsInfoButtonRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Use enhanced editor state hook
+  const { formattingState, actions: editorActions } = useEditorState();
+  const { boldActive, italicActive, underlineActive } = formattingState;
   const containerStyle = mergeStyles({
     backgroundColor: isDarkMode ? colours.dark.grey : colours.light.grey,
     borderRadius: 0,
@@ -139,7 +146,31 @@ boxShadow: isDarkMode
     transition: 'background 0.3s, box-shadow 0.3s',
   });
 
-  const whiteButtonStyles: IButtonStyles = {
+  // Memoize expensive computations
+  const placeholderInfo = useMemo(
+    () => ({
+      blocks: templateBlocks.map((block) => ({
+        title: block.title,
+        placeholder: block.placeholder,
+        options: block.options.map((o) => o.label),
+      })),
+      additional: getLeftoverPlaceholders(templateBlocks).filter(
+        (ph) => !templateBlocks.some((tb) => tb.placeholder === ph)
+      ),
+    }),
+    [templateBlocks]
+  );
+
+  const blockOptionsMap = useMemo(
+    () =>
+      Object.fromEntries(
+        templateBlocks.map((b) => [b.title, b.options.map((o) => o.label)])
+      ),
+    [templateBlocks]
+  );
+
+  // Optimize button styles with useMemo
+  const whiteButtonStyles: IButtonStyles = useMemo(() => ({
     ...sharedDefaultButtonStyles,
     root: {
       ...(sharedDefaultButtonStyles.root as any),
@@ -159,9 +190,9 @@ boxShadow: isDarkMode
       ...(sharedDefaultButtonStyles.rootFocused as any),
       backgroundColor: '#ffffff !important',
     },
-  };
+  }), []);
 
-  const selectedButtonStyles: IButtonStyles = {
+  const selectedButtonStyles: IButtonStyles = useMemo(() => ({
     ...sharedDefaultButtonStyles,
     root: {
       ...(sharedDefaultButtonStyles.root as any),
@@ -182,31 +213,24 @@ boxShadow: isDarkMode
       ...(sharedDefaultButtonStyles.rootFocused as any),
       backgroundColor: `${colours.highlightBlue} !important`,
     },
+  }), []);
 
-  };
-
-
-  const placeholderInfo = React.useMemo(
-    () => ({
-      blocks: templateBlocks.map((block) => ({
-        title: block.title,
-        placeholder: block.placeholder,
-        options: block.options.map((o) => o.label),
-      })),
-      additional: getLeftoverPlaceholders(templateBlocks).filter(
-        (ph) => !templateBlocks.some((tb) => tb.placeholder === ph)
-      ),
-    }),
-    [templateBlocks]
-  );
-
-  const blockOptionsMap = React.useMemo(
-    () =>
-      Object.fromEntries(
-        templateBlocks.map((b) => [b.title, b.options.map((o) => o.label)])
-      ),
-    [templateBlocks]
-  );
+  const toolbarButtonStyle = useMemo(() => ({
+    root: {
+      color: '#ffffff',
+      width: 32,
+      height: 32,
+    },
+    rootHovered: {
+      backgroundColor: colours.blue,
+      color: '#ffffff',
+    },
+    rootChecked: {
+      backgroundColor: colours.blue,
+      color: '#ffffff',
+    },
+    icon: { fontSize: 18 },
+  }), []);
 
 
   const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
@@ -271,90 +295,136 @@ boxShadow: isDarkMode
     }
   };
 
-  // Legacy collapse functionality removed
-  
-  const toolbarButtonStyle = {
-    root: {
-      color: '#ffffff',
-      width: 32,
-      height: 32,
-    },
-    rootHovered: {
-      backgroundColor: colours.blue,
-      color: '#ffffff',
-    },
-    rootChecked: {
-      backgroundColor: colours.blue,
-      color: '#ffffff',
-    },
-    icon: { fontSize: 18 },
-  };
+  // Enhanced formatting functions using the formatter utility
+  const handleBoldFormat = useCallback(() => {
+    editorFormatter.executeCommand('bold');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
 
-  const [boldActive, setBoldActive] = React.useState(false);
-  const [italicActive, setItalicActive] = React.useState(false);
-  const [underlineActive, setUnderlineActive] = React.useState(false);
+  const handleItalicFormat = useCallback(() => {
+    editorFormatter.executeCommand('italic');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
 
-  function updateBoldActive() {
-    setBoldActive(document.queryCommandState('bold'));
-  }
-  function updateItalicActive() {
-    setItalicActive(document.queryCommandState('italic'));
-  }
-  function updateUnderlineActive() {
-    setUnderlineActive(document.queryCommandState('underline'));
-  }
+  const handleUnderlineFormat = useCallback(() => {
+    editorFormatter.executeCommand('underline');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
 
-  const applyLetteredList = () => {
+  const handleBulletListFormat = useCallback(() => {
+    editorFormatter.createList('bullet');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
+
+  const handleNumberedListFormat = useCallback(() => {
+    editorFormatter.createList('number');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
+
+  const handleLetteredListFormat = useCallback(() => {
+    editorFormatter.createList('letter');
+    editorActions.updateFormattingState();
+  }, [editorActions]);
+
+  const handleLinkFormat = useCallback(() => {
+    editorFormatter.insertLink();
+    editorActions.updateFormattingState();
+  }, [editorActions]);
+
+  // Enhanced keyboard shortcuts
+  const { handleKeyDown } = useKeyboardShortcuts({
+    onBold: handleBoldFormat,
+    onItalic: handleItalicFormat,
+    onUnderline: handleUnderlineFormat,
+    onBulletList: handleBulletListFormat,
+    onNumberedList: handleNumberedListFormat,
+    onLetteredList: handleLetteredListFormat,
+    onLink: handleLinkFormat,
+    onSave: () => {
+      if (showToast) {
+        showToast('Content saved', 'success');
+      }
+    },
+  });
+
+  // Enhanced lettered list function with better error handling
+  const applyLetteredList = useCallback(() => {
     const selection = window.getSelection();
-    if (!selection || !selection.rangeCount || !bodyEditorRef.current) return;
+    if (!selection || !selection.rangeCount || !bodyEditorRef.current) {
+      console.warn('No valid selection for lettered list');
+      return;
+    }
 
     const range = selection.getRangeAt(0);
     const selectedNode = range.commonAncestorContainer;
 
-    if (!bodyEditorRef.current.contains(selectedNode)) return;
-
-    saveSelection();
-
-    let parentList: Node | Element | null =
-      selectedNode.nodeType === Node.ELEMENT_NODE
-        ? selectedNode
-        : selectedNode.parentElement;
-
-    while (parentList && parentList !== bodyEditorRef.current) {
-      if (
-        parentList instanceof HTMLElement &&
-        parentList.tagName === 'OL' &&
-        parentList.style.listStyleType === 'lower-alpha'
-      ) {
-        document.execCommand('insertUnorderedList', false, undefined);
-        break;
-      }
-      parentList = (parentList as Element).parentElement;
+    if (!bodyEditorRef.current.contains(selectedNode)) {
+      console.warn('Selection is outside editor');
+      return;
     }
 
-    if (!parentList || parentList === bodyEditorRef.current) {
-      const ol = document.createElement('ol');
-      ol.style.listStyleType = 'lower-alpha';
-      const li = document.createElement('li');
-      ol.appendChild(li);
+    try {
+      saveSelection();
 
-      if (range.collapsed) {
-        range.insertNode(ol);
-        range.setStart(li, 0);
-        range.collapse(true);
-      } else {
-        const fragment = range.extractContents();
-        li.appendChild(fragment);
+      let parentList: Node | Element | null =
+        selectedNode.nodeType === Node.ELEMENT_NODE
+          ? selectedNode
+          : selectedNode.parentElement;
+
+      // Check if we're already in a lettered list
+      while (parentList && parentList !== bodyEditorRef.current) {
+        if (
+          parentList instanceof HTMLElement &&
+          parentList.tagName === 'OL' &&
+          parentList.style.listStyleType === 'lower-alpha'
+        ) {
+          // Toggle off lettered list
+          document.execCommand('insertUnorderedList', false, undefined);
+          setBody(bodyEditorRef.current.innerHTML);
+          return;
+        }
+        parentList = (parentList as Element).parentElement;
+      }
+
+      // Create new lettered list
+      if (!parentList || parentList === bodyEditorRef.current) {
+        const ol = document.createElement('ol');
+        ol.style.listStyleType = 'lower-alpha';
+        ol.style.paddingLeft = '20px';
+        const li = document.createElement('li');
         ol.appendChild(li);
-        range.insertNode(ol);
+
+        if (range.collapsed) {
+          range.insertNode(ol);
+          range.setStart(li, 0);
+          range.collapse(true);
+        } else {
+          const fragment = range.extractContents();
+          li.appendChild(fragment);
+          range.insertNode(ol);
+        }
+
+        selection.removeAllRanges();
+        selection.addRange(range);
       }
 
-      selection.removeAllRanges();
-      selection.addRange(range);
+      setBody(bodyEditorRef.current.innerHTML);
+    } catch (error) {
+      console.error('Error applying lettered list:', error);
+      if (showToast) {
+        showToast('Failed to apply lettered list', 'error');
+      }
     }
+  }, [saveSelection, setBody, showToast]);
 
-    setBody(bodyEditorRef.current.innerHTML);
-  };
+  // Additional callback functions
+  const handleCheatSheetToggle = useCallback(() => {
+    setIsCheatSheetOpen(!isCheatSheetOpen);
+  }, [isCheatSheetOpen]);
+
+  const handleActionsInfoToggle = useCallback(() => {
+    setIsActionsInfoOpen(!isActionsInfoOpen);
+  }, [isActionsInfoOpen]);
 
   return (
     <>
@@ -406,7 +476,7 @@ boxShadow: isDarkMode
                   iconProps={{ iconName: 'Info' }}
                   title="Placeholder Cheat Sheet"
                   ariaLabel="Placeholder Cheat Sheet"
-                  onClick={() => setIsCheatSheetOpen(!isCheatSheetOpen)}
+                  onClick={handleCheatSheetToggle}
                 />
               </div>
               {removedBlocks.length > 0 && (
@@ -430,7 +500,7 @@ boxShadow: isDarkMode
                   iconProps={{ iconName: 'Info' }}
                   title="Actions Info"
                   ariaLabel="Actions Info"
-                  onClick={() => setIsActionsInfoOpen(!isActionsInfoOpen)}
+                  onClick={handleActionsInfoToggle}
                 />
               </div>
             </Stack>
@@ -495,6 +565,15 @@ boxShadow: isDarkMode
 
 
           <Stack tokens={{ childrenGap: 20 }}>
+          
+          {/* Enhanced Features Toolbar */}
+          <EnhancedPitchBuilderFeatures
+            isDarkMode={isDarkMode}
+            content={body}
+            onContentChange={setBody}
+            showToast={showToast}
+          />
+
           <Stack horizontal tokens={{ childrenGap: 20 }}>
             <Stack tokens={{ childrenGap: 6 }} grow>
               <div className={toolbarStyle + ' sticky-toolbar'} style={{ backgroundColor: colours.darkBlue }}>
@@ -503,7 +582,7 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'Bold' }}
                       ariaLabel="Bold"
-                      onClick={() => applyFormat('bold')}
+                      onClick={handleBoldFormat}
                       checked={boldActive}
                       styles={toolbarButtonStyle}
                     />
@@ -512,7 +591,7 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'Italic' }}
                       ariaLabel="Italic"
-                      onClick={() => applyFormat('italic')}
+                      onClick={handleItalicFormat}
                       checked={italicActive}
                       styles={toolbarButtonStyle}
                     />
@@ -521,7 +600,7 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'Underline' }}
                       ariaLabel="Underline"
-                      onClick={() => applyFormat('underline')}
+                      onClick={handleUnderlineFormat}
                       checked={underlineActive}
                       styles={toolbarButtonStyle}
                     />
@@ -539,7 +618,7 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'BulletedList' }}
                       ariaLabel="Bulleted List"
-                      onClick={() => applyFormat('insertUnorderedList')}
+                      onClick={handleBulletListFormat}
                       styles={toolbarButtonStyle}
                     />
                   </TooltipHost>
@@ -547,15 +626,15 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'NumberedList' }}
                       ariaLabel="Numbered List"
-                      onClick={() => applyFormat('insertOrderedList')}
+                      onClick={handleNumberedListFormat}
                       styles={toolbarButtonStyle}
                     />
                   </TooltipHost>
-                  <TooltipHost content="A, B, C List">
+                  <TooltipHost content="A, B, C List (Ctrl+Shift+L)">
                     <IconButton
                       iconProps={{ iconName: 'SortLines' }}
                       ariaLabel="Lettered List"
-                      onClick={applyLetteredList}
+                      onClick={handleLetteredListFormat}
                       styles={toolbarButtonStyle}
                     />
                   </TooltipHost>
@@ -572,10 +651,7 @@ boxShadow: isDarkMode
                     <IconButton
                       iconProps={{ iconName: 'Link' }}
                       ariaLabel="Insert Link"
-                      onClick={() => {
-                        const url = prompt('Enter the URL');
-                        if (url) applyFormat('createLink', url);
-                      }}
+                      onClick={handleLinkFormat}
                       styles={toolbarButtonStyle}
                     />
                   </TooltipHost>
@@ -586,6 +662,7 @@ boxShadow: isDarkMode
                 ref={bodyEditorRef}
                 onBlur={handleBlur}
                 onInput={handleInput}
+                onKeyDown={handleKeyDown}
                 suppressContentEditableWarning={true}
                 className={sharedEditorStyle(isDarkMode)}
                 style={{
@@ -596,24 +673,9 @@ boxShadow: isDarkMode
                   maxHeight: 'none',
                 }}
                 aria-label="Email Body Editor"
-                onMouseUp={() => {
-                  saveSelection();
-                  updateBoldActive();
-                  updateItalicActive();
-                  updateUnderlineActive();
-                }}
-                onKeyUp={() => {
-                  saveSelection();
-                  updateBoldActive();
-                  updateItalicActive();
-                  updateUnderlineActive();
-                }}
-                onFocus={() => {
-                  saveSelection();
-                  updateBoldActive();
-                  updateItalicActive();
-                  updateUnderlineActive();
-                }}
+                onMouseUp={editorActions.updateFormattingState}
+                onKeyUp={editorActions.updateFormattingState}
+                onFocus={editorActions.updateFormattingState}
               />
             </Stack>
           </Stack>
@@ -642,6 +704,6 @@ boxShadow: isDarkMode
     </Stack>
     </>
   );
-};
+});
 
 export default EditorAndTemplateBlocks;
