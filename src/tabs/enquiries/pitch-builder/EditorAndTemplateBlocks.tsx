@@ -387,17 +387,17 @@ boxShadow: isDarkMode
           >
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
               <DefaultButton
-                text="v3"
+                text="Production"
                 onClick={() => onTemplateSetChange('Database')}
                 styles={templateSet === 'Database' ? selectedButtonStyles : whiteButtonStyles}
               />
               <DefaultButton
-                text="v2"
+                text="Simplified"
                 onClick={() => onTemplateSetChange('Simplified')}
                 styles={templateSet === 'Simplified' ? selectedButtonStyles : whiteButtonStyles}
               />
               <DefaultButton
-                text="v1"
+                text="Original"
                 onClick={() => onTemplateSetChange('Production')}
                 styles={templateSet === 'Production' ? selectedButtonStyles : whiteButtonStyles}
               />

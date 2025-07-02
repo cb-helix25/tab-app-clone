@@ -25,14 +25,14 @@ export const templateBlockSets: Record<Exclude<TemplateSet, 'Database'>, Templat
 };
 
 export const templateSetOptions = [
-  { key: 'Database', text: 'v3' },
-  { key: 'Production', text: 'v1' },
-  { key: 'Simplified', text: 'v2' },
+  { key: 'Database', text: 'Production' },
+  { key: 'Production', text: 'Original' },
+  { key: 'Simplified', text: 'Simplified' },
 ];
 
 export function getTemplateSetLabel(set: TemplateSet): string {
-  if (set === 'Database') return 'v3';
-  return set === 'Simplified' ? 'v2' : 'v1';
+  if (set === 'Database') return 'Production';
+  return set === 'Simplified' ? 'Simplified' : 'Original';
 }
 
 export function getTemplateBlocks(set: TemplateSet = 'Simplified'): TemplateBlock[] {

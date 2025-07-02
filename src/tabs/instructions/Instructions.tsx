@@ -28,6 +28,9 @@ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
 import DraftCCLPage from "./DraftCCLPage";
+import InstructionEditor from "./components/InstructionEditor";
+import InstructionBlockEditor from "./components/InstructionBlockEditor";
+import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
 import "../../app/styles/InstructionsBanner.css";
 
 interface InstructionsProps {
@@ -291,6 +294,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                 <PivotItem headerText="Risk & Compliance" itemKey="risk" />
                   {useLocalData && (
                     <PivotItem headerText="Scenarios" itemKey="states" />
+                  )}
+                  {useLocalData && (
+                    <PivotItem headerText="Editor" itemKey="demo" />
                   )}
               </Pivot>
             </div>
@@ -857,31 +863,10 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
           )}
           {activePivot === "deals" && (
-            <div className={gridContainerStyle}>
-              {deals.map((deal, idx) => {
-                const row = Math.floor(idx / 4);
-                const col = idx % 4;
-                const animationDelay = row * 0.2 + col * 0.1;
-                const isClosed = String(deal.Status).toLowerCase() === "closed";
-                return (
-                  <DealCard
-                    key={idx}
-                    deal={deal}
-                    animationDelay={animationDelay}
-                    onFollowUp={
-                      isClosed
-                        ? undefined
-                        : () => console.log("Follow up", deal.DealId)
-                    }
-                    onOpenInstruction={
-                      deal.InstructionRef
-                        ? () => handleOpenInstruction(deal.InstructionRef)
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
+            <DealsPivot
+              deals={deals}
+              handleOpenInstruction={handleOpenInstruction}
+            />
           )}
           {activePivot === "clients" && (
             <div className={gridContainerStyle}>
@@ -937,9 +922,108 @@ const Instructions: React.FC<InstructionsProps> = ({
               ))}
             </div>
           )}
+          {activePivot === "demo" && (
+            <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+              <h2 style={{ color: colours.darkBlue, marginBottom: '16px' }}>
+                Instructions Editor
+              </h2>
+              <p style={{ color: colours.greyText, marginBottom: '24px' }}>
+                Create professional instruction content using templates and placeholders
+              </p>
+              <InstructionBlockEditor 
+                value=""
+                onChange={(value) => console.log('Editor content:', value)}
+              />
+            </div>
+          )}
         </div>
       </Stack>
     </section>
+  );
+};
+
+// --- DealsPivot extracted to fix React hooks error ---
+interface DealsPivotProps {
+  deals: any[];
+  handleOpenInstruction: (ref: string) => void;
+}
+
+const DealsPivot: React.FC<DealsPivotProps> = ({ deals, handleOpenInstruction }) => {
+  const [openFollowUpIdx, setOpenFollowUpIdx] = useState<number | null>(null);
+  const [followUpContent, setFollowUpContent] = useState<string>("");
+  const gridContainerStyle = mergeStyles({
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "16px",
+    maxWidth: "1200px",
+    width: "100%",
+    margin: "0 auto",
+    boxSizing: "border-box",
+  });
+  return (
+    <div className={gridContainerStyle}>
+      {deals.map((deal, idx) => {
+        const row = Math.floor(idx / 4);
+        const col = idx % 4;
+        const animationDelay = row * 0.2 + col * 0.1;
+        const isClosed = String(deal.Status).toLowerCase() === "closed";
+        const showFollowUpEditor = openFollowUpIdx === idx;
+        return (
+          <div key={idx} style={{ position: 'relative' }}>
+            <DealCard
+              deal={deal}
+              animationDelay={animationDelay}
+              onFollowUp={
+                isClosed
+                  ? undefined
+                  : () => {
+                      setOpenFollowUpIdx(idx);
+                      setFollowUpContent("");
+                    }
+              }
+              onOpenInstruction={
+                deal.InstructionRef
+                  ? () => handleOpenInstruction(deal.InstructionRef)
+                  : undefined
+              }
+            />
+            {showFollowUpEditor && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                background: '#fff',
+                zIndex: 10,
+                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                borderRadius: 8,
+                padding: 24,
+              }}>
+                <InstructionEditor
+                  value={followUpContent}
+                  onChange={setFollowUpContent}
+                  templates={[]}
+                />
+                <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                  <PrimaryButton
+                    text="Send Follow Up"
+                    onClick={() => {
+                      // TODO: Implement follow up send logic
+                      setOpenFollowUpIdx(null);
+                    }}
+                  />
+                  <PrimaryButton
+                    text="Cancel"
+                    onClick={() => setOpenFollowUpIdx(null)}
+                    styles={{ root: { background: '#eee', color: '#333' } }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
