@@ -746,30 +746,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   });
 
   if (showNewMatterPage) {
-    if (!selectedInstruction) {
-      return (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
-          <Dropdown
-            placeholder="Select Instruction"
-            options={instructionOptions}
-            selectedKey={pendingInstructionRef}
-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-          />
-          <PrimaryButton
-            text="Start"
-            disabled={!pendingInstructionRef}
-            onClick={() => {
-              const inst = instructionData
-                .flatMap((p) => p.instructions ?? [])
-                .find((i) => i.InstructionRef === pendingInstructionRef);
-              if (inst) setSelectedInstruction(inst);
-            }}
-          />
-        </Stack>
-      );
-    }
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
@@ -788,30 +764,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   if (showRiskPage) {
-    if (!selectedInstruction) {
-      return (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
-          <Dropdown
-            placeholder="Select Instruction"
-            options={instructionOptions}
-            selectedKey={pendingInstructionRef}
-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-          />
-          <PrimaryButton
-            text="Start"
-            disabled={!pendingInstructionRef}
-            onClick={() => {
-              const inst = instructionData
-                .flatMap((p) => p.instructions ?? [])
-                .find((i) => i.InstructionRef === pendingInstructionRef);
-              if (inst) setSelectedInstruction(inst);
-            }}
-          />
-        </Stack>
-      );
-    }
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <RiskAssessmentPage
@@ -828,30 +780,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   if (showEIDPage) {
-    if (!selectedInstruction) {
-      return (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
-          <Dropdown
-            placeholder="Select Instruction"
-            options={instructionOptions}
-            selectedKey={pendingInstructionRef}
-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-          />
-          <PrimaryButton
-            text="Start"
-            disabled={!pendingInstructionRef}
-            onClick={() => {
-              const inst = instructionData
-                .flatMap((p) => p.instructions ?? [])
-                .find((i) => i.InstructionRef === pendingInstructionRef);
-              if (inst) setSelectedInstruction(inst);
-            }}
-          />
-        </Stack>
-      );
-    }
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <EIDCheckPage
@@ -864,30 +792,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   if (showDraftCCLPage) {
-    if (!selectedInstruction) {
-      return (
-        <Stack tokens={dashboardTokens} className={containerStyle}>
-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
-          <Dropdown
-            placeholder="Select Instruction"
-            options={instructionOptions}
-            selectedKey={pendingInstructionRef}
-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-          />
-          <PrimaryButton
-            text="Start"
-            disabled={!pendingInstructionRef}
-            onClick={() => {
-              const inst = instructionData
-                .flatMap((p) => p.instructions ?? [])
-                .find((i) => i.InstructionRef === pendingInstructionRef);
-              if (inst) setSelectedInstruction(inst);
-            }}
-          />
-        </Stack>
-      );
-    }
     return (
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <DraftCCLPage

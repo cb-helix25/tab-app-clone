@@ -1,105 +1,197 @@
-diff --git a/src/tabs/home/QuickActionsBar.tsx b/src/tabs/home/QuickActionsBar.tsx
-index b60ab62c1993a0134fee1f26b803b14fefdbb5ed..3c5aa8e3540008716cd0b168c04e14c3a665503d 100644
---- a/src/tabs/home/QuickActionsBar.tsx
-+++ b/src/tabs/home/QuickActionsBar.tsx
-@@ -1,90 +1,98 @@
- import React from 'react';
- import { mergeStyles } from '@fluentui/react';
- import QuickActionsCard from './QuickActionsCard';
- import { colours } from '../../app/styles/colours';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 8f51809ac9a630fcdd65bcf0d677c9bb804f75dc..44870b581adacbba2cb3f3740f8a40628c35d402 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -724,192 +724,96 @@ const Instructions: React.FC<InstructionsProps> = ({
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
  
- interface QuickAction {
-     title: string;
-     icon: string;
- }
+   const scenariosContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "1fr",
+     gap: "16px",
+     maxWidth: "600px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
  
- interface QuickActionsBarProps {
-     isDarkMode: boolean;
-     quickActions: QuickAction[];
-     handleActionClick: (action: QuickAction) => void;
-     currentUserConfirmed: boolean;
-+    highlighted?: boolean;
- }
+   const overviewColumnStyle = mergeStyles({
+     columnCount: 2,
+     columnGap: "24px",
+     maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
  
- const ACTION_BAR_HEIGHT = 48;
- 
--const quickLinksStyle = (isDarkMode: boolean) =>
-+const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
-     mergeStyles({
-         backgroundColor: isDarkMode
-             ? colours.dark.sectionBackground
-             : colours.light.sectionBackground,
-         boxShadow: isDarkMode
-             ? '0 2px 4px rgba(0,0,0,0.4)'
-             : '0 2px 4px rgba(0,0,0,0.1)',
-         padding: '0 24px',
-         transition: 'background-color 0.3s',
-         display: 'flex',
-         flexDirection: 'row',
-         gap: '8px',
-         overflowX: 'auto',
-         msOverflowStyle: 'none',
-         scrollbarWidth: 'none',
-         alignItems: 'center',
-         height: ACTION_BAR_HEIGHT,
-         paddingBottom: 0,
-         position: 'sticky',
-         top: ACTION_BAR_HEIGHT,
-         zIndex: 999,
-         borderTopLeftRadius: 0,
-         borderTopRightRadius: 0,
-+        ...(highlighted && {
-+            transform: 'scale(1.02)',
-+            filter: 'brightness(1.05)',
-+            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-+            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
-+        }),
-         selectors: {
-             '::-webkit-scrollbar': {
-                 display: 'none',
-             },
-         },
-     });
- 
- const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
-     isDarkMode,
-     quickActions,
-     handleActionClick,
-     currentUserConfirmed,
-+    highlighted = false,
- }) => {
-     const [selected, setSelected] = React.useState<string | null>(null);
- 
-     const onCardClick = (action: QuickAction) => {
-         setSelected(action.title);
-         handleActionClick(action);
-     };
- 
+   if (showNewMatterPage) {
+-    if (!selectedInstruction) {
+-      return (
+-        <Stack tokens={dashboardTokens} className={containerStyle}>
+-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+-          <Dropdown
+-            placeholder="Select Instruction"
+-            options={instructionOptions}
+-            selectedKey={pendingInstructionRef}
+-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+-          />
+-          <PrimaryButton
+-            text="Start"
+-            disabled={!pendingInstructionRef}
+-            onClick={() => {
+-              const inst = instructionData
+-                .flatMap((p) => p.instructions ?? [])
+-                .find((i) => i.InstructionRef === pendingInstructionRef);
+-              if (inst) setSelectedInstruction(inst);
+-            }}
+-          />
+-        </Stack>
+-      );
+-    }
      return (
--        <div className={quickLinksStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
-+        <div className={quickLinksStyle(isDarkMode, highlighted)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
-             {quickActions.map((action, index) => (
-                 <QuickActionsCard
-                     key={action.title}
-                     title={action.title}
-                     icon={action.icon}
-                     isDarkMode={isDarkMode}
-                     onClick={() => onCardClick(action)}
-                     iconColor={colours.cta}
-                     selected={selected === action.title}
-                     style={{
-                         '--card-index': index,
-                         fontSize: '16px',
-                         padding: '0 12px',
-                         height: '48px',
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'flex-start',
-                     } as React.CSSProperties}
-                     {...(action.title === 'Confirm Attendance'
-                         ? { confirmed: currentUserConfirmed }
-                         : {})}
-                 />
-             ))}
-         </div>
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+         <FlatMatterOpening
+           poidData={idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
+           userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={newMatterClientType}
+         />
+       </Stack>
      );
+   }
+ 
+   if (showRiskPage) {
+-    if (!selectedInstruction) {
+-      return (
+-        <Stack tokens={dashboardTokens} className={containerStyle}>
+-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+-          <Dropdown
+-            placeholder="Select Instruction"
+-            options={instructionOptions}
+-            selectedKey={pendingInstructionRef}
+-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+-          />
+-          <PrimaryButton
+-            text="Start"
+-            disabled={!pendingInstructionRef}
+-            onClick={() => {
+-              const inst = instructionData
+-                .flatMap((p) => p.instructions ?? [])
+-                .find((i) => i.InstructionRef === pendingInstructionRef);
+-              if (inst) setSelectedInstruction(inst);
+-            }}
+-          />
+-        </Stack>
+-      );
+-    }
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <RiskAssessmentPage
+           onBack={() => {
+             setShowRiskPage(false);
+             setSelectedRisk(null);
+           }}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
+         />
+       </Stack>
+     );
+   }
+ 
+   if (showEIDPage) {
+-    if (!selectedInstruction) {
+-      return (
+-        <Stack tokens={dashboardTokens} className={containerStyle}>
+-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+-          <Dropdown
+-            placeholder="Select Instruction"
+-            options={instructionOptions}
+-            selectedKey={pendingInstructionRef}
+-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+-          />
+-          <PrimaryButton
+-            text="Start"
+-            disabled={!pendingInstructionRef}
+-            onClick={() => {
+-              const inst = instructionData
+-                .flatMap((p) => p.instructions ?? [])
+-                .find((i) => i.InstructionRef === pendingInstructionRef);
+-              if (inst) setSelectedInstruction(inst);
+-            }}
+-          />
+-        </Stack>
+-      );
+-    }
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <EIDCheckPage
+           poidData={idVerificationOptions}
+           instruction={selectedInstruction}
+           onBack={handleBack}
+         />
+       </Stack>
+     );
+   }
+ 
+   if (showDraftCCLPage) {
+-    if (!selectedInstruction) {
+-      return (
+-        <Stack tokens={dashboardTokens} className={containerStyle}>
+-          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
+-          <Dropdown
+-            placeholder="Select Instruction"
+-            options={instructionOptions}
+-            selectedKey={pendingInstructionRef}
+-            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
+-            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+-          />
+-          <PrimaryButton
+-            text="Start"
+-            disabled={!pendingInstructionRef}
+-            onClick={() => {
+-              const inst = instructionData
+-                .flatMap((p) => p.instructions ?? [])
+-                .find((i) => i.InstructionRef === pendingInstructionRef);
+-              if (inst) setSelectedInstruction(inst);
+-            }}
+-          />
+-        </Stack>
+-      );
+-    }
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <DraftCCLPage
+           onBack={() => setShowDraftCCLPage(false)}
+           instruction={selectedInstruction}
+           instructions={instructionData}
+         />
+       </Stack>
+     );
+   }
+ 
+   return (
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className="disclaimer animate-disclaimer">
+           <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
+         </div>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+             <div className={overviewColumnStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 2);
+                 const col = idx % 2;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
