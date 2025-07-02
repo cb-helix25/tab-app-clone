@@ -149,7 +149,7 @@ async function insertRoadmapEntry(
       let insertedId: number | undefined;
 
       sqlRequest.on("row", (columns) => {
-        const id = columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "InsertedId")?.value;
+        const id = columns.find(c => c.metadata.colName === "InsertedId")?.value;
         if (id) {
           insertedId = parseInt(id as string, 10);
         }

@@ -154,7 +154,7 @@ async function queryComplianceData(
       const results: ComplianceData[] = [];
       sqlRequest.on("row", (columns) => {
         const row: ComplianceData = {};
-        columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
+        columns.forEach((col) => {
           row[col.metadata.colName] = col.value;
         });
         results.push(row);

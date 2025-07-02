@@ -147,12 +147,12 @@ async function queryAttendance(
       const attendanceMap: { [name: string]: PersonAttendance } = {};
 
       sqlRequest.on("row", (columns) => {
-        const name = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "name")?.value as string) || "";
-        const level = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "Level")?.value as string) || "";
-        const weekStart = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "Week_Start")?.value as Date);
-        const weekEnd = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "Week_End")?.value as Date);
-        const iso = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "iso")?.value as number) || 0;
-        const attendance = (columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "attendance")?.value as string) || "";
+        const name = (columns.find(c => c.metadata.colName === "name")?.value as string) || "";
+        const level = (columns.find(c => c.metadata.colName === "Level")?.value as string) || "";
+        const weekStart = (columns.find(c => c.metadata.colName === "Week_Start")?.value as Date);
+        const weekEnd = (columns.find(c => c.metadata.colName === "Week_End")?.value as Date);
+        const iso = (columns.find(c => c.metadata.colName === "iso")?.value as number) || 0;
+        const attendance = (columns.find(c => c.metadata.colName === "attendance")?.value as string) || "";
 
         const weekRange = formatWeekRange(weekStart, weekEnd);
 
@@ -249,7 +249,7 @@ async function queryTeamData(config: any, context: InvocationContext): Promise<{
 
       sqlRequest.on("row", (columns) => {
         const obj: any = {};
-        columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
+        columns.forEach((col) => {
           obj[col.metadata.colName] = col.value;
         });
         teamData.push(obj);

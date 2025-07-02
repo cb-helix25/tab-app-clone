@@ -82,7 +82,7 @@ async function runQuery(query: string, config: any, context: InvocationContext):
       // Here we convert booking_date & booking_time to simple strings:
       sqlRequest.on("row", (columns) => {
         const row: any = {};
-        columns.forEach((column: { metadata: { colName: any; }; value: any; }) => {
+        columns.forEach((column) => {
           const colName = column.metadata.colName;
           const val = column.value;
 

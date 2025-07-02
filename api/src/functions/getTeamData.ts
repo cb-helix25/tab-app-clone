@@ -75,7 +75,7 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
     const config = {
         server: sqlServer,
         authentication: {
-            type: "default" as const,
+            type: "default",
             options: {
                 userName: sqlUser,
                 password: password,
@@ -132,7 +132,7 @@ async function queryAllTeamData(context: InvocationContext): Promise<TeamData[]>
 
             request.on("row", (columns) => {
                 const row: TeamData = {};
-                columns.forEach((column: { metadata: { colName: string | number; }; value: any; }) => {
+                columns.forEach((column) => {
                     row[column.metadata.colName] = column.value;
                 });
                 result.push(row);

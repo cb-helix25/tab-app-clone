@@ -110,7 +110,7 @@ export async function getAnnualLeaveAllHandler(_req: HttpRequest, context: Invoc
         const results: AnnualLeaveRecord[] = [];
         request.on("row", (columns) => {
           const entry: any = {};
-          columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => {
+          columns.forEach((col) => {
             entry[col.metadata.colName] = col.value;
           });
           results.push({

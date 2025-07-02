@@ -378,7 +378,7 @@ async function executeQuery(
     const rows: any[] = [];
     request.on("row", (columns) => {
       const row: any = {};
-      columns.forEach((col: { metadata: { colName: string | number; }; value: any; }) => (row[col.metadata.colName] = col.value));
+      columns.forEach((col) => (row[col.metadata.colName] = col.value));
       rows.push(row);
     });
     request.on("error", (err) => {

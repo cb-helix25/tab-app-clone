@@ -134,13 +134,13 @@ async function fetchRoadmapEntries(
 
         sqlRequest.on("row", (columns) => {
           const entry: RoadmapEntry = {
-            id: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "id")?.value as number,
-            requested_by: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "requested_by")?.value as string || "Unknown",
-            date_requested: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "date_requested")?.value as string || new Date().toISOString(),
-            component: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "component")?.value as string || "Unknown",
-            label: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "label")?.value as string || "No Label",
-            description: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "description")?.value as string || "",
-            status: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "status")?.value as string || "Unknown",
+            id: columns.find(c => c.metadata.colName === "id")?.value as number,
+            requested_by: columns.find(c => c.metadata.colName === "requested_by")?.value as string || "Unknown",
+            date_requested: columns.find(c => c.metadata.colName === "date_requested")?.value as string || new Date().toISOString(),
+            component: columns.find(c => c.metadata.colName === "component")?.value as string || "Unknown",
+            label: columns.find(c => c.metadata.colName === "label")?.value as string || "No Label",
+            description: columns.find(c => c.metadata.colName === "description")?.value as string || "",
+            status: columns.find(c => c.metadata.colName === "status")?.value as string || "Unknown",
           };
           entries.push(entry);
         });

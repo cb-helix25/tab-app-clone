@@ -256,10 +256,10 @@ async function fetchAnnualLeaveRecord(id: string, context: InvocationContext): P
 
       request.on("row", (columns) => {
         record = {
-          fe: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "fe")?.value as string,
-          start_date: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "start_date")?.value as string,
-          end_date: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "end_date")?.value as string,
-          clio_entry_id: columns.find((c: { metadata: { colName: string; }; }) => c.metadata.colName === "ClioEntryId")?.value as number | null,
+          fe: columns.find(c => c.metadata.colName === "fe")?.value as string,
+          start_date: columns.find(c => c.metadata.colName === "start_date")?.value as string,
+          end_date: columns.find(c => c.metadata.colName === "end_date")?.value as string,
+          clio_entry_id: columns.find(c => c.metadata.colName === "ClioEntryId")?.value as number | null,
         };
       });
 
@@ -457,7 +457,7 @@ async function updateAnnualLeaveRecord(
           return;
         }
         connection.close();
-        resolve(rowCount ?? 0);
+        resolve(rowCount);
       });
 
       // Bind parameters
@@ -524,7 +524,7 @@ async function updateClioEntryId(
           return;
         }
         connection.close();
-        resolve(rowCount ?? 0);
+        resolve(rowCount);
       });
 
       request.addParameter("ID", TYPES.Int, parseInt(id, 10));
