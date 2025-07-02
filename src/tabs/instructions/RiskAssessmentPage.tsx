@@ -34,31 +34,39 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
     const [complianceExpiry, setComplianceExpiry] = useState<Date | undefined>(
         existingRisk?.ComplianceExpiry ? new Date(existingRisk.ComplianceExpiry) : undefined,
     );
-    const [consideredClientRisk, setConsideredClientRisk] = useState(
-        !!existingRisk?.ClientRiskFactorsConsidered,
-    );
-    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState(
-        !!existingRisk?.TransactionRiskFactorsConsidered,
-    );
+    const [consideredClientRisk, setConsideredClientRisk] = useState<
+        boolean | undefined
+    >(existingRisk?.ClientRiskFactorsConsidered !== undefined
+        ? !!existingRisk?.ClientRiskFactorsConsidered
+        : undefined);
+    const [consideredTransactionRisk, setConsideredTransactionRisk] = useState<
+        boolean | undefined
+    >(existingRisk?.TransactionRiskFactorsConsidered !== undefined
+        ? !!existingRisk?.TransactionRiskFactorsConsidered
+        : undefined);
     const [transactionRiskLevel, setTransactionRiskLevel] = useState(
         existingRisk?.TransactionRiskLevel ?? '',
     );
-    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState(
-        !!existingRisk?.FirmWideSanctionsRiskConsidered,
-    );
-    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState(
-        !!existingRisk?.FirmWideAMLPolicyConsidered,
-    );
+    const [consideredFirmWideSanctions, setConsideredFirmWideSanctions] = useState<
+        boolean | undefined
+    >(existingRisk?.FirmWideSanctionsRiskConsidered !== undefined
+        ? !!existingRisk?.FirmWideSanctionsRiskConsidered
+        : undefined);
+    const [consideredFirmWideAML, setConsideredFirmWideAML] = useState<
+        boolean | undefined
+    >(existingRisk?.FirmWideAMLPolicyConsidered !== undefined
+        ? !!existingRisk?.FirmWideAMLPolicyConsidered
+        : undefined);
 
     const isComplete = () =>
         Object.values(riskCore).every((v) => v !== '' && v !== 0) &&
         complianceDate !== undefined &&
         complianceExpiry !== undefined &&
-        consideredClientRisk &&
-        consideredTransactionRisk &&
-        transactionRiskLevel !== '' &&
-        consideredFirmWideSanctions &&
-        consideredFirmWideAML;
+        consideredClientRisk !== undefined &&
+        consideredTransactionRisk !== undefined &&
+        (consideredTransactionRisk ? transactionRiskLevel !== '' : true) &&
+        consideredFirmWideSanctions !== undefined &&
+        consideredFirmWideAML !== undefined;
 
     const handleContinue = async () => {
         if (!isComplete()) return;

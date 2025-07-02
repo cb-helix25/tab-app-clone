@@ -32,16 +32,16 @@ export interface RiskAssessmentProps {
     setComplianceDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
     complianceExpiry: Date | undefined;
     setComplianceExpiry: React.Dispatch<React.SetStateAction<Date | undefined>>;
-    consideredClientRisk: boolean;
-    setConsideredClientRisk: React.Dispatch<React.SetStateAction<boolean>>;
-    consideredTransactionRisk: boolean;
-    setConsideredTransactionRisk: React.Dispatch<React.SetStateAction<boolean>>;
+    consideredClientRisk: boolean | undefined;
+    setConsideredClientRisk: React.Dispatch<React.SetStateAction<boolean | undefined>>;
+    consideredTransactionRisk: boolean | undefined;
+    setConsideredTransactionRisk: React.Dispatch<React.SetStateAction<boolean | undefined>>;
     transactionRiskLevel: string;
     setTransactionRiskLevel: React.Dispatch<React.SetStateAction<string>>;
-    consideredFirmWideSanctions: boolean;
-    setConsideredFirmWideSanctions: React.Dispatch<React.SetStateAction<boolean>>;
-    consideredFirmWideAML: boolean;
-    setConsideredFirmWideAML: React.Dispatch<React.SetStateAction<boolean>>;
+    consideredFirmWideSanctions: boolean | undefined;
+    setConsideredFirmWideSanctions: React.Dispatch<React.SetStateAction<boolean | undefined>>;
+    consideredFirmWideAML: boolean | undefined;
+    setConsideredFirmWideAML: React.Dispatch<React.SetStateAction<boolean | undefined>>;
     onContinue: () => void;
     isComplete: () => boolean;
   }
@@ -128,24 +128,42 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     setConsideredFirmWideAML,
     onContinue,
     isComplete,
-}) => (
-    <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
-        <Stack horizontal tokens={{ childrenGap: 60 }}>
-            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: 300 } }}>
-                <DatePicker
-                    label="Compliance Date"
-                    value={complianceDate}
-                    onSelectDate={(d) => setComplianceDate(d || undefined)}
-                    formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
-                    styles={datePickerStyles}
-                />
-                <DatePicker
-                    label="Compliance Expiry"
-                    value={complianceExpiry}
-                    onSelectDate={(d) => setComplianceExpiry(d || undefined)}
-                    formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
-                    styles={datePickerStyles}
-                />
+}) => {
+    const riskScore =
+        riskCore.clientTypeValue +
+        riskCore.destinationOfFundsValue +
+        riskCore.fundsTypeValue +
+        riskCore.clientIntroducedValue +
+        riskCore.limitationValue +
+        riskCore.sourceOfFundsValue +
+        riskCore.valueOfInstructionValue;
+
+    let riskResult = 'Low Risk';
+    if (riskCore.limitationValue === 3 || riskScore >= 16) {
+        riskResult = 'High Risk';
+    } else if (riskScore >= 11) {
+        riskResult = 'Medium Risk';
+    }
+
+    return (
+        <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
+            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { maxWidth: 620, width: '100%' } }}>
+                <Stack horizontal wrap tokens={{ childrenGap: 20 }}>
+                    <DatePicker
+                        label="Compliance Date"
+                        value={complianceDate}
+                        onSelectDate={(d) => setComplianceDate(d || undefined)}
+                        formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
+                        styles={datePickerStyles}
+                    />
+                    <DatePicker
+                        label="Compliance Expiry"
+                        value={complianceExpiry}
+                        onSelectDate={(d) => setComplianceExpiry(d || undefined)}
+                        formatDate={(d) => d?.toLocaleDateString('en-GB') || ''}
+                        styles={datePickerStyles}
+                    />
+                </Stack>
                 <BigOptionGroup
                     label="Client Type"
                     options={clientTypeOptions}
@@ -230,48 +248,81 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                         })
                     }
                 />
-            </Stack>
-            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: 300 } }}>
-                <BigOptionGroup
-                    label="I have considered client risk factors"
-                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                    selectedKey={consideredClientRisk ? 'yes' : 'no'}
-                    onChange={(k) => setConsideredClientRisk(k === 'yes')}
-                />
-                <BigOptionGroup
-                    label="I have considered transaction risk factors"
-                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                    selectedKey={consideredTransactionRisk ? 'yes' : 'no'}
-                    onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
-                />
-                {consideredTransactionRisk && (
+                <Stack horizontal wrap tokens={{ childrenGap: 20 }}>
                     <BigOptionGroup
-                        label="Transaction Risk Level"
-                        options={[
-                            { key: 'Low Risk', text: 'Low Risk' },
-                            { key: 'Medium Risk', text: 'Medium Risk' },
-                            { key: 'High Risk', text: 'High Risk' },
-                        ]}
-                        selectedKey={transactionRiskLevel}
-                        onChange={(k) => setTransactionRiskLevel(k as string)}
+                        label="I have considered client risk factors"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredClientRisk === undefined
+                                ? undefined
+                                : consideredClientRisk
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredClientRisk(k === 'yes')}
                     />
-                )}
-                <BigOptionGroup
-                    label="I have considered the Firm Wide Sanctions Risk Assessment"
-                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                    selectedKey={consideredFirmWideSanctions ? 'yes' : 'no'}
-                    onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
-                />
-                <BigOptionGroup
-                    label="I have considered the Firm Wide AML policy"
-                    options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                    selectedKey={consideredFirmWideAML ? 'yes' : 'no'}
-                    onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
-                />
+                    <BigOptionGroup
+                        label="I have considered transaction risk factors"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredTransactionRisk === undefined
+                                ? undefined
+                                : consideredTransactionRisk
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
+                    />
+                    {consideredTransactionRisk && (
+                        <BigOptionGroup
+                            label="Transaction Risk Level"
+                            options={[
+                                { key: 'Low Risk', text: 'Low Risk' },
+                                { key: 'Medium Risk', text: 'Medium Risk' },
+                                { key: 'High Risk', text: 'High Risk' },
+                            ]}
+                            selectedKey={transactionRiskLevel}
+                            onChange={(k) => setTransactionRiskLevel(k as string)}
+                        />
+                    )}
+                    <BigOptionGroup
+                        label="I have considered the Firm Wide Sanctions Risk Assessment"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredFirmWideSanctions === undefined
+                                ? undefined
+                                : consideredFirmWideSanctions
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
+                    />
+                    <BigOptionGroup
+                        label="I have considered the Firm Wide AML policy"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredFirmWideAML === undefined
+                                ? undefined
+                                : consideredFirmWideAML
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
+                    />
+                </Stack>
+                <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
+                    <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
+                    <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
+                </Stack>
             </Stack>
+            <PrimaryButton
+                text="Continue"
+                onClick={onContinue}
+                disabled={!isComplete()}
+                styles={sharedPrimaryButtonStyles}
+            />
         </Stack>
-        <PrimaryButton text="Continue" onClick={onContinue} disabled={!isComplete()} styles={sharedPrimaryButtonStyles} />
-    </Stack>
-);
+    );
+};
 
 export default RiskAssessment;

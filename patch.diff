@@ -1,132 +1,155 @@
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 7f99b9d6a737ce40483c549fe1c53c421edf17a5..89741fdc1f782bba579f510d9d436c029d1169b4 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -350,58 +350,50 @@ const quickActions: QuickLink[] = [
-   { title: 'Save Telephone Note', icon: 'Comment' },
-   { title: 'Request Annual Leave', icon: 'Calendar' },
-   { title: 'Book Space', icon: 'Room' },
- ];
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index ceb0f580c3c6244ae45a2f6e13fa9f6d645867d3..b86a72b8ee31dcd4500dde88b2ba80dd0795e564 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1522,91 +1522,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+           optObj = block.options.find((o) => o.label === opt);
+           if (!optObj) return;
+           text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         }
+         if (text === null) return;
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = opt.replace(/'/g, "&#39;");
+         // grab the ID if there is one
+         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(s => {
+             const trimmed = s.trim();
+-            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</span>`;
++            return `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</div>`;
+           })
+           .join(' ');
+         // inject it into your wrapper DIV
+         const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
+         
+         snippetHtml.push(html);
+         snippetMap[opt] = html;
+       });
+     } else if (typeof selectedOption === 'string') {
  
- //////////////////////
- // Styles
- //////////////////////
+       let text: string | null = null;
+       let optObj: TemplateOption | undefined;
+       if (selectedOption === '__saved') {
+         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
+       } else {
+         optObj = block.options.find((o) => o.label === selectedOption);
+         if (optObj) {
+           text = optObj.previewText.trim().replace(/\n/g, '<br />');
+         }
+       }
+       if (text !== null) {
+         text = applyDynamicSubstitutions(
+           text,
+           userData,
+           enquiry,
+           amount,
+           dealPasscode,
+           dealPasscode
+             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+             : undefined
+         );
+         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+         text = wrapInsertPlaceholders(text);
+         const escLabel = selectedOption.replace(/'/g, "&#39;");
+         const sentences = text
+           .split(/(?<=[.!?])\s+/)
+           .filter((s) => s.trim().length > 0)
+           .map(
+             (s) =>
+-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
++              `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</div>`
+           )
+           .join(' ');
+         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
+         const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
+         snippetHtml.push(html);
+         snippetMap[selectedOption] = html;
+       }
  
- const containerStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-     minHeight: '100vh',
-     boxSizing: 'border-box',
-   });
+     }
  
- const headerStyle = mergeStyles({
-   display: 'flex',
-   justifyContent: 'space-between',
-   alignItems: 'flex-start',
-   width: '100%',
-   padding: '10px 0',
-   gap: '16px',
- });
+     const replacementText = snippetHtml.join('');
+     let selectedLabel = '';
+     if (block.isMultiSelect && isStringArray(selectedOption)) {
+       selectedLabel = selectedOption.join(', ');
+     } else if (typeof selectedOption === 'string') {
+       selectedLabel = selectedOption;
+     }
+     const containerTag = 'span';
+     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
+     const innerHTML = cleanTemplateString(replacementText);
+     const styledInnerHTML = innerHTML.replace(
+       /<p>/g,
+       `<p style="margin: 0;">`
+     );
+     const optionsHtml = block.options
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index ceb0f580c3c6244ae45a2f6e13fa9f6d645867d3..b86a72b8ee31dcd4500dde88b2ba80dd0795e564 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -1877,51 +1877,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+     const main = span.querySelector('.block-main') as HTMLElement | null;
+     if (!main) return;
  
--const reviewMessageStyle = (isDarkMode: boolean) =>
--  mergeStyles({
--    fontWeight: '600',
--    fontSize: '18px',
--    color: isDarkMode ? colours.cta : colours.cta,
--    display: 'flex',
--    alignItems: 'center',
--  });
+     const option = block.options.find((o) => o.label === optionLabel);
+     if (!option) return;
  
- const mainContentStyle = mergeStyles({
-   display: 'flex',
-   flexDirection: 'column',
- });
- // Height of the top tab menu so the quick action bar can align with it
- const ACTION_BAR_HEIGHT = 48;
+     let text = option.previewText.trim().replace(/\n/g, '<br />');
+     text = applyDynamicSubstitutions(
+       text,
+       userData,
+       enquiry,
+       amount,
+       dealPasscode,
+       dealPasscode
+         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+         : undefined
+     );
+     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
+     text = wrapInsertPlaceholders(text);
+     const escLabel = optionLabel.replace(/'/g, "&#39;");
+     const sentences = text
+       .split(/(?<=[.!?])\s+/)
+       .filter((s) => s.trim().length > 0)
+       .map(
+         (s) =>
+-          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
++          `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</div>`
+       )
+       .join(' ');
+     const snippetHtml = `<span class="snippet-wrapper" data-snippet="${escLabel}">${sentences}</span>`;
  
- const quickLinksStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     backgroundColor: isDarkMode
-       ? colours.dark.sectionBackground
-       : colours.light.sectionBackground,
-     padding: '0 10px',
-     transition: 'background-color 0.3s, box-shadow 0.3s',
-     display: 'flex',
-     flexDirection: 'row',
-     gap: '8px',
-     overflowX: 'auto',
-     alignItems: 'center',
-     paddingBottom: '16px',
-     position: 'sticky',
-     top: ACTION_BAR_HEIGHT,
-     zIndex: 999,
-     borderTopLeftRadius: 0,
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 7f99b9d6a737ce40483c549fe1c53c421edf17a5..89741fdc1f782bba579f510d9d436c029d1169b4 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2708,60 +2700,61 @@ const noActionsClass = mergeStyles({
-     height: '24px',
-     borderRadius: '50%',
-     background: colours.highlight,
-     color: '#fff',
-     display: 'flex',
-     alignItems: 'center',
-     justifyContent: 'center',
-     fontSize: '12px',
-     animation: `${tickPopKeyframes} 0.3s ease`,
-   });
+     main.insertAdjacentHTML('beforeend', snippetHtml);
  
- // Extract mattersOpenedCount and compute conversion rate with two decimals
- const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
- const conversionRate = enquiriesMonthToDate
-   ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
-   : 0;
-   
-   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
-   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
-   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
+     setOriginalSnippetContent((prev) => ({
+       ...prev,
+       [block.title]: {
+         ...(prev[block.title] || {}),
+         [optionLabel]: snippetHtml,
+       },
+     }));
+     setEditedSnippets((prev) => ({
+       ...prev,
+       [block.title]: { ...(prev[block.title] || {}), [optionLabel]: false },
+     }));
  
-   return (
-     <section className="page-section">
-       {showFocusOverlay && (
-         <div
--          style={{
-+          className={mergeStyles({
-             position: 'fixed',
-             top: 0,
-             left: 0,
-             width: '100%',
-             height: '100%',
-             backgroundColor: 'rgba(0,0,0,0.4)',
--            zIndex: 997,
-+            zIndex: 800,
-             pointerEvents: 'auto',
--          }}
-+            animation: `${fadeInKeyframes} 0.3s ease`,
-+          })}
-         />
-       )}
-       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
- 
- 
-       {/* Actions & Metrics Container */}
-       <div
-         style={{
-           backgroundColor: '#ffffff',
-           padding: '16px',
-           borderRadius: 0,
-           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-           marginBottom: '24px',
-         }}
-       >
- 
-         {/* Metrics Section */}
-         {/* Time Metrics Section */}
-         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
-             <div
-               style={{
-                 display: 'grid',
-                 gridTemplateColumns: 'repeat(3, 1fr)',
-                 gap: '16px',
-                 width: '100%'
+     const optionDiv = span.querySelector('div.option-choices');
+     if (optionDiv) {
+       const currentSelected = block.isMultiSelect
+         ? (selectedTemplateOptions[block.title] as string[])
+         : selectedTemplateOptions[block.title];
+       const newSelected = block.isMultiSelect
+         ? [
