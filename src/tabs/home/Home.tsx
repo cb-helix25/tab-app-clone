@@ -372,14 +372,6 @@ const headerStyle = mergeStyles({
   gap: '16px',
 });
 
-const reviewMessageStyle = (isDarkMode: boolean) =>
-  mergeStyles({
-    fontWeight: '600',
-    fontSize: '18px',
-    color: isDarkMode ? colours.cta : colours.cta,
-    display: 'flex',
-    alignItems: 'center',
-  });
 
 const mainContentStyle = mergeStyles({
   display: 'flex',
@@ -745,8 +737,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
           isHeaderVisible={false}
           styles={{
             root: {
-              selectors: {
-                '.ms-DetailsRow': { padding: '8px 0', borderBottom: 'none' },
+              selectors:
+                { '.ms-DetailsRow': { padding: '8px 0', borderBottom: 'none' },
                 '.ms-DetailsHeader': { display: 'none' },
               },
             },
@@ -876,7 +868,12 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
+  // Show immediate actions overlay (and Dismiss button) when there are immediate actions on first render
   const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
+
+  // Show overlay when immediate actions become available (first time only)
+  // This effect must run AFTER immediateActionsList is defined
+  // So we place it after immediateActionsList declaration
 
   const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
 
@@ -2496,13 +2493,23 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
 
+  // Show overlay when immediate actions become available (first time only)
+  const prevImmediateActionsReady = useRef<boolean>(false);
+  const prevImmediateActionsCount = useRef<number>(0);
   useEffect(() => {
-    if (immediateActionsList.length > 0) {
+    // Only trigger if immediate actions are ready and there are actions, and overlay is not already shown
+    if (
+      immediateActionsReady &&
+      immediateActionsList &&
+      immediateActionsList.length > 0 &&
+      !showFocusOverlay &&
+      (!prevImmediateActionsReady.current || prevImmediateActionsCount.current === 0)
+    ) {
       setShowFocusOverlay(true);
-    } else {
-      setShowFocusOverlay(false);
     }
-  }, [immediateActionsList]);
+    prevImmediateActionsReady.current = immediateActionsReady;
+    prevImmediateActionsCount.current = immediateActionsList ? immediateActionsList.length : 0;
+  }, [immediateActionsReady, immediateActionsList, showFocusOverlay]);
 
   const normalQuickActions = useMemo(() => {
     const actions = quickActions
@@ -2730,16 +2737,17 @@ const conversionRate = enquiriesMonthToDate
     <section className="page-section">
       {showFocusOverlay && (
         <div
-          style={{
+          className={mergeStyles({
             position: 'fixed',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
             backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 997,
+            zIndex: 800,
             pointerEvents: 'auto',
-          }}
+            animation: `${fadeInKeyframes} 0.3s ease`,
+          })}
         />
       )}
       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>

@@ -1,197 +1,132 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 8f51809ac9a630fcdd65bcf0d677c9bb804f75dc..44870b581adacbba2cb3f3740f8a40628c35d402 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -724,192 +724,96 @@ const Instructions: React.FC<InstructionsProps> = ({
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 7f99b9d6a737ce40483c549fe1c53c421edf17a5..89741fdc1f782bba579f510d9d436c029d1169b4 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -350,58 +350,50 @@ const quickActions: QuickLink[] = [
+   { title: 'Save Telephone Note', icon: 'Comment' },
+   { title: 'Request Annual Leave', icon: 'Calendar' },
+   { title: 'Book Space', icon: 'Room' },
+ ];
+ 
+ //////////////////////
+ // Styles
+ //////////////////////
+ 
+ const containerStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+     minHeight: '100vh',
+     boxSizing: 'border-box',
    });
  
-   const scenariosContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "1fr",
-     gap: "16px",
-     maxWidth: "600px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
+ const headerStyle = mergeStyles({
+   display: 'flex',
+   justifyContent: 'space-between',
+   alignItems: 'flex-start',
+   width: '100%',
+   padding: '10px 0',
+   gap: '16px',
+ });
+ 
+-const reviewMessageStyle = (isDarkMode: boolean) =>
+-  mergeStyles({
+-    fontWeight: '600',
+-    fontSize: '18px',
+-    color: isDarkMode ? colours.cta : colours.cta,
+-    display: 'flex',
+-    alignItems: 'center',
+-  });
+ 
+ const mainContentStyle = mergeStyles({
+   display: 'flex',
+   flexDirection: 'column',
+ });
+ // Height of the top tab menu so the quick action bar can align with it
+ const ACTION_BAR_HEIGHT = 48;
+ 
+ const quickLinksStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     backgroundColor: isDarkMode
+       ? colours.dark.sectionBackground
+       : colours.light.sectionBackground,
+     padding: '0 10px',
+     transition: 'background-color 0.3s, box-shadow 0.3s',
+     display: 'flex',
+     flexDirection: 'row',
+     gap: '8px',
+     overflowX: 'auto',
+     alignItems: 'center',
+     paddingBottom: '16px',
+     position: 'sticky',
+     top: ACTION_BAR_HEIGHT,
+     zIndex: 999,
+     borderTopLeftRadius: 0,
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 7f99b9d6a737ce40483c549fe1c53c421edf17a5..89741fdc1f782bba579f510d9d436c029d1169b4 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2708,60 +2700,61 @@ const noActionsClass = mergeStyles({
+     height: '24px',
+     borderRadius: '50%',
+     background: colours.highlight,
+     color: '#fff',
+     display: 'flex',
+     alignItems: 'center',
+     justifyContent: 'center',
+     fontSize: '12px',
+     animation: `${tickPopKeyframes} 0.3s ease`,
    });
  
-   const overviewColumnStyle = mergeStyles({
-     columnCount: 2,
-     columnGap: "24px",
-     maxWidth: "1200px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-   if (showNewMatterPage) {
--    if (!selectedInstruction) {
--      return (
--        <Stack tokens={dashboardTokens} className={containerStyle}>
--          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
--          <Dropdown
--            placeholder="Select Instruction"
--            options={instructionOptions}
--            selectedKey={pendingInstructionRef}
--            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
--            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
--          />
--          <PrimaryButton
--            text="Start"
--            disabled={!pendingInstructionRef}
--            onClick={() => {
--              const inst = instructionData
--                .flatMap((p) => p.instructions ?? [])
--                .find((i) => i.InstructionRef === pendingInstructionRef);
--              if (inst) setSelectedInstruction(inst);
--            }}
--          />
--        </Stack>
--      );
--    }
-     return (
-       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-         <FlatMatterOpening
-           poidData={idVerificationOptions}
-           setPoidData={setPoidData}
-           teamData={teamData}
-           userInitials={userInitials}
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={newMatterClientType}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showRiskPage) {
--    if (!selectedInstruction) {
--      return (
--        <Stack tokens={dashboardTokens} className={containerStyle}>
--          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
--          <Dropdown
--            placeholder="Select Instruction"
--            options={instructionOptions}
--            selectedKey={pendingInstructionRef}
--            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
--            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
--          />
--          <PrimaryButton
--            text="Start"
--            disabled={!pendingInstructionRef}
--            onClick={() => {
--              const inst = instructionData
--                .flatMap((p) => p.instructions ?? [])
--                .find((i) => i.InstructionRef === pendingInstructionRef);
--              if (inst) setSelectedInstruction(inst);
--            }}
--          />
--        </Stack>
--      );
--    }
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <RiskAssessmentPage
-           onBack={() => {
-             setShowRiskPage(false);
-             setSelectedRisk(null);
-           }}
-           instructionRef={selectedInstruction?.InstructionRef}
-           riskAssessor={userInitials}
-           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showEIDPage) {
--    if (!selectedInstruction) {
--      return (
--        <Stack tokens={dashboardTokens} className={containerStyle}>
--          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
--          <Dropdown
--            placeholder="Select Instruction"
--            options={instructionOptions}
--            selectedKey={pendingInstructionRef}
--            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
--            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
--          />
--          <PrimaryButton
--            text="Start"
--            disabled={!pendingInstructionRef}
--            onClick={() => {
--              const inst = instructionData
--                .flatMap((p) => p.instructions ?? [])
--                .find((i) => i.InstructionRef === pendingInstructionRef);
--              if (inst) setSelectedInstruction(inst);
--            }}
--          />
--        </Stack>
--      );
--    }
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <EIDCheckPage
-           poidData={idVerificationOptions}
-           instruction={selectedInstruction}
-           onBack={handleBack}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showDraftCCLPage) {
--    if (!selectedInstruction) {
--      return (
--        <Stack tokens={dashboardTokens} className={containerStyle}>
--          <PrimaryButton text="Back" onClick={handleBack} style={{ marginBottom: 16 }} />
--          <Dropdown
--            placeholder="Select Instruction"
--            options={instructionOptions}
--            selectedKey={pendingInstructionRef}
--            onChange={(_, o) => setPendingInstructionRef(o?.key as string)}
--            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
--          />
--          <PrimaryButton
--            text="Start"
--            disabled={!pendingInstructionRef}
--            onClick={() => {
--              const inst = instructionData
--                .flatMap((p) => p.instructions ?? [])
--                .find((i) => i.InstructionRef === pendingInstructionRef);
--              if (inst) setSelectedInstruction(inst);
--            }}
--          />
--        </Stack>
--      );
--    }
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <DraftCCLPage
-           onBack={() => setShowDraftCCLPage(false)}
-           instruction={selectedInstruction}
-           instructions={instructionData}
-         />
-       </Stack>
-     );
-   }
+ // Extract mattersOpenedCount and compute conversion rate with two decimals
+ const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
+ const conversionRate = enquiriesMonthToDate
+   ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
+   : 0;
+   
+   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
+   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
+   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
  
    return (
      <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className="disclaimer animate-disclaimer">
-           <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
-         </div>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === "overview" && (
-             <div className={overviewColumnStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 2);
-                 const col = idx % 2;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
+       {showFocusOverlay && (
+         <div
+-          style={{
++          className={mergeStyles({
+             position: 'fixed',
+             top: 0,
+             left: 0,
+             width: '100%',
+             height: '100%',
+             backgroundColor: 'rgba(0,0,0,0.4)',
+-            zIndex: 997,
++            zIndex: 800,
+             pointerEvents: 'auto',
+-          }}
++            animation: `${fadeInKeyframes} 0.3s ease`,
++          })}
+         />
+       )}
+       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+ 
+ 
+       {/* Actions & Metrics Container */}
+       <div
+         style={{
+           backgroundColor: '#ffffff',
+           padding: '16px',
+           borderRadius: 0,
+           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+           marginBottom: '24px',
+         }}
+       >
+ 
+         {/* Metrics Section */}
+         {/* Time Metrics Section */}
+         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
+             <div
+               style={{
+                 display: 'grid',
+                 gridTemplateColumns: 'repeat(3, 1fr)',
+                 gap: '16px',
+                 width: '100%'
