@@ -196,10 +196,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
     }
     .block-option-list {
-      display: block;
+      display: inline-block;
       background: ${colours.grey};
       padding: 6px;
       border-radius: 0;
+      vertical-align: baseline;
+      margin: 0 2px;
     }
     .block-option-list .block-label {
       display: block;
@@ -352,6 +354,40 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       background: ${colours.blue};
       color: #ffffff;
     }
+    .precise-edit {
+      background-color: ${colours.highlightBlue} !important;
+      color: ${colours.darkBlue} !important;
+      padding: 1px 2px;
+      border-radius: 2px;
+      font-weight: normal;
+    }
+    .has-edits {
+      background: linear-gradient(45deg, ${colours.highlightBlue}22 25%, transparent 25%), 
+                  linear-gradient(-45deg, ${colours.highlightBlue}22 25%, transparent 25%), 
+                  linear-gradient(45deg, transparent 75%, ${colours.highlightBlue}22 75%), 
+                  linear-gradient(-45deg, transparent 75%, ${colours.highlightBlue}22 75%);
+      background-size: 4px 4px;
+      background-position: 0 0, 0 2px, 2px -2px, -2px 0px;
+    }
+    .block-edited {
+      background-color: ${colours.highlightNeutral} !important;
+      border-left: 3px solid ${colours.highlightBlue};
+    }
+    [data-sentence] {
+      display: inline;
+      margin: 0;
+    }
+    .sentence-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .sentence-content {
+      display: inline;
+      margin: 0;
+    }
   .insert-placeholder {
     background: ${colours.highlightBlue};
     color: ${colours.darkBlue};
@@ -361,7 +397,10 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     font-style: italic;
     cursor: pointer;
     transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
-    display: inline; /* ✅ Add this line */
+    display: inline-block; /* Changed from inline to inline-block for proper wrapping */
+    max-width: 100%;
+    word-wrap: break-word;
+    white-space: normal; /* Allow text to wrap naturally */
   }
     .insert-placeholder:hover,
     .insert-placeholder:focus {
@@ -372,13 +411,12 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
       outline: none;
     }
     [data-sentence] {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 4px;
+      display: inline;
+      margin: 0;
     }
     .snippet-wrapper {
       display: inline;
-      margin-right: 4px;
+      margin: 0;
     }
     .sentence-delete {
       margin-right: 4px;
@@ -785,6 +823,48 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setSnippetEdit({ blockTitle, target: e.currentTarget as HTMLElement });
   }
 
+  function saveToUndoStack(content: string) {
+    if (isUndoRedoOperation) return;
+    setUndoStack(prev => [...prev.slice(-19), content]); // Keep last 20 states
+    setRedoStack([]); // Clear redo stack when new action is performed
+  }
+
+  function undo() {
+    if (undoStack.length === 0) return;
+    
+    const currentContent = body;
+    const previousContent = undoStack[undoStack.length - 1];
+    
+    setIsUndoRedoOperation(true);
+    setRedoStack(prev => [...prev, currentContent]);
+    setUndoStack(prev => prev.slice(0, -1));
+    
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = previousContent;
+    }
+    setBodyState(previousContent);
+    
+    setTimeout(() => setIsUndoRedoOperation(false), 100);
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return;
+    
+    const currentContent = body;
+    const nextContent = redoStack[redoStack.length - 1];
+    
+    setIsUndoRedoOperation(true);
+    setUndoStack(prev => [...prev, currentContent]);
+    setRedoStack(prev => prev.slice(0, -1));
+    
+    if (bodyEditorRef.current) {
+      bodyEditorRef.current.innerHTML = nextContent;
+    }
+    setBodyState(nextContent);
+    
+    setTimeout(() => setIsUndoRedoOperation(false), 100);
+  }
+
   function closeSnippetOptions() {
     setSnippetOptionsBlock(null);
     setSnippetOptionsTarget(null);
@@ -845,11 +925,31 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     (window as any).resetBlockOption = resetBlockOption;
     (window as any).saveCustomSnippet = saveCustomSnippet;
     (window as any).toggleSidebarOverlayMode = toggleSidebarOverlayMode;
+    (window as any).undo = undo;
+    (window as any).redo = redo;
     (window as any).removeBlock = (title: string) => {
       const block = templateBlocks.find((b) => b.title === title);
       if (block) handleClearBlock(block);
     };
-  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, toggleSidebarOverlayMode, templateBlocks]);
+    
+    // Add keyboard shortcuts for undo/redo
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        } else if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) {
+          e.preventDefault();
+          redo();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, toggleSidebarOverlayMode, templateBlocks, undo, redo]);
 
   // Simple helper to capitalize your "Area_of_Work" for the subject line
   function capitalizeWords(str: string): string {
@@ -958,9 +1058,30 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}${removeBtn}</span>${options}${savedHtml}</span>`;
   }
 
-  const [body, setBody] = useState<string>(() =>
+  const [body, setBodyState] = useState<string>(() =>
     generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
   );
+  
+  function setBody(newBody: string | ((prevBody: string) => string)) {
+    const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
+    
+    if (!isUndoRedoOperation) {
+      saveToUndoStack(body);
+    }
+    setBodyState(resolvedBody);
+    
+    // Trigger change detection for precise highlighting
+    setTimeout(() => {
+      const { blocks, snippets } = computeSnippetChanges();
+      setEditedBlocks(blocks);
+      setEditedSnippets(snippets);
+    }, 100);
+  }
+
+  // Create a React-compatible setState wrapper
+  const setBodyForComponents = (newBody: string | ((prevBody: string) => string)) => {
+    setBody(newBody);
+  };
 
   // Disable automatic insertion of default blocks for v1
   /*
@@ -1035,6 +1156,16 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     [key: string]: { [label: string]: string };
   }>({});
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+  
+  // Undo/Redo functionality
+  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [isUndoRedoOperation, setIsUndoRedoOperation] = useState<boolean>(false);
+
+  // Enhanced edit tracking for precise highlighting
+  const [editedTextRanges, setEditedTextRanges] = useState<{
+    [blockTitle: string]: { [snippetLabel: string]: Array<{ start: number; end: number; text: string }> };
+  }>({});
 
   useEffect(() => {
     if (overlaySidebars) {
@@ -1126,6 +1257,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   // For the body editor
   const savedSelection = useRef<Range | null>(null);
+  const inputTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const editor = bodyEditorRef.current;
@@ -1320,6 +1452,26 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       });
     };
 
+    const handleInput = (e: Event) => {
+      // Update body state immediately
+      setBodyState(editor.innerHTML);
+      
+      // Debounced save to undo stack and highlighting check
+      if (inputTimeoutRef.current) {
+        clearTimeout(inputTimeoutRef.current);
+      }
+      inputTimeoutRef.current = setTimeout(() => {
+        if (!isUndoRedoOperation) {
+          saveToUndoStack(body);
+        }
+        
+        // Trigger precise highlighting detection
+        const { blocks, snippets } = computeSnippetChanges();
+        setEditedBlocks(blocks);
+        setEditedSnippets(snippets);
+      }, 300);
+    };
+
     const handleDblClick = (e: MouseEvent) => {
       const ph = (e.target as HTMLElement).closest('.insert-placeholder') as HTMLElement | null;
       if (ph) {
@@ -1338,13 +1490,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       }
     };
 
+    editor.addEventListener('input', handleInput);
     editor.addEventListener('dblclick', handleDblClick);
     editor.addEventListener('keydown', handleKeyDown, true);
     return () => {
+      editor.removeEventListener('input', handleInput);
       editor.removeEventListener('dblclick', handleDblClick);
       editor.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, []);
+  }, [body, isUndoRedoOperation]);
 
   /**
    * Save the user's cursor selection in the contentEditable, so we can insert text at that exact spot.
@@ -1386,12 +1540,71 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return normalizeHtml(clean(current)) !== normalizeHtml(clean(original));
   }
 
+  function detectTextEdits(blockTitle: string, snippetLabel: string, currentText: string, originalText: string) {
+    if (currentText === originalText) return [];
+    
+    const edits: Array<{ start: number; end: number; text: string }> = [];
+    
+    // Simple diff algorithm to find edited portions
+    const currentWords = currentText.split(/\s+/);
+    const originalWords = originalText.split(/\s+/);
+    
+    let currentIndex = 0;
+    let originalIndex = 0;
+    
+    while (currentIndex < currentWords.length || originalIndex < originalWords.length) {
+      if (currentIndex < currentWords.length && originalIndex < originalWords.length) {
+        if (currentWords[currentIndex] === originalWords[originalIndex]) {
+          currentIndex++;
+          originalIndex++;
+        } else {
+          // Found a difference - track the edit
+          const startIdx = currentIndex;
+          while (currentIndex < currentWords.length && originalIndex < originalWords.length &&
+                 currentWords[currentIndex] !== originalWords[originalIndex]) {
+            currentIndex++;
+            originalIndex++;
+          }
+          
+          const editedText = currentWords.slice(startIdx, currentIndex).join(' ');
+          edits.push({
+            start: startIdx,
+            end: currentIndex,
+            text: editedText
+          });
+        }
+      } else if (currentIndex < currentWords.length) {
+        // Addition
+        const editedText = currentWords.slice(currentIndex).join(' ');
+        edits.push({
+          start: currentIndex,
+          end: currentWords.length,
+          text: editedText
+        });
+        break;
+      } else {
+        // Deletion - handled by the original being longer
+        break;
+      }
+    }
+    
+    return edits;
+  }
+
+  function highlightEditedText(element: HTMLElement, edits: Array<{ start: number; end: number; text: string }>) {
+    // Don't modify the HTML to avoid cursor jumping - just mark as edited
+    if (edits.length === 0) return;
+    element.classList.add('has-edits');
+  }
+
   function computeSnippetChanges() {
     if (!bodyEditorRef.current) return { blocks: {}, snippets: {} };
     const updatedBlocks: { [key: string]: boolean } = {};
     const updatedSnippets: { [key: string]: { [label: string]: boolean } } = {};
+    const updatedEditRanges: { [blockTitle: string]: { [snippetLabel: string]: Array<{ start: number; end: number; text: string }> } } = {};
 
     const lockedBg = isDarkMode ? 'rgba(16,124,16,0.1)' : '#eafaea';
+    const editedBlockBg = isDarkMode ? 'rgba(70,130,180,0.15)' : '#e8f4fd'; // New color for edited blocks
 
     Object.keys(insertedBlocks).forEach((title) => {
       if (!insertedBlocks[title]) return;
@@ -1403,24 +1616,52 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const snippetEls = Array.from(
         span.querySelectorAll('[data-snippet]')
       ) as HTMLElement[];
+      
+      let blockHasEdits = false;
+      
       snippetEls.forEach((el) => {
         const label = el.getAttribute('data-snippet') || '';
         const original = originalSnippetContent[title]?.[label];
         if (original === undefined) return;
-        const changed = isContentChanged(el.innerHTML, original);
+        
+        const currentText = el.textContent || '';
+        const originalText = new DOMParser().parseFromString(original, 'text/html').body.textContent || '';
+        const changed = currentText !== originalText;
+        
         if (!updatedSnippets[title]) updatedSnippets[title] = {};
         updatedSnippets[title][label] = changed;
-        if (changed) updatedBlocks[title] = true;
+        
+        if (changed) {
+          blockHasEdits = true;
+          updatedBlocks[title] = true;
+          
+          // Detect precise edits
+          const edits = detectTextEdits(title, label, currentText, originalText);
+          if (!updatedEditRanges[title]) updatedEditRanges[title] = {};
+          updatedEditRanges[title][label] = edits;
+          
+          // Apply precise highlighting
+          highlightEditedText(el, edits);
+        }
 
-        el.style.backgroundColor = lockedBlocks[title]
-          ? lockedBg
-          : changed
-            ? colours.highlightBlue
-            : autoInsertedBlocks[title]
-              ? colours.highlightNeutral
-              : colours.highlightYellow;
+        // Update snippet background - different colors for different states
+        let snippetBg = colours.highlightYellow; // Default inserted
+        if (lockedBlocks[title]) {
+          snippetBg = lockedBg;
+        } else if (changed) {
+          snippetBg = editedBlockBg; // Edited block background
+          el.classList.add('has-edits');
+        } else if (autoInsertedBlocks[title]) {
+          snippetBg = colours.highlightNeutral;
+          el.classList.remove('has-edits');
+        } else {
+          el.classList.remove('has-edits');
+        }
+        
+        el.style.backgroundColor = snippetBg;
       });
 
+      // Update header with new edited state color
       const headerElement = document.getElementById(
         `template-block-header-${title.replace(/\s+/g, '-')}`
       );
@@ -1428,8 +1669,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         let bg = 'transparent';
         if (lockedBlocks[title]) {
           bg = lockedBg;
-        } else if (Object.values(updatedSnippets[title] || {}).some(Boolean)) {
-          bg = colours.highlightBlue;
+        } else if (blockHasEdits) {
+          bg = editedBlockBg; // New edited state color
         } else if (insertedBlocks[title]) {
           bg = autoInsertedBlocks[title]
             ? colours.highlightNeutral
@@ -1438,8 +1679,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         headerElement.style.backgroundColor = bg;
       }
 
+      // Update block container background
+      span.style.backgroundColor = lockedBlocks[title]
+        ? lockedBg
+        : blockHasEdits
+          ? editedBlockBg
+          : autoInsertedBlocks[title]
+            ? colours.highlightNeutral
+            : colours.highlightYellow;
+
       if (!updatedBlocks[title]) updatedBlocks[title] = false;
     });
+
+    // Update the edit ranges state
+    setEditedTextRanges(updatedEditRanges);
 
     return { blocks: updatedBlocks, snippets: updatedSnippets };
   }
@@ -1449,7 +1702,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
    */
   function insertAtCursor(html: string) {
     if (!isSelectionInsideEditor()) {
-      setBody((prevBody) => prevBody + `\n\n${html}`);
+      setBody(body + `\n\n${html}`);
       return;
     }
 
@@ -1544,12 +1797,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(s => {
             const trimmed = s.trim();
-            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</span>`;
+            return `<span data-sentence contenteditable="true"><span class="sentence-controls"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span></span><span class="sentence-content">${trimmed}</span></span>`;
           })
           .join(' ');
         // inject it into your wrapper DIV
         const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
-        
+
         snippetHtml.push(html);
         snippetMap[opt] = html;
       });
@@ -1584,7 +1837,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           .filter((s) => s.trim().length > 0)
           .map(
             (s) =>
-              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
+              `<span data-sentence contenteditable="true"><span class="sentence-controls"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span></span><span class="sentence-content">${s.trim()}</span></span>`
           )
           .join(' ');
         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
@@ -1634,50 +1887,54 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     // Simplified hover handlers to directly call highlightBlock
     const wrappedHTML = `<!--START_BLOCK:${block.title}--><span data-block-title="${block.title}" onmouseover="window.highlightBlock('${block.title}', true, 'editor')" onmouseout="window.highlightBlock('${block.title}', false, 'editor')">${highlightedReplacement}</span><!--END_BLOCK:${block.title}-->`;
 
-    setBody((prevBody) => {
-      const existingBlockRegex = new RegExp(
-        `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
-        'g'
-      );
-      if (existingBlockRegex.test(prevBody)) {
-        if (append) {
-          return prevBody.replace(existingBlockRegex, (match) =>
-            match.replace(
-              `<!--END_BLOCK:${block.title}-->`,
-              `${highlightedReplacement}<!--END_BLOCK:${block.title}-->`
-            )
-          );
-        }
-        return prevBody.replace(existingBlockRegex, wrappedHTML);
+    // Process the body replacement
+    let newBody = body;
+    const existingBlockRegex = new RegExp(
+      `<!--START_BLOCK:${block.title}-->[\\s\\S]*?<!--END_BLOCK:${block.title}-->`,
+      'g'
+    );
+    
+    if (existingBlockRegex.test(newBody)) {
+      if (append) {
+        newBody = newBody.replace(existingBlockRegex, (match) =>
+          match.replace(
+            `<!--END_BLOCK:${block.title}-->`,
+            `${highlightedReplacement}<!--END_BLOCK:${block.title}-->`
+          )
+        );
+      } else {
+        newBody = newBody.replace(existingBlockRegex, wrappedHTML);
       }
+    } else {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = prevBody;
+      tempDiv.innerHTML = newBody;
       const target = tempDiv.querySelector(
         `span[data-placeholder="${escapeForSelector(block.placeholder)}"]`
       );
       if (target) {
         (target as HTMLElement).innerHTML = wrappedHTML;
-        const newHTML = tempDiv.innerHTML;
+        newBody = tempDiv.innerHTML;
         bodyEditorRef.current &&
-          (bodyEditorRef.current.innerHTML = newHTML);
-        return newHTML;
+          (bodyEditorRef.current.innerHTML = newBody);
+      } else {
+        const placeholderEsc = block.placeholder.replace(
+          /[-[\]{}()*+?.,\\^$|#\s]/g,
+          '\\$&'
+        );
+        const placeholderEscEncoded = block.placeholder
+          .replace(/&/g, '&amp;')
+          .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+        const placeholderRegex = new RegExp(
+          `(<span[^>]*data-placeholder="(?:${placeholderEsc}|${placeholderEscEncoded})"[^>]*>)([\\s\\S]*?)(</span>)`,
+          'g'
+        );
+        newBody = newBody.replace(placeholderRegex, `$1${wrappedHTML}$3`);
+        bodyEditorRef.current &&
+          (bodyEditorRef.current.innerHTML = newBody);
       }
-      const placeholderEsc = block.placeholder.replace(
-        /[-[\]{}()*+?.,\\^$|#\s]/g,
-        '\\$&'
-      );
-      const placeholderEscEncoded = block.placeholder
-        .replace(/&/g, '&amp;')
-        .replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-      const placeholderRegex = new RegExp(
-        `(<span[^>]*data-placeholder="(?:${placeholderEsc}|${placeholderEscEncoded})"[^>]*>)([\\s\\S]*?)(</span>)`,
-        'g'
-      );
-      const newBody = prevBody.replace(placeholderRegex, `$1${wrappedHTML}$3`);
-      bodyEditorRef.current &&
-        (bodyEditorRef.current.innerHTML = newBody);
-      return newBody;
-    });
+    }
+    
+    setBody(newBody);
 
     // Remove grey placeholder styling once the block is inserted
     setTimeout(() => {
@@ -3233,7 +3490,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         <EditorAndTemplateBlocks
           isDarkMode={isDarkMode}
           body={body}
-          setBody={setBody}
+          setBody={setBodyForComponents}
           templateBlocks={blocks}
           templateSet={templateSet}
           onTemplateSetChange={handleTemplateSetChange}
