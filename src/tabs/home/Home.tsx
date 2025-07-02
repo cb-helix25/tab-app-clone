@@ -71,6 +71,8 @@ import localOutstandingBalances from '../../localData/localOutstandingBalances.j
 import localWipClio from '../../localData/localWipClio.json';
 import localRecovered from '../../localData/localRecovered.json';
 import localPrevRecovered from '../../localData/localPrevRecovered.json';
+import localSnippetEdits from '../../localData/localSnippetEdits.json';
+import localV3Blocks from '../../localData/localV3Blocks.json';
 
 // NEW: Import the updated QuickActionsCard component
 import QuickActionsCard from './QuickActionsCard';
@@ -454,9 +456,6 @@ const sectionContainerStyle = (isDarkMode: boolean) =>
     width: '100%',
   });
 
-const fadeInAnimationStyle = mergeStyles({
-  animation: 'fadeIn 0.5s ease-in-out',
-});
 
 //////////////////////
 // TabLabel Component
@@ -877,6 +876,8 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
+  const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
+
   const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
 
   const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
@@ -891,7 +892,16 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   // Fetch pending snippet edits and prefetch snippet blocks
   useEffect(() => {
+    const useLocal = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+
     const fetchEditsAndBlocks = async () => {
+      if (useLocal) {
+        setSnippetEdits(localSnippetEdits as SnippetEdit[]);
+        if (!sessionStorage.getItem('prefetchedBlocksData')) {
+          sessionStorage.setItem('prefetchedBlocksData', JSON.stringify(localV3Blocks));
+        }
+        return;
+      }
       try {
         const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
         const res = await fetch(url);
@@ -2486,6 +2496,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
 
+  useEffect(() => {
+    if (immediateActionsList.length > 0) {
+      setShowFocusOverlay(true);
+    } else {
+      setShowFocusOverlay(false);
+    }
+  }, [immediateActionsList]);
+
   const normalQuickActions = useMemo(() => {
     const actions = quickActions
       .filter((action) => {
@@ -2517,11 +2535,15 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           quickActions={normalQuickActions}
           handleActionClick={handleActionClick}
           currentUserConfirmed={currentUserConfirmed}
+          highlighted={showFocusOverlay}
         />
         <ImmediateActionsBar
           isDarkMode={isDarkMode}
           immediateActionsReady={immediateActionsReady}
           immediateActionsList={immediateActionsList}
+          highlighted={showFocusOverlay}
+          showDismiss={showFocusOverlay}
+          onDismiss={() => setShowFocusOverlay(false)}
         />
       </>
     );
@@ -2533,6 +2555,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     immediateActionsList,
     normalQuickActions,
     currentUserConfirmed,
+    showFocusOverlay,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
@@ -2705,32 +2728,22 @@ const conversionRate = enquiriesMonthToDate
 
   return (
     <section className="page-section">
-      <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-      {/* Header: Show the review message only when there is something to review */}
-      {!isActionsLoading && (approvalsNeeded.length > 0 || bookingsNeeded.length > 0 || snippetApprovalsNeeded.length > 0) && (
-        <Stack
-          horizontal
-          horizontalAlign="space-between"
-          verticalAlign="start"
-          className={headerStyle}
-        >
-          <Stack verticalAlign="start" tokens={{ childrenGap: 8 }}>
-            <Text className={`${reviewMessageStyle(isDarkMode)} ${fadeInAnimationStyle}`}>
-              You have items to review
-              <Icon
-                iconName="ChevronDown"
-                aria-hidden="true"
-                styles={{
-                  root: {
-                    marginLeft: '8px',
-                    color: isDarkMode ? colours.cta : colours.cta,
-                  },
-                }}
-              />
-            </Text>
-          </Stack>
-        </Stack>
+      {showFocusOverlay && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            zIndex: 997,
+            pointerEvents: 'auto',
+          }}
+        />
       )}
+      <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+
 
       {/* Actions & Metrics Container */}
       <div

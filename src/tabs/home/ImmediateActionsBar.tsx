@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Spinner, SpinnerSize, mergeStyles, keyframes } from '@fluentui/react';
+import { Spinner, SpinnerSize, mergeStyles, keyframes, DefaultButton } from '@fluentui/react';
 import { FaCheck } from 'react-icons/fa';
 import QuickActionsCard from './QuickActionsCard';
 import { colours } from '../../app/styles/colours';
@@ -14,11 +14,18 @@ interface ImmediateActionsBarProps {
     isDarkMode: boolean;
     immediateActionsReady: boolean;
     immediateActionsList: Action[];
+    highlighted?: boolean;
+    showDismiss?: boolean;
+    onDismiss?: () => void;
 }
 
 const ACTION_BAR_HEIGHT = 48;
 
-const barStyle = (isDarkMode: boolean, hasImmediateActions: boolean) =>
+const barStyle = (
+    isDarkMode: boolean,
+    hasImmediateActions: boolean,
+    highlighted: boolean
+) =>
     mergeStyles({
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
@@ -45,6 +52,12 @@ const barStyle = (isDarkMode: boolean, hasImmediateActions: boolean) =>
         zIndex: hasImmediateActions ? 998 : 'auto',
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
+        ...(highlighted && {
+            transform: 'scale(1.02)',
+            filter: 'brightness(1.05)',
+            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
+        }),
         selectors: {
             '::-webkit-scrollbar': {
                 display: 'none',
@@ -95,6 +108,9 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
     isDarkMode,
     immediateActionsReady,
     immediateActionsList,
+    highlighted = false,
+    showDismiss = false,
+    onDismiss,
 }) => {
     const [visible, setVisible] = useState(true);
 
@@ -119,7 +135,11 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
 
     return (
         <div
-            className={barStyle(isDarkMode, immediateActionsList.length > 0)}
+            className={barStyle(
+                isDarkMode,
+                immediateActionsList.length > 0,
+                highlighted
+            )}
             style={{
                 display: 'flex',
                 gap: '10px',
@@ -141,25 +161,34 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                     <div className={noActionsTextClass}>You have no immediate actions.</div>
                 </div>
             ) : (
-                immediateActionsList.map((action, index) => (
-                    <QuickActionsCard
-                        key={action.title}
-                        title={action.title}
-                        icon={action.icon}
-                        isDarkMode={isDarkMode}
-                        onClick={action.onClick}
-                        iconColor={colours.cta}
-                        style={{
-                            '--card-index': index,
-                            fontSize: '16px',
-                            padding: '0 12px',
-                            height: '48px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        } as React.CSSProperties}
-                    />
-                ))
+                <>
+                    {immediateActionsList.map((action, index) => (
+                        <QuickActionsCard
+                            key={action.title}
+                            title={action.title}
+                            icon={action.icon}
+                            isDarkMode={isDarkMode}
+                            onClick={action.onClick}
+                            iconColor={colours.cta}
+                            style={{
+                                '--card-index': index,
+                                fontSize: '16px',
+                                padding: '0 12px',
+                                height: '48px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            } as React.CSSProperties}
+                        />
+                    ))}
+                    {showDismiss && (
+                        <DefaultButton
+                            text="Dismiss"
+                            onClick={onDismiss}
+                            styles={{ root: { height: 32, alignSelf: 'center' } }}
+                        />
+                    )}
+                </>
             )}
         </div>
     );

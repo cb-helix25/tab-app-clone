@@ -11,6 +11,17 @@
                 "JD",
                 "AC"
             ]
+        },
+        {
+            "person": "Alex Cook",
+            "start_date": "2025-06-20",
+            "end_date": "2025-06-20",
+            "reason": "Holiday",
+            "status": "requested",
+            "id": "2",
+            "approvers": [
+                "LZ"
+            ]
         }
     ],
     "future_leave": [],

@@ -13,11 +13,12 @@ interface QuickActionsBarProps {
     quickActions: QuickAction[];
     handleActionClick: (action: QuickAction) => void;
     currentUserConfirmed: boolean;
+    highlighted?: boolean;
 }
 
 const ACTION_BAR_HEIGHT = 48;
 
-const quickLinksStyle = (isDarkMode: boolean) =>
+const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
     mergeStyles({
         backgroundColor: isDarkMode
             ? colours.dark.sectionBackground
@@ -41,6 +42,12 @@ const quickLinksStyle = (isDarkMode: boolean) =>
         zIndex: 999,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
+        ...(highlighted && {
+            transform: 'scale(1.02)',
+            filter: 'brightness(1.05)',
+            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
+        }),
         selectors: {
             '::-webkit-scrollbar': {
                 display: 'none',
@@ -53,6 +60,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     quickActions,
     handleActionClick,
     currentUserConfirmed,
+    highlighted = false,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
 
@@ -62,7 +70,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     };
 
     return (
-        <div className={quickLinksStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
+        <div className={quickLinksStyle(isDarkMode, highlighted)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
             {quickActions.map((action, index) => (
                 <QuickActionsCard
                     key={action.title}

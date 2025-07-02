@@ -1,58 +1,105 @@
-diff --git a/src/app/styles/InstructionDashboard.css b/src/app/styles/InstructionDashboard.css
-index f2124640741f67a71659398f44e5cc4f1fd9a8e1..004d6c52c97be42d10022e148dae9a06a3f399ac 100644
---- a/src/app/styles/InstructionDashboard.css
-+++ b/src/app/styles/InstructionDashboard.css
-@@ -42,51 +42,52 @@
- .status-item {
-     flex: 1 1 80px;
-     background: var(--helix-light, #f4f4f6);
-     padding: 4px 6px;
-     text-align: center;
-     border: 1px solid #e3e8ef;
+diff --git a/src/tabs/home/QuickActionsBar.tsx b/src/tabs/home/QuickActionsBar.tsx
+index b60ab62c1993a0134fee1f26b803b14fefdbb5ed..3c5aa8e3540008716cd0b168c04e14c3a665503d 100644
+--- a/src/tabs/home/QuickActionsBar.tsx
++++ b/src/tabs/home/QuickActionsBar.tsx
+@@ -1,90 +1,98 @@
+ import React from 'react';
+ import { mergeStyles } from '@fluentui/react';
+ import QuickActionsCard from './QuickActionsCard';
+ import { colours } from '../../app/styles/colours';
+ 
+ interface QuickAction {
+     title: string;
+     icon: string;
  }
  
- .status-item.clients .status-value {
-     color: var(--helix-dark-blue, #061733);
+ interface QuickActionsBarProps {
+     isDarkMode: boolean;
+     quickActions: QuickAction[];
+     handleActionClick: (action: QuickAction) => void;
+     currentUserConfirmed: boolean;
++    highlighted?: boolean;
  }
  
- .status-value.complete {
-     color: var(--helix-green, #107c10);
- }
+ const ACTION_BAR_HEIGHT = 48;
  
- .status-value.pending {
-     color: var(--helix-highlight, #3690CE);
- }
+-const quickLinksStyle = (isDarkMode: boolean) =>
++const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
+     mergeStyles({
+         backgroundColor: isDarkMode
+             ? colours.dark.sectionBackground
+             : colours.light.sectionBackground,
+         boxShadow: isDarkMode
+             ? '0 2px 4px rgba(0,0,0,0.4)'
+             : '0 2px 4px rgba(0,0,0,0.1)',
+         padding: '0 24px',
+         transition: 'background-color 0.3s',
+         display: 'flex',
+         flexDirection: 'row',
+         gap: '8px',
+         overflowX: 'auto',
+         msOverflowStyle: 'none',
+         scrollbarWidth: 'none',
+         alignItems: 'center',
+         height: ACTION_BAR_HEIGHT,
+         paddingBottom: 0,
+         position: 'sticky',
+         top: ACTION_BAR_HEIGHT,
+         zIndex: 999,
+         borderTopLeftRadius: 0,
+         borderTopRightRadius: 0,
++        ...(highlighted && {
++            transform: 'scale(1.02)',
++            filter: 'brightness(1.05)',
++            boxShadow: '0 0 10px rgba(0,0,0,0.3)',
++            transition: 'transform 0.3s, filter 0.3s, box-shadow 0.3s',
++        }),
+         selectors: {
+             '::-webkit-scrollbar': {
+                 display: 'none',
+             },
+         },
+     });
  
- .status-value.failed {
-     color: var(--helix-red, #d65541);
- }
+ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
+     isDarkMode,
+     quickActions,
+     handleActionClick,
+     currentUserConfirmed,
++    highlighted = false,
+ }) => {
+     const [selected, setSelected] = React.useState<string | null>(null);
  
- .status-value.open {
--    color: var(--helix-cta, #d65541);
-+    /* Display open deals with a blue highlight instead of the CTA red */
-+    color: var(--helix-highlight, #3690CE);
- }
+     const onCardClick = (action: QuickAction) => {
+         setSelected(action.title);
+         handleActionClick(action);
+     };
  
- .status-value.closed {
-     color: var(--helix-green, #107c10);
- }
- 
- .jump-link {
-     color: var(--helix-highlight, #0078d4);
-     cursor: pointer;
-     font-size: 12px;
- }
- 
- .status-label {
-     font-size: 12px;
-     color: var(--helix-dark-blue, #061733);
- }
- 
- .status-value {
-     font-weight: 600;
-     display: flex;
-         justify-content: center;
-     }
-     
-     .status-value svg {
-         width: 16px;
+     return (
+-        <div className={quickLinksStyle(isDarkMode)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
++        <div className={quickLinksStyle(isDarkMode, highlighted)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
+             {quickActions.map((action, index) => (
+                 <QuickActionsCard
+                     key={action.title}
+                     title={action.title}
+                     icon={action.icon}
+                     isDarkMode={isDarkMode}
+                     onClick={() => onCardClick(action)}
+                     iconColor={colours.cta}
+                     selected={selected === action.title}
+                     style={{
+                         '--card-index': index,
+                         fontSize: '16px',
+                         padding: '0 12px',
+                         height: '48px',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'flex-start',
+                     } as React.CSSProperties}
+                     {...(action.title === 'Confirm Attendance'
+                         ? { confirmed: currentUserConfirmed }
+                         : {})}
+                 />
+             ))}
+         </div>
+     );
