@@ -2346,7 +2346,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       actions.push({
         title: 'Approve Annual Leave',
         onClick: handleApproveLeaveClick,
-        icon: 'Warning',
+        icon: 'PalmTree',
         styles: approveButtonStyles,
       });
     }

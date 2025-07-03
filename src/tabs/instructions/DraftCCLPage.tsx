@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Stack, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
 import { InstructionData } from '../../app/functionality/types';
 import { dashboardTokens } from './componentTokens';
+import '../../app/styles/MatterOpeningCard.css';
 
 interface DraftCCLPageProps {
     onBack: () => void;
@@ -30,18 +31,24 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
     );
 
     if (!confirmed && instructions) {
-        return (
-            <Stack tokens={dashboardTokens} className="workflow-container">
-                <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
-                <Dropdown
-                    placeholder="Select Instruction"
-                    options={allInstructions}
-                    selectedKey={selectedRef}
-                    onChange={(_, o) => setSelectedRef(o?.key as string)}
-                    styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-                />
-                <PrimaryButton text="Continue" disabled={!selectedRef} onClick={() => setConfirmed(true)} />
-            </Stack>
+    return (
+        <Stack tokens={dashboardTokens} className="workflow-container">
+            <div className="workflow-main matter-opening-card">
+                <div className="step-header">
+                    <h3 className="step-title">Select Instruction for Client Care Letter</h3>
+                </div>
+                <div className="step-content">
+                    <Dropdown
+                        placeholder="Select Instruction"
+                        options={allInstructions}
+                        selectedKey={selectedRef}
+                        onChange={(_, o) => setSelectedRef(o?.key as string)}
+                        styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+                    />
+                    <PrimaryButton text="Continue" disabled={!selectedRef} onClick={() => setConfirmed(true)} />
+                </div>
+            </div>
+        </Stack>
         );
     }
 
@@ -49,14 +56,20 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
 
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
-            <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
-            {inst && (
-            <iframe
-                title="Client Care Letter"
-                src={require('../../assets/ccl.pdf')}
-                style={{ width: '100%', height: '80vh', border: 'none' }}
-            />
-            )}
+            <div className="workflow-main matter-opening-card">
+                <div className="step-header">
+                    <h3 className="step-title">Client Care Letter</h3>
+                </div>
+                <div className="step-content">
+                    {inst && (
+                    <iframe
+                        title="Client Care Letter"
+                        src={require('../../assets/ccl.pdf')}
+                        style={{ width: '100%', height: '80vh', border: 'none' }}
+                    />
+                    )}
+                </div>
+            </div>
         </Stack>
     );
 };

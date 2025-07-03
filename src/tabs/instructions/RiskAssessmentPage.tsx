@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Stack, PrimaryButton } from '@fluentui/react';
 import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
 import { dashboardTokens } from './componentTokens';
+import '../../app/styles/NewMatters.css';
+import '../../app/styles/MatterOpeningCard.css';
 
 interface RiskAssessmentPageProps {
     onBack: () => void;
@@ -126,38 +128,44 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
     };
 
     return (
-        <Stack tokens={dashboardTokens}>
-            <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
-            {existingRisk && (
-                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
-                    <h3>Existing Assessment</h3>
-                    <ul className="detail-list">
-                        {Object.entries(existingRisk).map(([k, v]) => (
-                            v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
-                        ))}
-                    </ul>
-                </Stack>
-            )}
-            <RiskAssessment
-                riskCore={riskCore}
-                setRiskCore={setRiskCore}
-                complianceDate={complianceDate}
-                setComplianceDate={setComplianceDate}
-                complianceExpiry={complianceExpiry}
-                setComplianceExpiry={setComplianceExpiry}
-                consideredClientRisk={consideredClientRisk}
-                setConsideredClientRisk={setConsideredClientRisk}
-                consideredTransactionRisk={consideredTransactionRisk}
-                setConsideredTransactionRisk={setConsideredTransactionRisk}
-                transactionRiskLevel={transactionRiskLevel}
-                setTransactionRiskLevel={setTransactionRiskLevel}
-                consideredFirmWideSanctions={consideredFirmWideSanctions}
-                setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
-                consideredFirmWideAML={consideredFirmWideAML}
-                setConsideredFirmWideAML={setConsideredFirmWideAML}
-                onContinue={handleContinue}
-                isComplete={isComplete}
-            />
+        <Stack tokens={dashboardTokens} className="workflow-container">
+            <div className="workflow-main matter-opening-card">
+                <div className="step-header">
+                    <h3 className="step-title">Risk Assessment</h3>
+                </div>
+                {existingRisk && (
+                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
+                        <h3>Existing Assessment</h3>
+                        <ul className="detail-list">
+                            {Object.entries(existingRisk).map(([k, v]) => (
+                                v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
+                            ))}
+                        </ul>
+                    </Stack>
+                )}
+                <div className="step-content">
+                    <RiskAssessment
+                    riskCore={riskCore}
+                    setRiskCore={setRiskCore}
+                    complianceDate={complianceDate}
+                    setComplianceDate={setComplianceDate}
+                    complianceExpiry={complianceExpiry}
+                    setComplianceExpiry={setComplianceExpiry}
+                    consideredClientRisk={consideredClientRisk}
+                    setConsideredClientRisk={setConsideredClientRisk}
+                    consideredTransactionRisk={consideredTransactionRisk}
+                    setConsideredTransactionRisk={setConsideredTransactionRisk}
+                    transactionRiskLevel={transactionRiskLevel}
+                    setTransactionRiskLevel={setTransactionRiskLevel}
+                    consideredFirmWideSanctions={consideredFirmWideSanctions}
+                    setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
+                    consideredFirmWideAML={consideredFirmWideAML}
+                    setConsideredFirmWideAML={setConsideredFirmWideAML}
+                    onContinue={handleContinue}
+                    isComplete={isComplete}
+                />
+                </div>
+            </div>
         </Stack>
     );
 };

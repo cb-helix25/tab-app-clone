@@ -14,6 +14,7 @@ import { colours } from '../app/styles/colours';
 import { formContainerStyle, inputFieldStyle } from './BespokeForms';
 import { sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import HelixAvatar from '../assets/helix avatar.png';
+import { PiTreePalm } from 'react-icons/pi';
 
 /* ---------------------------------------------------------------------------
    Types
@@ -505,7 +506,9 @@ const AnnualLeaveApprovals: React.FC<AnnualLeaveApprovalsProps> = ({
             text="Approve"
             onClick={localHandleApprove}
             styles={sharedDefaultButtonStyles}
-            iconProps={{ iconName: 'CompletedSolid', styles: { root: { color: '#009900' } } }}
+            onRenderIcon={() => (
+              <PiTreePalm style={{ color: '#009900', fontSize: 16 }} />
+            )}
           />
           <DefaultButton
             text="Reject"

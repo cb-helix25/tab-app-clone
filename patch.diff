@@ -1,155 +1,135 @@
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index ceb0f580c3c6244ae45a2f6e13fa9f6d645867d3..b86a72b8ee31dcd4500dde88b2ba80dd0795e564 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1522,91 +1522,91 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-           optObj = block.options.find((o) => o.label === opt);
-           if (!optObj) return;
-           text = optObj.previewText.trim().replace(/\n/g, '<br />');
+diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
+index 811f84fac87427f6201e448f3b2bbeacb07481ff..2b84540b6354304a2ce61f57e99a47ddf2815921 100644
+--- a/src/tabs/instructions/RiskAssessmentPage.tsx
++++ b/src/tabs/instructions/RiskAssessmentPage.tsx
+@@ -1,29 +1,30 @@
+ import React, { useState } from 'react';
+ import { Stack, PrimaryButton } from '@fluentui/react';
+ import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
+ import { dashboardTokens } from './componentTokens';
++import '../../app/styles/NewMatters.css';
+ 
+ interface RiskAssessmentPageProps {
+     onBack: () => void;
+     instructionRef?: string;
+     riskAssessor?: string;
+     /** Existing risk assessment data to display when available */
+     existingRisk?: any | null;
+ }
+ 
+ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
+     const [riskCore, setRiskCore] = useState<RiskCore>({
+         clientType: existingRisk?.ClientType ?? '',
+         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
+         destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
+         destinationOfFundsValue: existingRisk?.DestinationOfFunds_Value ?? 0,
+         fundsType: existingRisk?.FundsType ?? '',
+         fundsTypeValue: existingRisk?.FundsType_Value ?? 0,
+         clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
+         clientIntroducedValue: existingRisk?.HowWasClientIntroduced_Value ?? 0,
+         limitation: existingRisk?.Limitation ?? '',
+         limitationValue: existingRisk?.Limitation_Value ?? 0,
+         sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
+         sourceOfFundsValue: existingRisk?.SourceOfFunds_Value ?? 0,
+         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
+         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
+diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
+index 811f84fac87427f6201e448f3b2bbeacb07481ff..2b84540b6354304a2ce61f57e99a47ddf2815921 100644
+--- a/src/tabs/instructions/RiskAssessmentPage.tsx
++++ b/src/tabs/instructions/RiskAssessmentPage.tsx
+@@ -104,62 +105,64 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
+                     HowWasClientIntroduced: riskCore.clientIntroduced,
+                     HowWasClientIntroduced_Value: riskCore.clientIntroducedValue,
+                     Limitation: riskCore.limitation,
+                     Limitation_Value: riskCore.limitationValue,
+                     SourceOfFunds: riskCore.sourceOfFunds,
+                     SourceOfFunds_Value: riskCore.sourceOfFundsValue,
+                     ValueOfInstruction: riskCore.valueOfInstruction,
+                     ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
+                     TransactionRiskLevel: transactionRiskLevel,
+                     ClientRiskFactorsConsidered: consideredClientRisk,
+                     TransactionRiskFactorsConsidered: consideredTransactionRisk,
+                     FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
+                     FirmWideAMLPolicyConsidered: consideredFirmWideAML,
+                     RiskScore: riskScore,
+                     RiskScoreIncrementBy: riskScore,
+                     RiskAssessmentResult: riskResult,
+                 }),
+             });
+         } catch (err) {
+             console.error('❌ Risk assessment submit failed', err);
          }
-         if (text === null) return;
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = opt.replace(/'/g, "&#39;");
-         // grab the ID if there is one
-         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(s => {
-             const trimmed = s.trim();
--            return `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</span>`;
-+            return `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${trimmed}</div>`;
-           })
-           .join(' ');
-         // inject it into your wrapper DIV
-         const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
-         
-         snippetHtml.push(html);
-         snippetMap[opt] = html;
-       });
-     } else if (typeof selectedOption === 'string') {
+         onBack();
+     };
  
-       let text: string | null = null;
-       let optObj: TemplateOption | undefined;
-       if (selectedOption === '__saved') {
-         text = savedSnippets[block.title] || localStorage.getItem(`customSnippet_${block.title}`);
-       } else {
-         optObj = block.options.find((o) => o.label === selectedOption);
-         if (optObj) {
-           text = optObj.previewText.trim().replace(/\n/g, '<br />');
-         }
-       }
-       if (text !== null) {
-         text = applyDynamicSubstitutions(
-           text,
-           userData,
-           enquiry,
-           amount,
-           dealPasscode,
-           dealPasscode
-             ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-             : undefined
-         );
-         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-         text = wrapInsertPlaceholders(text);
-         const escLabel = selectedOption.replace(/'/g, "&#39;");
-         const sentences = text
-           .split(/(?<=[.!?])\s+/)
-           .filter((s) => s.trim().length > 0)
-           .map(
-             (s) =>
--              `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-+              `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</div>`
-           )
-           .join(' ');
-         const idAttr = optObj?.snippetId ? ` data-snippet-id="${optObj.snippetId}"` : '';
-         const html = `<span class="snippet-wrapper" data-snippet="${escLabel}"${idAttr}>${sentences}</span>`;
-         snippetHtml.push(html);
-         snippetMap[selectedOption] = html;
-       }
- 
-     }
- 
-     const replacementText = snippetHtml.join('');
-     let selectedLabel = '';
-     if (block.isMultiSelect && isStringArray(selectedOption)) {
-       selectedLabel = selectedOption.join(', ');
-     } else if (typeof selectedOption === 'string') {
-       selectedLabel = selectedOption;
-     }
-     const containerTag = 'span';
-     const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
-     const innerHTML = cleanTemplateString(replacementText);
-     const styledInnerHTML = innerHTML.replace(
-       /<p>/g,
-       `<p style="margin: 0;">`
+     return (
+-        <Stack tokens={dashboardTokens}>
++        <Stack tokens={dashboardTokens} className="workflow-container">
+             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
+-            {existingRisk && (
+-                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
+-                    <h3>Existing Assessment</h3>
+-                    <ul className="detail-list">
+-                        {Object.entries(existingRisk).map(([k, v]) => (
+-                            v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
+-                        ))}
+-                    </ul>
+-                </Stack>
+-            )}
+-            <RiskAssessment
+-                riskCore={riskCore}
+-                setRiskCore={setRiskCore}
+-                complianceDate={complianceDate}
+-                setComplianceDate={setComplianceDate}
+-                complianceExpiry={complianceExpiry}
+-                setComplianceExpiry={setComplianceExpiry}
+-                consideredClientRisk={consideredClientRisk}
+-                setConsideredClientRisk={setConsideredClientRisk}
+-                consideredTransactionRisk={consideredTransactionRisk}
+-                setConsideredTransactionRisk={setConsideredTransactionRisk}
+-                transactionRiskLevel={transactionRiskLevel}
+-                setTransactionRiskLevel={setTransactionRiskLevel}
+-                consideredFirmWideSanctions={consideredFirmWideSanctions}
+-                setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
+-                consideredFirmWideAML={consideredFirmWideAML}
+-                setConsideredFirmWideAML={setConsideredFirmWideAML}
+-                onContinue={handleContinue}
+-                isComplete={isComplete}
+-            />
++            <div className="workflow-main">
++                {existingRisk && (
++                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
++                        <h3>Existing Assessment</h3>
++                        <ul className="detail-list">
++                            {Object.entries(existingRisk).map(([k, v]) => (
++                                v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
++                            ))}
++                        </ul>
++                    </Stack>
++                )}
++                <RiskAssessment
++                    riskCore={riskCore}
++                    setRiskCore={setRiskCore}
++                    complianceDate={complianceDate}
++                    setComplianceDate={setComplianceDate}
++                    complianceExpiry={complianceExpiry}
++                    setComplianceExpiry={setComplianceExpiry}
++                    consideredClientRisk={consideredClientRisk}
++                    setConsideredClientRisk={setConsideredClientRisk}
++                    consideredTransactionRisk={consideredTransactionRisk}
++                    setConsideredTransactionRisk={setConsideredTransactionRisk}
++                    transactionRiskLevel={transactionRiskLevel}
++                    setTransactionRiskLevel={setTransactionRiskLevel}
++                    consideredFirmWideSanctions={consideredFirmWideSanctions}
++                    setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
++                    consideredFirmWideAML={consideredFirmWideAML}
++                    setConsideredFirmWideAML={setConsideredFirmWideAML}
++                    onContinue={handleContinue}
++                    isComplete={isComplete}
++                />
++            </div>
+         </Stack>
      );
-     const optionsHtml = block.options
-diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
-index ceb0f580c3c6244ae45a2f6e13fa9f6d645867d3..b86a72b8ee31dcd4500dde88b2ba80dd0795e564 100644
---- a/src/tabs/enquiries/PitchBuilder.tsx
-+++ b/src/tabs/enquiries/PitchBuilder.tsx
-@@ -1877,51 +1877,51 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
-     const main = span.querySelector('.block-main') as HTMLElement | null;
-     if (!main) return;
+ };
  
-     const option = block.options.find((o) => o.label === optionLabel);
-     if (!option) return;
- 
-     let text = option.previewText.trim().replace(/\n/g, '<br />');
-     text = applyDynamicSubstitutions(
-       text,
-       userData,
-       enquiry,
-       amount,
-       dealPasscode,
-       dealPasscode
-         ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
-         : undefined
-     );
-     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
-     text = wrapInsertPlaceholders(text);
-     const escLabel = optionLabel.replace(/'/g, "&#39;");
-     const sentences = text
-       .split(/(?<=[.!?])\s+/)
-       .filter((s) => s.trim().length > 0)
-       .map(
-         (s) =>
--          `<span data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</span>`
-+          `<div data-sentence contenteditable="true"><span class="sentence-handle" draggable="true" contenteditable="false"><i class="ms-Icon ms-Icon--GripperDotsVertical" aria-hidden="true"></i></span><span class="sentence-delete" contenteditable="false"><i class="ms-Icon ms-Icon--Cancel" aria-hidden="true"></i></span>${s.trim()}</div>`
-       )
-       .join(' ');
-     const snippetHtml = `<span class="snippet-wrapper" data-snippet="${escLabel}">${sentences}</span>`;
- 
-     main.insertAdjacentHTML('beforeend', snippetHtml);
- 
-     setOriginalSnippetContent((prev) => ({
-       ...prev,
-       [block.title]: {
-         ...(prev[block.title] || {}),
-         [optionLabel]: snippetHtml,
-       },
-     }));
-     setEditedSnippets((prev) => ({
-       ...prev,
-       [block.title]: { ...(prev[block.title] || {}), [optionLabel]: false },
-     }));
- 
-     const optionDiv = span.querySelector('div.option-choices');
-     if (optionDiv) {
-       const currentSelected = block.isMultiSelect
-         ? (selectedTemplateOptions[block.title] as string[])
-         : selectedTemplateOptions[block.title];
-       const newSelected = block.isMultiSelect
-         ? [
+ export default RiskAssessmentPage;

@@ -288,7 +288,7 @@
 }
 
 .summary-content .field-value.empty {
-    color: var(--helix-cta);
+    color: var(--helix-dark-blue);
 }
 
 .summary-status-note {

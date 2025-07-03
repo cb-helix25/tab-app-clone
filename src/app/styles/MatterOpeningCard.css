@@ -1,0 +1,138 @@
+/* MatterOpeningCard.css - Styles to standardize appearance with instruction cards */
+
+.matter-opening-card {
+    position: relative;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 24px;
+    opacity: 1;
+    animation: dropIn 0.3s ease forwards;
+    overflow: hidden;
+    border-radius: 8px;
+    break-inside: avoid;
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    color: #061733;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.matter-opening-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+}
+
+/* Animation keyframes for card entry */
+@keyframes dropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animation for completion check */
+@keyframes tickPop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Step header styling to match instruction cards */
+.matter-opening-card .step-header {
+    background-color: var(--helix-grey, #F4F4F6);
+    color: var(--helix-dark-blue, #061733);
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.matter-opening-card .step-header.active {
+    background: var(--helix-dark-blue, #061733);
+    color: #fff;
+}
+
+.matter-opening-card .step-number {
+    background: none;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 8px;
+    color: inherit;
+}
+
+.matter-opening-card .step-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.matter-opening-card .step-content {
+    padding: 0.75rem;
+    border: 1px solid #e3e8ef;
+    box-shadow: none;
+    border-radius: 0 0 4px 4px;
+    background: #fff;
+    margin-top: -4px;
+    margin-bottom: 16px;
+}
+
+.matter-opening-card .completion-check {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    color: #20b26c;
+    opacity: 0;
+    transform: scale(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.matter-opening-card .step-header.completed .completion-check {
+    opacity: 1;
+    transform: scale(1);
+    animation: tickPop 0.3s ease;
+}
+
+.matter-opening-card .form-separator {
+    height: 1px;
+    background-color: #e3e8ef;
+    margin: 8px 0 16px;
+}
+
+/* Visibility class for completion check */
+.matter-opening-card .completion-check.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+@keyframes tickPop {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

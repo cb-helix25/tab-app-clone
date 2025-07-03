@@ -7,7 +7,7 @@ import { colours } from '../../app/styles/colours';
 const fieldTagStyle = mergeStyles({
     backgroundColor: '#f3f2f1',
     border: '1px solid #e1dfdd',
-    borderRadius: '12px',
+    borderRadius: '0px',
     padding: '4px 8px',
     display: 'inline-flex',
     alignItems: 'center',

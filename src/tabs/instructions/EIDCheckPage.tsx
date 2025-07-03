@@ -12,6 +12,7 @@ import { POID } from '../../app/functionality/types';
 import { dashboardTokens, cardStyles } from './componentTokens';
 import { sharedDecisionButtonStyles, sharedPrimaryButtonStyles } from '../../app/styles/ButtonStyles';
 import PoidPreview from './PoidPreview';
+import '../../app/styles/MatterOpeningCard.css';
 
 interface EIDCheckPageProps {
     poidData: POID[];
@@ -55,14 +56,12 @@ const EIDCheckPage: React.FC<EIDCheckPageProps> = ({ poidData, instruction, onBa
 
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
-            <PrimaryButton
-                text="Back"
-                onClick={mode === 'choice' ? onBack : () => setMode('choice')}
-                style={{ marginBottom: 16 }}
-            />
-            <div className="workflow-main">
-                <Stack tokens={{ childrenGap: 16 }}>
-                    <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>Verify an ID</Text>
+            <div className="workflow-main matter-opening-card">
+                <div className="step-header">
+                    <h3 className="step-title">Verify an ID</h3>
+                </div>
+                <div className="step-content">
+                    <Stack tokens={{ childrenGap: 16 }}>
 
                     {mode === 'choice' && (
                         <Stack horizontal tokens={{ childrenGap: 16 }} horizontalAlign="center">
@@ -164,6 +163,7 @@ const EIDCheckPage: React.FC<EIDCheckPageProps> = ({ poidData, instruction, onBa
                         />
                     )}
                 </Stack>
+                </div>
             </div>
         </Stack>
     );

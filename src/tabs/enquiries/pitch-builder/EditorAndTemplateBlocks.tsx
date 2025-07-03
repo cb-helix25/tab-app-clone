@@ -22,7 +22,6 @@ import { getLeftoverPlaceholders } from './emailUtils';
 import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
 import { useEditorState, useKeyboardShortcuts } from './editorHooks';
 import { editorFormatter } from './editorEnhancements';
-import EnhancedPitchBuilderFeatures from './EnhancedPitchBuilderFeatures';
 
 // Sticky toolbar CSS injection
 if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
@@ -90,6 +89,10 @@ interface EditorAndTemplateBlocksProps {
   removedBlocks: string[];
   onAddBlock: (title: string) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = React.memo((props) => {
@@ -125,6 +128,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = React.me
     removedBlocks,
     onAddBlock,
     showToast,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = props;
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
@@ -565,19 +572,38 @@ boxShadow: isDarkMode
 
 
           <Stack tokens={{ childrenGap: 20 }}>
-          
-          {/* Enhanced Features Toolbar */}
-          <EnhancedPitchBuilderFeatures
-            isDarkMode={isDarkMode}
-            content={body}
-            onContentChange={setBody}
-            showToast={showToast}
-          />
 
           <Stack horizontal tokens={{ childrenGap: 20 }}>
             <Stack tokens={{ childrenGap: 6 }} grow>
               <div className={toolbarStyle + ' sticky-toolbar'} style={{ backgroundColor: colours.darkBlue }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <TooltipHost content="Undo (Ctrl+Z)">
+                    <IconButton
+                      iconProps={{ iconName: 'Undo' }}
+                      ariaLabel="Undo"
+                      onClick={undo}
+                      disabled={!canUndo}
+                      styles={toolbarButtonStyle}
+                    />
+                  </TooltipHost>
+                  <TooltipHost content="Redo (Ctrl+Y)">
+                    <IconButton
+                      iconProps={{ iconName: 'Redo' }}
+                      ariaLabel="Redo"
+                      onClick={redo}
+                      disabled={!canRedo}
+                      styles={toolbarButtonStyle}
+                    />
+                  </TooltipHost>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '1px',
+                      height: '24px',
+                      background: '#ddd',
+                      margin: '0 8px',
+                    }}
+                  />
                   <TooltipHost content="Bold (Ctrl+B)">
                     <IconButton
                       iconProps={{ iconName: 'Bold' }}

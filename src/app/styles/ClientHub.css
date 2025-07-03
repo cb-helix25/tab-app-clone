@@ -59,7 +59,7 @@
     text-align: left;
     gap: 0.5rem;
     padding: 0.25rem 0.75rem;
-    border-left: 2px solid var(--helix-cta);
+    border-left: 2px solid var(--helix-dark-blue);
     transition: background-color 0.2s;
     width: 100%;
     box-sizing: border-box;

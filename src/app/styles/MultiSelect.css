@@ -1,10 +1,10 @@
 .MultiSelect-bar {
     display: flex;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0;
     overflow: hidden;
-    height: 40px;
+    height: 50px;
 }
 
 .MultiSelect-segment {
@@ -20,11 +20,11 @@
 }
 
 .MultiSelect-segment:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .MultiSelect-segment.active {
-    background-color: var(--helix-cta);
+    background-color: var(--helix-dark-blue);
     color: #fff;
 }
 
@@ -32,10 +32,10 @@
 .input-bar {
     display: flex;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0 !important;
   overflow: visible;
-    height: 40px;
+    height: 50px;
 }
 
 .input-bar .MultiSelect-segment {
@@ -46,7 +46,7 @@
 }
 
 .input-bar .MultiSelect-segment:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .team-select {
@@ -60,7 +60,7 @@
 
 .team-select:focus {
     outline: none;
-    background-color: var(--helix-cta) !important;
+    background-color: var(--helix-dark-blue) !important;
     color: #fff !important;
 }
 
@@ -73,10 +73,10 @@
 .have-funds-bar {
     display: flex;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0;
     overflow: hidden;
-    height: 40px;
+    height: 50px;
 }
 
 .have-funds-bar .MultiSelect-segment {
@@ -92,21 +92,21 @@
 }
 
 .have-funds-bar .MultiSelect-segment:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .have-funds-bar .MultiSelect-segment.active {
-    background-color: var(--helix-cta);
+    background-color: var(--helix-dark-blue);
     color: #fff;
 }
 
 .partner-segment {
     display: flex !important;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0 !important;
     overflow: hidden;
-    height: 40px;
+    height: 50px;
 }
 
 .partner-segment select,
@@ -128,14 +128,14 @@
 
 .partner-segment select:not(:last-child),
 .partner-segment button:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .partner-segment select:hover,
 .partner-segment button:hover,
 .partner-segment select:focus,
 .partner-segment button:focus {
-    background-color: var(--helix-cta) !important;
+    background-color: var(--helix-dark-blue) !important;
     color: #fff !important;
     outline: none;
 }

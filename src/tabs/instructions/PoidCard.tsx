@@ -25,19 +25,20 @@ interface PoidCardProps {
     teamData?: TeamData[] | null;
 }
 
-// Updated card dimensions for 5 per row and 20% taller
+// Updated card dimensions for 5 per row and taller for content
 const baseCardStyle = mergeStyles({
     position: 'relative',
     padding: '15px',
-    borderRadius: '10px',
-    width: '250px',
-    height: '192px',
+    borderRadius: '0px',
+    width: '100%',
+    height: '240px',
     cursor: 'pointer',
     background: 'linear-gradient(135deg, #ffffff, #f9f9f9)',
     boxSizing: 'border-box',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     fontFamily: 'Raleway, sans-serif',
     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    overflow: 'hidden',
     selectors: {
         ':hover': {
             transform: 'translateY(-4px)',
@@ -72,9 +73,9 @@ const iconStyle = mergeStyles({
 
 const bottomContainerStyle = mergeStyles({
     position: 'absolute',
-    bottom: 4,
-    left: 4,
-    right: 4,
+    bottom: 20,
+    left: 15,
+    right: 75, // Adjusted to make room for the bottom-right icon
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -84,11 +85,17 @@ const idTextStyle = mergeStyles({
     fontSize: '0.8rem',
     fontWeight: 600,
     fontFamily: 'Raleway, sans-serif',
+    maxWidth: '70%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    padding: '2px 0',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
 });
 
 const badgeStyle = mergeStyles({
     padding: '2px 8px',
-    borderRadius: '12px',
+    borderRadius: '0px',
     backgroundColor: colours.grey,
     color: '#333',
     fontSize: '0.7rem',
@@ -98,23 +105,26 @@ const badgeStyle = mergeStyles({
 
 const backgroundIconStyle = mergeStyles({
     position: 'absolute',
-    top: 10,
+    bottom: 20,
     right: 10,
-    fontSize: '52px', // 20% smaller than original 64px
-    transformOrigin: 'top right',
-    opacity: 1,
+    fontSize: '55px',
+    transformOrigin: 'bottom right',
+    opacity: 0.5,
     pointerEvents: 'none',
     zIndex: 0,
-    color: colours.grey,
+    color: colours.highlight,
+    overflow: 'hidden',
 });
 
 const contentStyle = mergeStyles({
     position: 'relative',
     zIndex: 1,
-    height: '100%',
+    height: '85%', // Adjusted to leave more space for the bottom container
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    paddingRight: '60px', // Add padding to avoid text overlapping with the bottom-right icon
+    marginBottom: '40px', // Add bottom margin to prevent content from overlapping with the ID
 });
 
 // New style for the profile link container (aligned left)
@@ -134,7 +144,7 @@ const profileButtonStyle = mergeStyles({
     textDecoration: 'none',
     color: colours.highlight,
     border: '1px solid #ccc',
-    borderRadius: '4px',
+    borderRadius: '0px',
     padding: '4px 6px',
     transition: 'background-color 0.2s, transform 0.1s',
     selectors: {
@@ -174,6 +184,9 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
         borderLeft: componentTokens.successBanner.borderLeft,
         padding: componentTokens.infoBanner.padding,
         fontSize: '0.875rem',
+        position: 'relative',
+        zIndex: 2,
+        marginBottom: '10px',
     });
 
     const dobDisplay = poid.date_of_birth
@@ -253,7 +266,16 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                 {selected && <Icon iconName="Accept" className={iconStyle} />}
 
                 <div className={bottomContainerStyle}>
-                    <Text variant="small" styles={{ root: idTextStyle }}>
+                    <Text 
+                        variant="small" 
+                        className={idTextStyle}
+                        styles={{ 
+                            root: { 
+                                position: 'relative',
+                                zIndex: 2
+                            } 
+                        }}
+                    >
                         {poid.poid_id}
                     </Text>
                     {badgeInitials && (

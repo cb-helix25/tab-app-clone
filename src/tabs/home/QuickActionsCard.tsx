@@ -34,6 +34,7 @@ import {
   MdHelp,
   MdOutlineHelp,
 } from 'react-icons/md';
+import { PiTreePalm } from 'react-icons/pi';
 import { IconType } from 'react-icons';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
@@ -56,6 +57,7 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   ConstructionCone: { outline: MdOutlineConstruction, filled: MdConstruction },
   People: { outline: MdOutlinePeople, filled: MdPeople },
   Help: { outline: MdOutlineHelp, filled: MdHelp },
+  PalmTree: { outline: PiTreePalm, filled: PiTreePalm },
 };
 
 interface QuickActionsCardProps {
@@ -140,11 +142,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       });
     }
   } else if (title === 'Approve Annual Leave') {
-    attendanceIconName = 'Warning';
+    attendanceIconName = 'PalmTree';
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: colours.yellow,
-      animation: 'yellowPulse 2s infinite',
-      boxShadow: 'inset 0 0 5px rgba(255,213,79,0.5)',
+      color: colours.green,
+      animation: 'greenPulse 2s infinite',
+      boxShadow: 'inset 0 0 5px rgba(16,124,16,0.5)',
     });
   } else if (title === 'Book Requested Leave') {
     attendanceIconName = 'Accept';

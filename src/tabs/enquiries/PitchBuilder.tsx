@@ -772,7 +772,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     });
 
     if (bodyEditorRef.current) {
-      setBody(bodyEditorRef.current.innerHTML);
+      // Save current state before making changes (immediate, not debounced)
+      const currentContent = bodyEditorRef.current.innerHTML;
+      saveToUndoStackImmediate(currentContent);
+      setBodyInternal(bodyEditorRef.current.innerHTML);
     }
   }
 
@@ -825,44 +828,123 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   function saveToUndoStack(content: string) {
     if (isUndoRedoOperation) return;
-    setUndoStack(prev => [...prev.slice(-19), content]); // Keep last 20 states
-    setRedoStack([]); // Clear redo stack when new action is performed
+    if (!content || !content.trim()) return; // Don't save empty content
+    
+    // Don't save duplicate content
+    if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) return;
+    
+    setUndoStack(prev => {
+      const newStack = [...prev, content];
+      // Keep last 50 states (increased from 20)
+      return newStack.slice(-50);
+    });
+    
+    // Clear redo stack when new action is performed
+    setRedoStack([]);
+  }
+
+  // Immediate save for block operations (not debounced)
+  function saveToUndoStackImmediate(content: string) {
+    if (isUndoRedoOperation) return;
+    if (!content || !content.trim()) return;
+    
+    // Don't save duplicate content
+    if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) return;
+    
+    // Cancel any pending debounced saves from input handler
+    if (inputTimeoutRef.current) {
+      clearTimeout(inputTimeoutRef.current);
+      inputTimeoutRef.current = null;
+    }
+    
+    setUndoStack(prev => {
+      const newStack = [...prev, content];
+      return newStack.slice(-50);
+    });
+    
+    setRedoStack([]);
   }
 
   function undo() {
-    if (undoStack.length === 0) return;
+    if (undoStack.length <= 1) return; // Need at least 2 items to undo (current + previous)
     
-    const currentContent = body;
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
     const previousContent = undoStack[undoStack.length - 1];
     
     setIsUndoRedoOperation(true);
+    
+    // Save current state to redo stack
     setRedoStack(prev => [...prev, currentContent]);
+    
+    // Remove the last item from undo stack
     setUndoStack(prev => prev.slice(0, -1));
     
+    // Update both DOM and React state
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = previousContent;
     }
     setBodyState(previousContent);
     
-    setTimeout(() => setIsUndoRedoOperation(false), 100);
+    // Sync all related state
+    syncStateFromContent(previousContent);
+    
+    // Clear the flag and trigger highlighting update
+    setTimeout(() => {
+      const { blocks, snippets } = computeSnippetChanges();
+      setEditedBlocks(blocks);
+      setEditedSnippets(snippets);
+      setIsUndoRedoOperation(false);
+    }, 50);
   }
 
   function redo() {
     if (redoStack.length === 0) return;
     
-    const currentContent = body;
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
     const nextContent = redoStack[redoStack.length - 1];
     
     setIsUndoRedoOperation(true);
+    
+    // Save current state to undo stack
     setUndoStack(prev => [...prev, currentContent]);
+    
+    // Remove the last item from redo stack
     setRedoStack(prev => prev.slice(0, -1));
     
+    // Update both DOM and React state
     if (bodyEditorRef.current) {
       bodyEditorRef.current.innerHTML = nextContent;
     }
     setBodyState(nextContent);
     
-    setTimeout(() => setIsUndoRedoOperation(false), 100);
+    // Sync all related state
+    syncStateFromContent(nextContent);
+    
+    // Clear the flag and trigger highlighting update
+    setTimeout(() => {
+      const { blocks, snippets } = computeSnippetChanges();
+      setEditedBlocks(blocks);
+      setEditedSnippets(snippets);
+      setIsUndoRedoOperation(false);
+    }, 50);
+  }
+
+  // Helper function to sync state from content
+  function syncStateFromContent(content: string) {
+    // Parse content to determine which blocks are inserted
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content, 'text/html');
+    const insertedBlockElements = doc.querySelectorAll('[data-inserted]');
+    
+    const newInsertedBlocks: { [key: string]: boolean } = {};
+    insertedBlockElements.forEach((el) => {
+      const blockTitle = el.getAttribute('data-inserted');
+      if (blockTitle) {
+        newInsertedBlocks[blockTitle] = true;
+      }
+    });
+    
+    setInsertedBlocks(newInsertedBlocks);
   }
 
   function closeSnippetOptions() {
@@ -875,6 +957,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const block = templateBlocks.find((b) => b.title === blockTitle);
     if (!block) return;
     if (lockedBlocks[blockTitle]) return;
+    
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
+    
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[blockTitle])
         ? ([...(selectedTemplateOptions[blockTitle] as string[])])
@@ -912,6 +999,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (lockedBlocks[blockTitle]) return;
     const selected = selectedTemplateOptions[blockTitle];
     if (!selected) return;
+    
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
+    
     insertTemplateBlock(block, selected, true, false);
   }
 
@@ -937,17 +1029,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z' && !e.shiftKey) {
           e.preventDefault();
+          e.stopPropagation();
           undo();
         } else if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) {
           e.preventDefault();
+          e.stopPropagation();
           redo();
         }
       }
     };
     
-    document.addEventListener('keydown', handleKeyDown);
+    // Attach to document with capture=true to intercept before other handlers
+    document.addEventListener('keydown', handleKeyDown, true);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [toggleBlockLock, toggleBlockSidebar, highlightBlock, openSnippetOptions, openSnippetEdit, insertBlockOption, resetBlockOption, toggleSidebarOverlayMode, templateBlocks, undo, redo]);
 
@@ -1064,10 +1159,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   
   function setBody(newBody: string | ((prevBody: string) => string)) {
     const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
+    setBodyState(resolvedBody);
     
-    if (!isUndoRedoOperation) {
-      saveToUndoStack(body);
-    }
+    // Trigger change detection for precise highlighting
+    setTimeout(() => {
+      const { blocks, snippets } = computeSnippetChanges();
+      setEditedBlocks(blocks);
+      setEditedSnippets(snippets);
+    }, 100);
+  }
+
+  // Internal function for programmatic changes that shouldn't trigger undo saves
+  function setBodyInternal(newBody: string | ((prevBody: string) => string)) {
+    const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
     setBodyState(resolvedBody);
     
     // Trigger change detection for precise highlighting
@@ -1161,6 +1265,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const [isUndoRedoOperation, setIsUndoRedoOperation] = useState<boolean>(false);
+  const [undoInitialized, setUndoInitialized] = useState<boolean>(false);
+
+  // Initialize undo stack with initial body content (only once)
+  useEffect(() => {
+    if (!undoInitialized && body && body.trim()) {
+      // Ensure we have the current DOM content for initialization
+      const currentContent = bodyEditorRef.current?.innerHTML || body;
+      setUndoStack([currentContent]);
+      setUndoInitialized(true);
+    }
+  }, [body, undoInitialized]);
 
   // Enhanced edit tracking for precise highlighting
   const [editedTextRanges, setEditedTextRanges] = useState<{
@@ -1278,8 +1393,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         const blockSpan = sentence?.closest('[data-inserted]') as HTMLElement | null;
         if (blockSpan && lockedBlocks[blockSpan.getAttribute('data-inserted') || '']) return;
         if (sentence && editor.contains(sentence)) {
+          // Save current state before making changes (immediate, not debounced)
+          const currentContent = bodyEditorRef.current?.innerHTML || body;
+          saveToUndoStackImmediate(currentContent);
+          
           sentence.remove();
-          setBody(editor.innerHTML);
+          setBodyInternal(editor.innerHTML);
         }
         return;
       }
@@ -1404,6 +1523,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         e.preventDefault();
         const parent = target.parentElement;
         if (parent && parent === dragSentence.parentElement) {
+          // Save current state before making changes (immediate, not debounced)
+          const currentContent = bodyEditorRef.current?.innerHTML || body;
+          saveToUndoStackImmediate(currentContent);
+          
           const before = e.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
           if (before) {
             parent.insertBefore(dragSentence, target);
@@ -1412,7 +1535,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           }
           dragSentence.classList.add('drop-in');
           setTimeout(() => dragSentence.classList.remove('drop-in'), 300);
-          setBody(editor.innerHTML);
+          setBodyInternal(editor.innerHTML);
         }
       }
       target && target.classList.remove('drag-over');
@@ -1453,23 +1576,29 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     };
 
     const handleInput = (e: Event) => {
-      // Update body state immediately
-      setBodyState(editor.innerHTML);
+      // Capture the current DOM content and save it to undo stack BEFORE React state updates
+      const currentDOMContent = editor.innerHTML;
       
-      // Debounced save to undo stack and highlighting check
-      if (inputTimeoutRef.current) {
-        clearTimeout(inputTimeoutRef.current);
-      }
-      inputTimeoutRef.current = setTimeout(() => {
-        if (!isUndoRedoOperation) {
-          saveToUndoStack(body);
+      // Save to undo stack (debounced) - this captures the state BEFORE the input change
+      if (!isUndoRedoOperation && body && body.trim() && currentDOMContent !== body) {
+        if (inputTimeoutRef.current) {
+          clearTimeout(inputTimeoutRef.current);
         }
         
-        // Trigger precise highlighting detection
+        inputTimeoutRef.current = setTimeout(() => {
+          saveToUndoStack(body); // Save the React state (which is the previous state)
+        }, 300); // Shorter debounce for better responsiveness
+      }
+      
+      // Update body state immediately to reflect the change
+      setBodyState(currentDOMContent);
+      
+      // Trigger precise highlighting detection (debounced)
+      setTimeout(() => {
         const { blocks, snippets } = computeSnippetChanges();
         setEditedBlocks(blocks);
         setEditedSnippets(snippets);
-      }, 300);
+      }, 100);
     };
 
     const handleDblClick = (e: MouseEvent) => {
@@ -1701,8 +1830,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
    * Insert some HTML at the cursor. If there's no selection, we append at the end.
    */
   function insertAtCursor(html: string) {
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
+    
     if (!isSelectionInsideEditor()) {
-      setBody(body + `\n\n${html}`);
+      setBodyInternal(body + `\n\n${html}`);
       return;
     }
 
@@ -1728,7 +1861,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       saveSelection();
 
       if (bodyEditorRef.current) {
-        setBody(bodyEditorRef.current.innerHTML);
+        setBodyInternal(bodyEditorRef.current.innerHTML);
       }
     }
   }
@@ -1934,7 +2067,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       }
     }
     
-    setBody(newBody);
+    setBodyInternal(newBody);
 
     // Remove grey placeholder styling once the block is inserted
     setTimeout(() => {
@@ -2203,8 +2336,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     const updatedHtml = span.innerHTML;
     setOriginalBlockContent((prev) => ({ ...prev, [block.title]: updatedHtml }));
-    setBody(bodyEditorRef.current.innerHTML);
-    setBody(bodyEditorRef.current.innerHTML);
+    setBodyInternal(bodyEditorRef.current.innerHTML);
   }
 
   async function saveCustomSnippet(blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) {
@@ -2326,6 +2458,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   function removeBlockOption(block: TemplateBlock, optionLabel: string) {
     if (lockedBlocks[block.title]) return;
+    
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
+    
     if (block.isMultiSelect) {
       const current = Array.isArray(selectedTemplateOptions[block.title])
         ? ([...(selectedTemplateOptions[block.title] as string[])])
@@ -2349,6 +2486,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     const block = templateBlocks.find(b => b.title === title);
     if (!block) return;
     if (lockedBlocks[title]) return;
+    
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
+    
     setHiddenBlocks(prev => ({ ...prev, [title]: true }));
     if (bodyEditorRef.current) {
       const span = bodyEditorRef.current.querySelector(
@@ -2356,7 +2498,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       ) as HTMLElement | null;
       if (span) {
         span.remove();
-        setBody(bodyEditorRef.current.innerHTML);
+        setBodyInternal(bodyEditorRef.current.innerHTML);
       }
     }
   }
@@ -2851,6 +2993,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return false;
   }
   function handleClearBlock(block: TemplateBlock) {
+    // Save current state before making changes (immediate, not debounced)
+    const currentContent = bodyEditorRef.current?.innerHTML || body;
+    saveToUndoStackImmediate(currentContent);
 
     if (bodyEditorRef.current) {
       // Build a regex to capture everything between the markers.
@@ -2901,7 +3046,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         }
       }
       if (removed) {
-        setBody(updatedBody);
+        setBodyInternal(updatedBody);
         // Remove highlight right away so the user sees immediate feedback
         highlightBlock(block.title, false);
 
@@ -3519,6 +3664,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           removedBlocks={Object.keys(hiddenBlocks)}
           onAddBlock={addTemplateBlock}
           showToast={showToast}
+          undo={undo}
+          redo={redo}
+          canUndo={undoStack.length > 1}
+          canRedo={redoStack.length > 0}
         />
 
         {snippetOptionsBlock && snippetOptionsTarget && (
@@ -3723,6 +3872,25 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           isDraftConfirmed={isDraftConfirmed}
           passcode={dealPasscode}
         />
+
+        {/* Row: Preview and Reset Buttons */}
+        <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
+          <PrimaryButton
+            text="Preview Email"
+            onClick={togglePreview}
+            styles={sharedPrimaryButtonStyles}
+            ariaLabel="Preview Email"
+            iconProps={{ iconName: 'Preview' }}
+          />
+          <DefaultButton
+            text="Reset"
+            onClick={resetForm}
+            styles={sharedDefaultButtonStyles}
+            ariaLabel="Reset Form"
+            iconProps={{ iconName: 'Refresh' }}
+          />
+        </Stack>
+
         <OperationStatusToast
           visible={toast !== null}
           message={toast?.message || ''}

@@ -164,11 +164,11 @@
 .ms-Stack-inner.css-366 {
     display: flex !important;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0 !important;
     overflow: hidden;
     margin-bottom: 1rem;
-    height: 40px;
+    height: 50px;
 }
 
 .ms-Stack-inner.css-366 .tag-button {
@@ -189,12 +189,12 @@
 }
 
 .ms-Stack-inner.css-366 .tag-button:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .ms-Stack-inner.css-366 .tag-button.active,
 .ms-Stack-inner.css-366 .tag-button:hover {
-    background-color: var(--helix-cta) !important;
+    background-color: var(--helix-dark-blue) !important;
     color: #fff !important;
 }
 
@@ -204,11 +204,11 @@
 .ms-Stack-inner:has([aria-label*="Partner"]) {
     display: flex !important;
     width: 100%;
-    border: 1px solid var(--helix-cta);
+    border: 1px solid var(--helix-dark-blue);
     border-radius: 0 !important;
     overflow: hidden;
     margin-bottom: 1rem;
-    height: 40px;
+    height: 50px;
 }
 
 .ms-Stack-inner:has(.partner-segment) .partner-segment,
@@ -248,7 +248,7 @@
 .ms-Stack-inner:has([aria-label*="Solicitor"]) button:not(:last-child),
 .ms-Stack-inner:has([aria-label*="Partner"]) select:not(:last-child),
 .ms-Stack-inner:has([aria-label*="Partner"]) button:not(:last-child) {
-    border-right: 1px solid var(--helix-cta);
+    border-right: 1px solid var(--helix-dark-blue);
 }
 
 .ms-Stack-inner:has(.partner-segment) select:hover,
@@ -257,7 +257,7 @@
 .ms-Stack-inner:has([aria-label*="Solicitor"]) button:hover,
 .ms-Stack-inner:has([aria-label*="Partner"]) select:hover,
 .ms-Stack-inner:has([aria-label*="Partner"]) button:hover {
-    background-color: var(--helix-cta) !important;
+    background-color: var(--helix-dark-blue) !important;
     color: #fff !important;
 }
 
@@ -266,10 +266,10 @@
 .MultiSelect-bar {
     display: flex !important;
     width: 100%;
-    border: 1px solid var(--helix-cta) !important;
+    border: 1px solid var(--helix-dark-blue) !important;
     border-radius: 0 !important;
     overflow: hidden;
-    height: 40px;
+    height: 50px;
     margin-bottom: 1rem;
 }
 
@@ -302,7 +302,7 @@
 .MultiSelect-bar .MultiSelect-segment:not(:last-child),
 .MultiSelect-bar select:not(:last-child),
 .MultiSelect-bar button:not(:last-child) {
-    border-right: 1px solid var(--helix-cta) !important;
+    border-right: 1px solid var(--helix-dark-blue) !important;
 }
 
 .input-bar .MultiSelect-segment:hover,
@@ -313,6 +313,38 @@
 .MultiSelect-bar button:hover,
 .input-bar .MultiSelect-segment.active,
 .MultiSelect-bar .MultiSelect-segment.active {
-    background-color: var(--helix-cta) !important;
+    background-color: var(--helix-dark-blue) !important;
     color: #fff !important;
+}
+
+/* POID Grid Layout */
+.poid-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    justify-content: space-between;
+}
+
+@media (max-width: 1200px) {
+    .poid-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .poid-grid {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+
+/* POID Preview Section Styles */
+.poid-preview-section {
+    background-color: #f8f8f8;
+    border: 1px solid #e3e8ef;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.poid-preview-section:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

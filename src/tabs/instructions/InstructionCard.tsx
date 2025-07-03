@@ -238,19 +238,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         ? 'ready'
         : verifyIdStatus;
 
-    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl'>(() => {
-        if (verifyIdStatus !== 'complete') return 'eid';
-        if (!riskAssessed) return 'risk';
-        if (openMatterReady || dealOpen) return 'matter';
-        return 'risk';
-    });
-
-    useEffect(() => {
-        if (verifyIdStatus !== 'complete') setActiveTab('eid');
-        else if (!riskAssessed) setActiveTab('risk');
-        else if (openMatterReady || dealOpen) setActiveTab('matter');
-        else setActiveTab('risk');
-    }, [verifyIdStatus, riskAssessed, openMatterReady, dealOpen]);
+    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl' | null>(null);
 
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
     const tabsRef = useRef<HTMLDivElement>(null);

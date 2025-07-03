@@ -165,21 +165,51 @@
     justify-content: center;
 }
 
+
+/* compact mode hides labels until interaction */
 .bottom-tabs.compact .label {
-    display: none;
+    display: inline-flex;
+    overflow: hidden;
+    max-width: 0;
     opacity: 0;
+    transition: max-width 0.2s ease, opacity 0.2s ease;
 }
 
 .bottom-tabs.compact .bottom-tab {
     max-width: 48px;
 }
 
-.bottom-tabs.compact .bottom-tab:hover {
+
+.bottom-tabs.compact .bottom-tab:hover,
+.bottom-tabs.compact .bottom-tab:focus,
+.bottom-tabs.compact .bottom-tab:active {
     max-width: 140px;
 }
 
-.bottom-tabs.compact .bottom-tab:hover .label {
+
+.bottom-tabs.compact .bottom-tab:hover .label,
+.bottom-tabs.compact .bottom-tab:focus .label,
+.bottom-tabs.compact .bottom-tab:active .label {
+    max-width: 120px;
+    opacity: 1;
+}
+
+/* active tabs stay folded until hovered */
+
+/* hide labels by default when not in compact mode */
+.bottom-tabs:not(.compact) .bottom-tab .label {
     display: inline-flex;
+    overflow: hidden;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width 0.2s ease, opacity 0.2s ease;
+}
+
+/* reveal label on hover or when active */
+.bottom-tabs:not(.compact) .bottom-tab:hover .label,
+.bottom-tabs:not(.compact) .bottom-tab:focus .label,
+.bottom-tabs:not(.compact) .bottom-tab:active .label {
+    max-width: 120px;
     opacity: 1;
 }
 

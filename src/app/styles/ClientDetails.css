@@ -99,7 +99,7 @@
 .hero-help a {
     color: var(--helix-highlight);
     text-decoration: underline;
-    text-decoration-color: var(--helix-cta);
+    text-decoration-color: var(--helix-dark-blue);
     text-underline-offset: 2px;
     font-weight: 00;
     white-space: nowrap;

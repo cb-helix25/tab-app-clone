@@ -23,15 +23,15 @@ const DisputeValueStep: React.FC<DisputeValueStepProps> = ({ disputeValue, setDi
                         onContinue();
                     }}
                     style={{
-                        border: '1px solid var(--helix-cta)',
-                        height: '40px',
+                        border: '1px solid var(--helix-dark-blue)',
+                        height: '50px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
                         userSelect: 'none',
                         color: disputeValue === option ? '#fff' : '#061733',
-                        backgroundColor: disputeValue === option ? 'var(--helix-cta)' : 'transparent',
+                        backgroundColor: disputeValue === option ? 'var(--helix-dark-blue)' : 'transparent',
                         fontSize: '14px',
                         fontWeight: '600'
                     }}
