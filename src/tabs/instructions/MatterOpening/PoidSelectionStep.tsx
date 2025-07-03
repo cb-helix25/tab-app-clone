@@ -85,12 +85,12 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             </Stack>
         )}
         
-        {/* POID Grid */}
+        {/* POID Grid - Changed from 3 to 2 columns with auto-fit to fill available space */}
         <div 
             style={{ 
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(2, minmax(250px, 1fr))',
                 gap: '16px',
                 justifyContent: 'space-between'
             }} 

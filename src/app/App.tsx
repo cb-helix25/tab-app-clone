@@ -44,34 +44,56 @@ const App: React.FC<AppProps> = ({
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
 
-  // Existing state and callbacks (unchanged)
-  const initialPoidData: POID[] = (localIdVerifications as any[]).map((v) => ({
-    poid_id: String(v.InternalId),
-    first: v.FirstName,
-    last: v.LastName,
-    email: v.Email,
-    nationality: v.Nationality,
-    nationality_iso: v.NationalityAlpha2,
-    date_of_birth: v.DOB,
-    passport_number: v.PassportNumber,
-    drivers_license_number: v.DriversLicenseNumber,
-    house_building_number: v.HouseNumber,
-    street: v.Street,
-    city: v.City,
-    county: v.County,
-    post_code: v.Postcode,
-    country: v.Country,
-    country_code: v.CountryCode,
-    company_name: v.CompanyName,
-    company_number: v.CompanyNumber,
-    company_house_building_number: v.CompanyHouseNumber,
-    company_street: v.CompanyStreet,
-    company_city: v.CompanyCity,
-    company_county: v.CompanyCounty,
-    company_post_code: v.CompanyPostcode,
-    company_country: v.CompanyCountry,
-    company_country_code: v.CompanyCountryCode,
-  }));
+  // Map and validate POID data from localIdVerifications
+  const initialPoidData: POID[] = (localIdVerifications as any[])
+    .map((v) => ({
+      poid_id: String(v.InternalId),
+      first: v.FirstName,
+      last: v.LastName,
+      email: v.Email,
+      nationality: v.Nationality,
+      nationality_iso: v.NationalityAlpha2,
+      date_of_birth: v.DOB,
+      passport_number: v.PassportNumber,
+      drivers_license_number: v.DriversLicenseNumber,
+      house_building_number: v.HouseNumber,
+      street: v.Street,
+      city: v.City,
+      county: v.County,
+      post_code: v.Postcode,
+      country: v.Country,
+      country_code: v.CountryCode,
+      company_name: v.CompanyName,
+      company_number: v.CompanyNumber,
+      company_house_building_number: v.CompanyHouseNumber,
+      company_street: v.CompanyStreet,
+      company_city: v.CompanyCity,
+      company_county: v.CompanyCounty,
+      company_post_code: v.CompanyPostcode,
+      company_country: v.CompanyCountry,
+      company_country_code: v.CompanyCountryCode,
+      // Electronic ID verification fields
+      stage: v.stage,
+      check_result: v.EIDOverallResult,
+      pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+      address_verification_result: v.AddressVerificationResult,
+      check_expiry: v.CheckExpiry,
+      poc: v.poc,
+      prefix: v.prefix,
+      type: v.type,
+      client_id: v.ClientId,
+      matter_id: v.MatterId,
+    }))
+    // Filter out any invalid entries that don't have required fields
+    .filter(poid => 
+      poid && 
+      poid.poid_id && 
+      poid.first && 
+      poid.last && 
+      // Make sure fields aren't just numbers
+      isNaN(Number(poid.first)) && 
+      isNaN(Number(poid.last))
+    );
   const [poidData, setPoidData] = useState<POID[]>(initialPoidData);
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
@@ -105,7 +127,17 @@ const App: React.FC<AppProps> = ({
   };
 
   const handlePOID6YearsFetched = (data: any[]) => {
-    setPoidData(data);
+    // Don't override the local POID data with POID6Years data
+    console.log('POID6Years data received:', data ? data.length : 0);
+    // We should store this separately but never use it for the main POID list
+    // NEVER DO: setPoidData(data);
+    
+    // Since POID data should only come from localIdVerifications.json,
+    // we'll reset poidData to initialPoidData if it's been corrupted
+    if (poidData.length !== initialPoidData.length) {
+      console.log('Resetting POID data to initial values from localIdVerifications.json');
+      setPoidData(initialPoidData);
+    }
   };
 
   const handleTransactionsFetched = (fetchedTransactions: Transaction[]) => {

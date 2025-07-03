@@ -88,11 +88,50 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                 company_post_code: v.CompanyPostcode,
                 company_country: v.CompanyCountry,
                 company_country_code: v.CompanyCountryCode,
+                // Electronic ID verification fields
+                stage: v.stage,
+                check_result: v.EIDOverallResult,
+                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+                address_verification_result: v.AddressVerificationResult,
+                check_expiry: v.CheckExpiry,
+                poc: v.poc,
+                prefix: v.prefix,
+                type: v.type,
+                client_id: v.ClientId,
+                matter_id: v.MatterId,
             })) as POID[],
         []
     );
-    const effectivePoidData: POID[] =
-        poidData && poidData.length > 0 ? poidData : defaultPoidData;
+    
+    // Filter out any invalid POID entries that might be causing issues
+    const validPoidData = useMemo(() => {
+        return defaultPoidData.filter(poid => 
+            // Ensure each POID has at least first and last name populated
+            poid && poid.first && poid.last && 
+            // Make sure it's not just a number
+            isNaN(Number(poid.first)) && isNaN(Number(poid.last))
+        );
+    }, [defaultPoidData]);
+    
+    // Force use of only validated local POID data
+    const effectivePoidData: POID[] = validPoidData;
+        
+    // Debug log to see what POID data is being used
+    console.log('Default POID data length:', defaultPoidData.length);
+    console.log('Valid POID data length:', validPoidData.length);
+    console.log('Filtered out', defaultPoidData.length - validPoidData.length, 'invalid POID entries');
+    
+    // Log details of any filtered out entries
+    if (defaultPoidData.length !== validPoidData.length) {
+        const invalidPoids = defaultPoidData.filter(poid => 
+            !poid || !poid.first || !poid.last || 
+            !isNaN(Number(poid.first)) || !isNaN(Number(poid.last))
+        );
+        console.log('Invalid POID entries:', invalidPoids);
+    }
+    
+    console.log('Passed POID data length:', poidData?.length || 0);
+    console.log('Effective POID data length:', effectivePoidData.length);
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const localTeamData = useMemo(() => localTeamDataJson, []);

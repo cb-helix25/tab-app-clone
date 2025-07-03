@@ -148,7 +148,7 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     return (
         <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
             <Stack tokens={{ childrenGap: 20 }} styles={{ root: { maxWidth: 620, width: '100%' } }}>
-                <Stack horizontal wrap tokens={{ childrenGap: 20 }}>
+                <Stack horizontal wrap horizontalAlign="center" tokens={{ childrenGap: 20 }}>
                     <DatePicker
                         label="Compliance Date"
                         value={complianceDate}
@@ -248,7 +248,7 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                         })
                     }
                 />
-                <Stack horizontal wrap tokens={{ childrenGap: 20 }}>
+                <Stack horizontal wrap horizontalAlign="center" tokens={{ childrenGap: 20 }}>
                     <BigOptionGroup
                         label="I have considered client risk factors"
                         options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}

@@ -178,6 +178,9 @@ export interface POID {
   company_country_code?: string;
   stage?: string;
   check_result?: string;
+  pep_sanctions_result?: string;
+  address_verification_result?: string;
+  check_expiry?: string;
   check_id?: string;
   additional_id_submission_id?: string;
   additional_id_submission_url?: string;

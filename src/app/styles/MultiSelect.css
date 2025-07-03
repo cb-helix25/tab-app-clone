@@ -85,7 +85,7 @@
     text-align: center;
     cursor: pointer;
     user-select: none;
-    color: #061733 !important;
+    color: #061733;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -97,7 +97,7 @@
 
 .have-funds-bar .MultiSelect-segment.active {
     background-color: var(--helix-dark-blue);
-    color: #fff;
+    color: #fff !important;
 }
 
 .partner-segment {

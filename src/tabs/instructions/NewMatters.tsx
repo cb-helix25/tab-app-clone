@@ -87,11 +87,32 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 company_post_code: v.CompanyPostcode,
                 company_country: v.CompanyCountry,
                 company_country_code: v.CompanyCountryCode,
+                // Electronic ID verification fields
+                stage: v.stage,
+                check_result: v.EIDOverallResult,
+                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+                address_verification_result: v.AddressVerificationResult,
+                check_expiry: v.CheckExpiry,
+                poc: v.poc,
+                prefix: v.prefix,
+                type: v.type,
+                client_id: v.ClientId,
+                matter_id: v.MatterId,
             })) as POID[],
         []
     );
-    const effectivePoidData: POID[] =
-        poidData && poidData.length > 0 ? poidData : defaultPoidData;
+    // Filter out any invalid POID entries that might be causing issues
+    const validPoidData = useMemo(() => {
+        return defaultPoidData.filter(poid => 
+            // Ensure each POID has at least first and last name populated
+            poid && poid.first && poid.last && 
+            // Make sure it's not just a number
+            isNaN(Number(poid.first)) && isNaN(Number(poid.last))
+        );
+    }, [defaultPoidData]);
+    
+    // Force use of only validated local POID data
+    const effectivePoidData: POID[] = validPoidData;
 
     const idExpiry = useMemo(() => {
         const d = new Date();

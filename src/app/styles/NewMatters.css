@@ -317,23 +317,23 @@
     color: #fff !important;
 }
 
-/* POID Grid Layout */
+/* POID Grid Layout - Updated to always show 2 cards per row with proper spacing */
 .poid-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(280px, 1fr)) !important;
+    gap: 20px;
     justify-content: space-between;
+    width: 100%;
 }
 
-@media (max-width: 1200px) {
-    .poid-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+/* Override inline styles that might be applied */
+div[style*="grid-template-columns: repeat(3, 1fr)"].poid-grid {
+    grid-template-columns: repeat(2, minmax(280px, 1fr)) !important;
 }
 
 @media (max-width: 768px) {
     .poid-grid {
-        grid-template-columns: repeat(1, 1fr);
+        grid-template-columns: repeat(1, 1fr) !important;
     }
 }
 

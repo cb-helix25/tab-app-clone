@@ -1,135 +1,176 @@
-diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
-index 811f84fac87427f6201e448f3b2bbeacb07481ff..2b84540b6354304a2ce61f57e99a47ddf2815921 100644
---- a/src/tabs/instructions/RiskAssessmentPage.tsx
-+++ b/src/tabs/instructions/RiskAssessmentPage.tsx
-@@ -1,29 +1,30 @@
- import React, { useState } from 'react';
- import { Stack, PrimaryButton } from '@fluentui/react';
- import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
- import { dashboardTokens } from './componentTokens';
-+import '../../app/styles/NewMatters.css';
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 05081273a361a1c91fba8c5801a233c96f5f9a7a..7ead325200483c8d3fad21a71a8833f76160ae1a 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -848,50 +848,53 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
+   const [prevRecoveredData, setPrevRecoveredData] = useState<number | null>(null);
+   const [transactions, setTransactions] = useState<Transaction[]>([]);
+   const [recoveredError, setRecoveredError] = useState<string | null>(null);
+   const [prevRecoveredError, setPrevRecoveredError] = useState<string | null>(null);
+   const [isLoadingWipClio, setIsLoadingWipClio] = useState<boolean>(false);
+   const [isLoadingRecovered, setIsLoadingRecovered] = useState<boolean>(false);
+   const [futureLeaveRecords, setFutureLeaveRecords] = useState<AnnualLeaveRecord[]>([]);
+   const [annualLeaveTotals, setAnnualLeaveTotals] = useState<any>(null);
+   const [isActionsLoading, setIsActionsLoading] = useState<boolean>(true);
  
- interface RiskAssessmentPageProps {
-     onBack: () => void;
-     instructionRef?: string;
-     riskAssessor?: string;
-     /** Existing risk assessment data to display when available */
-     existingRisk?: any | null;
- }
+   const [allMatters, setAllMatters] = useState<Matter[] | null>(null);
+   const [allMattersError, setAllMattersError] = useState<string | null>(null);
+   const [isLoadingAllMatters, setIsLoadingAllMatters] = useState<boolean>(false);
  
- const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
-     const [riskCore, setRiskCore] = useState<RiskCore>({
-         clientType: existingRisk?.ClientType ?? '',
-         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
-         destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
-         destinationOfFundsValue: existingRisk?.DestinationOfFunds_Value ?? 0,
-         fundsType: existingRisk?.FundsType ?? '',
-         fundsTypeValue: existingRisk?.FundsType_Value ?? 0,
-         clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
-         clientIntroducedValue: existingRisk?.HowWasClientIntroduced_Value ?? 0,
-         limitation: existingRisk?.Limitation ?? '',
-         limitationValue: existingRisk?.Limitation_Value ?? 0,
-         sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
-         sourceOfFundsValue: existingRisk?.SourceOfFunds_Value ?? 0,
-         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
-         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
-diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
-index 811f84fac87427f6201e448f3b2bbeacb07481ff..2b84540b6354304a2ce61f57e99a47ddf2815921 100644
---- a/src/tabs/instructions/RiskAssessmentPage.tsx
-+++ b/src/tabs/instructions/RiskAssessmentPage.tsx
-@@ -104,62 +105,64 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
-                     HowWasClientIntroduced: riskCore.clientIntroduced,
-                     HowWasClientIntroduced_Value: riskCore.clientIntroducedValue,
-                     Limitation: riskCore.limitation,
-                     Limitation_Value: riskCore.limitationValue,
-                     SourceOfFunds: riskCore.sourceOfFunds,
-                     SourceOfFunds_Value: riskCore.sourceOfFundsValue,
-                     ValueOfInstruction: riskCore.valueOfInstruction,
-                     ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
-                     TransactionRiskLevel: transactionRiskLevel,
-                     ClientRiskFactorsConsidered: consideredClientRisk,
-                     TransactionRiskFactorsConsidered: consideredTransactionRisk,
-                     FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
-                     FirmWideAMLPolicyConsidered: consideredFirmWideAML,
-                     RiskScore: riskScore,
-                     RiskScoreIncrementBy: riskScore,
-                     RiskAssessmentResult: riskResult,
-                 }),
-             });
-         } catch (err) {
-             console.error('❌ Risk assessment submit failed', err);
-         }
-         onBack();
-     };
+   const [timeMetricsCollapsed, setTimeMetricsCollapsed] = useState(false);
+   const [conversionMetricsCollapsed, setConversionMetricsCollapsed] = useState(false);
  
-     return (
--        <Stack tokens={dashboardTokens}>
-+        <Stack tokens={dashboardTokens} className="workflow-container">
-             <PrimaryButton text="Back" onClick={onBack} style={{ marginBottom: 16 }} />
--            {existingRisk && (
--                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
--                    <h3>Existing Assessment</h3>
--                    <ul className="detail-list">
--                        {Object.entries(existingRisk).map(([k, v]) => (
--                            v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
--                        ))}
--                    </ul>
--                </Stack>
--            )}
--            <RiskAssessment
--                riskCore={riskCore}
--                setRiskCore={setRiskCore}
--                complianceDate={complianceDate}
--                setComplianceDate={setComplianceDate}
--                complianceExpiry={complianceExpiry}
--                setComplianceExpiry={setComplianceExpiry}
--                consideredClientRisk={consideredClientRisk}
--                setConsideredClientRisk={setConsideredClientRisk}
--                consideredTransactionRisk={consideredTransactionRisk}
--                setConsideredTransactionRisk={setConsideredTransactionRisk}
--                transactionRiskLevel={transactionRiskLevel}
--                setTransactionRiskLevel={setTransactionRiskLevel}
--                consideredFirmWideSanctions={consideredFirmWideSanctions}
--                setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
--                consideredFirmWideAML={consideredFirmWideAML}
--                setConsideredFirmWideAML={setConsideredFirmWideAML}
--                onContinue={handleContinue}
--                isComplete={isComplete}
--            />
-+            <div className="workflow-main">
-+                {existingRisk && (
-+                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
-+                        <h3>Existing Assessment</h3>
-+                        <ul className="detail-list">
-+                            {Object.entries(existingRisk).map(([k, v]) => (
-+                                v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
-+                            ))}
-+                        </ul>
-+                    </Stack>
-+                )}
-+                <RiskAssessment
-+                    riskCore={riskCore}
-+                    setRiskCore={setRiskCore}
-+                    complianceDate={complianceDate}
-+                    setComplianceDate={setComplianceDate}
-+                    complianceExpiry={complianceExpiry}
-+                    setComplianceExpiry={setComplianceExpiry}
-+                    consideredClientRisk={consideredClientRisk}
-+                    setConsideredClientRisk={setConsideredClientRisk}
-+                    consideredTransactionRisk={consideredTransactionRisk}
-+                    setConsideredTransactionRisk={setConsideredTransactionRisk}
-+                    transactionRiskLevel={transactionRiskLevel}
-+                    setTransactionRiskLevel={setTransactionRiskLevel}
-+                    consideredFirmWideSanctions={consideredFirmWideSanctions}
-+                    setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
-+                    consideredFirmWideAML={consideredFirmWideAML}
-+                    setConsideredFirmWideAML={setConsideredFirmWideAML}
-+                    onContinue={handleContinue}
-+                    isComplete={isComplete}
-+                />
-+            </div>
-         </Stack>
+   const [poid6Years, setPoid6Years] = useState<any[] | null>(null);
+   const [isLoadingPOID6Years, setIsLoadingPOID6Years] = useState<boolean>(false);
+   const [poid6YearsError, setPoid6YearsError] = useState<string | null>(null);
+ 
+   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
+ 
+   // Show immediate actions overlay (and Dismiss button) when there are immediate actions on first render
+   const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
++  const [hasSeenFocusOverlay, setHasSeenFocusOverlay] = useState<boolean>(() =>
++    localStorage.getItem('hasSeenImmediateActions') === 'true'
++  );
+ 
+   // Show overlay when immediate actions become available (first time only)
+   // This effect must run AFTER immediateActionsList is defined
+   // So we place it after immediateActionsList declaration
+ 
+   const [annualLeaveAllData, setAnnualLeaveAllData] = useState<any[]>([]);
+ 
+   const [outstandingBalancesData, setOutstandingBalancesData] = useState<any | null>(null);
+ 
+   const [futureBookings, setFutureBookings] = useState<FutureBookingsResponse>({
+     boardroomBookings: [],
+     soundproofBookings: []
+   });
+ 
+   // Pending snippet edits for approval
+   const [snippetEdits, setSnippetEdits] = useState<SnippetEdit[]>([]);
+ 
+   // Fetch pending snippet edits and prefetch snippet blocks
+   useEffect(() => {
+     const useLocal = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
+ 
+     const fetchEditsAndBlocks = async () => {
+       if (useLocal) {
+         setSnippetEdits(localSnippetEdits as SnippetEdit[]);
+         if (!sessionStorage.getItem('prefetchedBlocksData')) {
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 05081273a361a1c91fba8c5801a233c96f5f9a7a..7ead325200483c8d3fad21a71a8833f76160ae1a 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2475,104 +2478,109 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
+       });
+     }
+     if (instructionData.length > 0) {
+       actions.push({
+         title: 'Review Instructions',
+         icon: 'OpenFile',
+         onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
+       });
+     }
+     actions.push(
+       ...immediateALActions.map(a => ({
+         ...a,
+         icon: a.icon || '',
+       }))
      );
- };
+     actions.sort(
+       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+     );
+     return actions;
+   }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
  
- export default RiskAssessmentPage;
+   // Show overlay when immediate actions become available (first time only)
+   const prevImmediateActionsReady = useRef<boolean>(false);
+   const prevImmediateActionsCount = useRef<number>(0);
+   useEffect(() => {
+-    // Only trigger if immediate actions are ready and there are actions, and overlay is not already shown
++    // Only trigger if immediate actions are ready and there are actions, overlay not shown,
++    // and the user hasn't seen it before
+     if (
+       immediateActionsReady &&
+       immediateActionsList &&
+       immediateActionsList.length > 0 &&
+       !showFocusOverlay &&
++      !hasSeenFocusOverlay &&
+       (!prevImmediateActionsReady.current || prevImmediateActionsCount.current === 0)
+     ) {
+       setShowFocusOverlay(true);
+     }
+     prevImmediateActionsReady.current = immediateActionsReady;
+     prevImmediateActionsCount.current = immediateActionsList ? immediateActionsList.length : 0;
+-  }, [immediateActionsReady, immediateActionsList, showFocusOverlay]);
++  }, [immediateActionsReady, immediateActionsList, showFocusOverlay, hasSeenFocusOverlay]);
+ 
+   const normalQuickActions = useMemo(() => {
+     const actions = quickActions
+       .filter((action) => {
+         if (action.title === 'Confirm Attendance') {
+           return currentUserConfirmed;
+         }
+         if (action.title === 'Request Annual Leave') {
+           return true;
+         }
+         return true;
+       })
+       .map((action) => {
+         if (action.title === 'Confirm Attendance') {
+           return { ...action, title: 'Update Attendance' };
+         }
+         return action;
+       });
+     actions.sort(
+       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
+     );
+     return actions;
+   }, [currentUserConfirmed]);
+ 
+   useEffect(() => {
+     setContent(
+       <>
+         <QuickActionsBar
+           isDarkMode={isDarkMode}
+           quickActions={normalQuickActions}
+           handleActionClick={handleActionClick}
+           currentUserConfirmed={currentUserConfirmed}
+-          highlighted={showFocusOverlay}
+         />
+         <ImmediateActionsBar
+           isDarkMode={isDarkMode}
+           immediateActionsReady={immediateActionsReady}
+           immediateActionsList={immediateActionsList}
+           highlighted={showFocusOverlay}
+           showDismiss={showFocusOverlay}
+-          onDismiss={() => setShowFocusOverlay(false)}
++          onDismiss={() => {
++            setShowFocusOverlay(false);
++            localStorage.setItem('hasSeenImmediateActions', 'true');
++            setHasSeenFocusOverlay(true);
++          }}
+         />
+       </>
+     );
+     return () => setContent(null);
+   }, [
+     setContent,
+     isDarkMode,
+     immediateActionsReady,
+     immediateActionsList,
+     normalQuickActions,
+     currentUserConfirmed,
+     showFocusOverlay,
+   ]);
+ 
+   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)
+   const getShortDayLabel = (date: Date): string =>
+     date.toLocaleDateString('en-GB', { weekday: 'narrow' });
+ 
+   // Optionally, if you want to include the date as well (e.g. "M 10")
+   const getShortDayAndDateLabel = (date: Date): string => {
+     const shortDay = getShortDayLabel(date);
+     const dayOfMonth = date.getDate();
+     return `${shortDay} ${dayOfMonth}`;
+   };
+ 
