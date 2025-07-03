@@ -12,7 +12,14 @@ import {
     StepKey,
 } from './MatterOpening/config';
 // Import local team data
-import teamDataJson from '../../../data/team-sql-data.json';
+import teamDataJson from '../../localData/team-sql-data.json';
+
+
+
+
+    // ...existing code...
+
+
 
 // Components for individual steps
 import ClientInfoStep from './MatterOpening/ClientInfoStep';
@@ -139,11 +146,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 member['Full Name'] || `${member.First || ''} ${member.Last || ''}`.trim(),
             )
             .filter(Boolean);
-        
-        // Debug logging
-        console.log('Active team data:', activeTeam);
-        console.log('Team member options:', options);
-        
         return options;
     }, [teamData, localTeamData]);
 
@@ -215,7 +217,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [description, setDescription] = useState('');
     const [folderStructure, setFolderStructure] = useState('');
     const [disputeValue, setDisputeValue] = useState('');
-    const [source, setSource] = useState('');
+    // Preselect "Search" as the default value for the source field
+    const [source, setSource] = useState('search');
     const [referrerName, setReferrerName] = useState('');
 
     const [opponentName, setOpponentName] = useState('');
@@ -329,6 +332,22 @@ const NewMatters: React.FC<NewMattersProps> = ({
         [stepsOrder]
     );
 
+    // Nickname for requesting user (must be after all hooks/variables are defined)
+    const requestingUserNickname = React.useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam && userInitials) {
+            const found = activeTeam.find((member: any) => {
+                const initials = (member.Initials || member['Initials'] || '').toLowerCase();
+                return initials === userInitials.toLowerCase();
+            });
+            if (found) {
+                const nickname = found.Nickname || found['Nickname'] || found.First || found['First'] || found['Full Name'] || '';
+                return nickname;
+            }
+        }
+        return '';
+    }, [teamData, localTeamData, userInitials]);
+
     const stepDetails = React.useMemo(() => ({
         clientInfo: (
             <div>
@@ -396,6 +415,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setSource={setSource}
                         referrerName={referrerName}
                         setReferrerName={setReferrerName}
+                        requestingUser={requestingUserNickname}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1

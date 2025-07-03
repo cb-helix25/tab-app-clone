@@ -22,6 +22,7 @@ interface ClientInfoStepProps {
     setSource: (v: string) => void;
     referrerName: string;
     setReferrerName: (v: string) => void;
+    requestingUser: string;
     onContinue?: () => void;
 }
 
@@ -43,6 +44,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     setIsDateCalloutOpen,
     dateButtonRef,
     partnerOptions,
+    requestingUser,
     onContinue,
 }) => {
     const separatorStyle = mergeStyles({
@@ -63,13 +65,19 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
         <Stack tokens={{ childrenGap: 12 }}>
             {/* Date Section */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="question-banner">Date</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontWeight: 600, fontSize: 16 }}>
                             {selectedDate ? selectedDate.toLocaleDateString() : 'Select Date'}
                         </span>
                         <span style={{ color: '#888', fontSize: 15 }}>{liveTime}</span>
+                    </div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="question-banner">User Requesting File</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 16, color: '#888' }}>{requestingUser}</span>
                     </div>
                 </div>
             </div>
@@ -128,13 +136,13 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             <div>
                 <div className="question-banner">Select Source</div>
                 <div className="MultiSelect-bar">
-                    {['referral', 'organic search', 'paid search', 'your following', 'tbc'].map((option) => (
+                    {['Search', 'Referral', 'Your Following', 'Uncertain'].map((option) => (
                         <div
                             key={option}
-                            className={`MultiSelect-segment${source === option ? ' active' : ''}`}
+                            className={`MultiSelect-segment${source === option.toLowerCase() ? ' active' : ''}`}
                             onClick={() => {
-                                setSource(option);
-                                if (option !== 'referral') setReferrerName('');
+                                setSource(option.toLowerCase());
+                                if (option !== 'Referral') setReferrerName('');
                             }}
                             style={{ textTransform: 'capitalize' }}
                         >

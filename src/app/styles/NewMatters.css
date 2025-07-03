@@ -1,4 +1,5 @@
 /* Styles adapted from the reference checkout process */
+/* Ensure workflow always aligns to the top, never centers vertically */
 .ms-Stack.workflow-container {
     width: 100%;
     padding: 10px;
@@ -7,7 +8,9 @@
     box-sizing: border-box;
     border-radius: 0 !important;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
 }
     
     .workflow-main {

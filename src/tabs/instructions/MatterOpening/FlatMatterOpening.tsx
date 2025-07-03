@@ -12,6 +12,7 @@ import {
     partnerOptions as defaultPartners,
 } from './config';
 import localTeamDataJson from '../../../localData/team-sql-data.json';
+import localUserData from '../../../localData/localUserData.json';
 
 import ClientInfoStep from './ClientInfoStep';
 import PoidSelectionStep from './PoidSelectionStep';
@@ -116,22 +117,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     // Force use of only validated local POID data
     const effectivePoidData: POID[] = validPoidData;
         
-    // Debug log to see what POID data is being used
-    console.log('Default POID data length:', defaultPoidData.length);
-    console.log('Valid POID data length:', validPoidData.length);
-    console.log('Filtered out', defaultPoidData.length - validPoidData.length, 'invalid POID entries');
-    
-    // Log details of any filtered out entries
-    if (defaultPoidData.length !== validPoidData.length) {
-        const invalidPoids = defaultPoidData.filter(poid => 
-            !poid || !poid.first || !poid.last || 
-            !isNaN(Number(poid.first)) || !isNaN(Number(poid.last))
-        );
-        console.log('Invalid POID entries:', invalidPoids);
-    }
-    
-    console.log('Passed POID data length:', poidData?.length || 0);
-    console.log('Effective POID data length:', effectivePoidData.length);
+    // Debug logging removed
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const localTeamData = useMemo(() => localTeamDataJson, []);
@@ -191,7 +177,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [description, setDescription] = useState('');
     const [folderStructure, setFolderStructure] = useState('');
     const [disputeValue, setDisputeValue] = useState('');
-    const [source, setSource] = useState('');
+    // Preselect "Search" as the default value for the source field
+    const [source, setSource] = useState('search');
     const [referrerName, setReferrerName] = useState('');
     const [opponentName, setOpponentName] = useState('');
     const [opponentEmail, setOpponentEmail] = useState('');
@@ -240,6 +227,39 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         }
     };
 
+    // Helper to get nickname from localUserData
+    function getLocalUserNickname(userInitials: string): string {
+        if (!userInitials) return '';
+        const found = (localUserData as any[]).find(
+            (u) => (u.Initials || '').toLowerCase() === userInitials.toLowerCase()
+        );
+        return found ? found.Nickname || found.First || found['Full Name'] || '' : '';
+    }
+
+    // Helper to get nickname from team data
+    function getTeamNickname(userInitials: string, teamData: any[]): string {
+        if (!userInitials || !teamData) return '';
+        const found = teamData.find(
+            (u) => (u.Initials || '').toLowerCase() === userInitials.toLowerCase()
+        );
+        return found ? found.Nickname || found.First || found['Full Name'] || '' : '';
+    }
+
+    // Helper to get only first names for partners
+    function getPartnerFirstNames(teamData: any[]): string[] {
+        if (!teamData) return [];
+        return teamData
+            .filter((member: any) => member.Role === 'Partner')
+            .map((member: any) => member.First || member['First'] || '')
+            .filter(Boolean);
+    }
+
+    // Determine requesting user nickname based on environment
+    const requestingUserNickname =
+        process.env.NODE_ENV === 'production'
+            ? getTeamNickname(userInitials, teamData || localTeamDataJson)
+            : getLocalUserNickname(userInitials);
+
     return (
         <CompletionProvider>
             <Stack className="workflow-container">
@@ -271,11 +291,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             isDateCalloutOpen={isDateCalloutOpen}
                             setIsDateCalloutOpen={setIsDateCalloutOpen}
                             dateButtonRef={dateButtonRef}
-                            partnerOptions={partnerOptionsList}
+                            partnerOptions={getPartnerFirstNames(teamData || localTeamDataJson)}
                             source={source}
                             setSource={setSource}
                             referrerName={referrerName}
                             setReferrerName={setReferrerName}
+                            requestingUser={requestingUserNickname}
                         />
                     </StepWrapper>
                     {showPoidSelection && (
