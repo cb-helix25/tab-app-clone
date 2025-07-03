@@ -1,4 +1,4 @@
-// --- Imports ---
+// ---   Imports ---
 import { Stack, Text, mergeStyles, Icon } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
@@ -15,7 +15,7 @@ const verificationButtonStyle = (status: string) => ({
     fontSize: '0.9rem', // Match banner font size
     fontWeight: 600,
     borderRadius: 0,
-    border: '2px solid',
+    border: '1px solid', // Changed from 2px to 1px for a neater look
     borderColor: status === 'passed' ? '#107C10' : '#FFB900',
     background: status === 'passed' ? '#e6f4ea' : '#fffbe6',
     color: status === 'passed' ? '#107C10' : '#b88600',
@@ -85,7 +85,6 @@ const baseCardStyle = mergeStyles({
     width: '100%',
     minWidth: '280px', // Adjusted for 2-card layout
     maxWidth: '450px', // Increased maximum width for better use of space
-    height: '240px',
     cursor: 'pointer',
     background: 'linear-gradient(135deg, #ffffff, #f9f9f9)',
     boxSizing: 'border-box',
@@ -97,10 +96,6 @@ const baseCardStyle = mergeStyles({
         ':hover': {
             transform: 'translateY(-4px)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        },
-        // Show profile links container on hover
-        ':hover .profileLink': {
-            opacity: 1,
         },
         // Show icon in full opacity on hover
         ':hover .backgroundIcon': {
@@ -116,7 +111,7 @@ const darkCardStyle = mergeStyles({
 });
 
 const selectedCardStyle = mergeStyles({
-    border: `2px solid ${colours.highlight}`,
+    // border removed to prevent card from shrinking or shifting
     background: 'linear-gradient(135deg, #e0f3ff, #cce7ff)',
     fontFamily: 'Raleway, sans-serif',
 });
@@ -183,25 +178,8 @@ const contentStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
-    paddingRight: '10px', // Reduced padding to allow content to use more width
-    paddingBottom: '10px', // Standard padding
     overflow: 'visible', // Allow content to expand naturally
     width: '100%', // Ensure content uses full width
-});
-
-// New style for the profile link container - only visible on hover, positioned at bottom of card above ID
-const profileLinkContainer = mergeStyles({
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    position: 'static', // Not absolutely positioned, so it flows with content
-    padding: '0',
-    opacity: 0,
-    pointerEvents: 'none',
-    height: 0,
-    transition: 'opacity 0.25s cubic-bezier(0.4,0,0.2,1), height 0.25s cubic-bezier(0.4,0,0.2,1)',
-    overflow: 'hidden',
 });
 
 // Animate in the links on card hover
@@ -275,15 +253,15 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     // (Removed unused bannerClass and dobDisplay)
 
     return (
-        <div onClick={onClick} className={cardStyles}>
+        <div onClick={onClick} className={mergeStyles(cardStyles, 'poid-card')}>
             {/* Background icon */}
-            <Icon iconName={backgroundIconName} className={`${backgroundIconStyle} backgroundIcon`} />
+            {/* Removed large background icon for modern look */}
 
             {/* Content Area - Main information */}
             <div className={contentStyle}>
                 <Stack tokens={{ childrenGap: 8 }}>
                     {/* Client's Name */}
-                    <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                    <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
                         <Text
                             variant="mediumPlus"
                             styles={{
@@ -295,25 +273,41 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                 },
                             }}
                         >
+                            {poid.client_id && poid.company_name && (
+                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>
+                                    {typeof poid.company_name === 'string' ? poid.company_name : '[Company Name]'} -
+                                </span>
+                            )}
                             {poid.prefix ? `${poid.prefix} ` : ''}
                             {poid.first ? poid.first : '[No First Name]'} {poid.last ? poid.last : '[No Last Name]'}
                         </Text>
-                        {/* Age next to name if DOB available */}
                         {poid.date_of_birth && (
                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
                                 {calculateAge(poid.date_of_birth)}
                             </Text>
                         )}
-                        {/* Country alpha after age */}
                         {poid.nationality_iso && (
                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
                                 {poid.nationality_iso}
                             </Text>
                         )}
+                        <div style={{ flex: 1 }} />
+                        <Icon
+                            iconName={backgroundIconName}
+                            style={{
+                                fontSize: 22, // smaller icon
+                                opacity: 0.3,
+                                transition: 'opacity 0.2s',
+                                color: colours.highlight,
+                                marginLeft: 8,
+                                verticalAlign: 'middle',
+                            }}
+                            className="inlinePersonCompanyIcon"
+                        />
                     </Stack>
                     
-                    {/* Company Name if applicable */}
-                    {poid.type === "Yes" && poid.company_name && (
+                    {/* Company Name if applicable and no client_id (to avoid duplication) */}
+                    {poid.type === "Yes" && poid.company_name && !poid.client_id && (
                         <Text
                             variant="small"
                             styles={{ root: { fontFamily: 'Raleway, sans-serif', color: '#555', lineHeight: '1.2' } }}
@@ -392,27 +386,35 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                     </span>
                                 )}
                             </div>
-                            {/* Read-only info container for check date and correlation id */}
-                            {poid.check_expiry && (
+                            {/* Read-only info container for check date and check id/correlation id */}
+                            {(poid.check_expiry || poid.check_id) && (
                                 <div
                                     style={{
                                         background: '#f7f7fa',
                                         border: '1px solid #e1dfdd',
                                         borderRadius: 4,
                                         padding: '6px 12px',
-                                        margin: '8px 0 12px 0',
+                                        margin: '10px 0 10px 0',
                                         fontSize: '0.85rem',
                                         color: '#444',
                                         display: 'block',
                                     }}
                                 >
                                     <div>
-                                        <b>Check Date:</b> {new Date(poid.check_expiry).toLocaleDateString()}
+                                        <b>Date:</b> {poid.check_expiry ? new Date(poid.check_expiry).toLocaleDateString() : '—'}
                                     </div>
+                                    {poid.check_id && (
+                                        <>
+                                            <div style={{ borderTop: '1px solid #e1dfdd', margin: '6px 0' }} />
+                                            <div>
+                                                <b>ID:</b> {poid.check_id}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
                             {/* Verification details as a status list (no expiry here) */}
-                            <div style={{ display: 'flex', marginLeft: 0, marginTop: 10, marginBottom: 10, width: '100%' }}>
+                            <div style={{ display: 'flex', marginLeft: 0, marginTop: 0, marginBottom: 0, width: '100%' }}>
                                 {poid.pep_sanctions_result && (
                                     <span style={verificationButtonStyle(poid.pep_sanctions_result.toLowerCase())}>
                                         PEP & Sanctions: {poid.pep_sanctions_result}
@@ -429,53 +431,23 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                 </Stack>
             </div>
             
-            {/* Profile links container - fixed position at bottom, above POID ID */}
-            <div className={`${profileLinkContainer} profileLink`}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {poid.client_id && (
-                        <a
-                            href={`https://eu.app.clio.com/nc/#/contacts/${poid.client_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={profileButtonStyle}
-                            onClick={(e) => e.stopPropagation()} // Prevent card click when clicking link
-                        >
-                            <Icon iconName="Contact" styles={{ root: { marginRight: 2, fontSize: '10px' } }} />
-                            <Text variant="small" styles={{ root: { fontSize: '10px' } }}>Client</Text>
-                        </a>
-                    )}
-                    {poid.matter_id && (
-                        <a
-                            href={`https://eu.app.clio.com/nc/#/matters/${poid.matter_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={profileButtonStyle}
-                            onClick={(e) => e.stopPropagation()} // Prevent card click when clicking link
-                        >
-                            <Icon iconName="Folder" styles={{ root: { marginRight: 2, fontSize: '10px' } }} />
-                            <Text variant="small" styles={{ root: { fontSize: '10px' } }}>Matter</Text>
-                        </a>
-                    )}
-                </div>
-            </div>
-
             {/* Selected icon */}
-            {selected && <Icon iconName="Accept" className={iconStyle} />}
+            {/* Do not show tick icon when selected */}
 
             {/* Bottom container with POID ID */}
             <div className={bottomContainerStyle}>
-                <Text 
-                    variant="small" 
-                    className={idTextStyle}
-                >
-                    {poid.poid_id}
-                </Text>
+                {/* Removed internal POID ID display */}
                 {badgeInitials && (
                     <div className={badgeStyle} aria-label={`POC: ${badgeInitials}`}>
                         {badgeInitials}
                     </div>
                 )}
             </div>
+            <style>{`
+                .poid-card:hover .inlinePersonCompanyIcon {
+                    opacity: 1 !important;
+                }
+            `}</style>
         </div>
     );
 };

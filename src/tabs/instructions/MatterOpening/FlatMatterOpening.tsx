@@ -81,21 +81,22 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                 post_code: v.Postcode,
                 country: v.Country,
                 country_code: v.CountryCode,
-                company_name: v.CompanyName,
-                company_number: v.CompanyNumber,
-                company_house_building_number: v.CompanyHouseNumber,
-                company_street: v.CompanyStreet,
-                company_city: v.CompanyCity,
-                company_county: v.CompanyCounty,
-                company_post_code: v.CompanyPostcode,
-                company_country: v.CompanyCountry,
-                company_country_code: v.CompanyCountryCode,
+                company_name: v.company_name || v.CompanyName,
+                company_number: v.company_number || v.CompanyNumber,
+                company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
+                company_street: v.company_street || v.CompanyStreet,
+                company_city: v.company_city || v.CompanyCity,
+                company_county: v.company_county || v.CompanyCounty,
+                company_post_code: v.company_post_code || v.CompanyPostcode,
+                company_country: v.company_country || v.CompanyCountry,
+                company_country_code: v.company_country_code || v.CompanyCountryCode,
                 // Electronic ID verification fields
                 stage: v.stage,
                 check_result: v.EIDOverallResult,
                 pep_sanctions_result: v.PEPAndSanctionsCheckResult,
                 address_verification_result: v.AddressVerificationResult,
                 check_expiry: v.CheckExpiry,
+                check_id: v.EIDCheckId, // <-- Add this line to map EIDCheckId to check_id
                 poc: v.poc,
                 prefix: v.prefix,
                 type: v.type,
@@ -281,7 +282,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         return (
             <div className="workflow-main matter-opening-card">
                 <div className="step-header active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                    <h3 className="step-title" style={{ margin: 0 }}>Please Select all related clients</h3>
+                    <h3 className="step-title" style={{ margin: 0 }}>Select Clients</h3>
                     <MinimalSearchBox value={poidSearchTerm} onChange={setPoidSearchTerm} />
                 </div>
                 <div className="step-content active">
