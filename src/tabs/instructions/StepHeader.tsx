@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, Children, isValidElement, ReactElement } from 'react';
 import '../../app/styles/NewMatters.css';
 import { componentTokens } from '../../app/styles/componentTokens';
 
@@ -16,6 +16,7 @@ interface StepHeaderProps {
     summary?: React.ReactNode;
     /** Hide the plus/minus toggle icon for a cleaner checkout style */
     hideToggle?: boolean;
+    children?: React.ReactNode;
 }
 
 const StepHeader: React.FC<StepHeaderProps> = ({
@@ -31,7 +32,62 @@ const StepHeader: React.FC<StepHeaderProps> = ({
     dimOnLock = true,
     summary,
     hideToggle = false,
+    children,
 }) => {
+    const [hasPrefilledValues, setHasPrefilledValues] = useState(false);
+    
+    // Check if content has prefilled values on mount
+    useEffect(() => {
+        if (summary && summary !== '') {
+            setHasPrefilledValues(true);
+            return;
+        }
+        
+        // If children are present, check for prefilled values
+        if (children) {
+            // Recursively check child props for non-empty values
+            const checkProps = (child: React.ReactNode): boolean => {
+                if (!isValidElement(child)) return false;
+                
+                const childElement = child as ReactElement;
+                
+                // Check common form field props that might indicate prefilled values
+                const propsToCheck = [
+                    'value', 'selectedDate', 'teamMember', 'supervisingPartner', 
+                    'originatingSolicitor', 'clientType', 'selectedPoidIds', 
+                    'areaOfWork', 'practiceArea', 'description', 'folderStructure', 
+                    'disputeValue', 'source', 'referrerName', 'opponentName'
+                ];
+                
+                for (const propName of propsToCheck) {
+                    const propValue = (childElement.props as any)[propName];
+                    if (propValue !== undefined && 
+                        propValue !== null && 
+                        propValue !== '' && 
+                        !(Array.isArray(propValue) && propValue.length === 0)) {
+                        return true;
+                    }
+                }
+                
+                // Check children of this element
+                if (childElement.props.children) {
+                    if (Array.isArray(childElement.props.children)) {
+                        return childElement.props.children.some(checkProps);
+                    } else {
+                        return checkProps(childElement.props.children);
+                    }
+                }
+                
+                return false;
+            };
+            
+            setHasPrefilledValues(checkProps(children));
+        }
+    }, [children, summary]);
+    
+    // Consider a step complete if it's explicitly marked as complete or has prefilled values
+    const effectivelyComplete = complete || hasPrefilledValues;
+    
     const baseStyle: React.CSSProperties = {
         backgroundColor: componentTokens.stepHeader.base.backgroundColor,
         color: componentTokens.stepHeader.base.textColor,
@@ -59,12 +115,12 @@ const StepHeader: React.FC<StepHeaderProps> = ({
         }
     };
 
-    const showEdit = editable && !open && !locked && complete;
+    const showEdit = editable && !open && !locked && effectivelyComplete;
 
     return (
         <>
             <div
-                className={`step-header${open ? ' active' : ''}${complete ? ' completed' : ''}`}
+                className={`step-header${open ? ' active' : ''}${effectivelyComplete ? ' completed' : ''}`}
                 onClick={handleClick}
                 role="button"
                 tabIndex={locked && !allowToggleWhenLocked ? -1 : 0}
