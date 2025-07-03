@@ -28,6 +28,7 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
                 ariaLabel="Matter description"
                 isDarkMode={isDarkMode}
             />
+            <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
             {onContinue && (
                 <PrimaryButton
                     text="Continue"

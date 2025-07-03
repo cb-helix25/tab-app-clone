@@ -18,6 +18,8 @@ interface OpponentDetailsStepProps {
   setOpponentSolicitorEmail: (v: string) => void;
   noConflict: boolean;
   setNoConflict: (v: boolean) => void;
+  disputeValue: string;
+  setDisputeValue: (v: string) => void;
   onContinue?: () => void;
 }
 
@@ -34,8 +36,38 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   setOpponentSolicitorEmail,
   noConflict,
   setNoConflict,
+  disputeValue,
+  setDisputeValue,
   onContinue,
 }) => {
+  const disputeValueOptions = ['Less than £10k', '£10k - £500k', '£500k - £1m', '£1m - £5m', '£5 - £20m', '£20m+'];
+      <Stack tokens={{ childrenGap: 10 }}>
+        <div className="question-banner">Select Value of the Dispute</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '4px' }}>
+          {disputeValueOptions.map((option) => (
+            <div
+              key={option}
+              className={`MultiSelect-segment${disputeValue === option ? ' active' : ''}`}
+              onClick={() => setDisputeValue(option)}
+              style={{
+                border: '1px solid var(--helix-dark-blue)',
+                height: '50px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                userSelect: 'none',
+                color: disputeValue === option ? '#fff' : '#061733',
+                backgroundColor: disputeValue === option ? 'var(--helix-dark-blue)' : 'transparent',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      </Stack>
   const { isDarkMode } = useTheme();
   return (
     <Stack tokens={{ childrenGap: 12 }}>
@@ -54,6 +86,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           ariaLabel="Opponent Email"
           isDarkMode={isDarkMode}
         />
+        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
         <BubbleTextField
           value={opponentSolicitorName}
           onChange={(_, v) => setOpponentSolicitorName(v || "")}
@@ -61,6 +94,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           ariaLabel="Solicitor Name"
           isDarkMode={isDarkMode}
         />
+        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
         <BubbleTextField
           value={opponentSolicitorCompany}
           onChange={(_, v) => setOpponentSolicitorCompany(v || "")}
@@ -68,6 +102,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           ariaLabel="Solicitor Company"
           isDarkMode={isDarkMode}
         />
+        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
         <BubbleTextField
           value={opponentSolicitorEmail}
           onChange={(_, v) => setOpponentSolicitorEmail(v || "")}
@@ -76,6 +111,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           isDarkMode={isDarkMode}
         />
       </div>
+      <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
       <Stack tokens={{ childrenGap: 10 }}>
         <div className="question-banner">Confirm No Conflict of Interest</div>
         <div className="MultiSelect-bar">

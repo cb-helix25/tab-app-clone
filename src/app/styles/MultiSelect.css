@@ -34,8 +34,12 @@
     width: 100%;
     border: 1px solid var(--helix-dark-blue);
     border-radius: 0 !important;
-  overflow: visible;
+    overflow: visible;
     height: 50px;
+}
+
+.input-bar.active {
+    border: none !important;
 }
 
 .input-bar .MultiSelect-segment {
@@ -46,8 +50,14 @@
 }
 
 .input-bar .MultiSelect-segment:not(:last-child) {
-    border-right: 1px solid var(--helix-dark-blue);
+    border-right: none !important;
+    margin-right: 12px;
 }
+
+.input-bar .MultiSelect-segment {
+    border-right: none !important;
+}
+
 
 .team-select {
     appearance: menulist;
@@ -56,7 +66,15 @@
     border: none;
     /* container already has border */
     padding: 0 1rem;
-    /* give room for arrow */ }
+    /* give room for arrow */
+    color: #061733;
+    font-weight: 600;
+}
+
+.team-select.selected {
+    background: var(--helix-dark-blue, #061733) !important;
+    color: #fff !important;
+}
 
 .team-select:focus {
     outline: none;
@@ -68,6 +86,11 @@
     background: #fff;
     color: #061733;
     padding: 8px;
+}
+
+.team-select option:checked, .team-select option[selected] {
+    background: var(--helix-dark-blue, #061733) !important;
+    color: #fff !important;
 }
 
 .have-funds-bar {

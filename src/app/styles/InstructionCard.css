@@ -1,6 +1,90 @@
+/* --- Client Details Banner: Big Button/Selector Style --- */
+ .client-details-banner {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-details-ref-banner {
+  background: #f4f4f6;
+  color: #061733;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e1dfdd;
+  margin-bottom: 4px;
+}
+.client-details-ref-label {
+  color: #888;
+  font-weight: 400;
+  margin-right: 6px;
+}
+.client-details-ref-value {
+  font-weight: 600;
+  color: #061733;
+}
+
+.client-details-contact-bigrow {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+}
+.client-details-contact-bigbtn {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 500;
+  background: #fff;
+  border: 2px solid #e1dfdd;
+  border-radius: 4px;
+  color: #061733;
+  text-decoration: none;
+  transition: background 0.18s, border 0.18s, color 0.18s;
+  cursor: pointer;
+  min-width: 0;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(6,23,51,0.04);
+}
+.client-details-contact-bigbtn:hover:not(.disabled),
+.client-details-contact-bigbtn:focus:not(.disabled) {
+  background: #e7f1ff;
+  border: 2px solid #3690CE;
+  color: #3690CE;
+}
+.client-details-contact-bigbtn.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+  background: #f4f4f6;
+  color: #aaa;
+  border: 2px solid #e1dfdd;
+}
+.client-details-contact-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+}
+.client-details-contact-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: inherit;
+  word-break: break-all;
+}
 .instructionCard {
     position: relative;
-    padding: 12px 16px 40px 20px;
+    padding: 12px 16px 20px 20px;
     /* bottom space for tabs */
     display: flex;
     flex-direction: column;
@@ -39,31 +123,66 @@
     justify-content: center;
 }
 
+/* --- InstructionCard header: match MatterOpening step section header --- */
 .instruction-header {
-    background-color: #061733;
-    color: #ffffff;
-    padding: 12px 12px;
+    background-color: var(--helix-grey, #F4F4F6);
+    color: var(--helix-dark-blue, #061733);
+    border-radius: 4px;
+    padding: 10px 16px;
     font-size: 16px;
     font-weight: 600;
-    margin: -12px -16px 8px -20px;
     display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-    }
-    
-    .header-title {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .chevron-icon {
-        transition: transform 0.3s ease;
-    }
-    
-    .instructionCard.collapsed .chevron-icon {
-        transform: rotate(180deg);
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    margin: 0 0 8px 0;
+    border: none;
+}
+.instruction-header .completion-tick {
+    margin-right: 8px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    color: #20b26c;
+    opacity: 1;
+    transform: scale(1);
+}
+.instruction-header .header-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.instruction-header .chevron-icon {
+    margin-left: auto;
+    transition: transform 0.3s ease;
+}
+.instructionCard.collapsed .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.plusminus-icon {
+    margin-left: auto;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--helix-dark-blue, #061733);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    user-select: none;
+    line-height: 1;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+.instruction-header:hover .plusminus-icon {
+    color: #3690CE;
 }
 
 .instruction-details {
@@ -74,7 +193,7 @@
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     overflow: hidden;
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .detail-group {
@@ -153,18 +272,36 @@
 
 
 .bottom-tabs {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    gap: 8px;
-    padding: 8px;
-    border-top: 1px solid #e1dfdd;
-    background: #fff;
-    justify-content: center;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
 }
 
+.bottom-tab {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 40px;
+  max-width: 120px;
+  flex: 0 1 auto;
+  padding: 0 8px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  box-sizing: border-box;
+  margin-bottom: 0;
+  overflow: visible;
+}
+
+
+.bottom-tab .icon-hover {
+  margin-right: 4px;
+}
 
 /* compact mode hides labels until interaction */
 .bottom-tabs.compact .label {
@@ -176,16 +313,169 @@
 }
 
 .bottom-tabs.compact .bottom-tab {
-    max-width: 48px;
+    max-width: 90px;
+    min-width: 90px;
+    flex: 1 1 90px;
 }
+
+
 
 
 .bottom-tabs.compact .bottom-tab:hover,
 .bottom-tabs.compact .bottom-tab:focus,
 .bottom-tabs.compact .bottom-tab:active {
-    max-width: 140px;
+    /* No resizing or flex change on hover/focus/active */
+    max-width: 100%;
+    min-width: 70px;
+    flex: 1 1 0;
 }
 
+.bottom-tab,
+.bottom-tabs.compact .bottom-tab {
+    /* Prevent any width/flex change on hover/focus/active */
+}
+
+.bottom-tab:hover,
+.bottom-tab:focus,
+.bottom-tab:active {
+    max-width: none;
+    min-width: 70px;
+    flex: 1 1 0;
+}
+
+
+
+/* REMOVE: No label width transition for compact tabs */
+
+/* active tabs stay folded until hovered */
+
+/* hide labels by default when not in compact mode */
+
+/* REMOVE: No label width transition for non-compact tabs */
+
+/* reveal label on hover or when active */
+
+/* REMOVE: No label width transition for non-compact tabs */
+
+
+.bottom-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    width: 100%;
+    min-width: 70px;
+    max-width: 100%;
+    height: 32px;
+    padding: 0 14px 0 10px;
+    border: none;
+    border-radius: 0;
+    background: none;
+    color: #061733;
+    font-weight: 400;
+    font-size: 15px;
+    cursor: pointer;
+    gap: 0;
+    position: relative;
+    transition: flex 0.25s cubic-bezier(0.4,0,0.2,1), background 0.18s, color 0.18s, max-width 0.2s, min-width 0.2s;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 0;
+    flex: 1 1 90px;
+    border-bottom: 2px solid transparent;
+    overflow: hidden;
+}
+
+.bottom-tab:hover,
+.bottom-tab:focus,
+.bottom-tab:active {
+    max-width: 200px;
+    min-width: 90px;
+    flex: 8 1 0;
+    z-index: 1;
+    background: #f4f4f6;
+    color: #3690CE;
+    border-bottom: 2px solid #3690CE;
+}
+
+.bottom-tabs .bottom-tab:last-child {
+    flex: 1 1 0;
+}
+
+.bottom-tab .icon-hover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    background: none;
+    border: none;
+    margin: 0;
+    transition: color 0.2s, transform 0.2s;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+/* Action button label: only reveal as much width as needed for text, don't expand button */
+.bottom-tab .label {
+  display: inline-flex;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.2s, opacity 0.2s;
+}
+
+.bottom-tab:hover .label,
+.bottom-tab:focus .label,
+.bottom-tab:active .label {
+  max-width: 120px; /* enough for longest label */
+  opacity: 1;
+}
+
+
+.bottom-tab {
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  max-width: none;
+  min-width: 70px;
+  flex: 1 1 0;
+  border: none;
+  border-bottom: 2px solid #e1dfdd;
+  border-radius: 0;
+}
+
+.bottom-tab.active {
+  border-bottom: 2px solid #3690CE;
+}
+
+
+.bottom-tabs.compact .bottom-tab {
+    max-width: 100%;
+    min-width: 70px;
+    flex: 1 1 0;
+}
+
+.bottom-tabs.compact .bottom-tab:hover,
+.bottom-tabs.compact .bottom-tab:focus,
+.bottom-tabs.compact .bottom-tab:active {
+    max-width: 200px;
+    min-width: 90px;
+    flex: 8 1 0;
+}
+
+.bottom-tabs.compact .bottom-tab:last-child {
+    flex: 1 1 0;
+}
+
+.bottom-tabs.compact .label {
+    display: inline-flex;
+    overflow: hidden;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width 0.2s ease, opacity 0.2s ease;
+}
 
 .bottom-tabs.compact .bottom-tab:hover .label,
 .bottom-tabs.compact .bottom-tab:focus .label,
@@ -194,9 +484,6 @@
     opacity: 1;
 }
 
-/* active tabs stay folded until hovered */
-
-/* hide labels by default when not in compact mode */
 .bottom-tabs:not(.compact) .bottom-tab .label {
     display: inline-flex;
     overflow: hidden;
@@ -205,7 +492,6 @@
     transition: max-width 0.2s ease, opacity 0.2s ease;
 }
 
-/* reveal label on hover or when active */
 .bottom-tabs:not(.compact) .bottom-tab:hover .label,
 .bottom-tabs:not(.compact) .bottom-tab:focus .label,
 .bottom-tabs:not(.compact) .bottom-tab:active .label {
@@ -213,122 +499,23 @@
     opacity: 1;
 }
 
-.bottom-tab {
-    flex: 1 1 0;
-    min-width: 48px;
-    max-width: 140px;
-    height: 32px;
-    padding: 0 8px;
-    border: 1px solid #e1dfdd;
-    border-radius: 0;
-    background-color: #F4F4F6;
-    color: #061733;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 500;
-    cursor: pointer;
-    gap: 4px;
-    position: relative;
-    transition: flex-grow 0.2s ease, max-width 0.2s ease, background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+
+.bottom-tab.review,
+.bottom-tab.flagged {
+    background-color: #fffbe6;
+    color: #bfa100;
+    border-color: #ffe066;
 }
-
-.bottom-tab .icon-filled {
-    display: none;
-    transition: transform 0.2s;
+.bottom-tab.review .icon-hover,
+.bottom-tab.flagged .icon-hover {
+    border-color: #ffe066;
+    background: #fffbe6;
 }
-
-.bottom-tab .icon-outline,
-.bottom-tab .icon-filled {
-    font-size: 16px;
-}
-
-.icon-hover {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-
-.bottom-tab.ready:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    color: #3690CE;
-    flex-grow: 1.5;
-}
-
-.bottom-tab:active {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
-    transform: scale(0.97);
-}
-
-.bottom-tab.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--helix-highlight, #3690CE);
-    flex-grow: 1.5;
-}
-
-
-.bottom-tab.active .icon-outline,
-.bottom-tab.ready:hover .icon-outline {
-    display: none;
-}
-
-.bottom-tab.active .icon-filled {
-    display: inline-block;
-    transform: scale(1.1);
-    color: var(--helix-highlight, #3690CE);
-}
-
-/* Completed action tabs remain collapsed with a check mark */
-.bottom-tab.complete {
-    background-color: #f0f9f0;
-    color: #20b26c;
-    cursor: default;
-}
-
-
-.bottom-tab.complete:hover {
-    background-color: #f0f9f0;
-    color: #20b26c;
-}
-
-.bottom-tab.complete .icon-outline {
-    display: none;
-}
-
-.bottom-tab.complete .icon-filled {
-    display: inline-block;
-    color: #20b26c;
-}
-
-
-.bottom-tab.ready:hover .icon-filled {
-    display: inline-block;
-    transform: scale(1.1);
-    color: #3690CE;
-}
-
-.bottom-tab .label {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 4px;
-    white-space: nowrap;
-    transition: opacity 0.2s ease;
-}
-
-/* make the icon container round & animatable */
-.instructionCard .bottom-tab .icon-hover {
-    border: 2px solid transparent;
-    border-radius: 0;
-    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
-}
-
-/* hover: border, solid fill, scale up & pop */
-.instructionCard .bottom-tab.ready:hover .icon-hover {
-    transform: scale(1.2);
-    animation: quickPop 0.3s ease-out;
+.bottom-tab.review:hover, .bottom-tab.review:focus,
+.bottom-tab.flagged:hover, .bottom-tab.flagged:focus {
+    background-color: #fff7cc;
+    color: #bfa100;
+    border-color: #ffe066;
 }
 
 
@@ -397,27 +584,214 @@
 
 /* interactive status row inside expanded cards */
 .interactive-status {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 8px;
     margin-bottom: 8px;
+    padding: 8px 0 0 0;
+    box-sizing: border-box;
 }
 
 .interactive-status .status-item {
-    flex: 1 1 80px;
-    background: var(--helix-light, #f4f4f6);
-    padding: 4px 6px;
+    background: #f4f4f6;
+    border: 2px solid #e1dfdd;
+    border-radius: 0;
+    padding: 10px 0 8px 0;
     text-align: center;
-    border: 1px solid #e3e8ef;
     cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background 0.18s, color 0.18s, border 0.18s, box-shadow 0.18s;
+    box-sizing: border-box;
+    position: relative;
+    color: #061733;
+    box-shadow: 0 1px 2px rgba(6,23,51,0.04);
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .interactive-status .status-item:hover {
-    background-color: #e7f1ff;
+    background: #e7f1ff;
+    border: 2px solid #3690CE;
+    color: #3690CE;
+    box-shadow: 0 2px 8px rgba(54,144,206,0.08);
 }
 
 .interactive-status .status-item.active {
-    background-color: #d6e8ff;
-    border-color: #3690CE;
+    background: #e7f1ff;
+    border: 2px solid #3690CE;
+    color: #3690CE;
+    box-shadow: 0 2px 8px rgba(54,144,206,0.10);
+}
+
+/* Make status boxes consistent width with action buttons, but keep flex row layout */
+.interactive-status.status-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  width: 100%;
+}
+
+.status-item-container {
+  flex: 1 1 0;
+  min-width: 70px;
+  max-width: 100%;
+  display: flex;
+}
+
+.interactive-status .status-item {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 70px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tidy up whitespace below the 4x2 grid in InstructionCard */
+.instruction-grid-4x2 + .card-content {
+  margin-top: 0.5rem;
+}
+
+.instruction-grid-4x2 {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.card-content {
+  margin-top: 0.5rem;
+  padding-top: 0;
+}
+
+.bottom-tabs {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Remove extra space below the grid and above the details */
+.instruction-grid-4x2 {
+  border-bottom: none;
+}
+
+.status-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    font-size: 16px;
+    margin: 0 auto;
+    color: #bdbdbd;
+    border: none;
+    transition: color 0.2s, background 0.2s;
+}
+.status-value.complete {
+    color: #20b26c;
+}
+.status-value.failed {
+    color: #e74c3c;
+}
+.status-value.flagged,
+.status-value.review {
+    color: #bfa100;
+}
+.status-value.pending {
+    color: #bdbdbd;
+}
+.status-value svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.action-fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    text-align: center;
+    transition: opacity 0.18s;
+    pointer-events: none;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.action-icon {
+    opacity: 1;
+    z-index: 1;
+}
+.action-label {
+    opacity: 0;
+    z-index: 2;
+    font-size: 15px;
+    font-weight: 500;
+    color: #061733;
+}
+.action-icon.fade-in {
+    opacity: 1;
+    pointer-events: auto;
+}
+.action-icon.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+.action-label.fade-in {
+    opacity: 1;
+    pointer-events: auto;
+}
+.action-label.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+.bottom-tab {
+    position: relative;
+    min-width: 40px;
+    height: 32px;
+    padding: 0 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: min-width 0.2s, max-width 0.2s;
+}
+.bottom-tab.active {
+    min-width: 90px;
+}
+
+/* --- FIX: Action buttons should not expand on hover, but keep natural flex width --- */
+.bottom-tabs .bottom-tab,
+.bottom-tabs.compact .bottom-tab {
+  flex: 1 1 0 !important;
+  min-width: 70px;
+  max-width: none;
+  width: auto !important;
+}
+
+.bottom-tabs .bottom-tab:hover,
+.bottom-tabs .bottom-tab:focus,
+.bottom-tabs .bottom-tab:active,
+.bottom-tabs.compact .bottom-tab:hover,
+.bottom-tabs.compact .bottom-tab:focus,
+.bottom-tabs.compact .bottom-tab:active {
+  flex: 1 1 0 !important;
+  min-width: 70px;
+  max-width: none;
+  width: auto !important;
+}
+
+/* Add space between status boxes and action buttons */
+.instruction-grid-4x2 .interactive-status.status-row {
+  margin-bottom: 12px;
+}
+
+.instruction-grid-4x2 .bottom-tabs {
+  margin-top: 12px;
 }

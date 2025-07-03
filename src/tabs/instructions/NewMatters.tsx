@@ -388,12 +388,14 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setSupervisingPartner={setSupervisingPartner}
                         originatingSolicitor={originatingSolicitor}
                         setOriginatingSolicitor={setOriginatingSolicitor}
-                        fundsReceived={fundsReceived}
-                        setFundsReceived={setFundsReceived}
                         isDateCalloutOpen={isDateCalloutOpen}
                         setIsDateCalloutOpen={setIsDateCalloutOpen}
                         dateButtonRef={dateButtonRef}
                         partnerOptions={partnerAndSolicitorOptions}
+                        source={source}
+                        setSource={setSource}
+                        referrerName={referrerName}
+                        setReferrerName={setReferrerName}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1
@@ -413,6 +415,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setPoidSearchTerm={setPoidSearchTerm}
                         poidGridRef={poidGridRef}
                         handlePoidClick={handlePoidClick}
+                        fundsReceived={fundsReceived}
+                        setFundsReceived={setFundsReceived}
                         onConfirm={() =>
                             setOpenStep(stepsOrder.indexOf('poidSelection') + 1)
                         }
@@ -462,16 +466,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
                     />
                 );
-            case 'disputeValue':
-                return (
-                    <DisputeValueStep
-                        disputeValue={disputeValue}
-                        setDisputeValue={setDisputeValue}
-                        onContinue={() =>
-                            setOpenStep(stepsOrder.indexOf('disputeValue') + 1)
-                        }
-                    />
-                );
+            // DisputeValueStep is now part of OpponentDetailsStep
             case 'source':
                 return (
                     <SourceStep
@@ -499,6 +494,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setOpponentSolicitorEmail={setOpponentSolicitorEmail}
                         noConflict={noConflict}
                         setNoConflict={setNoConflict}
+                        disputeValue={disputeValue}
+                        setDisputeValue={setDisputeValue}
                         onContinue={() =>
                             setOpenStep(stepsOrder.indexOf('opponentDetails') + 1)
                         }

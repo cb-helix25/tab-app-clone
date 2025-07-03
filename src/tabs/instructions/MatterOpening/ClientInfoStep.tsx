@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stack, Text, PrimaryButton, Callout, DatePicker, mergeStyles } from '@fluentui/react';
+import { Stack, Text, PrimaryButton, Callout, DatePicker, mergeStyles, TextField } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import { colours } from '../../../app/styles/colours';
 import '../../../app/styles/MultiSelect.css';
@@ -14,12 +14,14 @@ interface ClientInfoStepProps {
     setSupervisingPartner: (s: string) => void;
     originatingSolicitor: string;
     setOriginatingSolicitor: (s: string) => void;
-    fundsReceived: string;
-    setFundsReceived: (v: string) => void;
     isDateCalloutOpen: boolean;
     setIsDateCalloutOpen: (v: boolean) => void;
     dateButtonRef: React.RefObject<HTMLDivElement>;
     partnerOptions: string[];
+    source: string;
+    setSource: (v: string) => void;
+    referrerName: string;
+    setReferrerName: (v: string) => void;
     onContinue?: () => void;
 }
 
@@ -33,8 +35,10 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     setSupervisingPartner,
     originatingSolicitor,
     setOriginatingSolicitor,
-    fundsReceived,
-    setFundsReceived,
+    source,
+    setSource,
+    referrerName,
+    setReferrerName,
     isDateCalloutOpen,
     setIsDateCalloutOpen,
     dateButtonRef,
@@ -46,41 +50,32 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
         backgroundColor: colours.light.border,
         margin: '0.5rem 0',
     });
+    // Live time state
+    const [liveTime, setLiveTime] = React.useState<string>(new Date().toLocaleTimeString());
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setLiveTime(new Date().toLocaleTimeString());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <Stack tokens={{ childrenGap: 12 }}>
-            <div className="input-bar">
-                <div className="MultiSelect-segment" ref={dateButtonRef}>
-                    <PrimaryButton
-                        text={selectedDate ? `Date: ${selectedDate.toLocaleDateString()}` : 'Select Date'}
-                        onClick={() => setIsDateCalloutOpen(!isDateCalloutOpen)}
-                        styles={{ root: { borderRadius: 0, width: '100%', height: '100%' } }}
-                    />
-                    {isDateCalloutOpen && (
-                        <Callout target={dateButtonRef.current} onDismiss={() => setIsDateCalloutOpen(false)} setInitialFocus>
-                            <DatePicker
-                                value={selectedDate || undefined}
-                                onSelectDate={(date) => {
-                                    if (date) setSelectedDate(date);
-                                    setIsDateCalloutOpen(false);
-                                }}
-                                styles={{ root: { margin: 8, width: 200 } }}
-                            />
-                        </Callout>
-                    )}
-                </div>
-                <div className="MultiSelect-segment">
-                    <select className="team-select" value={teamMember} onChange={(e) => setTeamMember(e.target.value)}>
-                        {teamMemberOptions.map((name) => (
-                            <option key={name} value={name}>
-                                {name}
-                            </option>
-                        ))}
-                    </select>
+            {/* Date Section */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                    <div className="question-banner">Date</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 16 }}>
+                            {selectedDate ? selectedDate.toLocaleDateString() : 'Select Date'}
+                        </span>
+                        <span style={{ color: '#888', fontSize: 15 }}>{liveTime}</span>
+                    </div>
                 </div>
             </div>
             <div className={separatorStyle} />
-            <Stack>
+            {/* Supervising Partner */}
+            <div>
                 <div className="question-banner">Select Supervising Partner</div>
                 <div className="MultiSelect-bar">
                     {partnerOptions.map((name) => (
@@ -93,42 +88,69 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                         </div>
                     ))}
                 </div>
-            </Stack>
+            </div>
             <div className={separatorStyle} />
-            <Stack aria-label="Solicitor">
-                <div className="question-banner">Select Originating Solicitor</div>
-                <div className="input-bar">
-                    <div className="MultiSelect-segment">
+            {/* Responsible/Originating Solicitor Row */}
+            <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ flex: 1 }}>
+                    <div className="question-banner">Responsible Solicitor</div>
+                    <div className={`MultiSelect-segment${teamMember ? ' active' : ''}`} style={{ width: '100%' }}>
                         <select
-                            className="team-select"
-                            value={originatingSolicitor}
-                            onChange={(e) => setOriginatingSolicitor(e.target.value)}
+                            className={`team-select${teamMember ? ' selected' : ''}`}
+                            value={teamMember}
+                            onChange={(e) => setTeamMember(e.target.value)}
+                            style={{ width: '100%', color: '#fff', background: '#061733' }}
                         >
                             {teamMemberOptions.map((name) => (
-                                <option key={name} value={name}>
-                                    {name}
-                                </option>
+                                <option key={name} value={name} style={{ color: '#fff', background: '#061733' }}>{name}</option>
                             ))}
                         </select>
                     </div>
                 </div>
-            </Stack>
+                <div style={{ flex: 1 }}>
+                    <div className="question-banner">Originating Solicitor</div>
+                    <div className={`MultiSelect-segment${originatingSolicitor ? ' active' : ''}`} style={{ width: '100%' }}>
+                        <select
+                            className={`team-select${originatingSolicitor ? ' selected' : ''}`}
+                            value={originatingSolicitor}
+                            onChange={(e) => setOriginatingSolicitor(e.target.value)}
+                            style={{ width: '100%', color: '#fff', background: '#061733' }}
+                        >
+                            {teamMemberOptions.map((name) => (
+                                <option key={name} value={name} style={{ color: '#fff', background: '#061733' }}>{name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
             <div className={separatorStyle} />
-            <Stack>
-                <div className="question-banner">Have funds on account been received?</div>
-                <div className="have-funds-bar">
-                    {['Yes', 'No', 'Not Required'].map((option) => (
+            {/* Source Selection */}
+            <div>
+                <div className="question-banner">Select Source</div>
+                <div className="MultiSelect-bar">
+                    {['referral', 'organic search', 'paid search', 'your following', 'tbc'].map((option) => (
                         <div
                             key={option}
-                            className={`MultiSelect-segment${fundsReceived === option ? ' active' : ''}`}
-                            onClick={() => setFundsReceived(option)}
+                            className={`MultiSelect-segment${source === option ? ' active' : ''}`}
+                            onClick={() => {
+                                setSource(option);
+                                if (option !== 'referral') setReferrerName('');
+                            }}
+                            style={{ textTransform: 'capitalize' }}
                         >
                             {option}
                         </div>
                     ))}
                 </div>
-            </Stack>
-            <div className={separatorStyle} />
+                {source === 'referral' && (
+                    <TextField
+                        placeholder="Enter referrer's name"
+                        value={referrerName}
+                        onChange={(_: any, newVal: string | undefined) => setReferrerName(newVal || '')}
+                        styles={{ root: { width: '100%', maxWidth: 400, margin: '0 auto' } }}
+                    />
+                )}
+            </div>
             {onContinue && (
                 <PrimaryButton
                     text="Continue"

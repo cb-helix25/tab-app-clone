@@ -40,6 +40,7 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                 </div>
             ))}
         </div>
+        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
     </Stack>
 );
 

@@ -6,7 +6,6 @@ import {
     FaRegIdBadge,
     FaFileAlt,
     FaRegFileAlt,
-    FaChevronDown,
     FaCheckCircle,
     FaClock,
     FaTimesCircle,
@@ -130,6 +129,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const isInitialised = stage === 'initialised';
 
     const [collapsed, setCollapsed] = useState(!expanded);
+    const [showClientDetails, setShowClientDetails] = useState(false);
 
     useEffect(() => {
         setCollapsed(!expanded);
@@ -138,13 +138,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
         backgroundColor: colours.light.sectionBackground,
         padding: componentTokens.card.base.padding,
-        boxShadow: isCompleted
-            ? `inset 0 0 8px ${colours.green}55, ${componentTokens.card.base.boxShadow}`
-            : componentTokens.card.base.boxShadow,
+        boxShadow: componentTokens.card.base.boxShadow,
         color: colours.light.text,
         height: 'auto',
-        border: `2px solid ${isCompleted ? colours.green : 'transparent'}`,
-        opacity: isCompleted ? 0.6 : 1,
+        border: '2px solid transparent',
+        opacity: 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         selectors: {
             ':hover': {
@@ -259,23 +257,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const isPoid = stage === 'poid';
 
-    const bannerText = isCompleted
-        ? 'Instructions Received'
-        : isInitialised
-            ? 'Pending Instructions'
-            : isPoid
-                ? 'Proof of Identity Received'
-                : null;
-    const bannerClass = mergeStyles('instruction-banner', {
-        background: isCompleted || isPoid
-            ? componentTokens.successBanner.background
-            : componentTokens.infoBanner.background,
-        borderLeft: isCompleted || isPoid
-            ? componentTokens.successBanner.borderLeft
-            : componentTokens.infoBanner.borderLeft,
-        padding: componentTokens.infoBanner.padding,
-        fontSize: '0.875rem',
-    });
+
 
     const statusData = [
         { key: 'deal', label: 'Deal', status: dealMissing ? 'failed' : dealOpen ? 'open' : 'closed' },
@@ -286,262 +268,333 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
         },
         { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-        { key: 'risk', label: 'Risk', status: riskStatus },
     ];
-
+    // Wrap all returned JSX in a single fragment
     return (
         <div className={cardClass} style={style} ref={innerRef}>
             <header
                 className="instruction-header"
+                style={!collapsed ? { backgroundColor: colours.darkBlue, color: '#fff' } : undefined}
                 onClick={() => {
                     const newState = !collapsed;
                     setCollapsed(newState);
+                    setShowClientDetails(!newState); // show details when expanded, hide when collapsed
                     if (newState) setSelectedStatus(null);
                     onToggle?.();
                 }}
             >
                 {isCompleted && (
-                    <span className="completion-tick visible" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <polyline
-                                points="5,13 10,18 19,7"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </span>
-                )}
+                   <span className="completion-tick" style={{marginRight: 8, color: '#20b26c', background: '#fff'}}>
+                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                           <circle cx="12" cy="12" r="11" fill="#fff" />
+                           <polyline points="6,13 11,18 18,7" fill="none" stroke="#20b26c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                       </svg>
+                   </span>
+               )}
                 <span className="header-title">
-                    {instruction.InstructionRef}
-                    {leadName && <span className="lead-client">{leadName}</span>}
+                    {leadName}
                 </span>
-                <FaChevronDown className="chevron-icon" />
+                <span
+                    className="plusminus-icon"
+                    aria-hidden="true"
+                    style={!collapsed ? { color: '#fff' } : undefined}
+                >
+                    {collapsed ? '+' : '−'}
+                </span>
             </header>
-            {bannerText && <div className={bannerClass}>{bannerText}</div>}
-
-            <div className="interactive-status status-row">
-                {statusData.map((d, i) => {
-                    const status = (d.status ?? '').toString().toLowerCase();
-                    const icon = d.status
-                        ? ['complete', 'closed', 'verified', 'approved'].includes(status)
-                            ? <FaCheckCircle />
-                            : ['failed', 'review'].includes(status)
-                                ? <FaTimesCircle />
-                                : status === 'flagged'
-                                    ? <FaExclamationTriangle />
-                                    : <FaClock />
-                        : null;
-                    return (
-                        <div
-                            key={i}
-                            className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
-                            onClick={() => {
-                                if (selectedStatus === d.key && !collapsed) {
-                                    setSelectedStatus(null);
-                                    setCollapsed(true);
-                                } else {
-                                    setSelectedStatus(d.key);
-                                    setCollapsed(false);
+                {/* Wrap client details and grid in a fragment to ensure single parent */}
+                {showClientDetails && (
+                    <React.Fragment>
+                        <div className="client-details-banner">
+                            {/* Instruction Ref on its own line */}
+                            <div className="client-details-contact-bigrow">
+                                <div className="client-details-contact-bigbtn static">
+                                <span className="client-details-contact-icon" aria-hidden="true">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                                        <rect x="3" y="4" width="18" height="16" rx="4" fill="none" stroke="#3690CE" strokeWidth="2"/>
+                                        <text x="12" y="16" textAnchor="middle" fontSize="12" fill="#3690CE" fontWeight="bold">#</text>
+                                    </svg>
+                                </span>
+                                <span className="client-details-contact-value">{instruction.InstructionRef || '—'}</span>
+                            </div>
+                            </div>
+                            {/* Email and Phone on their own row */}
+                            <div className="client-details-contact-bigrow">
+                                <a
+                                    className={`client-details-contact-bigbtn${instruction.Email ? '' : ' disabled'}`}
+                                    href={instruction.Email ? `mailto:${instruction.Email}` : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={instruction.Email || ''}
+                                    tabIndex={instruction.Email ? 0 : -1}
+                                >
+                                    <span className="client-details-contact-icon" aria-hidden="true">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{display:'block', verticalAlign:'middle'}}>
+                                          <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#3690CE" strokeWidth="2"/>
+                                          <polyline points="4,6 12,13 20,6" fill="none" stroke="#3690CE" strokeWidth="2"/>
+                                        </svg>
+                                    </span>
+                                    <span className="client-details-contact-value">{instruction.Email || '—'}</span>
+                                </a>
+                                <a
+                                    className={`client-details-contact-bigbtn${instruction.Phone ? '' : ' disabled'}`}
+                                    href={instruction.Phone ? `tel:${instruction.Phone}` : undefined}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={instruction.Phone || ''}
+                                    tabIndex={instruction.Phone ? 0 : -1}
+                                >
+                                    <span className="client-details-contact-icon" aria-hidden="true">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
+                                    </span>
+                                    <span className="client-details-contact-value">{instruction.Phone || '—'}</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div className="instruction-grid-4x2">
+                        {/* Row 1: Status boxes */}
+                        <div className="interactive-status status-row">
+                            {statusData.map((d, i) => {
+                                const status = (d.status ?? '').toString().toLowerCase();
+                                let icon = null;
+                                if (d.status) {
+                                    if (["complete", "closed", "verified", "approved"].includes(status)) {
+                                        icon = (
+                                            <svg viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="11" fill="#fff" />
+                                                <polyline
+                                                    points="6,13 11,18 18,7"
+                                                    fill="none"
+                                                    stroke="#20b26c"
+                                                    strokeWidth="2.5"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        );
+                                    } else if (["failed", "review"].includes(status)) {
+                                        icon = (
+                                            <svg viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="11" fill="#fff" />
+                                                <line x1="7" y1="7" x2="17" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
+                                                <line x1="17" y1="7" x2="7" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
+                                            </svg>
+                                        );
+                                    } else if (status === "flagged") {
+                                        icon = (
+                                            <svg viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="11" fill="#fff" />
+                                                <polygon points="12,7 15,16 9,16" fill="#bfa100" />
+                                            </svg>
+                                        );
+                                    } else {
+                                        icon = (
+                                            <svg viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="11" fill="#fff" />
+                                                <circle cx="12" cy="12" r="4" fill="#bdbdbd" />
+                                            </svg>
+                                        );
+                                    }
                                 }
-                            }}
-                        >
-                            <span className="status-label">{d.label}</span>
-                            {icon ? (
-                                <span className={`status-value ${status}`}>{icon}</span>
-                            ) : (
-                                <span className="status-value"></span>
-                            )}
+                                return (
+                                    <div
+                                        key={d.key}
+                                        className={`status-item ${d.key}${selectedStatus === d.key ? ' active' : ''}`}
+                                        onClick={() => {
+                                            if (selectedStatus === d.key) {
+                                                setSelectedStatus(null);
+                                            } else {
+                                                setSelectedStatus(d.key);
+                                            }
+                                        }}
+                                    >
+                                        <span className="status-label">{d.label}</span>
+                                        <span className={`status-value ${status}`}>{icon}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    );
-                })}
-            </div>
-
-            <div className="card-content">
-                <div className="instruction-details">
-                    {selectedStatus === 'deal' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Deal Info</div>
-                            <ul className="detail-list">
-                                {prospectId != null && (
-                                    <li><strong>Prospect ID:</strong> {prospectId}</li>
-                                )}
-                                {(deals && deals.length > 0
-                                    ? deals
-                                    : deal
-                                        ? [deal]
-                                        : [])
-                                    .map((d, idx) => (
-                                        <React.Fragment key={idx}>
-                                            {deals && deals.length > 1 && (
-                                                <li><em>Deal {idx + 1}</em></li>
-                                            )}
-                                            {Object.entries(d).map(([k, v]) => (
-                                                <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                        {/* Details for status boxes (now between status and actions) */}
+                        {selectedStatus && (
+                            <div className="status-details-below">
+                                <div className="instruction-details">
+                                    {selectedStatus === 'deal' && (
+                                        <div className="client-details-contact-bigrow" style={{marginBottom: 0}}>
+                                            {(deals && deals.length > 0 ? deals : deal ? [deal] : []).map((d, idx) => (
+                                                <div className="client-details-contact-bigbtn static" key={idx} style={{background: '#fff', border: '2px solid #e1dfdd', boxShadow: '0 1px 2px rgba(6,23,51,0.04)', padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1, marginRight: deals && deals.length > 1 && idx < deals.length - 1 ? 12 : 0}}>
+                                                    {/* Main fields */}
+                                                    {d.ServiceDescription && (
+                                                        <div style={{fontWeight: 600, fontSize: 16, color: '#061733', marginBottom: 4}}>{d.ServiceDescription}</div>
+                                                    )}
+                                                    {typeof d.Amount === 'number' && (
+                                                        <div style={{fontSize: 15, color: '#3690CE', marginBottom: 2}}>
+                                                            £{d.Amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                        </div>
+                                                    )}
+                                                    {d.AreaOfWork && (
+                                                        <div style={{fontSize: 14, color: '#888', marginBottom: 4}}>{d.AreaOfWork}</div>
+                                                    )}
+                                                    {/* All other fields */}
+                                                    <div style={{marginTop: 6, fontSize: 13, color: '#444'}}>
+                                                        {Object.entries(d).filter(([k]) => !['ServiceDescription','Amount','AreaOfWork'].includes(k)).map(([k, v]) => (
+                                                            <div key={k}><strong>{k}:</strong> {formatValue(k, v)}</div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             ))}
-                                        </React.Fragment>
-                                    ))}
-                                {clients && clients.length > 0 && (
-                                    <React.Fragment>
-                                        <li><em>Joint Clients</em></li>
-                                        {clients.map((c, cidx) => (
-                                            <React.Fragment key={`c-${cidx}`}>
-                                                {Object.entries(c).map(([k, v]) => (
-                                                    <li key={`c-${cidx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'id' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">ID Details</div>
+                                            <ul className="detail-list">
+                                                {Object.entries(instruction)
+                                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v) || v === null)
+                                                    .map(([k, v]) => (
+                                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                    ))}
+                                                {(eids && eids.length > 0
+                                                    ? eids
+                                                    : eid
+                                                        ? [eid]
+                                                        : []
+                                                ).map((e, idx) => (
+                                                    <React.Fragment key={idx}>
+                                                        {eids && eids.length > 1 && (
+                                                            <li><em>ID Verification {idx + 1}</em></li>
+                                                        )}
+                                                         {Object.entries(e).map(([k, v]) => (
+                                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                         ))}
+                                                    </React.Fragment>
                                                 ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </React.Fragment>
-                                )}
-                            </ul>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'pay' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">Payment</div>
+                                            <ul className="detail-list">
+                                                {Object.entries(instruction)
+                                                    .filter(([k]) =>
+                                                        k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
+                                                    )
+                                                    .map(([k, v]) => (
+                                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                    ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'docs' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">Documents</div>
+                                            <ul className="detail-list">
+                                                <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
+                                                {documents?.map((d, idx) => (
+                                                    <React.Fragment key={idx}>
+                                                        {documents.length > 1 && (
+                                                            <li><em>Document {idx + 1}</em></li>
+                                                        )}
+                                                        {Object.entries(d).map(([k, v]) => (
+                                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                        ))}
+                                                    </React.Fragment>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'eid' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">Verify an ID</div>
+                                            <ul className="detail-list">
+                                                 {eid && Object.entries(eid).map(([k,v]) => (
+                                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                 ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'risk' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">Assess Risk</div>
+                                            <ul className="detail-list">
+                                                 {risk && Object.entries(risk).map(([k, v]) => (
+                                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                 ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {selectedStatus === 'comp' && (
+                                        <div className="detail-group open">
+                                            <div className="detail-summary">Compliance</div>
+                                            <ul className="detail-list">
+                                                 {compliance && Object.entries(compliance).map(([k,v]) => (
+                                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {/* Row 2: Action buttons */}
+                        <div className={`bottom-tabs${compact ? ' compact' : ''}`} ref={tabsRef}>
+                            {(() => {
+                                // Responsive short labels if not enough room
+                                const tabDefs = [
+                                    {
+                                        key: 'eid',
+                                        label: verifyIdLabel,
+                                        icon: iconMap.eid,
+                                        onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
+                                        status: verifyTabStatus,
+                                    },
+                                    {
+                                        key: 'risk',
+                                        label: 'Assess Risk',
+                                        icon: iconMap.risk,
+                                        onClick: () => { setActiveTab('risk'); onRiskAssessment?.({ instruction, risk }); },
+                                        status: riskAssessed ? 'complete' : 'ready',
+                                    },
+                                    {
+                                        key: 'matter',
+                                        label: 'Open Matter',
+                                        icon: iconMap.matter,
+                                        onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
+                                        status: openMatterStatus,
+                                    },
+                                    {
+                                        key: 'ccl',
+                                        label: 'Draft CCL',
+                                        icon: iconMap.ccl,
+                                        onClick: () => { setActiveTab('ccl'); onDraftCCL?.(); },
+                                        status: 'ready',
+                                    },
+                                ];
+                                return tabDefs.map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        type="button"
+                                        className={`bottom-tab ${tab.status} ${activeTab === tab.key ? 'active' : ''}`}
+                                        onClick={tab.onClick}
+                                        aria-label={tab.label}
+                                        disabled={tab.status === 'pending'}
+                                        title={tab.label}
+                                        tabIndex={tab.status === 'pending' ? -1 : 0}
+                                    >
+                                        <span className={`action-fade action-icon${activeTab === tab.key ? ' fade-out' : ' fade-in'}`} aria-hidden="true">
+                                            {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
+                                            {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
+                                        </span>
+                                        <span className={`action-fade action-label${activeTab === tab.key ? ' fade-in' : ' fade-out'}`}>{tab.label}</span>
+                                    </button>
+                                ));
+                            })()}
                         </div>
-                    )}
-                    {selectedStatus === 'id' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">ID Details</div>
-                            <ul className="detail-list">
-                                {Object.entries(instruction)
-                                    .filter(([, v]) => ['string', 'number', 'boolean'].includes(typeof v) || v === null)
-                                    .map(([k, v]) => (
-                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                    ))}
-                                {(eids && eids.length > 0
-                                    ? eids
-                                    : eid
-                                        ? [eid]
-                                        : []
-                                ).map((e, idx) => (
-                                    <React.Fragment key={idx}>
-                                        {eids && eids.length > 1 && (
-                                            <li><em>ID Verification {idx + 1}</em></li>
-                                        )}
-                                         {Object.entries(e).map(([k, v]) => (
-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                         ))}
-                                    </React.Fragment>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'pay' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Payment</div>
-                            <ul className="detail-list">
-                                {Object.entries(instruction)
-                                    .filter(([k]) =>
-                                        k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
-                                    )
-                                    .map(([k, v]) => (
-                                        <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                    ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'docs' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Documents</div>
-                            <ul className="detail-list">
-                                <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
-                                {documents?.map((d, idx) => (
-                                    <React.Fragment key={idx}>
-                                        {documents.length > 1 && (
-                                            <li><em>Document {idx + 1}</em></li>
-                                        )}
-                                        {Object.entries(d).map(([k, v]) => (
-                                            <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                        ))}
-                                    </React.Fragment>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'eid' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Verify an ID</div>
-                            <ul className="detail-list">
-                                 {eid && Object.entries(eid).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                 ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'risk' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Assess Risk</div>
-                            <ul className="detail-list">
-                                 {risk && Object.entries(risk).map(([k, v]) => (
-                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                 ))}
-                            </ul>
-                        </div>
-                    )}
-                    {selectedStatus === 'comp' && (
-                        <div className="detail-group open">
-                            <div className="detail-summary">Compliance</div>
-                            <ul className="detail-list">
-                                 {compliance && Object.entries(compliance).map(([k,v]) => (
-                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-
-                <div className={`bottom-tabs${compact ? ' compact' : ''}`} ref={tabsRef}>
-                    {[
-                        {
-                            key: 'eid',
-                            label: verifyIdLabel,
-                            title: verifyIdStatus === 'complete' ? 'ID Verified' : undefined,
-                            icon: iconMap.eid,
-                            onClick: () => { setActiveTab('eid'); onEIDCheck?.(); },
-                            status: verifyTabStatus,
-                        },
-                        {
-                            key: 'risk',
-                            label: 'Assess Risk',
-                            title: riskAssessed ? 'Risk Assessed' : undefined,
-                            icon: iconMap.risk,
-                            onClick: () => { setActiveTab('risk'); onRiskAssessment?.({ instruction, risk }); },
-                            status: riskAssessed ? 'complete' : 'ready',
-                        },
-                        {
-                            key: 'matter',
-                            label: 'Open Matter',
-                            icon: iconMap.matter,
-                            onClick: () => { setActiveTab('matter'); onOpenMatter?.(); },
-                            status: openMatterStatus,
-                        },
-                        {
-                            key: 'ccl',
-                            label: 'Draft CCL',
-                            icon: iconMap.ccl,
-                            onClick: () => { setActiveTab('ccl'); onDraftCCL?.(); },
-                            status: 'ready',
-                        },
-                    ].map((tab) => (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            className={`bottom-tab ${tab.status} ${activeTab === tab.key ? 'active' : ''}`}
-                            onClick={tab.onClick}
-                            aria-label={tab.label}
-                            disabled={tab.status === 'pending'}
-                            title={tab.title}
-                        >
-                            <span className="icon-hover">
-                                {React.createElement(tab.icon.outline, { className: 'icon-outline' })}
-                                {React.createElement(tab.icon.filled, { className: 'icon-filled' })}
-                            </span>
-                            <span className="label">{tab.label}</span>
-                        </button>
-                    ))}
-                </div>
+                    </div>
+                </React.Fragment>
+                )}
             </div>
-        </div>
-);
-};
+        );
+}
 
 export default InstructionCard;

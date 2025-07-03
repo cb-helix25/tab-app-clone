@@ -257,140 +257,115 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                     </>
                 )}
                 <div className="workflow-main matter-opening-card">
-                        <StepWrapper stepNumber={1} title="Client Information" isActive={true}>
-                            <ClientInfoStep
-                                selectedDate={selectedDate}
-                                setSelectedDate={setSelectedDate}
-                                teamMember={teamMember}
-                                setTeamMember={setTeamMember}
-                                teamMemberOptions={teamMemberOptions}
-                                supervisingPartner={supervisingPartner}
-                                setSupervisingPartner={setSupervisingPartner}
-                                originatingSolicitor={originatingSolicitor}
-                                setOriginatingSolicitor={setOriginatingSolicitor}
+                    <StepWrapper stepNumber={1} title="Solicitor and Source Details" isActive={true}>
+                        <ClientInfoStep
+                            selectedDate={selectedDate}
+                            setSelectedDate={setSelectedDate}
+                            teamMember={teamMember}
+                            setTeamMember={setTeamMember}
+                            teamMemberOptions={teamMemberOptions}
+                            supervisingPartner={supervisingPartner}
+                            setSupervisingPartner={setSupervisingPartner}
+                            originatingSolicitor={originatingSolicitor}
+                            setOriginatingSolicitor={setOriginatingSolicitor}
+                            isDateCalloutOpen={isDateCalloutOpen}
+                            setIsDateCalloutOpen={setIsDateCalloutOpen}
+                            dateButtonRef={dateButtonRef}
+                            partnerOptions={partnerOptionsList}
+                            source={source}
+                            setSource={setSource}
+                            referrerName={referrerName}
+                            setReferrerName={setReferrerName}
+                        />
+                    </StepWrapper>
+                    {showPoidSelection && (
+                        <StepWrapper stepNumber={2} title="Select Clients">
+                            <PoidSelectionStep
+                                poidData={effectivePoidData}
+                                teamData={teamData}
+                                filteredPoidData={filteredPoidData}
+                                visiblePoidCount={visiblePoidCount}
+                                selectedPoidIds={selectedPoidIds}
+                                poidSearchTerm={poidSearchTerm}
+                                setPoidSearchTerm={setPoidSearchTerm}
+                                poidGridRef={poidGridRef}
+                                handlePoidClick={handlePoidClick}
                                 fundsReceived={fundsReceived}
                                 setFundsReceived={setFundsReceived}
-                                isDateCalloutOpen={isDateCalloutOpen}
-                                setIsDateCalloutOpen={setIsDateCalloutOpen}
-                                dateButtonRef={dateButtonRef}
-                                partnerOptions={partnerOptionsList}
                             />
                         </StepWrapper>
-                        {showPoidSelection && (
-                            <>
-                                <StepWrapper stepNumber={2} title="POID Selection">
-                                    <PoidSelectionStep
-                                        poidData={effectivePoidData}
-                                        teamData={teamData}
-                                        filteredPoidData={filteredPoidData}
-                                        visiblePoidCount={visiblePoidCount}
-                                        selectedPoidIds={selectedPoidIds}
-                                        poidSearchTerm={poidSearchTerm}
-                                        setPoidSearchTerm={setPoidSearchTerm}
-                                        poidGridRef={poidGridRef}
-                                        handlePoidClick={handlePoidClick}
-                                    />
-                                </StepWrapper>
-                                <div className="form-separator" />
-                            </>
-                        )}
-                        {!showPoidSelection && <div className="form-separator" />}
-                        <StepWrapper stepNumber={showPoidSelection ? 3 : 2} title="Area of Work">
+                    )}
+                    <StepWrapper stepNumber={showPoidSelection ? 3 : 2} title="Matter Details">
+                        <Stack tokens={{ childrenGap: 24 }}>
                             <AreaOfWorkStep
                                 areaOfWork={areaOfWork}
                                 setAreaOfWork={setAreaOfWork}
-                                getGroupColor={getGroupColor} onContinue={function (): void {
-                                    throw new Error('Function not implemented.');
-                                }}
+                                getGroupColor={getGroupColor}
+                                onContinue={function (): void {}}
                             />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 4 : 3} title="Practice Area">
                             <PracticeAreaStep
                                 options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                                 practiceArea={practiceArea}
                                 setPracticeArea={setPracticeArea}
-                                groupColor={''} onContinue={function (): void {
-                                    throw new Error('Function not implemented.');
-                                }}
+                                groupColor={''}
+                                onContinue={function (): void {}}
                             />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 5 : 4} title="Description">
                             <DescriptionStep
                                 description={description}
                                 setDescription={setDescription}
                             />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 6 : 5} title="Folder Structure">
                             <FolderStructureStep
                                 folderStructure={folderStructure}
                                 setFolderStructure={setFolderStructure}
-                                folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']} onContinue={function (): void {
-                                    throw new Error('Function not implemented.');
-                                }}
+                                folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
+                                onContinue={function (): void {}}
                             />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 7 : 6} title="Dispute Value">
-                            <DisputeValueStep
-                                disputeValue={disputeValue}
-                                setDisputeValue={setDisputeValue} onContinue={function (): void {
-                                    throw new Error('Function not implemented.');
-                                }}
-                            />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 8 : 7} title="Source">
-                            <SourceStep
-                                source={source}
-                                setSource={setSource}
-                                referrerName={referrerName}
-                                setReferrerName={setReferrerName}
-                            />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 9 : 8} title="Opponent Details">
-                            <OpponentDetailsStep
-                                opponentName={opponentName}
-                                setOpponentName={setOpponentName}
-                                opponentEmail={opponentEmail}
-                                setOpponentEmail={setOpponentEmail}
-                                opponentSolicitorName={opponentSolicitorName}
-                                setOpponentSolicitorName={setOpponentSolicitorName}
-                                opponentSolicitorCompany={opponentSolicitorCompany}
-                                setOpponentSolicitorCompany={setOpponentSolicitorCompany}
-                                opponentSolicitorEmail={opponentSolicitorEmail}
-                                setOpponentSolicitorEmail={setOpponentSolicitorEmail}
-                                noConflict={noConflict}
-                                setNoConflict={setNoConflict}
-                            />
-                        </StepWrapper>
-                        <div className="form-separator" />
-                        <StepWrapper stepNumber={showPoidSelection ? 10 : 9} title="Review" isCompleted={true}>
-                            <ReviewStep
-                                selectedDate={selectedDate}
-                                supervisingPartner={supervisingPartner}
-                                originatingSolicitor={originatingSolicitor}
-                                fundsReceived={fundsReceived}
-                                clientType={clientType}
-                                selectedPoidIds={selectedPoidIds}
-                                areaOfWork={areaOfWork}
-                                practiceArea={practiceArea}
-                                description={description}
-                                folderStructure={folderStructure}
-                                disputeValue={disputeValue}
-                                source={source}
-                                referrerName={referrerName}
-                                opponentName={opponentName}
-                                opponentEmail={opponentEmail}
-                                opponentSolicitorName={opponentSolicitorName}
-                                opponentSolicitorCompany={opponentSolicitorCompany}
-                                opponentSolicitorEmail={opponentSolicitorEmail}
-                                noConflict={noConflict}
-                            />
-                        </StepWrapper>
+                        </Stack>
+                    </StepWrapper>
+                    {/* Removed Description and Folder Structure as separate steps; now included in Matter Details */}
+                    {/* Dispute Value moved to Opponent Details */}
+                    {/* Source moved to Solicitor and Source Details */}
+                    <StepWrapper stepNumber={showPoidSelection ? 4 : 3} title="Dispute and Opponent Details">
+                        <OpponentDetailsStep
+                            opponentName={opponentName}
+                            setOpponentName={setOpponentName}
+                            opponentEmail={opponentEmail}
+                            setOpponentEmail={setOpponentEmail}
+                            opponentSolicitorName={opponentSolicitorName}
+                            setOpponentSolicitorName={setOpponentSolicitorName}
+                            opponentSolicitorCompany={opponentSolicitorCompany}
+                            setOpponentSolicitorCompany={setOpponentSolicitorCompany}
+                            opponentSolicitorEmail={opponentSolicitorEmail}
+                            setOpponentSolicitorEmail={setOpponentSolicitorEmail}
+                            noConflict={noConflict}
+                            setNoConflict={setNoConflict}
+                            disputeValue={disputeValue}
+                            setDisputeValue={setDisputeValue}
+                        />
+                    </StepWrapper>
+                    <StepWrapper stepNumber={showPoidSelection ? 5 : 4} title="Review" isCompleted={true}>
+                        <ReviewStep
+                            selectedDate={selectedDate}
+                            supervisingPartner={supervisingPartner}
+                            originatingSolicitor={originatingSolicitor}
+                            fundsReceived={fundsReceived}
+                            clientType={clientType}
+                            selectedPoidIds={selectedPoidIds}
+                            areaOfWork={areaOfWork}
+                            practiceArea={practiceArea}
+                            description={description}
+                            folderStructure={folderStructure}
+                            disputeValue={disputeValue}
+                            source={source}
+                            referrerName={referrerName}
+                            opponentName={opponentName}
+                            opponentEmail={opponentEmail}
+                            opponentSolicitorName={opponentSolicitorName}
+                            opponentSolicitorCompany={opponentSolicitorCompany}
+                            opponentSolicitorEmail={opponentSolicitorEmail}
+                            noConflict={noConflict}
+                        />
+                    </StepWrapper>
                 </div>
             </Stack>
         </CompletionProvider>
