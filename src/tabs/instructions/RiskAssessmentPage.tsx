@@ -130,20 +130,20 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
-                <div className="step-header">
+                <div className="step-header active">
                     <h3 className="step-title">Risk Assessment</h3>
                 </div>
-                {existingRisk && (
-                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
-                        <h3>Existing Assessment</h3>
-                        <ul className="detail-list">
-                            {Object.entries(existingRisk).map(([k, v]) => (
-                                v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
-                            ))}
-                        </ul>
-                    </Stack>
-                )}
-                <div className="step-content">
+                <div className="step-content active" style={{ maxHeight: 'none', opacity: 1, visibility: 'visible' }}>
+                    {existingRisk && (
+                        <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 20 } }}>
+                            <h3>Existing Assessment</h3>
+                            <ul className="detail-list">
+                                {Object.entries(existingRisk).map(([k, v]) => (
+                                    v != null ? <li key={k}><strong>{k}:</strong> {String(v)}</li> : null
+                                ))}
+                            </ul>
+                        </Stack>
+                    )}
                     <RiskAssessment
                     riskCore={riskCore}
                     setRiskCore={setRiskCore}
