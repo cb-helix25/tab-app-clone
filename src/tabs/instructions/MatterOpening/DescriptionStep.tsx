@@ -18,6 +18,7 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
     const { isDarkMode } = useTheme();
     return (
         <Stack tokens={{ childrenGap: 12 }}>
+            <div className="question-banner">Matter Description</div>
             <BubbleTextField
                 multiline
                 autoAdjustHeight

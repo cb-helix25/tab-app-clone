@@ -435,8 +435,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setPoidSearchTerm={setPoidSearchTerm}
                         poidGridRef={poidGridRef}
                         handlePoidClick={handlePoidClick}
-                        fundsReceived={fundsReceived}
-                        setFundsReceived={setFundsReceived}
+                        // fundsReceived and setFundsReceived removed
                         onConfirm={() =>
                             setOpenStep(stepsOrder.indexOf('poidSelection') + 1)
                         }
@@ -527,7 +526,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         selectedDate={selectedDate}
                         supervisingPartner={supervisingPartner}
                         originatingSolicitor={originatingSolicitor}
-                        fundsReceived={fundsReceived}
+                        // fundsReceived removed
                         clientType={clientType}
                         selectedPoidIds={selectedPoidIds}
                         areaOfWork={areaOfWork}

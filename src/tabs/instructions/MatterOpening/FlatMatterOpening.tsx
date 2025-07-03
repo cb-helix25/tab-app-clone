@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Stack } from '@fluentui/react';
+import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
 import ClientHub from '../ClientHub';
@@ -164,12 +165,19 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [supervisingPartner, setSupervisingPartner] = useState('');
     const [originatingSolicitor, setOriginatingSolicitor] = useState(defaultTeamMember);
     useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
-    const [fundsReceived, setFundsReceived] = useState('');
+    // Removed fundsReceived state
     const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
 
-    const [clientType, setClientType] = useState(initialClientType);
-    useEffect(() => setClientType(initialClientType), [initialClientType]);
+    // Client type selection is now a page-level qualifying question
+    const clientTypes = [
+        'Individual',
+        'Company',
+        'Multiple Individuals',
+        'Existing Client',
+    ];
+    const [clientType, setClientType] = useState(initialClientType || '');
+    useEffect(() => setClientType(initialClientType || ''), [initialClientType]);
 
     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
     const [areaOfWork, setAreaOfWork] = useState('');
@@ -260,6 +268,75 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             ? getTeamNickname(userInitials, teamData || localTeamDataJson)
             : getLocalUserNickname(userInitials);
 
+    // Insert a Select Clients step before the form opens, then ask for client type as a qualifying question
+    const [clientsSelected, setClientsSelected] = useState(false);
+    const [pendingClientType, setPendingClientType] = useState('');
+    // Try to infer client type from selected POIDs
+    useEffect(() => {
+        if (selectedPoidIds.length === 1) setPendingClientType('Individual');
+        else if (selectedPoidIds.length > 1) setPendingClientType('Multiple Individuals');
+        // Could add logic for company/existing client if POID data supports it
+    }, [selectedPoidIds]);
+    if (!clientsSelected) {
+        return (
+            <div className="workflow-main matter-opening-card">
+                <div className="step-header active" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                    <h3 className="step-title" style={{ margin: 0 }}>Please Select all related clients</h3>
+                    <MinimalSearchBox value={poidSearchTerm} onChange={setPoidSearchTerm} />
+                </div>
+                <div className="step-content active">
+                    <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
+                        <PoidSelectionStep
+                            poidData={effectivePoidData}
+                            teamData={teamData}
+                            filteredPoidData={filteredPoidData}
+                            visiblePoidCount={visiblePoidCount}
+                            selectedPoidIds={selectedPoidIds}
+                            poidSearchTerm={poidSearchTerm}
+                            setPoidSearchTerm={setPoidSearchTerm}
+                            poidGridRef={poidGridRef}
+                            handlePoidClick={handlePoidClick}
+                        />
+                    </div>
+                    <div className="instruction-overview" style={{ maxWidth: 600, width: '100%', margin: '0 auto', padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
+                        <div style={{ padding: '32px 32px 24px 32px', background: 'transparent' }}>
+                            <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 20, textAlign: 'center' }}>What type of client is this matter for?</div>
+                            <div className="client-details-contact-bigrow" style={{ marginBottom: 24 }}>
+                                {['Individual', 'Company', 'Multiple Individuals', 'Existing Client'].map((type) => (
+                                    <button
+                                        key={type}
+                                        className={`client-details-contact-bigbtn${pendingClientType === type ? ' active' : ''}`}
+                                        type="button"
+                                        onClick={() => setPendingClientType(type)}
+                                        aria-pressed={pendingClientType === type}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                            <div style={{ textAlign: 'center', color: '#888', fontSize: 14, marginBottom: 12 }}>
+                                {selectedPoidIds.length === 1 && 'Preselected as Individual based on one client selected.'}
+                                {selectedPoidIds.length > 1 && 'Preselected as Multiple Individuals based on multiple clients selected.'}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <button
+                                    style={{ fontSize: 20, padding: '1em 2em', borderRadius: 8, background: '#0078d4', color: '#fff', border: 'none', cursor: selectedPoidIds.length === 0 || !pendingClientType ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                                    disabled={selectedPoidIds.length === 0 || !pendingClientType}
+                                    onClick={() => {
+                                        setClientType(pendingClientType);
+                                        setClientsSelected(true);
+                                    }}
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <CompletionProvider>
             <Stack className="workflow-container">
@@ -299,24 +376,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             requestingUser={requestingUserNickname}
                         />
                     </StepWrapper>
-                    {showPoidSelection && (
-                        <StepWrapper stepNumber={2} title="Select Clients">
-                            <PoidSelectionStep
-                                poidData={effectivePoidData}
-                                teamData={teamData}
-                                filteredPoidData={filteredPoidData}
-                                visiblePoidCount={visiblePoidCount}
-                                selectedPoidIds={selectedPoidIds}
-                                poidSearchTerm={poidSearchTerm}
-                                setPoidSearchTerm={setPoidSearchTerm}
-                                poidGridRef={poidGridRef}
-                                handlePoidClick={handlePoidClick}
-                                fundsReceived={fundsReceived}
-                                setFundsReceived={setFundsReceived}
-                            />
-                        </StepWrapper>
-                    )}
-                    <StepWrapper stepNumber={showPoidSelection ? 3 : 2} title="Matter Details">
+                    <StepWrapper stepNumber={2} title="Matter Details">
                         <Stack tokens={{ childrenGap: 24 }}>
                             <AreaOfWorkStep
                                 areaOfWork={areaOfWork}
@@ -330,6 +390,11 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 setPracticeArea={setPracticeArea}
                                 groupColor={''}
                                 onContinue={function (): void {}}
+                            />
+                            <DisputeValueStep
+                                disputeValue={disputeValue}
+                                setDisputeValue={setDisputeValue}
+                                onContinue={() => {}}
                             />
                             <DescriptionStep
                                 description={description}
@@ -369,7 +434,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             selectedDate={selectedDate}
                             supervisingPartner={supervisingPartner}
                             originatingSolicitor={originatingSolicitor}
-                            fundsReceived={fundsReceived}
                             clientType={clientType}
                             selectedPoidIds={selectedPoidIds}
                             areaOfWork={areaOfWork}

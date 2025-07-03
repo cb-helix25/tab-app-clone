@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stack, SearchBox, PrimaryButton, Text } from '@fluentui/react';
+import { Stack, PrimaryButton, Text } from '@fluentui/react';
 import PoidCard from '../PoidCard';
 import POIDPreview from '../PoidPreview';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
@@ -15,8 +15,6 @@ interface PoidSelectionStepProps {
     setPoidSearchTerm: (v: string) => void;
     poidGridRef: React.RefObject<HTMLDivElement | null>;
     handlePoidClick: (p: POID) => void;
-    fundsReceived: string;
-    setFundsReceived: (v: string) => void;
     onConfirm?: () => void;
 }
 
@@ -30,35 +28,9 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     setPoidSearchTerm,
     poidGridRef,
     handlePoidClick,
-    fundsReceived,
-    setFundsReceived,
     onConfirm,
 }) => (
     <Stack tokens={{ childrenGap: 12 }}>
-        {/* Have funds on account */}
-        <Stack>
-            <div className="question-banner">Have funds on account been received?</div>
-            <div className="have-funds-bar">
-                {['Yes', 'No', 'Not Required'].map((option) => (
-                    <div
-                        key={option}
-                        className={`MultiSelect-segment${fundsReceived === option ? ' active' : ''}`}
-                        onClick={() => setFundsReceived(option)}
-                    >
-                        {option}
-                    </div>
-                ))}
-            </div>
-        </Stack>
-        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
-        {/* Search box */}
-        <SearchBox
-            placeholder="Search by name or ID..."
-            value={poidSearchTerm}
-            onChange={(_, newValue) => setPoidSearchTerm(newValue || '')}
-            styles={{ root: { width: 400, marginBottom: 20 } }}
-        />
-        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
         {/* Preview Section - Only shown when POIDs are selected */}
         {selectedPoidIds.length > 0 && (
             <Stack 

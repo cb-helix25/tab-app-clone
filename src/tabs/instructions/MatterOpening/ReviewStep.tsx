@@ -8,7 +8,6 @@ interface ReviewStepProps {
     selectedDate: Date | null;
     supervisingPartner: string;
     originatingSolicitor: string;
-    fundsReceived: string;
     clientType: string;
     selectedPoidIds: string[];
     areaOfWork: string;
@@ -32,7 +31,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     selectedDate,
     supervisingPartner,
     originatingSolicitor,
-    fundsReceived,
+    // fundsReceived removed
     clientType,
     selectedPoidIds,
     areaOfWork,
@@ -61,7 +60,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             selectedDate: selectedDate ? selectedDate.toISOString() : null,
             supervisingPartner,
             originatingSolicitor,
-            fundsReceived,
+            // fundsReceived removed
             clientType,
             selectedPoidIds,
             areaOfWork,
@@ -82,7 +81,6 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             selectedDate,
             supervisingPartner,
             originatingSolicitor,
-            fundsReceived,
             clientType,
             selectedPoidIds,
             areaOfWork,
@@ -116,10 +114,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                     <span className="field-label">Originating Solicitor:</span>{' '}
                     <span className="field-value">{originatingSolicitor || 'N/A'}</span>
                 </p>
-                <p>
-                    <span className="field-label">Funds:</span>{' '}
-                    <span className="field-value">{fundsReceived || 'N/A'}</span>
-                </p>
+                {/* Funds row removed */}
                 <p>
                     <span className="field-label">Client Type:</span>{' '}
                     <span className="field-value">{clientType || 'N/A'}</span>
@@ -178,7 +173,6 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             selectedDate,
             supervisingPartner,
             originatingSolicitor,
-            fundsReceived,
             clientType,
             selectedPoidIds,
             areaOfWork,

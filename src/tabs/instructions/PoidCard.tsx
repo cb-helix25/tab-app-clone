@@ -1,10 +1,62 @@
-// src/tabs/matters/PoidCard.tsx
-import React from 'react';
+// --- Imports ---
 import { Stack, Text, mergeStyles, Icon } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
+import React, { useMemo } from 'react';// Helper to calculate countdown to midnight after expiry date
+
+// Button style for PEP & Address (inspired by client type, but color-coded, no rounded corners, full width, banner font size)
+const verificationButtonStyle = (status: string) => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '4px 8px', // Match banner padding
+    fontSize: '0.9rem', // Match banner font size
+    fontWeight: 600,
+    borderRadius: 0,
+    border: '2px solid',
+    borderColor: status === 'passed' ? '#107C10' : '#FFB900',
+    background: status === 'passed' ? '#e6f4ea' : '#fffbe6',
+    color: status === 'passed' ? '#107C10' : '#b88600',
+    marginRight: 0,
+    marginBottom: 0,
+    minWidth: 0,
+    width: '50%',
+    transition: 'background 0.18s, border 0.18s, color 0.18s',
+    cursor: 'default',
+    boxShadow: '0 1px 2px rgba(6,23,51,0.04)'
+});
+// src/tabs/matters/PoidCard.tsx
+function getExpiryCountdown(expiryDateString: string | undefined): string | null {
+    if (!expiryDateString) return null;
+    // Parse expiry date (assume yyyy-mm-dd or ISO)
+    const expiryDate = new Date(expiryDateString);
+    if (isNaN(expiryDate.getTime())) return null;
+    // Set to midnight (00:00) the day after expiry
+    const expiryMidnight = new Date(expiryDate);
+    expiryMidnight.setDate(expiryMidnight.getDate() + 1);
+    expiryMidnight.setHours(0, 0, 0, 0);
+    const now = new Date();
+    let diff = expiryMidnight.getTime() - now.getTime();
+    if (diff <= 0) return 'expired';
+    // Calculate months, days, hours
+    const msPerHour = 1000 * 60 * 60;
+    const msPerDay = msPerHour * 24;
+    // Months: rough calculation (30d per month)
+    const months = Math.floor(diff / (msPerDay * 30));
+    diff -= months * msPerDay * 30;
+    const days = Math.floor(diff / msPerDay);
+    diff -= days * msPerDay;
+    const hours = Math.floor(diff / msPerHour);
+    // Format string
+    let parts = [];
+    if (months > 0) parts.push(`${months}m`);
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (parts.length === 0) parts.push('<1h');
+    return `expires in ${parts.join(' ')}`;
+}
 
 // Helper to calculate age from a date string
 const calculateAge = (dob: string): number => {
@@ -128,58 +180,72 @@ const backgroundIconStyle = mergeStyles({
 const contentStyle = mergeStyles({
     position: 'relative',
     zIndex: 1,
-    height: 'calc(100% - 80px)', // Reduced height to make room for links at bottom
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
     paddingRight: '10px', // Reduced padding to allow content to use more width
     paddingBottom: '10px', // Standard padding
-    overflow: 'hidden', // Remove scroll, let content be clipped naturally
+    overflow: 'visible', // Allow content to expand naturally
     width: '100%', // Ensure content uses full width
 });
 
 // New style for the profile link container - only visible on hover, positioned at bottom of card above ID
 const profileLinkContainer = mergeStyles({
-    opacity: 0,
-    transition: 'opacity 0.3s ease',
     display: 'flex',
     gap: 8,
     justifyContent: 'flex-start',
-    position: 'absolute',
-    bottom: '45px', // Position above the bottom container
-    left: '15px',
-    right: '15px',
-    zIndex: 5,
-    padding: '4px 0', // Padding only top/bottom
-    borderTop: '1px solid #eaeaea', // Light separator
+    alignItems: 'center',
+    position: 'static', // Not absolutely positioned, so it flows with content
+    padding: '0',
+    opacity: 0,
+    pointerEvents: 'none',
+    height: 0,
+    transition: 'opacity 0.25s cubic-bezier(0.4,0,0.2,1), height 0.25s cubic-bezier(0.4,0,0.2,1)',
+    overflow: 'hidden',
 });
 
-// New style for profile link buttons - more compact
+// Animate in the links on card hover
+const cardWithLinksHover = mergeStyles({
+    selectors: {
+        ':hover .profileLink': {
+            opacity: 1,
+            pointerEvents: 'auto',
+            height: '44px', // Animate in height for links
+        },
+    },
+});
+
+// New style for profile link buttons - same size and behaviour as client type buttons
 const profileButtonStyle = mergeStyles({
+    flex: 1,
     display: 'flex',
     alignItems: 'center',
-    textDecoration: 'none',
-    color: colours.highlight,
-    border: '1px solid #ccc',
-    borderRadius: '2px',
-    padding: '1px 3px', // Further reduced padding for more compact buttons
-    transition: 'background-color 0.2s, transform 0.1s',
-    fontSize: '10px', // Smaller font size
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent background
-    height: '18px', // Fixed height for consistency
-    minWidth: '50px', // Minimum width for better visibility
     justifyContent: 'center',
+    textDecoration: 'none',
+    color: '#061733',
+    border: '2px solid #e1dfdd',
+    borderRadius: 0,
+    padding: '12px 18px',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    background: '#fff',
+    transition: 'background 0.18s, border 0.18s, color 0.18s',
+    minWidth: 0,
+    boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+    cursor: 'pointer',
+    gap: 8,
     selectors: {
         ':hover': {
-            backgroundColor: '#e1dfdd',
+            background: '#e7f1ff',
+            border: '2px solid #3690CE',
+            color: '#3690CE',
             textDecoration: 'none',
         },
-        ':active': {
-            backgroundColor: '#d0d0d0',
-            transform: 'scale(0.98)',
-        },
         ':focus': {
-            outline: '1px solid ' + colours.highlight,
+            outline: '2px solid #3690CE',
+        },
+        ':active': {
+            background: '#d0e7ff',
         },
     },
 });
@@ -190,7 +256,8 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     const cardStyles = mergeStyles(
         baseCardStyle,
         isDarkMode && darkCardStyle,
-        selected && selectedCardStyle
+        selected && selectedCardStyle,
+        cardWithLinksHover
     );
 
     // Choose icon based on POID type.
@@ -205,21 +272,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     const isCompleted = stage === 'completed';
     const isReview = stage === 'review';
     
-    let bannerText = null;
-    let bannerClass = mergeStyles('instruction-banner', {
-        padding: componentTokens.infoBanner.padding,
-        fontSize: '0.875rem',
-        position: 'relative',
-        zIndex: 2,
-        marginBottom: '10px',
-    });
-    
-    // We're removing the banner since we now have the ID Verification status display
-    // which provides a clearer indication of the verification status
-
-    const dobDisplay = poid.date_of_birth
-        ? `${new Date(poid.date_of_birth).toLocaleDateString()} (${calculateAge(poid.date_of_birth)})`
-        : null;
+    // (Removed unused bannerClass and dobDisplay)
 
     return (
         <div onClick={onClick} className={cardStyles}>
@@ -230,20 +283,34 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
             <div className={contentStyle}>
                 <Stack tokens={{ childrenGap: 8 }}>
                     {/* Client's Name */}
-                    <Text
-                        variant="mediumPlus"
-                        styles={{
-                            root: {
-                                fontWeight: 700,
-                                color: colours.highlight,
-                                fontFamily: 'Raleway, sans-serif',
-                                lineHeight: '1.2',
-                            },
-                        }}
-                    >
-                        {poid.prefix ? `${poid.prefix} ` : ''}
-                        {poid.first ? poid.first : '[No First Name]'} {poid.last ? poid.last : '[No Last Name]'}
-                    </Text>
+                    <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                        <Text
+                            variant="mediumPlus"
+                            styles={{
+                                root: {
+                                    fontWeight: 700,
+                                    color: colours.highlight,
+                                    fontFamily: 'Raleway, sans-serif',
+                                    lineHeight: '1.2',
+                                },
+                            }}
+                        >
+                            {poid.prefix ? `${poid.prefix} ` : ''}
+                            {poid.first ? poid.first : '[No First Name]'} {poid.last ? poid.last : '[No Last Name]'}
+                        </Text>
+                        {/* Age next to name if DOB available */}
+                        {poid.date_of_birth && (
+                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
+                                {calculateAge(poid.date_of_birth)}
+                            </Text>
+                        )}
+                        {/* Country alpha after age */}
+                        {poid.nationality_iso && (
+                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
+                                {poid.nationality_iso}
+                            </Text>
+                        )}
+                    </Stack>
                     
                     {/* Company Name if applicable */}
                     {poid.type === "Yes" && poid.company_name && (
@@ -255,80 +322,106 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                         </Text>
                     )}
                     
-                    {/* DOB with age */}
-                    {dobDisplay && (
-                        <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2' } }}>
-                            {dobDisplay}
-                        </Text>
-                    )}
-                    
-                    {/* Nationality (ISO) */}
-                    {poid.nationality_iso && (
-                        <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2' } }}>
-                            {poid.nationality_iso}
-                        </Text>
-                    )}
-                    
                     {/* Verification Status - Cleaner layout */}
                     {poid.check_result && (
                         <Stack tokens={{ childrenGap: 4 }}>
-                            <div 
-                                style={{ 
+                            {/* ID Verification banner with countdown aligned right */}
+                            <div
+                                style={{
                                     display: 'flex',
                                     alignItems: 'center',
+                                    justifyContent: 'space-between',
                                     padding: '4px 8px',
-                                    backgroundColor: poid.check_result.toLowerCase() === 'passed' ? '#DFF6DD' : '#FFF4CE',
-                                    borderLeft: poid.check_result.toLowerCase() === 'passed' ? '3px solid #107C10' : '3px solid #FFB900',
+                                    backgroundColor: '#f7f7fa', // Always neutral background
+                                    borderLeft:
+                                        poid.check_result && poid.check_result.toLowerCase() === 'passed'
+                                            ? '3px solid #107C10'
+                                        : poid.check_result && poid.check_result.toLowerCase() === 'review'
+                                            ? '3px solid #FFB900'
+                                            : '3px solid #D83B01',
                                     marginTop: '4px',
                                     marginBottom: '2px',
                                     fontWeight: 600,
-                                    fontSize: '11px',
-                                    color: poid.check_result.toLowerCase() === 'passed' ? '#107C10' : '#D83B01',
+                                    fontSize: '0.9rem',
+                                    color:
+                                        poid.check_result && poid.check_result.toLowerCase() === 'passed'
+                                            ? '#107C10'
+                                        : poid.check_result && poid.check_result.toLowerCase() === 'review'
+                                            ? '#FFB900'
+                                            : '#D83B01',
                                     width: '100%'
                                 }}
                             >
-                                <Icon 
-                                    iconName={poid.check_result.toLowerCase() === 'passed' ? 'CompletedSolid' : 'Warning'} 
-                                    styles={{ root: { marginRight: 4, fontSize: '9px' } }} 
-                                />
-                                ID Verification: {poid.check_result}
-                            </div>
-                            
-                            {/* Verification details as a status list */}
-                            <div style={{ fontSize: '10px', marginLeft: '18px', color: '#555' }}>
-                                {/* PEP & Sanctions result */}
-                                {poid.pep_sanctions_result && (
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                                        <div style={{ 
-                                            width: '6px', 
-                                            height: '6px', 
-                                            borderRadius: '50%', 
-                                            backgroundColor: poid.pep_sanctions_result?.toLowerCase() === 'passed' ? '#107C10' : '#FFB900',
-                                            marginRight: '4px'
-                                        }}></div>
-                                        <span>PEP & Sanctions: {poid.pep_sanctions_result}</span>
-                                    </div>
-                                )}
-                                
-                                {/* Address verification result */}
-                                {poid.address_verification_result && (
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
-                                        <div style={{ 
-                                            width: '6px', 
-                                            height: '6px', 
-                                            borderRadius: '50%', 
-                                            backgroundColor: poid.address_verification_result?.toLowerCase() === 'passed' ? '#107C10' : '#FFB900',
-                                            marginRight: '4px'
-                                        }}></div>
-                                        <span>Address: {poid.address_verification_result}</span>
-                                    </div>
-                                )}
-                                
-                                {/* Check expiry date */}
+                                <span style={{ display: 'flex', alignItems: 'center' }}>
+                                    <Icon
+                                        iconName={
+                                            poid.check_result && poid.check_result.toLowerCase() === 'passed'
+                                                ? 'CompletedSolid'
+                                                : 'Warning'
+                                        }
+                                        styles={{
+                                            root: {
+                                                marginRight: 4,
+                                                fontSize: '9px',
+                                                color:
+                                                    poid.check_result && poid.check_result.toLowerCase() === 'passed'
+                                                        ? '#107C10'
+                                                    : poid.check_result && poid.check_result.toLowerCase() === 'review'
+                                                        ? '#FFB900'
+                                                        : '#D83B01',
+                                            },
+                                        }}
+                                    />
+                                    <span
+                                        style={{
+                                            color:
+                                                poid.check_result && poid.check_result.toLowerCase() === 'passed'
+                                                    ? '#107C10'
+                                                : poid.check_result && poid.check_result.toLowerCase() === 'review'
+                                                    ? '#FFB900'
+                                                    : '#D83B01',
+                                        }}
+                                    >
+                                        ID Verification: {poid.check_result}
+                                    </span>
+                                </span>
+                                {/* Expiry countdown, right-aligned */}
                                 {poid.check_expiry && (
-                                    <div style={{ fontStyle: 'italic', marginTop: '4px' }}>
-                                        Expires: {poid.check_expiry}
+                                    <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#555', fontStyle: 'italic', marginLeft: 12 }}>
+                                        {getExpiryCountdown(poid.check_expiry)}
+                                    </span>
+                                )}
+                            </div>
+                            {/* Read-only info container for check date and correlation id */}
+                            {poid.check_expiry && (
+                                <div
+                                    style={{
+                                        background: '#f7f7fa',
+                                        border: '1px solid #e1dfdd',
+                                        borderRadius: 4,
+                                        padding: '6px 12px',
+                                        margin: '8px 0 12px 0',
+                                        fontSize: '0.85rem',
+                                        color: '#444',
+                                        display: 'block',
+                                    }}
+                                >
+                                    <div>
+                                        <b>Check Date:</b> {new Date(poid.check_expiry).toLocaleDateString()}
                                     </div>
+                                </div>
+                            )}
+                            {/* Verification details as a status list (no expiry here) */}
+                            <div style={{ display: 'flex', marginLeft: 0, marginTop: 10, marginBottom: 10, width: '100%' }}>
+                                {poid.pep_sanctions_result && (
+                                    <span style={verificationButtonStyle(poid.pep_sanctions_result.toLowerCase())}>
+                                        PEP & Sanctions: {poid.pep_sanctions_result}
+                                    </span>
+                                )}
+                                {poid.address_verification_result && (
+                                    <span style={verificationButtonStyle(poid.address_verification_result.toLowerCase())}>
+                                        Address: {poid.address_verification_result}
+                                    </span>
                                 )}
                             </div>
                         </Stack>
@@ -339,7 +432,6 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
             {/* Profile links container - fixed position at bottom, above POID ID */}
             <div className={`${profileLinkContainer} profileLink`}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Text variant="small" styles={{ root: { fontSize: '9px', color: '#666', fontWeight: 600 } }}>Links:</Text>
                     {poid.client_id && (
                         <a
                             href={`https://eu.app.clio.com/nc/#/contacts/${poid.client_id}`}
