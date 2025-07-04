@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Stack,
   mergeStyles,
-  IconButton,
   Pivot,
   PivotItem,
   Text,
@@ -202,13 +201,98 @@ const Instructions: React.FC<InstructionsProps> = ({
       <>
         {showNewMatterPage || showRiskPage || showEIDPage || showDraftCCLPage ? (
           <div className={detailNavStyle(isDarkMode)}>
-            <IconButton
-              iconProps={{ iconName: "ChevronLeft" }}
+            <div 
+              className="nav-back-button"
               onClick={handleBack}
-              className={backButtonStyle}
+              style={{
+                background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+                border: '1px solid #e1dfdd',
+                borderRadius: '0',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                marginRight: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e7f1ff';
+                e.currentTarget.style.border = '1px solid #3690CE';
+                e.currentTarget.style.width = '120px';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
+                e.currentTarget.style.border = '1px solid #e1dfdd';
+                e.currentTarget.style.width = '32px';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+              }}
               title="Back"
-              ariaLabel="Back"
-            />
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleBack();
+                }
+              }}
+            >
+              {/* ChevronLeft Icon */}
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 16 16" 
+                fill="none"
+                style={{
+                  transition: 'color 0.3s, opacity 0.3s',
+                  color: isDarkMode ? '#ffffff' : '#666666',
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <path 
+                  d="M10 12L6 8L10 4" 
+                  stroke="currentColor" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              
+              {/* Expandable Text */}
+              <span 
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#3690CE',
+                  opacity: 0,
+                  transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+                className="back-text"
+              >
+                Back
+              </span>
+            </div>
+            
+            <style>{`
+              .nav-back-button:hover .back-text {
+                opacity: 1 !important;
+              }
+              .nav-back-button:hover svg {
+                opacity: 0 !important;
+              }
+            `}</style>
           </div>
         ) : (
           <>
@@ -304,18 +388,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const newMatterContainerStyle = mergeStyles(containerStyle, {
     padding: "12px",
-  });
-
-  const backButtonStyle = mergeStyles({
-    width: 32,
-    height: 32,
-    borderRadius: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-    marginRight: 8,
   });
 
   const sectionContainerStyle = (dark: boolean) =>

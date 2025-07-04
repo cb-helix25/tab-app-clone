@@ -285,23 +285,36 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [currentStep, setCurrentStep] = useState(0); // 0: select, 1: form, 2: review
     const [pendingClientType, setPendingClientType] = useState('');
 
+    // Determine completion status for each step
+    const clientsStepComplete = selectedPoidIds.length > 0 && pendingClientType;
+    const matterStepComplete = selectedDate && supervisingPartner && originatingSolicitor && areaOfWork && practiceArea && description;
+    const reviewStepComplete = false; // Review step doesn't have a "next" - it's the final step
+
     const handleContinueToForm = () => {
         if (selectedPoidIds.length > 0 && pendingClientType) {
             setClientType(pendingClientType);
             setCurrentStep(1);
+            // Scroll to top when changing steps
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
     const handleGoToReview = () => {
         setCurrentStep(2);
+        // Scroll to top when changing steps
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleBackToClients = () => {
         setCurrentStep(0);
+        // Scroll to top when changing steps
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleBackToForm = () => {
         setCurrentStep(1);
+        // Scroll to top when changing steps
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleClientTypeChange = (newType: string, shouldLimitToSingle: boolean) => {
@@ -346,45 +359,186 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         gap: 16
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                            <h3 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>
-                                {currentStep === 0 && 'Select Clients'}
-                                {currentStep === 1 && 'Matter Details'}
-                                {currentStep === 2 && 'Review Summary'}
-                            </h3>
                             {/* Navigation breadcrumbs */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#666' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                                 <button 
                                     onClick={handleBackToClients}
                                     style={{ 
                                         background: 'none', 
                                         border: 'none', 
-                                        color: currentStep === 0 ? '#0078d4' : '#666',
+                                        color: currentStep === 0 ? '#3690CE' : '#666',
                                         cursor: 'pointer',
-                                        textDecoration: currentStep === 0 ? 'underline' : 'none'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        borderRadius: 6,
+                                        transition: 'all 0.2s ease',
+                                        fontWeight: currentStep === 0 ? 600 : 400,
+                                        backgroundColor: currentStep === 0 ? '#e3f0fc' : 'transparent'
                                     }}
                                 >
+                                    {clientsStepComplete && currentStep !== 0 ? (
+                                        <div className="completion-tick visible" style={{ 
+                                            marginRight: 4,
+                                            width: 16,
+                                            height: 16,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '50%',
+                                            background: '#fff',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                            color: '#20b26c',
+                                            border: '2px solid #f8f8f8'
+                                        }}>
+                                            <svg width="10" height="8" viewBox="0 0 24 24" fill="none">
+                                                <polyline points="5,13 10,18 19,7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </div>
+                                    ) : (
+                                        <i className="ms-Icon ms-Icon--People" style={{ fontSize: 16 }} />
+                                    )}
                                     Clients
                                 </button>
-                                <span>→</span>
+                                
+                                {/* Modern connector */}
+                                <div style={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    margin: '0 4px'
+                                }}>
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e0e0e0'
+                                    }} />
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e8e8e8'
+                                    }} />
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e0e0e0'
+                                    }} />
+                                </div>
+                                
                                 <button 
                                     onClick={handleBackToForm}
                                     disabled={currentStep === 0}
                                     style={{ 
                                         background: 'none', 
                                         border: 'none', 
-                                        color: currentStep === 1 ? '#0078d4' : currentStep === 0 ? '#ccc' : '#666',
+                                        color: currentStep === 1 ? '#3690CE' : currentStep === 0 ? '#ccc' : '#666',
                                         cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
-                                        textDecoration: currentStep === 1 ? 'underline' : 'none'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        borderRadius: 6,
+                                        transition: 'all 0.2s ease',
+                                        fontWeight: currentStep === 1 ? 600 : 400,
+                                        backgroundColor: currentStep === 1 ? '#e3f0fc' : 'transparent'
                                     }}
                                 >
-                                    Form
+                                    {matterStepComplete && currentStep !== 1 ? (
+                                        <div className="completion-tick visible" style={{ 
+                                            marginRight: 4,
+                                            width: 16,
+                                            height: 16,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '50%',
+                                            background: '#fff',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                            color: '#20b26c',
+                                            border: '2px solid #f8f8f8'
+                                        }}>
+                                            <svg width="10" height="8" viewBox="0 0 24 24" fill="none">
+                                                <polyline points="5,13 10,18 19,7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </div>
+                                    ) : (
+                                        <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 16 }} />
+                                    )}
+                                    Matter
                                 </button>
-                                <span>→</span>
-                                <span style={{ color: currentStep === 2 ? '#0078d4' : '#ccc' }}>Review</span>
+                                
+                                {/* Modern connector */}
+                                <div style={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    margin: '0 4px'
+                                }}>
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e0e0e0'
+                                    }} />
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e8e8e8'
+                                    }} />
+                                    <div style={{ 
+                                        width: '4px', 
+                                        height: '4px', 
+                                        borderRadius: '50%', 
+                                        background: '#e0e0e0'
+                                    }} />
+                                </div>
+                                
+                                <div style={{ 
+                                    color: currentStep === 2 ? '#3690CE' : '#666',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '8px 12px',
+                                    borderRadius: 6,
+                                    fontWeight: currentStep === 2 ? 600 : 400,
+                                    backgroundColor: currentStep === 2 ? '#e3f0fc' : 'transparent',
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    <i className="ms-Icon ms-Icon--CheckboxComposite" style={{ fontSize: 16 }} />
+                                    Review
+                                </div>
                             </div>
                         </div>
                         <MinimalSearchBox value={poidSearchTerm} onChange={setPoidSearchTerm} />
                     </div>
+
+                    {/* Add CSS animation for completion ticks */}
+                    <style>{`
+                        @keyframes tickPop {
+                            from {
+                                opacity: 0;
+                                transform: scale(0);
+                            }
+                            to {
+                                opacity: 1;
+                                transform: scale(1);
+                            }
+                        }
+                        
+                        .completion-tick {
+                            animation: tickPop 0.3s ease;
+                        }
+                        
+                        .completion-tick.visible {
+                            opacity: 1;
+                            transform: scale(1);
+                        }
+                    `}</style>
 
                     {/* Sliding Container */}
                     <div style={{ 
@@ -422,12 +576,102 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 
                                 {/* Continue Button */}
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-                                    <PrimaryButton
-                                        text="Continue to Form"
-                                        disabled={selectedPoidIds.length === 0 || !pendingClientType}
-                                        onClick={handleContinueToForm}
-                                        styles={sharedPrimaryButtonStyles}
-                                    />
+                                    <div 
+                                        className={`continue-button${(selectedPoidIds.length === 0 || !pendingClientType) ? ' disabled' : ''}`}
+                                        onClick={(selectedPoidIds.length === 0 || !pendingClientType) ? undefined : handleContinueToForm}
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '64px',
+                                            height: '64px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: (selectedPoidIds.length === 0 || !pendingClientType) ? 'not-allowed' : 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            opacity: (selectedPoidIds.length === 0 || !pendingClientType) ? 0.5 : 1,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (selectedPoidIds.length > 0 && pendingClientType) {
+                                                e.currentTarget.style.background = '#e7f1ff';
+                                                e.currentTarget.style.border = '2px solid #3690CE';
+                                                e.currentTarget.style.borderRadius = '32px';
+                                                e.currentTarget.style.width = '220px';
+                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (selectedPoidIds.length > 0 && pendingClientType) {
+                                                e.currentTarget.style.background = '#f4f4f6';
+                                                e.currentTarget.style.border = '2px solid #e1dfdd';
+                                                e.currentTarget.style.borderRadius = '50%';
+                                                e.currentTarget.style.width = '64px';
+                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            }
+                                        }}
+                                    >
+                                        {/* Arrow Icon */}
+                                        <svg 
+                                            width="24" 
+                                            height="24" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none"
+                                            style={{
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: (selectedPoidIds.length === 0 || !pendingClientType) ? '#bdbdbd' : '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                            }}
+                                        >
+                                            <path 
+                                                d="M5 12h14m-7-7l7 7-7 7" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        
+                                        {/* Expandable Text */}
+                                        <span 
+                                            style={{
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '16px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="continue-text"
+                                        >
+                                            Continue to Matter Details
+                                        </span>
+                                    </div>
+                                    
+                                    <style>{`
+                                        .continue-button:hover .continue-text {
+                                            opacity: 1 !important;
+                                        }
+                                        .continue-button:hover svg {
+                                            opacity: 0 !important;
+                                        }
+                                        .continue-button.disabled:hover .continue-text {
+                                            opacity: 0 !important;
+                                        }
+                                        .continue-button.disabled:hover svg {
+                                            opacity: 1 !important;
+                                        }
+                                    `}</style>
                                 </div>
                             </div>
 
@@ -507,115 +751,170 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 </StepWrapper>
                                 {/* Navigation buttons for form step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
-                                    {/* Back button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button back-button"
-                                            onClick={handleBackToClients}
+                                    {/* Back button with smooth expansion */}
+                                    <div 
+                                        className="nav-button back-button"
+                                        onClick={handleBackToClients}
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '48px',
+                                            height: '48px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#e7f1ff';
+                                            e.currentTarget.style.border = '2px solid #3690CE';
+                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.width = '160px';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#f4f4f6';
+                                            e.currentTarget.style.border = '2px solid #e1dfdd';
+                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.width = '48px';
+                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                        }}
+                                    >
+                                        {/* Arrow Icon */}
+                                        <svg 
+                                            width="18" 
+                                            height="18" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none"
                                             style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #d1d5db',
-                                                background: '#fff',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#666'
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
                                             }}
                                         >
-                                            ←
-                                        </button>
-                                        <div className="nav-label back-label" style={{
-                                            position: 'absolute',
-                                            right: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Back to Clients
-                                            <div style={{
+                                            <path 
+                                                d="M19 12h-14m7 7l-7-7 7-7" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        
+                                        {/* Expandable Text */}
+                                        <span 
+                                            style={{
                                                 position: 'absolute',
-                                                right: '-6px',
+                                                left: '50%',
                                                 top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="nav-text"
+                                        >
+                                            Back to Clients
+                                        </span>
                                     </div>
 
-                                    {/* Forward button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button forward-button"
-                                            onClick={handleGoToReview}
+                                    {/* Forward button with smooth expansion */}
+                                    <div 
+                                        className="nav-button forward-button"
+                                        onClick={handleGoToReview}
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '48px',
+                                            height: '48px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#e7f1ff';
+                                            e.currentTarget.style.border = '2px solid #3690CE';
+                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.width = '160px';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#f4f4f6';
+                                            e.currentTarget.style.border = '2px solid #e1dfdd';
+                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.width = '48px';
+                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                        }}
+                                    >
+                                        {/* Arrow Icon */}
+                                        <svg 
+                                            width="18" 
+                                            height="18" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none"
                                             style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #0078d4',
-                                                background: '#0078d4',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#fff'
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
                                             }}
                                         >
-                                            →
-                                        </button>
-                                        <div className="nav-label forward-label" style={{
-                                            position: 'absolute',
-                                            left: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Review Summary
-                                            <div style={{
+                                            <path 
+                                                d="M5 12h14m-7-7l7 7-7 7" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        
+                                        {/* Expandable Text */}
+                                        <span 
+                                            style={{
                                                 position: 'absolute',
-                                                left: '-6px',
+                                                left: '50%',
                                                 top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderRight: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="nav-text"
+                                        >
+                                            Review Summary
+                                        </span>
                                     </div>
+                                    
+                                    <style>{`
+                                        .nav-button:hover .nav-text {
+                                            opacity: 1 !important;
+                                        }
+                                        .nav-button:hover svg {
+                                            opacity: 0 !important;
+                                        }
+                                    `}</style>
                                 </div>
                             </div>
 
@@ -636,110 +935,344 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     }}
                                     tabIndex={-1}
                                 >
-                                    <h4 style={{ margin: '0 0 16px 0', fontWeight: 600 }}>Review Summary</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        <div><strong>Date:</strong> {selectedDate ? selectedDate.toLocaleDateString() : '-'}</div>
-                                        <div><strong>Solicitor:</strong> {teamMember || '-'}</div>
-                                        <div><strong>Supervising Partner:</strong> {supervisingPartner || '-'}</div>
-                                        <div><strong>Originating Solicitor:</strong> {originatingSolicitor || '-'}</div>
-                                        <div><strong>Client Type:</strong> {clientType || '-'}</div>
-                                        <div><strong>POID(s):</strong> {selectedPoidIds && selectedPoidIds.length > 0 ? selectedPoidIds.join(', ') : '-'}</div>
-                                        <div><strong>Area of Work:</strong> {areaOfWork || '-'}</div>
-                                        <div><strong>Practice Area:</strong> {practiceArea || '-'}</div>
-                                        <div><strong>Description:</strong> {description || '-'}</div>
-                                        <div><strong>Folder Structure:</strong> {folderStructure || '-'}</div>
-                                        <div><strong>Dispute Value:</strong> {disputeValue || '-'}</div>
-                                        <div><strong>Source:</strong> {source || '-'}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}</div>
-                                        <div><strong>Opponent:</strong> {opponentName || '-'}{opponentEmail ? ` (${opponentEmail})` : ''}</div>
-                                        <div><strong>Opponent Solicitor:</strong> {(opponentSolicitorName || '-') + ' - ' + (opponentSolicitorCompany || '-') + (opponentSolicitorEmail ? ` (${opponentSolicitorEmail})` : '')}</div>
-                                        <div><strong>No Conflict Confirmed:</strong> {noConflict ? 'Yes' : 'No'}</div>
+                                    <h4 style={{ margin: '0 0 24px 0', fontWeight: 600, fontSize: 18, color: '#061733' }}>Review Summary</h4>
+                                    
+                                    {/* Client Information Section */}
+                                    <div style={{ marginBottom: 24 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--People" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Client Information</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Type:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{clientType || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Client(s):</span>
+                                                <div style={{ textAlign: 'right', maxWidth: '60%' }}>
+                                                    {selectedPoidIds && selectedPoidIds.length > 0 ? (
+                                                        selectedPoidIds.map((id, index) => {
+                                                            const client = effectivePoidData.find(p => p.poid_id === id);
+                                                            return (
+                                                                <div key={id} style={{ fontSize: 13, fontWeight: 500, marginBottom: index < selectedPoidIds.length - 1 ? 4 : 0 }}>
+                                                                    {client ? `${client.first} ${client.last}` : id}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <span style={{ fontSize: 13, fontWeight: 500 }}>-</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Matter Details Section */}
+                                    <div style={{ marginBottom: 24 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Matter Details</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Area of Work:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{areaOfWork || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Practice Area:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{practiceArea || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Description:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right', lineHeight: '1.4' }}>
+                                                    {description ? (description.length > 50 ? `${description.substring(0, 50)}...` : description) : '-'}
+                                                </span>
+                                            </div>
+                                            {disputeValue && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ color: '#666', fontSize: 13 }}>Dispute Value:</span>
+                                                    <span style={{ fontWeight: 500, fontSize: 13 }}>{disputeValue}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Team & Management Section */}
+                                    <div style={{ marginBottom: 24 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--ContactCard" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Team & Management</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Date:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{selectedDate ? selectedDate.toLocaleDateString() : '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Solicitor:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{teamMember || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Supervising Partner:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{supervisingPartner || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Originating Solicitor:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{originatingSolicitor || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Additional Information Section */}
+                                    {(source || opponentName || folderStructure) && (
+                                        <div style={{ marginBottom: 16 }}>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 8, 
+                                                marginBottom: 12,
+                                                paddingBottom: 8,
+                                                borderBottom: '1px solid #f0f0f0'
+                                            }}>
+                                                <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14, color: '#3690CE' }} />
+                                                <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Additional Details</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                                {source && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ color: '#666', fontSize: 13 }}>Source:</span>
+                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
+                                                            {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {opponentName && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ color: '#666', fontSize: 13 }}>Opponent:</span>
+                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
+                                                            {opponentName}{opponentEmail ? ` (${opponentEmail})` : ''}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {folderStructure && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ color: '#666', fontSize: 13 }}>Folder Structure:</span>
+                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{folderStructure}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Conflict Check Status */}
+                                    <div style={{ 
+                                        marginTop: 16,
+                                        padding: 12,
+                                        background: noConflict ? '#f0f9f4' : '#fef2f2',
+                                        border: `1px solid ${noConflict ? '#d1fae5' : '#fecaca'}`,
+                                        borderRadius: 6,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}>
+                                        <i className={`ms-Icon ms-Icon--${noConflict ? 'CheckMark' : 'Warning'}`} 
+                                           style={{ fontSize: 14, color: noConflict ? '#22c55e' : '#ef4444' }} />
+                                        <span style={{ fontSize: 13, fontWeight: 500, color: noConflict ? '#15803d' : '#dc2626' }}>
+                                            {noConflict ? 'No conflicts confirmed' : 'Conflict check required'}
+                                        </span>
                                     </div>
                                 </div>
                                 {/* Navigation buttons for review step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
-                                    {/* Back button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button back-button"
-                                            onClick={handleBackToForm}
+                                    {/* Back button with smooth expansion */}
+                                    <div 
+                                        className="nav-button back-button"
+                                        onClick={handleBackToForm}
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '48px',
+                                            height: '48px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#e7f1ff';
+                                            e.currentTarget.style.border = '2px solid #3690CE';
+                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.width = '140px';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#f4f4f6';
+                                            e.currentTarget.style.border = '2px solid #e1dfdd';
+                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.width = '48px';
+                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                        }}
+                                    >
+                                        {/* Arrow Icon */}
+                                        <svg 
+                                            width="18" 
+                                            height="18" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none"
                                             style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #d1d5db',
-                                                background: '#fff',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#666'
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
                                             }}
                                         >
-                                            ←
-                                        </button>
-                                        <div className="nav-label back-label" style={{
-                                            position: 'absolute',
-                                            right: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Back to Form
-                                            <div style={{
+                                            <path 
+                                                d="M19 12h-14m7 7l-7-7 7-7" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        
+                                        {/* Expandable Text */}
+                                        <span 
+                                            style={{
                                                 position: 'absolute',
-                                                right: '-6px',
+                                                left: '50%',
                                                 top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="nav-text"
+                                        >
+                                            Back to Form
+                                        </span>
                                     </div>
 
-                                    {/* Submit button using primary styles */}
-                                    <PrimaryButton
-                                        text="Submit Matter"
+                                    {/* Submit button with smooth expansion */}
+                                    <div 
+                                        className="nav-button submit-button"
                                         onClick={() => {
                                             // Handle form submission here
                                             console.log('Form submitted!');
                                         }}
-                                        styles={{
-                                            root: {
-                                                backgroundColor: '#107c10',
-                                                fontSize: 16,
-                                                padding: '0.8em 1.5em',
-                                                border: 'none',
-                                                height: '40px',
-                                                fontWeight: '600',
-                                                color: '#ffffff',
-                                                transition: 'background 0.3s ease, box-shadow 0.3s ease',
-                                                borderRadius: '4px'
-                                            },
-                                            rootHovered: {
-                                                background: 'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), #107c10 !important',
-                                                boxShadow: '0 0 8px rgba(0,0,0,0.2) !important'
-                                            },
-                                            label: {
-                                                color: '#ffffff !important'
-                                            }
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '48px',
+                                            height: '48px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
                                         }}
-                                    />
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#e7f1ff';
+                                            e.currentTarget.style.border = '2px solid #3690CE';
+                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.width = '160px';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#f4f4f6';
+                                            e.currentTarget.style.border = '2px solid #e1dfdd';
+                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.width = '48px';
+                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                        }}
+                                    >
+                                        {/* Check Icon */}
+                                        <svg 
+                                            width="18" 
+                                            height="18" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none"
+                                            style={{
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                            }}
+                                        >
+                                            <polyline 
+                                                points="20,6 9,17 4,12" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        
+                                        {/* Expandable Text */}
+                                        <span 
+                                            style={{
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="nav-text"
+                                        >
+                                            Submit Matter
+                                        </span>
+                                    </div>
+                                    
+                                    <style>{`
+                                        .nav-button:hover .nav-text {
+                                            opacity: 1 !important;
+                                        }
+                                        .nav-button:hover svg {
+                                            opacity: 0 !important;
+                                        }
+                                    `}</style>
                                 </div>
                             </div>
                         </div>
