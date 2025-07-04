@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Stack, PrimaryButton } from '@fluentui/react';
+import { Stack } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
@@ -27,7 +27,6 @@ import OpponentDetailsStep from './OpponentDetailsStep';
 
 import { CompletionProvider } from './CompletionContext';
 import idVerifications from '../../../localData/localIdVerifications.json';
-import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 
 interface FlatMatterOpeningProps {
     poidData?: POID[];
@@ -225,26 +224,15 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, [filteredPoidData]);
 
     const handlePoidClick = (poid: POID) => {
-        const isSingleSelectionType = pendingClientType !== 'Multiple Individuals';
-        
         if (selectedPoidIds.includes(poid.poid_id)) {
-            // Deselecting a POID
             setSelectedPoidIds((prev) => prev.filter((id) => id !== poid.poid_id));
             if (activePoid && activePoid.poid_id === poid.poid_id) {
                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
                 setActivePoid(remaining || null);
             }
         } else {
-            // Selecting a POID
-            if (isSingleSelectionType) {
-                // For Individual, Company, Existing Client - only allow one selection
-                setSelectedPoidIds([poid.poid_id]);
-                setActivePoid(poid);
-            } else {
-                // For Multiple Individuals - allow multiple selections
-                setSelectedPoidIds((prev) => [...prev, poid.poid_id]);
-                setActivePoid(poid);
-            }
+            setSelectedPoidIds((prev) => [...prev, poid.poid_id]);
+            setActivePoid(poid);
         }
     };
 
@@ -284,6 +272,13 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useState(0); // 0: select, 1: form, 2: review
     const [pendingClientType, setPendingClientType] = useState('');
+    
+    // Try to infer client type from selected POIDs
+    useEffect(() => {
+        if (selectedPoidIds.length === 1) setPendingClientType('Individual');
+        else if (selectedPoidIds.length > 1) setPendingClientType('Multiple Individuals');
+        // Could add logic for company/existing client if POID data supports it
+    }, [selectedPoidIds]);
 
     const handleContinueToForm = () => {
         if (selectedPoidIds.length > 0 && pendingClientType) {
@@ -302,14 +297,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const handleBackToForm = () => {
         setCurrentStep(1);
-    };
-
-    const handleClientTypeChange = (newType: string, shouldLimitToSingle: boolean) => {
-        // If switching to a single-selection type and multiple POIDs are selected
-        if (shouldLimitToSingle && selectedPoidIds.length > 1) {
-            // Keep only the first selected POID
-            setSelectedPoidIds([selectedPoidIds[0]]);
-        }
     };
 
     // Render the horizontal sliding carousel
@@ -416,18 +403,27 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         handlePoidClick={handlePoidClick}
                                         pendingClientType={pendingClientType}
                                         setPendingClientType={setPendingClientType}
-                                        onClientTypeChange={handleClientTypeChange}
                                     />
                                 </div>
                                 
                                 {/* Continue Button */}
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-                                    <PrimaryButton
-                                        text="Continue to Form"
+                                    <button
+                                        style={{ 
+                                            fontSize: 20, 
+                                            padding: '1em 2em', 
+                                            borderRadius: 8, 
+                                            background: '#0078d4', 
+                                            color: '#fff', 
+                                            border: 'none', 
+                                            cursor: selectedPoidIds.length === 0 || !pendingClientType ? 'not-allowed' : 'pointer', 
+                                            fontWeight: 600 
+                                        }}
                                         disabled={selectedPoidIds.length === 0 || !pendingClientType}
                                         onClick={handleContinueToForm}
-                                        styles={sharedPrimaryButtonStyles}
-                                    />
+                                    >
+                                        Continue to Form
+                                    </button>
                                 </div>
                             </div>
 
@@ -506,116 +502,37 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     />
                                 </StepWrapper>
                                 {/* Navigation buttons for form step */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
-                                    {/* Back button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button back-button"
-                                            onClick={handleBackToClients}
-                                            style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #d1d5db',
-                                                background: '#fff',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#666'
-                                            }}
-                                        >
-                                            ←
-                                        </button>
-                                        <div className="nav-label back-label" style={{
-                                            position: 'absolute',
-                                            right: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Back to Clients
-                                            <div style={{
-                                                position: 'absolute',
-                                                right: '-6px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
-                                    </div>
-
-                                    {/* Forward button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button forward-button"
-                                            onClick={handleGoToReview}
-                                            style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #0078d4',
-                                                background: '#0078d4',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#fff'
-                                            }}
-                                        >
-                                            →
-                                        </button>
-                                        <div className="nav-label forward-label" style={{
-                                            position: 'absolute',
-                                            left: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Review Summary
-                                            <div style={{
-                                                position: 'absolute',
-                                                left: '-6px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderRight: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
-                                    </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
+                                    <button
+                                        style={{ 
+                                            fontSize: 16, 
+                                            padding: '0.8em 1.5em', 
+                                            borderRadius: 8, 
+                                            background: '#f3f2f1', 
+                                            color: '#323130', 
+                                            border: '1px solid #d2d0ce', 
+                                            cursor: 'pointer', 
+                                            fontWeight: 500 
+                                        }}
+                                        onClick={handleBackToClients}
+                                    >
+                                        ← Back to Clients
+                                    </button>
+                                    <button
+                                        style={{ 
+                                            fontSize: 16, 
+                                            padding: '0.8em 1.5em', 
+                                            borderRadius: 8, 
+                                            background: '#0078d4', 
+                                            color: '#fff', 
+                                            border: 'none', 
+                                            cursor: 'pointer', 
+                                            fontWeight: 600 
+                                        }}
+                                        onClick={handleGoToReview}
+                                    >
+                                        Review Summary →
+                                    </button>
                                 </div>
                             </div>
 
@@ -656,147 +573,52 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     </div>
                                 </div>
                                 {/* Navigation buttons for review step */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
-                                    {/* Back button with animated circle and hover label */}
-                                    <div className="nav-button-container" style={{ position: 'relative' }}>
-                                        <button
-                                            className="nav-button back-button"
-                                            onClick={handleBackToForm}
-                                            style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: '50%',
-                                                border: '2px solid #d1d5db',
-                                                background: '#fff',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                fontSize: 16,
-                                                color: '#666'
-                                            }}
-                                        >
-                                            ←
-                                        </button>
-                                        <div className="nav-label back-label" style={{
-                                            position: 'absolute',
-                                            right: '60px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: '#323130',
-                                            color: '#fff',
-                                            padding: '8px 12px',
-                                            borderRadius: 4,
-                                            fontSize: 14,
-                                            fontWeight: 500,
-                                            whiteSpace: 'nowrap',
-                                            opacity: 0,
-                                            visibility: 'hidden',
-                                            transition: 'all 0.3s ease',
-                                            pointerEvents: 'none',
-                                            zIndex: 1000
-                                        }}>
-                                            Back to Form
-                                            <div style={{
-                                                position: 'absolute',
-                                                right: '-6px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 0,
-                                                height: 0,
-                                                borderLeft: '6px solid #323130',
-                                                borderTop: '6px solid transparent',
-                                                borderBottom: '6px solid transparent'
-                                            }}></div>
-                                        </div>
-                                    </div>
-
-                                    {/* Submit button using primary styles */}
-                                    <PrimaryButton
-                                        text="Submit Matter"
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
+                                    <button
+                                        style={{ 
+                                            fontSize: 16, 
+                                            padding: '0.8em 1.5em', 
+                                            borderRadius: 8, 
+                                            background: '#f3f2f1', 
+                                            color: '#323130', 
+                                            border: '1px solid #d2d0ce', 
+                                            cursor: 'pointer', 
+                                            fontWeight: 500 
+                                        }}
+                                        onClick={handleBackToForm}
+                                    >
+                                        ← Back to Form
+                                    </button>
+                                    <button
+                                        style={{ 
+                                            fontSize: 16, 
+                                            padding: '0.8em 1.5em', 
+                                            borderRadius: 8, 
+                                            background: '#107c10', 
+                                            color: '#fff', 
+                                            border: 'none', 
+                                            cursor: 'pointer', 
+                                            fontWeight: 600 
+                                        }}
                                         onClick={() => {
                                             // Handle form submission here
                                             console.log('Form submitted!');
                                         }}
-                                        styles={{
-                                            root: {
-                                                backgroundColor: '#107c10',
-                                                fontSize: 16,
-                                                padding: '0.8em 1.5em',
-                                                border: 'none',
-                                                height: '40px',
-                                                fontWeight: '600',
-                                                color: '#ffffff',
-                                                transition: 'background 0.3s ease, box-shadow 0.3s ease',
-                                                borderRadius: '4px'
-                                            },
-                                            rootHovered: {
-                                                background: 'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), #107c10 !important',
-                                                boxShadow: '0 0 8px rgba(0,0,0,0.2) !important'
-                                            },
-                                            label: {
-                                                color: '#ffffff !important'
-                                            }
-                                        }}
-                                    />
+                                    >
+                                        Submit Matter
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* CSS for smooth hover effects and navigation animations */}
+                    {/* CSS for smooth hover effects */}
                     <style>{`
                         .review-summary-hoverable {
                             box-shadow: none;
                         }
                         .review-summary-hoverable:hover {
                             border-color: #3690CE !important;
-                        }
-                        
-                        /* Navigation button animations */
-                        .nav-button-container:hover .nav-button.back-button {
-                            transform: scale(1.1);
-                            border-color: #0078d4;
-                            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.2);
-                        }
-                        
-                        .nav-button-container:hover .nav-button.forward-button {
-                            transform: scale(1.1);
-                            box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
-                        }
-                        
-                        .nav-button-container:hover .nav-label {
-                            opacity: 1 !important;
-                            visibility: visible !important;
-                            transform: translateY(-50%) translateX(0) !important;
-                        }
-                        
-                        .nav-button-container:hover .back-label {
-                            transform: translateY(-50%) translateX(-8px) !important;
-                        }
-                        
-                        .nav-button-container:hover .forward-label {
-                            transform: translateY(-50%) translateX(8px) !important;
-                        }
-                        
-                        .nav-button:active {
-                            transform: scale(0.95) !important;
-                        }
-                        
-                        .nav-button-container {
-                            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-                        }
-                        
-                        @keyframes fadeInUp {
-                            from {
-                                opacity: 0;
-                                transform: translateY(20px);
-                            }
-                            to {
-                                opacity: 1;
-                                transform: translateY(0);
-                            }
                         }
                     `}</style>
                 </div>

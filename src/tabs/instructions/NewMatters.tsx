@@ -206,9 +206,11 @@ const NewMatters: React.FC<NewMattersProps> = ({
 
     // Workflow
     const [clientType, setClientType] = useState(initialClientType);
+    const [pendingClientType, setPendingClientType] = useState(initialClientType);
 
     useEffect(() => {
         setClientType(initialClientType);
+        setPendingClientType(initialClientType);
     }, [initialClientType]);
     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
     const [areaOfWork, setAreaOfWork] = useState('');
@@ -435,6 +437,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setPoidSearchTerm={setPoidSearchTerm}
                         poidGridRef={poidGridRef}
                         handlePoidClick={handlePoidClick}
+                        pendingClientType={pendingClientType}
+                        setPendingClientType={setPendingClientType}
                         // fundsReceived and setFundsReceived removed
                         onConfirm={() =>
                             setOpenStep(stepsOrder.indexOf('poidSelection') + 1)

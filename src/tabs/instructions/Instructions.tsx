@@ -53,9 +53,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
   const [showDraftCCLPage, setShowDraftCCLPage] = useState<boolean>(false);
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
-  /** Client type selection for the matter opening workflow */
-  const [newMatterClientType, setNewMatterClientType] =
-    useState<string>("Individual");
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
     null,
   );
@@ -70,13 +67,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [activePivot, setActivePivot] = useState<string>("overview");
 
   const ACTION_BAR_HEIGHT = 48;
-
-  const CLIENT_TYPE_OPTIONS = [
-    { label: "Individual", icon: "Contact" },
-    { label: "Company", icon: "CityNext" },
-    { label: "Multiple Clients", icon: "People" },
-    { label: "Existing Client", icon: "Folder" },
-  ];
 
   const quickLinksStyle = (dark: boolean) =>
     mergeStyles({
@@ -219,18 +209,6 @@ const Instructions: React.FC<InstructionsProps> = ({
               title="Back"
               ariaLabel="Back"
             />
-            {showNewMatterPage &&
-              CLIENT_TYPE_OPTIONS.map((opt, idx) => (
-                <QuickActionsCard
-                  key={opt.label}
-                  title={opt.label}
-                  icon={opt.icon}
-                  isDarkMode={isDarkMode}
-                  onClick={() => setNewMatterClientType(opt.label)}
-                  selected={newMatterClientType === opt.label}
-                  style={{ "--card-index": idx } as React.CSSProperties}
-                />
-              ))}
           </div>
         ) : (
           <>
@@ -241,7 +219,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                 isDarkMode={isDarkMode}
                 onClick={() => {
                   setSelectedInstruction(null);
-                    setNewMatterClientType("Individual");
                     setShowNewMatterPage(true);
                   }}
                   style={{ "--card-index": 0 } as React.CSSProperties}
@@ -314,7 +291,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     showRiskPage,
     showEIDPage,
     showDraftCCLPage,
-    newMatterClientType,
   ]);
 
   const containerStyle = mergeStyles({
@@ -692,7 +668,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleOpenMatter = (inst: any) => {
     setSelectedInstruction(inst);
-    setNewMatterClientType(inst?.ClientType || "Individual");
     setPendingInstructionRef('');
     setShowNewMatterPage(true);
   };
@@ -763,7 +738,6 @@ const Instructions: React.FC<InstructionsProps> = ({
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
           hideClientSections={!selectedInstruction}
-          initialClientType={newMatterClientType}
         />
       </Stack>
     );
