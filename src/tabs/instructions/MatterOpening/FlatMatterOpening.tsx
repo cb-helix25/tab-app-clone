@@ -545,18 +545,26 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         overflow: 'hidden',
                         position: 'relative',
                         width: '100%',
-                        minHeight: '500px'
+                        minHeight: 'auto', // Changed from '500px' to 'auto'
+                        height: 'auto'
                     }}>
                         <div style={{ 
                             display: 'flex',
                             width: '300%', // 3 panels * 100% each
                             transform: `translateX(-${currentStep * 33.333}%)`,
                             transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            height: '100%'
+                            height: 'auto', // Changed from '100%' to 'auto'
+                            minHeight: 'auto'
                         }}>
                             
                             {/* Step 1: Client Selection */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ 
+                                width: '33.333%', 
+                                padding: '32px', 
+                                boxSizing: 'border-box',
+                                minHeight: 'auto',
+                                height: 'auto'
+                            }}>
                                 <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
@@ -576,87 +584,84 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 
                                 {/* Continue Button */}
                                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-                                    <div 
-                                        className={`continue-button${(selectedPoidIds.length === 0 || !pendingClientType) ? ' disabled' : ''}`}
-                                        onClick={(selectedPoidIds.length === 0 || !pendingClientType) ? undefined : handleContinueToForm}
-                                        style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
-                                            width: '64px',
-                                            height: '64px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: (selectedPoidIds.length === 0 || !pendingClientType) ? 'not-allowed' : 'pointer',
-                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            opacity: (selectedPoidIds.length === 0 || !pendingClientType) ? 0.5 : 1,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (selectedPoidIds.length > 0 && pendingClientType) {
+                                    {(selectedPoidIds.length > 0 && pendingClientType) && (
+                                        <div 
+                                            className="continue-button"
+                                            onClick={handleContinueToForm}
+                                            style={{
+                                                background: '#f4f4f6',
+                                                border: '2px solid #e1dfdd',
+                                                borderRadius: '50%',
+                                                width: '64px',
+                                                height: '64px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                            }}
+                                            onMouseEnter={(e) => {
                                                 e.currentTarget.style.background = '#e7f1ff';
                                                 e.currentTarget.style.border = '2px solid #3690CE';
                                                 e.currentTarget.style.borderRadius = '32px';
                                                 e.currentTarget.style.width = '220px';
                                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (selectedPoidIds.length > 0 && pendingClientType) {
+                                            }}
+                                            onMouseLeave={(e) => {
                                                 e.currentTarget.style.background = '#f4f4f6';
                                                 e.currentTarget.style.border = '2px solid #e1dfdd';
                                                 e.currentTarget.style.borderRadius = '50%';
                                                 e.currentTarget.style.width = '64px';
                                                 e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
-                                            }
-                                        }}
-                                    >
-                                        {/* Arrow Icon */}
-                                        <svg 
-                                            width="24" 
-                                            height="24" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: (selectedPoidIds.length === 0 || !pendingClientType) ? '#bdbdbd' : '#3690CE',
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
                                             }}
                                         >
-                                            <path 
-                                                d="M5 12h14m-7-7l7 7-7 7" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                        
-                                        {/* Expandable Text */}
-                                        <span 
-                                            style={{
-                                                position: 'absolute',
-                                                left: '50%',
-                                                top: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                fontSize: '16px',
-                                                fontWeight: 600,
-                                                color: '#3690CE',
-                                                opacity: 0,
-                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                            className="continue-text"
-                                        >
-                                            Continue to Matter Details
-                                        </span>
-                                    </div>
+                                            {/* Arrow Icon */}
+                                            <svg 
+                                                width="24" 
+                                                height="24" 
+                                                viewBox="0 0 24 24" 
+                                                fill="none"
+                                                style={{
+                                                    transition: 'color 0.3s, opacity 0.3s',
+                                                    color: '#3690CE',
+                                                    position: 'absolute',
+                                                    left: '50%',
+                                                    top: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                }}
+                                            >
+                                                <path 
+                                                    d="M5 12h14m-7-7l7 7-7 7" 
+                                                    stroke="currentColor" 
+                                                    strokeWidth="2" 
+                                                    strokeLinecap="round" 
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                            
+                                            {/* Expandable Text */}
+                                            <span 
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: '50%',
+                                                    top: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                    fontSize: '16px',
+                                                    fontWeight: 600,
+                                                    color: '#3690CE',
+                                                    opacity: 0,
+                                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                                className="continue-text"
+                                            >
+                                                Continue to Matter Details
+                                            </span>
+                                        </div>
+                                    )}
                                     
                                     <style>{`
                                         .continue-button:hover .continue-text {
@@ -664,12 +669,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         }
                                         .continue-button:hover svg {
                                             opacity: 0 !important;
-                                        }
-                                        .continue-button.disabled:hover .continue-text {
-                                            opacity: 0 !important;
-                                        }
-                                        .continue-button.disabled:hover svg {
-                                            opacity: 1 !important;
                                         }
                                     `}</style>
                                 </div>
