@@ -29,6 +29,40 @@ import { CompletionProvider } from './CompletionContext';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 
+// Local implementation of useDraftedState for draft persistence
+function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+    const storageKey = `matterOpeningDraft_${key}`;
+    const [state, setState] = useState<T>(() => {
+        try {
+            const item = localStorage.getItem(storageKey);
+            if (!item) return initialValue;
+            const parsed = JSON.parse(item);
+            // Special handling for selectedDate: convert string to Date
+            if (key === 'selectedDate') {
+                if (parsed === null) return null as any;
+                if (typeof parsed === 'string' || typeof parsed === 'number') {
+                    const d = new Date(parsed);
+                    return isNaN(d.getTime()) ? initialValue : (d as any);
+                }
+            }
+            return parsed;
+        } catch {
+            return initialValue;
+        }
+    });
+    useEffect(() => {
+        try {
+            // For selectedDate, store as ISO string
+            if (key === 'selectedDate' && state instanceof Date) {
+                localStorage.setItem(storageKey, JSON.stringify(state.toISOString()));
+            } else {
+                localStorage.setItem(storageKey, JSON.stringify(state));
+            }
+        } catch {}
+    }, [state, storageKey]);
+    return [state, setState];
+}
+
 interface FlatMatterOpeningProps {
     poidData?: POID[];
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
@@ -122,7 +156,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         
     // Debug logging removed
 
-    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', new Date());
     const localTeamData = useMemo(() => localTeamDataJson, []);
     const defaultPartnerOptions = defaultPartners;
     const partnerOptionsList = useMemo(() => {
@@ -162,13 +196,13 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         return '';
     }, [teamData, localTeamData, userInitials]);
 
-    const [teamMember, setTeamMember] = useState(defaultTeamMember);
+    const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
-    const [supervisingPartner, setSupervisingPartner] = useState('');
-    const [originatingSolicitor, setOriginatingSolicitor] = useState(defaultTeamMember);
+    const [supervisingPartner, setSupervisingPartner] = useDraftedState<string>('supervisingPartner', '');
+    const [originatingSolicitor, setOriginatingSolicitor] = useDraftedState<string>('originatingSolicitor', defaultTeamMember);
     useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
     // Removed fundsReceived state
-    const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false);
+    const [isDateCalloutOpen, setIsDateCalloutOpen] = useState(false); // UI only, not persisted
     const dateButtonRef = useRef<HTMLDivElement | null>(null);
 
     // Client type selection is now a page-level qualifying question
@@ -178,29 +212,47 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         'Multiple Individuals',
         'Existing Client',
     ];
-    const [clientType, setClientType] = useState(initialClientType || '');
+    const [clientType, setClientType] = useDraftedState<string>('clientType', initialClientType || '');
     useEffect(() => setClientType(initialClientType || ''), [initialClientType]);
 
-    const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
-    const [areaOfWork, setAreaOfWork] = useState('');
-    const [practiceArea, setPracticeArea] = useState('');
-    const [description, setDescription] = useState('');
-    const [folderStructure, setFolderStructure] = useState('');
-    const [disputeValue, setDisputeValue] = useState('');
+    const [selectedPoidIds, setSelectedPoidIds] = useDraftedState<string[]>('selectedPoidIds', []);
+    const [areaOfWork, setAreaOfWork] = useDraftedState<string>('areaOfWork', '');
+    const [practiceArea, setPracticeArea] = useDraftedState<string>('practiceArea', '');
+    const [description, setDescription] = useDraftedState<string>('description', '');
+    const [folderStructure, setFolderStructure] = useDraftedState<string>('folderStructure', '');
+    const [disputeValue, setDisputeValue] = useDraftedState<string>('disputeValue', '');
     // Preselect "Search" as the default value for the source field
-    const [source, setSource] = useState('search');
-    const [referrerName, setReferrerName] = useState('');
-    const [opponentName, setOpponentName] = useState('');
-    const [opponentEmail, setOpponentEmail] = useState('');
-    const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
-    const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
-    const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
-    const [noConflict, setNoConflict] = useState(false);
+    const [source, setSource] = useDraftedState<string>('source', 'search');
+    const [referrerName, setReferrerName] = useDraftedState<string>('referrerName', '');
+    const [opponentName, setOpponentName] = useDraftedState<string>('opponentName', '');
+    const [opponentEmail, setOpponentEmail] = useDraftedState<string>('opponentEmail', '');
+    const [opponentSolicitorName, setOpponentSolicitorName] = useDraftedState<string>('opponentSolicitorName', '');
+    const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useDraftedState<string>('opponentSolicitorCompany', '');
+    const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useDraftedState<string>('opponentSolicitorEmail', '');
+    const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
+    const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false); // UI only, not persisted
 
-    const [visiblePoidCount, setVisiblePoidCount] = useState(12);
-    const [poidSearchTerm, setPoidSearchTerm] = useState('');
+    // Opponent fields
+    const [opponentTitle, setOpponentTitle] = useDraftedState<string>('opponentTitle', '');
+    const [opponentFirst, setOpponentFirst] = useDraftedState<string>('opponentFirst', '');
+    const [opponentLast, setOpponentLast] = useDraftedState<string>('opponentLast', '');
+    const [opponentPhone, setOpponentPhone] = useDraftedState<string>('opponentPhone', '');
+    const [opponentAddress, setOpponentAddress] = useDraftedState<string>('opponentAddress', '');
+    const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
+    const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
+    const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
+    // Solicitor fields
+    const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
+    const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
+    const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
+    const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
+    const [solicitorAddress, setSolicitorAddress] = useDraftedState<string>('solicitorAddress', '');
+    const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
+
+    const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
+    const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
     const poidGridRef = useRef<HTMLDivElement | null>(null);
-    const [activePoid, setActivePoid] = useState<POID | null>(null);
+    const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
 
     const filteredPoidData = effectivePoidData.filter((poid) => {
         const term = poidSearchTerm.toLowerCase();
@@ -229,7 +281,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         
         if (selectedPoidIds.includes(poid.poid_id)) {
             // Deselecting a POID
-            setSelectedPoidIds((prev) => prev.filter((id) => id !== poid.poid_id));
+            setSelectedPoidIds((prev: string[]) => prev.filter((id: string) => id !== poid.poid_id));
             if (activePoid && activePoid.poid_id === poid.poid_id) {
                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
                 setActivePoid(remaining || null);
@@ -242,7 +294,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                 setActivePoid(poid);
             } else {
                 // For Multiple Individuals - allow multiple selections
-                setSelectedPoidIds((prev) => [...prev, poid.poid_id]);
+                setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
                 setActivePoid(poid);
             }
         }
@@ -282,8 +334,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             : getLocalUserNickname(userInitials);
 
     // Horizontal sliding carousel approach
-    const [currentStep, setCurrentStep] = useState(0); // 0: select, 1: form, 2: review
-    const [pendingClientType, setPendingClientType] = useState('');
+    const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
+    const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', '');
 
     // Determine completion status for each step
     const clientsStepComplete = selectedPoidIds.length > 0 && pendingClientType;
@@ -323,6 +375,97 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             // Keep only the first selected POID
             setSelectedPoidIds([selectedPoidIds[0]]);
         }
+    };
+
+    // Helper to generate sample JSON object
+    const generateSampleJson = () => {
+        const selectedClients = selectedPoidIds.map((id: string) => {
+            const client = effectivePoidData.find(p => p.poid_id === id);
+            return client ? {
+                poid_id: client.poid_id,
+                first_name: client.first,
+                last_name: client.last,
+                email: client.email,
+                type: client.type || 'individual',
+                nationality: client.nationality,
+                date_of_birth: client.date_of_birth,
+                address: {
+                    house_number: client.house_building_number,
+                    street: client.street,
+                    city: client.city,
+                    county: client.county,
+                    post_code: client.post_code,
+                    country: client.country
+                },
+                company_details: client.company_name ? {
+                    name: client.company_name,
+                    number: client.company_number,
+                    address: {
+                        house_number: client.company_house_building_number,
+                        street: client.company_street,
+                        city: client.company_city,
+                        county: client.company_county,
+                        post_code: client.company_post_code,
+                        country: client.company_country
+                    }
+                } : null,
+                verification: {
+                    stage: client.stage,
+                    check_result: client.check_result,
+                    pep_sanctions_result: client.pep_sanctions_result,
+                    address_verification_result: client.address_verification_result,
+                    check_expiry: client.check_expiry,
+                    check_id: client.check_id
+                }
+            } : null;
+        }).filter(Boolean);
+
+        return {
+            matter_details: {
+                instruction_ref: instructionRef || null,
+                client_id: clientId || null,
+                matter_ref: matterRef || null,
+                stage: stage,
+                date_created: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+                client_type: clientType,
+                area_of_work: areaOfWork,
+                practice_area: practiceArea,
+                description: description,
+                dispute_value: disputeValue || null,
+                folder_structure: folderStructure || null
+            },
+            team_assignments: {
+                fee_earner: teamMember,
+                supervising_partner: supervisingPartner,
+                originating_solicitor: originatingSolicitor,
+                requesting_user: requestingUserNickname
+            },
+            client_information: selectedClients,
+            source_details: {
+                source: source,
+                referrer_name: source === 'referral' ? referrerName : null
+            },
+            opponent_details: opponentName ? {
+                name: opponentName,
+                email: opponentEmail || null,
+                solicitor: {
+                    name: opponentSolicitorName || null,
+                    company: opponentSolicitorCompany || null,
+                    email: opponentSolicitorEmail || null
+                }
+            } : null,
+            compliance: {
+                conflict_check_completed: noConflict,
+                id_verification_required: true,
+                pep_sanctions_check_required: true
+            },
+            metadata: {
+                created_by: userInitials,
+                created_at: new Date().toISOString(),
+                form_version: "1.0",
+                processing_status: "pending_review"
+            }
+        };
     };
 
     // Render the horizontal sliding carousel
@@ -545,26 +688,18 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         overflow: 'hidden',
                         position: 'relative',
                         width: '100%',
-                        minHeight: 'auto', // Changed from '500px' to 'auto'
-                        height: 'auto'
+                        minHeight: '500px'
                     }}>
                         <div style={{ 
                             display: 'flex',
                             width: '300%', // 3 panels * 100% each
                             transform: `translateX(-${currentStep * 33.333}%)`,
                             transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            height: 'auto', // Changed from '100%' to 'auto'
-                            minHeight: 'auto'
+                            height: '100%'
                         }}>
                             
                             {/* Step 1: Client Selection */}
-                            <div style={{ 
-                                width: '33.333%', 
-                                padding: '32px', 
-                                boxSizing: 'border-box',
-                                minHeight: 'auto',
-                                height: 'auto'
-                            }}>
+                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
                                 <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
@@ -583,17 +718,17 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 </div>
                                 
                                 {/* Continue Button */}
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 32 }}>
                                     {(selectedPoidIds.length > 0 && pendingClientType) && (
                                         <div 
-                                            className="continue-button"
+                                            className="nav-button forward-button"
                                             onClick={handleContinueToForm}
                                             style={{
                                                 background: '#f4f4f6',
                                                 border: '2px solid #e1dfdd',
                                                 borderRadius: '50%',
-                                                width: '64px',
-                                                height: '64px',
+                                                width: '48px',
+                                                height: '48px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -606,7 +741,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             onMouseEnter={(e) => {
                                                 e.currentTarget.style.background = '#e7f1ff';
                                                 e.currentTarget.style.border = '2px solid #3690CE';
-                                                e.currentTarget.style.borderRadius = '32px';
+                                                e.currentTarget.style.borderRadius = '24px';
                                                 e.currentTarget.style.width = '220px';
                                                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
                                             }}
@@ -614,14 +749,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 e.currentTarget.style.background = '#f4f4f6';
                                                 e.currentTarget.style.border = '2px solid #e1dfdd';
                                                 e.currentTarget.style.borderRadius = '50%';
-                                                e.currentTarget.style.width = '64px';
+                                                e.currentTarget.style.width = '48px';
                                                 e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
                                             }}
                                         >
                                             {/* Arrow Icon */}
                                             <svg 
-                                                width="24" 
-                                                height="24" 
+                                                width="18" 
+                                                height="18" 
                                                 viewBox="0 0 24 24" 
                                                 fill="none"
                                                 style={{
@@ -649,14 +784,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                     left: '50%',
                                                     top: '50%',
                                                     transform: 'translate(-50%, -50%)',
-                                                    fontSize: '16px',
+                                                    fontSize: '14px',
                                                     fontWeight: 600,
                                                     color: '#3690CE',
                                                     opacity: 0,
                                                     transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                     whiteSpace: 'nowrap',
                                                 }}
-                                                className="continue-text"
+                                                className="nav-text"
                                             >
                                                 Continue to Matter Details
                                             </span>
@@ -664,10 +799,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     )}
                                     
                                     <style>{`
-                                        .continue-button:hover .continue-text {
+                                        .nav-button:hover .nav-text {
                                             opacity: 1 !important;
                                         }
-                                        .continue-button:hover svg {
+                                        .nav-button:hover svg {
                                             opacity: 0 !important;
                                         }
                                     `}</style>
@@ -730,7 +865,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         />
                                     </Stack>
                                 </StepWrapper>
-                                <StepWrapper stepNumber={showPoidSelection ? 4 : 3} title="Dispute and Opponent Details">
+                                <StepWrapper stepNumber={3} title="Dispute and Opponent Details">
                                     <OpponentDetailsStep
                                         opponentName={opponentName}
                                         setOpponentName={setOpponentName}
@@ -746,6 +881,34 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         setNoConflict={setNoConflict}
                                         disputeValue={disputeValue}
                                         setDisputeValue={setDisputeValue}
+                                        opponentTitle={opponentTitle}
+                                        setOpponentTitle={setOpponentTitle}
+                                        opponentFirst={opponentFirst}
+                                        setOpponentFirst={setOpponentFirst}
+                                        opponentLast={opponentLast}
+                                        setOpponentLast={setOpponentLast}
+                                        opponentPhone={opponentPhone}
+                                        setOpponentPhone={setOpponentPhone}
+                                        opponentAddress={opponentAddress}
+                                        setOpponentAddress={setOpponentAddress}
+                                        opponentHasCompany={opponentHasCompany}
+                                        setOpponentHasCompany={setOpponentHasCompany}
+                                        opponentCompanyName={opponentCompanyName}
+                                        setOpponentCompanyName={setOpponentCompanyName}
+                                        opponentCompanyNumber={opponentCompanyNumber}
+                                        setOpponentCompanyNumber={setOpponentCompanyNumber}
+                                        solicitorTitle={solicitorTitle}
+                                        setSolicitorTitle={setSolicitorTitle}
+                                        solicitorFirst={solicitorFirst}
+                                        setSolicitorFirst={setSolicitorFirst}
+                                        solicitorLast={solicitorLast}
+                                        setSolicitorLast={setSolicitorLast}
+                                        solicitorPhone={solicitorPhone}
+                                        setSolicitorPhone={setSolicitorPhone}
+                                        solicitorAddress={solicitorAddress}
+                                        setSolicitorAddress={setSolicitorAddress}
+                                        solicitorCompanyNumber={solicitorCompanyNumber}
+                                        setSolicitorCompanyNumber={setSolicitorCompanyNumber}
                                     />
                                 </StepWrapper>
                                 {/* Navigation buttons for form step */}
@@ -934,7 +1097,98 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     }}
                                     tabIndex={-1}
                                 >
-                                    <h4 style={{ margin: '0 0 24px 0', fontWeight: 600, fontSize: 18, color: '#061733' }}>Review Summary</h4>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                        <h4 style={{ margin: 0, fontWeight: 600, fontSize: 18, color: '#061733' }}>Review Summary</h4>
+                                        <button
+                                            onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
+                                            style={{
+                                                background: '#f8f9fa',
+                                                border: '1px solid #e1dfdd',
+                                                borderRadius: 6,
+                                                padding: '8px 12px',
+                                                fontSize: 12,
+                                                fontWeight: 500,
+                                                color: '#3690CE',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = '#e7f1ff';
+                                                e.currentTarget.style.borderColor = '#3690CE';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = '#f8f9fa';
+                                                e.currentTarget.style.borderColor = '#e1dfdd';
+                                            }}
+                                        >
+                                            <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
+                                            {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
+                                        </button>
+                                    </div>
+                                    
+                                    {/* JSON Preview Panel */}
+                                    {jsonPreviewOpen && (
+                                        <div style={{
+                                            marginBottom: 24,
+                                            border: '1px solid #e1dfdd',
+                                            borderRadius: 6,
+                                            background: '#f8f9fa',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                padding: '12px 16px',
+                                                background: '#2d3748',
+                                                color: '#fff',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <span>Sample JSON Output</span>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(JSON.stringify(generateSampleJson(), null, 2));
+                                                    }}
+                                                    style={{
+                                                        background: 'rgba(255,255,255,0.1)',
+                                                        border: '1px solid rgba(255,255,255,0.2)',
+                                                        borderRadius: 4,
+                                                        padding: '4px 8px',
+                                                        fontSize: 10,
+                                                        color: '#fff',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}
+                                                >
+                                                    <i className="ms-Icon ms-Icon--Copy" style={{ fontSize: 10 }} />
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            <div style={{
+                                                padding: 16,
+                                                maxHeight: 400,
+                                                overflow: 'auto',
+                                                fontSize: 11,
+                                                fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                                lineHeight: 1.4,
+                                                background: '#fff'
+                                            }}>
+                                                <pre style={{ 
+                                                    margin: 0, 
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordBreak: 'break-word'
+                                                }}>
+                                                    {JSON.stringify(generateSampleJson(), null, 2)}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     {/* Client Information Section */}
                                     <div style={{ marginBottom: 24 }}>
@@ -958,7 +1212,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 <span style={{ color: '#666', fontSize: 13 }}>Client(s):</span>
                                                 <div style={{ textAlign: 'right', maxWidth: '60%' }}>
                                                     {selectedPoidIds && selectedPoidIds.length > 0 ? (
-                                                        selectedPoidIds.map((id, index) => {
+                                                        selectedPoidIds.map((id: string, index: number) => {
                                                             const client = effectivePoidData.find(p => p.poid_id === id);
                                                             return (
                                                                 <div key={id} style={{ fontSize: 13, fontWeight: 500, marginBottom: index < selectedPoidIds.length - 1 ? 4 : 0 }}>
@@ -1002,12 +1256,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                     {description ? (description.length > 50 ? `${description.substring(0, 50)}...` : description) : '-'}
                                                 </span>
                                             </div>
-                                            {disputeValue && (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ color: '#666', fontSize: 13 }}>Dispute Value:</span>
-                                                    <span style={{ fontWeight: 500, fontSize: 13 }}>{disputeValue}</span>
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Dispute Value:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{disputeValue || '-'}</span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1045,45 +1297,135 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     </div>
 
                                     {/* Additional Information Section */}
-                                    {(source || opponentName || folderStructure) && (
-                                        <div style={{ marginBottom: 16 }}>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: 8, 
-                                                marginBottom: 12,
-                                                paddingBottom: 8,
-                                                borderBottom: '1px solid #f0f0f0'
-                                            }}>
-                                                <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14, color: '#3690CE' }} />
-                                                <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Additional Details</span>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--Info" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Additional Details</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Source:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
+                                                    {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
+                                                </span>
                                             </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
-                                                {source && (
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Source:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
-                                                            {source}{source === 'referral' && referrerName ? ` - ${referrerName}` : ''}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {opponentName && (
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Opponent:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>
-                                                            {opponentName}{opponentEmail ? ` (${opponentEmail})` : ''}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {folderStructure && (
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ color: '#666', fontSize: 13 }}>Folder Structure:</span>
-                                                        <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{folderStructure}</span>
-                                                    </div>
-                                                )}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Folder Structure:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13, maxWidth: '60%', textAlign: 'right' }}>{folderStructure || '-'}</span>
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* Opponent Details Section */}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Opponent Details</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, padding: '0 0 8px 22px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Company Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCompanyName || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCompanyNumber || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Has Company:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHasCompany ? 'Yes' : 'No'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentTitle || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentFirst || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentLast || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentEmail || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Address:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentAddress || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* ...removed duplicate Value/Dispute Value section... */}
+
+                                    {/* Opponent Solicitor Details Section */}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 8, 
+                                            marginBottom: 12,
+                                            paddingBottom: 8,
+                                            borderBottom: '1px solid #f0f0f0'
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--Legal" style={{ fontSize: 14, color: '#3690CE' }} />
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: '#3690CE' }}>Opponent Solicitor Details</span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, paddingLeft: 22 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Company Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorCompany || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCompanyNumber || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorTitle || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorFirst || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorLast || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorEmail || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Address:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorAddress || '-'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     {/* Conflict Check Status */}
                                     <div style={{ 

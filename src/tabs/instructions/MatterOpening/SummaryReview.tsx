@@ -9,6 +9,7 @@ interface SummaryReviewProps {
     setDetailsConfirmed: React.Dispatch<React.SetStateAction<boolean>>;
     showConfirmation?: boolean;
     edited?: boolean;
+    jsonData?: any; // Add optional JSON data prop
 }
 
 const SummaryReview: React.FC<SummaryReviewProps> = ({
@@ -17,9 +18,11 @@ const SummaryReview: React.FC<SummaryReviewProps> = ({
     setDetailsConfirmed,
     showConfirmation = true,
     edited = false,
+    jsonData = null,
 }) => {
     const { summaryComplete } = useCompletion();
     const [open, setOpen] = useState(true);
+    const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
 
     useEffect(() => {
         setOpen(!summaryComplete);
@@ -79,6 +82,68 @@ const SummaryReview: React.FC<SummaryReviewProps> = ({
                     <div className="summary-content">
                         {proofContent ?? <span className="summary-empty">No information provided yet.</span>}
                     </div>
+
+                    {/* JSON Preview Toggle */}
+                    {jsonData && (
+                        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #e1dfdd' }}>
+                            <button
+                                onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
+                                style={{
+                                    background: '#f8f9fa',
+                                    border: '1px solid #e1dfdd',
+                                    borderRadius: 6,
+                                    padding: '8px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    color: '#3690CE',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    width: '100%',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease',
+                                }}
+                            >
+                                <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
+                                {jsonPreviewOpen ? 'Hide Processing Data' : 'View Processing Data'}
+                            </button>
+
+                            {jsonPreviewOpen && (
+                                <div
+                                    style={{
+                                        marginTop: 12,
+                                        border: '1px solid #e1dfdd',
+                                        borderRadius: 6,
+                                        background: '#f8f9fa',
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            padding: 16,
+                                            maxHeight: 300,
+                                            overflow: 'auto',
+                                            fontSize: 10,
+                                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                                            lineHeight: 1.4,
+                                            background: '#fff',
+                                        }}
+                                    >
+                                        <pre
+                                            style={{
+                                                margin: 0,
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                            }}
+                                        >
+                                            {JSON.stringify(jsonData, null, 2)}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {showConfirmation && (

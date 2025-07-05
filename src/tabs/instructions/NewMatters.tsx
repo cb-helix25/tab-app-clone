@@ -230,6 +230,23 @@ const NewMatters: React.FC<NewMattersProps> = ({
     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
     const [noConflict, setNoConflict] = useState(false);
 
+    // Opponent fields
+    const [opponentTitle, setOpponentTitle] = useState('');
+    const [opponentFirst, setOpponentFirst] = useState('');
+    const [opponentLast, setOpponentLast] = useState('');
+    const [opponentPhone, setOpponentPhone] = useState('');
+    const [opponentAddress, setOpponentAddress] = useState('');
+    const [opponentHasCompany, setOpponentHasCompany] = useState(false);
+    const [opponentCompanyName, setOpponentCompanyName] = useState('');
+    const [opponentCompanyNumber, setOpponentCompanyNumber] = useState('');
+    // Solicitor fields
+    const [solicitorTitle, setSolicitorTitle] = useState('');
+    const [solicitorFirst, setSolicitorFirst] = useState('');
+    const [solicitorLast, setSolicitorLast] = useState('');
+    const [solicitorPhone, setSolicitorPhone] = useState('');
+    const [solicitorAddress, setSolicitorAddress] = useState('');
+    const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useState('');
+
     const [visiblePoidCount, setVisiblePoidCount] = useState(12);
     const [poidSearchTerm, setPoidSearchTerm] = useState('');
     const poidGridRef = useRef<HTMLDivElement | null>(null);
@@ -519,9 +536,34 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setNoConflict={setNoConflict}
                         disputeValue={disputeValue}
                         setDisputeValue={setDisputeValue}
-                        onContinue={() =>
-                            setOpenStep(stepsOrder.indexOf('opponentDetails') + 1)
-                        }
+                        opponentTitle={opponentTitle}
+                        setOpponentTitle={setOpponentTitle}
+                        opponentFirst={opponentFirst}
+                        setOpponentFirst={setOpponentFirst}
+                        opponentLast={opponentLast}
+                        setOpponentLast={setOpponentLast}
+                        opponentPhone={opponentPhone}
+                        setOpponentPhone={setOpponentPhone}
+                        opponentAddress={opponentAddress}
+                        setOpponentAddress={setOpponentAddress}
+                        opponentHasCompany={opponentHasCompany}
+                        setOpponentHasCompany={setOpponentHasCompany}
+                        opponentCompanyName={opponentCompanyName}
+                        setOpponentCompanyName={setOpponentCompanyName}
+                        opponentCompanyNumber={opponentCompanyNumber}
+                        setOpponentCompanyNumber={setOpponentCompanyNumber}
+                        solicitorTitle={solicitorTitle}
+                        setSolicitorTitle={setSolicitorTitle}
+                        solicitorFirst={solicitorFirst}
+                        setSolicitorFirst={setSolicitorFirst}
+                        solicitorLast={solicitorLast}
+                        setSolicitorLast={setSolicitorLast}
+                        solicitorPhone={solicitorPhone}
+                        setSolicitorPhone={setSolicitorPhone}
+                        solicitorAddress={solicitorAddress}
+                        setSolicitorAddress={setSolicitorAddress}
+                        solicitorCompanyNumber={solicitorCompanyNumber}
+                        setSolicitorCompanyNumber={setSolicitorCompanyNumber}
                     />
                 );
             case 'review':
