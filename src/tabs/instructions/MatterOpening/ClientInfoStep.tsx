@@ -66,18 +66,17 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             {/* Date Section */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="question-banner">Date</div>
+                    <div className="question-banner">Opening Date & Time</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 600, fontSize: 16 }}>
-                            {selectedDate ? selectedDate.toLocaleDateString() : 'Select Date'}
+                        <span style={{ fontWeight: 'normal', fontSize: 16 }}>
+                            {(selectedDate ? selectedDate.toLocaleDateString() : new Date().toLocaleDateString())}, {liveTime}
                         </span>
-                        <span style={{ color: '#888', fontSize: 15 }}>{liveTime}</span>
                     </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="question-banner">User Requesting File</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 600, fontSize: 16, color: '#888' }}>{requestingUser}</span>
+                        <span style={{ fontWeight: 'normal', fontSize: 16, color: '#888' }}>{requestingUser}</span>
                     </div>
                 </div>
             </div>

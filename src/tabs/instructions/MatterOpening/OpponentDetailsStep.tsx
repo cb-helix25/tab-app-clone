@@ -50,6 +50,9 @@ interface OpponentDetailsStepProps {
   solicitorAddress?: string;
   solicitorCompanyNumber?: string;
   setSolicitorCompanyNumber?: (v: string) => void;
+  // Choice tracking
+  opponentChoiceMade?: boolean;
+  setOpponentChoiceMade?: (v: boolean) => void;
   onContinue?: () => void; // <-- Add this line
 }
 
@@ -77,9 +80,9 @@ const containerStyle: React.CSSProperties = {
 };
 
 const answeredFieldStyle = {
-  background: "#061733",
-  color: "#fff",
-  border: "1.5px solid #061733",
+  background: "#d6e8ff",
+  color: "#061733",
+  border: "1.5px solid #3690CE",
   borderRadius: 0,
   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   transition: "background 0.2s, color 0.2s, border 0.2s"
@@ -186,6 +189,9 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   solicitorAddress,
   solicitorCompanyNumber,
   setSolicitorCompanyNumber,
+  // Choice tracking
+  opponentChoiceMade,
+  setOpponentChoiceMade,
   onContinue, // <-- Add this line
 }) => {
   // Local state for new fields if not provided by parent
@@ -407,7 +413,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   return (
     <Stack tokens={{ childrenGap: 8 }}>
       {/* Conflict of Interest Question */}
-      <Stack tokens={{ childrenGap: 10 }}>
+      <Stack tokens={{ childrenGap: 10 }} style={{ marginBottom: 0 }}>
         <div className="question-banner">Confirm No Conflict of Interest</div>
         <div className="MultiSelect-bar">
           <div
@@ -424,15 +430,49 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           </div>
         </div>
       </Stack>
-      <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
       {/* Only show opponent/solicitor details if noConflict is confirmed */}
       {noConflict && (
         <>
+          {/* Separator with equal spacing above and below - animated */}
+          <div style={{ 
+            height: 1, 
+            background: '#e3e8ef', 
+            margin: '18px 0',
+            animation: 'separatorSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            opacity: 0,
+            transform: 'scaleX(0)',
+            transformOrigin: 'left center'
+          }} />
           {/* Opponent Type Selection */}
           <div style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
-              <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box', margin: 0, marginBottom: 16 }}>What type of opponent is this matter against?</div>
-              <div className="client-details-contact-bigrow" style={{ marginBottom: 24, display: 'flex', gap: 12 }}>
+              <div 
+                className="question-banner" 
+                style={{ 
+                  width: '100%', 
+                  boxSizing: 'border-box', 
+                  margin: 0, 
+                  marginBottom: 20,
+                  animation: 'questionSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                  animationDelay: '200ms',
+                  opacity: 0,
+                  transform: 'translateY(15px)'
+                }}
+              >
+                What type of opponent is this matter against?
+              </div>
+              <div 
+                className="client-details-contact-bigrow" 
+                style={{ 
+                  marginBottom: 24, 
+                  display: 'flex', 
+                  gap: 12,
+                  animation: 'buttonRowSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                  animationDelay: '400ms',
+                  opacity: 0,
+                  transform: 'translateY(20px)'
+                }}
+              >
                 {[
                   { type: 'Individual', icon: 'Contact' },
                   { type: 'Company', icon: 'CityNext' }
@@ -445,7 +485,6 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       type="button"
                       onClick={() => {
                         setOpponentType(type);
-                        setEnterOpponentNow(true);
                         setShowSummary(false);
                       }}
                       aria-pressed={isActive}
@@ -552,27 +591,138 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     outline: none;
                     box-shadow: 0 0 0 2px rgba(54, 144, 206, 0.5);
                 }
+                
+                /* Animation keyframes for opponent details entrance */
+                @keyframes slideInFromTop {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                @keyframes cascadeSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                /* Animated placeholders */
+                @keyframes shimmer {
+                    0% {
+                        background-position: -200px 0;
+                    }
+                    100% {
+                        background-position: calc(200px + 100%) 0;
+                    }
+                }
+                
+                .placeholder-shimmer {
+                    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                    background-size: 200px 100%;
+                    animation: shimmer 1.5s infinite;
+                }
+                
+                /* Shimmer pass animation for placeholder banner */
+                @keyframes shimmerPass {
+                    0% {
+                        left: -100%;
+                        opacity: 0;
+                    }
+                    50% {
+                        opacity: 1;
+                    }
+                    100% {
+                        left: 100%;
+                        opacity: 0;
+                    }
+                }
+                
+                /* Separator slide in animation */
+                @keyframes separatorSlideIn {
+                    0% {
+                        opacity: 0;
+                        transform: scaleX(0);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: scaleX(1);
+                    }
+                }
+                
+                /* Question banner slide in animation */
+                @keyframes questionSlideIn {
+                    0% {
+                        opacity: 0;
+                        transform: translateY(15px);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                /* Button row slide in animation */
+                @keyframes buttonRowSlideIn {
+                    0% {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
             `}</style>
           </div>
           
           {/* Only show option to delay details entry if opponent type is selected */}
           {opponentType && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", margin: "0 0 16px 0" }}>
-              <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              alignItems: "flex-start", 
+              margin: "0 0 16px 0",
+              animation: 'slideInFromTop 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+              animationDelay: '0ms',
+              opacity: 0,
+              transform: 'translateY(20px)'
+            }}>
+              <div style={{ display: "flex", width: "100%", gap: 0 }}>
                 <button
                   type="button"
-                  onClick={() => { setEnterOpponentNow(true); setShowSummary(false); }}
+                  onClick={() => { 
+                    setEnterOpponentNow(true); 
+                    setShowSummary(false); 
+                    if (setOpponentChoiceMade) setOpponentChoiceMade(true);
+                  }}
                   style={{
-                    padding: "10px 22px",
-                    borderRadius: 20,
-                    border: enterOpponentNow === true ? "2px solid #3690CE" : "1.5px solid #b6c6e3",
-                    background: enterOpponentNow === true ? "#eaf6fd" : "#fff",
-                    color: enterOpponentNow === true ? "#061733" : "#3690CE",
-                    fontWeight: 500,
+                    flex: 1,
+                    padding: "8px 4px",
+                    height: "50px",
+                    borderRadius: "0",
+                    border: "1px solid #061733",
+                    borderRight: enterOpponentNow === true ? "1px solid #061733" : "0.5px solid #061733",
+                    background: enterOpponentNow === true ? "#061733" : "#fff",
+                    color: enterOpponentNow === true ? "#fff" : "#061733",
+                    fontWeight: 'normal',
                     fontSize: 15,
                     cursor: "pointer",
                     outline: "none",
-                    transition: "all 0.15s"
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    userSelect: "none"
                   }}
                   aria-pressed={enterOpponentNow === true}
                 >
@@ -585,18 +735,27 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     setShowSummary(true);
                     // Fill dummy data when skipping details
                     fillDummyData();
+                    if (setOpponentChoiceMade) setOpponentChoiceMade(true);
                   }}
                   style={{
-                    padding: "10px 22px",
-                    borderRadius: 20,
-                    border: enterOpponentNow === false ? "2px solid #3690CE" : "1.5px solid #b6c6e3",
-                    background: enterOpponentNow === false ? "#eaf6fd" : "#fff",
-                    color: enterOpponentNow === false ? "#061733" : "#3690CE",
+                    flex: 1,
+                    padding: "8px 4px",
+                    height: "50px",
+                    borderRadius: "0",
+                    border: enterOpponentNow === false ? "1px solid #e6a000" : "1px solid #666",
+                    borderLeft: enterOpponentNow === false ? "1px solid #e6a000" : "0.5px solid #666",
+                    background: enterOpponentNow === false ? "#fff3cd" : "#fff",
+                    color: enterOpponentNow === false ? "#b58900" : "#666",
                     fontWeight: 500,
                     fontSize: 15,
                     cursor: "pointer",
                     outline: "none",
-                    transition: "all 0.15s"
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    userSelect: "none"
                   }}
                   aria-pressed={enterOpponentNow === false}
                 >
@@ -605,17 +764,99 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
               </div>
             </div>
           )}
+          
           {/* Only show details if user wants to enter them now */}
           {enterOpponentNow === true ? (
-            <>
-              {/* Opponent Details Input Fields (editable) */}
+            <div style={{
+              animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+              animationDelay: '150ms',
+              opacity: 0,
+              transform: 'translateY(20px)'
+            }}>
+              {/* Opponent Details Fields */}
               <div style={containerStyle}>
-                <div className="question-banner">Opponent Details</div>
                 <Stack tokens={{ childrenGap: 6 }}>
-                  {/* Personal Details section - shown for individuals or company directors */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Contact" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    {opponentType === 'Company' ? 'Director Details' : 'Personal Details'}
+                  {/* Section Header */}
+                  <div style={{ 
+                    fontWeight: 600, 
+                    fontSize: 15, 
+                    marginBottom: 8, 
+                    color: '#061733'
+                  }}>
+                    Opponent
+                  </div>
+                  {/* Company sublabel - shown first for Company opponent type */}
+                  {opponentType === 'Company' && (
+                    <>
+                      <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
+                        Company
+                      </div>
+                      {/* Company fields */}
+                      <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
+                        <TextField
+                          placeholder="Company Name"
+                          value={_opponentCompanyName}
+                          onChange={(_, v) => _setOpponentCompanyName(v || "")}
+                          styles={{
+                            root: {
+                              flex: 1,
+                              minWidth: 180,
+                              height: 38,
+                              ...(touchedFields["opponentCompanyName"] && _opponentCompanyName ? answeredFieldStyle : unansweredFieldStyle)
+                            },
+                            fieldGroup: {
+                              borderRadius: 0,
+                              height: 38,
+                              background: "transparent",
+                              border: "none"
+                            },
+                            field: {
+                              color: "#061733",
+                              background: "transparent"
+                            }
+                          }}
+                          onFocus={() => setActiveField("opponentCompanyName")}
+                          onBlur={() => {
+                            setActiveField(null);
+                            setTouchedFields((prev) => ({ ...prev, opponentCompanyName: true }));
+                          }}
+                        />
+                        <TextField
+                          placeholder="Company Number"
+                          value={_opponentCompanyNumber}
+                          onChange={(_, v) => _setOpponentCompanyNumber(v || "")}
+                          styles={{
+                            root: {
+                              flex: 1,
+                              minWidth: 140,
+                              height: 38,
+                              ...(touchedFields["opponentCompanyNumber"] && _opponentCompanyNumber ? answeredFieldStyle : unansweredFieldStyle)
+                            },
+                            fieldGroup: {
+                              borderRadius: 0,
+                              height: 38,
+                              background: "transparent",
+                              border: "none"
+                            },
+                            field: {
+                              color: "#061733",
+                              background: "transparent"
+                            }
+                          }}
+                          onFocus={() => setActiveField("opponentCompanyNumber")}
+                          onBlur={() => {
+                            setActiveField(null);
+                            setTouchedFields((prev) => ({ ...prev, opponentCompanyNumber: true }));
+                          }}
+                        />
+                      </Stack>
+                    </>
+                  )}
+                  {/* Name sublabel */}
+                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: opponentType === 'Company' ? 8 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
+                    Name
                   </div>
                   <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
                     <Dropdown
@@ -637,7 +878,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           borderRadius: 0,
                           height: 38,
                           background: "transparent",
-                          color: touchedFields["opponentTitle"] && _opponentTitle ? "#fff" : "#061733",
+                          color: "#061733",
                           display: 'flex',
                           alignItems: 'center',
                           ...noFocusOutline
@@ -670,7 +911,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentFirst"] && _opponentFirst ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -700,7 +941,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentLast"] && _opponentLast ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -739,7 +980,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentEmail"] && opponentEmail ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -769,7 +1010,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentPhone"] && _opponentPhone ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -807,7 +1048,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentHouseNumber"] && localOpponentHouseNumber ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -836,7 +1077,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentStreet"] && localOpponentStreet ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -865,7 +1106,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentCity"] && localOpponentCity ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -894,7 +1135,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentCounty"] && localOpponentCounty ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -923,7 +1164,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentPostcode"] && localOpponentPostcode ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -955,7 +1196,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           borderRadius: 0,
                           height: 38,
                           background: "transparent",
-                          color: touchedFields["opponentCountry"] && localOpponentCountry ? "#fff" : "#061733",
+                          color: "#061733",
                           display: 'flex',
                           alignItems: 'center',
                           ...noFocusOutline
@@ -969,88 +1210,25 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       }}
                     />
                   </div>
-                  {/* Separator before Company Details */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  
-                  {/* Company Details section - always shown for Company opponent type */}
-                  {opponentType === 'Company' && (
-                    <>
-                      <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 22, color: '#6b8bbd', marginRight: 4 }} />
-                        Company Details
-                      </div>
-                      <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
-                        <TextField
-                          placeholder="Company Name"
-                          value={_opponentCompanyName}
-                          onChange={(_, v) => _setOpponentCompanyName(v || "")}
-                          styles={{
-                            root: {
-                              flex: 1,
-                              minWidth: 180,
-                              height: 38,
-                              ...(touchedFields["opponentCompanyName"] && _opponentCompanyName ? answeredFieldStyle : unansweredFieldStyle)
-                            },
-                            fieldGroup: {
-                              borderRadius: 0,
-                              height: 38,
-                              background: "transparent",
-                              border: "none"
-                            },
-                            field: {
-                              color: touchedFields["opponentCompanyName"] && _opponentCompanyName ? "#fff" : "#061733",
-                              background: "transparent"
-                            }
-                          }}
-                          onFocus={() => setActiveField("opponentCompanyName")}
-                          onBlur={() => {
-                            setActiveField(null);
-                            setTouchedFields((prev) => ({ ...prev, opponentCompanyName: true }));
-                          }}
-                        />
-                        <TextField
-                          placeholder="Company Number"
-                          value={_opponentCompanyNumber}
-                          onChange={(_, v) => _setOpponentCompanyNumber(v || "")}
-                          styles={{
-                            root: {
-                              flex: 1,
-                              minWidth: 140,
-                              height: 38,
-                              ...(touchedFields["opponentCompanyNumber"] && _opponentCompanyNumber ? answeredFieldStyle : unansweredFieldStyle)
-                            },
-                            fieldGroup: {
-                              borderRadius: 0,
-                              height: 38,
-                              background: "transparent",
-                              border: "none"
-                            },
-                            field: {
-                              color: touchedFields["opponentCompanyNumber"] && _opponentCompanyNumber ? "#fff" : "#061733",
-                              background: "transparent"
-                            }
-                          }}
-                          onFocus={() => setActiveField("opponentCompanyNumber")}
-                          onBlur={() => {
-                            setActiveField(null);
-                            setTouchedFields((prev) => ({ ...prev, opponentCompanyNumber: true }));
-                          }}
-                        />
-                      </Stack>
-                    </>
-                  )}
                 </Stack>
               </div>
+              
+              {/* Opponent's Solicitor Section */}
               <div style={containerStyle}>
-                <div className="question-banner" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="ms-Icon ms-Icon--LegalGroup" style={{ fontSize: 22, color: '#6b8bbd', marginRight: 4 }} />
-                  Opponent's Solicitor Details
-                </div>
                 <Stack tokens={{ childrenGap: 6 }}>
-                  {/* Company Details sublabel and fields at the top */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--CityNext" style={{ fontSize: 22, color: '#6b8bbd', marginRight: 4 }} />
-                    Company Details
+                  {/* Section Header */}
+                  <div style={{ 
+                    fontWeight: 600, 
+                    fontSize: 15, 
+                    marginBottom: 8, 
+                    color: '#061733'
+                  }}>
+                    Opponent's Solicitor
+                  </div>
+                  {/* Name & Company sublabel */}
+                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="ms-Icon ms-Icon--ContactInfo" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
+                    Name & Company
                   </div>
                   <Stack horizontal tokens={{ childrenGap: 5 }} style={{ width: "100%", marginBottom: 8 }}>
                     <TextField
@@ -1072,7 +1250,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentSolicitorCompany"] && opponentSolicitorCompany ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1101,7 +1279,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["solicitorCompanyNumber"] && _solicitorCompanyNumber ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1112,13 +1290,6 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       }}
                     />
                   </Stack>
-                  {/* Separator before Personal Details */}
-                  <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0 4px 0' }} />
-                  {/* Personal Details sublabel */}
-                  <div style={{ fontWeight: 600, marginBottom: 4, marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="ms-Icon ms-Icon--Contact" style={{ fontSize: 18, color: '#6b8bbd', marginRight: 4 }} />
-                    Personal Details
-                  </div>
                   <Stack horizontal tokens={{ childrenGap: 5 }} style={{ marginBottom: 8, width: "100%" }}>
                     <Dropdown
                       placeholder="Title"
@@ -1139,7 +1310,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           borderRadius: 0,
                           height: 38,
                           background: "transparent",
-                          color: touchedFields["solicitorTitle"] && _solicitorTitle ? "#fff" : "#061733",
+                          color: "#061733",
                           display: 'flex',
                           alignItems: 'center',
                           ...noFocusOutline
@@ -1172,7 +1343,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["solicitorFirst"] && _solicitorFirst ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1202,7 +1373,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["solicitorLast"] && _solicitorLast ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1241,7 +1412,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["opponentSolicitorEmail"] && opponentSolicitorEmail ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1271,7 +1442,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           ...noFocusOutline
                         },
                         field: {
-                          color: touchedFields["solicitorPhone"] && _solicitorPhone ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1308,7 +1479,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           border: "none"
                         },
                         field: {
-                          color: touchedFields["solicitorHouseNumber"] && localSolicitorHouseNumber ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1336,7 +1507,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           border: "none"
                         },
                         field: {
-                          color: touchedFields["solicitorStreet"] && localSolicitorStreet ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1364,7 +1535,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           border: "none"
                         },
                         field: {
-                          color: touchedFields["solicitorCity"] && localSolicitorCity ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1392,7 +1563,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           border: "none"
                         },
                         field: {
-                          color: touchedFields["solicitorCounty"] && localSolicitorCounty ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1420,7 +1591,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           border: "none"
                         },
                         field: {
-                          color: touchedFields["solicitorPostcode"] && localSolicitorPostcode ? "#fff" : "#061733",
+                          color: "#061733",
                           background: "transparent"
                         }
                       }}
@@ -1452,7 +1623,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           borderRadius: 0,
                           height: 38,
                           background: "transparent",
-                          color: touchedFields["solicitorCountry"] && localSolicitorCountry ? "#fff" : "#061733",
+                          color: "#061733",
                           display: 'flex',
                           alignItems: 'center',
                           ...noFocusOutline
@@ -1468,30 +1639,59 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   </div>
                 </Stack>
               </div>
-            </>
+            </div>
           ) : enterOpponentNow === false ? (
             <>
-              {/* Info bar styled like review check results */}
+              {/* Animated placeholder banner */}
               <div style={{
-                background: '#fffbe6',
-                border: '1.5px solid #ffd54f',
-                borderRadius: 8,
-                padding: '14px 18px',
-                marginBottom: 18,
-                color: '#b88600',
-                fontSize: 15,
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10
+                animation: 'slideInFromTop 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                opacity: 0,
+                transform: 'translateY(20px)',
+                marginBottom: 16
               }}>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, background: '#ffe9a8', borderRadius: '50%' }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#ffd54f"/><text x="8" y="12" textAnchor="middle" fontSize="11" fill="#fff" fontFamily="Segoe UI, Arial, sans-serif">i</text></svg>
-                </span>
-                <span>
-                  Using placeholder values for {opponentType === 'Company' ? 'company ' : ''} opponent details. You'll be prompted to update these later.
-                </span>
+                <div className="question-banner" style={{
+                  background: '#fffbe6',
+                  border: '2px solid #FFB900',
+                  borderRadius: 0,
+                  padding: '12px 16px',
+                  color: '#b88600',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <span style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    width: 20, 
+                    height: 20, 
+                    background: '#FFB900', 
+                    borderRadius: '50%',
+                    color: 'white',
+                    fontSize: 12,
+                    fontWeight: 'bold'
+                  }}>
+                    i
+                  </span>
+                  Using placeholder values for opponent details. You'll be prompted to update these later.
+                  {/* Subtle shimmer effect */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '-100%',
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                    animation: 'shimmerPass 2s ease-in-out',
+                    pointerEvents: 'none'
+                  }} />
+                </div>
               </div>
+              {/* Old info bar removed - using new animated banner instead */}
             </>
           ) : null}
         </>

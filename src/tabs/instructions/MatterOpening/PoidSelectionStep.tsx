@@ -150,7 +150,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        fontWeight: 600,
+                                        fontWeight: 'normal',
                                         fontSize: 16,
                                         color: isActive ? '#3690CE' : '#6B6B6B',
                                         opacity: isActive ? 1 : 0,
@@ -222,11 +222,22 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                         style={{ 
                             width: '100%',
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(2, minmax(250px, 1fr))',
+                            gridTemplateColumns: (() => {
+                                const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
+                                const hasSelection = selectedPoidIds.length > 0;
+                                if (isSingleSelectionType && hasSelection) {
+                                    return '1fr'; // Single column when selected
+                                }
+                                return 'repeat(2, minmax(250px, 1fr))'; // Default 2 columns
+                            })(),
                             gap: '24px',
                             justifyContent: 'space-between',
                             padding: '12px',
-                            overflow: 'visible'
+                            overflow: 'visible',
+                            border: '1px solid #e3e8ef',
+                            borderRadius: '4px',
+                            background: '#fafafa',
+                            transition: 'grid-template-columns 0.4s ease-out, gap 0.4s ease-out'
                         }} 
                         className="poid-grid" 
                         ref={poidGridRef as any}
@@ -239,22 +250,31 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 return true;
                             })
                             .slice(0, visiblePoidCount)
-                            .map((poid) => (
-                                <div 
-                                    key={poid.poid_id} 
-                                    onClick={() => handlePoidClick(poid)} 
-                                    role="button" 
-                                    tabIndex={0}
-                                    style={{
-                                        opacity: 1,
-                                        transform: 'translateY(0)',
-                                        transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-                                        animation: 'fadeInUp 0.4s ease-out'
-                                    }}
-                                >
-                                    <PoidCard poid={poid} selected={selectedPoidIds.includes(poid.poid_id)} onClick={() => handlePoidClick(poid)} teamData={teamData} />
-                                </div>
-                            ))}
+                            .map((poid) => {
+                                const isSelected = selectedPoidIds.includes(poid.poid_id);
+                                const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
+                                const hasSelection = selectedPoidIds.length > 0;
+                                const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
+                                
+                                return (
+                                    <div 
+                                        key={poid.poid_id} 
+                                        onClick={() => handlePoidClick(poid)} 
+                                        role="button" 
+                                        tabIndex={0}
+                                        style={{
+                                            opacity: shouldFadeOut ? 0.3 : 1,
+                                            transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
+                                            transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                                            animation: 'fadeInUp 0.4s ease-out',
+                                            pointerEvents: shouldFadeOut ? 'none' : 'auto',
+                                            filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
+                                        }}
+                                    >
+                                        <PoidCard poid={poid} selected={isSelected} onClick={() => handlePoidClick(poid)} teamData={teamData} />
+                                    </div>
+                                );
+                            })}
                     </div>
                 </>
             )}

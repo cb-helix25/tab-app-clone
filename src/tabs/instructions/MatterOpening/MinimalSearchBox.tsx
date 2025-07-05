@@ -5,10 +5,12 @@ import './MinimalSearchBox.css';
 interface MinimalSearchBoxProps {
   value: string;
   onChange: (v: string) => void;
+  focused: boolean;
+  onRequestClose: () => void;
+  onRequestOpen?: () => void;
 }
-const MinimalSearchBox: React.FC<MinimalSearchBoxProps> = ({ value, onChange }) => {
-  const [focused, setFocused] = useState(false);
 
+const MinimalSearchBox: React.FC<MinimalSearchBoxProps> = ({ value, onChange, focused, onRequestClose, onRequestOpen }) => {
   return (
     <div className={`minimal-searchbox${focused ? ' expanded' : ''}`}>
       {!focused && !value && (
@@ -17,14 +19,14 @@ const MinimalSearchBox: React.FC<MinimalSearchBoxProps> = ({ value, onChange }) 
           aria-label="Search clients"
           tabIndex={0}
           type="button"
-          onClick={() => setFocused(true)}
+          onClick={onRequestOpen}
         >
           <span className="ms-SearchBox-icon" style={{ color: '#0078d4', fontSize: 20, display: 'flex', alignItems: 'center' }}>
             <i className="ms-Icon ms-Icon--Search" aria-hidden="true" />
           </span>
         </button>
       )}
-      {(focused || value) && (
+      {focused && (
         <SearchBox
           value={value}
           onChange={(_, v) => onChange(v || '')}
@@ -53,8 +55,13 @@ const MinimalSearchBox: React.FC<MinimalSearchBoxProps> = ({ value, onChange }) 
           }}
           underlined={false}
           disableAnimation={false}
-          onBlur={() => setFocused(false)}
-          onFocus={() => setFocused(true)}
+          onBlur={onRequestClose}
+          onFocus={onRequestOpen}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              onRequestClose();
+            }
+          }}
         />
       )}
     </div>

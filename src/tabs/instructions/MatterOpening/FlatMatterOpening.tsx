@@ -156,7 +156,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         
     // Debug logging removed
 
-    const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', new Date());
+    const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', null);
     const localTeamData = useMemo(() => localTeamDataJson, []);
     const defaultPartnerOptions = defaultPartners;
     const partnerOptionsList = useMemo(() => {
@@ -230,6 +230,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useDraftedState<string>('opponentSolicitorCompany', '');
     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useDraftedState<string>('opponentSolicitorEmail', '');
     const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
+    const [opponentChoiceMade, setOpponentChoiceMade] = useDraftedState<boolean>('opponentChoiceMade', false);
     const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false); // UI only, not persisted
 
     // Opponent fields
@@ -251,6 +252,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
+    const [searchBoxFocused, setSearchBoxFocused] = useState(false);
     const poidGridRef = useRef<HTMLDivElement | null>(null);
     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
 
@@ -278,26 +280,23 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const handlePoidClick = (poid: POID) => {
         const isSingleSelectionType = pendingClientType !== 'Multiple Individuals';
-        
         if (selectedPoidIds.includes(poid.poid_id)) {
-            // Deselecting a POID
             setSelectedPoidIds((prev: string[]) => prev.filter((id: string) => id !== poid.poid_id));
             if (activePoid && activePoid.poid_id === poid.poid_id) {
                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
                 setActivePoid(remaining || null);
             }
         } else {
-            // Selecting a POID
             if (isSingleSelectionType) {
-                // For Individual, Company, Existing Client - only allow one selection
                 setSelectedPoidIds([poid.poid_id]);
                 setActivePoid(poid);
             } else {
-                // For Multiple Individuals - allow multiple selections
                 setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
                 setActivePoid(poid);
             }
         }
+        setSearchBoxFocused(false); // Collapse search box after selection
+        setPoidSearchTerm(''); // Optionally clear search term
     };
 
     // Helper to get nickname from localUserData
@@ -337,6 +336,136 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
     const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', '');
 
+    // Calculate completion percentages for progressive dots
+    const calculateClientStepCompletion = (): number => {
+        let filledFields = 0;
+        let totalFields = 3; // clientType, selectedPoidIds, and opponent details
+        
+        if (pendingClientType && pendingClientType.trim() !== '') filledFields++;
+        if (selectedPoidIds.length > 0) filledFields++;
+        
+        // Check opponent details completion
+        const hasOpponentInfo = (opponentName && opponentName.trim() !== '') || 
+                               (opponentFirst && opponentFirst.trim() !== '' && opponentLast && opponentLast.trim() !== '');
+        const hasDisputeValue = disputeValue && disputeValue.trim() !== '';
+        
+        if (hasOpponentInfo && hasDisputeValue) filledFields++;
+        
+        return totalFields > 0 ? (filledFields / totalFields) * 100 : 0;
+    };
+
+    const calculateMatterStepCompletion = (): number => {
+        let filledFields = 0;
+        let totalFields = 10; // Reduced from 13 since opponent details moved to client step
+        
+        // Required fields - check for meaningful values, not just existence
+        if (selectedDate !== null) filledFields++; // Date has been set
+        if (supervisingPartner && supervisingPartner.trim() !== '') filledFields++;
+        if (originatingSolicitor && originatingSolicitor.trim() !== '' && originatingSolicitor !== defaultTeamMember) filledFields++;
+        if (areaOfWork && areaOfWork.trim() !== '') filledFields++;
+        if (practiceArea && practiceArea.trim() !== '') filledFields++;
+        if (description && description.trim() !== '') filledFields++;
+        if (folderStructure && folderStructure.trim() !== '') filledFields++;
+        if (source && source.trim() !== '' && source !== 'search') filledFields++; // 'search' is default
+        if (noConflict === true) filledFields++; // Only count if explicitly checked
+        if (referrerName && referrerName.trim() !== '') filledFields++; // Optional field
+        
+        const completion = totalFields > 0 ? (filledFields / totalFields) * 100 : 0;
+        
+        // Debug logging - remove this after fixing
+        if (filledFields > 0) {
+            console.log('Matter step filled fields:', filledFields, 'out of', totalFields, 'completion:', completion + '%');
+            console.log('Debug values:', {
+                selectedDate: selectedDate !== null,
+                supervisingPartner: supervisingPartner && supervisingPartner.trim() !== '',
+                originatingSolicitor: originatingSolicitor && originatingSolicitor.trim() !== '' && originatingSolicitor !== defaultTeamMember,
+                source: source && source.trim() !== '' && source !== 'search',
+                noConflict: noConflict === true,
+                defaultTeamMember,
+                originatingSolicitorValue: originatingSolicitor,
+                sourceValue: source
+            });
+        }
+        
+        return completion;
+    };
+
+    const calculateReviewStepCompletion = (): number => {
+        // Review step is considered complete when user has reviewed the data
+        return currentStep === 2 ? 100 : 0;
+    };
+
+    const getClientDotState = (): number => {
+        const completion = calculateClientStepCompletion();
+        if (completion === 100) return 3;
+        if (completion >= 50) return 2;
+        if (completion > 0) return 1;
+        return 0;
+    };
+
+    const getMatterDotState = (): number => {
+        const completion = calculateMatterStepCompletion();
+        if (completion === 100) return 3;
+        if (completion >= 50) return 2;
+        if (completion > 0) return 1;
+        return 0;
+    };
+
+    const getReviewDotState = (): number => {
+        const completion = calculateReviewStepCompletion();
+        if (completion === 100) return 3;
+        if (completion >= 50) return 2;
+        if (completion > 0) return 1;
+        return 0;
+    };
+
+    // Helper function to get dot color based on state
+    const getDotColor = (state: number): string => {
+        switch (state) {
+            case 3: return '#20b26c'; // Complete - full green
+            case 2: return '#20b26c'; // 50%+ filled - full green
+            case 1: return '#20b26c'; // First field filled - full green
+            case 0: 
+            default: return '#e0e0e0'; // Empty - gray
+        }
+    };
+
+    // Progressive dots across workflow steps
+    const getProgressiveDotStates = (): [number, number, number] => {
+        const hasClientType = pendingClientType && pendingClientType.trim() !== '';
+        const hasPoidSelection = selectedPoidIds.length > 0;
+        const hasOpponentInfo = (opponentName && opponentName.trim() !== '') || 
+                               (opponentFirst && opponentFirst.trim() !== '' && opponentLast && opponentLast.trim() !== '');
+        const hasDisputeValue = disputeValue && disputeValue.trim() !== '';
+        const hasNoConflictCheck = noConflict === true; // Must be explicitly checked
+        const matterCompletion = calculateMatterStepCompletion();
+        const reviewCompletion = calculateReviewStepCompletion();
+        
+        // Check if opponent choice has been made (either "I have details" or "I'll enter later")
+        const opponentQuestionsComplete = opponentChoiceMade === true;
+        
+        let clientDots = 0;
+        let matterDots = 0;
+        let reviewDots = 0;
+        
+        // First dot: lights up when client type is selected
+        if (hasClientType) {
+            clientDots = 3;
+        }
+        
+        // Second dot: lights up when POID is selected  
+        if (hasClientType && hasPoidSelection) {
+            matterDots = 3;
+        }
+        
+        // Third dot: lights up when opponent choice has been made (no specific fields required)
+        if (hasClientType && hasPoidSelection && opponentQuestionsComplete) {
+            reviewDots = 3;
+        }
+        
+        return [clientDots, matterDots, reviewDots];
+    };
+
     // Determine completion status for each step
     const clientsStepComplete = selectedPoidIds.length > 0 && pendingClientType;
     const matterStepComplete = selectedDate && supervisingPartner && originatingSolicitor && areaOfWork && practiceArea && description;
@@ -370,11 +499,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     };
 
     const handleClientTypeChange = (newType: string, shouldLimitToSingle: boolean) => {
-        // If switching to a single-selection type and multiple POIDs are selected
-        if (shouldLimitToSingle && selectedPoidIds.length > 1) {
-            // Keep only the first selected POID
-            setSelectedPoidIds([selectedPoidIds[0]]);
+        // Always clear POID selection when switching between Individual and Company (or vice versa)
+        if (
+            (newType === 'Individual' && selectedPoidIds.length > 0) ||
+            (newType === 'Company' && selectedPoidIds.length > 0) ||
+            (newType === 'Multiple Individuals' && selectedPoidIds.length > 1)
+        ) {
+            setSelectedPoidIds([]);
         }
+        setSearchBoxFocused(false); // Collapse search box after client type selection
+        setPoidSearchTerm(''); // Optionally clear search term
     };
 
     // Helper to generate sample JSON object
@@ -468,6 +602,48 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         };
     };
 
+    // Clear all selections and inputs
+    const handleClearAll = () => {
+        setSelectedDate(null);
+        setTeamMember(defaultTeamMember);
+        setSupervisingPartner('');
+        setOriginatingSolicitor(defaultTeamMember);
+        setClientType(initialClientType || '');
+        setPendingClientType(''); // This will reset the client dots
+        setSelectedPoidIds([]); // This will reset the client dots
+        setAreaOfWork('');
+        setPracticeArea('');
+        setDescription('');
+        setFolderStructure('');
+        setDisputeValue('');
+        setSource('search');
+        setReferrerName('');
+        setOpponentName('');
+        setOpponentEmail('');
+        setOpponentSolicitorName('');
+        setOpponentSolicitorCompany('');
+        setOpponentSolicitorEmail('');
+        setNoConflict(false);
+        setOpponentChoiceMade(false);
+        setOpponentTitle('');
+        setOpponentFirst('');
+        setOpponentLast('');
+        setOpponentPhone('');
+        setOpponentAddress('');
+        setOpponentHasCompany(false);
+        setOpponentCompanyName('');
+        setOpponentCompanyNumber('');
+        setSolicitorTitle('');
+        setSolicitorFirst('');
+        setSolicitorLast('');
+        setSolicitorPhone('');
+        setSolicitorAddress('');
+        setSolicitorCompanyNumber('');
+        setActivePoid(null);
+        setCurrentStep(0); // This will reset the review dots
+        setPoidSearchTerm('');
+    };
+
     // Render the horizontal sliding carousel
     return (
         <CompletionProvider>
@@ -485,7 +661,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                         />
                     </>
                 )}
-                
                 {/* Main Container */}
                 <div className="workflow-main matter-opening-card">
                     {/* Persistent Header */}
@@ -542,10 +717,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     ) : (
                                         <i className="ms-Icon ms-Icon--People" style={{ fontSize: 16 }} />
                                     )}
-                                    Clients
+                                    Select Parties
                                 </button>
                                 
-                                {/* Modern connector */}
+                                {/* Progressive dots connector */}
                                 <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
@@ -556,19 +731,22 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e0e0e0'
+                                        background: getDotColor(getProgressiveDotStates()[0]),
+                                        transition: 'background-color 0.3s ease'
                                     }} />
                                     <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e8e8e8'
+                                        background: getDotColor(getProgressiveDotStates()[1]),
+                                        transition: 'background-color 0.3s ease'
                                     }} />
                                     <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e0e0e0'
+                                        background: getDotColor(getProgressiveDotStates()[2]),
+                                        transition: 'background-color 0.3s ease'
                                     }} />
                                 </div>
                                 
@@ -611,7 +789,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     ) : (
                                         <i className="ms-Icon ms-Icon--OpenFolderHorizontal" style={{ fontSize: 16 }} />
                                     )}
-                                    Matter
+                                    Build Matter
                                 </button>
                                 
                                 {/* Modern connector */}
@@ -652,13 +830,115 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     backgroundColor: currentStep === 2 ? '#e3f0fc' : 'transparent',
                                     transition: 'all 0.2s ease'
                                 }}>
-                                    <i className="ms-Icon ms-Icon--CheckboxComposite" style={{ fontSize: 16 }} />
-                                    Review
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ display: 'inline', verticalAlign: 'middle' }}>
+                                        <path d="M1 12C2.73 7.61 7.11 4.5 12 4.5c4.89 0 9.27 3.11 11 7.5-1.73 4.39-6.11 7.5-11 7.5-4.89 0-9.27-3.11-11-7.5z" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                        <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                    </svg>
+                                    Review and Confirm
                                 </div>
                             </div>
                         </div>
-                        <MinimalSearchBox value={poidSearchTerm} onChange={setPoidSearchTerm} />
+
+                        {/* POID search and clear button on the right - only in step 0 with POID selection AND client type selected */}
+                        {currentStep === 0 && showPoidSelection && pendingClientType && (
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 8
+                            }}>
+                                {/* MinimalSearchBox with controlled focus */}
+                                <div style={{ 
+                                    position: 'relative',
+                                    animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                    animationDelay: '0ms',
+                                    opacity: 0,
+                                    transform: 'translateX(20px)'
+                                }}>
+                                    <MinimalSearchBox
+                                        value={poidSearchTerm}
+                                        onChange={setPoidSearchTerm}
+                                        focused={searchBoxFocused}
+                                        onRequestOpen={() => setSearchBoxFocused(true)}
+                                        onRequestClose={() => setSearchBoxFocused(false)}
+                                    />
+                                </div>
+                                {/* Clear button with delayed cascade animation */}
+                                <button 
+                                    type="button" 
+                                    onClick={handleClearAll} 
+                                    style={{
+                                        background: '#fff',
+                                        border: '1px solid #e1e5e9',
+                                        borderRadius: 4,
+                                        padding: '6px 12px',
+                                        fontSize: 14,
+                                        color: '#666',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                                        boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                        animationDelay: '150ms',
+                                        opacity: 0,
+                                        transform: 'translateX(20px)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#f8f9fa';
+                                        e.currentTarget.style.borderColor = '#3690CE';
+                                        e.currentTarget.style.color = '#3690CE';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = '#fff';
+                                        e.currentTarget.style.borderColor = '#e1e5e9';
+                                        e.currentTarget.style.color = '#666';
+                                    }}
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
                     </div>
+
+                    {/* CSS animations for search controls */}
+                    <style>{`
+                        @keyframes cascadeSlideIn {
+                            from {
+                                opacity: 0;
+                                transform: translateX(20px);
+                            }
+                            to {
+                                opacity: 1;
+                                transform: translateX(0);
+                            }
+                        }
+                        
+                        @keyframes cascadeSlideOut {
+                            from {
+                                opacity: 1;
+                                transform: translateX(0);
+                            }
+                            to {
+                                opacity: 0;
+                                transform: translateX(20px);
+                            }
+                        }
+                        
+                        /* Opponent details slide in animation */
+                        @keyframes slideInFromTop {
+                            from {
+                                opacity: 0;
+                                transform: translateY(20px);
+                            }
+                            to {
+                                opacity: 1;
+                                transform: translateY(0);
+                            }
+                        }
+                        
+                        /* Smooth exit animation when controls disappear */
+                        .search-controls-exit {
+                            animation: cascadeSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                        }
+                    `}</style>
 
                     {/* Add CSS animation for completion ticks */}
                     <style>{`
@@ -717,87 +997,148 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     />
                                 </div>
                                 
+                                {/* Opponent Details Step - appears after POID selection */}
+                                {(selectedPoidIds.length > 0 && pendingClientType) && (
+                                    <div style={{ 
+                                        width: '100%', 
+                                        maxWidth: 1080, 
+                                        margin: '32px auto 0 auto',
+                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                        animationDelay: '0ms',
+                                        opacity: 0,
+                                        transform: 'translateY(20px)'
+                                    }}>
+                                        <OpponentDetailsStep
+                                            opponentName={opponentName}
+                                            setOpponentName={setOpponentName}
+                                            opponentEmail={opponentEmail}
+                                            setOpponentEmail={setOpponentEmail}
+                                            opponentSolicitorName={opponentSolicitorName}
+                                            setOpponentSolicitorName={setOpponentSolicitorName}
+                                            opponentSolicitorCompany={opponentSolicitorCompany}
+                                            setOpponentSolicitorCompany={setOpponentSolicitorCompany}
+                                            opponentSolicitorEmail={opponentSolicitorEmail}
+                                            setOpponentSolicitorEmail={setOpponentSolicitorEmail}
+                                            noConflict={noConflict}
+                                            setNoConflict={setNoConflict}
+                                            disputeValue={disputeValue}
+                                            setDisputeValue={setDisputeValue}
+                                            opponentTitle={opponentTitle}
+                                            setOpponentTitle={setOpponentTitle}
+                                            opponentFirst={opponentFirst}
+                                            setOpponentFirst={setOpponentFirst}
+                                            opponentLast={opponentLast}
+                                            setOpponentLast={setOpponentLast}
+                                            opponentPhone={opponentPhone}
+                                            setOpponentPhone={setOpponentPhone}
+                                            opponentAddress={opponentAddress}
+                                            setOpponentAddress={setOpponentAddress}
+                                            opponentHasCompany={opponentHasCompany}
+                                            setOpponentHasCompany={setOpponentHasCompany}
+                                            opponentCompanyName={opponentCompanyName}
+                                            setOpponentCompanyName={setOpponentCompanyName}
+                                            opponentCompanyNumber={opponentCompanyNumber}
+                                            setOpponentCompanyNumber={setOpponentCompanyNumber}
+                                            solicitorTitle={solicitorTitle}
+                                            setSolicitorTitle={setSolicitorTitle}
+                                            solicitorFirst={solicitorFirst}
+                                            setSolicitorFirst={setSolicitorFirst}
+                                            solicitorLast={solicitorLast}
+                                            setSolicitorLast={setSolicitorLast}
+                                            solicitorPhone={solicitorPhone}
+                                            setSolicitorPhone={setSolicitorPhone}
+                                            solicitorAddress={solicitorAddress}
+                                            setSolicitorAddress={setSolicitorAddress}
+                                            solicitorCompanyNumber={solicitorCompanyNumber}
+                                            setSolicitorCompanyNumber={setSolicitorCompanyNumber}
+                                            opponentChoiceMade={opponentChoiceMade}
+                                            setOpponentChoiceMade={setOpponentChoiceMade}
+                                        />
+                                    </div>
+                                )}
+                                
                                 {/* Continue Button */}
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 32 }}>
-                                    {(selectedPoidIds.length > 0 && pendingClientType) && (
-                                        <div 
-                                            className="nav-button forward-button"
-                                            onClick={handleContinueToForm}
+                                    <div
+                                        className="nav-button forward-button"
+                                        onClick={opponentChoiceMade ? handleContinueToForm : undefined}
+                                        aria-disabled={!opponentChoiceMade}
+                                        tabIndex={opponentChoiceMade ? 0 : -1}
+                                        style={{
+                                            background: '#f4f4f6',
+                                            border: '2px solid #e1dfdd',
+                                            borderRadius: '50%',
+                                            width: '48px',
+                                            height: '48px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: opponentChoiceMade ? 'pointer' : 'not-allowed',
+                                            opacity: opponentChoiceMade ? 1 : 0.5,
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            pointerEvents: opponentChoiceMade ? 'auto' : 'none',
+                                        }}
+                                        onMouseEnter={opponentChoiceMade ? (e) => {
+                                            e.currentTarget.style.background = '#e7f1ff';
+                                            e.currentTarget.style.border = '2px solid #3690CE';
+                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.width = '220px';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                        } : undefined}
+                                        onMouseLeave={opponentChoiceMade ? (e) => {
+                                            e.currentTarget.style.background = '#f4f4f6';
+                                            e.currentTarget.style.border = '2px solid #e1dfdd';
+                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.width = '48px';
+                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                        } : undefined}
+                                    >
+                                        {/* Arrow Icon */}
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
                                             style={{
-                                                background: '#f4f4f6',
-                                                border: '2px solid #e1dfdd',
-                                                borderRadius: '50%',
-                                                width: '48px',
-                                                height: '48px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                                position: 'relative',
-                                                overflow: 'hidden',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = '#e7f1ff';
-                                                e.currentTarget.style.border = '2px solid #3690CE';
-                                                e.currentTarget.style.borderRadius = '24px';
-                                                e.currentTarget.style.width = '220px';
-                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = '#f4f4f6';
-                                                e.currentTarget.style.border = '2px solid #e1dfdd';
-                                                e.currentTarget.style.borderRadius = '50%';
-                                                e.currentTarget.style.width = '48px';
-                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                                transition: 'color 0.3s, opacity 0.3s',
+                                                color: '#3690CE',
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
                                             }}
                                         >
-                                            {/* Arrow Icon */}
-                                            <svg 
-                                                width="18" 
-                                                height="18" 
-                                                viewBox="0 0 24 24" 
-                                                fill="none"
-                                                style={{
-                                                    transition: 'color 0.3s, opacity 0.3s',
-                                                    color: '#3690CE',
-                                                    position: 'absolute',
-                                                    left: '50%',
-                                                    top: '50%',
-                                                    transform: 'translate(-50%, -50%)',
-                                                }}
-                                            >
-                                                <path 
-                                                    d="M5 12h14m-7-7l7 7-7 7" 
-                                                    stroke="currentColor" 
-                                                    strokeWidth="2" 
-                                                    strokeLinecap="round" 
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                            
-                                            {/* Expandable Text */}
-                                            <span 
-                                                style={{
-                                                    position: 'absolute',
-                                                    left: '50%',
-                                                    top: '50%',
-                                                    transform: 'translate(-50%, -50%)',
-                                                    fontSize: '14px',
-                                                    fontWeight: 600,
-                                                    color: '#3690CE',
-                                                    opacity: 0,
-                                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    whiteSpace: 'nowrap',
-                                                }}
-                                                className="nav-text"
-                                            >
-                                                Continue to Matter Details
-                                            </span>
-                                        </div>
-                                    )}
-                                    
+                                            <path
+                                                d="M5 12h14m-7-7l7 7-7 7"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+
+                                        {/* Expandable Text */}
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                transform: 'translate(-50%, -50%)',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                opacity: 0,
+                                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            className="nav-text"
+                                        >
+                                            Continue to Matter Details
+                                        </span>
+                                    </div>
                                     <style>{`
                                         .nav-button:hover .nav-text {
                                             opacity: 1 !important;
@@ -811,106 +1152,55 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
                             {/* Step 2: Matter Form */}
                             <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
-                                <StepWrapper stepNumber={1} title="Solicitor and Source Details" isActive={true}>
-                                    <ClientInfoStep
-                                        selectedDate={selectedDate}
-                                        setSelectedDate={setSelectedDate}
-                                        teamMember={teamMember}
-                                        setTeamMember={setTeamMember}
-                                        teamMemberOptions={teamMemberOptions}
-                                        supervisingPartner={supervisingPartner}
-                                        setSupervisingPartner={setSupervisingPartner}
-                                        originatingSolicitor={originatingSolicitor}
-                                        setOriginatingSolicitor={setOriginatingSolicitor}
-                                        isDateCalloutOpen={isDateCalloutOpen}
-                                        setIsDateCalloutOpen={setIsDateCalloutOpen}
-                                        dateButtonRef={dateButtonRef}
-                                        partnerOptions={getPartnerFirstNames(teamData || localTeamDataJson)}
-                                        source={source}
-                                        setSource={setSource}
+                                <ClientInfoStep
+                                    selectedDate={selectedDate}
+                                    setSelectedDate={setSelectedDate}
+                                    teamMember={teamMember}
+                                    setTeamMember={setTeamMember}
+                                    teamMemberOptions={teamMemberOptions}
+                                    supervisingPartner={supervisingPartner}
+                                    setSupervisingPartner={setSupervisingPartner}
+                                    originatingSolicitor={originatingSolicitor}
+                                    setOriginatingSolicitor={setOriginatingSolicitor}
+                                    isDateCalloutOpen={isDateCalloutOpen}
+                                    setIsDateCalloutOpen={setIsDateCalloutOpen}
+                                    dateButtonRef={dateButtonRef}
+                                    partnerOptions={getPartnerFirstNames(teamData || localTeamDataJson)}
+                                    source={source}
+                                    setSource={setSource}
                                         referrerName={referrerName}
-                                        setReferrerName={setReferrerName}
-                                        requestingUser={requestingUserNickname}
+                                        setReferrerName={setReferrerName}                                    requestingUser={requestingUserNickname}
+                                />
+                                <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
+                                    <AreaOfWorkStep
+                                        areaOfWork={areaOfWork}
+                                        setAreaOfWork={setAreaOfWork}
+                                        getGroupColor={getGroupColor}
+                                        onContinue={function (): void {} }
                                     />
-                                </StepWrapper>
-                                <StepWrapper stepNumber={2} title="Matter Details">
-                                    <Stack tokens={{ childrenGap: 24 }}>
-                                        <AreaOfWorkStep
-                                            areaOfWork={areaOfWork}
-                                            setAreaOfWork={setAreaOfWork}
-                                            getGroupColor={getGroupColor}
-                                            onContinue={function (): void {} }
-                                        />
-                                        <PracticeAreaStep
-                                            options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
-                                            practiceArea={practiceArea}
-                                            setPracticeArea={setPracticeArea}
-                                            groupColor={''}
-                                            onContinue={function (): void {} }
-                                        />
-                                        <DisputeValueStep
-                                            disputeValue={disputeValue}
-                                            setDisputeValue={setDisputeValue}
-                                            onContinue={() => {}}
-                                        />
-                                        <DescriptionStep
-                                            description={description}
-                                            setDescription={setDescription}
-                                        />
-                                        <FolderStructureStep
-                                            folderStructure={folderStructure}
-                                            setFolderStructure={setFolderStructure}
-                                            folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
-                                            onContinue={function (): void {} }
-                                        />
-                                    </Stack>
-                                </StepWrapper>
-                                <StepWrapper stepNumber={3} title="Dispute and Opponent Details">
-                                    <OpponentDetailsStep
-                                        opponentName={opponentName}
-                                        setOpponentName={setOpponentName}
-                                        opponentEmail={opponentEmail}
-                                        setOpponentEmail={setOpponentEmail}
-                                        opponentSolicitorName={opponentSolicitorName}
-                                        setOpponentSolicitorName={setOpponentSolicitorName}
-                                        opponentSolicitorCompany={opponentSolicitorCompany}
-                                        setOpponentSolicitorCompany={setOpponentSolicitorCompany}
-                                        opponentSolicitorEmail={opponentSolicitorEmail}
-                                        setOpponentSolicitorEmail={setOpponentSolicitorEmail}
-                                        noConflict={noConflict}
-                                        setNoConflict={setNoConflict}
+                                    <PracticeAreaStep
+                                        options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
+                                        practiceArea={practiceArea}
+                                        setPracticeArea={setPracticeArea}
+                                        groupColor={''}
+                                        onContinue={function (): void {} }
+                                    />
+                                    <DisputeValueStep
                                         disputeValue={disputeValue}
                                         setDisputeValue={setDisputeValue}
-                                        opponentTitle={opponentTitle}
-                                        setOpponentTitle={setOpponentTitle}
-                                        opponentFirst={opponentFirst}
-                                        setOpponentFirst={setOpponentFirst}
-                                        opponentLast={opponentLast}
-                                        setOpponentLast={setOpponentLast}
-                                        opponentPhone={opponentPhone}
-                                        setOpponentPhone={setOpponentPhone}
-                                        opponentAddress={opponentAddress}
-                                        setOpponentAddress={setOpponentAddress}
-                                        opponentHasCompany={opponentHasCompany}
-                                        setOpponentHasCompany={setOpponentHasCompany}
-                                        opponentCompanyName={opponentCompanyName}
-                                        setOpponentCompanyName={setOpponentCompanyName}
-                                        opponentCompanyNumber={opponentCompanyNumber}
-                                        setOpponentCompanyNumber={setOpponentCompanyNumber}
-                                        solicitorTitle={solicitorTitle}
-                                        setSolicitorTitle={setSolicitorTitle}
-                                        solicitorFirst={solicitorFirst}
-                                        setSolicitorFirst={setSolicitorFirst}
-                                        solicitorLast={solicitorLast}
-                                        setSolicitorLast={setSolicitorLast}
-                                        solicitorPhone={solicitorPhone}
-                                        setSolicitorPhone={setSolicitorPhone}
-                                        solicitorAddress={solicitorAddress}
-                                        setSolicitorAddress={setSolicitorAddress}
-                                        solicitorCompanyNumber={solicitorCompanyNumber}
-                                        setSolicitorCompanyNumber={setSolicitorCompanyNumber}
+                                        onContinue={() => {}}
                                     />
-                                </StepWrapper>
+                                    <DescriptionStep
+                                        description={description}
+                                        setDescription={setDescription}
+                                    />
+                                    <FolderStructureStep
+                                        folderStructure={folderStructure}
+                                        setFolderStructure={setFolderStructure}
+                                        folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
+                                        onContinue={function (): void {} }
+                                    />
+                                </Stack>
                                 {/* Navigation buttons for form step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
                                     {/* Back button with smooth expansion */}
@@ -1098,7 +1388,18 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     tabIndex={-1}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                                        <h4 style={{ margin: 0, fontWeight: 600, fontSize: 18, color: '#061733' }}>Review Summary</h4>
+                                        <h4 style={{ 
+                                            margin: 0, 
+                                            fontWeight: 600, 
+                                            fontSize: 18, 
+                                            color: '#061733',
+                                            animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                            animationDelay: '0ms',
+                                            opacity: 0,
+                                            transform: 'translateX(20px)'
+                                        }}>
+                                            Review Summary
+                                        </h4>
                                         <button
                                             onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
                                             style={{
@@ -1113,7 +1414,11 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 6,
-                                                transition: 'all 0.2s ease'
+                                                transition: 'background 0.2s ease, border-color 0.2s ease',
+                                                animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                                animationDelay: '150ms',
+                                                opacity: 0,
+                                                transform: 'translateX(20px)'
                                             }}
                                             onMouseEnter={(e) => {
                                                 e.currentTarget.style.background = '#e7f1ff';
@@ -1371,7 +1676,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span style={{ color: '#666', fontSize: 13 }}>Address:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentAddress || '-'}</span>
+                                                <span style={{ fontWeight:  500, fontSize: 13 }}>{opponentAddress || '-'}</span>
                                             </div>
                                         </div>
                                     </div>

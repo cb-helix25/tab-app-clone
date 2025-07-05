@@ -17,6 +17,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: normal !important;
 }
 
 .MultiSelect-segment:not(:last-child) {
@@ -68,7 +69,7 @@
     padding: 0 1rem;
     /* give room for arrow */
     color: #061733;
-    font-weight: 600;
+    font-weight: normal;
 }
 
 .team-select.selected {
@@ -112,6 +113,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: normal !important;
 }
 
 .have-funds-bar .MultiSelect-segment:not(:last-child) {
@@ -143,7 +145,7 @@
     border: none;
     background: transparent;
     font-size: 16px !important;
-    font-weight: 600 !important;
+    font-weight: normal !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,10 +170,9 @@
     border-left: 3px solid var(--helix-cta);
     padding: 0.25rem 0.5rem;
     font-weight: 600;
-    color: var(--helix-dark-blue);
-    /* remove this: margin-bottom: -1px; */
+    color: #061733;
     margin-bottom: 0.5rem;
-    /* ← add positive spacing */ }
+}
 
 .opponent-section {
     border: 1px solid var(--helix-grey);
