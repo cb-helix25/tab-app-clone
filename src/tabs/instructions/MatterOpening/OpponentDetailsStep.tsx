@@ -433,13 +433,11 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
           <div style={{ height: 18 }} />
           <div className="opponent-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
-              <div 
-                className="question-banner" 
-                style={{ 
-                  width: '100%', 
-                  boxSizing: 'border-box', 
-                  margin: 0, 
-                  marginBottom: 20,
+              <div
+                className="question-banner"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
                   animation: 'questionSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                   animationDelay: '200ms',
                   opacity: 0,

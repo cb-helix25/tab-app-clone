@@ -75,7 +75,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             {/* Client Type Question Section - Now First */}
             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
-                <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box', margin: 0, marginBottom: 16 }}>What type of client is this matter for?</div>
+                <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>What type of client is this matter for?</div>
                 <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
                     {[
                         { type: 'Individual', icon: 'Contact' },
