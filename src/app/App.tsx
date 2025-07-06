@@ -10,6 +10,7 @@ import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomBooking, SoundproofPodBooking } from './functionality/types';
+import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
 
 const Home = lazy(() => import('../tabs/home/Home'));
@@ -105,6 +106,23 @@ const App: React.FC<AppProps> = ({
 
   const [resourcesTabHovered, setResourcesTabHovered] = useState(false);
   const [resourcesSidebarPinned, setResourcesSidebarPinned] = useState(false);
+  const [hasActiveMatter, setHasActiveMatter] = useState(false);
+  const [isInMatterOpeningWorkflow, setIsInMatterOpeningWorkflow] = useState(false);
+
+  // Check for active matter opening every 2 seconds
+  useEffect(() => {
+    const checkActiveMatter = () => {
+      setHasActiveMatter(hasActiveMatterOpening());
+    };
+    
+    // Initial check
+    checkActiveMatter();
+    
+    // Set up polling
+    const interval = setInterval(checkActiveMatter, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'forms') {
@@ -175,6 +193,19 @@ const App: React.FC<AppProps> = ({
     }
   }, [teamsContext, userData, enquiries, matters]);
 
+  // Listen for navigation events from child components
+  useEffect(() => {
+    const handleNavigateToInstructions = () => {
+      setActiveTab('instructions');
+    };
+
+    window.addEventListener('navigateToInstructions', handleNavigateToInstructions);
+    
+    return () => {
+      window.removeEventListener('navigateToInstructions', handleNavigateToInstructions);
+    };
+  }, []);
+
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
@@ -239,6 +270,8 @@ const App: React.FC<AppProps> = ({
             poidData={poidData}
             setPoidData={setPoidData}
             teamData={teamData}
+            hasActiveMatter={hasActiveMatter}
+            setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow}
           />
           );
       case 'matters':
@@ -310,6 +343,8 @@ const App: React.FC<AppProps> = ({
             onFormsClick={handleFormsTabClick}
             onResourcesHover={setResourcesTabHovered}
             onResourcesClick={handleResourcesTabClick}
+            hasActiveMatter={hasActiveMatter}
+            isInMatterOpeningWorkflow={isInMatterOpeningWorkflow}
           />
           <Navigator />
           <FormsSidebar

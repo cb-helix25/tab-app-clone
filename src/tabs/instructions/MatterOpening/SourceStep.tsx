@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack, TextField, PrimaryButton, Text } from '@fluentui/react';
 import { sharedPrimaryButtonStyles } from '../../../app/styles/ButtonStyles';
 import '../../../app/styles/MultiSelect.css';
+import ModernMultiSelect from './ModernMultiSelect';
 
 interface SourceStepProps {
     source: string;
@@ -15,22 +16,19 @@ const sourceOptions = ['referral', 'organic search', 'paid search', 'your follow
 
 const SourceStep: React.FC<SourceStepProps> = ({ source, setSource, referrerName, setReferrerName, onContinue }) => (
     <Stack tokens={{ childrenGap: 12 }}>
-        <div className="question-banner">Select Source</div>
-        <div className="MultiSelect-bar">
-            {sourceOptions.map((option) => (
-                <div
-                    key={option}
-                    className={`MultiSelect-segment${source === option ? ' active' : ''}`}
-                    onClick={() => {
-                        setSource(option);
-                        if (option !== 'referral') setReferrerName('');
-                    }}
-                    style={{ textTransform: 'capitalize' }}
-                >
-                    {option}
-                </div>
-            ))}
-        </div>
+        <ModernMultiSelect
+            label="Select Source"
+            options={sourceOptions.map(option => ({ 
+                key: option, 
+                text: option.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+            }))}
+            selectedValue={source}
+            onSelectionChange={(value) => {
+                setSource(value);
+                if (value !== 'referral') setReferrerName('');
+            }}
+            variant="default"
+        />
         {source === 'referral' && (
             <TextField
                 placeholder="Enter referrer's name"

@@ -49,8 +49,8 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
                 className="matter-description-input"
                 style={{
                     width: '100%',
-                    background: description ? '#d6e8ff' : '#F4F4F6',
-                    border: description ? '1.5px solid #3690CE' : '2px solid #F4F4F6',
+                    background: description ? '#3690CE22' : '#F4F4F6',
+                    border: description ? '1px solid #3690CE' : '1px solid #e0e0e0',
                     borderRadius: 0,
                     fontSize: 16,
                     color: '#061733',

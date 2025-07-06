@@ -10,6 +10,8 @@ interface SummaryReviewProps {
     showConfirmation?: boolean;
     edited?: boolean;
     jsonData?: any; // Add optional JSON data prop
+    clickToConfirm?: boolean; // Enable click-to-confirm mode
+    demanding?: boolean; // Show red demanding border
 }
 
 const SummaryReview: React.FC<SummaryReviewProps> = ({
@@ -19,6 +21,8 @@ const SummaryReview: React.FC<SummaryReviewProps> = ({
     showConfirmation = true,
     edited = false,
     jsonData = null,
+    clickToConfirm = false,
+    demanding = false,
 }) => {
     const { summaryComplete } = useCompletion();
     const [open, setOpen] = useState(true);
@@ -34,15 +38,28 @@ const SummaryReview: React.FC<SummaryReviewProps> = ({
 
     const toggle = () => setOpen((p) => !p);
 
+    const handleContainerClick = () => {
+        if (clickToConfirm && !detailsConfirmed) {
+            setDetailsConfirmed(true);
+        }
+    };
+
     const collapsed = summaryComplete && !open;
     const paneClasses =
         'summary-pane' +
         (collapsed ? ' summary-pane-collapsed' : '') +
         (!collapsed && summaryComplete ? ' summary-pane-complete' : '') +
-        (edited ? ' summary-pane-edited' : '');
+        (edited ? ' summary-pane-edited' : '') +
+        (demanding && !detailsConfirmed ? ' summary-pane-demanding' : '');
 
     return (
-        <section className={paneClasses}>
+        <section 
+            className={paneClasses}
+            onClick={handleContainerClick}
+            style={{
+                cursor: clickToConfirm && !detailsConfirmed ? 'pointer' : 'default'
+            }}
+        >
             {summaryComplete ? (
                 <button
                     type="button"

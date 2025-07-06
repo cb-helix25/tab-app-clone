@@ -112,7 +112,7 @@ const darkCardStyle = mergeStyles({
 
 const selectedCardStyle = mergeStyles({
     // border removed to prevent card from shrinking or shifting
-    background: 'linear-gradient(135deg, #e0f3ff, #cce7ff)',
+    background: `linear-gradient(135deg, #3690CE22, #3690CE33)`,
     fontFamily: 'Raleway, sans-serif',
 });
 

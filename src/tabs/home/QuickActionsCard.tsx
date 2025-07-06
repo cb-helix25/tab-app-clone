@@ -11,8 +11,8 @@ import {
   FaCalendarAlt,
   FaRegTimesCircle,
   FaTimesCircle,
-  FaRegFileAlt,
-  FaFileAlt,
+  FaRegFolder,
+  FaFolder,
   FaRegIdBadge,
   FaIdBadge,
 } from 'react-icons/fa';
@@ -40,6 +40,7 @@ import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import '../../app/styles/QuickActionsCard.css';
 import { componentTokens } from '../../app/styles/componentTokens';
+import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
 
 const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
@@ -49,7 +50,8 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Room: { outline: MdOutlineMeetingRoom, filled: MdMeetingRoom },
   Warning: { outline: MdOutlineWarning, filled: MdWarning },
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
-  OpenFile: { outline: FaRegFileAlt, filled: FaFileAlt },
+  // Use a real folder icon for Finalise Matter (was FaRegFileAlt/FaFileAlt, which is a file/contract icon)
+  OpenFile: { outline: FaRegFolder, filled: FaFolder },
   IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
   Assessment: { outline: MdOutlineAssessment, filled: MdAssessment },
   KnowledgeArticle: { outline: MdOutlineArticle, filled: MdArticle },
@@ -71,6 +73,8 @@ interface QuickActionsCardProps {
   selected?: boolean;
   /** Layout direction. Use 'column' for client type buttons */
   orientation?: 'row' | 'column';
+  /** Show a pulsing dot indicator */
+  showPulsingDot?: boolean;
 }
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
@@ -83,6 +87,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   style,
   selected,
   orientation = 'row',
+  showPulsingDot = false,
 }) => {
   // Base card style
   const baseCardStyle = mergeStyles({
@@ -129,7 +134,26 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     marginRight: '4px',
   });
 
-  if (title === 'Confirm Attendance') {
+  // Special case: if iconColor is 'immediate-disclaimer', use disclaimer yellow and brown
+  if (iconColor === 'immediate-disclaimer') {
+    // Always override for these icons
+    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
+      color: '#b88600', // disclaimer text color
+      backgroundColor: '#FFB900', // disclaimer background color
+      borderRadius: '50%',
+      width: 24,
+      height: 24,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+    // For Finalise Matter and Approve Annual Leave, force correct icon name
+    if (title === 'Approve Annual Leave') {
+      attendanceIconName = 'PalmTree';
+    } else if (title === 'Finalise Matter') {
+      attendanceIconName = 'OpenFile';
+    }
+  } else if (title === 'Confirm Attendance') {
     if (confirmed) {
       attendanceIconName = 'Accept';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.cta });
@@ -144,9 +168,13 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   } else if (title === 'Approve Annual Leave') {
     attendanceIconName = 'PalmTree';
     attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: colours.green,
-      animation: 'greenPulse 2s infinite',
-      boxShadow: 'inset 0 0 5px rgba(16,124,16,0.5)',
+      color: colours.cta,
+    });
+  } else if (title === 'Finalise Matter') {
+    // Always use the original folder icon (OpenFile) for Finalise Matter, no green pulse
+    attendanceIconName = 'OpenFile';
+    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
+      color: colours.cta,
     });
   } else if (title === 'Book Requested Leave') {
     attendanceIconName = 'Accept';
@@ -163,15 +191,6 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     fontSize: '14px',
     whiteSpace: 'nowrap',
     textAlign: 'center',
-  });
-
-  const pulsingDotStyle = mergeStyles({
-    width: '8px',
-    height: '8px',
-    backgroundColor: colours.green,
-    borderRadius: '50%', // Makes it circular
-    marginLeft: '6px',
-    animation: 'subtlePulse 1.5s infinite ease-in-out', // Subtle animation
   });
 
   const dynamicClasses = mergeStyles(
@@ -213,9 +232,23 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
           return <Icon iconName={attendanceIconName} className={attendanceIconStyle} />;
         })()}
       </span>
-      <Text variant="small" styles={{ root: textStyle }}>
-        {title}
-      </Text>
+      {showPulsingDot && orientation === 'row' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Text variant="small" styles={{ root: textStyle }}>
+            {title}
+          </Text>
+          <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
+        </div>
+      ) : (
+        <>
+          <Text variant="small" styles={{ root: textStyle }}>
+            {title}
+          </Text>
+          {showPulsingDot && orientation === 'column' && (
+            <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
+          )}
+        </>
+      )}
     </div>
   );
 };

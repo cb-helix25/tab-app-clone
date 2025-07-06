@@ -28,6 +28,7 @@ import OpponentDetailsStep from './OpponentDetailsStep';
 import { CompletionProvider } from './CompletionContext';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
+import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
 
 // Local implementation of useDraftedState for draft persistence
 function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -250,6 +251,9 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [solicitorAddress, setSolicitorAddress] = useDraftedState<string>('solicitorAddress', '');
     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
 
+    // Summary review confirmation state
+    const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
@@ -317,12 +321,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         return found ? found.Nickname || found.First || found['Full Name'] || '' : '';
     }
 
-    // Helper to get only first names for partners
-    function getPartnerFirstNames(teamData: any[]): string[] {
+    // Helper to get partner initials (both initials for partners)
+    function getPartnerInitials(teamData: any[]): string[] {
         if (!teamData) return [];
         return teamData
             .filter((member: any) => member.Role === 'Partner')
-            .map((member: any) => member.First || member['First'] || '')
+            .map((member: any) => member.Initials || member['Initials'] || '')
             .filter(Boolean);
     }
 
@@ -494,6 +498,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     const handleBackToForm = () => {
         setCurrentStep(1);
+        setSummaryConfirmed(false); // Reset confirmation when going back to edit
         // Scroll to top when changing steps
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -602,8 +607,51 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         };
     };
 
+    // Helper function to check if there's any data to clear
+    const hasDataToClear = () => {
+        return selectedPoidIds.length > 0 || pendingClientType || poidSearchTerm || 
+               areaOfWork || practiceArea || description || disputeValue || 
+               source !== 'search' || referrerName || folderStructure ||
+               opponentName || opponentEmail || opponentSolicitorName || 
+               opponentSolicitorCompany || opponentSolicitorEmail ||
+               opponentTitle || opponentFirst || opponentLast || opponentPhone ||
+               opponentAddress || opponentHasCompany || opponentCompanyName ||
+               opponentCompanyNumber || solicitorTitle || solicitorFirst ||
+               solicitorLast || solicitorPhone || solicitorAddress ||
+               solicitorCompanyNumber || summaryConfirmed || noConflict ||
+               (selectedDate && selectedDate.getTime() !== new Date().setHours(0,0,0,0)) ||
+               teamMember !== defaultTeamMember || supervisingPartner ||
+               originatingSolicitor !== defaultTeamMember;
+    };
+
+    // Count the number of filled fields for the clear button
+    const getFieldCount = () => {
+        let count = 0;
+        if (selectedPoidIds.length > 0) count++;
+        if (pendingClientType) count++;
+        if (areaOfWork) count++;
+        if (practiceArea) count++;
+        if (description) count++;
+        if (disputeValue) count++;
+        if (source !== 'search') count++;
+        if (referrerName) count++;
+        if (folderStructure) count++;
+        if (opponentName || opponentEmail || opponentSolicitorName) count++;
+        if (summaryConfirmed) count++;
+        if (selectedDate && selectedDate.getTime() !== new Date().setHours(0,0,0,0)) count++;
+        if (teamMember !== defaultTeamMember) count++;
+        if (supervisingPartner) count++;
+        if (originatingSolicitor !== defaultTeamMember) count++;
+        return count;
+    };
+
     // Clear all selections and inputs
     const handleClearAll = () => {
+        if (hasDataToClear() && !window.confirm('Are you sure you want to clear all form data? This action cannot be undone.')) {
+            return;
+        }
+        
+        // Clear all the React state
         setSelectedDate(null);
         setTeamMember(defaultTeamMember);
         setSupervisingPartner('');
@@ -639,9 +687,13 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         setSolicitorPhone('');
         setSolicitorAddress('');
         setSolicitorCompanyNumber('');
+        setSummaryConfirmed(false); // Reset summary confirmation
         setActivePoid(null);
         setCurrentStep(0); // This will reset the review dots
         setPoidSearchTerm('');
+        
+        // Clear all localStorage draft data
+        clearMatterOpeningDraft();
     };
 
     // Render the horizontal sliding carousel
@@ -839,63 +891,100 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             </div>
                         </div>
 
-                        {/* POID search and clear button on the right - only in step 0 with POID selection AND client type selected */}
-                        {currentStep === 0 && showPoidSelection && pendingClientType && (
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: 8
-                            }}>
-                                {/* MinimalSearchBox with controlled focus */}
-                                <div style={{ 
-                                    position: 'relative',
-                                    animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                    animationDelay: '0ms',
-                                    opacity: 0,
-                                    transform: 'translateX(20px)'
-                                }}>
-                                    <MinimalSearchBox
-                                        value={poidSearchTerm}
-                                        onChange={setPoidSearchTerm}
-                                        focused={searchBoxFocused}
-                                        onRequestOpen={() => setSearchBoxFocused(true)}
-                                        onRequestClose={() => setSearchBoxFocused(false)}
-                                    />
-                                </div>
-                                {/* Clear button with delayed cascade animation */}
+                        {/* Right side controls */}
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8
+                        }}>
+                            {/* POID search - only in step 0 with POID selection AND client type selected */}
+                            {currentStep === 0 && showPoidSelection && pendingClientType && (
+                                <>
+                                    {/* MinimalSearchBox - hide when Individual/Company has selection */}
+                                    {!(
+                                        (pendingClientType === 'Individual' || pendingClientType === 'Company') && 
+                                        selectedPoidIds.length > 0
+                                    ) && (
+                                        <div style={{ 
+                                            position: 'relative',
+                                            animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                            animationDelay: '0ms',
+                                            opacity: 0,
+                                            transform: 'translateX(20px)'
+                                        }}>
+                                            <MinimalSearchBox
+                                                value={poidSearchTerm}
+                                                onChange={setPoidSearchTerm}
+                                                focused={searchBoxFocused}
+                                                onRequestOpen={() => setSearchBoxFocused(true)}
+                                                onRequestClose={() => setSearchBoxFocused(false)}
+                                            />
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            
+                            {/* Global Clear button - always available when there's something to clear */}
+                            {hasDataToClear() && (
                                 <button 
                                     type="button" 
                                     onClick={handleClearAll} 
                                     style={{
                                         background: '#fff',
                                         border: '1px solid #e1e5e9',
-                                        borderRadius: 4,
-                                        padding: '6px 12px',
+                                        borderRadius: 0,
+                                        padding: '8px 16px',
                                         fontSize: 14,
-                                        color: '#666',
+                                        fontWeight: 500,
+                                        color: '#D65541',
                                         cursor: 'pointer',
-                                        transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
+                                        transition: 'all 0.2s ease',
                                         boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                        animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                        animationDelay: '150ms',
-                                        opacity: 0,
-                                        transform: 'translateX(20px)'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontFamily: 'Raleway, sans-serif'
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#f8f9fa';
-                                        e.currentTarget.style.borderColor = '#3690CE';
-                                        e.currentTarget.style.color = '#3690CE';
+                                        e.currentTarget.style.background = '#ffefed';
+                                        e.currentTarget.style.borderColor = '#D65541';
+                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.background = '#fff';
                                         e.currentTarget.style.borderColor = '#e1e5e9';
-                                        e.currentTarget.style.color = '#666';
-                                    }}
-                                >
-                                    Clear
-                                </button>
-                            </div>
-                        )}
+                                        e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                    }}                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                            <path 
+                                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6" 
+                                                stroke="currentColor" 
+                                                strokeWidth="2" 
+                                                strokeLinecap="round" 
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                        Clear All
+                                        {getFieldCount() > 0 && (
+                                            <span style={{
+                                                background: '#D65541',
+                                                color: '#fff',
+                                                borderRadius: '50%',
+                                                width: '18px',
+                                                height: '18px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '10px',
+                                                fontWeight: 600,
+                                                marginLeft: '2px'
+                                            }}>
+                                                {getFieldCount()}
+                                            </span>
+                                        )}
+                                    </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* CSS animations for search controls */}
@@ -1067,7 +1156,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         style={{
                                             background: '#f4f4f6',
                                             border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
+                                            borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
@@ -1082,16 +1171,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             pointerEvents: opponentChoiceMade ? 'auto' : 'none',
                                         }}
                                         onMouseEnter={opponentChoiceMade ? (e) => {
-                                            e.currentTarget.style.background = '#e7f1ff';
-                                            e.currentTarget.style.border = '2px solid #3690CE';
-                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.background = '#ffefed';
+                                            e.currentTarget.style.border = '2px solid #D65541';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '220px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                         } : undefined}
                                         onMouseLeave={opponentChoiceMade ? (e) => {
                                             e.currentTarget.style.background = '#f4f4f6';
                                             e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '48px';
                                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
                                         } : undefined}
@@ -1104,7 +1193,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             fill="none"
                                             style={{
                                                 transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
@@ -1129,7 +1218,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 transform: 'translate(-50%, -50%)',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 opacity: 0,
                                                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 whiteSpace: 'nowrap',
@@ -1165,7 +1254,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     isDateCalloutOpen={isDateCalloutOpen}
                                     setIsDateCalloutOpen={setIsDateCalloutOpen}
                                     dateButtonRef={dateButtonRef}
-                                    partnerOptions={getPartnerFirstNames(teamData || localTeamDataJson)}
+                                    partnerOptions={getPartnerInitials(teamData || localTeamDataJson)}
                                     requestingUser={requestingUserNickname}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
@@ -1231,7 +1320,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         style={{
                                             background: '#f4f4f6',
                                             border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
+                                            borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
@@ -1244,16 +1333,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             overflow: 'hidden',
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#e7f1ff';
-                                            e.currentTarget.style.border = '2px solid #3690CE';
-                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.background = '#ffefed';
+                                            e.currentTarget.style.border = '2px solid #D65541';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '160px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                         }}
                                         onMouseLeave={(e) => {
                                             e.currentTarget.style.background = '#f4f4f6';
                                             e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '48px';
                                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
                                         }}
@@ -1266,7 +1355,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             fill="none"
                                             style={{
                                                 transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
@@ -1291,7 +1380,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 transform: 'translate(-50%, -50%)',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 opacity: 0,
                                                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 whiteSpace: 'nowrap',
@@ -1309,7 +1398,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         style={{
                                             background: '#f4f4f6',
                                             border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
+                                            borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
@@ -1322,16 +1411,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             overflow: 'hidden',
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#e7f1ff';
-                                            e.currentTarget.style.border = '2px solid #3690CE';
-                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.background = '#ffefed';
+                                            e.currentTarget.style.border = '2px solid #D65541';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '160px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                         }}
                                         onMouseLeave={(e) => {
                                             e.currentTarget.style.background = '#f4f4f6';
                                             e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '48px';
                                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
                                         }}
@@ -1344,7 +1433,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             fill="none"
                                             style={{
                                                 transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
@@ -1369,7 +1458,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 transform: 'translate(-50%, -50%)',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 opacity: 0,
                                                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 whiteSpace: 'nowrap',
@@ -1395,31 +1484,40 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
                                 <div
                                     className="review-summary-box review-summary-hoverable"
+                                    onClick={() => setSummaryConfirmed(true)}
                                     style={{
-                                        border: '2px solid #d1d5db',
-                                        borderRadius: 8,
-                                        background: '#fff',
+                                        border: summaryConfirmed ? '2px solid #49B670' : '2px solid #D65541',
+                                        borderRadius: 0,
+                                        background: summaryConfirmed ? '#f5fdf7' : '#fff',
                                         padding: 24,
                                         margin: '0 0 32px 0',
                                         width: '100%',
                                         boxSizing: 'border-box',
-                                        transition: 'border-color 0.2s',
-                                        cursor: 'default',
+                                        transition: 'border-color 0.2s, background 0.2s',
+                                        cursor: summaryConfirmed ? 'default' : 'pointer',
                                     }}
-                                    tabIndex={-1}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                                         <h4 style={{ 
                                             margin: 0, 
                                             fontWeight: 600, 
                                             fontSize: 18, 
-                                            color: '#061733',
+                                            color: summaryConfirmed ? '#15803d' : '#061733',
                                             animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                                             animationDelay: '0ms',
                                             opacity: 0,
-                                            transform: 'translateX(20px)'
+                                            transform: 'translateX(20px)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8
                                         }}>
-                                            Review Summary
+                                            {summaryConfirmed && (
+                                                <i className="ms-Icon ms-Icon--CheckMark" style={{ 
+                                                    fontSize: 16, 
+                                                    color: '#22c55e'
+                                                }} />
+                                            )}
+                                            Review Summary {summaryConfirmed ? '- Confirmed' : ''}
                                         </h4>
                                         <button
                                             onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
@@ -1770,6 +1868,26 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             {noConflict ? 'No conflicts confirmed' : 'Conflict check required'}
                                         </span>
                                     </div>
+
+                                    {/* Confirmation required banner */}
+                                    {!summaryConfirmed && (
+                                        <div style={{ 
+                                            marginTop: 16,
+                                            padding: 12,
+                                            background: '#fef2f2',
+                                            border: '1px solid #D65541',
+                                            borderRadius: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8
+                                        }}>
+                                            <i className="ms-Icon ms-Icon--Touch" 
+                                               style={{ fontSize: 14, color: '#D65541' }} />
+                                            <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
+                                                Click anywhere in this box to confirm these details are accurate
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 {/* Navigation buttons for review step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
@@ -1780,7 +1898,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         style={{
                                             background: '#f4f4f6',
                                             border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
+                                            borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
@@ -1793,16 +1911,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             overflow: 'hidden',
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#e7f1ff';
-                                            e.currentTarget.style.border = '2px solid #3690CE';
-                                            e.currentTarget.style.borderRadius = '24px';
+                                            e.currentTarget.style.background = '#ffefed';
+                                            e.currentTarget.style.border = '2px solid #D65541';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '140px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
                                         }}
                                         onMouseLeave={(e) => {
                                             e.currentTarget.style.background = '#f4f4f6';
                                             e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '50%';
+                                            e.currentTarget.style.borderRadius = '0px';
                                             e.currentTarget.style.width = '48px';
                                             e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
                                         }}
@@ -1815,7 +1933,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             fill="none"
                                             style={{
                                                 transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
@@ -1840,7 +1958,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 transform: 'translate(-50%, -50%)',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#3690CE',
+                                                color: '#D65541',
                                                 opacity: 0,
                                                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 whiteSpace: 'nowrap',
@@ -1855,37 +1973,47 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     <div 
                                         className="nav-button submit-button"
                                         onClick={() => {
-                                            // Handle form submission here
-                                            console.log('Form submitted!');
+                                            if (summaryConfirmed) {
+                                                // Handle form submission here
+                                                console.log('Form submitted!');
+                                                // Mark the matter opening as completed
+                                                completeMatterOpening();
+                                                // TODO: Add actual form submission logic here
+                                            }
                                         }}
                                         style={{
-                                            background: '#f4f4f6',
-                                            border: '2px solid #e1dfdd',
-                                            borderRadius: '50%',
+                                            background: summaryConfirmed ? '#f4f4f6' : '#f8f8f8',
+                                            border: summaryConfirmed ? '2px solid #e1dfdd' : '2px solid #ddd',
+                                            borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            cursor: 'pointer',
+                                            cursor: summaryConfirmed ? 'pointer' : 'not-allowed',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                            boxShadow: summaryConfirmed ? '0 1px 2px rgba(6,23,51,0.04)' : 'none',
                                             position: 'relative',
                                             overflow: 'hidden',
+                                            opacity: summaryConfirmed ? 1 : 0.5,
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#e7f1ff';
-                                            e.currentTarget.style.border = '2px solid #3690CE';
-                                            e.currentTarget.style.borderRadius = '24px';
-                                            e.currentTarget.style.width = '160px';
-                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+                                            if (summaryConfirmed) {
+                                                e.currentTarget.style.background = '#ffefed';
+                                                e.currentTarget.style.border = '2px solid #D65541';
+                                                e.currentTarget.style.borderRadius = '0px';
+                                                e.currentTarget.style.width = '160px';
+                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                                            }
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#f4f4f6';
-                                            e.currentTarget.style.border = '2px solid #e1dfdd';
-                                            e.currentTarget.style.borderRadius = '50%';
-                                            e.currentTarget.style.width = '48px';
-                                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            if (summaryConfirmed) {
+                                                e.currentTarget.style.background = '#f4f4f6';
+                                                e.currentTarget.style.border = '2px solid #e1dfdd';
+                                                e.currentTarget.style.borderRadius = '0px';
+                                                e.currentTarget.style.width = '48px';
+                                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                                            }
                                         }}
                                     >
                                         {/* Check Icon */}
@@ -1896,7 +2024,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             fill="none"
                                             style={{
                                                 transition: 'color 0.3s, opacity 0.3s',
-                                                color: '#3690CE',
+                                                color: summaryConfirmed ? '#D65541' : '#999',
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
@@ -1921,14 +2049,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                                 transform: 'translate(-50%, -50%)',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#3690CE',
+                                                color: summaryConfirmed ? '#D65541' : '#999',
                                                 opacity: 0,
                                                 transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                 whiteSpace: 'nowrap',
                                             }}
                                             className="nav-text"
                                         >
-                                            Submit Matter
+                                            {summaryConfirmed ? 'Submit Matter' : 'Confirm Summary First'}
                                         </span>
                                     </div>
                                     
@@ -1938,6 +2066,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         }
                                         .nav-button:hover svg {
                                             opacity: 0 !important;
+                                        }
+                                        .submit-button[style*="cursor: not-allowed"]:hover .nav-text {
+                                            opacity: 0 !important;
+                                        }
+                                        .submit-button[style*="cursor: not-allowed"]:hover svg {
+                                            opacity: 1 !important;
                                         }
                                     `}</style>
                                 </div>
@@ -1951,7 +2085,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             box-shadow: none;
                         }
                         .review-summary-hoverable:hover {
-                            border-color: #3690CE !important;
+                            border-color: ${summaryConfirmed ? '#49B670' : '#D65541'} !important;
+                            box-shadow: ${summaryConfirmed ? '0 0 0 1px #49B670' : '0 0 0 1px #D65541'};
                         }
                         
                         /* Navigation button animations */

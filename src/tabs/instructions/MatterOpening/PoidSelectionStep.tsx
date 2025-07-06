@@ -76,7 +76,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
                 <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box', margin: 0, marginBottom: 16 }}>What type of client is this matter for?</div>
-                <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 12 }}>
+                <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
                     {[
                         { type: 'Individual', icon: 'Contact' },
                         { type: 'Company', icon: 'CityNext' },
@@ -109,8 +109,8 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: isActive ? '#d6e8ff' : '#F4F4F6', // highlightBlue or helix grey
-                                    border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // blue or light border
+                                    background: isActive ? '#3690CE22' : '#F4F4F6', // 22 transparency or helix grey
+                                    border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // 1px blue or light border
                                     borderRadius: 0, // no rounded corners
                                     boxShadow: undefined,
                                     transition: 'background 0.2s, border 0.2s',

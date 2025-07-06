@@ -24,7 +24,7 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
         <Stack tokens={{ childrenGap: 12 }}>
             <div className="practice-area-selection">
                 <div className="question-banner">Select Practice Area</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: 8 }}>
                     {options.map((pa) => {
                         const isActive = practiceArea === pa;
                         return (
@@ -44,7 +44,7 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                                     justifyContent: 'center',
                                     padding: '14.4px 8px',
                                     border: `1px solid ${isActive ? color : '#e0e0e0'}`,
-                                    borderRadius: '4px',
+                                    borderRadius: '0px',
                                     background: isActive ? `${color}22` : '#f8f8f8',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',

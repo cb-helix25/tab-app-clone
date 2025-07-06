@@ -14,6 +14,8 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { Tab } from '../functionality/types';
 import { UserData } from '../../app/functionality/types';
 import UserBubble from '../../components/UserBubble';
+import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
+import PulsingDot from '../../components/PulsingDot';
 
 initializeIcons();
 
@@ -31,6 +33,8 @@ interface CustomTabsProps {
   onFormsClick?: () => void;
   onResourcesHover?: (hover: boolean) => void;
   onResourcesClick?: () => void;
+  hasActiveMatter?: boolean; // Whether there's an active matter opening
+  isInMatterOpeningWorkflow?: boolean; // Whether user is currently in the matter opening workflow
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -69,6 +73,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   onFormsClick,
   onResourcesHover,
   onResourcesClick,
+  hasActiveMatter = false,
+  isInMatterOpeningWorkflow = false,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -145,6 +151,34 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
             key={tab.key}
             headerText={tab.text}
             itemIcon={tab.key === 'reporting' ? 'Lock' : undefined}
+            onRenderItemLink={
+              tab.key === 'instructions' && hasActiveMatter && selectedKey !== 'instructions'
+                ? (link, defaultRenderer) => (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px',
+                      minHeight: '20px' // Ensure enough vertical space
+                    }}>
+                      {defaultRenderer?.(link)}
+                      <div style={{
+                        flexShrink: 0, // Prevent squishing
+                        width: '8px',
+                        height: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <AnimatedPulsingDot 
+                          show={hasActiveMatter && selectedKey !== 'instructions'} 
+                          size={6}
+                          animationDuration={400}
+                        />
+                      </div>
+                    </div>
+                  )
+                : undefined
+            }
             headerButtonProps={{
               className: tab.disabled ? 'disabledTab' : '',
               style: { '--animation-delay': `${index * 0.1}s` } as React.CSSProperties,

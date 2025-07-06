@@ -63,6 +63,7 @@ import BespokePanel from '../../app/functionality/BespokePanel';
 import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
+import { hasActiveMatterOpening } from '../../app/functionality/matterOpeningUtils';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
@@ -330,14 +331,15 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
 
 const quickActionOrder: Record<string, number> = {
   'Confirm Attendance': 1,
-  'Review Instructions': 2,
-  'Create a Task': 3,
-  'Request CollabSpace': 4,
-  'Save Telephone Note': 5,
-  'Save Attendance Note': 6,
-  'Request ID': 7,
-  'Open a Matter': 8,
-  'Request Annual Leave': 9,
+  'Finalise Matter': 2,
+  'Review Instructions': 3,
+  'Create a Task': 4,
+  'Request CollabSpace': 5,
+  'Save Telephone Note': 6,
+  'Save Attendance Note': 7,
+  'Request ID': 8,
+  'Open a Matter': 9,
+  'Request Annual Leave': 10,
 };
 
 //////////////////////
@@ -870,6 +872,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   // Show immediate actions overlay (and Dismiss button) when there are immediate actions on first render
   const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
+  
+  // Track if there's an active matter opening in progress
+  const [hasActiveMatter, setHasActiveMatter] = useState<boolean>(false);
 
   // Show overlay when immediate actions become available (first time only)
   // This effect must run AFTER immediateActionsList is defined
@@ -924,6 +929,21 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       }
     };
     fetchEditsAndBlocks();
+  }, []);
+
+  // Check for active matter opening every 2 seconds
+  useEffect(() => {
+    const checkActiveMatter = () => {
+      setHasActiveMatter(hasActiveMatterOpening());
+    };
+    
+    // Initial check
+    checkActiveMatter();
+    
+    // Set up polling
+    const interval = setInterval(checkActiveMatter, 2000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
@@ -2434,6 +2454,17 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           </pre>
         );
           break;
+      case 'Finalise Matter':
+        // Navigate directly to Instructions tab and trigger matter opening
+        localStorage.setItem('openMatterOpening', 'true');
+        // Use a custom event to signal the navigation
+        try {
+          window.dispatchEvent(new CustomEvent('navigateToInstructions'));
+        } catch (error) {
+          console.error('Failed to dispatch navigation event:', error);
+        }
+        return; // Exit early, no panel needed
+        break;
       case 'Book Space':
         content = (
           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
@@ -2474,6 +2505,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
       });
     }
+    if (hasActiveMatter) {
+      actions.push({
+        title: 'Finalise Matter',
+        icon: 'OpenFolderHorizontal',
+        onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
+      });
+    }
     if (instructionData.length > 0) {
       actions.push({
         title: 'Review Instructions',
@@ -2491,7 +2529,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
     );
     return actions;
-  }, [isLoadingAttendance, currentUserConfirmed, instructionData, immediateALActions, handleActionClick]);
+  }, [isLoadingAttendance, currentUserConfirmed, hasActiveMatter, instructionData, immediateALActions, handleActionClick]);
 
   // Show overlay when immediate actions become available (first time only)
   const prevImmediateActionsReady = useRef<boolean>(false);

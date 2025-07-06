@@ -1,6 +1,7 @@
 import React from 'react';
 import { Stack, Text } from '@fluentui/react';
 import '../../../app/styles/MultiSelect.css';
+import ModernMultiSelect from './ModernMultiSelect';
 
 interface FolderStructureStepProps {
     folderStructure: string;
@@ -11,22 +12,16 @@ interface FolderStructureStepProps {
 
 const FolderStructureStep: React.FC<FolderStructureStepProps> = ({ folderStructure, setFolderStructure, onContinue, folderOptions }) => (
     <Stack tokens={{ childrenGap: 12 }}>
-        <div className="question-banner">Select NetDocuments Folder Structure</div>
-        <div className="MultiSelect-bar">
-            {folderOptions.map((option) => (
-                <div
-                    key={option}
-                    className={`MultiSelect-segment${folderStructure === option ? ' active' : ''}`}
-                    onClick={() => {
-                        setFolderStructure(option);
-                        onContinue();
-                    }}
-                >
-                    {option}
-                </div>
-            ))}
-        </div>
-        <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
+        <ModernMultiSelect
+            label="Select NetDocuments Folder Structure"
+            options={folderOptions.map(option => ({ key: option, text: option }))}
+            selectedValue={folderStructure}
+            onSelectionChange={(value) => {
+                setFolderStructure(value);
+                onContinue();
+            }}
+            variant="default"
+        />
     </Stack>
 );
 

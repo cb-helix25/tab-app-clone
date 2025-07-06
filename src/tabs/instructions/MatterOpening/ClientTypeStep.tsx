@@ -1,6 +1,7 @@
 import React from 'react';
 import { Stack, Text } from '@fluentui/react';
 import '../../../app/styles/MultiSelect.css';
+import ModernMultiSelect from './ModernMultiSelect';
 
 interface ClientTypeStepProps {
     clientType: string;
@@ -17,21 +18,16 @@ const options = [
 
 const ClientTypeStep: React.FC<ClientTypeStepProps> = ({ clientType, setClientType, onContinue }) => (
     <Stack tokens={{ childrenGap: 12 }}>
-        <div className="question-banner">Select Client Type</div>
-        <div className="MultiSelect-bar">
-            {options.map((opt) => (
-                <div
-                    key={opt.label}
-                    className={`MultiSelect-segment${clientType === opt.label ? ' active' : ''}`}
-                    onClick={() => {
-                        setClientType(opt.label);
-                        onContinue();
-                    }}
-                >
-                    {opt.label}
-                </div>
-            ))}
-        </div>
+        <ModernMultiSelect
+            label="Select Client Type"
+            options={options.map(opt => ({ key: opt.label, text: opt.label }))}
+            selectedValue={clientType}
+            onSelectionChange={(value) => {
+                setClientType(value);
+                onContinue();
+            }}
+            variant="default"
+        />
     </Stack>
 );
 

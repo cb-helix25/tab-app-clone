@@ -1,8 +1,8 @@
 /* Summary container pane */
 .summary-pane {
     background: var(--helix-grey);
-    border-radius: 4px;
-    /* Changed from 1rem (16px) to 4px */
+    border-radius: 0px;
+    /* Remove corner rounding for consistency */
     box-shadow: 0 2px 12px rgba(44, 71, 129, 0.05);
     padding: 1.5rem 1.2rem 1.2rem 1.2rem;
     margin-bottom: 1.2rem;
@@ -13,12 +13,18 @@
     transition: padding 0.35s ease, background 0.35s ease, border-color 0.35s ease;
 }
 
+/* Style when the summary needs attention - red demanding border */
+.summary-pane-demanding {
+    border: 2px solid #D65541;
+    background: #fff;
+}
+
 /* Style when the summary is collapsed and complete */
 .summary-pane-collapsed {
     background: #f5fdf7;
     border-color: #49B670;
     padding: 0;
-    border-radius: 4px;
+    border-radius: 0px;
 }
 
 /* Style when the summary is open but completed */
@@ -321,7 +327,7 @@
     padding: 0.6rem 0.8rem;
     background: #f5fdf7;
     border: 1px solid #49B670;
-    border-radius: 4px;
+    border-radius: 0px;
     cursor: pointer;
     font-weight: 500;
     color: var(--helix-dark-blue);

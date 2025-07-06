@@ -28,7 +28,7 @@ const AreaOfWorkStep: React.FC<AreaOfWorkStepProps> = ({ areaOfWork, setAreaOfWo
     <Stack tokens={{ childrenGap: 12 }}>
         <div className="area-of-work-selection">
             <div className="question-banner">Select Area of Work</div>
-            <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 12 }}>
+            <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
                 {options.map(({ type, icon }) => {
                     const isActive = areaOfWork === type;
                     // Set CSS variables for hover/press color per button

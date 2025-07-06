@@ -5,6 +5,7 @@ import "../../../app/styles/MultiSelect.css";
 import BubbleTextField from "../../../app/styles/BubbleTextField";
 import { useTheme } from "../../../app/functionality/ThemeContext";
 import { countries } from "../../../data/referenceData";
+import ModernMultiSelect from './ModernMultiSelect';
 
 interface OpponentDetailsStepProps {
   opponentName: string;
@@ -414,21 +415,16 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     <Stack tokens={{ childrenGap: 8 }}>
       {/* Conflict of Interest Question */}
       <Stack tokens={{ childrenGap: 10 }} style={{ marginBottom: 0 }}>
-        <div className="question-banner">Confirm No Conflict of Interest</div>
-        <div className="MultiSelect-bar">
-          <div
-            className={`MultiSelect-segment${noConflict ? " active" : ""}`}
-            onClick={() => setNoConflict(true)}
-          >
-            Confirmed - No Conflict
-          </div>
-          <div
-            className={`MultiSelect-segment${!noConflict ? " active" : ""}`}
-            onClick={() => setNoConflict(false)}
-          >
-            Not Confirmed
-          </div>
-        </div>
+        <ModernMultiSelect
+          label="Confirm No Conflict of Interest"
+          options={[
+            { key: 'true', text: 'Confirmed - No Conflict' },
+            { key: 'false', text: 'Not Confirmed' }
+          ]}
+          selectedValue={noConflict ? 'true' : 'false'}
+          onSelectionChange={(value) => setNoConflict(value === 'true')}
+          variant="binary"
+        />
       </Stack>
       {/* Only show opponent/solicitor details if noConflict is confirmed */}
       {noConflict && (
@@ -466,7 +462,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                 style={{ 
                   marginBottom: 24, 
                   display: 'flex', 
-                  gap: 12,
+                  gap: 8,
                   animation: 'buttonRowSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                   animationDelay: '400ms',
                   opacity: 0,
@@ -497,8 +493,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: isActive ? '#d6e8ff' : '#F4F4F6', // highlightBlue or helix grey
-                        border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // blue or light border
+                        background: isActive ? '#3690CE22' : '#F4F4F6', // 22 transparency or helix grey
+                        border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // 1px blue or light border
                         borderRadius: 0, // no rounded corners
                         boxShadow: undefined,
                         transition: 'background 0.2s, border 0.2s',
@@ -686,79 +682,34 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
             <div style={{ 
               display: "flex", 
               flexDirection: "column", 
-              alignItems: "flex-start", 
+              alignItems: "stretch", 
+              width: "100%",
               margin: "0 0 16px 0",
               animation: 'slideInFromTop 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
               animationDelay: '0ms',
               opacity: 0,
               transform: 'translateY(20px)'
             }}>
-              <div style={{ display: "flex", width: "100%", gap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => { 
-                    setEnterOpponentNow(true); 
-                    setShowSummary(false); 
-                    if (setOpponentChoiceMade) setOpponentChoiceMade(true);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 4px",
-                    height: "50px",
-                    borderRadius: "0",
-                    border: "1px solid #061733",
-                    borderRight: enterOpponentNow === true ? "1px solid #061733" : "0.5px solid #061733",
-                    background: enterOpponentNow === true ? "#061733" : "#fff",
-                    color: enterOpponentNow === true ? "#fff" : "#061733",
-                    fontWeight: 'normal',
-                    fontSize: 15,
-                    cursor: "pointer",
-                    outline: "none",
-                    transition: "all 0.2s ease",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    userSelect: "none"
-                  }}
-                  aria-pressed={enterOpponentNow === true}
-                >
-                  I have Opponent Details to enter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { 
-                    setEnterOpponentNow(false); 
+              <ModernMultiSelect
+                label="Opponent Details"
+                options={[
+                  { key: 'true', text: 'I have Opponent Details to enter' },
+                  { key: 'false', text: "I'll enter opponent details later" }
+                ]}
+                selectedValue={enterOpponentNow === null ? null : (enterOpponentNow ? 'true' : 'false')}
+                onSelectionChange={(value) => {
+                  const willEnter = value === 'true';
+                  setEnterOpponentNow(willEnter);
+                  if (willEnter) {
+                    setShowSummary(false);
+                  } else {
                     setShowSummary(true);
-                    // Fill dummy data when skipping details
                     fillDummyData();
-                    if (setOpponentChoiceMade) setOpponentChoiceMade(true);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 4px",
-                    height: "50px",
-                    borderRadius: "0",
-                    border: enterOpponentNow === false ? "1px solid #e6a000" : "1px solid #666",
-                    borderLeft: enterOpponentNow === false ? "1px solid #e6a000" : "0.5px solid #666",
-                    background: enterOpponentNow === false ? "#fff3cd" : "#fff",
-                    color: enterOpponentNow === false ? "#b58900" : "#666",
-                    fontWeight: 500,
-                    fontSize: 15,
-                    cursor: "pointer",
-                    outline: "none",
-                    transition: "all 0.2s ease",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    userSelect: "none"
-                  }}
-                  aria-pressed={enterOpponentNow === false}
-                >
-                  I'll enter opponent details later
-                </button>
-              </div>
+                  }
+                  if (setOpponentChoiceMade) setOpponentChoiceMade(true);
+                }}
+                variant="binary"
+              />
             </div>
           )}
           

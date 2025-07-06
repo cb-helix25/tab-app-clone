@@ -89,8 +89,8 @@ const noActionsIconClass = mergeStyles({
     width: '24px',
     height: '24px',
     borderRadius: '50%',
-    background: colours.highlight,
-    color: '#fff',
+    background: '#FFB900', // Match disclaimer banner border color
+    color: '#b88600',      // Match disclaimer banner text color
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -101,6 +101,7 @@ const noActionsIconClass = mergeStyles({
 const noActionsTextClass = mergeStyles({
     marginLeft: '8px',
     fontSize: '14px',
+    color: '#b88600', // Match disclaimer banner text color
     animation: `${fadeInKeyframes} 0.3s ease-out`,
 });
 
@@ -182,11 +183,85 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                         />
                     ))}
                     {showDismiss && (
-                        <DefaultButton
-                            text="Dismiss"
+                        <div
+                            className="nav-button dismiss-button"
                             onClick={onDismiss}
-                            styles={{ root: { height: 32, alignSelf: 'center' } }}
-                        />
+                            style={{
+                                background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+                                border: isDarkMode ? '1px solid #444' : '1px solid #e1dfdd',
+                                borderRadius: '0px',
+                                width: '48px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                marginLeft: 8,
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = '#ffefed';
+                                e.currentTarget.style.border = '1px solid #D65541';
+                                e.currentTarget.style.width = '120px';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground;
+                                e.currentTarget.style.border = isDarkMode ? '1px solid #444' : '1px solid #e1dfdd';
+                                e.currentTarget.style.width = '48px';
+                                e.currentTarget.style.boxShadow = isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)';
+                            }}
+                            tabIndex={0}
+                        >
+                            {/* Dismiss Icon (X) */}
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                style={{
+                                    transition: 'color 0.3s, opacity 0.3s',
+                                    color: '#D65541',
+                                    position: 'absolute',
+                                    left: '50%',
+                                    top: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                }}
+                                className="dismiss-icon"
+                            >
+                                <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            {/* Expandable Text */}
+                            <span
+                                style={{
+                                    position: 'absolute',
+                                    left: '50%',
+                                    top: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#D65541',
+                                    opacity: 0,
+                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    whiteSpace: 'nowrap',
+                                }}
+                                className="nav-text"
+                            >
+                                Dismiss
+                            </span>
+                            <style>{`
+                                .nav-button.dismiss-button:hover .nav-text {
+                                    opacity: 1 !important;
+                                }
+                                .nav-button.dismiss-button:hover .dismiss-icon {
+                                    opacity: 0 !important;
+                                }
+                            `}</style>
+                        </div>
                     )}
                 </>
             )}

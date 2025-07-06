@@ -37,12 +37,16 @@ interface InstructionsProps {
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
+  hasActiveMatter?: boolean;
+  setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
 }
 const Instructions: React.FC<InstructionsProps> = ({
   userInitials,
   poidData,
   setPoidData,
   teamData,
+  hasActiveMatter = false,
+  setIsInMatterOpeningWorkflow,
 }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
@@ -56,6 +60,26 @@ const Instructions: React.FC<InstructionsProps> = ({
     null,
   );
   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
+
+  // Notify parent when matter opening workflow state changes
+  useEffect(() => {
+    if (setIsInMatterOpeningWorkflow) {
+      setIsInMatterOpeningWorkflow(showNewMatterPage);
+    }
+  }, [showNewMatterPage, setIsInMatterOpeningWorkflow]);
+
+  // Check for navigation trigger from Home component
+  useEffect(() => {
+    const shouldOpenMatterOpening = localStorage.getItem('openMatterOpening');
+    if (shouldOpenMatterOpening === 'true') {
+      // Clear the flag
+      localStorage.removeItem('openMatterOpening');
+      // Open matter opening if not already open
+      if (!showNewMatterPage) {
+        setShowNewMatterPage(true);
+      }
+    }
+  }, []); // Only run on mount
   const instructionOptions: IDropdownOption[] = useMemo(
     () =>
       instructionData
@@ -306,6 +330,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     setShowNewMatterPage(true);
                   }}
                   style={{ "--card-index": 0 } as React.CSSProperties}
+                  showPulsingDot={hasActiveMatter && !showNewMatterPage}
                 />
                 <QuickActionsCard
                   title="Verify an ID"
