@@ -21,7 +21,7 @@ import AreaOfWorkStep from './AreaOfWorkStep';
 import PracticeAreaStep from './PracticeAreaStep';
 import DescriptionStep from './DescriptionStep';
 import FolderStructureStep from './FolderStructureStep';
-import DisputeValueStep from './DisputeValueStep';
+import ValueAndSourceStep from './ValueAndSourceStep';
 import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 
@@ -1166,10 +1166,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     setIsDateCalloutOpen={setIsDateCalloutOpen}
                                     dateButtonRef={dateButtonRef}
                                     partnerOptions={getPartnerFirstNames(teamData || localTeamDataJson)}
-                                    source={source}
-                                    setSource={setSource}
-                                        referrerName={referrerName}
-                                        setReferrerName={setReferrerName}                                    requestingUser={requestingUserNickname}
+                                    requestingUser={requestingUserNickname}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
                                     <AreaOfWorkStep
@@ -1185,15 +1182,20 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         groupColor={''}
                                         onContinue={function (): void {} }
                                     />
-                                    <DisputeValueStep
-                                        disputeValue={disputeValue}
-                                        setDisputeValue={setDisputeValue}
-                                        onContinue={() => {}}
-                                    />
                                     <DescriptionStep
                                         description={description}
                                         setDescription={setDescription}
                                     />
+                                    <ValueAndSourceStep
+                                        disputeValue={disputeValue}
+                                        setDisputeValue={setDisputeValue}
+                                        source={source}
+                                        setSource={setSource}
+                                        referrerName={referrerName}
+                                        setReferrerName={setReferrerName}
+                                        onContinue={() => {}}
+                                    />
+                                    <hr style={{ border: 'none', borderTop: '1px solid #e3e8ef', margin: '1rem 0', width: '100%' }} />
                                     <FolderStructureStep
                                         folderStructure={folderStructure}
                                         setFolderStructure={setFolderStructure}

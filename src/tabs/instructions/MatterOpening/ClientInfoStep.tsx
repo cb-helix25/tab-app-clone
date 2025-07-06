@@ -18,10 +18,6 @@ interface ClientInfoStepProps {
     setIsDateCalloutOpen: (v: boolean) => void;
     dateButtonRef: React.RefObject<HTMLDivElement>;
     partnerOptions: string[];
-    source: string;
-    setSource: (v: string) => void;
-    referrerName: string;
-    setReferrerName: (v: string) => void;
     requestingUser: string;
     onContinue?: () => void;
 }
@@ -36,10 +32,6 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     setSupervisingPartner,
     originatingSolicitor,
     setOriginatingSolicitor,
-    source,
-    setSource,
-    referrerName,
-    setReferrerName,
     isDateCalloutOpen,
     setIsDateCalloutOpen,
     dateButtonRef,
@@ -63,7 +55,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
 
     return (
         <Stack tokens={{ childrenGap: 12 }}>
-            {/* Date Section */}
+            {/* Date and Time and User Section */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="question-banner">Opening Date & Time</div>
@@ -81,23 +73,8 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                 </div>
             </div>
             <div className={separatorStyle} />
-            {/* Supervising Partner */}
-            <div>
-                <div className="question-banner">Select Supervising Partner</div>
-                <div className="MultiSelect-bar">
-                    {partnerOptions.map((name) => (
-                        <div
-                            key={name}
-                            className={`MultiSelect-segment${supervisingPartner === name ? ' active' : ''}`}
-                            onClick={() => setSupervisingPartner(name)}
-                        >
-                            {name}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className={separatorStyle} />
-            {/* Responsible/Originating Solicitor Row */}
+            
+            {/* Responsible and Originating Solicitor Side by Side */}
             <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ flex: 1 }}>
                     <div className="question-banner">Responsible Solicitor</div>
@@ -130,34 +107,24 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     </div>
                 </div>
             </div>
-            <div className={separatorStyle} />
-            {/* Source Selection */}
+            
+            {/* Supervising Partner */}
             <div>
-                <div className="question-banner">Select Source</div>
+                <div className="question-banner">Select Supervising Partner</div>
                 <div className="MultiSelect-bar">
-                    {['Search', 'Referral', 'Your Following', 'Uncertain'].map((option) => (
+                    {partnerOptions.map((name) => (
                         <div
-                            key={option}
-                            className={`MultiSelect-segment${source === option.toLowerCase() ? ' active' : ''}`}
-                            onClick={() => {
-                                setSource(option.toLowerCase());
-                                if (option !== 'Referral') setReferrerName('');
-                            }}
-                            style={{ textTransform: 'capitalize' }}
+                            key={name}
+                            className={`MultiSelect-segment${supervisingPartner === name ? ' active' : ''}`}
+                            onClick={() => setSupervisingPartner(name)}
                         >
-                            {option}
+                            {name}
                         </div>
                     ))}
                 </div>
-                {source === 'referral' && (
-                    <TextField
-                        placeholder="Enter referrer's name"
-                        value={referrerName}
-                        onChange={(_: any, newVal: string | undefined) => setReferrerName(newVal || '')}
-                        styles={{ root: { width: '100%', maxWidth: 400, margin: '0 auto' } }}
-                    />
-                )}
             </div>
+            <div className={separatorStyle} />
+            
             {onContinue && (
                 <PrimaryButton
                     text="Continue"

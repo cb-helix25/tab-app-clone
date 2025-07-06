@@ -261,9 +261,9 @@ const NewMatters: React.FC<NewMattersProps> = ({
             'areaOfWork',
             'practiceArea',
             'description',
-            'folderStructure',
             'disputeValue',
             'source',
+            'folderStructure',
             'opponentDetails',
             'review'
         );
@@ -430,10 +430,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         setIsDateCalloutOpen={setIsDateCalloutOpen}
                         dateButtonRef={dateButtonRef}
                         partnerOptions={partnerAndSolicitorOptions}
-                        source={source}
-                        setSource={setSource}
-                        referrerName={referrerName}
-                        setReferrerName={setReferrerName}
                         requestingUser={requestingUserNickname}
                         onContinue={() =>
                             setOpenStep(
