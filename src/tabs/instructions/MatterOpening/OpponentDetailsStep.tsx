@@ -444,7 +444,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
             transformOrigin: 'left center'
           }} />
           {/* Opponent Type Selection */}
-          <div style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
+          <div className="opponent-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
               <div 
                 className="question-banner" 
@@ -473,7 +473,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   transform: 'translateY(20px)'
                 }}
               >
-                {[
+                {[ 
                   { type: 'Individual', icon: 'Contact' },
                   { type: 'Company', icon: 'CityNext' }
                 ].map(({ type, icon }) => {
@@ -491,14 +491,15 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       style={{
                         position: 'relative',
                         overflow: 'hidden',
-                        minWidth: 64,
-                        minHeight: 64,
+                        minWidth: 76.8, // 20% increase from 64
+                        minHeight: 76.8, // 20% increase from 64
                         padding: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: isActive ? '#d6e8ff' : '#F4F4F6', // highlightBlue or helix grey
-                        border: isActive ? '2px solid #3690CE' : '2px solid #F4F4F6', // blue or helix grey
+                        border: isActive ? '1px solid #3690CE' : '1px solid #e0e0e0', // blue or light border
+                        borderRadius: 0, // no rounded corners
                         boxShadow: undefined,
                         transition: 'background 0.2s, border 0.2s',
                         outline: 'none',
@@ -523,6 +524,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                           transition: 'opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s',
                           zIndex: 1,
                           color: isActive ? '#3690CE' : '#6B6B6B', // blue if active, grey if not
+                          pointerEvents: 'none',
                         }}
                       >
                         <i className={`ms-Icon ms-Icon--${icon}`} aria-hidden="true" style={{ pointerEvents: 'none', color: isActive ? '#3690CE' : '#6B6B6B', transition: 'color 0.2s' }} />
@@ -556,40 +558,35 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
               </div>
             </div>
             <style>{`
-                .client-type-icon-btn .client-type-label {
+                .opponent-type-selection .client-type-icon-btn .client-type-label {
                     pointer-events: none;
                 }
-                .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover {
+                .opponent-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover {
                     background: #e3f0fc !important; /* subtle blue hover */
                     border-color: #3690CE !important;
                 }
-                .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon,
-                .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon i {
+                .opponent-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon,
+                .opponent-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-icon i {
                     color: #3690CE !important;
                 }
-                .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-label {
+                .opponent-type-selection .client-type-icon-btn:not(.active):not(.pressed):not(:active):hover .client-type-label {
                     color: #3690CE !important;
                 }
-                .client-type-icon-btn.pressed,
-                .client-type-icon-btn:active {
+                .opponent-type-selection .client-type-icon-btn.pressed,
+                .opponent-type-selection .client-type-icon-btn:active {
                     background: #b3d3f7 !important; /* deeper blue for press */
                     border-color: #1565c0 !important;
                 }
                 /* Animation for smooth transitions */
-                .client-type-icon-btn {
+                .opponent-type-selection .client-type-icon-btn {
                     transition: all 0.2s ease-out;
                 }
-                .client-type-icon-btn.active .client-type-icon {
-                    opacity: 0;
+                .opponent-type-selection .client-type-icon-btn.active .client-type-icon {
+                    opacity: 0 !important;
                 }
-                .client-type-icon-btn.active .client-type-label {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-                /* Enhanced focus state */
-                .client-type-icon-btn:focus {
-                    outline: none;
-                    box-shadow: 0 0 0 2px rgba(54, 144, 206, 0.5);
+                .opponent-type-selection .client-type-icon-btn.active .client-type-label {
+                    opacity: 1 !important;
+                    transform: translateY(0) !important;
                 }
                 
                 /* Animation keyframes for opponent details entrance */

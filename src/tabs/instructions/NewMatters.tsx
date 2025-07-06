@@ -475,10 +475,10 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                         practiceArea={practiceArea}
                         setPracticeArea={setPracticeArea}
+                        areaOfWork={areaOfWork}
                         onContinue={() =>
                             setOpenStep(stepsOrder.indexOf('practiceArea') + 1)
                         }
-                        groupColor={getGroupColor(areaOfWork)}
                     />
                 );
             case 'description':

@@ -1179,12 +1179,31 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
                                         practiceArea={practiceArea}
                                         setPracticeArea={setPracticeArea}
-                                        groupColor={''}
+                                        areaOfWork={areaOfWork}
                                         onContinue={function (): void {} }
                                     />
                                     <DescriptionStep
                                         description={description}
                                         setDescription={setDescription}
+                                        matterRefPreview={(() => {
+                                            // Only show if a single POID is selected and client type is set
+                                            if (!pendingClientType || selectedPoidIds.length === 0) return '';
+                                            // For Individual or Company, use the first selected POID
+                                            const poid = effectivePoidData.find(p => p.poid_id === selectedPoidIds[0]);
+                                            if (!poid) return '';
+                                            let base = '';
+                                            if (pendingClientType === 'Individual') {
+                                                base = (poid.last || '').toUpperCase();
+                                            } else if (pendingClientType === 'Company') {
+                                                base = (poid.company_name || '').toUpperCase();
+                                            } else {
+                                                // For Multiple Individuals or Existing Client, fallback to last name or company
+                                                base = (poid.last || poid.company_name || '').toUpperCase();
+                                            }
+                                            // Take first 5 chars, pad with X if less
+                                            let ref = base.slice(0, 5).padEnd(5, 'X');
+                                            return ref + '-0001';
+                                        })()}
                                     />
                                     <ValueAndSourceStep
                                         disputeValue={disputeValue}

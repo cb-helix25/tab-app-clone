@@ -13,7 +13,7 @@ const verificationButtonStyle = (status: string) => ({
     justifyContent: 'center',
     padding: '4px 8px', // Match banner padding
     fontSize: '0.9rem', // Match banner font size
-    fontWeight: 600,
+    fontWeight: 400,
     borderRadius: 0,
     border: '1px solid', // Changed from 2px to 1px for a neater look
     borderColor: status === 'passed' ? '#107C10' : '#FFB900',
@@ -335,7 +335,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                             : '3px solid #D83B01',
                                     marginTop: '4px',
                                     marginBottom: '2px',
-                                    fontWeight: 600,
+                                    fontWeight: 400,
                                     fontSize: '0.9rem',
                                     color:
                                         poid.check_result && poid.check_result.toLowerCase() === 'passed'
