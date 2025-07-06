@@ -64,7 +64,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     hideClientSections = false,
     initialClientType = '',
 }) => {
-    const [openStep, setOpenStep] = useState<number>(0);
+    const [openStep, setOpenStep] = useState<number>(0); // invisible change
 
     const defaultPoidData: POID[] = useMemo(
         () =>

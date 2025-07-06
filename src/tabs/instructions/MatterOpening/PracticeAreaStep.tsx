@@ -3,7 +3,7 @@ import { Stack, Text } from '@fluentui/react';
 import '../../../app/styles/MultiSelect.css';
 import { colours } from '../../../app/styles/colours';
 
-const areaColors: Record<string, string> = {
+const areaColors: Record<string, string> = { /* invisible change */
     // Commercial: colours.blue, // Removed Commercial
     Property: colours.green,
     Construction: colours.orange,

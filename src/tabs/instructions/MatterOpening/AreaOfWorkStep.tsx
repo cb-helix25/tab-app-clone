@@ -10,7 +10,7 @@ interface AreaOfWorkStepProps {
     getGroupColor: (area: string) => string;
 }
 
-const areaColors: Record<string, string> = {
+const areaColors: Record<string, string> = { /* invisible change */
     Commercial: colours.blue,
     Property: colours.green,
     Construction: colours.orange,

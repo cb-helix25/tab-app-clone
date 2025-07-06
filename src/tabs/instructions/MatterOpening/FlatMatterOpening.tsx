@@ -95,7 +95,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         const d = new Date();
         d.setDate(d.getDate() + 30);
         return d.toLocaleDateString('en-GB');
-    }, []);
+    }, []); // invisible change
 
     const showPoidSelection = !instructionRef;
     const defaultPoidData: POID[] = useMemo(
@@ -200,6 +200,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
     const [supervisingPartner, setSupervisingPartner] = useDraftedState<string>('supervisingPartner', '');
+    // --- Separator: End of team assignment fields ---
+    // (You can use this comment to visually separate the team assignment section from the next section)
+
+    // --- Separator: Start of matter details fields ---
     const [originatingSolicitor, setOriginatingSolicitor] = useDraftedState<string>('originatingSolicitor', defaultTeamMember);
     useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
     // Removed fundsReceived state

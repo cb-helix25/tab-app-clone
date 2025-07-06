@@ -10,7 +10,7 @@ interface FolderStructureStepProps {
     folderOptions: string[];
 }
 
-const FolderStructureStep: React.FC<FolderStructureStepProps> = ({ folderStructure, setFolderStructure, onContinue, folderOptions }) => (
+const FolderStructureStep: React.FC<FolderStructureStepProps> = ({ folderStructure, setFolderStructure, onContinue, folderOptions }) => ( // invisible change
     <Stack tokens={{ childrenGap: 12 }}>
         <ModernMultiSelect
             label="Select NetDocuments Folder Structure"

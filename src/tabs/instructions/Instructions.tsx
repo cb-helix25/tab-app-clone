@@ -375,15 +375,21 @@ const Instructions: React.FC<InstructionsProps> = ({
                 }}
               >
                 <PivotItem headerText="Overview" itemKey="overview" />
-                <PivotItem headerText="Deals" itemKey="deals" />
-                <PivotItem headerText="Clients" itemKey="clients" />
-                <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-                  {useLocalData && (
-                    <PivotItem headerText="Scenarios" itemKey="states" />
-                  )}
-                  {useLocalData && (
-                    <PivotItem headerText="Editor" itemKey="demo" />
-                  )}
+                {useLocalData && (
+                  <PivotItem headerText="Deals" itemKey="deals" />
+                )}
+                {useLocalData && (
+                  <PivotItem headerText="Clients" itemKey="clients" />
+                )}
+                {useLocalData && (
+                  <PivotItem headerText="Risk & Compliance" itemKey="risk" />
+                )}
+                {useLocalData && (
+                  <PivotItem headerText="Scenarios" itemKey="states" />
+                )}
+                {useLocalData && (
+                  <PivotItem headerText="Editor" itemKey="demo" />
+                )}
               </Pivot>
             </div>
           </>

@@ -18,7 +18,7 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
     matterRefPreview,
 }) => {
     const { isDarkMode } = useTheme();
-    return (
+    return ( // invisible change
         <Stack tokens={{ childrenGap: 12 }}>
             <div className="question-banner">Matter Description</div>
             {/* Mini preview below banner, styled like MatterOverview */}

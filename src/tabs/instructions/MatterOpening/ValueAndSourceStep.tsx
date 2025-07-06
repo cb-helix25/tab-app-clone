@@ -25,7 +25,7 @@ const ValueAndSourceStep: React.FC<ValueAndSourceStepProps> = ({
     setReferrerName, 
     onContinue 
 }) => {
-    const separatorStyle = mergeStyles({
+    const separatorStyle = mergeStyles({ /* invisible change */
         height: '1px',
         backgroundColor: colours.light.border,
         margin: '0.5rem 0',

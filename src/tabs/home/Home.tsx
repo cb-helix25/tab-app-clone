@@ -870,8 +870,10 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
-  // Show immediate actions overlay (and Dismiss button) when there are immediate actions on first render
-  const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
+  // Show immediate actions overlay (and Dismiss button) only on first ever visit with actions
+  const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(() => {
+    return !localStorage.getItem('hasDismissedImmediateActionsOverlay');
+  });
   
   // Track if there's an active matter opening in progress
   const [hasActiveMatter, setHasActiveMatter] = useState<boolean>(false);
@@ -2535,13 +2537,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const prevImmediateActionsReady = useRef<boolean>(false);
   const prevImmediateActionsCount = useRef<number>(0);
   useEffect(() => {
-    // Only trigger if immediate actions are ready and there are actions, and overlay is not already shown
+    // Only trigger if immediate actions are ready and there are actions, overlay is not already shown, and user hasn't dismissed before
     if (
       immediateActionsReady &&
       immediateActionsList &&
       immediateActionsList.length > 0 &&
       !showFocusOverlay &&
-      (!prevImmediateActionsReady.current || prevImmediateActionsCount.current === 0)
+      (!prevImmediateActionsReady.current || prevImmediateActionsCount.current === 0) &&
+      !localStorage.getItem('hasDismissedImmediateActionsOverlay')
     ) {
       setShowFocusOverlay(true);
     }
@@ -2588,7 +2591,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           immediateActionsList={immediateActionsList}
           highlighted={showFocusOverlay}
           showDismiss={showFocusOverlay}
-          onDismiss={() => setShowFocusOverlay(false)}
+          onDismiss={() => {
+            setShowFocusOverlay(false);
+            localStorage.setItem('hasDismissedImmediateActionsOverlay', 'true');
+          }}
         />
       </>
     );
