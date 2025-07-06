@@ -1,4 +1,4 @@
-export type StepKey =
+export type StepKey = // invisible change
     | 'clientInfo'
     | 'poidSelection'
     | 'areaOfWork'

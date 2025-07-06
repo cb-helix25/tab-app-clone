@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // invisible change
 import { SearchBox } from '@fluentui/react';
 import './MinimalSearchBox.css';
 
@@ -69,3 +69,4 @@ const MinimalSearchBox: React.FC<MinimalSearchBoxProps> = ({ value, onChange, fo
 };
 
 export default MinimalSearchBox;
+// invisible change

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisible change
 import { Stack, PrimaryButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
@@ -200,10 +200,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [teamMember, setTeamMember] = useDraftedState<string>('teamMember', defaultTeamMember);
     useEffect(() => setTeamMember(defaultTeamMember), [defaultTeamMember]);
     const [supervisingPartner, setSupervisingPartner] = useDraftedState<string>('supervisingPartner', '');
-    // --- Separator: End of team assignment fields ---
-    // (You can use this comment to visually separate the team assignment section from the next section)
-
-    // --- Separator: Start of matter details fields ---
     const [originatingSolicitor, setOriginatingSolicitor] = useDraftedState<string>('originatingSolicitor', defaultTeamMember);
     useEffect(() => setOriginatingSolicitor(defaultTeamMember), [defaultTeamMember]);
     // Removed fundsReceived state
@@ -226,8 +222,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [description, setDescription] = useDraftedState<string>('description', '');
     const [folderStructure, setFolderStructure] = useDraftedState<string>('folderStructure', '');
     const [disputeValue, setDisputeValue] = useDraftedState<string>('disputeValue', '');
-    // Preselect "Search" as the default value for the source field
-    const [source, setSource] = useDraftedState<string>('source', 'search');
+    // Source field starts empty - user must actively select an option
+    const [source, setSource] = useDraftedState<string>('source', '');
     const [referrerName, setReferrerName] = useDraftedState<string>('referrerName', '');
     const [opponentName, setOpponentName] = useDraftedState<string>('opponentName', '');
     const [opponentEmail, setOpponentEmail] = useDraftedState<string>('opponentEmail', '');
@@ -374,7 +370,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         if (practiceArea && practiceArea.trim() !== '') filledFields++;
         if (description && description.trim() !== '') filledFields++;
         if (folderStructure && folderStructure.trim() !== '') filledFields++;
-        if (source && source.trim() !== '' && source !== 'search') filledFields++; // 'search' is default
+        if (source && source.trim() !== '') filledFields++; // Source must be actively selected
         if (noConflict === true) filledFields++; // Only count if explicitly checked
         if (referrerName && referrerName.trim() !== '') filledFields++; // Optional field
         
@@ -387,7 +383,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                 selectedDate: selectedDate !== null,
                 supervisingPartner: supervisingPartner && supervisingPartner.trim() !== '',
                 originatingSolicitor: originatingSolicitor && originatingSolicitor.trim() !== '' && originatingSolicitor !== defaultTeamMember,
-                source: source && source.trim() !== '' && source !== 'search',
+                source: source && source.trim() !== '',
                 noConflict: noConflict === true,
                 defaultTeamMember,
                 originatingSolicitorValue: originatingSolicitor,
@@ -472,6 +468,43 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         }
         
         return [clientDots, matterDots, reviewDots];
+    };
+
+    // Build Matter progressive dots - strict completion logic
+    const getBuildMatterDotStates = (): [number, number, number] => {
+        let dot1 = 0; // First dot: ALL THREE team roles must be filled
+        let dot2 = 0; // Second dot: ALL matter details must be filled (description, folder, area, practice)
+        let dot3 = 0; // Third dot: Both dispute value AND source must be filled
+        
+        // First dot: Only lights up when ALL THREE team roles are filled (including prefills)
+        const hasTeamMember = teamMember && teamMember.trim() !== '';
+        const hasOriginatingSolicitor = originatingSolicitor && originatingSolicitor.trim() !== '';
+        const hasSupervisingPartner = supervisingPartner && supervisingPartner.trim() !== '';
+        
+        if (hasTeamMember && hasOriginatingSolicitor && hasSupervisingPartner) {
+            dot1 = 3; // All three roles filled - light up completely
+        }
+        
+        // Second dot: Only lights up when ALL matter details are filled
+        const hasDescription = description && description.trim() !== '';
+        const hasFolderStructure = folderStructure && folderStructure.trim() !== '';
+        const hasAreaOfWork = areaOfWork && areaOfWork.trim() !== '';
+        const hasPracticeArea = practiceArea && practiceArea.trim() !== '';
+        
+        if (hasDescription && hasFolderStructure && hasAreaOfWork && hasPracticeArea) {
+            dot2 = 3; // All matter details filled - light up completely
+        }
+        
+        // Third dot: Only lights up when BOTH dispute value AND source are filled
+        // Note: Source starts empty, so user must actively select an option
+        const hasDisputeValue = disputeValue && disputeValue.trim() !== '';
+        const hasActiveSource = source && source.trim() !== ''; // Must actively select a source option
+        
+        if (hasDisputeValue && hasActiveSource) {
+            dot3 = 3; // Both value and actively selected source - light up completely
+        }
+        
+        return [dot1, dot2, dot3];
     };
 
     // Determine completion status for each step
@@ -848,30 +881,43 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     Build Matter
                                 </button>
                                 
-                                {/* Modern connector */}
+                                {/* Progressive dots with visible separators */}
                                 <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 4,
+                                    gap: 2,
                                     margin: '0 4px'
                                 }}>
                                     <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e0e0e0'
+                                        background: getDotColor(getBuildMatterDotStates()[0]),
+                                        transition: 'background-color 0.3s ease'
+                                    }} />
+                                    <div style={{ 
+                                        width: '6px', 
+                                        height: '1px', 
+                                        background: '#ddd'
                                     }} />
                                     <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e8e8e8'
+                                        background: getDotColor(getBuildMatterDotStates()[1]),
+                                        transition: 'background-color 0.3s ease'
+                                    }} />
+                                    <div style={{ 
+                                        width: '6px', 
+                                        height: '1px', 
+                                        background: '#ddd'
                                     }} />
                                     <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
-                                        background: '#e0e0e0'
+                                        background: getDotColor(getBuildMatterDotStates()[2]),
+                                        transition: 'background-color 0.3s ease'
                                     }} />
                                 </div>
                                 
