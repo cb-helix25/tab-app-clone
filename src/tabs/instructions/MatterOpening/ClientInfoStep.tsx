@@ -20,6 +20,7 @@ interface ClientInfoStepProps {
     dateButtonRef: React.RefObject<HTMLDivElement>;
     partnerOptions: string[];
     requestingUser: string;
+    requestingUserClioId: string;
     onContinue?: () => void;
 }
 
@@ -38,6 +39,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     dateButtonRef,
     partnerOptions,
     requestingUser,
+    requestingUserClioId,
     onContinue,
 }) => {
     const separatorStyle = mergeStyles({ /* invisible change */
@@ -61,7 +63,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
             <div style={{ 
                 background: 'linear-gradient(135deg, #f8fafb 0%, #f1f4f6 100%)',
                 border: '1px solid #e1e5e9',
-                borderRadius: '4px',
+                borderRadius: '0px',
                 padding: '12px 16px',
                 marginBottom: '8px',
                 position: 'relative',
@@ -85,16 +87,8 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     position: 'relative',
                     zIndex: 1
                 }}>
-                    {/* Left side - Date & Time with live indicator */}
+                    {/* Left side - Date & Time */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: '#10B981',
-                            animation: 'pulse 2s infinite',
-                            boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.7)'
-                        }} />
                         <div>
                             <div style={{ 
                                 fontSize: '11px', 
@@ -108,7 +102,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                             </div>
                             <div style={{ 
                                 fontSize: '15px', 
-                                fontWeight: '600', 
+                                fontWeight: '400', 
                                 color: '#1F2937',
                                 fontFamily: 'Raleway, sans-serif'
                             }}>
@@ -117,7 +111,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                         </div>
                     </div>
 
-                    {/* Right side - User info */}
+                    {/* Right side - User info with token indicator */}
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ 
                             fontSize: '11px', 
@@ -130,16 +124,32 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                             User Requesting File
                         </div>
                         <div style={{ 
-                            fontSize: '15px', 
-                            fontWeight: '600', 
-                            color: '#3690CE',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'flex-end',
-                            gap: '6px'
+                            gap: '8px'
                         }}>
-                            <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: '14px' }} />
-                            {requestingUser}
+                            <div style={{ 
+                                fontSize: '15px', 
+                                fontWeight: '400', 
+                                color: '#3690CE',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <i className="ms-Icon ms-Icon--Contact" style={{ fontSize: '14px' }} />
+                                {requestingUser}{requestingUserClioId ? ` | ${requestingUserClioId}` : ''}
+                            </div>
+                            {requestingUserClioId && (
+                                <div style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    background: '#10B981',
+                                    animation: 'pulse 2s infinite',
+                                    boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.7)'
+                                }} />
+                            )}
                         </div>
                     </div>
                 </div>

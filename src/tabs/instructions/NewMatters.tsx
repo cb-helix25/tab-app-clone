@@ -367,6 +367,21 @@ const NewMatters: React.FC<NewMattersProps> = ({
         return '';
     }, [teamData, localTeamData, userInitials]);
 
+    // Clio ID for requesting user
+    const requestingUserClioId = React.useMemo(() => {
+        const activeTeam = teamData || localTeamData;
+        if (activeTeam && userInitials) {
+            const found = activeTeam.find((member: any) => {
+                const initials = (member.Initials || member['Initials'] || '').toLowerCase();
+                return initials === userInitials.toLowerCase();
+            });
+            if (found) {
+                return found['Clio ID'] || '';
+            }
+        }
+        return '';
+    }, [teamData, localTeamData, userInitials]);
+
     const stepDetails = React.useMemo(() => ({
         clientInfo: (
             <div>
@@ -431,6 +446,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         dateButtonRef={dateButtonRef}
                         partnerOptions={partnerAndSolicitorOptions}
                         requestingUser={requestingUserNickname}
+                        requestingUserClioId={requestingUserClioId}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1

@@ -330,11 +330,23 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             .filter(Boolean);
     }
 
+    // Helper to get Clio ID from team data
+    function getClioId(userInitials: string, teamData: any[]): string {
+        if (!userInitials || !teamData) return '';
+        const found = teamData.find(
+            (u) => (u.Initials || '').toLowerCase() === userInitials.toLowerCase()
+        );
+        return found ? found['Clio ID'] || '' : '';
+    }
+
     // Determine requesting user nickname based on environment
     const requestingUserNickname =
         process.env.NODE_ENV === 'production'
             ? getTeamNickname(userInitials, teamData || localTeamDataJson)
             : getLocalUserNickname(userInitials);
+
+    // Determine requesting user Clio ID based on environment
+    const requestingUserClioId = getClioId(userInitials, teamData || localTeamDataJson);
 
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
@@ -813,7 +825,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                 <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 4,
+                                    gap: 2,
                                     margin: '0 4px'
                                 }}>
                                     <div style={{ 
@@ -824,11 +836,21 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         transition: 'background-color 0.3s ease'
                                     }} />
                                     <div style={{ 
+                                        width: '6px', 
+                                        height: '1px', 
+                                        background: '#ddd'
+                                    }} />
+                                    <div style={{ 
                                         width: '4px', 
                                         height: '4px', 
                                         borderRadius: '50%', 
                                         background: getDotColor(getProgressiveDotStates()[1]),
                                         transition: 'background-color 0.3s ease'
+                                    }} />
+                                    <div style={{ 
+                                        width: '6px', 
+                                        height: '1px', 
+                                        background: '#ddd'
                                     }} />
                                     <div style={{ 
                                         width: '4px', 
@@ -857,7 +879,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         backgroundColor: currentStep === 1 ? '#e3f0fc' : 'transparent'
                                     }}
                                 >
-                                    {matterStepComplete && currentStep !== 1 ? (
+                                    {currentStep === 2 ? (
                                         <div className="completion-tick visible" style={{ 
                                             marginRight: 4,
                                             width: 16,
@@ -932,10 +954,30 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     backgroundColor: currentStep === 2 ? '#e3f0fc' : 'transparent',
                                     transition: 'all 0.2s ease'
                                 }}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ display: 'inline', verticalAlign: 'middle' }}>
-                                        <path d="M1 12C2.73 7.61 7.11 4.5 12 4.5c4.89 0 9.27 3.11 11 7.5-1.73 4.39-6.11 7.5-11 7.5-4.89 0-9.27-3.11-11-7.5z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                                        <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" fill="none"/>
-                                    </svg>
+                                    {summaryConfirmed ? (
+                                        <div className="completion-tick visible" style={{ 
+                                            marginRight: 4,
+                                            width: 16,
+                                            height: 16,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '50%',
+                                            background: '#fff',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                            color: '#20b26c',
+                                            border: '2px solid #f8f8f8'
+                                        }}>
+                                            <svg width="10" height="8" viewBox="0 0 24 24" fill="none">
+                                                <polyline points="5,13 10,18 19,7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </div>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ display: 'inline', verticalAlign: 'middle' }}>
+                                            <path d="M1 12C2.73 7.61 7.11 4.5 12 4.5c4.89 0 9.27 3.11 11 7.5-1.73 4.39-6.11 7.5-11 7.5-4.89 0-9.27-3.11-11-7.5z" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                            <circle cx="12" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" fill="none"/>
+                                        </svg>
+                                    )}
                                     Review and Confirm
                                 </div>
                             </div>
@@ -1306,6 +1348,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     dateButtonRef={dateButtonRef}
                                     partnerOptions={getPartnerInitials(teamData || localTeamDataJson)}
                                     requestingUser={requestingUserNickname}
+                                    requestingUserClioId={requestingUserClioId}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
                                     {/* Move NetDocuments Folder Structure above Area of Work */}
@@ -1578,7 +1621,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             Review Summary {summaryConfirmed ? '- Confirmed' : ''}
                                         </h4>
                                         <button
-                                            onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent event bubbling to parent
+                                                setJsonPreviewOpen(!jsonPreviewOpen);
+                                            }}
                                             style={{
                                                 background: '#f8f9fa',
                                                 border: '1px solid #e1dfdd',
