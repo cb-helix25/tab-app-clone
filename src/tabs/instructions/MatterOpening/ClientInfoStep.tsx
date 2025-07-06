@@ -144,7 +144,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     </div>
                 </div>
             </div>
-            <div className={separatorStyle} />
+            {/* Removed separator between live panel and solicitors */}
             
             {/* Responsible and Originating Solicitor Side by Side */}
             <div style={{ display: 'flex', gap: 16 }}>
@@ -254,7 +254,7 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     variant="grid"
                 />
             </div>
-            <div className={separatorStyle} />
+            {/* Removed separator after supervising partner */}
             
             {onContinue && (
                 <PrimaryButton

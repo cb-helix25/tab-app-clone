@@ -4,7 +4,7 @@ import '../../../app/styles/MultiSelect.css';
 import { colours } from '../../../app/styles/colours';
 
 const areaColors: Record<string, string> = {
-    Commercial: colours.blue,
+    // Commercial: colours.blue, // Removed Commercial
     Property: colours.green,
     Construction: colours.orange,
     Employment: colours.yellow,
@@ -20,12 +20,14 @@ interface PracticeAreaStepProps {
 
 const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceArea, setPracticeArea, onContinue, areaOfWork }) => {
     const color = areaColors[areaOfWork] || '#3690CE';
+    // Filter out 'Commercial' from the options before rendering
+    const filteredOptions = options.filter((pa) => pa !== 'Commercial');
     return (
         <Stack tokens={{ childrenGap: 12 }}>
             <div className="practice-area-selection">
                 <div className="question-banner">Select Practice Area</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: 8 }}>
-                    {options.map((pa) => {
+                    {filteredOptions.map((pa) => {
                         const isActive = practiceArea === pa;
                         return (
                             <div
@@ -91,7 +93,7 @@ const PracticeAreaStep: React.FC<PracticeAreaStepProps> = ({ options, practiceAr
                     color: ${color} !important;
                 }
             `}</style>
-            <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
+            {/* Removed separator for unified workflow appearance */}
         </Stack>
     );
 };

@@ -134,26 +134,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     marginRight: '4px',
   });
 
-  // Special case: if iconColor is 'immediate-disclaimer', use disclaimer yellow and brown
-  if (iconColor === 'immediate-disclaimer') {
-    // Always override for these icons
-    attendanceIconStyle = mergeStyles(attendanceIconStyle, {
-      color: '#b88600', // disclaimer text color
-      backgroundColor: '#FFB900', // disclaimer background color
-      borderRadius: '50%',
-      width: 24,
-      height: 24,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    });
-    // For Finalise Matter and Approve Annual Leave, force correct icon name
-    if (title === 'Approve Annual Leave') {
-      attendanceIconName = 'PalmTree';
-    } else if (title === 'Finalise Matter') {
-      attendanceIconName = 'OpenFile';
-    }
-  } else if (title === 'Confirm Attendance') {
+  if (title === 'Confirm Attendance') {
     if (confirmed) {
       attendanceIconName = 'Accept';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.cta });
@@ -183,6 +164,91 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
       animation: 'greenPulse 2s infinite',
       boxShadow: 'inset 0 0 5px rgba(16,124,16,0.5)',
     });
+  }
+
+  // Dismiss button rework: if title is 'Dismiss', render special dismiss button
+  if (title === 'Dismiss') {
+    return (
+      <div
+        className="nav-button dismiss-button"
+        onClick={onClick}
+        style={{
+          background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+          border: isDarkMode ? '1px solid #444' : '1px solid #e1dfdd',
+          borderRadius: '0px',
+          width: '48px',
+          height: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)',
+          position: 'relative',
+          overflow: 'hidden',
+          marginLeft: 8,
+        }}
+        tabIndex={0}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLDivElement).style.background = '#ffefed';
+          (e.currentTarget as HTMLDivElement).style.border = '1px solid #D65541';
+          (e.currentTarget as HTMLDivElement).style.width = '120px';
+          (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLDivElement).style.background = isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground;
+          (e.currentTarget as HTMLDivElement).style.border = isDarkMode ? '1px solid #444' : '1px solid #e1dfdd';
+          (e.currentTarget as HTMLDivElement).style.width = '48px';
+          (e.currentTarget as HTMLDivElement).style.boxShadow = isDarkMode ? '0 1px 2px rgba(6,23,51,0.10)' : '0 1px 2px rgba(6,23,51,0.04)';
+        }}
+      >
+        {/* Dismiss Icon (X) */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          style={{
+            transition: 'color 0.3s, opacity 0.3s',
+            color: '#D65541',
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+          className="dismiss-icon"
+        >
+          <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {/* Expandable Text */}
+        <span
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#D65541',
+            opacity: 0,
+            transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            whiteSpace: 'nowrap',
+          }}
+          className="nav-text"
+        >
+          Dismiss
+        </span>
+        <style>{`
+          .nav-button.dismiss-button:hover .nav-text {
+            opacity: 1 !important;
+          }
+          .nav-button.dismiss-button:hover .dismiss-icon {
+            opacity: 0 !important;
+          }
+        `}</style>
+      </div>
+    );
   }
 
   // Text style

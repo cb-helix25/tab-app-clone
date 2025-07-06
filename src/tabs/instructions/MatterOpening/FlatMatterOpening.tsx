@@ -1258,19 +1258,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                     requestingUser={requestingUserNickname}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
-                                    <AreaOfWorkStep
-                                        areaOfWork={areaOfWork}
-                                        setAreaOfWork={setAreaOfWork}
-                                        getGroupColor={getGroupColor}
-                                        onContinue={function (): void {} }
-                                    />
-                                    <PracticeAreaStep
-                                        options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
-                                        practiceArea={practiceArea}
-                                        setPracticeArea={setPracticeArea}
-                                        areaOfWork={areaOfWork}
-                                        onContinue={function (): void {} }
-                                    />
+                                    {/* Move NetDocuments Folder Structure above Area of Work */}
                                     <DescriptionStep
                                         description={description}
                                         setDescription={setDescription}
@@ -1294,6 +1282,32 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                             return ref + '-0001';
                                         })()}
                                     />
+                                    <FolderStructureStep
+                                        folderStructure={folderStructure}
+                                        setFolderStructure={(value) => {
+                                            setFolderStructure(value);
+                                            // Auto-select Area of Work based on folder structure
+                                            if (value === 'Default / Commercial') setAreaOfWork('Commercial');
+                                            else if (value === 'Residential Possession') setAreaOfWork('Property');
+                                            else if (value === 'Adjudication') setAreaOfWork('Construction');
+                                            else if (value === 'Employment') setAreaOfWork('Employment');
+                                        }}
+                                        folderOptions={['Default / Commercial', 'Residential Possession', 'Adjudication', 'Employment']}
+                                        onContinue={function (): void {} }
+                                    />
+                                    <AreaOfWorkStep
+                                        areaOfWork={areaOfWork}
+                                        setAreaOfWork={setAreaOfWork}
+                                        getGroupColor={getGroupColor}
+                                        onContinue={function (): void {} }
+                                    />
+                                    <PracticeAreaStep
+                                        options={areaOfWork && practiceAreasByArea[areaOfWork] ? practiceAreasByArea[areaOfWork] : ['Please select an Area of Work']}
+                                        practiceArea={practiceArea}
+                                        setPracticeArea={setPracticeArea}
+                                        areaOfWork={areaOfWork}
+                                        onContinue={function (): void {} }
+                                    />
                                     <ValueAndSourceStep
                                         disputeValue={disputeValue}
                                         setDisputeValue={setDisputeValue}
@@ -1303,13 +1317,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         setReferrerName={setReferrerName}
                                         onContinue={() => {}}
                                     />
-                                    <hr style={{ border: 'none', borderTop: '1px solid #e3e8ef', margin: '1rem 0', width: '100%' }} />
-                                    <FolderStructureStep
-                                        folderStructure={folderStructure}
-                                        setFolderStructure={setFolderStructure}
-                                        folderOptions={['Default / Commercial', 'Adjudication', 'Residential Possession', 'Employment']}
-                                        onContinue={function (): void {} }
-                                    />
+
                                 </Stack>
                                 {/* Navigation buttons for form step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>

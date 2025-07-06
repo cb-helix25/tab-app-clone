@@ -224,8 +224,7 @@ const App: React.FC<AppProps> = ({
       ? [{ key: 'instructions', text: 'Instructions' }]
       : []),
     { key: 'matters', text: 'Matters' },
-    { key: 'forms', text: 'Forms', disabled: true },
-    { key: 'resources', text: 'Resources', disabled: true },
+    // Removed 'forms' and 'resources' tabs since they are now on the sides
     { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
     ];

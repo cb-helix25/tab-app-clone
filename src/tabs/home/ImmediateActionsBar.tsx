@@ -89,8 +89,8 @@ const noActionsIconClass = mergeStyles({
     width: '24px',
     height: '24px',
     borderRadius: '50%',
-    background: '#FFB900', // Match disclaimer banner border color
-    color: '#b88600',      // Match disclaimer banner text color
+    background: colours.highlight,
+    color: '#fff',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -101,7 +101,6 @@ const noActionsIconClass = mergeStyles({
 const noActionsTextClass = mergeStyles({
     marginLeft: '8px',
     fontSize: '14px',
-    color: '#b88600', // Match disclaimer banner text color
     animation: `${fadeInKeyframes} 0.3s ease-out`,
 });
 

@@ -429,17 +429,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
       {/* Only show opponent/solicitor details if noConflict is confirmed */}
       {noConflict && (
         <>
-          {/* Separator with equal spacing above and below - animated */}
-          <div style={{ 
-            height: 1, 
-            background: '#e3e8ef', 
-            margin: '18px 0',
-            animation: 'separatorSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-            opacity: 0,
-            transform: 'scaleX(0)',
-            transformOrigin: 'left center'
-          }} />
-          {/* Opponent Type Selection */}
+          {/* Add spacing between conflict confirmation and opponent type selection for visual clarity */}
+          <div style={{ height: 18 }} />
           <div className="opponent-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
               <div 

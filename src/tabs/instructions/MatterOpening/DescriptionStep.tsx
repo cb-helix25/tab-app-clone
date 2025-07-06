@@ -67,7 +67,7 @@ const DescriptionStep: React.FC<DescriptionStepProps> = ({
                 placeholder="Enter matter description..."
                 aria-label="Matter description"
             />
-            <div style={{ height: 1, background: '#e3e8ef', margin: '12px 0' }} />
+            {/* Removed separator for unified workflow appearance */}
             {onContinue && (
                 <PrimaryButton
                     text="Continue"
