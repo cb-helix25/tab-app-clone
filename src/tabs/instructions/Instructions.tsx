@@ -5,10 +5,15 @@ import {
   Pivot,
   PivotItem,
   Text,
-  Dropdown,
-  IDropdownOption,
   PrimaryButton,
 } from "@fluentui/react";
+import {
+  FaIdBadge,
+  FaFileAlt,
+  FaCalendarPlus,
+  FaExclamationTriangle,
+} from 'react-icons/fa';
+import { MdAssessment } from 'react-icons/md';
 import QuickActionsCard from "../home/QuickActionsCard";
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigator } from "../../app/functionality/NavigatorContext";
@@ -80,13 +85,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
     }
   }, []); // Only run on mount
-  const instructionOptions: IDropdownOption[] = useMemo(
-    () =>
-      instructionData
-        .flatMap((p) => p.instructions ?? [])
-        .map((i) => ({ key: i.InstructionRef, text: i.InstructionRef })),
-    [instructionData],
-  );
+  
   const [activePivot, setActivePivot] = useState<string>("overview");
 
   const ACTION_BAR_HEIGHT = 48;
@@ -323,7 +322,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             <div className={quickLinksStyle(isDarkMode)}>
               <QuickActionsCard
                 title="New Matter"
-                icon="Calendar"
+                icon="OpenFile"
                 isDarkMode={isDarkMode}
                 onClick={() => {
                   setSelectedInstruction(null);
@@ -421,6 +420,7 @@ const Instructions: React.FC<InstructionsProps> = ({
         ? colours.dark.sectionBackground
         : colours.light.sectionBackground,
       padding: "16px",
+      paddingBottom: activePivot === "overview" ? "120px" : "16px", // Add bottom padding for global action area
       borderRadius: 0,
       boxShadow: dark
         ? `0 4px 12px ${colours.dark.border}`
@@ -796,7 +796,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const gridContainerStyle = mergeStyles({
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
     maxWidth: "1200px",
     width: "100%",
@@ -814,14 +814,42 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: "border-box",
   });
 
-  const overviewColumnStyle = mergeStyles({
-    columnCount: 2,
-    columnGap: "24px",
-    maxWidth: "1200px",
+  const overviewGridStyle = mergeStyles({
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+    gap: "16px",
     width: "100%",
-    margin: "0 auto",
     boxSizing: "border-box",
   });
+
+  // Global action handlers that work with the first available instruction
+  const handleGlobalOpenMatter = () => {
+    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
+    if (firstInstruction) {
+      handleOpenMatter(firstInstruction);
+    }
+  };
+
+  const handleGlobalRiskAssessment = () => {
+    const firstItem = overviewItems.find(item => item.instruction);
+    if (firstItem) {
+      handleRiskAssessment(firstItem);
+    }
+  };
+
+  const handleGlobalEIDCheck = () => {
+    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
+    if (firstInstruction) {
+      handleEIDCheck(firstInstruction);
+    }
+  };
+
+  const handleGlobalDraftCCL = () => {
+    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
+    if (firstInstruction) {
+      handleDraftCCL(firstInstruction);
+    }
+  };
 
   if (showNewMatterPage) {
     return (
@@ -888,10 +916,10 @@ const Instructions: React.FC<InstructionsProps> = ({
         </div>
         <div className={sectionContainerStyle(isDarkMode)}>
           {activePivot === "overview" && (
-            <div className={overviewColumnStyle}>
+            <div className={overviewGridStyle}>
               {overviewItems.map((item, idx) => {
-                const row = Math.floor(idx / 2);
-                const col = idx % 2;
+                const row = Math.floor(idx / 3);
+                const col = idx % 3;
                 const animationDelay = row * 0.2 + col * 0.1;
                 return (
                   <InstructionCard
@@ -908,20 +936,14 @@ const Instructions: React.FC<InstructionsProps> = ({
                     prospectId={item.prospectId}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
-                    onOpenMatter={() => handleOpenMatter(item.instruction)}
-                    onRiskAssessment={() =>
-                      handleRiskAssessment(item)
-                    }
-                    onEIDCheck={() => handleEIDCheck(item.instruction)}
-                    onDraftCCL={() => handleDraftCCL(item.instruction)}
                   />
 
                 );
               })}
               {unlinkedDeals.map((deal, idx) => {
                 const base = overviewItems.length + idx;
-                const row = Math.floor(base / 2);
-                const col = base % 2;
+                const row = Math.floor(base / 3);
+                const col = base % 3;
                 const animationDelay = row * 0.2 + col * 0.1;
                 return (
                   <DealCard
@@ -1008,6 +1030,67 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
           )}
         </div>
+        {/* Global Action Area - only show on overview tab when not in sub-pages */}
+        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && !showDraftCCLPage && (
+          <div className="global-action-area">
+            <button
+              className="global-action-btn"
+              onClick={handleGlobalEIDCheck}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+            >
+              <span className="global-action-icon">
+                <FaIdBadge />
+              </span>
+              <span className="global-action-label">
+                Verify/Review ID
+              </span>
+            </button>
+            <button
+              className="global-action-btn"
+              onClick={handleGlobalRiskAssessment}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+            >
+              <span className="global-action-icon">
+                <MdAssessment />
+              </span>
+              <span className="global-action-label">
+                Assess Risk
+              </span>
+            </button>
+            <button
+              className="global-action-btn"
+              onClick={handleGlobalOpenMatter}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+            >
+              <span className="global-action-icon">
+                <FaCalendarPlus />
+              </span>
+              <span className="global-action-label">
+                Open Matter
+              </span>
+            </button>
+            <button
+              className="global-action-btn"
+              onClick={handleGlobalDraftCCL}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+            >
+              <span className="global-action-icon">
+                <FaFileAlt />
+              </span>
+              <span className="global-action-label">
+                Draft CCL
+              </span>
+            </button>
+          </div>
+        )}
       </Stack>
     </section>
   );
@@ -1024,7 +1107,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({ deals, handleOpenInstruction })
   const [followUpContent, setFollowUpContent] = useState<string>("");
   const gridContainerStyle = mergeStyles({
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
     maxWidth: "1200px",
     width: "100%",

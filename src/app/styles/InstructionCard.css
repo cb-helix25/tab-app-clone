@@ -1,3 +1,50 @@
+/* --- GLOBAL OVERRIDE: Remove all border-radius from instruction cards and children, except status circles --- */
+.instruction-card-container,
+.instruction-header,
+.instructionCard,
+.instructionCard.collapsed,
+.instruction-card-container > *,
+.instruction-header > *,
+.instructionCard > * {
+  border-radius: 0 !important;
+}
+
+/* Remove border-radius from all children except .status-value and .completion-tick */
+.instruction-card-container *:not(.status-value):not(.completion-tick),
+.instruction-header *:not(.status-value):not(.completion-tick),
+.instructionCard *:not(.status-value):not(.completion-tick),
+.instructionCard.collapsed *:not(.status-value):not(.completion-tick) {
+  border-radius: 0 !important;
+}
+/* --- Instruction Card Container --- */
+.instruction-card-container {
+  display: block;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s ease;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.instruction-card-container:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* --- Animation for instruction cards --- */
+@keyframes instructionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* --- Client Details Banner: Big Button/Selector Style --- */
  .client-details-banner {
   margin: 0;
@@ -90,7 +137,7 @@
     flex-direction: column;
     gap: 8px;
     width: 100%;
-    margin-bottom: 24px;
+    margin-bottom: 0;
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
@@ -99,14 +146,6 @@
     break-inside: avoid;
     transition: margin-bottom 0.4s linear;
     }
-    
-    .instructionCard.collapsed {
-        margin-bottom: 8px;
-}
-
-.instructionCard.collapsed {
-    margin-bottom: 8px;
-}
 
 
 .status-box {
@@ -127,7 +166,7 @@
 .instruction-header {
     background-color: var(--helix-grey, #F4F4F6);
     color: var(--helix-dark-blue, #061733);
-    border-radius: 4px;
+    border-radius: 0 !important;
     padding: 10px 16px;
     font-size: 16px;
     font-weight: 600;
@@ -369,7 +408,7 @@
     height: 32px;
     padding: 0 14px 0 10px;
     border: none;
-    border-radius: 0;
+    border-radius: 0 !important;
     background: none;
     color: #061733;
     font-weight: 400;
@@ -795,3 +834,120 @@
 .instruction-grid-4x2 .bottom-tabs {
   margin-top: 12px;
 }
+
+/* --- Global Action Area (based on client type selection buttons) --- */
+.global-action-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #e1dfdd;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Match status box height (22px) + padding for visual balance, e.g. 38px */
+.global-action-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 76.8px;
+  min-height: 76.8px;
+  height: 76.8px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F4F4F6;
+  border: 1px solid #e0e0e0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: background 0.2s, border 0.2s;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+  max-width: 120px;
+}
+
+
+/* Highlight icon, label, fill, and border blue on hover/active/focus */
+.global-action-btn:hover,
+.global-action-btn:active,
+.global-action-btn:focus {
+  background: #e3f0fc !important;
+  border-color: #3690CE !important;
+}
+
+.global-action-btn:active,
+.global-action-btn.pressed {
+  background: #b3d3f7 !important;
+  border-color: #1565c0 !important;
+}
+
+
+/* Restore original icon/label swap: fade out icon, fade in label on hover/active/focus */
+.global-action-btn:hover .global-action-icon,
+.global-action-btn:active .global-action-icon,
+.global-action-btn:focus .global-action-icon {
+  color: #3690CE !important;
+  opacity: 0;
+}
+
+.global-action-btn:hover .global-action-label,
+.global-action-btn:active .global-action-label,
+.global-action-btn:focus .global-action-label {
+  color: #3690CE !important;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* Restore original icon size (32px) */
+.global-action-icon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  opacity: 1;
+  transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s;
+  z-index: 1;
+  color: #6B6B6B;
+  pointer-events: none;
+}
+
+
+
+.global-action-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: normal;
+  font-size: 16px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s;
+  z-index: 2;
+  pointer-events: none;
+  color: #6B6B6B;
+}
+
+
+
+
+/* Remove fade-out/fade-in, always show icon and label, just color highlight on hover/active */

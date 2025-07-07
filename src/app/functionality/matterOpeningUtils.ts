@@ -19,6 +19,13 @@ export const hasActiveMatterOpening = (isCurrentlyInMatterOpening: boolean = fal
     return false;
   }
 
+  // If the user has entered any data in the matter opening workflow we store
+  // an explicit flag. This avoids treating prefilled defaults as activity.
+  const hasInputFlag = localStorage.getItem('matterOpeningDraft_hasInput') === 'true';
+  if (hasInputFlag) {
+    return true;
+  }
+
   // Check for key indicators that a matter opening is in progress
   // These keys have the prefix 'matterOpeningDraft_' as used in FlatMatterOpening
   const indicators = [
@@ -102,6 +109,7 @@ export const clearMatterOpeningDraft = (): void => {
     'matterOpeningDraft_opponentSolicitorCompany',
     'matterOpeningDraft_opponentSolicitorEmail',
     'matterOpeningDraft_noConflict',
+    'matterOpeningDraft_hasInput',
     'matterOpeningDraft_completed'
   ];
 
@@ -117,6 +125,7 @@ export const clearMatterOpeningDraft = (): void => {
  */
 export const completeMatterOpening = (): void => {
   localStorage.setItem('matterOpeningDraft_completed', 'true');
+  localStorage.removeItem('matterOpeningDraft_hasInput');
   console.log('Matter opening marked as completed');
 };
 

@@ -1,5 +1,4 @@
 import React from 'react';
-//
 import { mergeStyles } from '@fluentui/react';
 import { FaCheckCircle, FaClock, FaTimesCircle, FaChevronDown, FaExclamationTriangle } from 'react-icons/fa';
 import InstructionCard from './InstructionCard';
@@ -24,9 +23,6 @@ interface InstructionOverviewProps {
     animationDelay?: number;
     expanded: boolean;
     onToggle: () => void;
-    onOpenMatter?: () => void;
-    onRiskAssessment?: (item?: any) => void;
-    onEIDCheck?: () => void;
 }
 
 const InstructionOverview: React.FC<InstructionOverviewProps> = ({
@@ -44,9 +40,6 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
     animationDelay = 0,
     expanded,
     onToggle,
-    onOpenMatter,
-    onRiskAssessment,
-    onEIDCheck,
 }) => {
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
@@ -157,9 +150,6 @@ const InstructionOverview: React.FC<InstructionOverviewProps> = ({
                     compliance={compliance}
                     documentCount={documentCount}
                     expanded
-                    onOpenMatter={onOpenMatter}
-                    onRiskAssessment={onRiskAssessment}
-                    onEIDCheck={onEIDCheck}
                 />
             )}
         </div>
