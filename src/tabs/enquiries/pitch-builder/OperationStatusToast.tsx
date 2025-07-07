@@ -18,6 +18,7 @@ const OperationStatusToast: React.FC<OperationStatusToastProps> = ({ visible, me
     <CSSTransition in={visible} timeout={300} classNames="toast" unmountOnExit>
       <MessageBar
         messageBarType={messageBarType}
+// invisible change
         isMultiline={false}
         styles={{
           root: {

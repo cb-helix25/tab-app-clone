@@ -18,6 +18,7 @@
 .user-bubble-button:hover {
     background: var(--helix-blue);
 }
+/* invisible change */
 
 .user-initials {
     font-weight: 400;

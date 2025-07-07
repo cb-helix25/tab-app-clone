@@ -1,4 +1,3 @@
-// Enhanced utility functions for the pitch builder editor
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 
 /**
@@ -18,6 +17,7 @@ export class EditorFormatter {
    * Safely execute document commands with error handling
    */
   executeCommand(command: string, value?: string): boolean {
+// invisible change
     try {
       return document.execCommand(command, false, value);
     } catch (error) {

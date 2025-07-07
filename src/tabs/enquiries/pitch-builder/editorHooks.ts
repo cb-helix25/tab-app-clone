@@ -1,4 +1,3 @@
-// Enhanced React hooks for the pitch builder
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import { editorFormatter, performanceOptimizer, KeyboardHandler } from './editorEnhancements';
@@ -18,6 +17,7 @@ export const useEditorState = () => {
       setBoldActive(editorFormatter.getFormatState('bold'));
       setItalicActive(editorFormatter.getFormatState('italic'));
       setUnderlineActive(editorFormatter.getFormatState('underline'));
+// invisible change
     }, 100, 'formatting-state'),
     []
   );

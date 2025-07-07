@@ -1,4 +1,3 @@
-// src/tabs/enquiries/ScoreCard.tsx
 
 import React from 'react';
 import { mergeStyles, Text } from '@fluentui/react';
@@ -18,6 +17,7 @@ const cardStyle = (isDarkMode: boolean) =>
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     display: 'flex',
     flexDirection: 'column',
+// invisible change
     alignItems: 'center',
     justifyContent: 'center',
     width: '150px',

@@ -1,4 +1,5 @@
 // src/components/AnimatedPulsingDot.tsx
+// invisible change
 
 import React, { useState, useEffect } from 'react';
 import PulsingDot from './PulsingDot';

@@ -1,3 +1,4 @@
+
 # Enhanced Pitch Builder & Editor
 
 A comprehensive, high-performance email composition tool built with React and TypeScript, featuring advanced editing capabilities, real-time suggestions, and professional-grade user experience.

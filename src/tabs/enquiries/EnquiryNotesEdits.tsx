@@ -1,4 +1,3 @@
-// src/EnquiryNotesEdits.tsx
 
 import React, { useState } from 'react';
 import {
@@ -18,6 +17,7 @@ import { useTheme } from '../../app/functionality/ThemeContext'; // Import useTh
 interface EnquiryNotesEditsProps {
   enquiry: Enquiry;
   onEditRating: (id: string) => void;
+// invisible change
   onEditNotes: (id: string, notes: string) => void;
 }
 

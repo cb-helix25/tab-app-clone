@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+// invisible change
 //
 import { mergeStyles } from '@fluentui/react';
 import { format } from 'date-fns';
@@ -7,6 +8,8 @@ import {
     FaRegIdBadge,
     FaFileAlt,
     FaRegFileAlt,
+    FaFolder,
+    FaRegFolder,
     FaCheckCircle,
     FaClock,
     FaTimesCircle,
@@ -91,12 +94,16 @@ interface InstructionCardProps {
     innerRef?: React.Ref<HTMLDivElement>;
     expanded?: boolean;
     onToggle?: () => void;
+    selected?: boolean;
+    onSelect?: () => void;
 }
 
+// Icons used for the bottom navigation as well as the global actions
+// Use outline/filled pairs so we can swap the icon on hover
 const iconMap = {
-    eid: { outline: FaRegIdBadge, filled: FaRegIdBadge },
-    risk: { outline: MdOutlineWarningAmber, filled: MdOutlineWarningAmber },
-    matter: { outline: FaRegFileAlt, filled: FaFileAlt },
+    eid: { outline: FaRegIdBadge, filled: FaIdBadge },
+    risk: { outline: MdOutlineAssessment, filled: MdAssessment },
+    matter: { outline: FaRegFolder, filled: FaFolder },
     ccl: { outline: FaRegFileAlt, filled: FaFileAlt },
 };
 
@@ -116,6 +123,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     innerRef,
     expanded = false,
     onToggle,
+    selected = false,
+    onSelect,
 }) => {
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
@@ -135,9 +144,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         boxShadow: componentTokens.card.base.boxShadow,
         color: colours.light.text,
         height: 'auto',
-        border: '2px solid transparent',
+        borderTop: 'none', // Exclude top border since header handles it
+        borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
+        borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
+        borderBottom: selected ? '2px solid #3690CE' : '2px solid transparent',
         opacity: 1,
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease',
         selectors: {
             ':hover': {
                 boxShadow: componentTokens.card.hover.boxShadow,
@@ -291,8 +303,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     borderBottomLeftRadius: 0,
                     borderBottomRightRadius: 0,
                     marginBottom: 0,
-                    border: '2px solid transparent',
+                    borderTop: selected ? '2px solid #3690CE' : '2px solid transparent',
+                    borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
+                    borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
                     borderBottom: 'none',
+                    cursor: 'pointer',
                 }}
                 onClick={() => {
                     const newState = !collapsed;
@@ -300,6 +315,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     setShowClientDetails(!newState); // show details when expanded, hide when collapsed
                     if (newState) setSelectedStatus(null);
                     onToggle?.();
+                    onSelect?.(); // Select this instruction
                 }}
             >
                 {/* Remove tick indicator */}
@@ -319,6 +335,21 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     <span style={{ fontWeight: 400, color: !collapsed ? 'rgba(255,255,255,0.7)' : '#888', fontSize: 16, letterSpacing: 0.2, alignSelf: 'center' }}>
                         {instruction.InstructionRef || '—'}
                     </span>
+                    {/* Selected indicator */}
+                    {selected && (
+                        <span style={{
+                            marginLeft: '12px',
+                            padding: '2px 8px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
+                            color: !collapsed ? '#fff' : '#fff',
+                            borderRadius: '12px',
+                            alignSelf: 'center'
+                        }}>
+                            SELECTED
+                        </span>
+                    )}
                 </span>
                 <span
                     className="plusminus-icon"

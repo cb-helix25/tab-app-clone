@@ -1,4 +1,3 @@
-// src/app/App.tsx
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
@@ -18,6 +17,7 @@ const Forms = lazy(() => import('../tabs/forms/Forms'));
 const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
 const Instructions = lazy(() => import('../tabs/instructions/Instructions'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
+// invisible change
 const Roadmap = lazy(() => import('../tabs/roadmap/Roadmap'));
 const ReportingHome = lazy(() => import('../tabs/Reporting/ReportingHome')); // Replace ReportingCode with ReportingHome
 
@@ -112,7 +112,7 @@ const App: React.FC<AppProps> = ({
   // Check for active matter opening every 2 seconds
   useEffect(() => {
     const checkActiveMatter = () => {
-      setHasActiveMatter(hasActiveMatterOpening());
+      setHasActiveMatter(hasActiveMatterOpening(isInMatterOpeningWorkflow));
     };
     
     // Initial check
@@ -122,7 +122,7 @@ const App: React.FC<AppProps> = ({
     const interval = setInterval(checkActiveMatter, 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isInMatterOpeningWorkflow]);
 
   useEffect(() => {
     if (activeTab === 'forms') {
@@ -248,6 +248,7 @@ const App: React.FC<AppProps> = ({
             onBoardroomBookingsFetched={handleBoardroomBookingsFetched}
             onSoundproofBookingsFetched={handleSoundproofBookingsFetched}
             teamData={teamData}
+            isInMatterOpeningWorkflow={isInMatterOpeningWorkflow}
           />
         );
       case 'enquiries':

@@ -18,6 +18,7 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
   const signatureHtml = `
 <!DOCTYPE html>
 <html lang="en">
+// invisible change
 <head>
   <meta charset="UTF-8" />
   <title>Helix Email</title>

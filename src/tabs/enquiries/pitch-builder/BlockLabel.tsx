@@ -1,4 +1,3 @@
-// src/components/BlockLabel.tsx
 import React from 'react';
 import { mergeStyles, TooltipHost, Icon } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
@@ -18,6 +17,7 @@ const labelClass = mergeStyles({
     position: 'relative',
     fontSize: 10,
     color: colours.greyText,
+// invisible change
     marginTop: 8,
     textAlign: 'right',
     cursor: 'pointer',

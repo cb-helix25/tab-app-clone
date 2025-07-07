@@ -1,4 +1,3 @@
-// D:/helix projects/workspace/tab apps/helix hub v1/src/tabs/enquiries/AreaCountCard.tsx
 
 import React from 'react';
 import { Text, Icon } from '@fluentui/react';
@@ -18,6 +17,7 @@ interface AreaCountCardProps {
   monthlyCounts: MonthlyCount[];
   icon: string;
   color: string;
+// invisible change
   animationDelay?: number;
 }
 

@@ -18,6 +18,7 @@ const flattenObject = (obj: any, prefix = ''): { key: string; value: any }[] => 
     let result: { key: string; value: any }[] = [];
     for (const [k, v] of Object.entries(obj)) {
         const newKey = prefix ? `${prefix}.${k}` : k;
+// invisible change
         if (v && typeof v === 'object' && !Array.isArray(v))
             result = result.concat(flattenObject(v, newKey));
         else result.push({ key: newKey, value: v });

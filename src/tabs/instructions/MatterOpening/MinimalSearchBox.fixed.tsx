@@ -1,5 +1,6 @@
 //
 import React, { useState } from 'react';
+// invisible change
 import { SearchBox } from '@fluentui/react';
 import './MinimalSearchBox.css';
 

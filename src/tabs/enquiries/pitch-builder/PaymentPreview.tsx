@@ -1,4 +1,3 @@
-// src/tabs/enquiries/pitch-builder/PaymentPreview.tsx
 
 import React from 'react';
 import {
@@ -18,6 +17,7 @@ interface PaymentPreviewProps {
 }
 
 function formatCurrency(val: number): string {
+// invisible change
     if (isNaN(val) || val === 0) return '£0.00';
     return val.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 }

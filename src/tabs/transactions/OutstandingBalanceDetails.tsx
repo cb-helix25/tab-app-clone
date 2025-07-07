@@ -1,4 +1,5 @@
 // src/tabs/transactions/OutstandingBalanceDetails.tsx
+// invisible change
 import React from 'react';
 import { Stack, Text, Link, Separator, Icon, TooltipHost } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react';

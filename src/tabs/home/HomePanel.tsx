@@ -1,4 +1,5 @@
 // src/tabs/home/HomePanel.tsx
+// invisible change
 
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {

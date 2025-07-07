@@ -1,4 +1,3 @@
-// Enhanced Pitch Builder Features Component
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Stack,
@@ -18,6 +17,7 @@ import { useAutoSave, useContentValidation, useUndoRedo } from './editorHooks';
 
 interface EnhancedPitchBuilderFeaturesProps {
   isDarkMode: boolean;
+// invisible change
   content: string;
   onContentChange: (content: string) => void;
   onSave?: (content: string) => Promise<void>;

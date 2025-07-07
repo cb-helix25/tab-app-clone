@@ -1,3 +1,4 @@
+/* invisible change */
 /* --- GLOBAL OVERRIDE: Remove all border-radius from instruction cards and children, except status circles --- */
 .instruction-card-container,
 .instruction-header,
@@ -42,6 +43,22 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Pulse animation for matter indicators */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -372,6 +389,7 @@
 .bottom-tab,
 .bottom-tabs.compact .bottom-tab {
     /* Prevent any width/flex change on hover/focus/active */
+    position: relative;
 }
 
 .bottom-tab:hover,
@@ -847,7 +865,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 12px; /* Back to original gap for 4 buttons */
   z-index: 1000;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -857,7 +875,7 @@
 .global-action-btn {
   position: relative;
   overflow: hidden;
-  min-width: 76.8px;
+  min-width: 76.8px; /* Back to original size for 4 buttons */
   min-height: 76.8px;
   height: 76.8px;
   padding: 0;
@@ -872,7 +890,7 @@
   outline: none;
   cursor: pointer;
   flex: 1;
-  max-width: 120px;
+  max-width: 120px; /* Back to original size for 4 buttons */
 }
 
 
@@ -926,6 +944,11 @@
   pointer-events: none;
 }
 
+.global-action-icon svg {
+  display: block;
+  margin: auto;
+}
+
 
 
 .global-action-label {
@@ -947,7 +970,51 @@
   color: #6B6B6B;
 }
 
+/* Override global icon styles for global action buttons */
+.global-action-btn .global-action-icon .icon-outline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none !important; /* Hide outline by default */
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
 
+.global-action-btn .global-action-icon .icon-filled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex !important; /* Show filled by default */
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
 
+.global-action-btn .global-action-icon .icon-outline svg,
+.global-action-btn .global-action-icon .icon-filled svg {
+  display: block;
+  margin: auto;
+}
 
-/* Remove fade-out/fade-in, always show icon and label, just color highlight on hover/active */
+/* When no explicit icon classes, show the icon normally */
+.global-action-btn .global-action-icon > svg:not(.icon-outline):not(.icon-filled) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  opacity: 1 !important;
+  margin: auto;
+}
+
+/* On hover, show outline and hide filled */
+.global-action-btn:hover .global-action-icon .icon-outline {
+  display: flex !important;
+}
+
+.global-action-btn:hover .global-action-icon .icon-filled {
+  display: none !important;
+}

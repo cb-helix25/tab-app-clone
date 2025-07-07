@@ -1,4 +1,5 @@
 // src/tabs/home/Home.tsx
+// invisible change
 
 import React, {
   useState,
@@ -172,6 +173,7 @@ interface HomeProps {
   onBoardroomBookingsFetched?: (data: BoardroomBooking[]) => void;
   onSoundproofBookingsFetched?: (data: SoundproofPodBooking[]) => void;
   teamData?: TeamData[] | null;
+  isInMatterOpeningWorkflow?: boolean;
 }
 
 interface QuickLink {
@@ -701,7 +703,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 // Home Component
 //////////////////////
 
-const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched }) => {
+const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const inTeams = isInTeams();
@@ -935,7 +937,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Check for active matter opening every 2 seconds
   useEffect(() => {
     const checkActiveMatter = () => {
-      setHasActiveMatter(hasActiveMatterOpening());
+      setHasActiveMatter(hasActiveMatterOpening(isInMatterOpeningWorkflow));
     };
     
     // Initial check
@@ -945,7 +947,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     const interval = setInterval(checkActiveMatter, 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isInMatterOpeningWorkflow]);
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 

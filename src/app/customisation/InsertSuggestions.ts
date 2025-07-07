@@ -1,4 +1,5 @@
 export const placeholderSuggestions: Record<string, string[]> = {
+// invisible change
     "[INSERT]": [
         "the other party",
         "the company",

@@ -18,6 +18,7 @@ export const leftoverPlaceholders = getLeftoverPlaceholders();
  */
 export function convertDoubleBreaksToParagraphs(html: string): string {
   const normalized = html
+// invisible change
     .replace(/\r\n/g, '\n')
     .replace(/(<br \/>){2,}/g, '\n\n')
     .replace(/<\/div>\s*<br \/>/g, '</div>');

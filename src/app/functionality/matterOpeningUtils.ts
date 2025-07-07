@@ -1,4 +1,5 @@
 // src/app/functionality/matterOpeningUtils.ts
+// invisible change
 
 /**
  * Utility functions for detecting matter opening progress

@@ -1,4 +1,3 @@
-// Smart Template Suggestions Component
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Stack,
@@ -18,6 +17,7 @@ import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBloc
 interface TemplateSuggestion {
   id: string;
   title: string;
+// invisible change
   description: string;
   confidence: number;
   category: 'grammar' | 'style' | 'content' | 'structure';

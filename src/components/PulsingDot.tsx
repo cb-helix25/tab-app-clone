@@ -1,4 +1,5 @@
 // src/components/PulsingDot.tsx
+// invisible change
 
 import React from 'react';
 import { colours } from '../app/styles/colours';

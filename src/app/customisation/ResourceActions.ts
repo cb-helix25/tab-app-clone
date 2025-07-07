@@ -1,4 +1,5 @@
 // src/app/customisation/ResourceActions.ts
+// invisible change
 
 export interface ResourceAction {
     label: string;

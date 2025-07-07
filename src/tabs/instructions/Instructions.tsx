@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
+// invisible change
 import {
   Stack,
   mergeStyles,
@@ -9,11 +10,13 @@ import {
 } from "@fluentui/react";
 import {
   FaIdBadge,
+  FaRegIdBadge,
   FaFileAlt,
-  FaCalendarPlus,
-  FaExclamationTriangle,
+  FaRegFileAlt,
+  FaFolder,
+  FaRegFolder,
 } from 'react-icons/fa';
-import { MdAssessment } from 'react-icons/md';
+import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import QuickActionsCard from "../home/QuickActionsCard";
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigator } from "../../app/functionality/NavigatorContext";
@@ -88,6 +91,13 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   const [activePivot, setActivePivot] = useState<string>("overview");
 
+  // Clear selection when leaving overview tab
+  useEffect(() => {
+    if (activePivot !== "overview") {
+      setSelectedInstruction(null);
+    }
+  }, [activePivot]);
+
   const ACTION_BAR_HEIGHT = 48;
 
   const quickLinksStyle = (dark: boolean) =>
@@ -160,6 +170,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
     window.location.hostname === "localhost";
+
+  const isProduction = process.env.NODE_ENV === "production" && !useLocalData;
 
   useEffect(() => {
     async function fetchData() {
@@ -319,71 +331,65 @@ const Instructions: React.FC<InstructionsProps> = ({
           </div>
         ) : (
           <>
+            {/* Quick Actions Bar with Pivot Navigation */}
             <div className={quickLinksStyle(isDarkMode)}>
+              {/* Pivot Navigation as Quick Action Cards */}
               <QuickActionsCard
-                title="New Matter"
-                icon="OpenFile"
+                title="Overview"
+                icon="List"
                 isDarkMode={isDarkMode}
-                onClick={() => {
-                  setSelectedInstruction(null);
-                    setShowNewMatterPage(true);
-                  }}
-                  style={{ "--card-index": 0 } as React.CSSProperties}
-                  showPulsingDot={hasActiveMatter && !showNewMatterPage}
-                />
-                <QuickActionsCard
-                  title="Verify an ID"
-                  icon="IdCheck"
-                  isDarkMode={isDarkMode}
-                  onClick={() => {
-                    setSelectedInstruction(null);
-                    setShowEIDPage(true);
-                  }}
-                  style={{ "--card-index": 1 } as React.CSSProperties}
-                />
-                <QuickActionsCard
-                  title="Assess Risk"
-                  icon="Assessment"
-                  isDarkMode={isDarkMode}
-                  onClick={() => {
-                    setSelectedInstruction(null);
-                    setSelectedRisk(null);
-                    setPendingInstructionRef('');
-                    setShowRiskPage(true);
-                  }}
-                  style={{ "--card-index": 2 } as React.CSSProperties}
-                />
-                <QuickActionsCard
-                  title="Draft CCL"
-                  icon="OpenFile"
-                  isDarkMode={isDarkMode}
-                  onClick={() => {
-                    setSelectedInstruction(null);
-                    setPendingInstructionRef('');
-                    setShowDraftCCLPage(true);
-                  }}
-                  style={{ "--card-index": 3 } as React.CSSProperties}
-                />
-              </div>
-              <div className={pivotBarStyle(isDarkMode)}>
-                <Pivot
-                  className="navigatorPivot"
-                  selectedKey={activePivot}
-                  onLinkClick={(item) => {
-                    setActivePivot(item?.props.itemKey || "overview");
-                }}
-              >
-                <PivotItem headerText="Overview" itemKey="overview" />
-                <PivotItem headerText="Deals" itemKey="deals" />
-                <PivotItem headerText="Clients" itemKey="clients" />
-                <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-                {useLocalData && (
-                  <PivotItem headerText="Scenarios" itemKey="states" />
-                )}
-                {useLocalData && (
-                  <PivotItem headerText="Editor" itemKey="demo" />
-                )}
-              </Pivot>
+                selected={activePivot === "overview"}
+                onClick={() => setActivePivot("overview")}
+                iconColor={activePivot === "overview" ? colours.cta : colours.greyText}
+                orientation="row"
+              />
+              <QuickActionsCard
+                title="Deals"
+                icon="Money"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "deals"}
+                onClick={() => setActivePivot("deals")}
+                iconColor={activePivot === "deals" ? colours.cta : colours.greyText}
+                orientation="row"
+              />
+              <QuickActionsCard
+                title="Clients"
+                icon="People"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "clients"}
+                onClick={() => setActivePivot("clients")}
+                iconColor={activePivot === "clients" ? colours.cta : colours.greyText}
+                orientation="row"
+              />
+              <QuickActionsCard
+                title="Risk & Compliance"
+                icon="Shield"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "risk"}
+                onClick={() => setActivePivot("risk")}
+                iconColor={activePivot === "risk" ? colours.cta : colours.greyText}
+                orientation="row"
+              />
+              <QuickActionsCard
+                title="Scenarios"
+                icon="Settings"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "states"}
+                onClick={() => !isProduction && setActivePivot("states")}
+                iconColor={activePivot === "states" ? colours.cta : colours.greyText}
+                orientation="row"
+                disabled={isProduction}
+              />
+              <QuickActionsCard
+                title="Editor"
+                icon="Edit"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "demo"}
+                onClick={() => !isProduction && setActivePivot("demo")}
+                iconColor={activePivot === "demo" ? colours.cta : colours.greyText}
+                orientation="row"
+                disabled={isProduction}
+              />
             </div>
           </>
         )}
@@ -399,6 +405,8 @@ const Instructions: React.FC<InstructionsProps> = ({
     showRiskPage,
     showEIDPage,
     showDraftCCLPage,
+    selectedInstruction,
+    hasActiveMatter,
   ]);
 
   const containerStyle = mergeStyles({
@@ -822,32 +830,34 @@ const Instructions: React.FC<InstructionsProps> = ({
     boxSizing: "border-box",
   });
 
-  // Global action handlers that work with the first available instruction
+  // Global action handlers that work with the selected instruction or first available instruction
   const handleGlobalOpenMatter = () => {
-    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
-    if (firstInstruction) {
-      handleOpenMatter(firstInstruction);
+    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+    if (targetInstruction) {
+      handleOpenMatter(targetInstruction);
     }
   };
 
   const handleGlobalRiskAssessment = () => {
-    const firstItem = overviewItems.find(item => item.instruction);
-    if (firstItem) {
-      handleRiskAssessment(firstItem);
+    const targetItem = selectedInstruction 
+      ? overviewItems.find(item => item.instruction.InstructionRef === selectedInstruction.InstructionRef)
+      : overviewItems.find(item => item.instruction);
+    if (targetItem) {
+      handleRiskAssessment(targetItem);
     }
   };
 
   const handleGlobalEIDCheck = () => {
-    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
-    if (firstInstruction) {
-      handleEIDCheck(firstInstruction);
+    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+    if (targetInstruction) {
+      handleEIDCheck(targetInstruction);
     }
   };
 
   const handleGlobalDraftCCL = () => {
-    const firstInstruction = overviewItems.find(item => item.instruction)?.instruction;
-    if (firstInstruction) {
-      handleDraftCCL(firstInstruction);
+    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+    if (targetInstruction) {
+      handleDraftCCL(targetInstruction);
     }
   };
 
@@ -936,6 +946,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                     prospectId={item.prospectId}
                     documentCount={item.documentCount ?? 0}
                     animationDelay={animationDelay}
+                    selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
+                    onSelect={() => setSelectedInstruction(item.instruction)}
                   />
 
                 );
@@ -1030,20 +1042,39 @@ const Instructions: React.FC<InstructionsProps> = ({
             </div>
           )}
         </div>
-        {/* Global Action Area - only show on overview tab when not in sub-pages */}
+        {/* Global Action Area - always visible, enhanced when instruction selected */}
         {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && !showDraftCCLPage && (
-          <div className="global-action-area">
+          <div 
+            className="global-action-area"
+            style={{
+              opacity: 1, // Always visible
+              transform: 'translateY(0)',
+              transition: 'opacity 0.4s ease, transform 0.4s ease',
+              pointerEvents: 'auto', // Always interactive
+            }}
+          >
             <button
               className="global-action-btn"
               onClick={handleGlobalEIDCheck}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              style={{
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1, // Always visible
+                transform: 'translateY(0)',
+                transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
+              }}
             >
-              <span className="global-action-icon">
-                <FaIdBadge />
+              <span className="global-action-icon icon-hover" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                <FaRegIdBadge className="icon-outline" />
+                <FaIdBadge className="icon-filled" />
               </span>
-              <span className="global-action-label">
+              <span className="global-action-label" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
                 Verify/Review ID
               </span>
             </button>
@@ -1053,11 +1084,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              style={{
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1, // Always visible
+                transform: 'translateY(0)',
+                transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
+              }}
             >
-              <span className="global-action-icon">
-                <MdAssessment />
+              <span className="global-action-icon icon-hover" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                <MdOutlineAssessment className="icon-outline" />
+                <MdAssessment className="icon-filled" />
               </span>
-              <span className="global-action-label">
+              <span className="global-action-label" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
                 Assess Risk
               </span>
             </button>
@@ -1067,13 +1109,39 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              style={{
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1, // Always visible
+                transform: 'translateY(0)',
+                transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
+                position: 'relative',
+              }}
             >
-              <span className="global-action-icon">
-                <FaCalendarPlus />
+              <span className="global-action-icon icon-hover" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                <FaRegFolder className="icon-outline" />
+                <FaFolder className="icon-filled" />
               </span>
-              <span className="global-action-label">
-                Open Matter
+              <span className="global-action-label" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                {selectedInstruction ? 'Open Matter' : 'New Matter'}
               </span>
+              {/* Pulsing dot indicator - only show when no instruction selected and has active matter */}
+              {!selectedInstruction && hasActiveMatter && !showNewMatterPage && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#D65541',
+                  animation: 'pulse 2s infinite',
+                  zIndex: 10,
+                }} />
+              )}
             </button>
             <button
               className="global-action-btn"
@@ -1081,11 +1149,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              style={{
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1, // Always visible
+                transform: 'translateY(0)',
+                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
+              }}
             >
-              <span className="global-action-icon">
-                <FaFileAlt />
+              <span className="global-action-icon icon-hover" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                <MdOutlineArticle className="icon-outline" />
+                <MdArticle className="icon-filled" />
               </span>
-              <span className="global-action-label">
+              <span className="global-action-label" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
                 Draft CCL
               </span>
             </button>

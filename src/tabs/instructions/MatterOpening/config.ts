@@ -1,5 +1,6 @@
 //
 export type StepKey = // invisible change
+// invisible change
     | 'clientInfo'
     | 'poidSelection'
     | 'areaOfWork'

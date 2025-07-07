@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+# invisible change
 
 $zipPath = Join-Path $PSScriptRoot 'build.zip'
 $buildDir = Join-Path $PSScriptRoot 'build'

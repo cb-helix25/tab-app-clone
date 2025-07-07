@@ -1,4 +1,3 @@
-// src/tabs/enquiries/EnquiryDetails.tsx
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -18,6 +17,7 @@ import { Enquiry } from '../../app/functionality/types'; // Adjust the import pa
 import { colours } from '../../app/styles/colours'; // Adjust the import path as needed
 import BubbleTextField from '../../app/styles/BubbleTextField'; // Adjust the import path as needed
 import { useTheme } from '../../app/functionality/ThemeContext'; // Adjust the import path as needed
+// invisible change
 
 /* ------------------------------------------------------------------
    1. UTILITY FUNCTIONS & CONSTANTS

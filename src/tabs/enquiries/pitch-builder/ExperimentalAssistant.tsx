@@ -18,6 +18,7 @@ const ExperimentalAssistant: React.FC<ExperimentalAssistantProps> = ({ isOpen, o
     setTimeout(() => {
       setResponse(
         `Pretend AI analysed your email:\n\n${emailText}\n\nPrompt used:\n${prompt}`
+// invisible change
       );
       setLoading(false);
     }, 500);

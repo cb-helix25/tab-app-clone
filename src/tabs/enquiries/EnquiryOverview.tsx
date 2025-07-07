@@ -1,4 +1,3 @@
-// src/EnquiryOverview.tsx
 
 import React from 'react';
 import {
@@ -18,6 +17,7 @@ interface EnquiryOverviewProps {
   enquiry: Enquiry;
   onEditRating: (id: string) => void; // Function to open modal to edit rating
   onEditNotes: () => void; // Function to trigger editing notes
+// invisible change
 }
 
 const EnquiryOverview: React.FC<EnquiryOverviewProps> = ({

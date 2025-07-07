@@ -1,4 +1,5 @@
 export type SectionName = 'Favorites' | 'General_Processes' | 'Operations' | 'Financial';
+// invisible change
 
 export interface Tab {
   key: string;

@@ -1,4 +1,5 @@
 const MAX_CHARACTERS = 150; // Adjust this based on your card width and design
+// invisible change
 
 export const cleanNotes = (notes: string): string => {
   if (!notes) return 'N/A';

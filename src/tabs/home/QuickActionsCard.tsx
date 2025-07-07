@@ -1,4 +1,5 @@
 import React from 'react';
+// invisible change
 import { mergeStyles, Text, Icon } from '@fluentui/react';
 import {
   FaRegCheckSquare,
@@ -15,6 +16,16 @@ import {
   FaFolder,
   FaRegIdBadge,
   FaIdBadge,
+  FaExclamationTriangle,
+  FaExclamationCircle,
+  FaRegEdit,
+  FaEdit,
+  FaRegMoneyBillAlt,
+  FaMoneyBillAlt,
+  FaCogs,
+  FaShieldAlt,
+  FaRegHandshake,
+  FaHandshake,
 } from 'react-icons/fa';
 import {
   MdOutlineWarning,
@@ -60,6 +71,12 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   People: { outline: MdOutlinePeople, filled: MdPeople },
   Help: { outline: MdOutlineHelp, filled: MdHelp },
   PalmTree: { outline: PiTreePalm, filled: PiTreePalm },
+  // New icons for instructions page
+  List: { outline: FaRegListAlt, filled: FaListAlt },
+  Money: { outline: FaRegHandshake, filled: FaHandshake },
+  Shield: { outline: FaShieldAlt, filled: FaShieldAlt },
+  Settings: { outline: FaCogs, filled: FaCogs },
+  Edit: { outline: FaRegEdit, filled: FaEdit },
 };
 
 interface QuickActionsCardProps {
@@ -75,6 +92,8 @@ interface QuickActionsCardProps {
   orientation?: 'row' | 'column';
   /** Show a pulsing dot indicator */
   showPulsingDot?: boolean;
+  /** Whether the card should be disabled */
+  disabled?: boolean;
 }
 
 const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
@@ -88,13 +107,14 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   selected,
   orientation = 'row',
   showPulsingDot = false,
+  disabled = false,
 }) => {
   // Base card style
   const baseCardStyle = mergeStyles({
     backgroundColor: isDarkMode
       ? colours.dark.sectionBackground
       : colours.light.sectionBackground,
-    color: isDarkMode ? colours.dark.text : colours.light.text,
+    color: disabled ? '#888' : (isDarkMode ? colours.dark.text : colours.light.text),
     padding: orientation === 'column' ? '8px 12px' : '0 12px',
     height: orientation === 'column' ? 'auto' : '48px',
     lineHeight: orientation === 'column' ? 'normal' : '48px',
@@ -105,9 +125,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: orientation === 'column' ? '4px' : '7px',
-    cursor: 'pointer',
+    cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'background-color 0.2s, transform 0.1s, border-color 0.2s',
     border: '2px solid transparent',
+    opacity: disabled ? 0.5 : 1,
+    pointerEvents: disabled ? 'none' : 'auto',
   } as any);
 
 
@@ -130,7 +152,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   let attendanceIconName = icon;
   let attendanceIconStyle = mergeStyles({
     fontSize: '19px',
-    color: iconColor || colours.cta,
+    color: disabled ? '#888' : (iconColor || colours.cta),
     marginRight: '4px',
   });
 
@@ -269,11 +291,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
     <div
       className={`quickActionCard icon-hover ${dynamicClasses}`}
       style={{ ...cardVars, ...style }}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       role="button"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
       onKeyPress={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
           onClick();
         }
       }}

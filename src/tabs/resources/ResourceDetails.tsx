@@ -1,4 +1,5 @@
 // src/tabs/resources/ResourceDetails.tsx
+// invisible change
 
 import React, { useCallback, useState } from 'react';
 import {

@@ -1,4 +1,3 @@
-{
     "styleGuide": {
       "description": "Universal style guide for consistent design across multiple projects, derived exclusively from provided CSS and TypeScript files.",
       "metadata": {
