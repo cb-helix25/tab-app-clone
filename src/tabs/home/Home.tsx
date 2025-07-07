@@ -870,10 +870,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const immediateActionsReady = !isLoadingAttendance && !isLoadingAnnualLeave && !isActionsLoading;
 
-  // Show immediate actions overlay (and Dismiss button) only on first ever visit with actions
-  const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(() => {
-    return !localStorage.getItem('hasDismissedImmediateActionsOverlay');
-  });
+  // Show immediate actions overlay (and Dismiss button) only on the first
+  // home load for the session when immediate actions exist 
+  const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
   
   // Track if there's an active matter opening in progress
   const [hasActiveMatter, setHasActiveMatter] = useState<boolean>(false);
@@ -2533,24 +2532,21 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [isLoadingAttendance, currentUserConfirmed, hasActiveMatter, instructionData, immediateALActions, handleActionClick]);
 
-  // Show overlay when immediate actions become available (first time only)
-  const prevImmediateActionsReady = useRef<boolean>(false);
-  const prevImmediateActionsCount = useRef<number>(0);
+  // Show overlay when immediate actions become available
+  const [hasShownOverlayThisSession, setHasShownOverlayThisSession] = useState<boolean>(false);
   useEffect(() => {
-    // Only trigger if immediate actions are ready and there are actions, overlay is not already shown, and user hasn't dismissed before
+    // Show overlay if there are actions and user hasn't dismissed it in this page session
     if (
       immediateActionsReady &&
       immediateActionsList &&
       immediateActionsList.length > 0 &&
       !showFocusOverlay &&
-      (!prevImmediateActionsReady.current || prevImmediateActionsCount.current === 0) &&
-      !localStorage.getItem('hasDismissedImmediateActionsOverlay')
+      !hasShownOverlayThisSession
     ) {
       setShowFocusOverlay(true);
+      setHasShownOverlayThisSession(true);
     }
-    prevImmediateActionsReady.current = immediateActionsReady;
-    prevImmediateActionsCount.current = immediateActionsList ? immediateActionsList.length : 0;
-  }, [immediateActionsReady, immediateActionsList, showFocusOverlay]);
+  }, [immediateActionsReady, immediateActionsList, showFocusOverlay, hasShownOverlayThisSession]);
 
   const normalQuickActions = useMemo(() => {
     const actions = quickActions
@@ -2583,7 +2579,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           quickActions={normalQuickActions}
           handleActionClick={handleActionClick}
           currentUserConfirmed={currentUserConfirmed}
-          highlighted={showFocusOverlay}
+          highlighted={false}
         />
         <ImmediateActionsBar
           isDarkMode={isDarkMode}
@@ -2593,7 +2589,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           showDismiss={showFocusOverlay}
           onDismiss={() => {
             setShowFocusOverlay(false);
-            localStorage.setItem('hasDismissedImmediateActionsOverlay', 'true');
+            // No need to store in sessionStorage anymore since we use local state
           }}
         />
       </>
