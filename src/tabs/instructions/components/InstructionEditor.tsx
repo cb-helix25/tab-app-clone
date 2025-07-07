@@ -1,3 +1,4 @@
+//
 // Enhanced instruction editor with seamless placeholder integration
 // Based on PitchBuilder editor patterns
 

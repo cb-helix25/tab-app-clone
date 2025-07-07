@@ -210,10 +210,9 @@ const App: React.FC<AppProps> = ({
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
   // Tabs visible to all users start with the Enquiries tab.
-  // Only show the Instructions tab to Luke (LZ), Kelly (KW), Ben (BL),
-  // Alex (AC), Jonathan (JW), and JWH. Keep it visible when developing locally
+  // Only show the Instructions tab to Alex (AC), Jonathan (JW), Luke (LZ), Kelly (KW), Ben (BL), RC, and JWH. Keep it visible when developing locally
   // (hostname === 'localhost').
-  const instructionsUsers = ['LZ', 'KW', 'BL', 'AC', 'JW', 'JWH'];
+  const instructionsUsers = ['LZ', 'KW', 'BL', 'AC', 'JW', 'RC', 'JWH'];
   const isLocalhost = window.location.hostname === 'localhost';
   const showInstructionsTab =
     instructionsUsers.includes(userInitials) || isLocalhost;

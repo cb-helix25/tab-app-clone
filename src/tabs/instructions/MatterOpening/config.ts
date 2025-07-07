@@ -1,3 +1,4 @@
+//
 export type StepKey = // invisible change
     | 'clientInfo'
     | 'poidSelection'

@@ -1,5 +1,6 @@
+//
 import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisible change
-import { Stack, PrimaryButton } from '@fluentui/react';
+import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
@@ -302,6 +303,15 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         setSearchBoxFocused(false); // Collapse search box after selection
         setPoidSearchTerm(''); // Optionally clear search term
     };
+
+    // Handler for Clear All button
+const handleClearAll = () => {
+  if (hasDataToClear()) {
+    setIsClearDialogOpen(true);
+  } else {
+    doClearAll();
+  }
+};
 
     // Helper to get nickname from localUserData
     function getLocalUserNickname(userInitials: string): string {
@@ -694,12 +704,10 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         return count;
     };
 
+    const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+
     // Clear all selections and inputs
-    const handleClearAll = () => {
-        if (hasDataToClear() && !window.confirm('Are you sure you want to clear all form data? This action cannot be undone.')) {
-            return;
-        }
-        
+    const doClearAll = () => {
         // Clear all the React state
         setSelectedDate(null);
         setTeamMember(defaultTeamMember);
@@ -749,19 +757,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     return (
         <CompletionProvider>
             <Stack className="workflow-container">
-                {!hideClientSections && (
-                    <>
-                        <ClientDetails stage={stage} instructionRef={instructionRef} />
-                        <ClientHub
-                            instructionRef={instructionRef}
-                            clientId={clientId}
-                            feeEarner={feeEarner}
-                            idExpiry={idExpiry}
-                            idVerified={false}
-                            matterRef={matterRef}
-                        />
-                    </>
-                )}
                 {/* Main Container */}
                 <div className="workflow-main matter-opening-card">
                     {/* Persistent Header */}
@@ -1018,6 +1013,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                             
                             {/* Global Clear button - always available when there's something to clear */}
                             {hasDataToClear() && (
+                              <>
                                 <button 
                                     type="button" 
                                     onClick={handleClearAll} 
@@ -1046,35 +1042,54 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                                         e.currentTarget.style.background = '#fff';
                                         e.currentTarget.style.borderColor = '#e1e5e9';
                                         e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
-                                    }}                                    >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                                            <path 
-                                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                        Clear All
-                                        {getFieldCount() > 0 && (
-                                            <span style={{
-                                                background: '#D65541',
-                                                color: '#fff',
-                                                borderRadius: '50%',
-                                                width: '18px',
-                                                height: '18px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '10px',
-                                                fontWeight: 600,
-                                                marginLeft: '2px'
-                                            }}>
-                                                {getFieldCount()}
-                                            </span>
-                                        )}
-                                    </button>
+                                    }}
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path 
+                                            d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6" 
+                                            stroke="currentColor" 
+                                            strokeWidth="2" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                        />
+                                    </svg>
+                                    Clear All
+                                    {getFieldCount() > 0 && (
+                                        <span style={{
+                                            background: '#D65541',
+                                            color: '#fff',
+                                            borderRadius: '50%',
+                                            width: '18px',
+                                            height: '18px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '10px',
+                                            fontWeight: 600,
+                                            marginLeft: '2px'
+                                        }}>
+                                            {getFieldCount()}
+                                        </span>
+                                    )}
+                                </button>
+                                <Dialog
+                                  hidden={!isClearDialogOpen}
+                                  onDismiss={() => setIsClearDialogOpen(false)}
+                                  dialogContentProps={{
+                                    type: DialogType.normal,
+                                    title: 'Clear All Data',
+                                    subText: 'Are you sure you want to clear all form data? This action cannot be undone.'
+                                  }}
+                                  modalProps={{
+                                    isBlocking: true
+                                  }}
+                                >
+                                  <DialogFooter>
+                                    <PrimaryButton onClick={doClearAll} text="Yes, clear all" />
+                                    <DefaultButton onClick={() => setIsClearDialogOpen(false)} text="Cancel" />
+                                  </DialogFooter>
+                                </Dialog>
+                              </>
                             )}
                         </div>
                     </div>

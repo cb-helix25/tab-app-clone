@@ -1,3 +1,4 @@
+//
 // Enhanced Instructions component with integrated placeholder editor
 // This shows how to integrate the new placeholder system with the existing Instructions component
 

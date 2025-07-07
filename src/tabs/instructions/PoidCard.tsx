@@ -1,4 +1,5 @@
 // ---   Imports ---
+//
 import { Stack, Text, mergeStyles, Icon } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
 import { useTheme } from '../../app/functionality/ThemeContext';

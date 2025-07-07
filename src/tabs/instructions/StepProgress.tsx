@@ -1,4 +1,5 @@
 import React from 'react';
+//
 import '../../app/styles/StepProgress.css';
 
 // Make generic on T extends string

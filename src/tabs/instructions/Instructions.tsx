@@ -375,15 +375,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                 }}
               >
                 <PivotItem headerText="Overview" itemKey="overview" />
-                {useLocalData && (
-                  <PivotItem headerText="Deals" itemKey="deals" />
-                )}
-                {useLocalData && (
-                  <PivotItem headerText="Clients" itemKey="clients" />
-                )}
-                {useLocalData && (
-                  <PivotItem headerText="Risk & Compliance" itemKey="risk" />
-                )}
+                <PivotItem headerText="Deals" itemKey="deals" />
+                <PivotItem headerText="Clients" itemKey="clients" />
+                <PivotItem headerText="Risk & Compliance" itemKey="risk" />
                 {useLocalData && (
                   <PivotItem headerText="Scenarios" itemKey="states" />
                 )}
@@ -890,7 +884,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className="disclaimer animate-disclaimer">
-          <p>Note: This module is visible only to Luke, Kanchel, Billy, Alex and Jonathan.</p>
+          <p>Note: This module is visible only to Alex (AC), Jonathan (JW), Luke (LZ), Kanchel (KW), Billy (BL), Richard (RC), and Josh (JWH).</p>
         </div>
         <div className={sectionContainerStyle(isDarkMode)}>
           {activePivot === "overview" && (
