@@ -1,3 +1,68 @@
+/* Animated blue bottom border highlight for quick actions */
+
+.quick-action-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+.quick-action-label {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: unset;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.quick-action-animated-border {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 0%;
+  height: 1px;
+  background: linear-gradient(90deg, #2196f3 0%, #1976d2 100%);
+  border-radius: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
+  z-index: 2;
+}
+
+.quickActionCard:hover .quick-action-animated-border {
+  width: 100%;
+  opacity: 1;
+  transition: width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
+}
+
+.quickActionCard:active {
+  background-color: #eaf4fb !important;
+  box-shadow: none !important;
+}
+
+.quickActionCard:active .quick-action-animated-border {
+  width: 100%;
+  opacity: 1;
+  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
+}
+
+.quickActionCard.selected .quick-action-animated-border {
+  width: 100%;
+  opacity: 1;
+  background: linear-gradient(90deg, #1976d2 0%, #2196f3 100%);
+}
+
+.quickActionCard.selected {
+  background-color: #eaf4fb;
+  box-shadow: none;
+}
+
+/* Remove shadow on press/selected, use subtle background and border only */
 /* invisible change */
 /* Pulsing keyframes moved to animations.css */
 
@@ -9,6 +74,9 @@
   opacity: 0;
   animation: dropIn 0.3s ease forwards;
   animation-delay: calc(var(--card-index, 0) * 0.1s);
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .quickActionCard .icon-wrapper {
@@ -50,9 +118,7 @@
   }
   
   .quickActionCard:active {
-    transform: scale(0.97);
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(0.98);
     border-radius: 0 !important;
   }
   

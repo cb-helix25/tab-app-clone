@@ -150,9 +150,11 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   // Icon logic
   let attendanceIconName = icon;
+  // Use a lighter grey for inactive quick action icons (lighter than instructions)
+  const inactiveGrey = '#c7ccd3'; // lighter than #bfc5cc
   let attendanceIconStyle = mergeStyles({
     fontSize: '19px',
-    color: disabled ? '#888' : (iconColor || colours.cta),
+    color: disabled ? '#e0e3e8' : (selected ? (iconColor || colours.cta) : inactiveGrey),
     marginRight: '4px',
   });
 
@@ -290,7 +292,7 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   return (
     <div
       className={`quickActionCard icon-hover ${dynamicClasses}`}
-      style={{ ...cardVars, ...style }}
+      style={{ ...cardVars, ...style, position: 'relative', overflow: 'visible' }}
       onClick={disabled ? undefined : onClick}
       role="button"
       tabIndex={disabled ? -1 : 0}
@@ -300,43 +302,47 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         }
       }}
     >
-      <span className="icon-wrapper">
-        {(() => {
-          if (!attendanceIconName) {
-            return null;
-          }
-          const mapping = iconMap[attendanceIconName];
-          if (mapping) {
-            const OutlineIcon = mapping.outline;
-            const FilledIcon = mapping.filled;
-            return (
-              <>
-                <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
-                <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
-              </>
-            );
-          }
-          // fallback to Fluent UI icons when no mapping exists
-          return <Icon iconName={attendanceIconName} className={attendanceIconStyle} />;
-        })()}
-      </span>
-      {showPulsingDot && orientation === 'row' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Text variant="small" styles={{ root: textStyle }}>
-            {title}
-          </Text>
-          <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
-        </div>
-      ) : (
-        <>
-          <Text variant="small" styles={{ root: textStyle }}>
-            {title}
-          </Text>
-          {showPulsingDot && orientation === 'column' && (
+      <span className="quick-action-content">
+        <span className="icon-wrapper">
+          {(() => {
+            if (!attendanceIconName) {
+              return null;
+            }
+            const mapping = iconMap[attendanceIconName];
+            if (mapping) {
+              const OutlineIcon = mapping.outline;
+              const FilledIcon = mapping.filled;
+              return (
+                <>
+                  <OutlineIcon className={`icon-outline ${attendanceIconStyle}`} />
+                  <FilledIcon className={`icon-filled ${attendanceIconStyle}`} />
+                </>
+              );
+            }
+            // fallback to Fluent UI icons when no mapping exists
+            return <Icon iconName={attendanceIconName} className={attendanceIconStyle} />;
+          })()}
+        </span>
+        {showPulsingDot && orientation === 'row' ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+            <Text variant="small" styles={{ root: textStyle }} className="quick-action-label">
+              {title}
+            </Text>
             <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
-          )}
-        </>
-      )}
+          </span>
+        ) : (
+          <>
+            <Text variant="small" styles={{ root: textStyle }} className="quick-action-label">
+              {title}
+            </Text>
+            {showPulsingDot && orientation === 'column' && (
+              <AnimatedPulsingDot show={showPulsingDot} size={6} animationDuration={350} />
+            )}
+          </>
+        )}
+      </span>
+      {/* Animated blue bottom border highlight */}
+      <span className="quick-action-animated-border" aria-hidden="true" />
     </div>
   );
 };

@@ -15,6 +15,7 @@ interface QuickActionsBarProps {
     handleActionClick: (action: QuickAction) => void;
     currentUserConfirmed: boolean;
     highlighted?: boolean;
+    resetSelectionRef?: React.MutableRefObject<(() => void) | null>; // Ref to reset function
 }
 
 const ACTION_BAR_HEIGHT = 48;
@@ -27,11 +28,11 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         boxShadow: isDarkMode
             ? '0 2px 4px rgba(0,0,0,0.4)'
             : '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '0 24px',
+        padding: '0 8px',
         transition: 'background-color 0.3s',
         display: 'flex',
         flexDirection: 'row',
-        gap: '8px',
+        gap: '4px',
         overflowX: 'auto',
         msOverflowStyle: 'none',
         scrollbarWidth: 'none',
@@ -43,6 +44,9 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         zIndex: 999,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
+        minWidth: 0,
+        width: '100%',
+        flexWrap: 'nowrap',
         ...(highlighted && {
             transform: 'scale(1.02)',
             filter: 'brightness(1.05)',
@@ -54,6 +58,14 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
                 display: 'none',
             },
         },
+        '@media (max-width: 900px)': {
+            gap: '2px',
+            padding: '0 2px',
+        },
+        '@media (max-width: 600px)': {
+            gap: '0px',
+            padding: '0 0px',
+        },
     });
 
 const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
@@ -62,41 +74,89 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
     handleActionClick,
     currentUserConfirmed,
     highlighted = false,
+    resetSelectionRef,
 }) => {
     const [selected, setSelected] = React.useState<string | null>(null);
+
+    // Expose reset function via ref
+    React.useEffect(() => {
+        if (resetSelectionRef) {
+            resetSelectionRef.current = () => setSelected(null);
+        }
+    }, [resetSelectionRef]);
+
+    // Reset selection when component unmounts (when bar is hidden/removed)
+    React.useEffect(() => {
+        return () => {
+            setSelected(null);
+        };
+    }, []);
 
     const onCardClick = (action: QuickAction) => {
         setSelected(action.title);
         handleActionClick(action);
     };
+    // Map long titles to short ones for space-saving
+    const getShortTitle = (title: string) => {
+        switch (title) {
+            case 'Create a Task':
+                return 'Tasks';
+            case 'Save Telephone Note':
+                return 'Tel Note';
+            case 'Request Annual Leave':
+                return 'Request Leave';
+            case 'Update Attendance':
+                return 'Edit Attendance';
+            case 'Book Space':
+                return 'Spaces';
+            default:
+                return title;
+        }
+    };
 
     return (
-        <div className={quickLinksStyle(isDarkMode, highlighted)} style={{ display: 'flex', gap: '10px', minHeight: ACTION_BAR_HEIGHT }}>
-            {quickActions.map((action, index) => (
-                <QuickActionsCard
-                    key={action.title}
-                    title={action.title}
-                    icon={action.icon}
-                    isDarkMode={isDarkMode}
-                    onClick={() => onCardClick(action)}
-                    iconColor={colours.cta}
-                    selected={selected === action.title}
-                    style={{
+        <div
+            className={quickLinksStyle(isDarkMode, highlighted)}
+            style={{
+                display: 'flex',
+                gap: '12px', // Increased gap for better separation
+                minHeight: ACTION_BAR_HEIGHT,
+                width: '100%',
+                flexWrap: 'nowrap',
+                overflowX: 'auto',
+                paddingTop: 2,
+                paddingBottom: 2,
+            }}
+        >
+            {quickActions.map((action, index) => {
+                const cardProps: any = {
+                    key: action.title,
+                    title: getShortTitle(action.title),
+                    icon: action.icon,
+                    isDarkMode,
+                    onClick: () => onCardClick(action),
+                    iconColor: colours.cta,
+                    selected: selected === action.title,
+                    style: {
                         '--card-index': index,
-                        fontSize: '16px',
-                        padding: '0 12px',
-                        height: '48px',
+                        fontSize: '15px',
+                        padding: '0 14px',
+                        height: '48px', // Changed from 44px to match Enquiries/Matters
+                        minWidth: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-start',
-                    } as React.CSSProperties}
-                    {...(action.title === 'Confirm Attendance'
-                        ? { confirmed: currentUserConfirmed }
-                        : {})}
-                />
-            ))}
+                        flex: '0 0 auto',
+                        marginLeft: index === 0 ? 0 : 0,
+                    } as React.CSSProperties,
+                };
+                if (action.title === 'Confirm Attendance') {
+                    cardProps.confirmed = currentUserConfirmed;
+                }
+                return <QuickActionsCard {...cardProps} />;
+            })}
         </div>
     );
-};
+}
 
 export default QuickActionsBar;

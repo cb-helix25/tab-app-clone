@@ -7,7 +7,7 @@ conn = pyodbc.connect(
     'SERVER=instructions.database.windows.net;'
     'DATABASE=instructions;'
     'UID=instructionsadmin;'
-    'PWD=qG?-hTyfhsWE0,,}uJB,'
+    'PWD='
 )
 
 cursor = conn.cursor()

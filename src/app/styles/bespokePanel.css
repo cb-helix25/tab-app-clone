@@ -1,33 +1,39 @@
-/* invisible change */
 /* src/app/styles/bespokePanel.css */
-  
-  /* Panel container overlay */
-  .bespokePanelOverlay {
-    position: fixed;
-    top: 96px;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 96px);
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: flex-end;
-    z-index: 1000;
-    animation: fadeIn 0.3s forwards;
-  }
-  
-  /* Panel content */
-  .bespokePanelContent {
-    background-color: #fff;
-    width: 1600px;
-    max-width: 100%;
-    height: 100%;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
-    display: flex;
-    flex-direction: column;
-    animation: slideIn 0.3s forwards;
-  }
-  
-  .bespokePanelContent.closing {
-    animation: slideOut 0.3s forwards;
-  }
+
+/* Panel container overlay */
+.bespokePanelOverlay {
+  position: fixed;
+  top: 96px;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 96px);
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+  animation: fadeIn 0.3s forwards;
+}
+
+/* Panel content */
+.bespokePanelContent {
+  background-color: #fff;
+  width: 1600px;
+  max-width: 100%;
+  height: 100%;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s forwards;
+}
+
+.bespokePanelContent.closing {
+  animation: slideOut 0.3s forwards;
+}
+
+/* --- Fix unwanted margin above Fluent UI Panel/Dialog/SidePanel --- */
+/* Remove margin-top from Fluent UI Panel/Dialog when used after quick actions bar */
+.ms-Stack.css-238 > .css-328,
+.ms-Stack.css-238 > [role='dialog'] {
+  margin-top: 0 !important;
+}
   

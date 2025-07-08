@@ -863,6 +863,9 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   const [allMattersError, setAllMattersError] = useState<string | null>(null);
   const [isLoadingAllMatters, setIsLoadingAllMatters] = useState<boolean>(false);
 
+  // Reset ref for QuickActionsBar to clear selection when panels close
+  const resetQuickActionsSelectionRef = useRef<(() => void) | null>(null);
+
   const [timeMetricsCollapsed, setTimeMetricsCollapsed] = useState(false);
   const [conversionMetricsCollapsed, setConversionMetricsCollapsed] = useState(false);
 
@@ -2016,7 +2019,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
     startOfCurrentWeek.setHours(0, 0, 0, 0);
     const startOfLastWeek = new Date(startOfCurrentWeek);
-    startOfLastWeek.setDate(startOfCurrentWeek.getDate() - 7);
+    startOfLastWeek.setDate(getMondayOfCurrentWeek().getDate() - 7);
 
     const computeAverageUpTo = (
       dailyData: Record<string, { total_hours: number; total_amount: number }>,
@@ -2286,7 +2289,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
               hearing_confirmation: item.hearing_confirmation,
               hearing_details: item.hearing_details,
             }))}
-            onClose={() => setIsBespokePanelOpen(false)}
+            onClose={() => {
+              setIsBespokePanelOpen(false);
+              resetQuickActionsSelection();
+            }}
             team={(teamData ?? []) as any}
             totals={annualLeaveTotals}
             allLeaveEntries={annualLeaveAllData}
@@ -2312,7 +2318,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
               status: item.status,
               rejection_notes: item.rejection_notes,
             }))}
-            onClose={() => setIsBespokePanelOpen(false)}
+            onClose={() => {
+              setIsBespokePanelOpen(false);
+              resetQuickActionsSelection();
+            }}
             team={transformedTeamData}
           />
         </Suspense>
@@ -2354,7 +2363,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
             edits={snippetApprovalsNeeded}
             onApprove={(id) => approveSnippet(id, true)}
             onReject={(id) => approveSnippet(id, false)}
-            onClose={() => setIsBespokePanelOpen(false)}
+            onClose={() => {
+              setIsBespokePanelOpen(false);
+              resetQuickActionsSelection();
+            }}
           />
         </Suspense>
       );
@@ -2473,7 +2485,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
             <BookSpaceForm
               feeEarner={userData[0].Initials}
-              onCancel={() => setIsBespokePanelOpen(false)}
+              onCancel={() => {
+                setIsBespokePanelOpen(false);
+                resetQuickActionsSelection();
+              }}
               futureBookings={futureBookings}
             />
           </Suspense>
@@ -2534,10 +2549,21 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [isLoadingAttendance, currentUserConfirmed, hasActiveMatter, instructionData, immediateALActions, handleActionClick]);
 
+  // Helper function to reset quick actions selection when panels close
+  const resetQuickActionsSelection = useCallback(() => {
+    if (resetQuickActionsSelectionRef.current) {
+      resetQuickActionsSelectionRef.current();
+    }
+  }, []);
+
   // Show overlay when immediate actions become available
-  const [hasShownOverlayThisSession, setHasShownOverlayThisSession] = useState<boolean>(false);
+  // Check if overlay has been shown/dismissed in this browser session
+  const [hasShownOverlayThisSession, setHasShownOverlayThisSession] = useState<boolean>(() => {
+    return sessionStorage.getItem('immediateActionsOverlayShown') === 'true';
+  });
+
   useEffect(() => {
-    // Show overlay if there are actions and user hasn't dismissed it in this page session
+    // Show overlay if there are actions and user hasn't dismissed it in this browser session
     if (
       immediateActionsReady &&
       immediateActionsList &&
@@ -2547,6 +2573,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     ) {
       setShowFocusOverlay(true);
       setHasShownOverlayThisSession(true);
+      sessionStorage.setItem('immediateActionsOverlayShown', 'true');
     }
   }, [immediateActionsReady, immediateActionsList, showFocusOverlay, hasShownOverlayThisSession]);
 
@@ -2582,6 +2609,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           handleActionClick={handleActionClick}
           currentUserConfirmed={currentUserConfirmed}
           highlighted={false}
+          resetSelectionRef={resetQuickActionsSelectionRef}
         />
         <ImmediateActionsBar
           isDarkMode={isDarkMode}
@@ -2591,7 +2619,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           showDismiss={showFocusOverlay}
           onDismiss={() => {
             setShowFocusOverlay(false);
-            // No need to store in sessionStorage anymore since we use local state
+            setHasShownOverlayThisSession(true);
+            sessionStorage.setItem('immediateActionsOverlayShown', 'true');
           }}
         />
       </>
@@ -2748,7 +2777,7 @@ const noActionsClass = mergeStyles({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  animation: `${fadeInKeyframes} 0.3s ease-out`,
+  animation: `${fadeInKeyframes} 0.3s ease`,
 });
 
   // Style for the animated tick icon container
@@ -3109,7 +3138,10 @@ const conversionRate = enquiriesMonthToDate
       {/* Contexts Panel */}
       <BespokePanel
         isOpen={isContextPanelOpen}
-        onClose={() => setIsContextPanelOpen(false)}
+        onClose={() => {
+          setIsContextPanelOpen(false);
+          resetQuickActionsSelection();
+        }}
         title="Context Details"
           width="2000px"
       >
@@ -3118,7 +3150,10 @@ const conversionRate = enquiriesMonthToDate
 
       <BespokePanel
         isOpen={isOutstandingPanelOpen}
-        onClose={() => setIsOutstandingPanelOpen(false)}
+        onClose={() => {
+          setIsOutstandingPanelOpen(false);
+          resetQuickActionsSelection();
+        }}
         title="Outstanding Balances Details"
         width="2000px"
       >
@@ -3138,7 +3173,10 @@ const conversionRate = enquiriesMonthToDate
       {/* Bespoke Panel for other actions */}
       <BespokePanel
         isOpen={isBespokePanelOpen}
-        onClose={() => setIsBespokePanelOpen(false)}
+        onClose={() => {
+          setIsBespokePanelOpen(false);
+          resetQuickActionsSelection();
+        }}
         title={bespokePanelTitle}
           width="60%"
           offsetTop={96}
@@ -3149,7 +3187,10 @@ const conversionRate = enquiriesMonthToDate
         {/* Transaction Approval Popup */}
         <BespokePanel
           isOpen={isTransactionPopupOpen}
-          onClose={() => setIsTransactionPopupOpen(false)}
+          onClose={() => {
+            setIsTransactionPopupOpen(false);
+            resetQuickActionsSelection();
+          }}
           title="Approve Transaction"
           width="2000px"
       >
@@ -3158,7 +3199,10 @@ const conversionRate = enquiriesMonthToDate
             transaction={selectedTransaction}
             matters={allMatters || []}
             onSubmit={handleTransactionSubmit}
-            onCancel={() => setIsTransactionPopupOpen(false)}
+            onCancel={() => {
+              setIsTransactionPopupOpen(false);
+              resetQuickActionsSelection();
+            }}
             userInitials={userInitials} // Add userInitials prop
           />
         )}
@@ -3168,7 +3212,10 @@ const conversionRate = enquiriesMonthToDate
       {selectedForm && (
         <FormDetails
           isOpen={true}
-          onClose={() => setSelectedForm(null)}
+          onClose={() => {
+            setSelectedForm(null);
+            resetQuickActionsSelection();
+          }}
           link={selectedForm}
           isDarkMode={isDarkMode}
           userData={userData}
@@ -3179,7 +3226,10 @@ const conversionRate = enquiriesMonthToDate
 
       {/* Selected Resource Details */}
       {selectedResource && (
-        <ResourceDetails resource={selectedResource} onClose={() => setSelectedResource(null)} />
+        <ResourceDetails resource={selectedResource} onClose={() => {
+          setSelectedResource(null);
+          resetQuickActionsSelection();
+        }} />
       )}
 
       <div

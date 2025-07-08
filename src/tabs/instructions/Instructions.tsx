@@ -108,23 +108,26 @@ const Instructions: React.FC<InstructionsProps> = ({
       boxShadow: dark
         ? "0 2px 4px rgba(0,0,0,0.4)"
         : "0 2px 4px rgba(0,0,0,0.1)",
-      borderTop: dark
-        ? "1px solid rgba(255,255,255,0.1)"
-        : "1px solid rgba(0,0,0,0.05)",
       padding: "0 24px",
       transition: "background-color 0.3s",
       display: "flex",
       flexDirection: "row",
       gap: "8px",
       overflowX: "auto",
+      msOverflowStyle: "none",
+      scrollbarWidth: "none",
       alignItems: "center",
       height: ACTION_BAR_HEIGHT,
-      paddingBottom: 0,
       position: "sticky",
       top: ACTION_BAR_HEIGHT,
       zIndex: 999,
       borderTopLeftRadius: 0,
       borderTopRightRadius: 0,
+      selectors: {
+        '::-webkit-scrollbar': {
+          display: 'none',
+        },
+      },
     });
 
   const detailNavStyle = (dark: boolean) =>
