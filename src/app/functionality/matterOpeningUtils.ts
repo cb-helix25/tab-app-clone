@@ -47,7 +47,10 @@ export const hasActiveMatterOpening = (isCurrentlyInMatterOpening: boolean = fal
     'matterOpeningDraft_opponentSolicitorName',
     'matterOpeningDraft_opponentSolicitorCompany',
     'matterOpeningDraft_opponentSolicitorEmail',
-    'matterOpeningDraft_noConflict'
+    'matterOpeningDraft_noConflict',
+    'matterOpeningDraft_enterOpponentNow',
+    'matterOpeningDraft_opponentType',
+    'matterOpeningDraft_showSummary'
   ];
 
   // Check if the matter has been completed (submitted)
@@ -110,6 +113,9 @@ export const clearMatterOpeningDraft = (): void => {
     'matterOpeningDraft_opponentSolicitorCompany',
     'matterOpeningDraft_opponentSolicitorEmail',
     'matterOpeningDraft_noConflict',
+    'matterOpeningDraft_enterOpponentNow',
+    'matterOpeningDraft_opponentType',
+    'matterOpeningDraft_showSummary',
     'matterOpeningDraft_hasInput',
     'matterOpeningDraft_completed'
   ];

@@ -974,12 +974,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                             />
                                         </svg>
                                     );
-                                } else if (["failed", "review"].includes(status)) {
+                                } else if (status === "failed") {
                                     icon = (
                                         <svg viewBox="0 0 24 24">
                                             <circle cx="12" cy="12" r="11" fill="#fff" />
                                             <line x1="7" y1="7" x2="17" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
                                             <line x1="17" y1="7" x2="7" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
+                                        </svg>
+                                    );
+                                } else if (status === "review") {
+                                    icon = (
+                                        <svg viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="11" fill="#fff" />
+                                            <line x1="7" y1="7" x2="17" y2="17" stroke="#bfa100" strokeWidth="2.5" strokeLinecap="round" />
+                                            <line x1="17" y1="7" x2="7" y2="17" stroke="#bfa100" strokeWidth="2.5" strokeLinecap="round" />
                                         </svg>
                                     );
                                 } else if (status === "flagged") {
@@ -1010,9 +1018,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             const hoverFill = '#e3f0fc';
                             let border = `1px solid ${helixGrey}`;
                             let background = helixGreyFill;
-                            if (["failed", "review"].includes(status)) {
+                            if (status === "failed") {
                                 border = `1px solid ${ctaRed}`;
                                 background = ctaRedFill;
+                            } else if (status === "review") {
+                                border = '1px solid #bfa100';
+                                background = '#fffbe6';
                             } else if (["complete", "closed", "verified", "approved"].includes(status)) {
                                 border = `1px solid ${green}`;
                                 background = greenFill;

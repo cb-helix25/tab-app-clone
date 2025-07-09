@@ -7,6 +7,10 @@ import {
   PivotItem,
   Text,
   PrimaryButton,
+  Dialog,
+  DialogType,
+  DialogFooter,
+  DefaultButton,
 } from "@fluentui/react";
 import {
   FaIdBadge,
@@ -28,6 +32,7 @@ import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import type { DealSummary } from "./JointClientCard";
 import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
 import localInstructionData from "../../localData/localInstructionData.json";
 import localInstructionCards from "../../localData/localInstructionCards.json";
 import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
@@ -68,6 +73,8 @@ const Instructions: React.FC<InstructionsProps> = ({
     null,
   );
   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
+  const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+  const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
 
   // Notify parent when matter opening workflow state changes
   useEffect(() => {
@@ -547,6 +554,29 @@ const Instructions: React.FC<InstructionsProps> = ({
     return Object.values(unique);
   }, [instructionData]);
 
+  const selectedOverviewItem = useMemo(
+    () =>
+      selectedInstruction
+        ? overviewItems.find(
+            (item) =>
+              item.instruction?.InstructionRef ===
+              selectedInstruction.InstructionRef,
+          ) || null
+        : null,
+    [selectedInstruction, overviewItems],
+  );
+
+  const poidResult =
+    selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
+  const poidPassed = poidResult === "passed" || poidResult === "approved";
+  const verificationFound = !!selectedOverviewItem?.eid;
+  const verifyButtonLabel = verificationFound
+    ? poidPassed
+      ? "ID Verified"
+      : "Review ID"
+    : "Verify ID";
+  const disableOtherActions = !poidPassed;
+
   const unlinkedDeals = useMemo(
     () =>
       instructionData.flatMap((p) =>
@@ -775,9 +805,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, []);
 
   const handleOpenMatter = (inst: any) => {
-    setSelectedInstruction(inst);
-    setPendingInstructionRef('');
-    setShowNewMatterPage(true);
+    if (hasActiveMatterOpening()) {
+      setPendingInstruction(inst);
+      setIsResumeDialogOpen(true);
+    } else {
+      setSelectedInstruction(inst);
+      setPendingInstructionRef('');
+      setShowNewMatterPage(true);
+    }
   };
 
   const handleRiskAssessment = (item: any) => {
@@ -933,6 +968,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   }
 
   return (
+    <>
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
         <div className="disclaimer animate-disclaimer">
@@ -1092,7 +1128,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               <span className="global-action-label" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
               }}>
-                Verify/Review ID
+                {verifyButtonLabel}
               </span>
             </button>
             <button
@@ -1102,20 +1138,21 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1, // Always visible
+                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                opacity: disableOtherActions ? 0.5 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
+                pointerEvents: disableOtherActions ? 'none' : 'auto',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 <MdOutlineAssessment className="icon-outline" />
                 <MdAssessment className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 Assess Risk
               </span>
@@ -1127,21 +1164,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1, // Always visible
+                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                opacity: disableOtherActions ? 0.5 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
+                pointerEvents: disableOtherActions ? 'none' : 'auto',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 <FaRegFolder className="icon-outline" />
                 <FaFolder className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
               </span>
@@ -1167,20 +1205,21 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1, // Always visible
+                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                opacity: disableOtherActions ? 0.5 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
+                pointerEvents: disableOtherActions ? 'none' : 'auto',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 <MdOutlineArticle className="icon-outline" />
                 <MdArticle className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
               }}>
                 Draft CCL
               </span>
@@ -1189,6 +1228,38 @@ const Instructions: React.FC<InstructionsProps> = ({
         )}
       </Stack>
     </section>
+      <Dialog
+        hidden={!isResumeDialogOpen}
+        onDismiss={() => setIsResumeDialogOpen(false)}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Resume Matter Opening?',
+          subText:
+            'An unfinished matter opening was detected. Would you like to resume it or start a new one?'
+        }}
+        modalProps={{ isBlocking: true }}
+      >
+        <DialogFooter>
+          <PrimaryButton
+            onClick={() => {
+              setIsResumeDialogOpen(false);
+              setSelectedInstruction(pendingInstruction);
+              setShowNewMatterPage(true);
+            }}
+            text="Resume"
+          />
+          <DefaultButton
+            onClick={() => {
+              clearMatterOpeningDraft();
+              setIsResumeDialogOpen(false);
+              setSelectedInstruction(pendingInstruction);
+              setShowNewMatterPage(true);
+            }}
+            text="Start New"
+          />
+        </DialogFooter>
+      </Dialog>
+    </>
   );
 };
 

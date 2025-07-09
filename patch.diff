@@ -1,412 +1,125 @@
-diff --git a/src/localData/localIdVerifications.json b/src/localData/localIdVerifications.json
-index 3a74282aec9d8b3c5affd542ae5c5e3c4855bfdd..5e38720eb87c127ab571aa751034f818085d2dac 100644
---- a/src/localData/localIdVerifications.json
-+++ b/src/localData/localIdVerifications.json
-@@ -1,217 +1,192 @@
- [
--    {
--        "InternalId": 1,
--        "InstructionRef": "HLX-20003-12345",
--        "MatterId": null,
--        "DealJointClientId": null,
--        "ClientId": null,
--        "ProspectId": 20003,
--        "ClientEmail": "shyamsai@yahoo.com",
--        "IsLeadClient": false,
--        "AdditionalIDDate": null,
--        "AdditionalIDTime": null,
--        "EIDCheckId": "593d308b-293f-498d-91a7-3b20a3182f51",
--        "EIDProvider": "tiller",
--        "EIDStatus": "completed",
--        "EIDScore": null,
--        "EIDRawResponse": "...see docs...",
--        "EIDCheckedDate": "2025-06-25",
--        "EIDCheckedTime": "11:50:27.9910000",
--        "CheckExpiry": "2025-12-25",
--        "EIDOverallResult": "Review",
--        "PEPAndSanctionsCheckResult": "Passed",
--        "AddressVerificationResult": "Review",
--        "FirstName": "Shyam",
--        "LastName": "Sai",
--        "Email": "shyamsai@yahoo.com",
--        "Nationality": "Indian",
--        "NationalityAlpha2": "IN",
--        "DOB": "1985-06-15",
--        "PassportNumber": "A12345678",
--        "DriversLicenseNumber": "SAII85061589H",
--        "HouseNumber": "42",
--        "Street": "Oak Lane",
--        "City": "Mumbai",
--        "County": "Maharashtra",
--        "Postcode": "400001",
--        "Country": "India",
--        "CountryCode": "IN",
--        "stage": "completed",
--        "poc": "LZ"
--    },
--    {
--        "InternalId": 2,
--        "InstructionRef": "HLX-20002-11223",
--        "MatterId": null,
--        "DealJointClientId": null,
--        "ClientId": null,
--        "ProspectId": 20002,
--        "ClientEmail": "sylvia.hughes@helixlaw.com",
--        "IsLeadClient": true,
--        "AdditionalIDDate": "2025-06-12",
--        "AdditionalIDTime": "09:25:43.1234567",
--        "EIDCheckId": "a1b2c3d4-e5f6-7890-abcd-111111111111",
--        "EIDProvider": "tiller",
--        "EIDStatus": "completed",
--        "EIDScore": null,
--        "EIDRawResponse": null,
--        "EIDCheckedDate": "2025-06-12",
--        "EIDCheckedTime": "09:25:43.1234567",
--        "CheckExpiry": "2025-12-12",
--        "EIDOverallResult": "Passed",
--        "PEPAndSanctionsCheckResult": "Passed",
--        "AddressVerificationResult": "Passed",
--        "FirstName": "Sylvia",
--        "LastName": "Hughes",
--        "Email": "sylvia.hughes@helixlaw.com",
--        "Nationality": "British",
--        "NationalityAlpha2": "GB",
--        "DOB": "1990-01-01",
--        "PassportNumber": "GB123456",
--        "DriversLicenseNumber": "HUGHS901019SH1JA",
--        "HouseNumber": "15",
--        "Street": "Maple Avenue",
--        "City": "London",
--        "County": "Greater London",
--        "Postcode": "EC1V 2NX",
--        "Country": "United Kingdom",
--        "CountryCode": "GB",
--        "type": "Yes",
--        "company_name": "Hughes Consulting Ltd",
--        "CompanyNumber": "09876543",
--        "CompanyHouseNumber": "35",
--        "CompanyStreet": "Business Street",
--        "CompanyCity": "London",
--        "CompanyCounty": "Greater London",
--        "stage": "completed",
--        "poc": "JW"
--    },
--    {
--        "InternalId": 3,
--        "InstructionRef": "HLX-20004-23456",
--        "MatterId": null,
--        "DealJointClientId": null,
--        "ClientId": null,
--        "ProspectId": 20004,
--        "ClientEmail": "naveed.khan@helixlaw.com",
--        "IsLeadClient": false,
--        "AdditionalIDDate": null,
--        "AdditionalIDTime": null,
--        "EIDCheckId": "b2c3d4e5-f6a1-8901-bcde-222222222222",
--        "EIDProvider": "tiller",
--        "EIDStatus": "completed",
--        "EIDScore": null,
--        "EIDRawResponse": null,
--        "EIDCheckedDate": "2025-06-18",
--        "EIDCheckedTime": "11:15:29",
--        "CheckExpiry": "2025-12-18",
--        "EIDOverallResult": "Review",
--        "PEPAndSanctionsCheckResult": "Passed",
--        "AddressVerificationResult": "Review",
--        "FirstName": "Naveed",
--        "LastName": "Khan",
--        "prefix": "Dr",
--        "Email": "naveed.khan@helixlaw.com",
--        "Nationality": "Pakistani",
--        "NationalityAlpha2": "PK",
--        "DOB": "1982-03-22",
--        "PassportNumber": "PK789012",
--        "DriversLicenseNumber": "KHANN820322NK2JP",
--        "HouseNumber": "78",
--        "Street": "Cedar Road",
--        "City": "Birmingham",
--        "County": "West Midlands",
--        "Postcode": "B1 1AA",
--        "Country": "United Kingdom",
--        "CountryCode": "GB",
--        "stage": "Review",
--        "poc": "BR"
--    },
--    {
--        "InternalId": 4,
--        "InstructionRef": "HLX-20005-34567",
--        "MatterId": null,
--        "DealJointClientId": null,
--        "ClientId": null,
--        "ProspectId": 20005,
--        "ClientEmail": "dana.miller@helixlaw.com",
--        "IsLeadClient": true,
--        "AdditionalIDDate": "2025-05-30",
--        "AdditionalIDTime": "14:10:10.0101010",
--        "EIDCheckId": "c3d4e5f6-a1b2-9012-cdef-333333333333",
--        "EIDProvider": "tiller",
--        "EIDStatus": "completed",
--        "EIDScore": null,
--        "EIDRawResponse": null,
--        "EIDCheckedDate": "2025-05-30",
--        "EIDCheckedTime": "14:10:10.0101010",
--        "CheckExpiry": "2025-11-30",
--        "EIDOverallResult": "Passed",
--        "PEPAndSanctionsCheckResult": "Passed",
--        "AddressVerificationResult": "Passed",
--        "FirstName": "Dana",
--        "LastName": "Miller",
--        "Email": "dana.miller@helixlaw.com",
--        "Nationality": "American",
--        "NationalityAlpha2": "US",
--        "DOB": "1978-09-14",
--        "PassportNumber": "US456789",
--        "DriversLicenseNumber": "MILLD780914DM3AD",
--        "HouseNumber": "502",
--        "Street": "Pine Street",
--        "City": "Manchester",
--        "County": "Greater Manchester",
--        "Postcode": "M1 2WD",
--        "Country": "United Kingdom",
--        "CountryCode": "GB",
--        "stage": "completed",
--        "poc": "AC"
--    },
--    {
--        "InternalId": 5,
--        "InstructionRef": "HLX-20006-45678",
--        "MatterId": null,
--        "DealJointClientId": null,
--        "ClientId": null,
--        "ProspectId": 20006,
--        "ClientEmail": "michael.chen@helixlaw.com",
--        "IsLeadClient": false,
--        "AdditionalIDDate": null,
--        "AdditionalIDTime": null,
--        "EIDCheckId": "d4e5f6a1-b2c3-0123-def0-444444444444",
--        "EIDProvider": "tiller",
--        "EIDStatus": "completed",
--        "EIDScore": null,
--        "EIDRawResponse": null,
--        "EIDCheckedDate": "2025-06-22",
--        "EIDCheckedTime": "16:45:00",
--        "CheckExpiry": "2025-12-22",
--        "EIDOverallResult": "Review",
--        "PEPAndSanctionsCheckResult": "Passed",
--        "AddressVerificationResult": "Review",
--        "FirstName": "Michael",
--        "LastName": "Chen",
--        "Email": "michael.chen@helixlaw.com",
--        "Nationality": "Chinese",
--        "NationalityAlpha2": "CN",
--        "DOB": "1995-11-30",
--        "PassportNumber": "CN123987",
--        "DriversLicenseNumber": "CHENM951130MC4WQ",
--        "HouseNumber": "27",
--        "Street": "Willow Close",
--        "City": "Edinburgh",
--        "County": "Midlothian",
--        "Postcode": "EH1 1ZZ",
--        "Country": "United Kingdom",
--        "CountryCode": "GB",
--        "type": "Yes",
--        "company_name": "Chen Technologies Ltd",
--        "CompanyNumber": "12345678",
--        "CompanyHouseNumber": "100",
--        "CompanyStreet": "Tech Park Avenue",
--        "CompanyCity": "Edinburgh",
--        "CompanyCounty": "Midlothian",
--        "stage": "Review",
--        "poc": "LZ"
--    }
-+  {
-+    "InternalId": 2,
-+    "InstructionRef": "HLX-20002-11223",
-+    "MatterId": null,
-+    "DealJointClientId": null,
-+    "ClientId": null,
-+    "ProspectId": 20002,
-+    "ClientEmail": "sylvia.hughes@helixlaw.com",
-+    "IsLeadClient": true,
-+    "AdditionalIDDate": "2025-06-12",
-+    "AdditionalIDTime": "09:25:43.1234567",
-+    "EIDCheckId": "a1b2c3d4-e5f6-7890-abcd-111111111111",
-+    "EIDProvider": "tiller",
-+    "EIDStatus": "completed",
-+    "EIDScore": null,
-+    "EIDRawResponse": null,
-+    "EIDCheckedDate": "2025-06-12",
-+    "EIDCheckedTime": "09:25:43.1234567",
-+    "CheckExpiry": "2025-12-12",
-+    "EIDOverallResult": "Passed",
-+    "PEPAndSanctionsCheckResult": "Passed",
-+    "AddressVerificationResult": "Passed",
-+    "FirstName": "Sylvia",
-+    "LastName": "Hughes",
-+    "Email": "test@example.com",
-+    "Nationality": "United Kingdom",
-+    "NationalityAlpha2": "GB",
-+    "DOB": "1990-01-01",
-+    "PassportNumber": "AA1234567",
-+    "DriversLicenseNumber": null,
-+    "HouseNumber": "1",
-+    "Street": "Test Street",
-+    "City": "Test City",
-+    "County": "Test County",
-+    "Postcode": "TE5 7ST",
-+    "Country": "United Kingdom",
-+    "CountryCode": "GB"
-+  },
-+  {
-+    "InternalId": 1,
-+    "InstructionRef": "HLX-20003-12345",
-+    "MatterId": null,
-+    "DealJointClientId": null,
-+    "ClientId": null,
-+    "ProspectId": 20003,
-+    "ClientEmail": "shyamsai@yahoo.com",
-+    "IsLeadClient": false,
-+    "AdditionalIDDate": null,
-+    "AdditionalIDTime": null,
-+    "EIDCheckId": "593d308b-293f-498d-91a7-3b20a3182f51",
-+    "EIDProvider": "tiller",
-+    "EIDStatus": "completed",
-+    "EIDScore": null,
-+    "EIDRawResponse": "...see docs...",
-+    "EIDCheckedDate": "2025-06-25",
-+    "EIDCheckedTime": "11:50:27.9910000",
-+    "CheckExpiry": "2025-12-25",
-+    "EIDOverallResult": "Review",
-+    "PEPAndSanctionsCheckResult": "Passed",
-+    "AddressVerificationResult": "Review",
-+    "FirstName": "Shyam",
-+    "LastName": "Sai",
-+    "Email": "test@example.com",
-+    "Nationality": "United Kingdom",
-+    "NationalityAlpha2": "GB",
-+    "DOB": "1990-01-01",
-+    "PassportNumber": "BB1234567",
-+    "DriversLicenseNumber": null,
-+    "HouseNumber": "1",
-+    "Street": "Test Street",
-+    "City": "Test City",
-+    "County": "Test County",
-+    "Postcode": "TE5 7ST",
-+    "Country": "United Kingdom",
-+    "CountryCode": "GB"
-+  },
-+  {
-+    "InternalId": 3,
-+    "InstructionRef": "HLX-20004-23456",
-+    "MatterId": null,
-+    "DealJointClientId": null,
-+    "ClientId": null,
-+    "ProspectId": 20004,
-+    "ClientEmail": "naveed.khan@helixlaw.com",
-+    "IsLeadClient": false,
-+    "AdditionalIDDate": null,
-+    "AdditionalIDTime": null,
-+    "EIDCheckId": "b2c3d4e5-f6a1-8901-bcde-222222222222",
-+    "EIDProvider": "tiller",
-+    "EIDStatus": "completed",
-+    "EIDScore": null,
-+    "EIDRawResponse": null,
-+    "EIDCheckedDate": "2025-06-18",
-+    "EIDCheckedTime": "11:15:29",
-+    "CheckExpiry": "2025-12-18",
-+    "EIDOverallResult": "Review",
-+    "PEPAndSanctionsCheckResult": "Passed",
-+    "AddressVerificationResult": "Review",
-+    "FirstName": "Naveed",
-+    "LastName": "Khan",
-+    "Email": "test@example.com",
-+    "Nationality": "United Kingdom",
-+    "NationalityAlpha2": "GB",
-+    "DOB": "1990-01-01",
-+    "PassportNumber": "CC1234567",
-+    "DriversLicenseNumber": null,
-+    "HouseNumber": "1",
-+    "Street": "Test Street",
-+    "City": "Test City",
-+    "County": "Test County",
-+    "Postcode": "TE5 7ST",
-+    "Country": "United Kingdom",
-+    "CountryCode": "GB"
-+  },
-+  {
-+    "InternalId": 4,
-+    "InstructionRef": "HLX-20005-34567",
-+    "MatterId": null,
-+    "DealJointClientId": null,
-+    "ClientId": null,
-+    "ProspectId": 20005,
-+    "ClientEmail": "dana.miller@helixlaw.com",
-+    "IsLeadClient": true,
-+    "AdditionalIDDate": "2025-05-30",
-+    "AdditionalIDTime": "14:10:10.0101010",
-+    "EIDCheckId": "c3d4e5f6-a1b2-9012-cdef-333333333333",
-+    "EIDProvider": "tiller",
-+    "EIDStatus": "completed",
-+    "EIDScore": null,
-+    "EIDRawResponse": null,
-+    "EIDCheckedDate": "2025-05-30",
-+    "EIDCheckedTime": "14:10:10.0101010",
-+    "CheckExpiry": "2025-11-30",
-+    "EIDOverallResult": "Passed",
-+    "PEPAndSanctionsCheckResult": "Passed",
-+    "AddressVerificationResult": "Passed",
-+    "FirstName": "Dana",
-+    "LastName": "Miller",
-+    "Email": "test@example.com",
-+    "Nationality": "United Kingdom",
-+    "NationalityAlpha2": "GB",
-+    "DOB": "1990-01-01",
-+    "PassportNumber": "DD1234567",
-+    "DriversLicenseNumber": null,
-+    "HouseNumber": "1",
-+    "Street": "Test Street",
-+    "City": "Test City",
-+    "County": "Test County",
-+    "Postcode": "TE5 7ST",
-+    "Country": "United Kingdom",
-+    "CountryCode": "GB"
-+  },
-+  {
-+    "InternalId": 5,
-+    "InstructionRef": "HLX-20006-45678",
-+    "MatterId": null,
-+    "DealJointClientId": null,
-+    "ClientId": null,
-+    "ProspectId": 20006,
-+    "ClientEmail": "michael.chen@helixlaw.com",
-+    "IsLeadClient": false,
-+    "AdditionalIDDate": null,
-+    "AdditionalIDTime": null,
-+    "EIDCheckId": "d4e5f6a1-b2c3-0123-def0-444444444444",
-+    "EIDProvider": "tiller",
-+    "EIDStatus": "completed",
-+    "EIDScore": null,
-+    "EIDRawResponse": null,
-+    "EIDCheckedDate": "2025-06-22",
-+    "EIDCheckedTime": "16:45:00",
-+    "CheckExpiry": "2025-12-22",
-+    "EIDOverallResult": "Review",
-+    "PEPAndSanctionsCheckResult": "Passed",
-+    "AddressVerificationResult": "Review",
-+    "FirstName": "Michael",
-+    "LastName": "Chen",
-+    "Email": "test@example.com",
-+    "Nationality": "United Kingdom",
-+    "NationalityAlpha2": "GB",
-+    "DOB": "1990-01-01",
-+    "PassportNumber": "EE1234567",
-+    "DriversLicenseNumber": null,
-+    "HouseNumber": "1",
-+    "Street": "Test Street",
-+    "City": "Test City",
-+    "County": "Test County",
-+    "Postcode": "TE5 7ST",
-+    "Country": "United Kingdom",
-+    "CountryCode": "GB"
-+  }
- ]
+diff --git a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
+index 42e91470eef189e6303c873cd5c68038f1047bcb..5d3e006ea3a396492249c85ed3b48584b6191f0f 100644
+--- a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
++++ b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
+@@ -1,36 +1,55 @@
+ //
+ import React from "react"; // invisible change
+ // invisible change 2
+ import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, PrimaryButton, Icon, FontIcon } from "@fluentui/react";
+ import { sharedPrimaryButtonStyles } from "../../../app/styles/ButtonStyles";
+ import "../../../app/styles/MultiSelect.css";
+ import BubbleTextField from "../../../app/styles/BubbleTextField";
+ import { useTheme } from "../../../app/functionality/ThemeContext";
+ import { countries } from "../../../data/referenceData";
+ import ModernMultiSelect from './ModernMultiSelect';
+ 
++// Local persistence helper mirroring FlatMatterOpening behaviour
++function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
++  const storageKey = `matterOpeningDraft_${key}`;
++  const [state, setState] = React.useState<T>(() => {
++    try {
++      const item = localStorage.getItem(storageKey);
++      return item ? (JSON.parse(item) as T) : initialValue;
++    } catch {
++      return initialValue;
++    }
++  });
++  React.useEffect(() => {
++    try {
++      localStorage.setItem(storageKey, JSON.stringify(state));
++    } catch {}
++  }, [state, storageKey]);
++  return [state, setState];
++}
++
+ interface OpponentDetailsStepProps {
+   opponentName: string;
+   setOpponentName: (v: string) => void;
+   opponentEmail: string;
+   setOpponentEmail: (v: string) => void;
+   opponentSolicitorName: string;
+   setOpponentSolicitorName: (v: string) => void;
+   opponentSolicitorCompany: string;
+   setOpponentSolicitorCompany: (v: string) => void;
+   opponentSolicitorEmail: string;
+   setOpponentSolicitorEmail: (v: string) => void;
+   noConflict: boolean;
+   setNoConflict: (v: boolean) => void;
+   disputeValue: string;
+   setDisputeValue: (v: string) => void;
+   setOpponentTitle?: (v: string) => void;
+   opponentTitle?: string;
+   setOpponentFirst?: (v: string) => void;
+   opponentFirst?: string;
+   setOpponentLast?: (v: string) => void;
+   opponentLast?: string;
+   setOpponentPhone?: (v: string) => void;
+   opponentPhone?: string;
+   setOpponentAddress?: (v: string) => void;
+   opponentAddress?: string;
+diff --git a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
+index 42e91470eef189e6303c873cd5c68038f1047bcb..5d3e006ea3a396492249c85ed3b48584b6191f0f 100644
+--- a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
++++ b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
+@@ -277,56 +296,56 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
+     setLocalOpponentStreet(dummyData.opponentStreet);
+     setLocalOpponentCity(dummyData.opponentCity);
+     setLocalOpponentCounty(dummyData.opponentCounty);
+     setLocalOpponentPostcode(dummyData.opponentPostcode);
+     setLocalOpponentCountry(dummyData.opponentCountry);
+     // No need for _setOpponentHasCompany as it's replaced by opponentType
+     _setOpponentCompanyName(dummyData.opponentCompanyName);
+     _setOpponentCompanyNumber(dummyData.opponentCompanyNumber);
+ 
+     setOpponentSolicitorCompany(dummyData.opponentSolicitorCompany);
+     _setSolicitorCompanyNumber(dummyData.solicitorCompanyNumber);
+     // Use AI as fallback if skipping/using dummy data
+     _setSolicitorTitle("AI");
+     _setSolicitorFirst(dummyData.solicitorFirst);
+     _setSolicitorLast(dummyData.solicitorLast);
+     setOpponentSolicitorEmail(dummyData.opponentSolicitorEmail);
+     _setSolicitorPhone(dummyData.solicitorPhone);
+     setLocalSolicitorHouseNumber(dummyData.solicitorHouseNumber);
+     setLocalSolicitorStreet(dummyData.solicitorStreet);
+     setLocalSolicitorCity(dummyData.solicitorCity);
+     setLocalSolicitorCounty(dummyData.solicitorCounty);
+     setLocalSolicitorPostcode(dummyData.solicitorPostcode);
+     setLocalSolicitorCountry(dummyData.solicitorCountry);
+   };
+ 
+-  // Add state to control summary mode
+-  const [showSummary, setShowSummary] = React.useState(false);
++  // Persisted state for preview and opponent choices
++  const [showSummary, setShowSummary] = useDraftedState<boolean>('showSummary', false);
+   // Toggle: does user want to enter opponent details now?
+-  const [enterOpponentNow, setEnterOpponentNow] = React.useState<null | boolean>(null);
++  const [enterOpponentNow, setEnterOpponentNow] = useDraftedState<null | boolean>('enterOpponentNow', null);
+   // Add new state for opponent type (Individual or Company)
+-  const [opponentType, setOpponentType] = React.useState<string>("");
++  const [opponentType, setOpponentType] = useDraftedState<string>('opponentType', "");
+ 
+   // Skip details and show summary (user can return to edit later)
+   const skipAndShowSummary = () => {
+     setShowSummary(true);
+   };
+ 
+   // Reset to editable mode
+   const handleEdit = () => {
+     setShowSummary(false);
+   };
+ 
+   // Helper to render a summary row (clean, compact)
+   const SummaryRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
+     <div style={{
+       display: "flex",
+       alignItems: "center",
+       marginBottom: 2,
+       fontSize: 14,
+       color: "#2d3748"
+     }}>
+       <span style={{ minWidth: 110, color: "#6b7280", fontWeight: 400 }}>{label}</span>
+       <span style={{ color: value ? "#222" : "#b0b7be", marginLeft: 8 }}>{value || <span>—</span>}</span>
+     </div>
+   );
+ 

@@ -9,6 +9,25 @@ import { useTheme } from "../../../app/functionality/ThemeContext";
 import { countries } from "../../../data/referenceData";
 import ModernMultiSelect from './ModernMultiSelect';
 
+// Local persistence helper mirroring FlatMatterOpening behaviour
+function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const storageKey = `matterOpeningDraft_${key}`;
+  const [state, setState] = React.useState<T>(() => {
+    try {
+      const item = localStorage.getItem(storageKey);
+      return item ? (JSON.parse(item) as T) : initialValue;
+    } catch {
+      return initialValue;
+    }
+  });
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch {}
+  }, [state, storageKey]);
+  return [state, setState];
+}
+
 interface OpponentDetailsStepProps {
   opponentName: string;
   setOpponentName: (v: string) => void;
@@ -299,12 +318,12 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
     setLocalSolicitorCountry(dummyData.solicitorCountry);
   };
 
-  // Add state to control summary mode
-  const [showSummary, setShowSummary] = React.useState(false);
+  // Persisted state for preview and opponent choices
+  const [showSummary, setShowSummary] = useDraftedState<boolean>('showSummary', false);
   // Toggle: does user want to enter opponent details now?
-  const [enterOpponentNow, setEnterOpponentNow] = React.useState<null | boolean>(null);
+  const [enterOpponentNow, setEnterOpponentNow] = useDraftedState<null | boolean>('enterOpponentNow', null);
   // Add new state for opponent type (Individual or Company)
-  const [opponentType, setOpponentType] = React.useState<string>("");
+  const [opponentType, setOpponentType] = useDraftedState<string>('opponentType', "");
 
   // Skip details and show summary (user can return to edit later)
   const skipAndShowSummary = () => {
