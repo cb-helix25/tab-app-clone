@@ -1,65 +1,105 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 7ec29cf13dd98f0f5669d508d20bc922a06a672c..9a074c621361a3a17d8dc9c62cfbf6bb4a9233b6 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -865,52 +865,58 @@ const Instructions: React.FC<InstructionsProps> = ({
-   });
+diff --git a/src/tabs/instructions/RiskComplianceCard.tsx b/src/tabs/instructions/RiskComplianceCard.tsx
+index 83bad0cbcbed9c459427f62a7e0cd0c798aaa345..47c4a8a9a2f1d634e1ebdcc6ccad6fcfd66d564d 100644
+--- a/src/tabs/instructions/RiskComplianceCard.tsx
++++ b/src/tabs/instructions/RiskComplianceCard.tsx
+@@ -6,72 +6,98 @@ import { useTheme } from '../../app/functionality/ThemeContext';
+ import { colours } from '../../app/styles/colours';
+ import { componentTokens } from '../../app/styles/componentTokens';
+ import '../../app/styles/RiskComplianceCard.css';
  
-   const overviewItemStyle = mergeStyles({
-     minWidth: 350,
-   });
+ interface RiskComplianceCardProps {
+     data: any;
+     animationDelay?: number;
+     onOpenInstruction?: () => void;
+ }
  
-   const repositionMasonry = React.useCallback(() => {
-     const grid = overviewGridRef.current;
-     if (!grid) return;
-     const rowGap = parseInt(
-       window.getComputedStyle(grid).getPropertyValue('grid-row-gap'),
-     );
-     const rowHeight = parseInt(
-       window.getComputedStyle(grid).getPropertyValue('grid-auto-rows'),
-     );
-     Array.from(grid.children).forEach((child) => {
-       const el = child as HTMLElement;
-       const span = Math.ceil(
-         (el.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
-       );
-       el.style.gridRowEnd = `span ${span}`;
-     });
-   }, []);
- 
-   const handleCardToggle = React.useCallback(() => {
--    // Wait for the card to finish expanding/collapsing before recalculating
--    setTimeout(repositionMasonry, 0);
-+    const start = performance.now();
-+    const animate = () => {
-+      repositionMasonry();
-+      if (performance.now() - start < 350) {
-+        requestAnimationFrame(animate);
-+      }
-+    };
-+    requestAnimationFrame(animate);
-   }, [repositionMasonry]);
- 
-   useLayoutEffect(() => {
-     repositionMasonry();
-   }, [overviewItems, selectedInstruction, repositionMasonry]);
- 
-   useEffect(() => {
-     window.addEventListener('resize', repositionMasonry);
-     return () => window.removeEventListener('resize', repositionMasonry);
-   }, [repositionMasonry]);
- 
- 
-   // Global action handlers that work with the selected instruction or first available instruction
-   const handleGlobalOpenMatter = () => {
-     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
-     if (targetInstruction) {
-       handleOpenMatter(targetInstruction);
+ const getField = (obj: any, ...keys: string[]) => {
+     for (const key of keys) {
+         const val = obj?.[key];
+         if (val !== undefined && val !== null) return val;
      }
-   };
+     return undefined;
+ };
  
-   const handleGlobalRiskAssessment = () => {
-     const targetItem = selectedInstruction 
-       ? overviewItems.find(item => item.instruction.InstructionRef === selectedInstruction.InstructionRef)
-       : overviewItems.find(item => item.instruction);
-     if (targetItem) {
+ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
+     data,
+     animationDelay = 0,
+     onOpenInstruction,
+ }) => {
+     const { isDarkMode } = useTheme();
+ 
++    const result = String(
++        getField(
++            data,
++            'CheckResult',
++            'RiskAssessmentResult',
++            'EIDStatus'
++        ) || ''
++    ).toLowerCase();
++
++    const accent =
++        result === 'pass' || result === 'passed' || result === 'approved' || result === 'low'
++            ? colours.green
++            : result === 'fail' || result === 'failed' || result === 'high'
++            ? colours.orange
++            : colours.highlight;
++
++    const headerClass = mergeStyles({
++        fontWeight: 600,
++        marginBottom: 4,
++        color: colours.highlight,
++    });
++
+     const cardClass = mergeStyles('riskComplianceCard', {
+         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+         color: isDarkMode ? colours.dark.text : colours.light.text,
+         padding: componentTokens.card.base.padding,
+         borderRadius: componentTokens.card.base.borderRadius,
+         boxShadow: componentTokens.card.base.boxShadow,
+         cursor: onOpenInstruction ? 'pointer' : 'default',
++        borderLeft: `4px solid ${accent}`,
+         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+         selectors: {
+             ':hover': {
+                 boxShadow: componentTokens.card.hover.boxShadow,
+                 transform: componentTokens.card.hover.transform,
+             },
+         },
+     });
+ 
+-    const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
++    const style: React.CSSProperties = {
++        '--animation-delay': `${animationDelay}s`,
++        '--accent': accent,
++    } as React.CSSProperties;
+ 
+     const complianceDate = getField(data, 'ComplianceDate', 'Compliance Date');
+     const complianceExpiry = getField(data, 'ComplianceExpiry', 'Compliance Expiry');
+     const date = complianceDate ? new Date(complianceDate).toLocaleDateString() : undefined;
+     const expiry = complianceExpiry ? new Date(complianceExpiry).toLocaleDateString() : undefined;
+ 
+     return (
+         <div className={cardClass} style={style} onClick={onOpenInstruction}>
+-            <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
++            <Text variant="mediumPlus" className={headerClass}>
+                 {data.MatterId}
+             </Text>
+             {data.ServiceDescription && <Text variant="small">{data.ServiceDescription}</Text>}
+             {data.Stage && <Text variant="small">Stage: {data.Stage}</Text>}
+             <dl className="data-grid">
+                 {Object.entries(data).map(([k, v]) => (
+                     <React.Fragment key={k}>
+                         <dt>{k}</dt>
+                         <dd>
+                             {Array.isArray(v) || typeof v === 'object'
+                                 ? JSON.stringify(v)
+                                 : String(v)}
+                         </dd>
+                     </React.Fragment>
+                 ))}
+             </dl>
+         </div>
+     );
+ };
+ 
+ export default RiskComplianceCard;
