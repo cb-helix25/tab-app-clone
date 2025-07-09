@@ -1,3 +1,4 @@
+// invisible change
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const sql = require('mssql');

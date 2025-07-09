@@ -23,3 +23,31 @@ The dataset mirrors the sample JSON shipped with the project so the front end di
 The dataset now mirrors the expanded local JSON files so the dashboard shows all available fields. Future agents can add more scenarios as needed.
 
 After running the SQL you can start the app using `REACT_APP_USE_LOCAL_DATA=false` to verify the dashboard renders correctly against the test database.
+
+## Production Updates
+
+If an existing environment contains the old placeholder names you can update them in place using the following SQL:
+
+```sql
+UPDATE dbo.Instructions
+SET FirstName='Shyam', LastName='Sai'
+WHERE InstructionRef='HLX-20003-12345';
+
+UPDATE dbo.Instructions
+SET FirstName='Sylvia', LastName='Hughes'
+WHERE InstructionRef='HLX-20002-11223';
+
+UPDATE dbo.Instructions
+SET FirstName='Naveed', LastName='Khan'
+WHERE InstructionRef='HLX-20004-23456';
+
+UPDATE dbo.Instructions
+SET FirstName='Dana', LastName='Miller'
+WHERE InstructionRef='HLX-20005-34567';
+
+UPDATE dbo.Instructions
+SET FirstName='Michael', LastName='Chen'
+WHERE InstructionRef='HLX-20006-45678';
+```
+
+Running these statements or re-seeding with the updated `insert_production_test_data.sql` will keep production aligned with the refreshed JSON.

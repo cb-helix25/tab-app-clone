@@ -1,3 +1,4 @@
+// invisible change
 // Use the same v3 programming model as other functions
 // rather than the newer "app" style to avoid runtime errors
 const { DefaultAzureCredential } = require("@azure/identity");

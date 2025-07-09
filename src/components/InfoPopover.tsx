@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-// invisible change
+// invisible change 2
 import ReactDOM from 'react-dom';
 import { FaInfoCircle, FaTimes } from 'react-icons/fa';
 import '../app/styles/InfoPopover.css';

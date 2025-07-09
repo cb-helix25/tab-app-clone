@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-// invisible change
+// invisible change 2
 import {
   Stack,
   mergeStyles,
@@ -885,6 +885,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
           hideClientSections={!selectedInstruction}
+          initialClientType={selectedInstruction?.ClientType}
           preselectedPoidIds={preselectedPoidIds}
         />
       </Stack>

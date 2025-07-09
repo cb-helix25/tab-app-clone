@@ -1,5 +1,5 @@
 // ---   Imports ---
-// invisible change
+// invisible change 2
 //
 import { Stack, Text, mergeStyles, Icon } from '@fluentui/react';
 import { POID, TeamData } from '../../app/functionality/types';
@@ -77,6 +77,7 @@ interface PoidCardProps {
     selected: boolean;
     onClick: () => void;
     teamData?: TeamData[] | null;
+    companyName?: string; // invisible change 3: now passed from parent, not POID
 }
 
 // Updated card dimensions to fit nicely in a 2-column grid
@@ -230,14 +231,17 @@ const profileButtonStyle = mergeStyles({
     },
 });
 
-const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }) => {
+const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, companyName }) => {
     const { isDarkMode } = useTheme();
 
-    const cardStyles = mergeStyles(
+
+    // Compose card style
+    const cardStyle = mergeStyles(
         baseCardStyle,
         isDarkMode && darkCardStyle,
         selected && selectedCardStyle,
-        cardWithLinksHover
+        cardWithLinksHover,
+        'poid-card'
     );
 
     // Choose icon based on POID type.
@@ -255,7 +259,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     // --- New: Extract more fields for realistic display ---
     // Accept both snake_case and camelCase for compatibility, but POID type is mostly snake_case
     const fullName = `${poid.prefix || ''} ${poid.first || '[No First Name]'} ${poid.last || '[No Last Name]'}`.trim();
-    const companyName = poid.company_name;
+    // companyName is now a prop, not from poid
     const dob = poid.date_of_birth;
     const age = dob ? calculateAge(dob) : undefined;
     const nationality = poid.nationality;
@@ -284,7 +288,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     // --- End new fields ---
 
     return (
-        <div onClick={onClick} className={mergeStyles(cardStyles, 'poid-card')}>
+        <div onClick={onClick} className={cardStyle}>
             <div className={contentStyle}>
                 <Stack tokens={{ childrenGap: 8 }}>
                     {/* Name and Company */}

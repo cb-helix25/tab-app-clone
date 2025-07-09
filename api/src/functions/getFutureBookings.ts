@@ -1,3 +1,4 @@
+// invisible change 2
 // src/functions/getFutureBookings.ts
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { DefaultAzureCredential } from "@azure/identity";

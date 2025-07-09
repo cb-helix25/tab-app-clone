@@ -1,6 +1,6 @@
 //
 import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisible change
-// invisible change
+// invisible change 2
 import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
@@ -375,7 +375,16 @@ const handleClearAll = () => {
 
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
-    const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', '');
+    // Do not preselect client type unless initialClientType is provided (e.g. from instruction card selection)
+    const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', initialClientType || '');
+    useEffect(() => {
+        // Only set if initialClientType is provided (not empty string)
+        if (initialClientType && initialClientType.trim() !== '') {
+            setPendingClientType(initialClientType);
+        } else {
+            setPendingClientType('');
+        }
+    }, [initialClientType]);
 
     // Calculate completion percentages for progressive dots
     const calculateClientStepCompletion = (): number => {

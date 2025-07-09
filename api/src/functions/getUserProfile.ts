@@ -1,3 +1,4 @@
+// invisible change 2
 /* This code sample provides a starter kit to implement server side logic for your Teams App in TypeScript,
  * refer to https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference for complete Azure Functions
  * developer guide.

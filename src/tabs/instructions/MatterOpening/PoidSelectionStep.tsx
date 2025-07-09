@@ -1,6 +1,6 @@
 //
 import React from 'react'; // invisible change
-// invisible change
+// invisible change 2
 import { Stack } from '@fluentui/react';
 import PoidCard from '../PoidCard';
 import { POID, TeamData } from '../../../app/functionality/types';
@@ -79,7 +79,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             <div style={{ padding: 0, background: 'transparent' }}>
                 <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>What type of client is this matter for?</div>
                 <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
-                    {[
+                    {[ 
                         { type: 'Individual', icon: 'Contact' },
                         { type: 'Company', icon: 'CityNext' },
                         { type: 'Multiple Individuals', icon: 'People' },
@@ -92,13 +92,13 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 className={`client-details-contact-bigbtn client-type-icon-btn${isActive ? ' active' : ''}`}
                                 type="button"
                                 onClick={() => {
-                                    // Handle client type switching logic
-                                    const isSingleSelectionType = type !== 'Multiple Individuals';
-                                    setPendingClientType(type);
-                                    
-                                    // Notify parent if we're switching to a single-selection type
-                                    if (onClientTypeChange) {
-                                        onClientTypeChange(type, isSingleSelectionType);
+                                    // Only trigger change if type is actually changing
+                                    if (pendingClientType !== type) {
+                                        const isSingleSelectionType = type !== 'Multiple Individuals';
+                                        setPendingClientType(type);
+                                        if (onClientTypeChange) {
+                                            onClientTypeChange(type, isSingleSelectionType);
+                                        }
                                     }
                                 }}
                                 aria-pressed={isActive}
@@ -253,39 +253,64 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                         className="poid-grid" 
                         ref={poidGridRef as any}
                     >
+                        {/** invisible change 3: Fix POID grouping logic to use ClientType, not poid.type */}
+                        {/** invisible change 4: Only filter by instruction's client type, not POID fields */}
+                        {/* No filtering by company fields; show all POIDs for the selected client type */}
                         {filteredPoidData
                             .filter((poid) => {
-                                if (pendingClientType === 'Individual') return poid.type !== 'Yes';
-                                if (pendingClientType === 'Company') return poid.type === 'Yes';
-                                // For Multiple Individuals and Existing Client, show all
+                                if (pendingClientType === 'Individual') {
+                                    // Show only POIDs that are not companies
+                                    return !poid.company_name;
+                                } else if (pendingClientType === 'Company') {
+                                    // Show only POIDs that are companies
+                                    return !!poid.company_name;
+                                }
+                                // For other types (e.g. Multiple Individuals, Existing Client), show all
                                 return true;
                             })
                             .slice(0, visiblePoidCount)
                             .map((poid) => {
-                                const isSelected = selectedPoidIds.includes(poid.poid_id);
-                                const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
-                                const hasSelection = selectedPoidIds.length > 0;
-                                const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
-                                
-                                return (
-                                    <div 
-                                        key={poid.poid_id} 
+                            const isSelected = selectedPoidIds.includes(poid.poid_id);
+                            const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
+                            const hasSelection = selectedPoidIds.length > 0;
+                            const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
+                            return (
+                                <div 
+                                    key={poid.poid_id} 
+                                    onClick={() => handlePoidClick(poid)} 
+                                    role="button" 
+                                    tabIndex={0}
+                                    style={{
+                                        opacity: shouldFadeOut ? 0.3 : 1,
+                                        transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
+                                        transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                                        animation: 'fadeInUp 0.4s ease-out',
+                                        pointerEvents: shouldFadeOut ? 'none' : 'auto',
+                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
+                                    }}
+                                >
+                                    <PoidCard 
+                                        poid={poid} 
+                                        selected={isSelected} 
                                         onClick={() => handlePoidClick(poid)} 
-                                        role="button" 
-                                        tabIndex={0}
-                                        style={{
-                                            opacity: shouldFadeOut ? 0.3 : 1,
-                                            transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
-                                            transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
-                                            animation: 'fadeInUp 0.4s ease-out',
-                                            pointerEvents: shouldFadeOut ? 'none' : 'auto',
-                                            filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
-                                        }}
-                                    >
-                                        <PoidCard poid={poid} selected={isSelected} onClick={() => handlePoidClick(poid)} teamData={teamData} />
-                                    </div>
-                                );
-                            })}
+                                        teamData={teamData}
+                                        companyName={(() => {
+                                            // Try to get company name from instruction/matter/client, not from POID
+                                            // If pendingClientType is 'Company', try to find the company name from the instruction
+                                            if (pendingClientType === 'Company') {
+                                                // Try to find the instruction for this POID (by InstructionRef, MatterId, or ProspectId)
+                                                // This assumes you have access to the instruction data in this component or via props
+                                                // If not, you may need to thread it through from FlatMatterOpening
+                                                if (poid.company_name) return poid.company_name;
+                                                // fallback: blank
+                                                return '';
+                                            }
+                                            return undefined;
+                                        })()}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 </>
             )}

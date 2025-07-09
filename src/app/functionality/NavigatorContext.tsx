@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-// invisible change
+// invisible change 2
 
 interface NavigatorContextProps {
     content: ReactNode | null;

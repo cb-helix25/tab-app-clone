@@ -1,3 +1,4 @@
+// invisible change
 // Use the same v3 programming model as other functions
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');

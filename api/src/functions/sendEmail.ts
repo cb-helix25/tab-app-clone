@@ -1,3 +1,5 @@
+
+// invisible change
 // src/functions/sendEmail.ts
 
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
