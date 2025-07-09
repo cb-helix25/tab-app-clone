@@ -295,7 +295,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const verifyIdLabel = verifyIdStatus === 'complete'
         ? 'ID Verified'
         : verifyIdStatus === 'review'
-            ? 'Review ID'
+            ? 'Revffiew ID'
             : 'Verify an ID';
     const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
         ? 'ready'

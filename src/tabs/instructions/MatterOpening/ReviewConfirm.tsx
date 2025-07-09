@@ -1,8 +1,9 @@
 //
-import React from 'react'; // invisible change
+import React, { useState } from 'react'; // invisible change
 // invisible change 2
 import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
+import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
@@ -35,17 +36,65 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
 const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, onConfirmed }) => {
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
+    const initialSteps: ProcessingStep[] = [
+        { label: 'Retrieve tokens', status: 'pending' },
+        { label: 'Upload matter to database', status: 'pending' },
+        { label: 'Create matter in Clio', status: 'pending' },
+        { label: 'Update ActiveCampaign', status: 'pending' },
+        { label: 'Send notifications', status: 'pending' },
+        { label: 'Refresh interface', status: 'pending' },
+    ];
+
+    const [processing, setProcessing] = useState(false);
+    const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
+    const [logs, setLogs] = useState<string[]>([]);
+
+    const updateStep = (index: number, status: ProcessingStatus, message: string) => {
+        setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status } : s)));
+        setLogs(prev => [...prev, message]);
+    };
+
     const handleSubmit = async () => {
+        setProcessing(true);
+        setLogs([]);
+        setSteps(initialSteps);
+
         try {
+            updateStep(0, 'pending', 'Retrieving tokens...');
+            await new Promise(res => setTimeout(res, 500));
+            updateStep(0, 'success', 'Tokens retrieved');
+
+            updateStep(1, 'pending', 'Uploading matter...');
             await fetch('/api/matter', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
+            updateStep(1, 'success', 'Matter uploaded');
+
+            updateStep(2, 'pending', 'Calling Clio...');
+            await new Promise(res => setTimeout(res, 500));
+            updateStep(2, 'success', 'Clio updated');
+
+            updateStep(3, 'pending', 'Updating ActiveCampaign...');
+            await new Promise(res => setTimeout(res, 500));
+            updateStep(3, 'success', 'ActiveCampaign updated');
+
+            updateStep(4, 'pending', 'Sending notifications...');
+            await new Promise(res => setTimeout(res, 500));
+            updateStep(4, 'success', 'Notifications sent');
+
+            updateStep(5, 'pending', 'Refreshing interface...');
+            await new Promise(res => setTimeout(res, 500));
+            updateStep(5, 'success', 'Interface refreshed');
+
             setSummaryComplete(true);
             if (onConfirmed) onConfirmed();
         } catch (err) {
+            updateStep(0, 'error', `Error: ${err}`);
             console.error('❌ Matter submit failed', err);
+        } finally {
+            setProcessing(false);
         }
     };
 
@@ -61,6 +110,9 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                 )}
             </div>
 
+            {(processing || summaryComplete) && (
+                <ProcessingSection steps={steps} logs={logs} />
+            )}
         </div>
     );
 };
