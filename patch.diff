@@ -1,125 +1,60 @@
-diff --git a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-index 42e91470eef189e6303c873cd5c68038f1047bcb..5d3e006ea3a396492249c85ed3b48584b6191f0f 100644
---- a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-@@ -1,36 +1,55 @@
- //
- import React from "react"; // invisible change
- // invisible change 2
- import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, PrimaryButton, Icon, FontIcon } from "@fluentui/react";
- import { sharedPrimaryButtonStyles } from "../../../app/styles/ButtonStyles";
- import "../../../app/styles/MultiSelect.css";
- import BubbleTextField from "../../../app/styles/BubbleTextField";
- import { useTheme } from "../../../app/functionality/ThemeContext";
- import { countries } from "../../../data/referenceData";
- import ModernMultiSelect from './ModernMultiSelect';
+diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
+index 100d131582bf1745f888a07a181b104499b02455..293e12b65759f774b331d271ac52f30cd6744c25 100644
+--- a/src/tabs/instructions/PoidCard.tsx
++++ b/src/tabs/instructions/PoidCard.tsx
+@@ -283,51 +283,54 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData,
+     const matterId = (poid as any).matter_id || (poid as any).MatterId;
+     const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
+     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
+     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
+     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
+     // --- End new fields ---
  
-+// Local persistence helper mirroring FlatMatterOpening behaviour
-+function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-+  const storageKey = `matterOpeningDraft_${key}`;
-+  const [state, setState] = React.useState<T>(() => {
-+    try {
-+      const item = localStorage.getItem(storageKey);
-+      return item ? (JSON.parse(item) as T) : initialValue;
-+    } catch {
-+      return initialValue;
-+    }
-+  });
-+  React.useEffect(() => {
-+    try {
-+      localStorage.setItem(storageKey, JSON.stringify(state));
-+    } catch {}
-+  }, [state, storageKey]);
-+  return [state, setState];
-+}
-+
- interface OpponentDetailsStepProps {
-   opponentName: string;
-   setOpponentName: (v: string) => void;
-   opponentEmail: string;
-   setOpponentEmail: (v: string) => void;
-   opponentSolicitorName: string;
-   setOpponentSolicitorName: (v: string) => void;
-   opponentSolicitorCompany: string;
-   setOpponentSolicitorCompany: (v: string) => void;
-   opponentSolicitorEmail: string;
-   setOpponentSolicitorEmail: (v: string) => void;
-   noConflict: boolean;
-   setNoConflict: (v: boolean) => void;
-   disputeValue: string;
-   setDisputeValue: (v: string) => void;
-   setOpponentTitle?: (v: string) => void;
-   opponentTitle?: string;
-   setOpponentFirst?: (v: string) => void;
-   opponentFirst?: string;
-   setOpponentLast?: (v: string) => void;
-   opponentLast?: string;
-   setOpponentPhone?: (v: string) => void;
-   opponentPhone?: string;
-   setOpponentAddress?: (v: string) => void;
-   opponentAddress?: string;
-diff --git a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-index 42e91470eef189e6303c873cd5c68038f1047bcb..5d3e006ea3a396492249c85ed3b48584b6191f0f 100644
---- a/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/OpponentDetailsStep.tsx
-@@ -277,56 +296,56 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
-     setLocalOpponentStreet(dummyData.opponentStreet);
-     setLocalOpponentCity(dummyData.opponentCity);
-     setLocalOpponentCounty(dummyData.opponentCounty);
-     setLocalOpponentPostcode(dummyData.opponentPostcode);
-     setLocalOpponentCountry(dummyData.opponentCountry);
-     // No need for _setOpponentHasCompany as it's replaced by opponentType
-     _setOpponentCompanyName(dummyData.opponentCompanyName);
-     _setOpponentCompanyNumber(dummyData.opponentCompanyNumber);
- 
-     setOpponentSolicitorCompany(dummyData.opponentSolicitorCompany);
-     _setSolicitorCompanyNumber(dummyData.solicitorCompanyNumber);
-     // Use AI as fallback if skipping/using dummy data
-     _setSolicitorTitle("AI");
-     _setSolicitorFirst(dummyData.solicitorFirst);
-     _setSolicitorLast(dummyData.solicitorLast);
-     setOpponentSolicitorEmail(dummyData.opponentSolicitorEmail);
-     _setSolicitorPhone(dummyData.solicitorPhone);
-     setLocalSolicitorHouseNumber(dummyData.solicitorHouseNumber);
-     setLocalSolicitorStreet(dummyData.solicitorStreet);
-     setLocalSolicitorCity(dummyData.solicitorCity);
-     setLocalSolicitorCounty(dummyData.solicitorCounty);
-     setLocalSolicitorPostcode(dummyData.solicitorPostcode);
-     setLocalSolicitorCountry(dummyData.solicitorCountry);
-   };
- 
--  // Add state to control summary mode
--  const [showSummary, setShowSummary] = React.useState(false);
-+  // Persisted state for preview and opponent choices
-+  const [showSummary, setShowSummary] = useDraftedState<boolean>('showSummary', false);
-   // Toggle: does user want to enter opponent details now?
--  const [enterOpponentNow, setEnterOpponentNow] = React.useState<null | boolean>(null);
-+  const [enterOpponentNow, setEnterOpponentNow] = useDraftedState<null | boolean>('enterOpponentNow', null);
-   // Add new state for opponent type (Individual or Company)
--  const [opponentType, setOpponentType] = React.useState<string>("");
-+  const [opponentType, setOpponentType] = useDraftedState<string>('opponentType', "");
- 
-   // Skip details and show summary (user can return to edit later)
-   const skipAndShowSummary = () => {
-     setShowSummary(true);
-   };
- 
-   // Reset to editable mode
-   const handleEdit = () => {
-     setShowSummary(false);
-   };
- 
-   // Helper to render a summary row (clean, compact)
-   const SummaryRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
-     <div style={{
-       display: "flex",
-       alignItems: "center",
-       marginBottom: 2,
-       fontSize: 14,
-       color: "#2d3748"
-     }}>
-       <span style={{ minWidth: 110, color: "#6b7280", fontWeight: 400 }}>{label}</span>
-       <span style={{ color: value ? "#222" : "#b0b7be", marginLeft: 8 }}>{value || <span>—</span>}</span>
-     </div>
-   );
- 
+     return (
+         <div onClick={onClick} className={cardStyle}>
+             <div className={contentStyle}>
+                 <Stack tokens={{ childrenGap: 8 }}>
+                     {/* Name and Company */}
+                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
+                         <Text
+                             variant="mediumPlus"
+                             styles={{
+                                 root: {
+                                     fontWeight: 700,
+                                     color: colours.highlight,
+                                     fontFamily: 'Raleway, sans-serif',
+                                     lineHeight: '1.2',
+                                 },
+                             }}
+                         >
+                             {companyName && (
+-                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>{companyName} - </span>
++                                <>
++                                    <span style={{ color: '#666', fontWeight: 600, marginRight: '4px' }}>{companyName}</span>
++                                    <span style={{ color: '#999', marginRight: '4px' }}>|</span>
++                                </>
+                             )}
+                             {fullName}
+                         </Text>
+                         {age !== undefined && (
+                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{age} yrs</Text>
+                         )}
+                         {nationalityAlpha2 && (
+                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{nationalityAlpha2}</Text>
+                         )}
+                         <div style={{ flex: 1 }} />
+                         <Icon
+                             iconName={backgroundIconName}
+                             style={{
+                                 fontSize: 22,
+                                 opacity: 0.3,
+                                 transition: 'opacity 0.2s',
+                                 color: colours.highlight,
+                                 marginLeft: 8,
+                                 verticalAlign: 'middle',
+                             }}
+                             className="inlinePersonCompanyIcon"
+                         />
+                     </Stack>
+                     {/* Email, Phone */}
+                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">

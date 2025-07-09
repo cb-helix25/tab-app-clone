@@ -412,7 +412,7 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
 
   // Add local state for focus/blur/active for each field group
   const [activeField, setActiveField] = React.useState<string | null>(null);
-  const [touchedFields, setTouchedFields] = React.useState<{ [key: string]: boolean }>({});
+  const [touchedFields, setTouchedFields] = useDraftedState<{ [key: string]: boolean }>('touchedFields', {});
 
   // Helper to get field style
   function getFieldStyle(fieldKey: string, value: string, isDropdown = false) {

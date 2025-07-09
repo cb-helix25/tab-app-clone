@@ -50,7 +50,10 @@ export const hasActiveMatterOpening = (isCurrentlyInMatterOpening: boolean = fal
     'matterOpeningDraft_noConflict',
     'matterOpeningDraft_enterOpponentNow',
     'matterOpeningDraft_opponentType',
-    'matterOpeningDraft_showSummary'
+    'matterOpeningDraft_showSummary',
+    'matterOpeningDraft_touchedFields',
+    'matterOpeningDraft_hasInput',
+    'matterOpeningDraft_completed'
   ];
 
   // Check if the matter has been completed (submitted)

@@ -305,7 +305,10 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             }}
                         >
                             {companyName && (
-                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>{companyName} - </span>
+                                <>
+                                    <span style={{ color: '#666', fontWeight: 600, marginRight: '4px' }}>{companyName}</span>
+                                    <span style={{ color: '#999', marginRight: '4px' }}>|</span>
+                                </>
                             )}
                             {fullName}
                         </Text>
