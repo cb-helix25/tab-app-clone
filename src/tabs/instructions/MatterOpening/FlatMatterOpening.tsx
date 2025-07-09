@@ -731,6 +731,9 @@ const handleClearAll = () => {
 
     // Clear all selections and inputs
     const doClearAll = () => {
+        // Close the confirmation dialog if open
+        setIsClearDialogOpen(false);
+
         // Clear all the React state
         setSelectedDate(null);
         setTeamMember(defaultTeamMember);

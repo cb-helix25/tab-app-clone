@@ -258,14 +258,15 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                         {/* No filtering by company fields; show all POIDs for the selected client type */}
                         {filteredPoidData
                             .filter((poid) => {
+                                const isCompany = !!(
+                                    poid.company_name ||
+                                    poid.company_number
+                                );
                                 if (pendingClientType === 'Individual') {
-                                    // Show only POIDs that are not companies
-                                    return !poid.company_name;
+                                    return !isCompany;
                                 } else if (pendingClientType === 'Company') {
-                                    // Show only POIDs that are companies
-                                    return !!poid.company_name;
+                                    return isCompany;
                                 }
-                                // For other types (e.g. Multiple Individuals, Existing Client), show all
                                 return true;
                             })
                             .slice(0, visiblePoidCount)
