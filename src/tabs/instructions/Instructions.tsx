@@ -96,11 +96,18 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, []); // Only run on mount
   
   const [activePivot, setActivePivot] = useState<string>("overview");
+  const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
 
   // Clear selection when leaving overview tab
   useEffect(() => {
     if (activePivot !== "overview") {
       setSelectedInstruction(null);
+    }
+  }, [activePivot]);
+
+  useEffect(() => {
+    if (activePivot !== "risk") {
+      setRiskFilterRef(null);
     }
   }, [activePivot]);
 
@@ -718,6 +725,51 @@ const Instructions: React.FC<InstructionsProps> = ({
             (i: any) => i.InstructionRef === r.MatterId,
           );
           const deal = deals.find((d: any) => d.InstructionRef === r.MatterId);
+
+          const dealsForInst = deals.filter(
+            (d: any) => d.InstructionRef === r.MatterId,
+          );
+          const clientsForInst: ClientInfo[] = [];
+          const prospectClients = [
+            ...(p.jointClients ?? p.joinedClients ?? []),
+            ...dealsForInst.flatMap((d) => d.jointClients ?? []),
+          ];
+          prospectClients.forEach((jc) => {
+            if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+              clientsForInst.push({
+                ClientEmail: jc.ClientEmail,
+                HasSubmitted: jc.HasSubmitted,
+                Lead: false,
+                deals: [
+                  {
+                    DealId: jc.DealId,
+                    InstructionRef: r.MatterId,
+                    ServiceDescription: dealsForInst.find(
+                      (d) => d.DealId === jc.DealId,
+                    )?.ServiceDescription,
+                    Status: dealsForInst.find((d) => d.DealId === jc.DealId)?.Status,
+                  },
+                ],
+              });
+            }
+          });
+          dealsForInst.forEach((d) => {
+            if (d.LeadClientEmail) {
+              clientsForInst.push({
+                ClientEmail: d.LeadClientEmail,
+                Lead: true,
+                deals: [
+                  {
+                    DealId: d.DealId,
+                    InstructionRef: d.InstructionRef,
+                    ServiceDescription: d.ServiceDescription,
+                    Status: d.Status,
+                  },
+                ],
+              });
+            }
+          });
+
           return {
             ...r,
             EIDStatus: eid?.EIDStatus,
@@ -725,10 +777,19 @@ const Instructions: React.FC<InstructionsProps> = ({
             deal,
             ServiceDescription: deal?.ServiceDescription,
             Stage: instruction?.Stage,
+            clients: clientsForInst,
           };
         });
       }),
     [instructionData],
+  );
+
+  const filteredRiskComplianceData = useMemo(
+    () =>
+      riskComplianceData.filter((r) =>
+        riskFilterRef ? r.MatterId === riskFilterRef : true,
+      ),
+    [riskComplianceData, riskFilterRef],
   );
 
   const idVerificationOptions = useMemo(() => {
@@ -826,6 +887,11 @@ const Instructions: React.FC<InstructionsProps> = ({
     setSelectedInstruction(inst);
     setPendingInstructionRef('');
     setShowEIDPage(true);
+  };
+
+  const handleOpenRiskCompliance = (ref: string) => {
+    setRiskFilterRef(ref);
+    setActivePivot('risk');
   };
 
 
@@ -1024,6 +1090,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
                         onSelect={() => setSelectedInstruction(item.instruction)}
                         onToggle={handleCardToggle}
+                        onProofOfIdClick={() =>
+                          handleOpenRiskCompliance(item.instruction.InstructionRef)
+                        }
                       />
                     </div>
 
@@ -1080,10 +1149,10 @@ const Instructions: React.FC<InstructionsProps> = ({
                 Risk &amp; Compliance
               </Text>
               <div className={gridContainerStyle}>
-                {riskComplianceData.length === 0 && (
+                {filteredRiskComplianceData.length === 0 && (
                   <Text>No risk data available.</Text>
                 )}
-                {riskComplianceData.map((r, idx) => {
+                {filteredRiskComplianceData.map((r, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
@@ -1091,6 +1160,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                     <RiskComplianceCard
                       key={idx}
                       data={r}
+                      clients={r.clients}
                       animationDelay={animationDelay}
                       onOpenInstruction={() =>
                         handleOpenInstruction(r.MatterId)

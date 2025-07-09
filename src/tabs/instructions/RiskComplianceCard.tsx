@@ -6,11 +6,13 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import '../../app/styles/RiskComplianceCard.css';
+import { ClientInfo } from './JointClientCard';
 
 interface RiskComplianceCardProps {
     data: any;
     animationDelay?: number;
     onOpenInstruction?: () => void;
+    clients?: ClientInfo[];
 }
 
 const getField = (obj: any, ...keys: string[]) => {
@@ -25,6 +27,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
     data,
     animationDelay = 0,
     onOpenInstruction,
+    clients,
 }) => {
     const { isDarkMode } = useTheme();
 
@@ -70,6 +73,27 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                     </React.Fragment>
                 ))}
             </dl>
+            {clients && clients.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                    <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
+                        Clients
+                    </Text>
+                    <ul className="detail-list">
+                        {clients.map((c, idx) => (
+                            <li key={idx} style={{ fontSize: '0.85rem' }}>
+                                {c.ClientEmail}
+                                {c.HasSubmitted !== undefined && (
+                                    <>
+                                        {' '}-{' '}
+                                        {c.HasSubmitted ? 'submitted' : 'pending'}
+                                    </>
+                                )}
+                                {c.Lead && ' (lead)'}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 };

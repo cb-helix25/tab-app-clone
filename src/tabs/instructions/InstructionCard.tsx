@@ -155,6 +155,7 @@ interface InstructionCardProps {
     onToggle?: () => void;
     selected?: boolean;
     onSelect?: () => void;
+    onProofOfIdClick?: (ref: string) => void;
 }
 
 // Icons used for the bottom navigation as well as the global actions
@@ -184,6 +185,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     onToggle,
     selected = false,
     onSelect,
+    onProofOfIdClick,
 }) => {
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
@@ -1048,6 +1050,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                     key={d.key}
                                     className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
                                     onClick={() => {
+                                        if (d.key === 'id' && onProofOfIdClick) {
+                                            onProofOfIdClick(instruction.InstructionRef);
+                                            return;
+                                        }
                                       if (collapsed) {
                                         setCollapsed(false);
                                         setShowClientDetails(true);
