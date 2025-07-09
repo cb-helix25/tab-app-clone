@@ -307,6 +307,13 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const tabsRef = useRef<HTMLDivElement>(null);
     const [compact, setCompact] = useState(true);
 
+    // Reposition masonry grid when the expanded status section changes
+    useEffect(() => {
+        if (!collapsed) {
+            onToggle?.();
+        }
+    }, [selectedStatus, collapsed, onToggle]);
+
     const [showRawJson, setShowRawJson] = useState(false);
 
     // Extracted components to avoid hook-in-callback error

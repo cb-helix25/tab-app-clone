@@ -23,7 +23,7 @@
   break-inside: avoid;
   page-break-inside: avoid;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible; /* allow expanded cards to grow */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.3s ease;
   width: 100%;
@@ -158,11 +158,15 @@
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
-    overflow: hidden;
+    overflow: visible; /* allow status details to expand */
     border-radius: 0;
     break-inside: avoid;
     transition: margin-bottom 0.4s linear;
     }
+
+.instructionCard.collapsed {
+    overflow: hidden; /* keep previous behaviour when collapsed */
+}
 
 
 .status-box {

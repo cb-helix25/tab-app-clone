@@ -899,8 +899,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [repositionMasonry]);
 
   useLayoutEffect(() => {
-    repositionMasonry();
-  }, [overviewItems, selectedInstruction, repositionMasonry]);
+    if (activePivot === "overview") {
+      repositionMasonry();
+    }
+  }, [overviewItems, selectedInstruction, repositionMasonry, activePivot]);
 
   useEffect(() => {
     window.addEventListener('resize', repositionMasonry);

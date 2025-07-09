@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 // invisible change 2
 import {
     Stack,
     PrimaryButton,
+    DefaultButton,
+    Dialog,
+    DialogType,
+    DialogFooter,
     DatePicker,
     IDatePickerStyles,
 } from '@fluentui/react';
@@ -130,6 +134,93 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     onContinue,
     isComplete,
 }) => {
+    const initialRiskCore = useRef<RiskCore>(riskCore);
+    const initialComplianceDate = useRef<Date | undefined>(complianceDate);
+    const initialComplianceExpiry = useRef<Date | undefined>(complianceExpiry);
+    const initialClientRisk = useRef<boolean | undefined>(consideredClientRisk);
+    const initialTransactionRisk = useRef<boolean | undefined>(consideredTransactionRisk);
+    const initialTransactionLevel = useRef<string>(transactionRiskLevel);
+    const initialFirmWideSanctions = useRef<boolean | undefined>(consideredFirmWideSanctions);
+    const initialFirmWideAML = useRef<boolean | undefined>(consideredFirmWideAML);
+
+    const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+    const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
+
+    const hasDataToClear = () => {
+        const coreChanged = Object.entries(riskCore).some(
+            ([k, v]) => (initialRiskCore.current as any)[k] !== v
+        );
+        return (
+            coreChanged ||
+            complianceDate !== initialComplianceDate.current ||
+            complianceExpiry !== initialComplianceExpiry.current ||
+            consideredClientRisk !== initialClientRisk.current ||
+            consideredTransactionRisk !== initialTransactionRisk.current ||
+            transactionRiskLevel !== initialTransactionLevel.current ||
+            consideredFirmWideSanctions !== initialFirmWideSanctions.current ||
+            consideredFirmWideAML !== initialFirmWideAML.current
+        );
+    };
+
+    const doClearAll = () => {
+        setIsClearDialogOpen(false);
+        setRiskCore({
+            clientType: '',
+            clientTypeValue: 0,
+            destinationOfFunds: '',
+            destinationOfFundsValue: 0,
+            fundsType: '',
+            fundsTypeValue: 0,
+            clientIntroduced: '',
+            clientIntroducedValue: 0,
+            limitation: '',
+            limitationValue: 0,
+            sourceOfFunds: '',
+            sourceOfFundsValue: 0,
+            valueOfInstruction: '',
+            valueOfInstructionValue: 0,
+        });
+        setComplianceDate(undefined);
+        setComplianceExpiry(undefined);
+        setConsideredClientRisk(undefined);
+        setConsideredTransactionRisk(undefined);
+        setTransactionRiskLevel('');
+        setConsideredFirmWideSanctions(undefined);
+        setConsideredFirmWideAML(undefined);
+        setJsonPreviewOpen(false);
+    };
+
+    const handleClearAll = () => {
+        if (hasDataToClear()) {
+            setIsClearDialogOpen(true);
+        } else {
+            doClearAll();
+        }
+    };
+
+    const generateJson = () => ({
+        ComplianceDate: complianceDate?.toISOString().split('T')[0] ?? null,
+        ComplianceExpiry: complianceExpiry?.toISOString().split('T')[0] ?? null,
+        ClientType: riskCore.clientType,
+        ClientType_Value: riskCore.clientTypeValue,
+        DestinationOfFunds: riskCore.destinationOfFunds,
+        DestinationOfFunds_Value: riskCore.destinationOfFundsValue,
+        FundsType: riskCore.fundsType,
+        FundsType_Value: riskCore.fundsTypeValue,
+        HowWasClientIntroduced: riskCore.clientIntroduced,
+        HowWasClientIntroduced_Value: riskCore.clientIntroducedValue,
+        Limitation: riskCore.limitation,
+        Limitation_Value: riskCore.limitationValue,
+        SourceOfFunds: riskCore.sourceOfFunds,
+        SourceOfFunds_Value: riskCore.sourceOfFundsValue,
+        ValueOfInstruction: riskCore.valueOfInstruction,
+        ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
+        TransactionRiskLevel: transactionRiskLevel || null,
+        ClientRiskFactorsConsidered: consideredClientRisk,
+        TransactionRiskFactorsConsidered: consideredTransactionRisk,
+        FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
+        FirmWideAMLPolicyConsidered: consideredFirmWideAML,
+    });
     const riskScore =
         riskCore.clientTypeValue +
         riskCore.destinationOfFundsValue +
@@ -316,12 +407,128 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                     <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
                 </Stack>
             </Stack>
-            <PrimaryButton
-                text="Continue"
-                onClick={onContinue}
-                disabled={!isComplete()}
-                styles={sharedPrimaryButtonStyles}
-            />
+            <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign="center">
+                {hasDataToClear() && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleClearAll}
+                            style={{
+                                background: '#fff',
+                                border: '1px solid #e1e5e9',
+                                borderRadius: 0,
+                                padding: '8px 16px',
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: '#D65541',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontFamily: 'Raleway, sans-serif'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#ffefed';
+                                e.currentTarget.style.borderColor = '#D65541';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#fff';
+                                e.currentTarget.style.borderColor = '#e1e5e9';
+                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-10-2-1-2-2-2V6m3 0V4c0-1 1-2 2-2h4c0-1 1-2 2-2v2m-6 5v6m4-6v6"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            Clear All
+                        </button>
+                        <Dialog
+                            hidden={!isClearDialogOpen}
+                            onDismiss={() => setIsClearDialogOpen(false)}
+                            dialogContentProps={{
+                                type: DialogType.normal,
+                                title: 'Clear All Data',
+                                subText: 'Are you sure you want to clear all form data? This action cannot be undone.'
+                            }}
+                            modalProps={{ isBlocking: true }}
+                        >
+                            <DialogFooter>
+                                <PrimaryButton onClick={doClearAll} text="Yes, clear all" />
+                                <DefaultButton onClick={() => setIsClearDialogOpen(false)} text="Cancel" />
+                            </DialogFooter>
+                        </Dialog>
+                    </>
+                )}
+                <button
+                    type="button"
+                    onClick={() => setJsonPreviewOpen(!jsonPreviewOpen)}
+                    style={{
+                        background: '#f8f9fa',
+                        border: '1px solid #e1dfdd',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: '#3690CE',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'background 0.2s ease, border-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#e7f1ff';
+                        e.currentTarget.style.borderColor = '#3690CE';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#f8f9fa';
+                        e.currentTarget.style.borderColor = '#e1dfdd';
+                    }}
+                >
+                    <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 12 }} />
+                    {jsonPreviewOpen ? 'Hide JSON' : 'View JSON'}
+                </button>
+                <PrimaryButton
+                    text="Continue"
+                    onClick={onContinue}
+                    disabled={!isComplete()}
+                    styles={sharedPrimaryButtonStyles}
+                />
+            </Stack>
+            {jsonPreviewOpen && (
+                <div style={{
+                    marginTop: 12,
+                    border: '1px solid #e1dfdd',
+                    borderRadius: 6,
+                    background: '#f8f9fa',
+                    overflow: 'hidden',
+                    width: '100%',
+                    maxWidth: 620
+                }}>
+                    <div style={{
+                        padding: 16,
+                        maxHeight: 300,
+                        overflow: 'auto',
+                        fontSize: 10,
+                        fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                        lineHeight: 1.4,
+                        background: '#fff'
+                    }}>
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {JSON.stringify(generateJson(), null, 2)}
+                        </pre>
+                    </div>
+                </div>
+            )}
         </Stack>
     );
 };
