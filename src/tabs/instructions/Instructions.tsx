@@ -39,7 +39,6 @@ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCa
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
-import DraftCCLPage from "./DraftCCLPage";
 import InstructionEditor from "./components/InstructionEditor";
 import InstructionBlockEditor from "./components/InstructionBlockEditor";
 import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
@@ -67,7 +66,6 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
-  const [showDraftCCLPage, setShowDraftCCLPage] = useState<boolean>(false);
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
     null,
@@ -236,15 +234,13 @@ const Instructions: React.FC<InstructionsProps> = ({
       setSelectedRisk(null);
     } else if (showEIDPage) {
       setShowEIDPage(false);
-    } else if (showDraftCCLPage) {
-      setShowDraftCCLPage(false);
     }
   };
 
   useEffect(() => {
     setContent(
       <>
-        {showNewMatterPage || showRiskPage || showEIDPage || showDraftCCLPage ? (
+        {showNewMatterPage || showRiskPage || showEIDPage ? (
           <div className={detailNavStyle(isDarkMode)}>
             <div 
               className="nav-back-button"
@@ -414,7 +410,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     showNewMatterPage,
     showRiskPage,
     showEIDPage,
-    showDraftCCLPage,
     selectedInstruction,
     hasActiveMatter,
   ]);
@@ -830,11 +825,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowEIDPage(true);
   };
 
-  const handleDraftCCL = (inst: any) => {
-    setSelectedInstruction(inst);
-    setPendingInstructionRef('');
-    setShowDraftCCLPage(true);
-  };
 
   const handleOpenInstruction = (ref: string) => {
     setActivePivot("overview");
@@ -892,12 +882,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   };
 
-  const handleGlobalDraftCCL = () => {
-    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
-    if (targetInstruction) {
-      handleDraftCCL(targetInstruction);
-    }
-  };
 
   if (showNewMatterPage) {
     // Preselect POIDs by matching InstructionRef
@@ -955,17 +939,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
   }
 
-  if (showDraftCCLPage) {
-    return (
-      <Stack tokens={dashboardTokens} className={containerStyle}>
-        <DraftCCLPage
-          onBack={() => setShowDraftCCLPage(false)}
-          instruction={selectedInstruction}
-          instructions={instructionData}
-        />
-      </Stack>
-    );
-  }
 
   return (
     <>
@@ -1096,7 +1069,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           )}
         </div>
         {/* Global Action Area - always visible, enhanced when instruction selected */}
-        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && !showDraftCCLPage && (
+        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
           <div 
             className="global-action-area"
             style={{
@@ -1197,32 +1170,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                   zIndex: 10,
                 }} />
               )}
-            </button>
-            <button
-              className="global-action-btn"
-              onClick={handleGlobalDraftCCL}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-              style={{
-                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-                opacity: disableOtherActions ? 0.5 : 1,
-                transform: 'translateY(0)',
-                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
-                pointerEvents: disableOtherActions ? 'none' : 'auto',
-              }}
-            >
-              <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-              }}>
-                <MdOutlineArticle className="icon-outline" />
-                <MdArticle className="icon-filled" />
-              </span>
-              <span className="global-action-label" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-              }}>
-                Draft CCL
-              </span>
             </button>
           </div>
         )}

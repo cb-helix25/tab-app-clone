@@ -1,60 +1,530 @@
-diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
-index 100d131582bf1745f888a07a181b104499b02455..293e12b65759f774b331d271ac52f30cd6744c25 100644
---- a/src/tabs/instructions/PoidCard.tsx
-+++ b/src/tabs/instructions/PoidCard.tsx
-@@ -283,51 +283,54 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData,
-     const matterId = (poid as any).matter_id || (poid as any).MatterId;
-     const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
-     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
-     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
-     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
-     // --- End new fields ---
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -17,79 +17,77 @@ import {
+   FaRegIdBadge,
+   FaFileAlt,
+   FaRegFileAlt,
+   FaFolder,
+   FaRegFolder,
+ } from 'react-icons/fa';
+ import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+ import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+ import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
+ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
+-import DraftCCLPage from "./DraftCCLPage";
+ import InstructionEditor from "./components/InstructionEditor";
+ import InstructionBlockEditor from "./components/InstructionBlockEditor";
+ import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
+ import "../../app/styles/InstructionsBanner.css";
  
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+   hasActiveMatter?: boolean;
+   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
+ }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+   hasActiveMatter = false,
+   setIsInMatterOpeningWorkflow,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+-  const [showDraftCCLPage, setShowDraftCCLPage] = useState<boolean>(false);
+   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
+   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
+     null,
+   );
+   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
+   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
+ 
+   // Notify parent when matter opening workflow state changes
+   useEffect(() => {
+     if (setIsInMatterOpeningWorkflow) {
+       setIsInMatterOpeningWorkflow(showNewMatterPage);
+     }
+   }, [showNewMatterPage, setIsInMatterOpeningWorkflow]);
+ 
+   // Check for navigation trigger from Home component
+   useEffect(() => {
+     const shouldOpenMatterOpening = localStorage.getItem('openMatterOpening');
+     if (shouldOpenMatterOpening === 'true') {
+       // Clear the flag
+       localStorage.removeItem('openMatterOpening');
+       // Open matter opening if not already open
+       if (!showNewMatterPage) {
+         setShowNewMatterPage(true);
+       }
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -214,59 +212,57 @@ const Instructions: React.FC<InstructionsProps> = ({
+             "Failed to fetch instructions for user",
+             targetInitials,
+           );
+         }
+       } catch (err) {
+         console.error(
+           "Error fetching instructions for user",
+           targetInitials,
+           err,
+         );
+       }
+     }
+     fetchData();
+   }, [useLocalData]);
+ 
+   const handleBack = () => {
+     if (showNewMatterPage) {
+       setShowNewMatterPage(false);
+       setSelectedInstruction(null);
+       setPendingInstructionRef('');
+     } else if (showRiskPage) {
+       setShowRiskPage(false);
+       setSelectedRisk(null);
+     } else if (showEIDPage) {
+       setShowEIDPage(false);
+-    } else if (showDraftCCLPage) {
+-      setShowDraftCCLPage(false);
+     }
+   };
+ 
+   useEffect(() => {
+     setContent(
+       <>
+-        {showNewMatterPage || showRiskPage || showEIDPage || showDraftCCLPage ? (
++        {showNewMatterPage || showRiskPage || showEIDPage ? (
+           <div className={detailNavStyle(isDarkMode)}>
+             <div 
+               className="nav-back-button"
+               onClick={handleBack}
+               style={{
+                 background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+                 border: '1px solid #e1dfdd',
+                 borderRadius: '0',
+                 width: '32px',
+                 height: '32px',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 cursor: 'pointer',
+                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                 position: 'relative',
+                 overflow: 'hidden',
+                 marginRight: 8,
+               }}
+               onMouseEnter={(e) => {
+                 e.currentTarget.style.background = '#e7f1ff';
+                 e.currentTarget.style.border = '1px solid #3690CE';
+                 e.currentTarget.style.width = '120px';
+                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -392,51 +388,50 @@ const Instructions: React.FC<InstructionsProps> = ({
+               />
+               <QuickActionsCard
+                 title="Editor"
+                 icon="Edit"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "demo"}
+                 onClick={() => !isProduction && setActivePivot("demo")}
+                 iconColor={activePivot === "demo" ? colours.cta : colours.greyText}
+                 orientation="row"
+                 disabled={isProduction}
+               />
+             </div>
+           </>
+         )}
+       </>,
+     );
+     return () => setContent(null);
+   }, [
+     setContent,
+     isDarkMode,
+     instructionData,
+     activePivot,
+     showNewMatterPage,
+     showRiskPage,
+     showEIDPage,
+-    showDraftCCLPage,
+     selectedInstruction,
+     hasActiveMatter,
+   ]);
+ 
+   const containerStyle = mergeStyles({
+     backgroundColor: isDarkMode
+       ? colours.dark.background
+       : colours.light.background,
+     minHeight: "100vh",
+     boxSizing: "border-box",
+     color: isDarkMode ? colours.light.text : colours.dark.text,
+   });
+ 
+   const newMatterContainerStyle = mergeStyles(containerStyle, {
+     padding: "12px",
+   });
+ 
+   const sectionContainerStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       padding: "16px",
+       paddingBottom: activePivot === "overview" ? "120px" : "16px", // Add bottom padding for global action area
+       borderRadius: 0,
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -808,55 +803,50 @@ const Instructions: React.FC<InstructionsProps> = ({
+     if (hasActiveMatterOpening()) {
+       setPendingInstruction(inst);
+       setIsResumeDialogOpen(true);
+     } else {
+       setSelectedInstruction(inst);
+       setPendingInstructionRef('');
+       setShowNewMatterPage(true);
+     }
+   };
+ 
+   const handleRiskAssessment = (item: any) => {
+     if (item) {
+       setSelectedInstruction(item.instruction ?? item);
+       setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
+     }
+     setPendingInstructionRef('');
+     setShowRiskPage(true);
+   };
+ 
+   const handleEIDCheck = (inst: any) => {
+     setSelectedInstruction(inst);
+     setPendingInstructionRef('');
+     setShowEIDPage(true);
+   };
+ 
+-  const handleDraftCCL = (inst: any) => {
+-    setSelectedInstruction(inst);
+-    setPendingInstructionRef('');
+-    setShowDraftCCLPage(true);
+-  };
+ 
+   const handleOpenInstruction = (ref: string) => {
+     setActivePivot("overview");
+   };
+ 
+   const gridContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+     gap: "16px",
+     maxWidth: "1200px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
+ 
+   const scenariosContainerStyle = mergeStyles({
+     display: "grid",
+     gridTemplateColumns: "1fr",
+     gap: "16px",
+     maxWidth: "600px",
+     width: "100%",
+     margin: "0 auto",
+     boxSizing: "border-box",
+   });
+ 
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -870,56 +860,50 @@ const Instructions: React.FC<InstructionsProps> = ({
+ 
+   // Global action handlers that work with the selected instruction or first available instruction
+   const handleGlobalOpenMatter = () => {
+     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+     if (targetInstruction) {
+       handleOpenMatter(targetInstruction);
+     }
+   };
+ 
+   const handleGlobalRiskAssessment = () => {
+     const targetItem = selectedInstruction 
+       ? overviewItems.find(item => item.instruction.InstructionRef === selectedInstruction.InstructionRef)
+       : overviewItems.find(item => item.instruction);
+     if (targetItem) {
+       handleRiskAssessment(targetItem);
+     }
+   };
+ 
+   const handleGlobalEIDCheck = () => {
+     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+     if (targetInstruction) {
+       handleEIDCheck(targetInstruction);
+     }
+   };
+ 
+-  const handleGlobalDraftCCL = () => {
+-    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+-    if (targetInstruction) {
+-      handleDraftCCL(targetInstruction);
+-    }
+-  };
+ 
+   if (showNewMatterPage) {
+     // Preselect POIDs by matching InstructionRef
+     let preselectedPoidIds: string[] = [];
+     if (selectedInstruction && selectedInstruction.InstructionRef) {
+       // Use idVerificationOptions (the POID data) to find all POIDs with matching InstructionRef
+       preselectedPoidIds = (idVerificationOptions || [])
+         .filter((poid: any) => poid && (poid.InstructionRef === selectedInstruction.InstructionRef))
+         .map((poid: any) => String(poid.poid_id))
+         .filter(Boolean);
+     }
      return (
-         <div onClick={onClick} className={cardStyle}>
-             <div className={contentStyle}>
-                 <Stack tokens={{ childrenGap: 8 }}>
-                     {/* Name and Company */}
-                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
-                         <Text
-                             variant="mediumPlus"
-                             styles={{
-                                 root: {
-                                     fontWeight: 700,
-                                     color: colours.highlight,
-                                     fontFamily: 'Raleway, sans-serif',
-                                     lineHeight: '1.2',
-                                 },
-                             }}
-                         >
-                             {companyName && (
--                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>{companyName} - </span>
-+                                <>
-+                                    <span style={{ color: '#666', fontWeight: 600, marginRight: '4px' }}>{companyName}</span>
-+                                    <span style={{ color: '#999', marginRight: '4px' }}>|</span>
-+                                </>
-                             )}
-                             {fullName}
-                         </Text>
-                         {age !== undefined && (
-                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{age} yrs</Text>
-                         )}
-                         {nationalityAlpha2 && (
-                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{nationalityAlpha2}</Text>
-                         )}
-                         <div style={{ flex: 1 }} />
-                         <Icon
-                             iconName={backgroundIconName}
-                             style={{
-                                 fontSize: 22,
-                                 opacity: 0.3,
-                                 transition: 'opacity 0.2s',
-                                 color: colours.highlight,
-                                 marginLeft: 8,
-                                 verticalAlign: 'middle',
-                             }}
-                             className="inlinePersonCompanyIcon"
-                         />
-                     </Stack>
-                     {/* Email, Phone */}
-                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
+         <FlatMatterOpening
+           poidData={idVerificationOptions}
+           setPoidData={setPoidData}
+           teamData={teamData}
+           userInitials={userInitials}
+           instructionRef={selectedInstruction?.InstructionRef}
+           stage={selectedInstruction?.Stage}
+           clientId={selectedInstruction?.prospectId?.toString()}
+           hideClientSections={!selectedInstruction}
+           initialClientType={selectedInstruction?.ClientType}
+           preselectedPoidIds={preselectedPoidIds}
+         />
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -933,61 +917,50 @@ const Instructions: React.FC<InstructionsProps> = ({
+         <RiskAssessmentPage
+           onBack={() => {
+             setShowRiskPage(false);
+             setSelectedRisk(null);
+           }}
+           instructionRef={selectedInstruction?.InstructionRef}
+           riskAssessor={userInitials}
+           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
+         />
+       </Stack>
+     );
+   }
+ 
+   if (showEIDPage) {
+     return (
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <EIDCheckPage
+           poidData={idVerificationOptions}
+           instruction={selectedInstruction}
+           onBack={handleBack}
+         />
+       </Stack>
+     );
+   }
+ 
+-  if (showDraftCCLPage) {
+-    return (
+-      <Stack tokens={dashboardTokens} className={containerStyle}>
+-        <DraftCCLPage
+-          onBack={() => setShowDraftCCLPage(false)}
+-          instruction={selectedInstruction}
+-          instructions={instructionData}
+-        />
+-      </Stack>
+-    );
+-  }
+ 
+   return (
+     <>
+     <section className="page-section">
+       <Stack tokens={dashboardTokens} className={containerStyle}>
+         <div className="disclaimer animate-disclaimer">
+           <p>Note: This module is visible only to Alex (AC), Jonathan (JW), Luke (LZ), Kanchel (KW), Billy (BL), Richard (RC), and Josh (JWH).</p>
+         </div>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+             <div className={overviewGridStyle}>
+               {overviewItems.map((item, idx) => {
+                 const row = Math.floor(idx / 3);
+                 const col = idx % 3;
+                 const animationDelay = row * 0.2 + col * 0.1;
+                 return (
+                   <InstructionCard
+                     key={idx}
+                     instruction={item.instruction as any}
+                     deal={(item as any).deal}
+                     deals={item.deals}
+                     clients={item.clients}
+                     risk={(item as any).risk}
+                     eid={(item as any).eid}
+                     eids={(item as any).eids}
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1074,51 +1047,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+             </>
+           )}
+           {activePivot === "states" && (
+             <div className={scenariosContainerStyle}>
+               {instructionCardStates.map((state, idx) => (
+                 <InstructionStateCard key={idx} data={state} />
+               ))}
+             </div>
+           )}
+           {activePivot === "demo" && (
+             <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+               <h2 style={{ color: colours.darkBlue, marginBottom: '16px' }}>
+                 Instructions Editor
+               </h2>
+               <p style={{ color: colours.greyText, marginBottom: '24px' }}>
+                 Create professional instruction content using templates and placeholders
+               </p>
+               <InstructionBlockEditor 
+                 value=""
+                 onChange={(value) => console.log('Editor content:', value)}
+               />
+             </div>
+           )}
+         </div>
+         {/* Global Action Area - always visible, enhanced when instruction selected */}
+-        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && !showDraftCCLPage && (
++        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
+           <div 
+             className="global-action-area"
+             style={{
+               opacity: 1, // Always visible
+               transform: 'translateY(0)',
+               transition: 'opacity 0.4s ease, transform 0.4s ease',
+               pointerEvents: 'auto', // Always interactive
+             }}
+           >
+             <button
+               className="global-action-btn"
+               onClick={handleGlobalEIDCheck}
+               onMouseDown={e => e.currentTarget.classList.add('pressed')}
+               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+               style={{
+                 borderColor: selectedInstruction ? '#3690CE' : undefined,
+                 opacity: 1, // Always visible
+                 transform: 'translateY(0)',
+                 transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
+               }}
+             >
+               <span className="global-action-icon icon-hover" style={{
+                 color: selectedInstruction ? '#3690CE' : undefined,
+               }}>
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1176,76 +1149,50 @@ const Instructions: React.FC<InstructionsProps> = ({
+                 color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+               }}>
+                 <FaRegFolder className="icon-outline" />
+                 <FaFolder className="icon-filled" />
+               </span>
+               <span className="global-action-label" style={{
+                 color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+               }}>
+                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
+               </span>
+               {/* Pulsing dot indicator - only show when no instruction selected and has active matter */}
+               {!selectedInstruction && hasActiveMatter && !showNewMatterPage && (
+                 <div style={{
+                   position: 'absolute',
+                   top: '8px',
+                   right: '8px',
+                   width: '8px',
+                   height: '8px',
+                   borderRadius: '50%',
+                   backgroundColor: '#D65541',
+                   animation: 'pulse 2s infinite',
+                   zIndex: 10,
+                 }} />
+               )}
+             </button>
+-            <button
+-              className="global-action-btn"
+-              onClick={handleGlobalDraftCCL}
+-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+-              style={{
+-                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+-                opacity: disableOtherActions ? 0.5 : 1,
+-                transform: 'translateY(0)',
+-                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
+-                pointerEvents: disableOtherActions ? 'none' : 'auto',
+-              }}
+-            >
+-              <span className="global-action-icon icon-hover" style={{
+-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+-              }}>
+-                <MdOutlineArticle className="icon-outline" />
+-                <MdArticle className="icon-filled" />
+-              </span>
+-              <span className="global-action-label" style={{
+-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+-              }}>
+-                Draft CCL
+-              </span>
+-            </button>
+           </div>
+         )}
+       </Stack>
+     </section>
+       <Dialog
+         hidden={!isResumeDialogOpen}
+         onDismiss={() => setIsResumeDialogOpen(false)}
+         dialogContentProps={{
+           type: DialogType.normal,
+           title: 'Resume Matter Opening?',
+           subText:
+             'An unfinished matter opening was detected. Would you like to resume it or start a new one?'
+         }}
+         modalProps={{ isBlocking: true }}
+       >
+         <DialogFooter>
+           <PrimaryButton
+             onClick={() => {
+               setIsResumeDialogOpen(false);
+               setSelectedInstruction(pendingInstruction);
+               setShowNewMatterPage(true);
+             }}
+             text="Resume"
+           />
+           <DefaultButton

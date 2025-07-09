@@ -9,7 +9,6 @@ A sticky action bar now appears at the top of the Overview. It contains buttons 
 - **New Matter** – open a matter against the selected instruction.
 - **Verify an ID** – placeholder for launching an electronic ID verification.
 - **Risk Assessment** – placeholder for performing a matter risk review.
-- **Draft CCL** – placeholder for generating a client care letter.
 
 These actions use the shared `QuickActionsCard` component so the look and feel matches the rest of the application.
 
