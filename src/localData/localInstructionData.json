@@ -1,41 +1,11 @@
 [
   {
-    "prospectId": 1,
-    "deals": [
-      {
-        "DealId": 5,
-        "InstructionRef": "HLX-1-PRE",
-        "ProspectId": 1,
-        "Passcode": "P1",
-        "ServiceDescription": "test item",
-        "Amount": 1.0,
-        "AreaOfWork": "testing",
-        "PitchedBy": "AB",
-        "PitchedDate": "2025-01-01",
-        "PitchedTime": "09:00:00",
-        "PitchValidUntil": "2025-12-31",
-        "Status": "pitched",
-        "IsMultiClient": false,
-        "LeadClientId": 1,
-        "LeadClientEmail": "test@example.com",
-        "CloseDate": null,
-        "CloseTime": null,
-        "jointClients": [
-          {
-            "DealJointClientId": 10,
-            "DealId": 5,
-            "ClientEmail": "joint1@example.com",
-            "HasSubmitted": false,
-            "SubmissionDateTime": null
-          }
-        ],
-        "documents": []
-      }
-    ],
+    "prospectId": 20001,
+    "deals": [],
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-1-PRE",
+        "InstructionRef": "HLX-20001",
         "Stage": "initialised",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -92,13 +62,13 @@
     "idVerifications": []
   },
   {
-    "prospectId": 2,
+    "prospectId": 20002,
     "deals": [
       {
-        "DealId": 6,
-        "InstructionRef": "HLX-2-START",
-        "ProspectId": 2,
-        "Passcode": "P2",
+        "DealId": 20002,
+        "InstructionRef": "HLX-20002-11223",
+        "ProspectId": 20002,
+        "Passcode": "11223",
         "ServiceDescription": "test item",
         "Amount": 1.0,
         "AreaOfWork": "testing",
@@ -107,53 +77,41 @@
         "PitchedTime": "09:00:00",
         "PitchValidUntil": "2025-12-31",
         "Status": "pitched",
-        "IsMultiClient": false,
-        "LeadClientId": 2,
+        "IsMultiClient": true,
+        "LeadClientId": 20002,
         "LeadClientEmail": "test@example.com",
         "CloseDate": null,
         "CloseTime": null,
         "jointClients": [
           {
             "DealJointClientId": 30,
-            "DealId": 6,
+            "DealId": 20002,
             "ClientEmail": "001@helix-law.com",
             "HasSubmitted": false,
             "SubmissionDateTime": null
           },
           {
             "DealJointClientId": 31,
-            "DealId": 6,
+            "DealId": 20002,
             "ClientEmail": "002@helix-law.com",
             "HasSubmitted": false,
             "SubmissionDateTime": null
           }
         ],
-        "documents": [
-          {
-            "DocumentId": 5,
-            "InstructionRef": "HLX-2-START",
-            "DocumentType": null,
-            "FileName": "payslip.pdf",
-            "BlobUrl": "https://example.com/doc5.pdf",
-            "FileSizeBytes": null,
-            "UploadedBy": null,
-            "UploadedAt": "2025-01-03T09:00:00",
-            "Notes": null
-          }
-        ]
+        "documents": []
       }
     ],
     "jointClients": [
       {
         "DealJointClientId": 30,
-        "DealId": 6,
+        "DealId": 20002,
         "ClientEmail": "001@helix-law.com",
         "HasSubmitted": false,
         "SubmissionDateTime": null
       },
       {
         "DealJointClientId": 31,
-        "DealId": 6,
+        "DealId": 20002,
         "ClientEmail": "002@helix-law.com",
         "HasSubmitted": false,
         "SubmissionDateTime": null
@@ -161,7 +119,7 @@
     ],
     "instructions": [
       {
-        "InstructionRef": "HLX-2-START",
+        "InstructionRef": "HLX-20002-11223",
         "Stage": "poid",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -218,11 +176,11 @@
     "idVerifications": [
       {
         "InternalId": 2,
-        "InstructionRef": "HLX-22355-4242",
+        "InstructionRef": "HLX-20002-11223",
         "MatterId": null,
         "DealJointClientId": null,
         "ClientId": null,
-        "ProspectId": 22355,
+        "ProspectId": 20002,
         "ClientEmail": "sylvia.hughes@helixlaw.com",
         "IsLeadClient": true,
         "AdditionalIDDate": "2025-06-12",
@@ -242,13 +200,13 @@
     ]
   },
   {
-    "prospectId": 3,
+    "prospectId": 20003,
     "deals": [
       {
-        "DealId": 1,
-        "InstructionRef": "HLX-3-OPTDOC",
-        "ProspectId": 3,
-        "Passcode": "P3",
+        "DealId": 20003,
+        "InstructionRef": "HLX-20003-12345",
+        "ProspectId": 20003,
+        "Passcode": "12345",
         "ServiceDescription": "test item",
         "Amount": 1.0,
         "AreaOfWork": "testing",
@@ -258,7 +216,7 @@
         "PitchValidUntil": "2025-12-31",
         "Status": "closed",
         "IsMultiClient": false,
-        "LeadClientId": 3,
+        "LeadClientId": 20003,
         "LeadClientEmail": "test@example.com",
         "CloseDate": "2025-02-01",
         "CloseTime": "10:00:00",
@@ -269,7 +227,7 @@
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-3-OPTDOC",
+        "InstructionRef": "HLX-20003-12345",
         "Stage": "completed",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -323,7 +281,7 @@
     "documents": [
       {
         "DocumentId": 4,
-        "InstructionRef": "HLX-3-OPTDOC",
+        "InstructionRef": "HLX-20003-12345",
         "DocumentType": null,
         "FileName": "doc.pdf",
         "BlobUrl": "https://example.com/doc4.pdf",
@@ -335,8 +293,8 @@
     ],
     "riskAssessments": [
       {
-        "MatterId": "HLX-3-OPTDOC",
-        "InstructionRef": "HLX-3-OPTDOC",
+        "MatterId": "HLX-20003-12345",
+        "InstructionRef": "HLX-20003-12345",
         "RiskAssessor": null,
         "ComplianceDate": null,
         "ComplianceExpiry": null,
@@ -366,7 +324,7 @@
     ],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-3-OPTDOC",
+        "MatterId": "HLX-20003-12345",
         "EIDStatus": "completed",
         "EIDOverallResult": "Passed"
       }
@@ -374,11 +332,11 @@
     "idVerifications": [
       {
         "InternalId": 1,
-        "InstructionRef": "HLX-22338-4241",
+        "InstructionRef": "HLX-20003-12345",
         "MatterId": null,
         "DealJointClientId": null,
         "ClientId": null,
-        "ProspectId": 22338,
+        "ProspectId": 20003,
         "ClientEmail": "shyamsai@yahoo.com",
         "IsLeadClient": false,
         "AdditionalIDDate": null,
@@ -398,13 +356,13 @@
     ]
   },
   {
-    "prospectId": 4,
+    "prospectId": 20004,
     "deals": [
       {
-        "DealId": 2,
-        "InstructionRef": "HLX-4-REVIEWOK",
-        "ProspectId": 4,
-        "Passcode": "P4",
+        "DealId": 20004,
+        "InstructionRef": "HLX-20004-23456",
+        "ProspectId": 20004,
+        "Passcode": "23456",
         "ServiceDescription": "test item",
         "Amount": 1.0,
         "AreaOfWork": "testing",
@@ -425,7 +383,7 @@
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-4-REVIEWOK",
+        "InstructionRef": "HLX-20004-23456",
         "Stage": "completed",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -480,7 +438,7 @@
     "riskAssessments": [],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-4-REVIEWOK",
+        "MatterId": "HLX-20004-23456",
         "EIDStatus": "completed",
         "EIDOverallResult": "Review"
       }
@@ -488,11 +446,11 @@
     "idVerifications": [
       {
         "InternalId": 3,
-        "InstructionRef": "HLX-22360-4243",
+        "InstructionRef": "HLX-20004-23456",
         "MatterId": null,
         "DealJointClientId": null,
         "ClientId": null,
-        "ProspectId": 22360,
+        "ProspectId": 20004,
         "ClientEmail": "naveed.khan@helixlaw.com",
         "IsLeadClient": false,
         "AdditionalIDDate": null,
@@ -512,13 +470,13 @@
     ]
   },
   {
-    "prospectId": 5,
+    "prospectId": 20005,
     "deals": [
       {
-        "DealId": 3,
-        "InstructionRef": "HLX-5-REVIEWFAIL",
-        "ProspectId": 5,
-        "Passcode": "P5",
+        "DealId": 20005,
+        "InstructionRef": "HLX-20005-34567",
+        "ProspectId": 20005,
+        "Passcode": "34567",
         "ServiceDescription": "test item",
         "Amount": 1.0,
         "AreaOfWork": "testing",
@@ -539,7 +497,7 @@
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-5-REVIEWFAIL",
+        "InstructionRef": "HLX-20005-34567",
         "Stage": "completed",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -594,7 +552,7 @@
     "riskAssessments": [],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-5-REVIEWFAIL",
+        "MatterId": "HLX-20005-34567",
         "EIDStatus": "completed",
         "EIDOverallResult": "Review"
       }
@@ -602,11 +560,11 @@
     "idVerifications": [
       {
         "InternalId": 4,
-        "InstructionRef": "HLX-22361-4244",
+        "InstructionRef": "HLX-20005-34567",
         "MatterId": null,
         "DealJointClientId": null,
         "ClientId": null,
-        "ProspectId": 22361,
+        "ProspectId": 20005,
         "ClientEmail": "dana.miller@helixlaw.com",
         "IsLeadClient": true,
         "AdditionalIDDate": "2025-05-30",
@@ -626,13 +584,13 @@
     ]
   },
   {
-    "prospectId": 6,
+    "prospectId": 20006,
     "deals": [
       {
-        "DealId": 4,
-        "InstructionRef": "HLX-6-ALLGOOD",
-        "ProspectId": 6,
-        "Passcode": "P6",
+        "DealId": 20006,
+        "InstructionRef": "HLX-20006-45678",
+        "ProspectId": 20006,
+        "Passcode": "45678",
         "ServiceDescription": "test item",
         "Amount": 1.0,
         "AreaOfWork": "testing",
@@ -650,7 +608,7 @@
         "documents": [
           {
             "DocumentId": 6,
-            "InstructionRef": "HLX-6-ALLGOOD",
+            "InstructionRef": "HLX-20006-45678",
             "DocumentType": null,
             "FileName": "poid.pdf",
             "BlobUrl": "https://example.com/doc6.pdf",
@@ -665,7 +623,7 @@
     "jointClients": [],
     "instructions": [
       {
-        "InstructionRef": "HLX-6-ALLGOOD",
+        "InstructionRef": "HLX-20006-45678",
         "Stage": "completed",
         "ClientType": "Individual",
         "HelixContact": "AB",
@@ -719,7 +677,7 @@
     "documents": [
       {
         "DocumentId": 2,
-        "InstructionRef": "HLX-6-ALLGOOD",
+        "InstructionRef": "HLX-20006-45678",
         "DocumentType": null,
         "FileName": "doc.pdf",
         "BlobUrl": "https://example.com/doc2.pdf",
@@ -731,8 +689,8 @@
     ],
     "riskAssessments": [
       {
-        "MatterId": "HLX-6-ALLGOOD",
-        "InstructionRef": "HLX-6-ALLGOOD",
+        "MatterId": "HLX-20006-45678",
+        "InstructionRef": "HLX-20006-45678",
         "RiskAssessor": null,
         "ComplianceDate": null,
         "ComplianceExpiry": null,
@@ -762,7 +720,7 @@
     ],
     "electronicIDChecks": [
       {
-        "MatterId": "HLX-6-ALLGOOD",
+        "MatterId": "HLX-20006-45678",
         "EIDStatus": "completed",
         "EIDOverallResult": "Passed"
       }
@@ -770,11 +728,11 @@
     "idVerifications": [
       {
         "InternalId": 5,
-        "InstructionRef": "HLX-22365-4245",
+        "InstructionRef": "HLX-20006-45678",
         "MatterId": null,
         "DealJointClientId": null,
         "ClientId": null,
-        "ProspectId": 22365,
+        "ProspectId": 20006,
         "ClientEmail": "michael.chen@helixlaw.com",
         "IsLeadClient": false,
         "AdditionalIDDate": null,

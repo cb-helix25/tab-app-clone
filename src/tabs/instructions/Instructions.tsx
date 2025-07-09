@@ -865,6 +865,15 @@ const Instructions: React.FC<InstructionsProps> = ({
   };
 
   if (showNewMatterPage) {
+    // Preselect POIDs by matching InstructionRef
+    let preselectedPoidIds: string[] = [];
+    if (selectedInstruction && selectedInstruction.InstructionRef) {
+      // Use idVerificationOptions (the POID data) to find all POIDs with matching InstructionRef
+      preselectedPoidIds = (idVerificationOptions || [])
+        .filter((poid: any) => poid && (poid.InstructionRef === selectedInstruction.InstructionRef))
+        .map((poid: any) => String(poid.poid_id))
+        .filter(Boolean);
+    }
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
@@ -876,6 +885,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}
           hideClientSections={!selectedInstruction}
+          preselectedPoidIds={preselectedPoidIds}
         />
       </Stack>
     );
@@ -982,12 +992,15 @@ const Instructions: React.FC<InstructionsProps> = ({
                 const row = Math.floor(idx / 4);
                 const col = idx % 4;
                 const animationDelay = row * 0.2 + col * 0.1;
+                // Gather all instructions for lookup by email
+                const allInstructions = instructionData.flatMap(p => p.instructions ?? []);
                 return (
                   <JointClientCard
                     key={idx}
                     client={c}
                     animationDelay={animationDelay}
                     onOpenInstruction={handleOpenInstruction}
+                    allInstructions={allInstructions}
                   />
                 );
               })}

@@ -78,6 +78,7 @@ interface FlatMatterOpeningProps {
     matterRef?: string;
     hideClientSections?: boolean;
     initialClientType?: string;
+    preselectedPoidIds?: string[];
 }
 
 const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
@@ -92,6 +93,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     matterRef,
     hideClientSections = false,
     initialClientType = '',
+    preselectedPoidIds = [],
 }) => {
     const idExpiry = useMemo(() => {
         const d = new Date();
@@ -218,7 +220,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [clientType, setClientType] = useDraftedState<string>('clientType', initialClientType || '');
     useEffect(() => setClientType(initialClientType || ''), [initialClientType]);
 
-    const [selectedPoidIds, setSelectedPoidIds] = useDraftedState<string[]>('selectedPoidIds', []);
+    // If preselectedPoidIds is provided and not empty, use it as the initial value for selectedPoidIds
+    const [selectedPoidIds, setSelectedPoidIds] = useDraftedState<string[]>('selectedPoidIds', preselectedPoidIds.length > 0 ? preselectedPoidIds : []);
     const [areaOfWork, setAreaOfWork] = useDraftedState<string>('areaOfWork', '');
     const [practiceArea, setPracticeArea] = useDraftedState<string>('practiceArea', '');
     const [description, setDescription] = useDraftedState<string>('description', '');
@@ -235,6 +238,17 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [noConflict, setNoConflict] = useDraftedState<boolean>('noConflict', false);
     const [opponentChoiceMade, setOpponentChoiceMade] = useDraftedState<boolean>('opponentChoiceMade', false);
     const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false); // UI only, not persisted
+    // If preselectedPoidIds is provided, set the initial activePoid to the first matching POID
+    useEffect(() => {
+        if (preselectedPoidIds && preselectedPoidIds.length > 0 && effectivePoidData.length > 0) {
+            // Only set if not already set
+            setSelectedPoidIds((prev) => (prev.length === 0 ? preselectedPoidIds : prev));
+            const found = effectivePoidData.find((p) => p.poid_id === preselectedPoidIds[0]);
+            setActivePoid((prev) => (prev == null ? found || null : prev));
+        }
+        // Only run on mount or when preselectedPoidIds changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [preselectedPoidIds, effectivePoidData]);
 
     // Opponent fields
     const [opponentTitle, setOpponentTitle] = useDraftedState<string>('opponentTitle', '');

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 // invisible change
 //
+import { format, isSameYear, differenceInYears, differenceInMonths, differenceInWeeks, differenceInDays, isToday, isYesterday, isThisWeek, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import { format } from 'date-fns';
 import {
     FaIdBadge,
     FaRegIdBadge,
@@ -21,6 +21,49 @@ import { componentTokens } from '../../app/styles/componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionCard.css';
 import '../../app/styles/InstructionDashboard.css';
+
+// Utility to format date difference as human-friendly string
+function formatTimelineDate(dateStr: string, timeStr?: string) {
+    if (!dateStr) return '';
+    let date: Date;
+    if (dateStr.length > 10) {
+        date = new Date(dateStr); // already has time
+    } else if (timeStr) {
+        date = new Date(`${dateStr}T${timeStr}`);
+    } else {
+        date = new Date(dateStr);
+    }
+    const now = new Date();
+    if (isToday(date)) {
+        return `today at ${format(date, 'HH:mm')}`;
+    }
+    if (isYesterday(date)) {
+        return `yesterday at ${format(date, 'HH:mm')}`;
+    }
+    if (isThisWeek(date, { weekStartsOn: 1 })) {
+        return `on ${format(date, 'EEEE')} at ${format(date, 'HH:mm')}`;
+    }
+    const years = differenceInYears(now, date);
+    if (years > 0) {
+        const months = differenceInMonths(now, date) % 12;
+        return `${years} year${years > 1 ? 's' : ''}${months ? `, ${months} month${months > 1 ? 's' : ''}` : ''} ago`;
+    }
+    const months = differenceInMonths(now, date);
+    if (months > 0) {
+        const weeks = differenceInWeeks(now, date) % 4;
+        return `${months} month${months > 1 ? 's' : ''}${weeks ? `, ${weeks} week${weeks > 1 ? 's' : ''}` : ''} ago`;
+    }
+    const weeks = differenceInWeeks(now, date);
+    if (weeks > 0) {
+        const days = differenceInDays(now, date) % 7;
+        return `${weeks} week${weeks > 1 ? 's' : ''}${days ? `, ${days} day${days > 1 ? 's' : ''}` : ''} ago`;
+    }
+    const days = differenceInDays(now, date);
+    if (days > 0) {
+        return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+    return formatDistanceToNow(date, { addSuffix: true });
+}  
 
 interface InstructionInfo {
     InstructionRef: string;
@@ -71,9 +114,25 @@ interface InstructionInfo {
 }
 
 interface DealInfo {
+    InstructionRef?: string;
     ServiceDescription?: string;
     Amount?: number;
     AreaOfWork?: string;
+    PitchedBy?: string;
+    IsMultiClient?: boolean;
+    jointClients?: ClientInfo[];
+    // Add all possible deal fields for type safety
+    PitchedDate?: string;
+    PitchedTime?: string;
+    CloseDate?: string;
+    CloseTime?: string;
+    PitchValidUntil?: string;
+    ProspectId?: number;
+    Passcode?: string;
+    LeadClientId?: number;
+    LeadClientEmail?: string;
+    Status?: string;
+    [key: string]: any;
 }
 
 interface InstructionCardProps {
@@ -242,11 +301,89 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         ? 'ready'
         : verifyIdStatus;
 
-    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl' | null>(null);
 
+    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl' | null>(null);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
     const tabsRef = useRef<HTMLDivElement>(null);
     const [compact, setCompact] = useState(true);
+
+    const [showRawJson, setShowRawJson] = useState(false);
+
+    // Extracted components to avoid hook-in-callback error
+    function RawJsonToggle({ showRawJson, setShowRawJson }: { showRawJson: boolean, setShowRawJson: React.Dispatch<React.SetStateAction<boolean>> }) {
+      return (
+        <div style={{marginLeft: 0, alignSelf: 'flex-start'}}>
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setShowRawJson(prev => !prev);
+            }}
+            style={{
+              background: '#f8f9fa',
+              border: '1px solid #e1dfdd',
+              borderRadius: 6,
+              padding: 4,
+              fontSize: 12,
+              color: '#3690CE',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              minHeight: 0,
+              minWidth: 0,
+              width: 28,
+              height: 28,
+            }}
+            tabIndex={0}
+            aria-label={showRawJson ? 'Hide Raw Data' : 'Show Raw Data'}
+          >
+            <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 16 }} />
+          </button>
+        </div>
+      );
+    }
+
+    function RawJsonPreview({ data }: { data: any }) {
+      return (
+        <div
+          style={{
+            margin: '8px 0 8px 0',
+            border: '1px solid #e1dfdd',
+            borderRadius: 6,
+            background: '#f8f9fa',
+            overflow: 'hidden',
+            width: '100%',
+            maxWidth: 600,
+            alignSelf: 'flex-end',
+            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+          }}
+        >
+          <div
+            style={{
+              padding: 16,
+              maxHeight: 300,
+              overflow: 'auto',
+              fontSize: 11,
+              fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+              lineHeight: 1.4,
+              background: '#fff',
+              color: '#333',
+            }}
+          >
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
+        </div>
+      );
+    }
 
     useLayoutEffect(() => {
         function updateCompact() {
@@ -265,12 +402,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
 
 
-    // Status row logic: always show Deal and ID, but only show Pay and Docs if a deal exists
+    // Status row logic: only show ID, Pay, Docs (Deal is now in its own container)
     const statusData = [
-        // Deal status: show a grey cross if missing, not a red one
-        { key: 'deal', label: 'Deal', status: dealMissing ? 'missing' : dealOpen ? 'open' : 'closed' },
         { key: 'id', label: 'Proof of ID', status: idStatus },
-        // Only show Pay and Docs if a deal exists
         ...(!dealMissing ? [
             {
                 key: 'pay',
@@ -294,71 +428,469 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 animationDelay: `${animationDelay}s`,
             }}
         >
-            <header
-                className="instruction-header"
-                style={{
-                    ...(!collapsed ? { backgroundColor: colours.darkBlue, color: '#fff' } : {}),
-                    borderTopLeftRadius: 8,
-                    borderTopRightRadius: 8,
-                    borderBottomLeftRadius: 0,
-                    borderBottomRightRadius: 0,
-                    marginBottom: 0,
-                    borderTop: selected ? '2px solid #3690CE' : '2px solid transparent',
+            <>
+                <header
+                    className="instruction-header"
+                    style={{
+                        ...(!collapsed ? { backgroundColor: colours.darkBlue, color: '#fff' } : {}),
+                        borderTopLeftRadius: 8,
+                        borderTopRightRadius: 8,
+                        borderBottomLeftRadius: 0,
+                        borderBottomRightRadius: 0,
+                        marginBottom: 0,
+                        borderTop: selected ? '2px solid #3690CE' : '2px solid transparent',
+                        borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
+                        borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
+                        borderBottom: 'none',
+                        cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                        const newState = !collapsed;
+                        setCollapsed(newState);
+                        setShowClientDetails(!newState); // show details when expanded, hide when collapsed
+                        if (newState) setSelectedStatus(null);
+                        onToggle?.();
+                        onSelect?.(); // Select this instruction
+                    }}
+                >
+                    <span className="header-title" style={{ fontWeight: 600, fontSize: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span>{leadName}</span>
+                        <span style={{
+                            display: 'inline-block',
+                            width: 1,
+                            height: 20,
+                            background: !collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
+                            margin: '0 12px',
+                            verticalAlign: 'middle',
+                            alignSelf: 'center',
+                        }} />
+                        <span style={{ fontWeight: 400, color: !collapsed ? 'rgba(255,255,255,0.7)' : '#888', fontSize: 16, letterSpacing: 0.2, alignSelf: 'center' }}>
+                            {instruction.InstructionRef || '—'}
+                        </span>
+                        {selected && (
+                            <span style={{
+                                marginLeft: '12px',
+                                padding: '2px 8px',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
+                                color: !collapsed ? '#fff' : '#fff',
+                                borderRadius: '12px',
+                                alignSelf: 'center'
+                            }}>
+                                SELECTED
+                            </span>
+                        )}
+                    </span>
+                    <span
+                        className="plusminus-icon"
+                        aria-hidden="true"
+                        style={!collapsed ? { color: '#fff' } : undefined}
+                    >
+                        {collapsed ? '+' : '−'}
+                    </span>
+                </header>
+
+                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border, collapses with the card */}
+                {!collapsed && (
+                  <div style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'flex-start',
+                    alignItems: 'stretch',
+                    margin: 0,
+                    padding: 0,
                     borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
                     borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
+                    borderTop: 'none',
                     borderBottom: 'none',
-                    cursor: 'pointer',
-                }}
-                onClick={() => {
-                    const newState = !collapsed;
-                    setCollapsed(newState);
-                    setShowClientDetails(!newState); // show details when expanded, hide when collapsed
-                    if (newState) setSelectedStatus(null);
-                    onToggle?.();
-                    onSelect?.(); // Select this instruction
-                }}
-            >
-                {/* Remove tick indicator */}
-                <span className="header-title" style={{ fontWeight: 600, fontSize: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span>{leadName}</span>
-                    {/* Vertical separator: visible on both backgrounds */}
-                    <span style={{
-                        display: 'inline-block',
-                        width: 1,
-                        height: 20,
-                        background: !collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
-                        margin: '0 12px',
-                        verticalAlign: 'middle',
-                        alignSelf: 'center',
-                    }} />
-                    {/* Instruction Ref, non-bold, lighter color */}
-                    <span style={{ fontWeight: 400, color: !collapsed ? 'rgba(255,255,255,0.7)' : '#888', fontSize: 16, letterSpacing: 0.2, alignSelf: 'center' }}>
-                        {instruction.InstructionRef || '—'}
-                    </span>
-                    {/* Selected indicator */}
-                    {selected && (
-                        <span style={{
-                            marginLeft: '12px',
-                            padding: '2px 8px',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
-                            color: !collapsed ? '#fff' : '#fff',
-                            borderRadius: '12px',
-                            alignSelf: 'center'
+                    borderRadius: '0 0 0 0',
+                    background: 'transparent',
+                    position: 'relative',
+                    zIndex: 1
+                  }}>
+                    <div className="client-details-contact-bigbtn static" style={{
+                        background: '#fff',
+                        border: '1.5px solid #e1dfdd',
+                        boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        minWidth: 0,
+                        width: '100%',
+                        borderRadius: 0,
+                        margin: 0,
+                        borderLeft: 'none',
+                        borderRight: 'none',
+                        borderTop: 'none',
+                        borderBottom: 'none',
+                        boxSizing: 'border-box',
+                    }}>
+                        {/* --- TAGS ROW --- */}
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          minHeight: 28,
+                          marginBottom: '8px',
+                          position: 'relative',
                         }}>
-                            SELECTED
-                        </span>
-                    )}
-                </span>
-                <span
-                    className="plusminus-icon"
-                    aria-hidden="true"
-                    style={!collapsed ? { color: '#fff' } : undefined}
-                >
-                    {collapsed ? '+' : '−'}
-                </span>
-            </header>
+                          {/* Tags row, will wrap before JSON icon */}
+                          <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 8,
+                            alignItems: 'center',
+                            minHeight: 28,
+                            flex: '1 1 0%',
+                            marginRight: deal ? 36 : 0, // leave space for JSON icon
+                            boxSizing: 'border-box',
+                          }}>
+                            {dealMissing ? (
+                              <>
+                                <div style={{
+                                  backgroundColor: '#fffbe6',
+                                  border: '1px solid #ffe58f',
+                                  borderRadius: '12px',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  color: '#b88600',
+                                  alignSelf: 'flex-start',
+                                  display: 'inline-block',
+                                  whiteSpace: 'nowrap',
+                                  height: 28,
+                                  lineHeight: '20px',
+                                  alignItems: 'center',
+                                }}>
+                                  No Pitch Found
+                                </div>
+                                <div style={{
+                                  backgroundColor: '#e8f4fd',
+                                  border: '1px solid #b3d9f7',
+                                  borderRadius: '12px',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  color: '#1a73e8',
+                                  alignSelf: 'flex-start',
+                                  display: 'inline-block',
+                                  whiteSpace: 'nowrap',
+                                  height: 28,
+                                  lineHeight: '20px',
+                                  alignItems: 'center',
+                                  marginLeft: 8
+                                }}>
+                                  No Pitch Found
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                {deal?.PitchedBy && (
+                                  <div style={{
+                                    backgroundColor: '#e8f4fd',
+                                    border: '1px solid #b3d9f7',
+                                    borderRadius: '12px',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    color: '#1a73e8',
+                                    alignSelf: 'flex-start',
+                                    display: 'inline-block',
+                                    whiteSpace: 'nowrap',
+                                    height: 28,
+                                    lineHeight: '20px',
+                                    alignItems: 'center',
+                                  }}>
+                                    Pitched by {deal?.PitchedBy}
+                                  </div>
+                                )}
+                                {deal && typeof deal.IsMultiClient !== 'undefined' && (
+                                  deal.IsMultiClient ? (
+                                    (() => {
+                                      const allSubmitted = deal.jointClients && deal.jointClients.length > 0 && deal.jointClients.every(jc => jc.HasSubmitted);
+                                      const somePending = deal.jointClients && deal.jointClients.length > 0 && deal.jointClients.some(jc => !jc.HasSubmitted);
+                                      const dotColor = allSubmitted ? '#22c55e' : (somePending ? '#FFB900' : '#bdbdbd');
+                                      return (
+                                        <div
+                                          style={{
+                                            backgroundColor: '#e8f4fd',
+                                            border: '1px solid #b3d9f7',
+                                            borderRadius: '12px',
+                                            padding: '4px 8px',
+                                            fontSize: '11px',
+                                            fontWeight: 500,
+                                            color: '#1a73e8',
+                                            alignSelf: 'flex-start',
+                                            display: 'inline-block',
+                                            whiteSpace: 'nowrap',
+                                            position: 'relative',
+                                            cursor: 'pointer',
+                                            height: 28,
+                                            lineHeight: '20px',
+                                            alignItems: 'center',
+                                          }}
+                                          onMouseEnter={e => {
+                                            if (!deal.jointClients || deal.jointClients.length === 0) return;
+                                            const pop = document.createElement('div');
+                                            pop.className = 'joint-client-popover';
+                                            pop.style.position = 'absolute';
+                                            pop.style.top = '110%';
+                                            pop.style.left = '0';
+                                            pop.style.background = '#fff';
+                                            pop.style.border = '1px solid #b3d9f7';
+                                            pop.style.borderRadius = '8px';
+                                            pop.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+                                            pop.style.padding = '10px 16px';
+                                            pop.style.zIndex = '1000';
+                                            pop.style.whiteSpace = 'nowrap';
+                                            pop.innerHTML = deal.jointClients.map(jc =>
+                                              `<div style='margin-bottom:4px;'><span style='font-weight:600;color:#1e293b;'>${jc.ClientEmail}</span> <span style='color:${jc.HasSubmitted ? '#22c55e' : '#f59e42'};font-weight:500;margin-left:8px;'>${jc.HasSubmitted ? 'Submitted' : 'Pending'}</span></div>`
+                                            ).join('');
+                                            e.currentTarget.appendChild(pop);
+                                          }}
+                                          onMouseLeave={e => {
+                                            const pop = e.currentTarget.querySelector('.joint-client-popover');
+                                            if (pop) pop.remove();
+                                          }}
+                                        >
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{
+                                              display: 'inline-block',
+                                              width: 9,
+                                              height: 9,
+                                              borderRadius: '50%',
+                                              background: dotColor,
+                                              marginRight: 5,
+                                              border: '1.5px solid #fff',
+                                              boxShadow: '0 0 0 1px #b3d9f7',
+                                            }} />
+                                            Joint Client
+                                          </span>
+                                        </div>
+                                      );
+                                    })()
+                                  ) : (
+                                    <div style={{
+                                      backgroundColor: '#e8f4fd',
+                                      border: '1px solid #b3d9f7',
+                                      borderRadius: '12px',
+                                      padding: '4px 8px',
+                                      fontSize: '11px',
+                                      fontWeight: 500,
+                                      color: '#1a73e8',
+                                      alignSelf: 'flex-start',
+                                      display: 'inline-block',
+                                      whiteSpace: 'nowrap',
+                                      height: 28,
+                                      lineHeight: '20px',
+                                      alignItems: 'center',
+                                    }}>
+                                      Primary Client
+                                    </div>
+                                  )
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {/* JSON icon absolutely right, vertically centered, on same row as tags */}
+                          {deal && (
+                            <div style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: 0,
+                              height: 28,
+                              display: 'flex',
+                              alignItems: 'center',
+                              zIndex: 2,
+                            }}>
+                              <RawJsonToggle showRawJson={showRawJson} setShowRawJson={setShowRawJson} />
+                            </div>
+                          )}
+                        </div>
+                        {/* --- SERVICE DESCRIPTION & AMOUNT + RAW JSON PREVIEW BUTTON --- */}
+                        <div style={{display: 'flex', alignItems: 'center', width: '100%', marginBottom: 4}}>
+                          {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
+                            <div style={{fontWeight: 600, fontSize: 16, color: '#061733', flex: 1}}>
+                              {deal.ServiceDescription}
+                              {typeof deal.Amount === 'number' && (
+                                <span style={{fontWeight: 500, color: '#3690CE', fontSize: 15}}>
+                                  {' · £'}{deal.Amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {/* --- PITCHED/CLOSED/EXPIRY BANNER --- */}
+                        {deal && (deal.PitchedDate || deal.PitchedTime) && (() => {
+                          const status = (deal.Status || '').toLowerCase();
+                          const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
+                          const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
+                          const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
+                          // Duration calculation (like POID card)
+                          function getDurationBanner(start: Date, end: Date, closed: boolean) {
+                            let diff = end.getTime() - start.getTime();
+                            if (diff <= 0) return closed ? 'Closed' : 'Expired';
+                            const msPerHour = 1000 * 60 * 60;
+                            const msPerDay = msPerHour * 24;
+                            const msPerWeek = msPerDay * 7;
+                            const msPerMonth = msPerDay * 30.44; // average month
+                            const years = Math.floor(diff / (msPerMonth * 12));
+                            diff -= years * msPerMonth * 12;
+                            const months = Math.floor(diff / msPerMonth);
+                            diff -= months * msPerMonth;
+                            const weeks = Math.floor(diff / msPerWeek);
+                            diff -= weeks * msPerWeek;
+                            const days = Math.floor(diff / msPerDay);
+                            diff -= days * msPerDay;
+                            const hours = Math.floor(diff / msPerHour);
+                            let parts = [];
+                            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+                            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+                            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
+                            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+                            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+                            if (parts.length === 0) parts.push('<1 hour');
+                            return closed
+                              ? `Closed in ${parts.join(' / ')}`
+                              : `Expires in ${parts.join(' / ')}`;
+                          }
+                          let banner = '';
+                          if (pitchedDateObj && closedDateObj) {
+                            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
+                          } else if (pitchedDateObj && expiryDateObj) {
+                            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
+                          }
+                          if (!banner) return null;
+                          return (
+                            <div style={{
+                              width: '100%',
+                              background: closedDateObj ? '#e6f4ea' : '#fffbe6',
+                              borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
+                              color: closedDateObj ? '#107C10' : '#b88600',
+                              fontWeight: 500,
+                              fontSize: '0.95rem',
+                              padding: '6px 12px',
+                              margin: '8px 0 8px 0',
+                              borderRadius: 4,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}>
+                              {banner}
+                            </div>
+                          );
+                        })()}
+                        {/* Raw JSON preview (read-only) */}
+                        {deal && showRawJson && (
+                          <RawJsonPreview data={deal} />
+                        )}
+                        {/* Email and Phone banner (side by side, icon in box, input box to right) */}
+                        <div style={{
+                          marginTop: 10,
+                          display: 'flex',
+                          flexDirection: 'row',
+                          gap: 16,
+                          width: '100%',
+                          alignItems: 'stretch',
+                        }}>
+                          {/* Email */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            flex: 1,
+                            minWidth: 0,
+                            background: '#f8f9fa',
+                            border: '1.5px solid #e1dfdd',
+                            borderRadius: 6,
+                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                            height: 38,
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              background: '#fff',
+                              borderRight: '1.5px solid #e1dfdd',
+                              height: '100%',
+                              width: 38,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
+                                <polyline points="4,6 12,13 20,6" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
+                              </svg>
+                            </div>
+                            <input
+                              type="text"
+                              value={instruction.Email || ''}
+                              readOnly
+                              style={{
+                                border: 'none',
+                                outline: 'none',
+                                background: 'transparent',
+                                fontSize: 15,
+                                color: '#061733',
+                                padding: '0 12px',
+                                width: '100%',
+                                minWidth: 0,
+                                fontWeight: 500,
+                                height: '100%',
+                                cursor: 'default',
+                              }}
+                              tabIndex={-1}
+                            />
+                          </div>
+                          {/* Phone */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            flex: 1,
+                            minWidth: 0,
+                            background: '#f8f9fa',
+                            border: '1.5px solid #e1dfdd',
+                            borderRadius: 6,
+                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                            height: 38,
+                            overflow: 'hidden',
+                          }}>
+                            <div style={{
+                              background: '#fff',
+                              borderRight: '1.5px solid #e1dfdd',
+                              height: '100%',
+                              width: 38,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
+                            </div>
+                            <input
+                              type="text"
+                              value={instruction.Phone || ''}
+                              readOnly
+                              style={{
+                                border: 'none',
+                                outline: 'none',
+                                background: 'transparent',
+                                fontSize: 15,
+                                color: '#061733',
+                                padding: '0 12px',
+                                width: '100%',
+                                minWidth: 0,
+                                fontWeight: 500,
+                                height: '100%',
+                                cursor: 'default',
+                              }}
+                              tabIndex={-1}
+                            />
+                          </div>
+                        </div>
+                    </div>
+                  </div>
+                )}
+            </>
             <div
                 className={cardClass}
                 style={{
@@ -369,79 +901,20 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     borderBottomRightRadius: 8,
                     marginTop: 0,
                     borderTop: 'none',
+                    marginBottom: 0,
+                    boxShadow: 'none',
+                    padding: 0, // Remove all padding from the card container
                 }}
                 ref={innerRef}
             >
-                {/* Animated details wrapper */}
-                <div
-                    style={{
-                        maxHeight: collapsed ? 0 : 1000,
-                        opacity: collapsed ? 0 : 1,
-                        overflow: 'hidden',
-                        transition: 'max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s cubic-bezier(0.4,0,0.2,1)',
-                    }}
-                >
-                    {showClientDetails && (
-                        <React.Fragment>
-                            <div className="client-details-banner">
-                                <div
-                                    className="client-details-contact-bigrow"
-                                    style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        alignItems: 'center',
-                                        gap: 20,
-                                        background: '#fff',
-                                        border: '1px solid #e0e0e0',
-                                        borderRadius: 0,
-                                        boxShadow: 'none',
-                                        padding: '14px 20px',
-                                        marginBottom: 0,
-                                        minWidth: 0,
-                                        width: '100%',
-                                    }}
-                                >
-                                    {/* Email */}
-                                    <a
-                                        className={`client-details-contact-bigbtn${instruction.Email ? '' : ' disabled'}`}
-                                        style={{ borderRadius: 0, minWidth: 0, flex: '1 1 220px', display: 'flex', alignItems: 'center', gap: 8, padding: 0, background: 'none', border: 'none', boxShadow: 'none' }}
-                                        href={instruction.Email ? `mailto:${instruction.Email}` : undefined}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title={instruction.Email || ''}
-                                        tabIndex={instruction.Email ? 0 : -1}
-                                    >
-                                        <span className="client-details-contact-icon" aria-hidden="true">
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{display:'block', verticalAlign:'middle'}}>
-                                              <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#3690CE" strokeWidth="2"/>
-                                              <polyline points="4,6 12,13 20,6" fill="none" stroke="#3690CE" strokeWidth="2"/>
-                                            </svg>
-                                        </span>
-                                        <span className="client-details-contact-value">{instruction.Email || '—'}</span>
-                                    </a>
-                                    {/* Phone */}
-                                    <a
-                                        className={`client-details-contact-bigbtn${instruction.Phone ? '' : ' disabled'}`}
-                                        style={{ borderRadius: 0, minWidth: 0, flex: '1 1 180px', display: 'flex', alignItems: 'center', gap: 8, padding: 0, background: 'none', border: 'none', boxShadow: 'none' }}
-                                        href={instruction.Phone ? `tel:${instruction.Phone}` : undefined}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title={instruction.Phone || ''}
-                                        tabIndex={instruction.Phone ? 0 : -1}
-                                    >
-                                        <span className="client-details-contact-icon" aria-hidden="true">
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
-                                        </span>
-                                        <span className="client-details-contact-value">{instruction.Phone || '—'}</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </React.Fragment>
-                    )}
-                </div>
                 {/* Status boxes always visible */}
-                <div className="instruction-grid-4x2" style={{marginTop: collapsed ? 0 : 16, transition: 'margin-top 0.3s'}}>
-                    <div className="interactive-status status-row">
+                <div className="instruction-grid-4x2" style={{
+                    marginTop: 0,
+                    marginBottom: 0,
+                    transition: 'margin-top 0.3s',
+                    padding: '16px 16px', // match horizontal padding to banner/email/phone
+                }}>
+                    <div className="interactive-status status-row" style={{gap: 4, padding: 0, margin: 0, marginTop: 0}}>
                         {statusData.map((d, i) => {
                             const status = (d.status ?? '').toString().toLowerCase();
                             let icon = null;
@@ -548,7 +1021,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                 border = `1px solid ${blue}`;
                                 background = hoverFill;
                             }
-                            return (
+    // ...existing code...
+    return (
                                 <div
                                     key={d.key}
                                     className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
@@ -566,6 +1040,9 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                         transition: 'background 0.2s, border 0.2s',
                                         boxShadow: 'none',
                                         cursor: 'pointer',
+                                        margin: 0,
+                                        padding: '4px 8px 4px 8px',
+                                        minWidth: 0,
                                     }}
                                 >
                                     <span className="status-label">{d.label}</span>
@@ -607,25 +1084,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                 {selectedStatus === 'id' && (
                                     <div className="detail-group open">
                                         <div className="detail-summary">ID Details</div>
-                                        <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
-                                            {/* Email field */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                                <span style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                                        <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
-                                                        <polyline points="4,6 12,13 20,6" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
-                                                    </svg>
-                                                </span>
-                                                <span style={{ fontSize: 15, color: '#061733', wordBreak: 'break-all' }}>{instruction.Email || '—'}</span>
-                                            </div>
-                                            {/* Phone field */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                                <span style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
-                                                </span>
-                                                <span style={{ fontSize: 15, color: '#061733', wordBreak: 'break-all' }}>{instruction.Phone || '—'}</span>
-                                            </div>
-                                        </div>
                                         <ul className="detail-list">
                                             {Object.entries(instruction)
                                                 .filter(([k, v]) => !['Email', 'Phone'].includes(k) && (['string', 'number', 'boolean'].includes(typeof v) || v === null))

@@ -20,16 +20,25 @@ export interface ClientInfo {
     [key: string]: any;
 }
 
+interface InstructionSummary {
+    InstructionRef: string;
+    Email?: string;
+    Stage?: string;
+    [key: string]: any;
+}
+
 interface JointClientCardProps {
     client: ClientInfo;
     animationDelay?: number;
     onOpenInstruction?: (ref: string) => void;
+    allInstructions?: InstructionSummary[];
 }
 
 const JointClientCard: React.FC<JointClientCardProps> = ({
     client,
     animationDelay = 0,
     onOpenInstruction,
+    allInstructions = [],
 }) => {
     const { isDarkMode } = useTheme();
 
@@ -50,7 +59,14 @@ const JointClientCard: React.FC<JointClientCardProps> = ({
 
     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
 
-    const statusText = client.HasSubmitted ? (client.HasSubmitted === '1' ? 'completed' : 'initialised') : undefined;
+
+    // Find instruction for this client email
+    const matchingInstruction = allInstructions.find(
+        (inst) => inst.Email && inst.Email.toLowerCase() === String(client.ClientEmail).toLowerCase()
+    );
+    const statusText = matchingInstruction
+        ? matchingInstruction.Stage || 'Found'
+        : (client.HasSubmitted ? (client.HasSubmitted === '1' ? 'completed' : 'initialised') : undefined);
 
     return (
         <div className={cardClass} style={style}>
@@ -62,10 +78,26 @@ const JointClientCard: React.FC<JointClientCardProps> = ({
                     Lead Client
                 </Text>
             )}
-            {statusText && (
-                <Text variant="small" styles={{ root: { color: colours.greyText } }}>
-                    {statusText}
+            {matchingInstruction ? (
+                <Text
+                    variant="small"
+                    styles={{ root: { color: colours.cta, cursor: 'pointer', textDecoration: 'underline' } }}
+                    onClick={() => onOpenInstruction && onOpenInstruction(matchingInstruction.InstructionRef)}
+                    title="Click to view instruction"
+                >
+                    {matchingInstruction.Stage || 'Found'}
                 </Text>
+            ) : (
+                <span title="No instruction found for this client">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+                        <circle cx="12" cy="12" r="10" fill="#fdeaea" stroke="#e74c3c" strokeWidth="2" />
+                        <circle cx="12" cy="16" r="1.5" fill="#e74c3c" />
+                        <rect x="11" y="7" width="2" height="6" rx="1" fill="#e74c3c" />
+                    </svg>
+                    <Text variant="small" styles={{ root: { color: colours.cta, display: 'inline' } }}>
+                        Pending
+                    </Text>
+                </span>
             )}
             <dl className="data-grid">
                 {Object.entries(client).map(([k, v]) => (
@@ -79,7 +111,6 @@ const JointClientCard: React.FC<JointClientCardProps> = ({
                     </React.Fragment>
                 ))}
             </dl>
-
         </div>
     );
 }; 

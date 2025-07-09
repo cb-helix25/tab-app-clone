@@ -251,18 +251,43 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
     const stage = poid.stage?.toLowerCase();
     const isCompleted = stage === 'completed';
     const isReview = stage === 'review';
-    
-    // (Removed unused bannerClass and dobDisplay)
+
+    // --- New: Extract more fields for realistic display ---
+    // Accept both snake_case and camelCase for compatibility, but POID type is mostly snake_case
+    const fullName = `${poid.prefix || ''} ${poid.first || '[No First Name]'} ${poid.last || '[No Last Name]'}`.trim();
+    const companyName = poid.company_name;
+    const dob = poid.date_of_birth;
+    const age = dob ? calculateAge(dob) : undefined;
+    const nationality = poid.nationality;
+    const nationalityAlpha2 = poid.nationality_iso || poid.country_code;
+    const email = (poid as any).email || (poid as any).Email;
+    const phone = (poid as any).phone || (poid as any).Phone;
+    // Defensive: POID type may use camelCase for some fields, fallback to those if needed
+    // Defensive: fallback to camelCase only if POID type allows index signature
+    const address = [
+        (poid as any).house_number || (poid as any).HouseNumber,
+        (poid as any).street || (poid as any).Street,
+        (poid as any).city || (poid as any).City,
+        (poid as any).county || (poid as any).County,
+        (poid as any).post_code || (poid as any).Postcode,
+        (poid as any).country || (poid as any).Country
+    ].filter(Boolean).join(', ');
+    const idType = (poid as any).id_type || (poid as any).IdType;
+    const passport = (poid as any).passport_number || (poid as any).PassportNumber;
+    const driversLicense = (poid as any).drivers_license_number || (poid as any).DriversLicenseNumber;
+    const instructionRef = (poid as any).instruction_ref || (poid as any).InstructionRef;
+    const matterId = (poid as any).matter_id || (poid as any).MatterId;
+    const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
+    const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
+    const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
+    const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
+    // --- End new fields ---
 
     return (
         <div onClick={onClick} className={mergeStyles(cardStyles, 'poid-card')}>
-            {/* Background icon */}
-            {/* Removed large background icon for modern look */}
-
-            {/* Content Area - Main information */}
             <div className={contentStyle}>
                 <Stack tokens={{ childrenGap: 8 }}>
-                    {/* Client's Name */}
+                    {/* Name and Company */}
                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
                         <Text
                             variant="mediumPlus"
@@ -275,29 +300,22 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                 },
                             }}
                         >
-                            {poid.client_id && poid.company_name && (
-                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>
-                                    {typeof poid.company_name === 'string' ? poid.company_name : '[Company Name]'} -
-                                </span>
+                            {companyName && (
+                                <span style={{ color: '#666', fontWeight: 600, marginRight: '8px' }}>{companyName} - </span>
                             )}
-                            {poid.prefix ? `${poid.prefix} ` : ''}
-                            {poid.first ? poid.first : '[No First Name]'} {poid.last ? poid.last : '[No Last Name]'}
+                            {fullName}
                         </Text>
-                        {poid.date_of_birth && (
-                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
-                                {calculateAge(poid.date_of_birth)}
-                            </Text>
+                        {age !== undefined && (
+                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{age} yrs</Text>
                         )}
-                        {poid.nationality_iso && (
-                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>
-                                {poid.nationality_iso}
-                            </Text>
+                        {nationalityAlpha2 && (
+                            <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{nationalityAlpha2}</Text>
                         )}
                         <div style={{ flex: 1 }} />
                         <Icon
                             iconName={backgroundIconName}
                             style={{
-                                fontSize: 22, // smaller icon
+                                fontSize: 22,
                                 opacity: 0.3,
                                 transition: 'opacity 0.2s',
                                 color: colours.highlight,
@@ -307,28 +325,43 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                             className="inlinePersonCompanyIcon"
                         />
                     </Stack>
-                    
-                    {/* Company Name if applicable and no client_id (to avoid duplication) */}
-                    {poid.type === "Yes" && poid.company_name && !poid.client_id && (
-                        <Text
-                            variant="small"
-                            styles={{ root: { fontFamily: 'Raleway, sans-serif', color: '#555', lineHeight: '1.2' } }}
-                        >
-                            {typeof poid.company_name === 'string' ? poid.company_name : '[Company Name]'}
-                        </Text>
+                    {/* Email, Phone */}
+                    <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                        {email && <Text variant="small" styles={{ root: { color: '#444' } }}>{email}</Text>}
+                        {phone && <Text variant="small" styles={{ root: { color: '#444' } }}>{phone}</Text>}
+                    </Stack>
+                    {/* Address */}
+                    {address && <Text variant="small" styles={{ root: { color: '#666' } }}>{address}</Text>}
+                    {/* ID Type and Numbers */}
+                    <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                        {idType && <Text variant="small" styles={{ root: { color: '#444' } }}>ID: {idType}</Text>}
+                        {passport && <Text variant="small" styles={{ root: { color: '#444' } }}>Passport: {passport}</Text>}
+                        {driversLicense && <Text variant="small" styles={{ root: { color: '#444' } }}>DL: {driversLicense}</Text>}
+                    </Stack>
+                    {/* Payment info if present */}
+                    {(paymentResult || paymentAmount || paymentProduct) && (
+                        <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                            {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555' } }}>Payment: {paymentResult}</Text>}
+                            {paymentAmount && <Text variant="small" styles={{ root: { color: '#444' } }}>£{paymentAmount}</Text>}
+                            {paymentProduct && <Text variant="small" styles={{ root: { color: '#444' } }}>{paymentProduct}</Text>}
+                        </Stack>
                     )}
-                    
-                    {/* Verification Status - Cleaner layout */}
+                    {/* Instruction/Deal IDs for traceability */}
+                    <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                        {instructionRef && <Text variant="small" styles={{ root: { color: '#888' } }}>Ref: {instructionRef}</Text>}
+                        {matterId && <Text variant="small" styles={{ root: { color: '#888' } }}>Matter: {matterId}</Text>}
+                        {prospectId && <Text variant="small" styles={{ root: { color: '#888' } }}>Prospect: {prospectId}</Text>}
+                    </Stack>
+                    {/* Verification Status - as before */}
                     {poid.check_result && (
                         <Stack tokens={{ childrenGap: 4 }}>
-                            {/* ID Verification banner with countdown aligned right */}
                             <div
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     padding: '4px 8px',
-                                    backgroundColor: '#f7f7fa', // Always neutral background
+                                    backgroundColor: '#f7f7fa',
                                     borderLeft:
                                         poid.check_result && poid.check_result.toLowerCase() === 'passed'
                                             ? '3px solid #107C10'
@@ -381,14 +414,12 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                         ID Verification: {poid.check_result}
                                     </span>
                                 </span>
-                                {/* Expiry countdown, right-aligned */}
                                 {poid.check_expiry && (
                                     <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#555', fontStyle: 'italic', marginLeft: 12 }}>
                                         {getExpiryCountdown(poid.check_expiry)}
                                     </span>
                                 )}
                             </div>
-                            {/* Read-only info container for check date and check id/correlation id */}
                             {(poid.check_expiry || poid.check_id) && (
                                 <div
                                     style={{
@@ -415,7 +446,6 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                                     )}
                                 </div>
                             )}
-                            {/* Verification details as a status list (no expiry here) */}
                             <div style={{ display: 'flex', marginLeft: 0, marginTop: 0, marginBottom: 0, width: '100%' }}>
                                 {poid.pep_sanctions_result && (
                                     <span style={verificationButtonStyle(poid.pep_sanctions_result.toLowerCase())}>
@@ -432,13 +462,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData }
                     )}
                 </Stack>
             </div>
-            
-            {/* Selected icon */}
-            {/* Do not show tick icon when selected */}
-
-            {/* Bottom container with POID ID */}
             <div className={bottomContainerStyle}>
-                {/* Removed internal POID ID display */}
                 {badgeInitials && (
                     <div className={badgeStyle} aria-label={`POC: ${badgeInitials}`}>
                         {badgeInitials}
