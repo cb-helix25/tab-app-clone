@@ -26,8 +26,9 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
 6. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
 7. To refresh risk, compliance and ID verification data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
-8. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
-9. Sample transactions and outstanding balances are provided when using local data.
+8. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.
+9. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
+10. Sample transactions and outstanding balances are provided when using local data.
 
 **Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.
 

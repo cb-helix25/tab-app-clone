@@ -217,8 +217,16 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         'Multiple Individuals',
         'Existing Client',
     ];
+    // Use initialClientType if provided (from instruction data)
     const [clientType, setClientType] = useDraftedState<string>('clientType', initialClientType || '');
-    useEffect(() => setClientType(initialClientType || ''), [initialClientType]);
+    const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', initialClientType || '');
+    // Only set on mount or when initialClientType changes, and only if not already set
+    React.useEffect(() => {
+        if (initialClientType && initialClientType.trim() !== '') {
+            setClientType(initialClientType);
+            setPendingClientType(initialClientType);
+        }
+    }, [initialClientType]);
 
     // If preselectedPoidIds is provided and not empty, use it as the initial value for selectedPoidIds
     const [selectedPoidIds, setSelectedPoidIds] = useDraftedState<string[]>('selectedPoidIds', preselectedPoidIds.length > 0 ? preselectedPoidIds : []);
@@ -375,23 +383,14 @@ const handleClearAll = () => {
 
     // Horizontal sliding carousel approach
     const [currentStep, setCurrentStep] = useDraftedState<number>('currentStep', 0); // 0: select, 1: form, 2: review
-    // Do not preselect client type unless initialClientType is provided (e.g. from instruction card selection)
-    const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', initialClientType || '');
-    useEffect(() => {
-        // Only set if initialClientType is provided (not empty string)
-        if (initialClientType && initialClientType.trim() !== '') {
-            setPendingClientType(initialClientType);
-        } else {
-            setPendingClientType('');
-        }
-    }, [initialClientType]);
+    // Removed pendingClientType state - now handled directly in clientType state
 
     // Calculate completion percentages for progressive dots
     const calculateClientStepCompletion = (): number => {
         let filledFields = 0;
         let totalFields = 3; // clientType, selectedPoidIds, and opponent details
         
-        if (pendingClientType && pendingClientType.trim() !== '') filledFields++;
+        if (clientType && clientType.trim() !== '') filledFields++;
         if (selectedPoidIds.length > 0) filledFields++;
         
         // Check opponent details completion
@@ -482,7 +481,7 @@ const handleClearAll = () => {
 
     // Progressive dots across workflow steps
     const getProgressiveDotStates = (): [number, number, number] => {
-        const hasClientType = pendingClientType && pendingClientType.trim() !== '';
+        const hasClientType = clientType && clientType.trim() !== '';
         const hasPoidSelection = selectedPoidIds.length > 0;
         const hasOpponentInfo = (opponentName && opponentName.trim() !== '') || 
                                (opponentFirst && opponentFirst.trim() !== '' && opponentLast && opponentLast.trim() !== '');
@@ -554,13 +553,13 @@ const handleClearAll = () => {
     };
 
     // Determine completion status for each step
-    const clientsStepComplete = selectedPoidIds.length > 0 && pendingClientType;
+    const clientsStepComplete = selectedPoidIds.length > 0 && clientType;
     const matterStepComplete = selectedDate && supervisingPartner && originatingSolicitor && areaOfWork && practiceArea && description;
     const reviewStepComplete = false; // Review step doesn't have a "next" - it's the final step
 
     const handleContinueToForm = () => {
-        if (selectedPoidIds.length > 0 && pendingClientType) {
-            setClientType(pendingClientType);
+        if (selectedPoidIds.length > 0 && clientType) {
+            setClientType(clientType);
             setCurrentStep(1);
             // Scroll to top when changing steps
             window.scrollTo({ top: 0, behavior: 'smooth' });
