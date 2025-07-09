@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
 // invisible change 2
 import {
   Stack,
@@ -72,6 +72,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   );
   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+  const overviewGridRef = useRef<HTMLDivElement | null>(null);
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
 
   // Notify parent when matter opening workflow state changes
@@ -565,6 +566,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
   const poidPassed = poidResult === "passed" || poidResult === "approved";
   const verificationFound = !!selectedOverviewItem?.eid;
+  const verifyButtonDisabled = verificationFound && poidPassed;
   const verifyButtonLabel = verificationFound
     ? poidPassed
       ? "ID Verified"
@@ -852,11 +854,47 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const overviewGridStyle = mergeStyles({
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+    gridAutoRows: "8px",
     gap: "16px",
     width: "100%",
+    maxWidth: "1440px",
+    margin: "0 auto",
     boxSizing: "border-box",
+    alignItems: "start",
   });
+
+  const overviewItemStyle = mergeStyles({
+    minWidth: 350,
+  });
+
+  const repositionMasonry = React.useCallback(() => {
+    const grid = overviewGridRef.current;
+    if (!grid) return;
+    const rowGap = parseInt(
+      window.getComputedStyle(grid).getPropertyValue('grid-row-gap'),
+    );
+    const rowHeight = parseInt(
+      window.getComputedStyle(grid).getPropertyValue('grid-auto-rows'),
+    );
+    Array.from(grid.children).forEach((child) => {
+      const el = child as HTMLElement;
+      const span = Math.ceil(
+        (el.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
+      );
+      el.style.gridRowEnd = `span ${span}`;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    repositionMasonry();
+  }, [overviewItems, selectedInstruction, repositionMasonry]);
+
+  useEffect(() => {
+    window.addEventListener('resize', repositionMasonry);
+    return () => window.removeEventListener('resize', repositionMasonry);
+  }, [repositionMasonry]);
+
 
   // Global action handlers that work with the selected instruction or first available instruction
   const handleGlobalOpenMatter = () => {
@@ -949,43 +987,45 @@ const Instructions: React.FC<InstructionsProps> = ({
         </div>
         <div className={sectionContainerStyle(isDarkMode)}>
           {activePivot === "overview" && (
-            <div className={overviewGridStyle}>
-              {overviewItems.map((item, idx) => {
-                const row = Math.floor(idx / 3);
-                const col = idx % 3;
-                const animationDelay = row * 0.2 + col * 0.1;
-                return (
-                  <InstructionCard
-                    key={idx}
-                    instruction={item.instruction as any}
-                    deal={(item as any).deal}
-                    deals={item.deals}
-                    clients={item.clients}
-                    risk={(item as any).risk}
-                    eid={(item as any).eid}
-                    eids={(item as any).eids}
-                    compliance={undefined}
-                    documents={item.documents}
-                    prospectId={item.prospectId}
-                    documentCount={item.documentCount ?? 0}
-                    animationDelay={animationDelay}
-                    selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
-                    onSelect={() => setSelectedInstruction(item.instruction)}
-                  />
+              <div className={overviewGridStyle} ref={overviewGridRef}>
+                {overviewItems.map((item, idx) => {
+                  const row = Math.floor(idx / 4);
+                  const col = idx % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  return (
+                    <div key={idx} className={overviewItemStyle}>
+                      <InstructionCard
+                        instruction={item.instruction as any}
+                        deal={(item as any).deal}
+                        deals={item.deals}
+                        clients={item.clients}
+                        risk={(item as any).risk}
+                        eid={(item as any).eid}
+                        eids={(item as any).eids}
+                        compliance={undefined}
+                        documents={item.documents}
+                        prospectId={item.prospectId}
+                        documentCount={item.documentCount ?? 0}
+                        animationDelay={animationDelay}
+                        selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
+                        onSelect={() => setSelectedInstruction(item.instruction)}
+                      />
+                    </div>
 
-                );
-              })}
-              {unlinkedDeals.map((deal, idx) => {
-                const base = overviewItems.length + idx;
-                const row = Math.floor(base / 3);
-                const col = base % 3;
-                const animationDelay = row * 0.2 + col * 0.1;
-                return (
-                  <DealCard
-                    key={`unlinked-${idx}`}
-                    deal={deal}
-                    animationDelay={animationDelay}
-                  />
+                  );
+                })}
+                {unlinkedDeals.map((deal, idx) => {
+                  const base = overviewItems.length + idx;
+                  const row = Math.floor(base / 4);
+                  const col = base % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  return (
+                    <div key={`unlinked-${idx}`} className={overviewItemStyle}>
+                      <DealCard
+                        deal={deal}
+                        animationDelay={animationDelay}
+                      />
+                    </div>
                 );
               })}
             </div>
@@ -1080,27 +1120,49 @@ const Instructions: React.FC<InstructionsProps> = ({
             }}
           >
             <button
-              className="global-action-btn"
+              className={`global-action-btn${verifyButtonDisabled ? ' completed' : ''}`}
               onClick={handleGlobalEIDCheck}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                borderColor: verifyButtonDisabled
+                  ? 'var(--helix-green, #107c10)'
+                  : selectedInstruction
+                  ? '#3690CE'
+                  : undefined,
+                backgroundColor: verifyButtonDisabled
+                  ? 'rgba(115, 171, 96, 0.2)'
+                  : undefined,
                 opacity: 1, // Always visible
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
+                pointerEvents: verifyButtonDisabled ? 'none' : 'auto',
               }}
             >
-              <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
-              }}>
+              <span
+                className="global-action-icon icon-hover"
+                style={{
+                  color: verifyButtonDisabled
+                    ? 'var(--helix-green, #107c10)'
+                    : selectedInstruction
+                    ? '#3690CE'
+                    : undefined,
+                }}
+              >
                 <FaRegIdBadge className="icon-outline" />
                 <FaIdBadge className="icon-filled" />
               </span>
-              <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
-              }}>
+              <span
+                className="global-action-label"
+                style={{
+                  color: verifyButtonDisabled
+                    ? 'var(--helix-green, #107c10)'
+                    : selectedInstruction
+                    ? '#3690CE'
+                    : undefined,
+                }}
+              >
                 {verifyButtonLabel}
               </span>
             </button>

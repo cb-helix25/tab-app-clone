@@ -400,75 +400,73 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     const isPoid = stage === 'poid';
 
+  const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
+    <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
+      {deal.ServiceDescription}
+      {typeof deal.Amount === 'number' && (
+        <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
+          {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      )}
+    </div>
+  ) : null;
 
-    const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
-        <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
-            {deal.ServiceDescription}
-            {typeof deal.Amount === 'number' && (
-                <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
-                    {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-            )}
-        </div>
-    ) : null;
-
-    const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
-        const status = (deal.Status || '').toLowerCase();
-        const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
-        const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
-        const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
-        function getDurationBanner(start: Date, end: Date, closed: boolean) {
-            let diff = end.getTime() - start.getTime();
-            if (diff <= 0) return closed ? 'Closed' : 'Expired';
-            const msPerHour = 1000 * 60 * 60;
-            const msPerDay = msPerHour * 24;
-            const msPerWeek = msPerDay * 7;
-            const msPerMonth = msPerDay * 30.44;
-            const years = Math.floor(diff / (msPerMonth * 12));
-            diff -= years * msPerMonth * 12;
-            const months = Math.floor(diff / msPerMonth);
-            diff -= months * msPerMonth;
-            const weeks = Math.floor(diff / msPerWeek);
-            diff -= weeks * msPerWeek;
-            const days = Math.floor(diff / msPerDay);
-            diff -= days * msPerDay;
-            const hours = Math.floor(diff / msPerHour);
-            const parts = [] as string[];
-            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
-            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
-            if (parts.length === 0) parts.push('<1 hour');
-            return closed ? `Closed in ${parts.join(' / ')}` : `Expires in ${parts.join(' / ')}`;
-        }
-        let banner = '';
-        if (pitchedDateObj && closedDateObj) {
-            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
-        } else if (pitchedDateObj && expiryDateObj) {
-            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
-        }
-        if (!banner) return null;
-        return (
-            <div style={{
-                width: '100%',
-                background: closedDateObj ? '#e6f4ea' : '#fffbe6',
-                borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
-                color: closedDateObj ? '#107C10' : '#b88600',
-                fontWeight: 500,
-                fontSize: '0.95rem',
-                padding: '6px 12px',
-                margin: '8px 0 8px 0',
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-            }}>
-                {banner}
-            </div>
-        );
-    })() : null;
-
+  const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
+    const status = (deal.Status || '').toLowerCase();
+    const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
+    const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
+    const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
+    function getDurationBanner(start: Date, end: Date, closed: boolean) {
+      let diff = end.getTime() - start.getTime();
+      if (diff <= 0) return closed ? 'Closed' : 'Expired';
+      const msPerHour = 1000 * 60 * 60;
+      const msPerDay = msPerHour * 24;
+      const msPerWeek = msPerDay * 7;
+      const msPerMonth = msPerDay * 30.44;
+      const years = Math.floor(diff / (msPerMonth * 12));
+      diff -= years * msPerMonth * 12;
+      const months = Math.floor(diff / msPerMonth);
+      diff -= months * msPerMonth;
+      const weeks = Math.floor(diff / msPerWeek);
+      diff -= weeks * msPerWeek;
+      const days = Math.floor(diff / msPerDay);
+      diff -= days * msPerDay;
+      const hours = Math.floor(diff / msPerHour);
+      const parts = [] as string[];
+      if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+      if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+      if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
+      if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+      if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+      if (parts.length === 0) parts.push('<1 hour');
+      return closed ? `Closed in ${parts.join(' / ')}` : `Expires in ${parts.join(' / ')}`;
+    }
+    let banner = '';
+    if (pitchedDateObj && closedDateObj) {
+      banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
+    } else if (pitchedDateObj && expiryDateObj) {
+      banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
+    }
+    if (!banner) return null;
+    return (
+      <div style={{
+        width: '100%',
+        background: closedDateObj ? '#e6f4ea' : '#fffbe6',
+        borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
+        color: closedDateObj ? '#107C10' : '#b88600',
+        fontWeight: 500,
+        fontSize: '0.95rem',
+        padding: '6px 12px',
+        margin: '8px 0 8px 0',
+        borderRadius: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        {banner}
+      </div>
+    );
+  })() : null;
 
     // Status row logic: only show ID, Pay, Docs (Deal is now in its own container)
     const statusData = [
@@ -559,8 +557,8 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     </span>
                 </header>
 
-                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border */}
-                <div style={{
+          {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border */}
+          <div style={{
                     width: '100%',
                     display: 'flex',
                     justifyContent: 'flex-start',
@@ -594,19 +592,23 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         borderBottom: 'none',
                         boxSizing: 'border-box',
                     }}>
-                        {bannerElement}
-                        {serviceElement}
-                        {!collapsed && (
-                            <>
-                            {/* --- TAGS ROW --- */}
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          minHeight: 28,
-                          marginBottom: '8px',
-                          position: 'relative',
-                        }}>
+              <div
+                style={{
+                  maxHeight: collapsed ? 0 : '2000px',
+                  overflow: 'hidden',
+                  transition: 'max-height 0.3s ease',
+                  width: '100%',
+                }}
+              >
+                {/* --- TAGS ROW --- */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  minHeight: 28,
+                  marginBottom: '8px',
+                  position: 'relative',
+                }}>
                           {/* Tags row, will wrap before JSON icon */}
                           <div style={{
                             display: 'flex',
@@ -886,10 +888,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             />
                           </div>
                         </div>
-                            </>
-                        )}
                     </div>
-                </div>
+              {bannerElement}
+              {serviceElement}
+            </div>
+          </div>
             </>
             <div
                 className={cardClass}
@@ -1038,12 +1041,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                     key={d.key}
                                     className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
                                     onClick={() => {
-                                        if (collapsed) {
-                                            setCollapsed(false);
-                                            setShowClientDetails(true);
-                                            onToggle?.();
-                                            onSelect?.();
-                                        }
+                                      if (collapsed) {
+                                        setCollapsed(false);
+                                        setShowClientDetails(true);
+                                        onToggle?.();
+                                        onSelect?.();
+                                      }
                                         if (isSelected) {
                                             setSelectedStatus(null);
                                         } else {

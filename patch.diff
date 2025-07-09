@@ -1,530 +1,523 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -17,79 +17,77 @@ import {
-   FaRegIdBadge,
-   FaFileAlt,
-   FaRegFileAlt,
-   FaFolder,
-   FaRegFolder,
- } from 'react-icons/fa';
- import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
- import QuickActionsCard from "../home/QuickActionsCard";
- import { useTheme } from "../../app/functionality/ThemeContext";
- import { useNavigator } from "../../app/functionality/NavigatorContext";
- import { colours } from "../../app/styles/colours";
- import { dashboardTokens } from "./componentTokens";
- import InstructionCard from "./InstructionCard";
- import DealCard from "./DealCard";
- import RiskComplianceCard from "./RiskComplianceCard";
- import JointClientCard, { ClientInfo } from "./JointClientCard";
- import type { DealSummary } from "./JointClientCard";
- import { InstructionData, POID, TeamData } from "../../app/functionality/types";
- import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
- import localInstructionData from "../../localData/localInstructionData.json";
- import localInstructionCards from "../../localData/localInstructionCards.json";
- import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
- import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
- import RiskAssessmentPage from "./RiskAssessmentPage";
- import EIDCheckPage from "./EIDCheckPage";
--import DraftCCLPage from "./DraftCCLPage";
- import InstructionEditor from "./components/InstructionEditor";
- import InstructionBlockEditor from "./components/InstructionBlockEditor";
- import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
- import "../../app/styles/InstructionsBanner.css";
- 
- interface InstructionsProps {
-   userInitials: string;
-   poidData: POID[];
-   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
-   teamData?: TeamData[] | null;
-   hasActiveMatter?: boolean;
-   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
- }
- const Instructions: React.FC<InstructionsProps> = ({
-   userInitials,
-   poidData,
-   setPoidData,
-   teamData,
-   hasActiveMatter = false,
-   setIsInMatterOpeningWorkflow,
- }) => {
-   const { isDarkMode } = useTheme();
-   const { setContent } = useNavigator();
-   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
-   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
-   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
-   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
--  const [showDraftCCLPage, setShowDraftCCLPage] = useState<boolean>(false);
-   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
-   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
-     null,
-   );
-   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
-   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
-   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
- 
-   // Notify parent when matter opening workflow state changes
-   useEffect(() => {
-     if (setIsInMatterOpeningWorkflow) {
-       setIsInMatterOpeningWorkflow(showNewMatterPage);
-     }
-   }, [showNewMatterPage, setIsInMatterOpeningWorkflow]);
- 
-   // Check for navigation trigger from Home component
-   useEffect(() => {
-     const shouldOpenMatterOpening = localStorage.getItem('openMatterOpening');
-     if (shouldOpenMatterOpening === 'true') {
-       // Clear the flag
-       localStorage.removeItem('openMatterOpening');
-       // Open matter opening if not already open
-       if (!showNewMatterPage) {
-         setShowNewMatterPage(true);
-       }
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -214,59 +212,57 @@ const Instructions: React.FC<InstructionsProps> = ({
-             "Failed to fetch instructions for user",
-             targetInitials,
-           );
-         }
-       } catch (err) {
-         console.error(
-           "Error fetching instructions for user",
-           targetInitials,
-           err,
-         );
-       }
-     }
-     fetchData();
-   }, [useLocalData]);
- 
-   const handleBack = () => {
-     if (showNewMatterPage) {
-       setShowNewMatterPage(false);
-       setSelectedInstruction(null);
-       setPendingInstructionRef('');
-     } else if (showRiskPage) {
-       setShowRiskPage(false);
-       setSelectedRisk(null);
-     } else if (showEIDPage) {
-       setShowEIDPage(false);
--    } else if (showDraftCCLPage) {
--      setShowDraftCCLPage(false);
-     }
-   };
- 
-   useEffect(() => {
-     setContent(
-       <>
--        {showNewMatterPage || showRiskPage || showEIDPage || showDraftCCLPage ? (
-+        {showNewMatterPage || showRiskPage || showEIDPage ? (
-           <div className={detailNavStyle(isDarkMode)}>
-             <div 
-               className="nav-back-button"
-               onClick={handleBack}
-               style={{
-                 background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-                 border: '1px solid #e1dfdd',
-                 borderRadius: '0',
-                 width: '32px',
-                 height: '32px',
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'center',
-                 cursor: 'pointer',
-                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                 position: 'relative',
-                 overflow: 'hidden',
-                 marginRight: 8,
-               }}
-               onMouseEnter={(e) => {
-                 e.currentTarget.style.background = '#e7f1ff';
-                 e.currentTarget.style.border = '1px solid #3690CE';
-                 e.currentTarget.style.width = '120px';
-                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -392,51 +388,50 @@ const Instructions: React.FC<InstructionsProps> = ({
-               />
-               <QuickActionsCard
-                 title="Editor"
-                 icon="Edit"
-                 isDarkMode={isDarkMode}
-                 selected={activePivot === "demo"}
-                 onClick={() => !isProduction && setActivePivot("demo")}
-                 iconColor={activePivot === "demo" ? colours.cta : colours.greyText}
-                 orientation="row"
-                 disabled={isProduction}
-               />
-             </div>
-           </>
-         )}
-       </>,
-     );
-     return () => setContent(null);
-   }, [
-     setContent,
-     isDarkMode,
-     instructionData,
-     activePivot,
-     showNewMatterPage,
-     showRiskPage,
-     showEIDPage,
--    showDraftCCLPage,
-     selectedInstruction,
-     hasActiveMatter,
-   ]);
- 
-   const containerStyle = mergeStyles({
-     backgroundColor: isDarkMode
-       ? colours.dark.background
-       : colours.light.background,
-     minHeight: "100vh",
-     boxSizing: "border-box",
-     color: isDarkMode ? colours.light.text : colours.dark.text,
-   });
- 
-   const newMatterContainerStyle = mergeStyles(containerStyle, {
-     padding: "12px",
-   });
- 
-   const sectionContainerStyle = (dark: boolean) =>
-     mergeStyles({
-       backgroundColor: dark
-         ? colours.dark.sectionBackground
-         : colours.light.sectionBackground,
-       padding: "16px",
-       paddingBottom: activePivot === "overview" ? "120px" : "16px", // Add bottom padding for global action area
-       borderRadius: 0,
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -808,55 +803,50 @@ const Instructions: React.FC<InstructionsProps> = ({
-     if (hasActiveMatterOpening()) {
-       setPendingInstruction(inst);
-       setIsResumeDialogOpen(true);
-     } else {
-       setSelectedInstruction(inst);
-       setPendingInstructionRef('');
-       setShowNewMatterPage(true);
-     }
-   };
- 
-   const handleRiskAssessment = (item: any) => {
-     if (item) {
-       setSelectedInstruction(item.instruction ?? item);
-       setSelectedRisk(item.risk ?? item.riskAssessments?.[0] ?? null);
-     }
-     setPendingInstructionRef('');
-     setShowRiskPage(true);
-   };
- 
-   const handleEIDCheck = (inst: any) => {
-     setSelectedInstruction(inst);
-     setPendingInstructionRef('');
-     setShowEIDPage(true);
-   };
- 
--  const handleDraftCCL = (inst: any) => {
--    setSelectedInstruction(inst);
--    setPendingInstructionRef('');
--    setShowDraftCCLPage(true);
--  };
- 
-   const handleOpenInstruction = (ref: string) => {
-     setActivePivot("overview");
-   };
- 
-   const gridContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-     gap: "16px",
-     maxWidth: "1200px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-   const scenariosContainerStyle = mergeStyles({
-     display: "grid",
-     gridTemplateColumns: "1fr",
-     gap: "16px",
-     maxWidth: "600px",
-     width: "100%",
-     margin: "0 auto",
-     boxSizing: "border-box",
-   });
- 
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -870,56 +860,50 @@ const Instructions: React.FC<InstructionsProps> = ({
- 
-   // Global action handlers that work with the selected instruction or first available instruction
-   const handleGlobalOpenMatter = () => {
-     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
-     if (targetInstruction) {
-       handleOpenMatter(targetInstruction);
-     }
-   };
- 
-   const handleGlobalRiskAssessment = () => {
-     const targetItem = selectedInstruction 
-       ? overviewItems.find(item => item.instruction.InstructionRef === selectedInstruction.InstructionRef)
-       : overviewItems.find(item => item.instruction);
-     if (targetItem) {
-       handleRiskAssessment(targetItem);
-     }
-   };
- 
-   const handleGlobalEIDCheck = () => {
-     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
-     if (targetInstruction) {
-       handleEIDCheck(targetInstruction);
-     }
-   };
- 
--  const handleGlobalDraftCCL = () => {
--    const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
--    if (targetInstruction) {
--      handleDraftCCL(targetInstruction);
--    }
--  };
- 
-   if (showNewMatterPage) {
-     // Preselect POIDs by matching InstructionRef
-     let preselectedPoidIds: string[] = [];
-     if (selectedInstruction && selectedInstruction.InstructionRef) {
-       // Use idVerificationOptions (the POID data) to find all POIDs with matching InstructionRef
-       preselectedPoidIds = (idVerificationOptions || [])
-         .filter((poid: any) => poid && (poid.InstructionRef === selectedInstruction.InstructionRef))
-         .map((poid: any) => String(poid.poid_id))
-         .filter(Boolean);
-     }
-     return (
-       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
-         <FlatMatterOpening
-           poidData={idVerificationOptions}
-           setPoidData={setPoidData}
-           teamData={teamData}
-           userInitials={userInitials}
-           instructionRef={selectedInstruction?.InstructionRef}
-           stage={selectedInstruction?.Stage}
-           clientId={selectedInstruction?.prospectId?.toString()}
-           hideClientSections={!selectedInstruction}
-           initialClientType={selectedInstruction?.ClientType}
-           preselectedPoidIds={preselectedPoidIds}
-         />
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -933,61 +917,50 @@ const Instructions: React.FC<InstructionsProps> = ({
-         <RiskAssessmentPage
-           onBack={() => {
-             setShowRiskPage(false);
-             setSelectedRisk(null);
-           }}
-           instructionRef={selectedInstruction?.InstructionRef}
-           riskAssessor={userInitials}
-           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
-         />
-       </Stack>
-     );
-   }
- 
-   if (showEIDPage) {
-     return (
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <EIDCheckPage
-           poidData={idVerificationOptions}
-           instruction={selectedInstruction}
-           onBack={handleBack}
-         />
-       </Stack>
-     );
-   }
- 
--  if (showDraftCCLPage) {
--    return (
--      <Stack tokens={dashboardTokens} className={containerStyle}>
--        <DraftCCLPage
--          onBack={() => setShowDraftCCLPage(false)}
--          instruction={selectedInstruction}
--          instructions={instructionData}
--        />
--      </Stack>
--    );
--  }
- 
-   return (
-     <>
-     <section className="page-section">
-       <Stack tokens={dashboardTokens} className={containerStyle}>
-         <div className="disclaimer animate-disclaimer">
-           <p>Note: This module is visible only to Alex (AC), Jonathan (JW), Luke (LZ), Kanchel (KW), Billy (BL), Richard (RC), and Josh (JWH).</p>
-         </div>
-         <div className={sectionContainerStyle(isDarkMode)}>
-           {activePivot === "overview" && (
-             <div className={overviewGridStyle}>
-               {overviewItems.map((item, idx) => {
-                 const row = Math.floor(idx / 3);
-                 const col = idx % 3;
-                 const animationDelay = row * 0.2 + col * 0.1;
-                 return (
-                   <InstructionCard
-                     key={idx}
-                     instruction={item.instruction as any}
-                     deal={(item as any).deal}
-                     deals={item.deals}
-                     clients={item.clients}
-                     risk={(item as any).risk}
-                     eid={(item as any).eid}
-                     eids={(item as any).eids}
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -1074,51 +1047,51 @@ const Instructions: React.FC<InstructionsProps> = ({
-             </>
-           )}
-           {activePivot === "states" && (
-             <div className={scenariosContainerStyle}>
-               {instructionCardStates.map((state, idx) => (
-                 <InstructionStateCard key={idx} data={state} />
-               ))}
-             </div>
-           )}
-           {activePivot === "demo" && (
-             <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-               <h2 style={{ color: colours.darkBlue, marginBottom: '16px' }}>
-                 Instructions Editor
-               </h2>
-               <p style={{ color: colours.greyText, marginBottom: '24px' }}>
-                 Create professional instruction content using templates and placeholders
-               </p>
-               <InstructionBlockEditor 
-                 value=""
-                 onChange={(value) => console.log('Editor content:', value)}
-               />
-             </div>
-           )}
-         </div>
-         {/* Global Action Area - always visible, enhanced when instruction selected */}
--        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && !showDraftCCLPage && (
-+        {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
-           <div 
-             className="global-action-area"
-             style={{
-               opacity: 1, // Always visible
-               transform: 'translateY(0)',
-               transition: 'opacity 0.4s ease, transform 0.4s ease',
-               pointerEvents: 'auto', // Always interactive
-             }}
-           >
-             <button
-               className="global-action-btn"
-               onClick={handleGlobalEIDCheck}
-               onMouseDown={e => e.currentTarget.classList.add('pressed')}
-               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
-               style={{
-                 borderColor: selectedInstruction ? '#3690CE' : undefined,
-                 opacity: 1, // Always visible
-                 transform: 'translateY(0)',
-                 transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -379,50 +379,118 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                }}
              >
-               <span className="global-action-icon icon-hover" style={{
-                 color: selectedInstruction ? '#3690CE' : undefined,
-               }}>
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 43bfd05c70081f048d4e53e712ed7fbe3a026a29..ca37b20f05ab8962bf2abfa2b4891cff1dbed1b1 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -1176,76 +1149,50 @@ const Instructions: React.FC<InstructionsProps> = ({
-                 color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-               }}>
-                 <FaRegFolder className="icon-outline" />
-                 <FaFolder className="icon-filled" />
-               </span>
-               <span className="global-action-label" style={{
-                 color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-               }}>
-                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
-               </span>
-               {/* Pulsing dot indicator - only show when no instruction selected and has active matter */}
-               {!selectedInstruction && hasActiveMatter && !showNewMatterPage && (
-                 <div style={{
-                   position: 'absolute',
-                   top: '8px',
-                   right: '8px',
-                   width: '8px',
-                   height: '8px',
-                   borderRadius: '50%',
-                   backgroundColor: '#D65541',
-                   animation: 'pulse 2s infinite',
-                   zIndex: 10,
-                 }} />
-               )}
-             </button>
--            <button
--              className="global-action-btn"
--              onClick={handleGlobalDraftCCL}
--              onMouseDown={e => e.currentTarget.classList.add('pressed')}
--              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
--              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
--              style={{
--                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
--                opacity: disableOtherActions ? 0.5 : 1,
--                transform: 'translateY(0)',
--                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
--                pointerEvents: disableOtherActions ? 'none' : 'auto',
--              }}
--            >
--              <span className="global-action-icon icon-hover" style={{
--                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
--              }}>
--                <MdOutlineArticle className="icon-outline" />
--                <MdArticle className="icon-filled" />
--              </span>
--              <span className="global-action-label" style={{
--                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
--              }}>
--                Draft CCL
--              </span>
--            </button>
+               {JSON.stringify(data, null, 2)}
+             </pre>
            </div>
-         )}
-       </Stack>
-     </section>
-       <Dialog
-         hidden={!isResumeDialogOpen}
-         onDismiss={() => setIsResumeDialogOpen(false)}
-         dialogContentProps={{
-           type: DialogType.normal,
-           title: 'Resume Matter Opening?',
-           subText:
-             'An unfinished matter opening was detected. Would you like to resume it or start a new one?'
-         }}
-         modalProps={{ isBlocking: true }}
-       >
-         <DialogFooter>
-           <PrimaryButton
-             onClick={() => {
-               setIsResumeDialogOpen(false);
-               setSelectedInstruction(pendingInstruction);
-               setShowNewMatterPage(true);
-             }}
-             text="Resume"
-           />
-           <DefaultButton
+         </div>
+       );
+     }
+ 
+     useLayoutEffect(() => {
+         function updateCompact() {
+             const el = tabsRef.current;
+             if (!el) return;
+             const width = el.offsetWidth;
+             const needed = 4 * 90 + 3 * 8; // four tabs, min width plus gap
+             setCompact(width < needed);
+         }
+         updateCompact();
+         window.addEventListener('resize', updateCompact);
+         return () => window.removeEventListener('resize', updateCompact);
+     }, []);
+ 
+     const isPoid = stage === 'poid';
+ 
+ 
++    const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
++        <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
++            {deal.ServiceDescription}
++            {typeof deal.Amount === 'number' && (
++                <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
++                    {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
++                </span>
++            )}
++        </div>
++    ) : null;
++
++    const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
++        const status = (deal.Status || '').toLowerCase();
++        const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
++        const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
++        const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
++        function getDurationBanner(start: Date, end: Date, closed: boolean) {
++            let diff = end.getTime() - start.getTime();
++            if (diff <= 0) return closed ? 'Closed' : 'Expired';
++            const msPerHour = 1000 * 60 * 60;
++            const msPerDay = msPerHour * 24;
++            const msPerWeek = msPerDay * 7;
++            const msPerMonth = msPerDay * 30.44;
++            const years = Math.floor(diff / (msPerMonth * 12));
++            diff -= years * msPerMonth * 12;
++            const months = Math.floor(diff / msPerMonth);
++            diff -= months * msPerMonth;
++            const weeks = Math.floor(diff / msPerWeek);
++            diff -= weeks * msPerWeek;
++            const days = Math.floor(diff / msPerDay);
++            diff -= days * msPerDay;
++            const hours = Math.floor(diff / msPerHour);
++            const parts = [] as string[];
++            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
++            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
++            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
++            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
++            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
++            if (parts.length === 0) parts.push('<1 hour');
++            return closed ? `Closed in ${parts.join(' / ')}` : `Expires in ${parts.join(' / ')}`;
++        }
++        let banner = '';
++        if (pitchedDateObj && closedDateObj) {
++            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
++        } else if (pitchedDateObj && expiryDateObj) {
++            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
++        }
++        if (!banner) return null;
++        return (
++            <div style={{
++                width: '100%',
++                background: closedDateObj ? '#e6f4ea' : '#fffbe6',
++                borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
++                color: closedDateObj ? '#107C10' : '#b88600',
++                fontWeight: 500,
++                fontSize: '0.95rem',
++                padding: '6px 12px',
++                margin: '8px 0 8px 0',
++                borderRadius: 4,
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'space-between',
++            }}>
++                {banner}
++            </div>
++        );
++    })() : null;
++
+ 
+     // Status row logic: only show ID, Pay, Docs (Deal is now in its own container)
+     const statusData = [
+         { key: 'id', label: 'Proof of ID', status: idStatus },
+         ...(!dealMissing ? [
+             {
+                 key: 'pay',
+                 label: 'Pay',
+                 status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
+             },
+             { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
+         ] : [])
+     ];
+     // Wrap all returned JSX in a single fragment
+     return (
+         <div 
+             className="instruction-card-container"
+             style={{
+                 display: 'block',
+                 breakInside: 'avoid',
+                 pageBreakInside: 'avoid',
+                 transform: `translateY(${animationDelay * 50}px)`,
+                 opacity: 0,
+                 animation: `instructionFadeIn 0.8s ease-out forwards`,
+                 animationDelay: `${animationDelay}s`,
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -469,95 +537,102 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                         </span>
+                         {selected && (
+                             <span style={{
+                                 marginLeft: '12px',
+                                 padding: '2px 8px',
+                                 fontSize: '0.7rem',
+                                 fontWeight: 600,
+                                 backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
+                                 color: !collapsed ? '#fff' : '#fff',
+                                 borderRadius: '12px',
+                                 alignSelf: 'center'
+                             }}>
+                                 SELECTED
+                             </span>
+                         )}
+                     </span>
+                     <span
+                         className="plusminus-icon"
+                         aria-hidden="true"
+                         style={!collapsed ? { color: '#fff' } : undefined}
+                     >
+                         {collapsed ? '+' : '−'}
+                     </span>
+                 </header>
+ 
+-                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border, collapses with the card */}
+-                {!collapsed && (
+-                  <div style={{
++                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border */}
++                <div style={{
+                     width: '100%',
+                     display: 'flex',
+                     justifyContent: 'flex-start',
+                     alignItems: 'stretch',
+                     margin: 0,
+                     padding: 0,
+                     borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
+                     borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
+                     borderTop: 'none',
+                     borderBottom: 'none',
+                     borderRadius: '0 0 0 0',
+                     background: 'transparent',
+                     position: 'relative',
+                     zIndex: 1
+                   }}>
+                     <div className="client-details-contact-bigbtn static" style={{
+                         background: '#fff',
+                         border: '1.5px solid #e1dfdd',
+                         boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                         padding: '12px 16px',
+                         display: 'flex',
+                         flexDirection: 'column',
+                         alignItems: 'flex-start',
+                         minWidth: 0,
+                         width: '100%',
+                         borderRadius: 0,
+                         margin: 0,
+                         borderLeft: 'none',
+                         borderRight: 'none',
+                         borderTop: 'none',
+                         borderBottom: 'none',
+                         boxSizing: 'border-box',
+                     }}>
+-                        {/* --- TAGS ROW --- */}
+-                        <div style={{
+-                          display: 'flex',
+-                          flexDirection: 'row',
+-                          alignItems: 'center',
+-                          minHeight: 28,
+-                          marginBottom: '8px',
+-                          position: 'relative',
+-                        }}>
++                        <div
++                            style={{
++                                maxHeight: collapsed ? 0 : '2000px',
++                                overflow: 'hidden',
++                                transition: 'max-height 0.3s ease',
++                                width: '100%',
++                            }}
++                        >
++                            {/* --- TAGS ROW --- */}
++                            <div style={{
++                                display: 'flex',
++                                flexDirection: 'row',
++                                alignItems: 'center',
++                                minHeight: 28,
++                                marginBottom: '8px',
++                                position: 'relative',
++                            }}>
+                           {/* Tags row, will wrap before JSON icon */}
+                           <div style={{
+                             display: 'flex',
+                             flexWrap: 'wrap',
+                             gap: 8,
+                             alignItems: 'center',
+                             minHeight: 28,
+                             flex: '1 1 0%',
+                             marginRight: deal ? 36 : 0, // leave space for JSON icon
+                             boxSizing: 'border-box',
+                           }}>
+                             {dealMissing ? (
+                               <>
+                                 <div style={{
+                                   backgroundColor: '#fffbe6',
+                                   border: '1px solid #ffe58f',
+                                   borderRadius: '12px',
+                                   padding: '4px 8px',
+                                   fontSize: '11px',
+                                   fontWeight: 500,
+                                   color: '#b88600',
+                                   alignSelf: 'flex-start',
+                                   display: 'inline-block',
+                                   whiteSpace: 'nowrap',
+                                   height: 28,
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -688,122 +763,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                                       alignItems: 'center',
+                                     }}>
+                                       Primary Client
+                                     </div>
+                                   )
+                                 )}
+                               </>
+                             )}
+                           </div>
+                           {/* JSON icon absolutely right, vertically centered, on same row as tags */}
+                           {deal && (
+                             <div style={{
+                               position: 'absolute',
+                               right: 0,
+                               top: 0,
+                               height: 28,
+                               display: 'flex',
+                               alignItems: 'center',
+                               zIndex: 2,
+                             }}>
+                               <RawJsonToggle showRawJson={showRawJson} setShowRawJson={setShowRawJson} />
+                             </div>
+                           )}
+                         </div>
+                         {/* --- SERVICE DESCRIPTION & AMOUNT + RAW JSON PREVIEW BUTTON --- */}
+-                        <div style={{display: 'flex', alignItems: 'center', width: '100%', marginBottom: 4}}>
+-                          {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
+-                            <div style={{fontWeight: 600, fontSize: 16, color: '#061733', flex: 1}}>
+-                              {deal.ServiceDescription}
+-                              {typeof deal.Amount === 'number' && (
+-                                <span style={{fontWeight: 500, color: '#3690CE', fontSize: 15}}>
+-                                  {' · £'}{deal.Amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+-                                </span>
+-                              )}
+-                            </div>
+-                          )}
+-                        </div>
+-                        {/* --- PITCHED/CLOSED/EXPIRY BANNER --- */}
+-                        {deal && (deal.PitchedDate || deal.PitchedTime) && (() => {
+-                          const status = (deal.Status || '').toLowerCase();
+-                          const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
+-                          const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
+-                          const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
+-                          // Duration calculation (like POID card)
+-                          function getDurationBanner(start: Date, end: Date, closed: boolean) {
+-                            let diff = end.getTime() - start.getTime();
+-                            if (diff <= 0) return closed ? 'Closed' : 'Expired';
+-                            const msPerHour = 1000 * 60 * 60;
+-                            const msPerDay = msPerHour * 24;
+-                            const msPerWeek = msPerDay * 7;
+-                            const msPerMonth = msPerDay * 30.44; // average month
+-                            const years = Math.floor(diff / (msPerMonth * 12));
+-                            diff -= years * msPerMonth * 12;
+-                            const months = Math.floor(diff / msPerMonth);
+-                            diff -= months * msPerMonth;
+-                            const weeks = Math.floor(diff / msPerWeek);
+-                            diff -= weeks * msPerWeek;
+-                            const days = Math.floor(diff / msPerDay);
+-                            diff -= days * msPerDay;
+-                            const hours = Math.floor(diff / msPerHour);
+-                            let parts = [];
+-                            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+-                            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+-                            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
+-                            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+-                            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+-                            if (parts.length === 0) parts.push('<1 hour');
+-                            return closed
+-                              ? `Closed in ${parts.join(' / ')}`
+-                              : `Expires in ${parts.join(' / ')}`;
+-                          }
+-                          let banner = '';
+-                          if (pitchedDateObj && closedDateObj) {
+-                            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
+-                          } else if (pitchedDateObj && expiryDateObj) {
+-                            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
+-                          }
+-                          if (!banner) return null;
+-                          return (
+-                            <div style={{
+-                              width: '100%',
+-                              background: closedDateObj ? '#e6f4ea' : '#fffbe6',
+-                              borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
+-                              color: closedDateObj ? '#107C10' : '#b88600',
+-                              fontWeight: 500,
+-                              fontSize: '0.95rem',
+-                              padding: '6px 12px',
+-                              margin: '8px 0 8px 0',
+-                              borderRadius: 4,
+-                              display: 'flex',
+-                              alignItems: 'center',
+-                              justifyContent: 'space-between',
+-                            }}>
+-                              {banner}
+-                            </div>
+-                          );
+-                        })()}
+                         {/* Raw JSON preview (read-only) */}
+                         {deal && showRawJson && (
+                           <RawJsonPreview data={deal} />
+                         )}
+                         {/* Email and Phone banner (side by side, icon in box, input box to right) */}
+                         <div style={{
+                           marginTop: 10,
+                           display: 'flex',
+                           flexDirection: 'row',
+                           gap: 16,
+                           width: '100%',
+                           alignItems: 'stretch',
+                         }}>
+                           {/* Email */}
+                           <div style={{
+                             display: 'flex',
+                             alignItems: 'center',
+                             flex: 1,
+                             minWidth: 0,
+                             background: '#f8f9fa',
+                             border: '1.5px solid #e1dfdd',
+                             borderRadius: 6,
+                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                             height: 38,
+                             overflow: 'hidden',
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -866,52 +869,54 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                             }}>
+                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
+                             </div>
+                             <input
+                               type="text"
+                               value={instruction.Phone || ''}
+                               readOnly
+                               style={{
+                                 border: 'none',
+                                 outline: 'none',
+                                 background: 'transparent',
+                                 fontSize: 15,
+                                 color: '#061733',
+                                 padding: '0 12px',
+                                 width: '100%',
+                                 minWidth: 0,
+                                 fontWeight: 500,
+                                 height: '100%',
+                                 cursor: 'default',
+                               }}
+                               tabIndex={-1}
+                             />
+                           </div>
+                         </div>
+                     </div>
+-                  </div>
+-                )}
++                        {bannerElement}
++                        {serviceElement}
++                    </div>
++                </div>
+             </>
+             <div
+                 className={cardClass}
+                 style={{
+                     ...style,
+                     borderTopLeftRadius: 0,
+                     borderTopRightRadius: 0,
+                     borderBottomLeftRadius: 8,
+                     borderBottomRightRadius: 8,
+                     marginTop: 0,
+                     borderTop: 'none',
+                     marginBottom: 0,
+                     boxShadow: 'none',
+                     padding: 0, // Remove all padding from the card container
+                 }}
+                 ref={innerRef}
+             >
+                 {/* Status boxes always visible */}
+                 <div className="instruction-grid-4x2" style={{
+                     marginTop: 0,
+                     marginBottom: 0,
+                     transition: 'margin-top 0.3s',
+                     padding: '16px 16px', // match horizontal padding to banner/email/phone
+                 }}>
+                     <div className="interactive-status status-row" style={{gap: 4, padding: 0, margin: 0, marginTop: 0}}>
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -1016,50 +1021,56 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                             const helixGrey = '#e0e0e0';
+                             const helixGreyFill = '#f4f4f6';
+                             const hoverFill = '#e3f0fc';
+                             let border = `1px solid ${helixGrey}`;
+                             let background = helixGreyFill;
+                             if (status === "failed") {
+                                 border = `1px solid ${ctaRed}`;
+                                 background = ctaRedFill;
+                             } else if (status === "review") {
+                                 border = '1px solid #bfa100';
+                                 background = '#fffbe6';
+                             } else if (["complete", "closed", "verified", "approved"].includes(status)) {
+                                 border = `1px solid ${green}`;
+                                 background = greenFill;
+                             }
+                             if (isSelected) {
+                                 border = `1px solid ${blue}`;
+                                 background = hoverFill;
+                             }
+     // ...existing code...
+     return (
+                                 <div
+                                     key={d.key}
+                                     className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
+                                     onClick={() => {
++                                        if (collapsed) {
++                                            setCollapsed(false);
++                                            setShowClientDetails(true);
++                                            onToggle?.();
++                                            onSelect?.();
++                                        }
+                                         if (isSelected) {
+                                             setSelectedStatus(null);
+                                         } else {
+                                             setSelectedStatus(d.key);
+                                         }
+                                     }}
+                                     style={{
+                                         border,
+                                         background,
+                                         borderRadius: 0,
+                                         transition: 'background 0.2s, border 0.2s',
+                                         boxShadow: 'none',
+                                         cursor: 'pointer',
+                                         margin: 0,
+                                         padding: '4px 8px 4px 8px',
+                                         minWidth: 0,
+                                     }}
+                                 >
+                                     <span className="status-label">{d.label}</span>
+                                     <span className={`status-value ${status}`}>{icon}</span>
+                                 </div>
+                             );
+                         })}
+                     </div>
+                     {/* Details for status boxes (now between status and actions) */}
+diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
+index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
+--- a/src/tabs/instructions/InstructionCard.tsx
++++ b/src/tabs/instructions/InstructionCard.tsx
+@@ -1169,26 +1180,26 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
+                                                 <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                              ))}
+                                         </ul>
+                                     </div>
+                                 )}
+                                 {selectedStatus === 'comp' && (
+                                     <div className="detail-group open">
+                                         <div className="detail-summary">Compliance</div>
+                                         <ul className="detail-list">
+                                              {compliance && Object.entries(compliance).map(([k,v]) => (
+                                                 <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
+                                             ))}
+                                         </ul>
+                                     </div>
+                                 )}
+                             </div>
+                         </div>
+                     )}
+ 
+                 </div>
+             </div>
+         </div>
+     );
+ }
+ 
+-export default InstructionCard;
++export default InstructionCard;
