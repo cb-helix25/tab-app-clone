@@ -1,523 +1,116 @@
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -379,50 +379,118 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-               }}
-             >
-               {JSON.stringify(data, null, 2)}
-             </pre>
-           </div>
-         </div>
-       );
-     }
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index a898e56b56b0fb3662a1827541e8e82cade2b075..7ec29cf13dd98f0f5669d508d20bc922a06a672c 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -864,50 +864,55 @@ const Instructions: React.FC<InstructionsProps> = ({
+     alignItems: "start",
+   });
  
-     useLayoutEffect(() => {
-         function updateCompact() {
-             const el = tabsRef.current;
-             if (!el) return;
-             const width = el.offsetWidth;
-             const needed = 4 * 90 + 3 * 8; // four tabs, min width plus gap
-             setCompact(width < needed);
-         }
-         updateCompact();
-         window.addEventListener('resize', updateCompact);
-         return () => window.removeEventListener('resize', updateCompact);
-     }, []);
+   const overviewItemStyle = mergeStyles({
+     minWidth: 350,
+   });
  
-     const isPoid = stage === 'poid';
- 
- 
-+    const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
-+        <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
-+            {deal.ServiceDescription}
-+            {typeof deal.Amount === 'number' && (
-+                <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
-+                    {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-+                </span>
-+            )}
-+        </div>
-+    ) : null;
-+
-+    const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
-+        const status = (deal.Status || '').toLowerCase();
-+        const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
-+        const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
-+        const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
-+        function getDurationBanner(start: Date, end: Date, closed: boolean) {
-+            let diff = end.getTime() - start.getTime();
-+            if (diff <= 0) return closed ? 'Closed' : 'Expired';
-+            const msPerHour = 1000 * 60 * 60;
-+            const msPerDay = msPerHour * 24;
-+            const msPerWeek = msPerDay * 7;
-+            const msPerMonth = msPerDay * 30.44;
-+            const years = Math.floor(diff / (msPerMonth * 12));
-+            diff -= years * msPerMonth * 12;
-+            const months = Math.floor(diff / msPerMonth);
-+            diff -= months * msPerMonth;
-+            const weeks = Math.floor(diff / msPerWeek);
-+            diff -= weeks * msPerWeek;
-+            const days = Math.floor(diff / msPerDay);
-+            diff -= days * msPerDay;
-+            const hours = Math.floor(diff / msPerHour);
-+            const parts = [] as string[];
-+            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-+            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-+            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
-+            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-+            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
-+            if (parts.length === 0) parts.push('<1 hour');
-+            return closed ? `Closed in ${parts.join(' / ')}` : `Expires in ${parts.join(' / ')}`;
-+        }
-+        let banner = '';
-+        if (pitchedDateObj && closedDateObj) {
-+            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
-+        } else if (pitchedDateObj && expiryDateObj) {
-+            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
-+        }
-+        if (!banner) return null;
-+        return (
-+            <div style={{
-+                width: '100%',
-+                background: closedDateObj ? '#e6f4ea' : '#fffbe6',
-+                borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
-+                color: closedDateObj ? '#107C10' : '#b88600',
-+                fontWeight: 500,
-+                fontSize: '0.95rem',
-+                padding: '6px 12px',
-+                margin: '8px 0 8px 0',
-+                borderRadius: 4,
-+                display: 'flex',
-+                alignItems: 'center',
-+                justifyContent: 'space-between',
-+            }}>
-+                {banner}
-+            </div>
-+        );
-+    })() : null;
-+
- 
-     // Status row logic: only show ID, Pay, Docs (Deal is now in its own container)
-     const statusData = [
-         { key: 'id', label: 'Proof of ID', status: idStatus },
-         ...(!dealMissing ? [
-             {
-                 key: 'pay',
-                 label: 'Pay',
-                 status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
-             },
-             { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-         ] : [])
-     ];
-     // Wrap all returned JSX in a single fragment
-     return (
-         <div 
-             className="instruction-card-container"
-             style={{
-                 display: 'block',
-                 breakInside: 'avoid',
-                 pageBreakInside: 'avoid',
-                 transform: `translateY(${animationDelay * 50}px)`,
-                 opacity: 0,
-                 animation: `instructionFadeIn 0.8s ease-out forwards`,
-                 animationDelay: `${animationDelay}s`,
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -469,95 +537,102 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                         </span>
-                         {selected && (
-                             <span style={{
-                                 marginLeft: '12px',
-                                 padding: '2px 8px',
-                                 fontSize: '0.7rem',
-                                 fontWeight: 600,
-                                 backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
-                                 color: !collapsed ? '#fff' : '#fff',
-                                 borderRadius: '12px',
-                                 alignSelf: 'center'
-                             }}>
-                                 SELECTED
-                             </span>
-                         )}
-                     </span>
-                     <span
-                         className="plusminus-icon"
-                         aria-hidden="true"
-                         style={!collapsed ? { color: '#fff' } : undefined}
-                     >
-                         {collapsed ? '+' : '−'}
-                     </span>
-                 </header>
- 
--                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border, collapses with the card */}
--                {!collapsed && (
--                  <div style={{
-+                {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border */}
-+                <div style={{
-                     width: '100%',
-                     display: 'flex',
-                     justifyContent: 'flex-start',
-                     alignItems: 'stretch',
-                     margin: 0,
-                     padding: 0,
-                     borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
-                     borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
-                     borderTop: 'none',
-                     borderBottom: 'none',
-                     borderRadius: '0 0 0 0',
-                     background: 'transparent',
-                     position: 'relative',
-                     zIndex: 1
-                   }}>
-                     <div className="client-details-contact-bigbtn static" style={{
-                         background: '#fff',
-                         border: '1.5px solid #e1dfdd',
-                         boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                         padding: '12px 16px',
-                         display: 'flex',
-                         flexDirection: 'column',
-                         alignItems: 'flex-start',
-                         minWidth: 0,
-                         width: '100%',
-                         borderRadius: 0,
-                         margin: 0,
-                         borderLeft: 'none',
-                         borderRight: 'none',
-                         borderTop: 'none',
-                         borderBottom: 'none',
-                         boxSizing: 'border-box',
-                     }}>
--                        {/* --- TAGS ROW --- */}
--                        <div style={{
--                          display: 'flex',
--                          flexDirection: 'row',
--                          alignItems: 'center',
--                          minHeight: 28,
--                          marginBottom: '8px',
--                          position: 'relative',
--                        }}>
-+                        <div
-+                            style={{
-+                                maxHeight: collapsed ? 0 : '2000px',
-+                                overflow: 'hidden',
-+                                transition: 'max-height 0.3s ease',
-+                                width: '100%',
-+                            }}
-+                        >
-+                            {/* --- TAGS ROW --- */}
-+                            <div style={{
-+                                display: 'flex',
-+                                flexDirection: 'row',
-+                                alignItems: 'center',
-+                                minHeight: 28,
-+                                marginBottom: '8px',
-+                                position: 'relative',
-+                            }}>
-                           {/* Tags row, will wrap before JSON icon */}
-                           <div style={{
-                             display: 'flex',
-                             flexWrap: 'wrap',
-                             gap: 8,
-                             alignItems: 'center',
-                             minHeight: 28,
-                             flex: '1 1 0%',
-                             marginRight: deal ? 36 : 0, // leave space for JSON icon
-                             boxSizing: 'border-box',
-                           }}>
-                             {dealMissing ? (
-                               <>
-                                 <div style={{
-                                   backgroundColor: '#fffbe6',
-                                   border: '1px solid #ffe58f',
-                                   borderRadius: '12px',
-                                   padding: '4px 8px',
-                                   fontSize: '11px',
-                                   fontWeight: 500,
-                                   color: '#b88600',
-                                   alignSelf: 'flex-start',
-                                   display: 'inline-block',
-                                   whiteSpace: 'nowrap',
-                                   height: 28,
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -688,122 +763,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                                       alignItems: 'center',
-                                     }}>
-                                       Primary Client
-                                     </div>
-                                   )
-                                 )}
-                               </>
-                             )}
-                           </div>
-                           {/* JSON icon absolutely right, vertically centered, on same row as tags */}
-                           {deal && (
-                             <div style={{
-                               position: 'absolute',
-                               right: 0,
-                               top: 0,
-                               height: 28,
-                               display: 'flex',
-                               alignItems: 'center',
-                               zIndex: 2,
-                             }}>
-                               <RawJsonToggle showRawJson={showRawJson} setShowRawJson={setShowRawJson} />
-                             </div>
-                           )}
-                         </div>
-                         {/* --- SERVICE DESCRIPTION & AMOUNT + RAW JSON PREVIEW BUTTON --- */}
--                        <div style={{display: 'flex', alignItems: 'center', width: '100%', marginBottom: 4}}>
--                          {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
--                            <div style={{fontWeight: 600, fontSize: 16, color: '#061733', flex: 1}}>
--                              {deal.ServiceDescription}
--                              {typeof deal.Amount === 'number' && (
--                                <span style={{fontWeight: 500, color: '#3690CE', fontSize: 15}}>
--                                  {' · £'}{deal.Amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
--                                </span>
--                              )}
--                            </div>
--                          )}
--                        </div>
--                        {/* --- PITCHED/CLOSED/EXPIRY BANNER --- */}
--                        {deal && (deal.PitchedDate || deal.PitchedTime) && (() => {
--                          const status = (deal.Status || '').toLowerCase();
--                          const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
--                          const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
--                          const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
--                          // Duration calculation (like POID card)
--                          function getDurationBanner(start: Date, end: Date, closed: boolean) {
--                            let diff = end.getTime() - start.getTime();
--                            if (diff <= 0) return closed ? 'Closed' : 'Expired';
--                            const msPerHour = 1000 * 60 * 60;
--                            const msPerDay = msPerHour * 24;
--                            const msPerWeek = msPerDay * 7;
--                            const msPerMonth = msPerDay * 30.44; // average month
--                            const years = Math.floor(diff / (msPerMonth * 12));
--                            diff -= years * msPerMonth * 12;
--                            const months = Math.floor(diff / msPerMonth);
--                            diff -= months * msPerMonth;
--                            const weeks = Math.floor(diff / msPerWeek);
--                            diff -= weeks * msPerWeek;
--                            const days = Math.floor(diff / msPerDay);
--                            diff -= days * msPerDay;
--                            const hours = Math.floor(diff / msPerHour);
--                            let parts = [];
--                            if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
--                            if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
--                            if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
--                            if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
--                            if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
--                            if (parts.length === 0) parts.push('<1 hour');
--                            return closed
--                              ? `Closed in ${parts.join(' / ')}`
--                              : `Expires in ${parts.join(' / ')}`;
--                          }
--                          let banner = '';
--                          if (pitchedDateObj && closedDateObj) {
--                            banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
--                          } else if (pitchedDateObj && expiryDateObj) {
--                            banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
--                          }
--                          if (!banner) return null;
--                          return (
--                            <div style={{
--                              width: '100%',
--                              background: closedDateObj ? '#e6f4ea' : '#fffbe6',
--                              borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
--                              color: closedDateObj ? '#107C10' : '#b88600',
--                              fontWeight: 500,
--                              fontSize: '0.95rem',
--                              padding: '6px 12px',
--                              margin: '8px 0 8px 0',
--                              borderRadius: 4,
--                              display: 'flex',
--                              alignItems: 'center',
--                              justifyContent: 'space-between',
--                            }}>
--                              {banner}
--                            </div>
--                          );
--                        })()}
-                         {/* Raw JSON preview (read-only) */}
-                         {deal && showRawJson && (
-                           <RawJsonPreview data={deal} />
-                         )}
-                         {/* Email and Phone banner (side by side, icon in box, input box to right) */}
-                         <div style={{
-                           marginTop: 10,
-                           display: 'flex',
-                           flexDirection: 'row',
-                           gap: 16,
-                           width: '100%',
-                           alignItems: 'stretch',
-                         }}>
-                           {/* Email */}
-                           <div style={{
-                             display: 'flex',
-                             alignItems: 'center',
-                             flex: 1,
-                             minWidth: 0,
-                             background: '#f8f9fa',
-                             border: '1.5px solid #e1dfdd',
-                             borderRadius: 6,
-                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                             height: 38,
-                             overflow: 'hidden',
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -866,52 +869,54 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                             }}>
-                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
-                             </div>
-                             <input
-                               type="text"
-                               value={instruction.Phone || ''}
-                               readOnly
-                               style={{
-                                 border: 'none',
-                                 outline: 'none',
-                                 background: 'transparent',
-                                 fontSize: 15,
-                                 color: '#061733',
-                                 padding: '0 12px',
-                                 width: '100%',
-                                 minWidth: 0,
-                                 fontWeight: 500,
-                                 height: '100%',
-                                 cursor: 'default',
-                               }}
-                               tabIndex={-1}
-                             />
-                           </div>
-                         </div>
-                     </div>
--                  </div>
--                )}
-+                        {bannerElement}
-+                        {serviceElement}
-+                    </div>
-+                </div>
-             </>
-             <div
-                 className={cardClass}
-                 style={{
-                     ...style,
-                     borderTopLeftRadius: 0,
-                     borderTopRightRadius: 0,
-                     borderBottomLeftRadius: 8,
-                     borderBottomRightRadius: 8,
-                     marginTop: 0,
-                     borderTop: 'none',
-                     marginBottom: 0,
-                     boxShadow: 'none',
-                     padding: 0, // Remove all padding from the card container
-                 }}
-                 ref={innerRef}
-             >
-                 {/* Status boxes always visible */}
-                 <div className="instruction-grid-4x2" style={{
-                     marginTop: 0,
-                     marginBottom: 0,
-                     transition: 'margin-top 0.3s',
-                     padding: '16px 16px', // match horizontal padding to banner/email/phone
-                 }}>
-                     <div className="interactive-status status-row" style={{gap: 4, padding: 0, margin: 0, marginTop: 0}}>
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -1016,50 +1021,56 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                             const helixGrey = '#e0e0e0';
-                             const helixGreyFill = '#f4f4f6';
-                             const hoverFill = '#e3f0fc';
-                             let border = `1px solid ${helixGrey}`;
-                             let background = helixGreyFill;
-                             if (status === "failed") {
-                                 border = `1px solid ${ctaRed}`;
-                                 background = ctaRedFill;
-                             } else if (status === "review") {
-                                 border = '1px solid #bfa100';
-                                 background = '#fffbe6';
-                             } else if (["complete", "closed", "verified", "approved"].includes(status)) {
-                                 border = `1px solid ${green}`;
-                                 background = greenFill;
-                             }
-                             if (isSelected) {
-                                 border = `1px solid ${blue}`;
-                                 background = hoverFill;
-                             }
-     // ...existing code...
-     return (
-                                 <div
-                                     key={d.key}
-                                     className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
-                                     onClick={() => {
-+                                        if (collapsed) {
-+                                            setCollapsed(false);
-+                                            setShowClientDetails(true);
-+                                            onToggle?.();
-+                                            onSelect?.();
-+                                        }
-                                         if (isSelected) {
-                                             setSelectedStatus(null);
-                                         } else {
-                                             setSelectedStatus(d.key);
-                                         }
-                                     }}
-                                     style={{
-                                         border,
-                                         background,
-                                         borderRadius: 0,
-                                         transition: 'background 0.2s, border 0.2s',
-                                         boxShadow: 'none',
-                                         cursor: 'pointer',
-                                         margin: 0,
-                                         padding: '4px 8px 4px 8px',
-                                         minWidth: 0,
-                                     }}
-                                 >
-                                     <span className="status-label">{d.label}</span>
-                                     <span className={`status-value ${status}`}>{icon}</span>
-                                 </div>
-                             );
-                         })}
-                     </div>
-                     {/* Details for status boxes (now between status and actions) */}
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index 738d11932028543ae36e2f07644de0785d11b227..b995d5ce5f583670ef486855b048a1d6602fdf75 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -1169,26 +1180,26 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                                                 <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                              ))}
-                                         </ul>
-                                     </div>
-                                 )}
-                                 {selectedStatus === 'comp' && (
-                                     <div className="detail-group open">
-                                         <div className="detail-summary">Compliance</div>
-                                         <ul className="detail-list">
-                                              {compliance && Object.entries(compliance).map(([k,v]) => (
-                                                 <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                             ))}
-                                         </ul>
-                                     </div>
-                                 )}
-                             </div>
-                         </div>
-                     )}
- 
-                 </div>
-             </div>
-         </div>
+   const repositionMasonry = React.useCallback(() => {
+     const grid = overviewGridRef.current;
+     if (!grid) return;
+     const rowGap = parseInt(
+       window.getComputedStyle(grid).getPropertyValue('grid-row-gap'),
      );
- }
+     const rowHeight = parseInt(
+       window.getComputedStyle(grid).getPropertyValue('grid-auto-rows'),
+     );
+     Array.from(grid.children).forEach((child) => {
+       const el = child as HTMLElement;
+       const span = Math.ceil(
+         (el.getBoundingClientRect().height + rowGap) / (rowHeight + rowGap),
+       );
+       el.style.gridRowEnd = `span ${span}`;
+     });
+   }, []);
  
--export default InstructionCard;
-+export default InstructionCard;
++  const handleCardToggle = React.useCallback(() => {
++    // Wait for the card to finish expanding/collapsing before recalculating
++    setTimeout(repositionMasonry, 0);
++  }, [repositionMasonry]);
++
+   useLayoutEffect(() => {
+     repositionMasonry();
+   }, [overviewItems, selectedInstruction, repositionMasonry]);
+ 
+   useEffect(() => {
+     window.addEventListener('resize', repositionMasonry);
+     return () => window.removeEventListener('resize', repositionMasonry);
+   }, [repositionMasonry]);
+ 
+ 
+   // Global action handlers that work with the selected instruction or first available instruction
+   const handleGlobalOpenMatter = () => {
+     const targetInstruction = selectedInstruction || overviewItems.find(item => item.instruction)?.instruction;
+     if (targetInstruction) {
+       handleOpenMatter(targetInstruction);
+     }
+   };
+ 
+   const handleGlobalRiskAssessment = () => {
+     const targetItem = selectedInstruction 
+       ? overviewItems.find(item => item.instruction.InstructionRef === selectedInstruction.InstructionRef)
+       : overviewItems.find(item => item.instruction);
+     if (targetItem) {
+       handleRiskAssessment(targetItem);
+     }
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index a898e56b56b0fb3662a1827541e8e82cade2b075..7ec29cf13dd98f0f5669d508d20bc922a06a672c 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -987,50 +992,51 @@ const Instructions: React.FC<InstructionsProps> = ({
+         </div>
+         <div className={sectionContainerStyle(isDarkMode)}>
+           {activePivot === "overview" && (
+               <div className={overviewGridStyle} ref={overviewGridRef}>
+                 {overviewItems.map((item, idx) => {
+                   const row = Math.floor(idx / 4);
+                   const col = idx % 4;
+                   const animationDelay = row * 0.2 + col * 0.1;
+                   return (
+                     <div key={idx} className={overviewItemStyle}>
+                       <InstructionCard
+                         instruction={item.instruction as any}
+                         deal={(item as any).deal}
+                         deals={item.deals}
+                         clients={item.clients}
+                         risk={(item as any).risk}
+                         eid={(item as any).eid}
+                         eids={(item as any).eids}
+                         compliance={undefined}
+                         documents={item.documents}
+                         prospectId={item.prospectId}
+                         documentCount={item.documentCount ?? 0}
+                         animationDelay={animationDelay}
+                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
+                         onSelect={() => setSelectedInstruction(item.instruction)}
++                        onToggle={handleCardToggle}
+                       />
+                     </div>
+ 
+                   );
+                 })}
+                 {unlinkedDeals.map((deal, idx) => {
+                   const base = overviewItems.length + idx;
+                   const row = Math.floor(base / 4);
+                   const col = base % 4;
+                   const animationDelay = row * 0.2 + col * 0.1;
+                   return (
+                     <div key={`unlinked-${idx}`} className={overviewItemStyle}>
+                       <DealCard
+                         deal={deal}
+                         animationDelay={animationDelay}
+                       />
+                     </div>
+                 );
+               })}
+             </div>
+           )}
+           {activePivot === "deals" && (
+             <DealsPivot
+               deals={deals}
+               handleOpenInstruction={handleOpenInstruction}

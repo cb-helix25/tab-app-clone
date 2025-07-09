@@ -1048,3 +1048,17 @@
   border-color: #20b26c !important;
   color: #20b26c !important;
 }
+
+.status-green-banner {
+  background: #e6f7ef !important;
+  border-left: 3px solid #20b26c !important;
+  color: #20b26c !important;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 6px 12px;
+  margin: 8px 0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

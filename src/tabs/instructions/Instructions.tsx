@@ -886,6 +886,11 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
   }, []);
 
+  const handleCardToggle = React.useCallback(() => {
+    // Wait for the card to finish expanding/collapsing before recalculating
+    setTimeout(repositionMasonry, 0);
+  }, [repositionMasonry]);
+
   useLayoutEffect(() => {
     repositionMasonry();
   }, [overviewItems, selectedInstruction, repositionMasonry]);
@@ -1009,6 +1014,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         animationDelay={animationDelay}
                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
                         onSelect={() => setSelectedInstruction(item.instruction)}
+                        onToggle={handleCardToggle}
                       />
                     </div>
 
