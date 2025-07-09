@@ -566,6 +566,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
   const poidPassed = poidResult === "passed" || poidResult === "approved";
   const verificationFound = !!selectedOverviewItem?.eid;
+  const verifyButtonReview = verificationFound && !poidPassed;
   const verifyButtonDisabled = verificationFound && poidPassed;
   const verifyButtonLabel = verificationFound
     ? poidPassed
@@ -887,8 +888,14 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, []);
 
   const handleCardToggle = React.useCallback(() => {
-    // Wait for the card to finish expanding/collapsing before recalculating
-    setTimeout(repositionMasonry, 0);
+    const start = performance.now();
+    const animate = () => {
+      repositionMasonry();
+      if (performance.now() - start < 350) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
   }, [repositionMasonry]);
 
   useLayoutEffect(() => {
@@ -1126,7 +1133,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             }}
           >
             <button
-              className={`global-action-btn${verifyButtonDisabled ? ' completed' : ''}`}
+              className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}`}
               onClick={handleGlobalEIDCheck}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
@@ -1134,11 +1141,15 @@ const Instructions: React.FC<InstructionsProps> = ({
               style={{
                 borderColor: verifyButtonDisabled
                   ? 'var(--helix-green, #107c10)'
+                  : verifyButtonReview
+                  ? '#ffe066'
                   : selectedInstruction
                   ? '#3690CE'
                   : undefined,
                 backgroundColor: verifyButtonDisabled
                   ? 'rgba(115, 171, 96, 0.2)'
+                  : verifyButtonReview
+                  ? '#fffbe6'
                   : undefined,
                 opacity: 1, // Always visible
                 transform: 'translateY(0)',
@@ -1151,6 +1162,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                 style={{
                   color: verifyButtonDisabled
                     ? 'var(--helix-green, #107c10)'
+                    : verifyButtonReview
+                    ? '#bfa100'
                     : selectedInstruction
                     ? '#3690CE'
                     : undefined,
@@ -1164,6 +1177,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                 style={{
                   color: verifyButtonDisabled
                     ? 'var(--helix-green, #107c10)'
+                    : verifyButtonReview
+                    ? '#bfa100'
                     : selectedInstruction
                     ? '#3690CE'
                     : undefined,

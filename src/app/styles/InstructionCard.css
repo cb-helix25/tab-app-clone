@@ -1033,6 +1033,22 @@
   border-color: #20b26c !important;
   color: #20b26c !important;
 }
+/* Review state styling for Verify ID action */
+.global-action-btn.review {
+  background: #fffbe6 !important;
+  border-color: #ffe066 !important;
+  color: #bfa100 !important;
+}
+.global-action-btn.review .global-action-icon,
+.global-action-btn.review .global-action-label {
+  color: #bfa100 !important;
+}
+.global-action-btn.review:hover,
+.global-action-btn.review:focus {
+  background: #fff7cc !important;
+  border-color: #ffe066 !important;
+  color: #bfa100 !important;
+}
 
 /* --- Action Button: Verify/Review ID --- */
 .action-btn-verify-id {
