@@ -7,11 +7,13 @@ export type ProcessingStatus = 'pending' | 'success' | 'error';
 export interface ProcessingStep {
     label: string;
     status: ProcessingStatus;
+    message?: string;
 }
 
 interface ProcessingSectionProps {
     steps: ProcessingStep[];
     logs: string[];
+    open: boolean;
 }
 
 const iconForStatus = (status: ProcessingStatus) => {
@@ -25,20 +27,27 @@ const iconForStatus = (status: ProcessingStatus) => {
     }
 };
 
-const ProcessingSection: React.FC<ProcessingSectionProps> = ({ steps, logs }) => (
-    <div className="processing-section">
-        <h3>Processing</h3>
-        <ul className="processing-steps">
-            {steps.map((s, idx) => (
-                <li key={idx} className={`step-${s.status}`}>
-                    {iconForStatus(s.status)}
-                    <span className="label">{s.label}</span>
-                </li>
-            ))}
-        </ul>
-        {logs.length > 0 && (
-            <pre className="processing-logs">{logs.join('\n')}</pre>
-        )}
+const OperationRow: React.FC<{ step: ProcessingStep }> = ({ step }) => (
+    <li className={`step-${step.status}`}>
+        {iconForStatus(step.status)}
+        <span className="label">{step.label}</span>
+        {step.message && <span className="message">{step.message}</span>}
+    </li>
+);
+
+const ProcessingSection: React.FC<ProcessingSectionProps> = ({ steps, logs, open }) => (
+    <div className={`processing-collapsible ${open ? 'open' : ''}`}>
+        <div className="processing-section">
+            <h3>Processing</h3>
+            <ul className="processing-steps">
+                {steps.map((s, idx) => (
+                    <OperationRow key={idx} step={s} />
+                ))}
+            </ul>
+            {logs.length > 0 && (
+                <pre className="processing-logs">{logs.join('\n')}</pre>
+            )}
+        </div>
     </div>
 );
 

@@ -37,56 +37,58 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
     const initialSteps: ProcessingStep[] = [
-        { label: 'Retrieve tokens', status: 'pending' },
-        { label: 'Upload matter to database', status: 'pending' },
-        { label: 'Create matter in Clio', status: 'pending' },
-        { label: 'Update ActiveCampaign', status: 'pending' },
-        { label: 'Send notifications', status: 'pending' },
-        { label: 'Refresh interface', status: 'pending' },
+        { label: 'Fetch Tokens', status: 'pending' },
+        { label: 'DB Upload', status: 'pending' },
+        { label: 'Clio API', status: 'pending' },
+        { label: 'ActiveCampaign API', status: 'pending' },
+        { label: 'Notify User', status: 'pending' },
+        { label: 'Refresh UI', status: 'pending' },
     ];
 
     const [processing, setProcessing] = useState(false);
+    const [processingOpen, setProcessingOpen] = useState(false);
     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
     const [logs, setLogs] = useState<string[]>([]);
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
-        setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status } : s)));
-        setLogs(prev => [...prev, message]);
+        setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
+        setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
     };
 
     const handleSubmit = async () => {
         setProcessing(true);
+        setProcessingOpen(true);
         setLogs([]);
         setSteps(initialSteps);
 
         try {
-            updateStep(0, 'pending', 'Retrieving tokens...');
+            updateStep(0, 'pending', 'Fetching tokens...');
             await new Promise(res => setTimeout(res, 500));
             updateStep(0, 'success', 'Tokens retrieved');
 
-            updateStep(1, 'pending', 'Uploading matter...');
+            updateStep(1, 'pending', 'Uploading to DB...');
             await fetch('/api/matter', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
-            updateStep(1, 'success', 'Matter uploaded');
+            updateStep(1, 'success', 'Uploaded');
 
-            updateStep(2, 'pending', 'Calling Clio...');
+            updateStep(2, 'pending', 'Calling Clio API...');
             await new Promise(res => setTimeout(res, 500));
             updateStep(2, 'success', 'Clio updated');
 
-            updateStep(3, 'pending', 'Updating ActiveCampaign...');
+            updateStep(3, 'pending', 'Calling ActiveCampaign API...');
             await new Promise(res => setTimeout(res, 500));
             updateStep(3, 'success', 'ActiveCampaign updated');
 
-            updateStep(4, 'pending', 'Sending notifications...');
+            updateStep(4, 'pending', 'Notifying user...');
             await new Promise(res => setTimeout(res, 500));
-            updateStep(4, 'success', 'Notifications sent');
+            updateStep(4, 'success', 'User notified');
 
-            updateStep(5, 'pending', 'Refreshing interface...');
+            updateStep(5, 'pending', 'Refreshing UI...');
             await new Promise(res => setTimeout(res, 500));
-            updateStep(5, 'success', 'Interface refreshed');
+            updateStep(5, 'success', 'UI refreshed');
 
             setSummaryComplete(true);
             if (onConfirmed) onConfirmed();
@@ -110,8 +112,8 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                 )}
             </div>
 
-            {(processing || summaryComplete) && (
-                <ProcessingSection steps={steps} logs={logs} />
+            {(processingOpen || processing || summaryComplete) && (
+                <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
             )}
         </div>
     );

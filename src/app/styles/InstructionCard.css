@@ -23,14 +23,11 @@
   break-inside: avoid;
   page-break-inside: avoid;
   border-radius: 8px;
-  overflow: visible; /* Allow expanded content to show */
+  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.3s ease;
   width: 100%;
-  margin-bottom: 24px; /* Increased spacing between cards */
-  min-height: 1px; /* Force layout reflow */
-  clear: both; /* Prevent float/flex overlap */
-  will-change: height;
+  margin-bottom: 16px;
 }
 
 .instruction-card-container:hover {
