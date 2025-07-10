@@ -83,3 +83,14 @@ part of `npm run dev:teamsfx`.
 The server exposes a `/health` endpoint for liveness checks and a `/process` endpoint
 that streams basic progress events using Server-Sent Events. This provides a foundation
 for adding real-time workflow updates after the "Submit Matter" button is pressed.
+## Deployment
+
+When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and `web.config`, and zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js`.
+
+Once built you can also run the server locally using:
+
+```bash
+npm start
+```
+
+This starts the Express server which serves the built application from the root folder.

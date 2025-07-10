@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $zipPath  = Join-Path $PSScriptRoot 'build.zip'
 $buildDir = Join-Path $PSScriptRoot 'build'
-$cfgPath  = Join-Path $PSScriptRoot 'web.config'
+$cfgPath  = Join-Path $PSScriptRoot 'server\web.config'
 
 Write-Host "Removing existing build.zip if it exists"
 Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue

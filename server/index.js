@@ -5,7 +5,11 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-const buildPath = path.join(__dirname, '..');
+// When running locally index.js lives in the `server` folder and the built
+// client files are one level up. However after deployment the build script
+// copies `index.js` to the site root alongside the compiled client assets.
+// Using `__dirname` directly works for both cases.
+const buildPath = path.join(__dirname);
 
 // basic request logging
 app.use(morgan('dev'));
