@@ -1,106 +1,72 @@
-diff --git a/src/tabs/instructions/RiskComplianceCard.tsx b/src/tabs/instructions/RiskComplianceCard.tsx
-index 83bad0cbcbed9c459427f62a7e0cd0c798aaa345..ad1d971dfe0d8b81f311bb61dea86d3851b51369 100644
---- a/src/tabs/instructions/RiskComplianceCard.tsx
-+++ b/src/tabs/instructions/RiskComplianceCard.tsx
-@@ -1,77 +1,101 @@
- import React from 'react';
- // invisible change 2
- //
- import { mergeStyles, Text } from '@fluentui/react';
- import { useTheme } from '../../app/functionality/ThemeContext';
- import { colours } from '../../app/styles/colours';
- import { componentTokens } from '../../app/styles/componentTokens';
- import '../../app/styles/RiskComplianceCard.css';
-+import { ClientInfo } from './JointClientCard';
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index e7377258fb24589570af6fd5a7004fae8e5141db..c52d70cf48fd0a86ed8b667dcc95c3696ad23a0d 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -862,63 +862,64 @@ const handleClearAll = () => {
+         setOpponentHasCompany(false);
+         setOpponentCompanyName('');
+         setOpponentCompanyNumber('');
+         setSolicitorTitle('');
+         setSolicitorFirst('');
+         setSolicitorLast('');
+         setSolicitorPhone('');
+         setSolicitorAddress('');
+         setSolicitorCompanyNumber('');
+         setSummaryConfirmed(false); // Reset summary confirmation
+         setActivePoid(null);
+         setCurrentStep(0); // This will reset the review dots
+         setPoidSearchTerm('');
+         
+         // Clear all localStorage draft data
+         clearMatterOpeningDraft();
+     };
  
- interface RiskComplianceCardProps {
-     data: any;
-     animationDelay?: number;
-     onOpenInstruction?: () => void;
-+    clients?: ClientInfo[];
- }
- 
- const getField = (obj: any, ...keys: string[]) => {
-     for (const key of keys) {
-         const val = obj?.[key];
-         if (val !== undefined && val !== null) return val;
-     }
-     return undefined;
- };
- 
- const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
-     data,
-     animationDelay = 0,
-     onOpenInstruction,
-+    clients,
- }) => {
-     const { isDarkMode } = useTheme();
- 
-     const cardClass = mergeStyles('riskComplianceCard', {
-         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-         color: isDarkMode ? colours.dark.text : colours.light.text,
-         padding: componentTokens.card.base.padding,
-         borderRadius: componentTokens.card.base.borderRadius,
-         boxShadow: componentTokens.card.base.boxShadow,
-         cursor: onOpenInstruction ? 'pointer' : 'default',
-         transition: 'box-shadow 0.3s ease, transform 0.3s ease',
-         selectors: {
-             ':hover': {
-                 boxShadow: componentTokens.card.hover.boxShadow,
-                 transform: componentTokens.card.hover.transform,
-             },
-         },
-     });
- 
-     const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
- 
-     const complianceDate = getField(data, 'ComplianceDate', 'Compliance Date');
-     const complianceExpiry = getField(data, 'ComplianceExpiry', 'Compliance Expiry');
-     const date = complianceDate ? new Date(complianceDate).toLocaleDateString() : undefined;
-     const expiry = complianceExpiry ? new Date(complianceExpiry).toLocaleDateString() : undefined;
- 
+     // Render the horizontal sliding carousel
      return (
-         <div className={cardClass} style={style} onClick={onOpenInstruction}>
-             <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                 {data.MatterId}
-             </Text>
-             {data.ServiceDescription && <Text variant="small">{data.ServiceDescription}</Text>}
-             {data.Stage && <Text variant="small">Stage: {data.Stage}</Text>}
-             <dl className="data-grid">
-                 {Object.entries(data).map(([k, v]) => (
-                     <React.Fragment key={k}>
-                         <dt>{k}</dt>
-                         <dd>
-                             {Array.isArray(v) || typeof v === 'object'
-                                 ? JSON.stringify(v)
-                                 : String(v)}
-                         </dd>
-                     </React.Fragment>
-                 ))}
-             </dl>
-+            {clients && clients.length > 0 && (
-+                <div style={{ marginTop: 8 }}>
-+                    <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
-+                        Clients
-+                    </Text>
-+                    <ul className="detail-list">
-+                        {clients.map((c, idx) => (
-+                            <li key={idx} style={{ fontSize: '0.85rem' }}>
-+                                {c.ClientEmail}
-+                                {c.HasSubmitted !== undefined && (
-+                                    <>
-+                                        {' '}-{' '}
-+                                        {c.HasSubmitted ? 'submitted' : 'pending'}
-+                                    </>
-+                                )}
-+                                {c.Lead && ' (lead)'}
-+                            </li>
-+                        ))}
-+                    </ul>
-+                </div>
-+            )}
-         </div>
-     );
- };
- 
- export default RiskComplianceCard;
+         <CompletionProvider>
+             <Stack className="workflow-container">
+                 {/* Main Container */}
+                 <div className="workflow-main matter-opening-card">
+                     {/* Persistent Header */}
+-                    <div className="persistent-header" style={{ 
++                    <div className="persistent-header" style={{
+                         padding: '16px 24px',
+                         borderBottom: '1px solid #e1e5e9',
+                         background: '#fff',
+                         position: 'sticky',
+                         top: 0,
+                         zIndex: 10,
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'space-between',
+-                        gap: 16
++                        gap: 8,
++                        margin: '-20px -20px 0 -20px'
+                     }}>
+-                        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
++                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                             {/* Navigation breadcrumbs */}
+                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                                 <button 
+                                     onClick={handleBackToClients}
+                                     style={{ 
+                                         background: 'none', 
+                                         border: 'none', 
+                                         color: currentStep === 0 ? '#3690CE' : '#666',
+                                         cursor: 'pointer',
+                                         display: 'flex',
+                                         alignItems: 'center',
+                                         gap: 8,
+                                         padding: '8px 12px',
+                                         borderRadius: 6,
+                                         transition: 'all 0.2s ease',
+                                         fontWeight: currentStep === 0 ? 600 : 400,
+                                         backgroundColor: currentStep === 0 ? '#e3f0fc' : 'transparent'
+                                     }}
+                                 >
+                                     {clientsStepComplete && currentStep !== 0 ? (
+                                         <div className="completion-tick visible" style={{ 
+                                             marginRight: 4,
+                                             width: 16,
+                                             height: 16,
+                                             display: 'inline-flex',

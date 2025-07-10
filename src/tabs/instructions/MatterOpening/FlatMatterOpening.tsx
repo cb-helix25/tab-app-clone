@@ -884,7 +884,7 @@ const handleClearAll = () => {
                 {/* Main Container */}
                 <div className="workflow-main matter-opening-card">
                     {/* Persistent Header */}
-                    <div className="persistent-header" style={{ 
+                    <div className="persistent-header" style={{
                         padding: '16px 24px',
                         borderBottom: '1px solid #e1e5e9',
                         background: '#fff',
@@ -894,9 +894,10 @@ const handleClearAll = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 16
+                        gap: 8,
+                        margin: '-20px -20px 0 -20px'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {/* Navigation breadcrumbs */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                                 <button 
@@ -1299,7 +1300,7 @@ const handleClearAll = () => {
                         }}>
                             
                             {/* Step 1: Client Selection */}
-                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
                                 <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
@@ -1471,7 +1472,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 2: Matter Form */}
-                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
                                 <ClientInfoStep
                                     selectedDate={selectedDate}
                                     setSelectedDate={setSelectedDate}
@@ -1721,7 +1722,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 3: Review Summary */}
-                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
                                 <div
                                     className="review-summary-box review-summary-hoverable"
                                     onClick={() => setSummaryConfirmed(true)}
