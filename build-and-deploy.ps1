@@ -23,6 +23,7 @@ Compress-Archive -Path `
   "server\package.json", `
   "server\package-lock.json", `
   "server\web.config", `
+  "server\node_modules", `
   "iisnode" `
   -DestinationPath $zipPath -Force
 
