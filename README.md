@@ -70,11 +70,11 @@ Following documentation will help you to extend the React with Fluent UI templat
 
 ## Server-side processing
 
-This project includes a lightweight Express server located in the `server` directory.
-When developing locally you can launch both the React app and the server together via:
+This project now includes a lightweight Express server located in the `server` directory.
+Start it locally with:
 
 ```bash
-npm start
+npm run start:server
 ```
 
 When using Teams Toolkit for local debugging, the server starts automatically as
