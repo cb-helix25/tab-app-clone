@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 8080;
 // client files are one level up. However after deployment the build script
 // copies `index.js` to the site root alongside the compiled client assets.
 // Using `__dirname` directly works for both cases.
-const buildPath = path.join(__dirname);
+const buildPath = path.join(__dirname, 'static'); // or 'client/dist'
 
 // basic request logging
 app.use(morgan('dev'));

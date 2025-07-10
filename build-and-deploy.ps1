@@ -22,6 +22,9 @@ Copy-Item -Path "server\package-lock.json" -Destination $buildRoot -Force -Error
 Copy-Item -Path "server\web.config" -Destination $buildRoot -Force
 Copy-Item -Recurse -Path "server\node_modules" -Destination "$buildRoot\node_modules" -Force
 
+Write-Host "Copying frontend build output"
+Copy-Item -Recurse -Path "build\*" -Destination "$buildRoot\static" -Force
+
 Write-Host "Creating IISNode log directory"
 New-Item -ItemType Directory -Path (Join-Path $buildRoot 'iisnode') -Force | Out-Null
 
