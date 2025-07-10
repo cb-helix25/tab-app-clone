@@ -4,6 +4,7 @@ import React, { useState } from 'react'; // invisible change
 import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
+import { processingActions, initialSteps } from './processingActions';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
@@ -36,15 +37,6 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
 const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, onConfirmed }) => {
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
-    const initialSteps: ProcessingStep[] = [
-        { label: 'Fetch Tokens', status: 'pending' },
-        { label: 'DB Upload', status: 'pending' },
-        { label: 'Clio API', status: 'pending' },
-        { label: 'ActiveCampaign API', status: 'pending' },
-        { label: 'Notify User', status: 'pending' },
-        { label: 'Refresh UI', status: 'pending' },
-    ];
-
     const [processing, setProcessing] = useState(false);
     const [processingOpen, setProcessingOpen] = useState(false);
     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
@@ -62,33 +54,12 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
         setSteps(initialSteps);
 
         try {
-            updateStep(0, 'pending', 'Fetching tokens...');
-            await new Promise(res => setTimeout(res, 500));
-            updateStep(0, 'success', 'Tokens retrieved');
-
-            updateStep(1, 'pending', 'Uploading to DB...');
-            await fetch('/api/matter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-            updateStep(1, 'success', 'Uploaded');
-
-            updateStep(2, 'pending', 'Calling Clio API...');
-            await new Promise(res => setTimeout(res, 500));
-            updateStep(2, 'success', 'Clio updated');
-
-            updateStep(3, 'pending', 'Calling ActiveCampaign API...');
-            await new Promise(res => setTimeout(res, 500));
-            updateStep(3, 'success', 'ActiveCampaign updated');
-
-            updateStep(4, 'pending', 'Notifying user...');
-            await new Promise(res => setTimeout(res, 500));
-            updateStep(4, 'success', 'User notified');
-
-            updateStep(5, 'pending', 'Refreshing UI...');
-            await new Promise(res => setTimeout(res, 500));
-            updateStep(5, 'success', 'UI refreshed');
+            for (let i = 0; i < processingActions.length; i++) {
+                const action = processingActions[i];
+                updateStep(i, 'pending', `${action.label}...`);
+                const msg = await action.run(formData);
+                updateStep(i, 'success', msg);
+            }
 
             setSummaryComplete(true);
             if (onConfirmed) onConfirmed();

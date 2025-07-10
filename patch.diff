@@ -1,88 +1,38 @@
-diff --git a/src/app/styles/MatterOpeningCard.css b/src/app/styles/MatterOpeningCard.css
-index 983ba3c7ee282722da0cf263526ddcce1cb9bb4f..2ed458ee9306c17abd22f0520cc946f944af11b4 100644
---- a/src/app/styles/MatterOpeningCard.css
-+++ b/src/app/styles/MatterOpeningCard.css
-@@ -1,77 +1,80 @@
- /* invisible change 2 */
- /* MatterOpeningCard.css - Styles to standardize appearance with instruction cards */
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index c83a70a7a0fdf515ff985f9d491aab5944562d52..e02ded902b7360d8f2c50159074ad8f31a744265 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -1,23 +1,27 @@
+ import { ProcessingStep } from './ProcessingSection';
+-
+-// invisible change 2.1
++import activeIcon from '../../assets/activecampaign.svg';
  
- .matter-opening-card {
-     position: relative;
--    padding: 16px;
-+    /* match compact padding used on Verify ID and Assess Risk */
-+    padding: 8px;
-     display: flex;
-     flex-direction: column;
-     gap: 8px;
-     width: 100%;
--    margin-bottom: 24px;
-+    /* reduce bottom margin to align with other workflow cards */
-+    margin-bottom: 16px;
-     opacity: 1;
-     animation: dropIn 0.3s ease forwards;
-     overflow: hidden;
-     border-radius: 8px;
-     break-inside: avoid;
-     background-color: #ffffff;
-     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-     color: #061733;
-     transition: box-shadow 0.3s ease, transform 0.3s ease;
+ export interface ProcessingAction {
+     label: string;
++    icon?: string;
+     run: (formData: Record<string, any>) => Promise<string>;
  }
  
- .matter-opening-card:hover {
-     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-     transform: translateY(-2px);
- }
- 
- /* Animation keyframes for card entry */
- @keyframes dropIn {
-     from {
-         opacity: 0;
-         transform: translateY(-10px);
+ export const processingActions: ProcessingAction[] = [
+     {
+-        label: 'Fetch Tokens',
++        label: 'Retrieve ActiveCampaign Token',
++        icon: activeIcon,
+         run: async () => {
+-            await new Promise(res => setTimeout(res, 500));
+-            return 'Tokens retrieved';
++            const res = await fetch('/api/keys/ac-automations-apitoken');
++            if (!res.ok) throw new Error('Failed to fetch secret');
++            await res.json();
++            return 'Token retrieved';
+         }
      }
-     to {
-         opacity: 1;
-         transform: translateY(0);
-     }
- }
+ ];
  
- /* Animation for completion check */
- @keyframes tickPop {
-     0% { transform: scale(0); opacity: 0; }
-     50% { transform: scale(1.2); opacity: 1; }
-     100% { transform: scale(1); opacity: 1; }
- }
- 
- /* Step header styling to match instruction cards */
- .matter-opening-card .step-header {
-     background-color: var(--helix-grey, #F4F4F6);
-     color: var(--helix-dark-blue, #061733);
-     border-radius: 4px;
--    padding: 10px 16px;
-+    /* smaller header padding to match other workflows */
-+    padding: 4px 8px;
-     font-size: 16px;
-     font-weight: 600;
-     display: flex;
-     align-items: center;
-     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-     cursor: pointer;
-     transition: background-color 0.3s ease, color 0.3s ease;
- }
- 
- /* Active state - only round top corners when expanded */
- .matter-opening-card .step-header.active {
-     background: var(--helix-dark-blue, #061733);
-     color: #fff;
-     border-radius: 4px 4px 0 0;
- }
- 
- .matter-opening-card .step-number {
-     background: none;
-     width: 24px;
-     height: 24px;
-     display: inline-flex;
-     align-items: center;
-     justify-content: center;
-     font-weight: bold;
-     margin-right: 8px;
+ export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
+     label: action.label,
+-    status: 'pending'
++    status: 'pending',
++    icon: action.icon
+ }));

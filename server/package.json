@@ -1,12 +1,14 @@
 {
     "name": "tab-app-server",
     "version": "1.0.0",
-    "main": "server.js",
+    "main": "index.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node index.js"
     },
     "dependencies": {
         "express": "^4.18.2",
-        "morgan": "^1.10.0"
+        "morgan": "^1.10.0",
+        "@azure/identity": "^4.5.0",
+        "@azure/keyvault-secrets": "^4.9.0"
     }
 }

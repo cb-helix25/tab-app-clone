@@ -25,6 +25,30 @@
     padding: 4px 0;
 }
 
+.operation-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.operation-icon.pending {
+    animation: spin 1s linear infinite;
+}
+
+.operation-icon.success {
+    animation: pop 0.4s ease forwards;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pop {
+    0% { transform: scale(0.8); opacity: 0.6; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+}
+
 .processing-steps .message {
     margin-left: auto;
     font-size: 0.8rem;

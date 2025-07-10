@@ -9,6 +9,7 @@ export interface ProcessingStep {
     label: string;
     status: ProcessingStatus;
     message?: string;
+    icon?: string;
 }
 
 interface ProcessingSectionProps {
@@ -30,6 +31,13 @@ const iconForStatus = (status: ProcessingStatus) => {
 
 const OperationRow: React.FC<{ step: ProcessingStep }> = ({ step }) => (
     <li className={`step-${step.status}`}>
+        {step.icon && (
+            <img
+                src={step.icon}
+                alt=""
+                className={`operation-icon ${step.status}`}
+            />
+        )}
         {iconForStatus(step.status)}
         <span className="label">{step.label}</span>
         {step.message && <span className="message">{step.message}</span>}
