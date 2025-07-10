@@ -67,3 +67,16 @@ Following documentation will help you to extend the React with Fluent UI templat
 - [Publish the app to your organization or the Microsoft Teams app store](https://learn.microsoft.com/microsoftteams/platform/toolkit/publish)
 - [Enable the app for multi-tenant](https://github.com/OfficeDev/TeamsFx/wiki/Multi-tenancy-Support-for-Azure-AD-app)
 - [Preview the app on mobile clients](https://github.com/OfficeDev/TeamsFx/wiki/Run-and-debug-your-Teams-application-on-iOS-or-Android-client)
+
+## Server-side processing
+
+This project now includes a lightweight Express server located in the `server` directory.
+Start it locally with:
+
+```bash
+npm run start:server
+```
+
+The server exposes a `/health` endpoint for liveness checks and a `/process` endpoint
+that streams basic progress events using Server-Sent Events. This provides a foundation
+for adding real-time workflow updates after the "Submit Matter" button is pressed.
