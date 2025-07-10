@@ -194,10 +194,23 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const [collapsed, setCollapsed] = useState(!expanded);
     const [showClientDetails, setShowClientDetails] = useState(false);
     const [hovered, setHovered] = React.useState<string | null>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [maxHeight, setMaxHeight] = useState<string>('0px');
 
     useEffect(() => {
         setCollapsed(!expanded);
     }, [expanded]);
+
+    useEffect(() => {
+        const node = contentRef.current;
+        if (node) {
+            if (collapsed) {
+                setMaxHeight('0px');
+            } else {
+                setMaxHeight(`${node.scrollHeight}px`);
+            }
+        }
+    }, [collapsed]);
 
     const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
         backgroundColor: colours.light.sectionBackground,
@@ -316,83 +329,73 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         }
     }, [selectedStatus, collapsed, onToggle]);
 
-    const [showRawJson, setShowRawJson] = useState(false);
+    const JsonCopyButton: React.FC<{ data: any }> = ({ data }) => {
+      const [copied, setCopied] = useState(false);
+      const [pressed, setPressed] = useState(false);
 
-    // Extracted components to avoid hook-in-callback error
-    function RawJsonToggle({ showRawJson, setShowRawJson }: { showRawJson: boolean, setShowRawJson: React.Dispatch<React.SetStateAction<boolean>> }) {
+      const baseStyle: React.CSSProperties = {
+        background: '#f8f9fa',
+        border: '1px solid #e1dfdd',
+        borderRadius: 6,
+        padding: 4,
+        fontSize: 12,
+        color: '#3690CE',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s ease',
+        minHeight: 0,
+        minWidth: 0,
+        width: 28,
+        height: 28,
+        position: 'relative',
+      };
+
+      const pressedStyle: React.CSSProperties = pressed
+        ? { background: '#e7f1ff', borderColor: '#3690CE', transform: 'scale(0.95)' }
+        : {};
+
       return (
-        <div style={{marginLeft: 0, alignSelf: 'flex-start'}}>
+        <div style={{ marginLeft: 0, alignSelf: 'flex-start' }}>
           <button
+            onMouseDown={() => setPressed(true)}
+            onMouseUp={() => setPressed(false)}
+            onMouseLeave={() => setPressed(false)}
             onClick={e => {
               e.stopPropagation();
-              setShowRawJson(prev => !prev);
+              navigator.clipboard
+                .writeText(JSON.stringify(data, null, 2))
+                .then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                })
+                .catch(err => console.error(err));
             }}
-            style={{
-              background: '#f8f9fa',
-              border: '1px solid #e1dfdd',
-              borderRadius: 6,
-              padding: 4,
-              fontSize: 12,
-              color: '#3690CE',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              minHeight: 0,
-              minWidth: 0,
-              width: 28,
-              height: 28,
-            }}
+            style={{ ...baseStyle, ...pressedStyle }}
             tabIndex={0}
-            aria-label={showRawJson ? 'Hide Raw Data' : 'Show Raw Data'}
+            aria-label={copied ? 'Copied!' : 'Copy Raw Data'}
           >
-            <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 16 }} />
+            <i
+              className="ms-Icon ms-Icon--Code"
+              style={{ fontSize: 16, color: copied ? '#20b26c' : '#3690CE' }}
+            />
+            {copied && (
+              <i
+                className="ms-Icon ms-Icon--CheckMark"
+                style={{
+                  position: 'absolute',
+                  right: -2,
+                  top: -2,
+                  fontSize: 10,
+                  color: '#20b26c',
+                }}
+              />
+            )}
           </button>
         </div>
       );
-    }
-
-    function RawJsonPreview({ data }: { data: any }) {
-      return (
-        <div
-          style={{
-            margin: '8px 0 8px 0',
-            border: '1px solid #e1dfdd',
-            borderRadius: 6,
-            background: '#f8f9fa',
-            overflow: 'hidden',
-            width: '100%',
-            maxWidth: 600,
-            alignSelf: 'flex-end',
-            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-          }}
-        >
-          <div
-            style={{
-              padding: 16,
-              maxHeight: 300,
-              overflow: 'auto',
-              fontSize: 11,
-              fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-              lineHeight: 1.4,
-              background: '#fff',
-              color: '#333',
-            }}
-          >
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {JSON.stringify(data, null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    }
+    };
 
     useLayoutEffect(() => {
         function updateCompact() {
@@ -656,11 +659,14 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         borderBottom: 'none',
                         boxSizing: 'border-box',
                     }}>
+              {bannerElement}
+              {serviceElement}
               <div
+                ref={contentRef}
                 style={{
-                  maxHeight: collapsed ? 0 : '2000px',
+                  maxHeight,
                   overflow: 'hidden',
-                  transition: 'max-height 0.3s ease',
+                  transition: 'max-height 0.5s ease',
                   width: '100%',
                 }}
               >
@@ -833,24 +839,22 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                           </div>
                           {/* JSON icon absolutely right, vertically centered, on same row as tags */}
                           {deal && (
-                            <div style={{
-                              position: 'absolute',
-                              right: 0,
-                              top: 0,
-                              height: 28,
-                              display: 'flex',
-                              alignItems: 'center',
-                              zIndex: 2,
-                            }}>
-                              <RawJsonToggle showRawJson={showRawJson} setShowRawJson={setShowRawJson} />
+                            <div
+                              style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: 0,
+                                height: 28,
+                                display: 'flex',
+                                alignItems: 'center',
+                                zIndex: 2,
+                              }}
+                            >
+                              <JsonCopyButton data={deal} />
                             </div>
                           )}
                         </div>
-                        {/* --- SERVICE DESCRIPTION & AMOUNT + RAW JSON PREVIEW BUTTON --- */}
-                        {/* Raw JSON preview (read-only) */}
-                        {deal && showRawJson && (
-                          <RawJsonPreview data={deal} />
-                        )}
+                        {/* --- SERVICE DESCRIPTION & AMOUNT --- */}
                         {/* Email and Phone banner (side by side, icon in box, input box to right) */}
                         <div style={{
                           marginTop: 10,
@@ -953,8 +957,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                           </div>
                         </div>
                     </div>
-              {bannerElement}
-              {serviceElement}
             </div>
           </div>
             </>

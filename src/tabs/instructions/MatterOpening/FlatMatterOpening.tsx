@@ -1300,8 +1300,8 @@ const handleClearAll = () => {
                         }}>
                             
                             {/* Step 1: Client Selection */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
-                                <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
+                            <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
+                                <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 16px auto' }}>
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
                                         teamData={teamData}
@@ -1323,7 +1323,7 @@ const handleClearAll = () => {
                                     <div style={{ 
                                         width: '100%', 
                                         maxWidth: 1080, 
-                                        margin: '32px auto 0 auto',
+                                        margin: '16px auto 0 auto',
                                         animation: 'cascadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
                                         animationDelay: '0ms',
                                         opacity: 0,
@@ -1379,7 +1379,7 @@ const handleClearAll = () => {
                                 )}
                                 
                                 {/* Continue Button */}
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 32 }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
                                     <div
                                         className="nav-button forward-button"
                                         onClick={opponentChoiceMade ? handleContinueToForm : undefined}
@@ -1472,7 +1472,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 2: Matter Form */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
                                 <ClientInfoStep
                                     selectedDate={selectedDate}
                                     setSelectedDate={setSelectedDate}
@@ -1553,7 +1553,7 @@ const handleClearAll = () => {
 
                                 </Stack>
                                 {/* Navigation buttons for form step */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
                                     {/* Back button with smooth expansion */}
                                     <div 
                                         className="nav-button back-button"
@@ -1722,7 +1722,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 3: Review Summary */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '16px', boxSizing: 'border-box' }}>
                                 <div
                                     className="review-summary-box review-summary-hoverable"
                                     onClick={() => setSummaryConfirmed(true)}
@@ -1731,7 +1731,7 @@ const handleClearAll = () => {
                                         borderRadius: 0,
                                         background: summaryConfirmed ? '#f5fdf7' : '#fff',
                                         padding: 24,
-                                        margin: '0 0 32px 0',
+                                        margin: '0 0 16px 0',
                                         width: '100%',
                                         boxSizing: 'border-box',
                                         transition: 'border-color 0.2s, background 0.2s',
@@ -2146,7 +2146,7 @@ const handleClearAll = () => {
                                 )}
 
                                 {/* Navigation buttons for review step */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
                                     {/* Back button with smooth expansion */}
                                     <div 
                                         className="nav-button back-button"
