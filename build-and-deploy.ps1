@@ -23,7 +23,7 @@ Pop-Location
 
 Write-Host "Deploying to Azure"
 az webapp deploy --resource-group Main --name link-hub-v1 --src-path build.zip
-az webapp config set --resource-group Main --name link-hub-v1 --startup-file "node server/index.js"
+az webapp config set --resource-group Main --name link-hub-v1 --startup-file "server/index.js"
 
 Write-Host "Cleaning up build artifacts"
 Remove-Item -Recurse -Force $buildDir
