@@ -1,4 +1,4 @@
-/* invisible change 2 */
+/* invisible change 3 */
 .riskComplianceCard {
     display: flex;
     flex-direction: column;
@@ -6,6 +6,13 @@
     opacity: 0;
     animation: dropIn 0.3s ease forwards;
     animation-delay: var(--animation-delay, 0s);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hover effect for background icon */
+.riskComplianceCard:hover .backgroundIcon {
+    opacity: 0.4 !important;
 }
 
 .riskComplianceCard .detail-list {
@@ -28,9 +35,575 @@
 .data-grid dt {
     font-weight: 600;
     white-space: nowrap;
+    color: #666;
+    font-size: 0.8rem;
 }
 
 .data-grid dd {
     margin: 0;
     word-break: break-word;
+    font-size: 0.8rem;
+}
+
+/* Animation for instruction cards */
+@keyframes dropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Pulse animation for risk indicators */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Enhanced grid layouts */
+.risk-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.verification-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.status-badge.low-risk {
+    background-color: #e6f4ea;
+    color: #107C10;
+    border: 1px solid #107C10;
+}
+
+.status-badge.medium-risk {
+    background-color: #fffbe6;
+    color: #b88600;
+    border: 1px solid #FFB900;
+}
+
+.status-badge.high-risk {
+    background-color: #fde7e9;
+    color: #d13438;
+    border: 1px solid #d13438;
+}
+
+.status-badge.verified {
+    background-color: #e6f4ea;
+    color: #107C10;
+    border: 1px solid #107C10;
+}
+
+.status-badge.pending {
+    background-color: #f4f4f6;
+    color: #666;
+    border: 1px solid #e1dfdd;
+}
+
+/* Client cards */
+.client-card {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s ease;
+}
+
+.client-card:hover {
+    background-color: rgba(54, 144, 206, 0.1) !important;
+}
+
+/* Collapsible sections */
+details summary {
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition: color 0.2s ease;
+}
+
+details summary:hover {
+    color: #2b6ec7 !important;
+}
+
+details[open] summary {
+    margin-bottom: 8px;
+}
+
+/* ID verification specific styles */
+.id-verification-card {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.id-verification-card:hover {
+    background-color: rgba(54, 144, 206, 0.05) !important;
+}
+
+.verification-result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.verification-result-box {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.verification-result-box:hover {
+    transform: scale(1.02);
+}
+
+/* Enhanced Risk Compliance Card - Hybrid Design */
+.risk-compliance-card-hybrid {
+    position: relative;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    max-width: 480px;
+    width: 100%;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    backdrop-filter: blur(10px);
+}
+
+.risk-compliance-card-hybrid.dark {
+    background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #cccccc;
+}
+
+.risk-compliance-card-hybrid:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Modern Card Header */
+.modern-card-header {
+    background: linear-gradient(135deg, #f4f4f6 0%, #e8e8ea 100%);
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-card-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0078d4, #106ebe, #2b88d8);
+}
+
+.modern-card-header.dark {
+    background: linear-gradient(135deg, #3c3c3c 0%, #333333 100%);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.header-content-modern {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.instruction-info-modern {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.instruction-ref-modern {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ref-icon-modern {
+    font-size: 20px;
+    color: #0078d4;
+    filter: drop-shadow(0 1px 2px rgba(0, 120, 212, 0.3));
+}
+
+.ref-text-modern {
+    font-weight: 700;
+    font-size: 18px;
+    color: #323130;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.risk-compliance-card-hybrid.dark .ref-text-modern {
+    color: #ffffff;
+}
+
+.stage-badge-modern {
+    padding: 6px 12px;
+    background: rgba(0, 120, 212, 0.1);
+    color: #0078d4;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(0, 120, 212, 0.2);
+    backdrop-filter: blur(4px);
+}
+
+.risk-badge-modern {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+    border: 2px solid;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s ease;
+}
+
+.risk-badge-modern:hover {
+    transform: scale(1.05);
+}
+
+.risk-icon-modern {
+    font-size: 16px;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+.service-banner-modern {
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.08) 0%, rgba(0, 120, 212, 0.12) 100%);
+    border: 1px solid rgba(0, 120, 212, 0.25);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    backdrop-filter: blur(4px);
+}
+
+.service-text-modern {
+    color: #0078d4;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 120, 212, 0.1);
+}
+
+/* Enhanced Section Styles */
+.section-modern {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+}
+
+.section-modern:hover {
+    background: rgba(0, 120, 212, 0.02);
+}
+
+.risk-compliance-card-hybrid.dark .section-modern {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.section-header-modern {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 10px 0;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    padding-left: 6px;
+}
+
+.section-header-modern:hover {
+    color: #0078d4;
+    background: rgba(0, 120, 212, 0.05);
+    transform: translateX(4px);
+}
+
+.section-title-modern {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.section-icon-modern {
+    font-size: 18px;
+    color: #0078d4;
+    filter: drop-shadow(0 1px 2px rgba(0, 120, 212, 0.3));
+}
+
+/* Modern Grid Layouts */
+.grid-modern {
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.grid-modern.two-column {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.grid-modern.three-column {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.grid-item-modern {
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.04) 100%);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.grid-item-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #0078d4, transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.grid-item-modern:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 120, 212, 0.15);
+    border-color: rgba(0, 120, 212, 0.2);
+}
+
+.grid-item-modern:hover::before {
+    opacity: 1;
+}
+
+.risk-compliance-card-hybrid.dark .grid-item-modern {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.08) 100%);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.grid-item-label-modern {
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.grid-item-value-modern {
+    font-weight: 700;
+    font-size: 14px;
+    color: #323130;
+}
+
+.risk-compliance-card-hybrid.dark .grid-item-value-modern {
+    color: #ffffff;
+}
+
+/* Enhanced Client Cards */
+.client-card-modern {
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.05) 0%, rgba(0, 120, 212, 0.08) 100%);
+    border: 1px solid rgba(0, 120, 212, 0.2);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.client-card-modern::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 120, 212, 0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.client-card-modern:hover {
+    background: linear-gradient(135deg, rgba(0, 120, 212, 0.08) 0%, rgba(0, 120, 212, 0.12) 100%);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0, 120, 212, 0.2);
+}
+
+.client-card-modern:hover::before {
+    opacity: 1;
+}
+
+.client-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.client-icon-modern {
+    color: #0078d4;
+    font-size: 18px;
+    filter: drop-shadow(0 1px 2px rgba(0, 120, 212, 0.3));
+}
+
+.client-name-modern {
+    font-weight: 700;
+    font-size: 15px;
+    color: #323130;
+}
+
+.client-details-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+.client-type-modern {
+    color: #666;
+    font-style: italic;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.client-email-modern {
+    color: #0078d4;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Enhanced Background Effects */
+.background-icon-modern {
+    position: absolute;
+    bottom: 20px;
+    right: 24px;
+    font-size: 64px;
+    opacity: 0.08;
+    color: #0078d4;
+    pointer-events: none;
+    transition: all 0.4s ease;
+    filter: blur(0.5px);
+}
+
+.risk-compliance-card-hybrid:hover .background-icon-modern {
+    opacity: 0.15;
+    transform: scale(1.1) rotate(5deg);
+    filter: blur(0px);
+}
+
+/* Advanced Animations */
+@keyframes slideInUpModern {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+        filter: blur(2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0px);
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(0, 120, 212, 0);
+    }
+}
+
+.pulse-animation {
+    animation: pulseGlow 2s infinite;
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .risk-compliance-card-hybrid {
+        max-width: 100%;
+        margin: 0 8px;
+    }
+    
+    .modern-card-header {
+        padding: 16px 20px;
+    }
+    
+    .section-modern {
+        padding: 16px 20px;
+    }
+    
+    .grid-modern.two-column,
+    .grid-modern.three-column {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-content-modern {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .instruction-info-modern {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .risk-compliance-card-hybrid,
+    .grid-item-modern,
+    .client-card-modern,
+    .section-header-modern {
+        transition: none;
+    }
+    
+    .risk-compliance-card-hybrid:hover {
+        transform: none;
+    }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-// invisible change 2
+// invisible change 2.1
 //
 import { format, isSameYear, differenceInYears, differenceInMonths, differenceInWeeks, differenceInDays, isToday, isYesterday, isThisWeek, formatDistanceToNow } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
@@ -505,9 +505,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         >
             <>
                 <header
-                    className="instruction-header"
+                    className={`instruction-header${collapsed ? ' collapsed' : ' open'}`}
                     style={{
-                        ...(!collapsed ? { backgroundColor: colours.darkBlue, color: '#fff' } : {}),
+                        ...(collapsed
+                            ? { backgroundColor: colours.darkBlue, color: '#fff' }
+                            : { backgroundColor: '#f4f4f6', color: colours.light.text } // Use grey for open header
+                        ),
                         borderTopLeftRadius: 8,
                         borderTopRightRadius: 8,
                         borderBottomLeftRadius: 0,
@@ -518,6 +521,11 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
                         borderBottom: 'none',
                         cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0 16px',
+                        minHeight: 48,
                     }}
                     onClick={() => {
                         const newState = !collapsed;
@@ -528,41 +536,88 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                         onSelect?.(); // Select this instruction
                     }}
                 >
-                    <span className="header-title" style={{ fontWeight: 600, fontSize: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span>{leadName}</span>
-                        <span style={{
-                            display: 'inline-block',
-                            width: 1,
-                            height: 20,
-                            background: !collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
-                            margin: '0 12px',
-                            verticalAlign: 'middle',
-                            alignSelf: 'center',
-                        }} />
-                        <span style={{ fontWeight: 400, color: !collapsed ? 'rgba(255,255,255,0.7)' : '#888', fontSize: 16, letterSpacing: 0.2, alignSelf: 'center' }}>
+                    <span
+                        className="header-title"
+                        style={{
+                            fontWeight: 600,
+                            fontSize: 18,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            color: collapsed ? '#fff' : colours.light.text,
+                        }}
+                    >
+                        <span
+                            className="header-name"
+                            style={{
+                                color: collapsed ? '#fff' : colours.light.text,
+                                fontWeight: 600,
+                                fontSize: 18,
+                                letterSpacing: 0.1,
+                                alignSelf: 'center',
+                            }}
+                        >
+                            {leadName}
+                        </span>
+                        <span
+                            className="header-pipe"
+                            style={{
+                                display: 'inline-block',
+                                width: 1,
+                                height: 20,
+                                background: collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
+                                margin: '0 12px',
+                                verticalAlign: 'middle',
+                                alignSelf: 'center',
+                            }}
+                        />
+                        <span
+                            className="header-instruction-ref"
+                            style={{
+                                fontWeight: 400,
+                                color: collapsed ? 'rgba(255,255,255,0.7)' : '#888',
+                                fontSize: 16,
+                                letterSpacing: 0.2,
+                                alignSelf: 'center',
+                            }}
+                        >
                             {instruction.InstructionRef || '—'}
                         </span>
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {selected && (
-                            <span style={{
-                                marginLeft: '12px',
-                                padding: '2px 8px',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                backgroundColor: !collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
-                                color: !collapsed ? '#fff' : '#fff',
-                                borderRadius: '12px',
-                                alignSelf: 'center'
-                            }}>
+                            <span
+                                className="header-selected-label"
+                                style={{
+                                    marginLeft: 0,
+                                    padding: '2px 8px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    backgroundColor: collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
+                                    color: '#fff',
+                                    borderRadius: '12px',
+                                    alignSelf: 'center',
+                                    border: collapsed ? 'none' : '1px solid #3690CE',
+                                }}
+                            >
                                 SELECTED
                             </span>
                         )}
-                    </span>
-                    <span
-                        className="plusminus-icon"
-                        aria-hidden="true"
-                        style={!collapsed ? { color: '#fff' } : undefined}
-                    >
-                        {collapsed ? '+' : '−'}
+                        <span
+                            className="plusminus-icon"
+                            aria-hidden="true"
+                            style={{
+                                marginLeft: 16,
+                                fontSize: 22,
+                                fontWeight: 700,
+                                color: collapsed ? '#fff' : colours.light.text,
+                                transition: 'color 0.2s',
+                                userSelect: 'none',
+                                lineHeight: 1,
+                            }}
+                        >
+                            {collapsed ? '+' : '−'}
+                        </span>
                     </span>
                 </header>
 
@@ -1187,9 +1242,25 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                                     <div className="detail-group open">
                                         <div className="detail-summary">Assess Risk</div>
                                         <ul className="detail-list">
-                                             {risk && Object.entries(risk).map(([k, v]) => (
-                                                <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                             ))}
+                                             {risk && Object.entries(risk).map(([k, v]) => {
+                                                 // Add assessment date & time and expiry for risk assessments
+                                                 if (k === 'ComplianceDate' && v) {
+                                                     const complianceDate = new Date(v);
+                                                     const expiryDate = new Date(complianceDate);
+                                                     expiryDate.setMonth(expiryDate.getMonth() + 6);
+                                                     return (
+                                                         <React.Fragment key={k}>
+                                                             <li><strong>Assessment Date & Time:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</li>
+                                                             <li><strong>Compliance Date:</strong> {formatValue(k, v)}</li>
+                                                             <li><strong>Assessment Expiry:</strong> {expiryDate.toLocaleDateString('en-GB')}</li>
+                                                         </React.Fragment>
+                                                     );
+                                                 }
+                                                 return <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>;
+                                             })}
+                                             {risk && !risk.hasOwnProperty('ComplianceDate') && (
+                                                 <li><strong>Assessment Date & Time:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</li>
+                                             )}
                                         </ul>
                                     </div>
                                 )}

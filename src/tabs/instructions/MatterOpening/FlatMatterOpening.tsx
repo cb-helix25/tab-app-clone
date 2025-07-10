@@ -1,6 +1,6 @@
 //
 import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisible change
-// invisible change 2
+// invisible change 2.1
 import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
 import { POID, TeamData } from '../../../app/functionality/types';
@@ -28,6 +28,7 @@ import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 
 import { CompletionProvider } from './CompletionContext';
+import ProcessingSection, { ProcessingStep } from './ProcessingSection';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -277,6 +278,11 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     // Summary review confirmation state
     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+
+    // Processing state for matter submission
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+    const [processingLogs, setProcessingLogs] = useState<string[]>([]);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
@@ -727,6 +733,98 @@ const handleClearAll = () => {
         return count;
     };
 
+    // Simulate matter processing with realistic steps
+    const simulateProcessing = async () => {
+        setIsProcessing(true);
+        setProcessingSteps([]);
+        setProcessingLogs([]);
+
+        const steps: ProcessingStep[] = [
+            { label: 'Validating form data', status: 'pending' },
+            { label: 'Preparing matter payload', status: 'pending' },
+            { label: 'Calling matter opening API', status: 'pending' },
+            { label: 'Creating matter in system', status: 'pending' },
+            { label: 'Setting up folder structure', status: 'pending' },
+            { label: 'Configuring team assignments', status: 'pending' },
+            { label: 'Initializing compliance checks', status: 'pending' },
+            { label: 'Sending notifications', status: 'pending' },
+        ];
+
+        // Show all steps as pending initially
+        setProcessingSteps([...steps]);
+
+        try {
+            // Step 1: Validating form data
+            await new Promise(resolve => setTimeout(resolve, 800));
+            let updatedSteps = [...steps];
+            updatedSteps[0] = { ...updatedSteps[0], status: 'success' };
+            setProcessingSteps([...updatedSteps]);
+            setProcessingLogs(prev => [...prev, '✓ Form data validation completed']);
+
+            // Step 2: Preparing matter payload
+            await new Promise(resolve => setTimeout(resolve, 600));
+            const matterPayload = generateSampleJson();
+            updatedSteps[1] = { ...updatedSteps[1], status: 'success' };
+            setProcessingSteps([...updatedSteps]);
+            setProcessingLogs(prev => [...prev, '✓ Matter payload prepared']);
+
+            // Step 3: Calling matter opening API
+            await new Promise(resolve => setTimeout(resolve, 400));
+            const baseUrl = process.env.REACT_APP_PROXY_BASE_URL || '';
+            const apiResponse = await fetch(`${baseUrl}/api/matterRequest`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(matterPayload)
+            });
+
+            if (!apiResponse.ok) {
+                throw new Error(`API call failed: ${apiResponse.status}`);
+            }
+
+            const responseData = await apiResponse.json();
+            updatedSteps[2] = { ...updatedSteps[2], status: 'success' };
+            setProcessingSteps([...updatedSteps]);
+            setProcessingLogs(prev => [...prev, `✓ API call successful - Request ID: ${responseData.requestId || 'N/A'}`]);
+
+            // Continue with remaining steps
+            for (let i = 3; i < steps.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
+                
+                updatedSteps[i] = { ...updatedSteps[i], status: 'success' };
+                setProcessingSteps([...updatedSteps]);
+                setProcessingLogs(prev => [...prev, `✓ ${updatedSteps[i].label} completed`]);
+            }
+
+            // Final completion
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
+            setProcessingLogs(prev => [...prev, `📄 Server response: ${JSON.stringify(responseData, null, 2)}`]);
+
+        } catch (error) {
+            console.error('Error during processing:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            setProcessingLogs(prev => [...prev, `❌ Error: ${errorMessage}`]);
+            
+            // Mark current step as error
+            const currentStepIndex = steps.findIndex(step => step.status === 'pending');
+            if (currentStepIndex !== -1) {
+                const errorSteps = [...steps];
+                errorSteps[currentStepIndex] = { ...errorSteps[currentStepIndex], status: 'error' };
+                setProcessingSteps([...errorSteps]);
+            }
+        }
+        
+        // Mark the matter opening as completed
+        completeMatterOpening();
+        
+        // Stop processing after a brief delay to show completion
+        setTimeout(() => {
+            setIsProcessing(false);
+        }, 2000);
+    };
+
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
     // Clear all selections and inputs
@@ -787,7 +885,7 @@ const handleClearAll = () => {
                 <div className="workflow-main matter-opening-card">
                     {/* Persistent Header */}
                     <div className="persistent-header" style={{ 
-                        padding: '20px 32px',
+                        padding: '16px 24px',
                         borderBottom: '1px solid #e1e5e9',
                         background: '#fff',
                         position: 'sticky',
@@ -1201,7 +1299,7 @@ const handleClearAll = () => {
                         }}>
                             
                             {/* Step 1: Client Selection */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
                                 <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto 32px auto' }}>
                                     <PoidSelectionStep
                                         poidData={effectivePoidData}
@@ -1373,7 +1471,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 2: Matter Form */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
                                 <ClientInfoStep
                                     selectedDate={selectedDate}
                                     setSelectedDate={setSelectedDate}
@@ -1623,7 +1721,7 @@ const handleClearAll = () => {
                             </div>
 
                             {/* Step 3: Review Summary */}
-                            <div style={{ width: '33.333%', padding: '32px', boxSizing: 'border-box' }}>
+                            <div style={{ width: '33.333%', padding: '24px', boxSizing: 'border-box' }}>
                                 <div
                                     className="review-summary-box review-summary-hoverable"
                                     onClick={() => setSummaryConfirmed(true)}
@@ -2034,6 +2132,18 @@ const handleClearAll = () => {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Processing Section - Shows when processing is active */}
+                                {isProcessing && (
+                                    <div style={{ marginTop: 24 }}>
+                                        <ProcessingSection 
+                                            steps={processingSteps}
+                                            logs={processingLogs}
+                                            open={isProcessing}
+                                        />
+                                    </div>
+                                )}
+
                                 {/* Navigation buttons for review step */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
                                     {/* Back button with smooth expansion */}
@@ -2118,29 +2228,26 @@ const handleClearAll = () => {
                                     <div 
                                         className="nav-button submit-button"
                                         onClick={() => {
-                                            if (summaryConfirmed) {
-                                                // Handle form submission here
-                                                console.log('Form submitted!');
-                                                // Mark the matter opening as completed
-                                                completeMatterOpening();
-                                                // TODO: Add actual form submission logic here
+                                            if (summaryConfirmed && !isProcessing) {
+                                                // Start the processing simulation
+                                                simulateProcessing();
                                             }
                                         }}
                                         style={{
-                                            background: summaryConfirmed ? '#f4f4f6' : '#f8f8f8',
-                                            border: summaryConfirmed ? '2px solid #e1dfdd' : '2px solid #ddd',
+                                            background: isProcessing ? '#e6f7ff' : summaryConfirmed ? '#f4f4f6' : '#f8f8f8',
+                                            border: isProcessing ? '2px solid #1890ff' : summaryConfirmed ? '2px solid #e1dfdd' : '2px solid #ddd',
                                             borderRadius: '0px',
                                             width: '48px',
                                             height: '48px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            cursor: summaryConfirmed ? 'pointer' : 'not-allowed',
+                                            cursor: (summaryConfirmed && !isProcessing) ? 'pointer' : 'not-allowed',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                             boxShadow: summaryConfirmed ? '0 1px 2px rgba(6,23,51,0.04)' : 'none',
                                             position: 'relative',
                                             overflow: 'hidden',
-                                            opacity: summaryConfirmed ? 1 : 0.5,
+                                            opacity: (summaryConfirmed || isProcessing) ? 1 : 0.5,
                                         }}
                                         onMouseEnter={(e) => {
                                             if (summaryConfirmed) {
@@ -2161,29 +2268,44 @@ const handleClearAll = () => {
                                             }
                                         }}
                                     >
-                                        {/* Check Icon */}
-                                        <svg 
-                                            width="18" 
-                                            height="18" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none"
-                                            style={{
-                                                transition: 'color 0.3s, opacity 0.3s',
-                                                color: summaryConfirmed ? '#D65541' : '#999',
+                                        {/* Check Icon or Spinner */}
+                                        {isProcessing ? (
+                                            <div style={{
                                                 position: 'absolute',
                                                 left: '50%',
                                                 top: '50%',
                                                 transform: 'translate(-50%, -50%)',
-                                            }}
-                                        >
-                                            <polyline 
-                                                points="20,6 9,17 4,12" 
-                                                stroke="currentColor" 
-                                                strokeWidth="2" 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
+                                                width: '18px',
+                                                height: '18px',
+                                                border: '2px solid #1890ff',
+                                                borderTop: '2px solid transparent',
+                                                borderRadius: '50%',
+                                                animation: 'spin 1s linear infinite'
+                                            }} />
+                                        ) : (
+                                            <svg 
+                                                width="18" 
+                                                height="18" 
+                                                viewBox="0 0 24 24" 
+                                                fill="none"
+                                                style={{
+                                                    transition: 'color 0.3s, opacity 0.3s',
+                                                    color: summaryConfirmed ? '#D65541' : '#999',
+                                                    position: 'absolute',
+                                                    left: '50%',
+                                                    top: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                }}
+                                            >
+                                                <polyline 
+                                                    points="20,6 9,17 4,12" 
+                                                    stroke="currentColor" 
+                                                    strokeWidth="2" 
+                                                    strokeLinecap="round" 
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        )}
                                         
                                         {/* Expandable Text */}
                                         <span 
@@ -2201,7 +2323,7 @@ const handleClearAll = () => {
                                             }}
                                             className="nav-text"
                                         >
-                                            {summaryConfirmed ? 'Submit Matter' : 'Confirm Summary First'}
+                                            {isProcessing ? 'Processing...' : summaryConfirmed ? 'Submit Matter' : 'Confirm Summary First'}
                                         </span>
                                     </div>
                                     
@@ -2232,6 +2354,12 @@ const handleClearAll = () => {
                         .review-summary-hoverable:hover {
                             border-color: ${summaryConfirmed ? '#49B670' : '#D65541'} !important;
                             box-shadow: ${summaryConfirmed ? '0 0 0 1px #49B670' : '0 0 0 1px #D65541'};
+                        }
+                        
+                        /* Spinner animation */
+                        @keyframes spin {
+                            0% { transform: translate(-50%, -50%) rotate(0deg); }
+                            100% { transform: translate(-50%, -50%) rotate(360deg); }
                         }
                         
                         /* Navigation button animations */

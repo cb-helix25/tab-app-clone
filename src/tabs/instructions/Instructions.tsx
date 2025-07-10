@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
-// invisible change 2
+// invisible change 2.1
 import {
   Stack,
   mergeStyles,
@@ -580,7 +580,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       ? "ID Verified"
       : "Review ID"
     : "Verify ID";
-  const disableOtherActions = !poidPassed;
+  const disableOtherActions = false; // Enable all actions regardless of selection
 
   const unlinkedDeals = useMemo(
     () =>
@@ -792,6 +792,56 @@ const Instructions: React.FC<InstructionsProps> = ({
     [riskComplianceData, riskFilterRef],
   );
 
+  // Group risk compliance data by instruction reference
+  const groupedRiskComplianceData = useMemo(() => {
+    const grouped = new Map<string, {
+      instructionRef: string;
+      riskAssessments: any[];
+      idVerifications: any[];
+      clients: any[];
+      serviceDescription?: string;
+      stage?: string;
+      allData: any[];
+    }>();
+
+    filteredRiskComplianceData.forEach(item => {
+      const instructionRef = item.MatterId || item.InstructionRef || 'Unknown';
+      
+      if (!grouped.has(instructionRef)) {
+        grouped.set(instructionRef, {
+          instructionRef,
+          riskAssessments: [],
+          idVerifications: [],
+          clients: item.clients || [],
+          serviceDescription: item.ServiceDescription,
+          stage: item.Stage,
+          allData: []
+        });
+      }
+
+      const group = grouped.get(instructionRef)!;
+      group.allData.push(item);
+
+      // Categorize the item based on its properties
+      if (item.CheckId || item.EIDStatus || item.EIDCheckedDate || 
+          item.CheckResult || item.PEPandSanctionsCheckResult || 
+          item.AddressVerificationCheckResult) {
+        // This is an ID verification item
+        group.idVerifications.push(item);
+      } else {
+        // This is a risk assessment item
+        group.riskAssessments.push(item);
+      }
+
+      // Update shared properties (take from latest item)
+      if (item.ServiceDescription) group.serviceDescription = item.ServiceDescription;
+      if (item.Stage) group.stage = item.Stage;
+      if (item.clients && item.clients.length > 0) group.clients = item.clients;
+    });
+
+    return Array.from(grouped.values());
+  }, [filteredRiskComplianceData]);
+
   const idVerificationOptions = useMemo(() => {
     const seen = new Set<string>();
     return instructionData.flatMap((p) => {
@@ -965,10 +1015,23 @@ const Instructions: React.FC<InstructionsProps> = ({
   }, [repositionMasonry]);
 
   useLayoutEffect(() => {
-    if (activePivot === "overview") {
+    if (
+      activePivot === "overview" &&
+      !showRiskPage &&
+      !showNewMatterPage &&
+      !showEIDPage
+    ) {
       repositionMasonry();
     }
-  }, [overviewItems, selectedInstruction, repositionMasonry, activePivot]);
+  }, [
+    overviewItems,
+    selectedInstruction,
+    repositionMasonry,
+    activePivot,
+    showRiskPage,
+    showNewMatterPage,
+    showEIDPage,
+  ]);
 
   useEffect(() => {
     window.addEventListener('resize', repositionMasonry);
@@ -1149,21 +1212,20 @@ const Instructions: React.FC<InstructionsProps> = ({
                 Risk &amp; Compliance
               </Text>
               <div className={gridContainerStyle}>
-                {filteredRiskComplianceData.length === 0 && (
+                {groupedRiskComplianceData.length === 0 && (
                   <Text>No risk data available.</Text>
                 )}
-                {filteredRiskComplianceData.map((r, idx) => {
+                {groupedRiskComplianceData.map((groupedItem, idx) => {
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
                   return (
                     <RiskComplianceCard
-                      key={idx}
-                      data={r}
-                      clients={r.clients}
+                      key={`${groupedItem.instructionRef}-${idx}`}
+                      data={groupedItem}
                       animationDelay={animationDelay}
                       onOpenInstruction={() =>
-                        handleOpenInstruction(r.MatterId)
+                        handleOpenInstruction(groupedItem.instructionRef)
                       }
                     />
                   );
@@ -1223,7 +1285,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                   : verifyButtonReview
                   ? '#fffbe6'
                   : undefined,
-                opacity: 1, // Always visible
+                opacity: verifyButtonDisabled ? 1 : 1, // Always enabled
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
                 pointerEvents: verifyButtonDisabled ? 'none' : 'auto',
@@ -1266,21 +1328,21 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-                opacity: disableOtherActions ? 0.5 : 1,
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
-                pointerEvents: disableOtherActions ? 'none' : 'auto',
+                pointerEvents: 'auto',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 <MdOutlineAssessment className="icon-outline" />
                 <MdAssessment className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 Assess Risk
               </span>
@@ -1292,22 +1354,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
-                opacity: disableOtherActions ? 0.5 : 1,
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
-                pointerEvents: disableOtherActions ? 'none' : 'auto',
+                pointerEvents: 'auto',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 <FaRegFolder className="icon-outline" />
                 <FaFolder className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction && !disableOtherActions ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
               </span>
