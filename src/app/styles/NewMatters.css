@@ -1,5 +1,11 @@
 /* invisible change 2 */
 /* Styles adapted from the reference checkout process */
+
+/* Fix for open matter workflow only - adjust persistent header margin to match container padding */
+.workflow-main.matter-opening-card .persistent-header {
+    margin: -16px -16px 0px !important; /* Adjust negative margin to match 1rem (16px) container padding */
+}
+
 /* Ensure workflow always aligns to the top, never centers vertically */
 .ms-Stack.workflow-container {
     width: 100%;

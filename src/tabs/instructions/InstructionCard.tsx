@@ -14,6 +14,8 @@ import {
     FaClock,
     FaTimesCircle,
     FaExclamationTriangle,
+    FaUser,
+    FaUsers,
 } from 'react-icons/fa';
 import { MdAssessment, MdOutlineAssessment, MdOutlineWarningAmber } from 'react-icons/md';
 import { colours } from '../../app/styles/colours';
@@ -550,6 +552,19 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             color: collapsed ? '#fff' : colours.light.text,
                         }}
                     >
+                        {/* Multi/single client icon to the left of name */}
+                        <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
+                          {(() => {
+                            // Use same logic as tags: multi if deal?.IsMultiClient or (deal?.jointClients?.length > 1)
+                            const isMulti = (deal && (deal.IsMultiClient || (deal.jointClients && deal.jointClients.length > 1)))
+                              || (instruction.ClientType && instruction.ClientType.toLowerCase().includes('joint'));
+                            return isMulti ? (
+                              <FaUsers title="Joint Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
+                            ) : (
+                              <FaUser title="Single Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
+                            );
+                          })()}
+                        </span>
                         <span
                             className="header-name"
                             style={{
