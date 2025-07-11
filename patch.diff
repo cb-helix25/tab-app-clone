@@ -1,12 +1,23 @@
 diff --git a/build-and-deploy.ps1 b/build-and-deploy.ps1
-index cc6753c641d5d0371efac930993b9c74aa9d8d58..5672c1c4f26ea559c5f54c780351bcc61f144aa5 100644
+index cc6753c641d5d0371efac930993b9c74aa9d8d58..eb52d1c2f55fd675bcf525e33fb7864d644808a3 100644
 --- a/build-and-deploy.ps1
 +++ b/build-and-deploy.ps1
-@@ -6,60 +6,69 @@ $cfgPath   = Join-Path $PSScriptRoot 'server\web.config'
+@@ -1,65 +1,61 @@
+ $ErrorActionPreference = 'Stop'
+ 
+ $zipPath   = Join-Path $PSScriptRoot 'build.zip'
+ $copyPath  = Join-Path $PSScriptRoot 'last-deploy.zip'
+ $cfgPath   = Join-Path $PSScriptRoot 'server\web.config'
++$deployDir = Join-Path $PSScriptRoot 'deploy'
  
  Write-Host "Removing existing zip artifacts"
  Remove-Item -Path $zipPath, $copyPath -Force -ErrorAction SilentlyContinue
  
++# Prepare a clean deployment staging directory
++Write-Host "Preparing deployment staging directory"
++Remove-Item -Recurse -Force $deployDir -ErrorAction SilentlyContinue
++New-Item -ItemType Directory -Path $deployDir | Out-Null
++
  
  Write-Host "Building frontend (root directory)"
  npm run build
@@ -14,6 +25,8 @@ index cc6753c641d5d0371efac930993b9c74aa9d8d58..5672c1c4f26ea559c5f54c780351bcc6
  # Ensure frontend build output is in root build/ directory if needed
  if (Test-Path "$PSScriptRoot\build") {
      Write-Host "Frontend build output found in root build/ directory."
++    Write-Host "Copying build output to deploy directory"
++    Copy-Item -Path "$PSScriptRoot\build" -Destination "$deployDir\build" -Recurse -Force
  } else {
      Write-Host "ERROR: No build output found in root build/ directory after build."
      exit 1
@@ -22,36 +35,39 @@ index cc6753c641d5d0371efac930993b9c74aa9d8d58..5672c1c4f26ea559c5f54c780351bcc6
  Write-Host "Installing server dependencies (production only)"
  npm ci --prefix server --only=prod
  
- Write-Host "Copying server dependencies to root"
- Copy-Item -Path "server\node_modules" -Destination "$PSScriptRoot\node_modules" -Recurse -Force
+-Write-Host "Copying server dependencies to root"
+-Copy-Item -Path "server\node_modules" -Destination "$PSScriptRoot\node_modules" -Recurse -Force
++Write-Host "Copying server dependencies to deploy directory"
++Copy-Item -Path "server\node_modules" -Destination "$deployDir\node_modules" -Recurse -Force
  
  Write-Host "Creating IISNode log directory"
- New-Item -ItemType Directory -Path "$PSScriptRoot\iisnode" -Force | Out-Null
- 
-+# Backup existing frontend package files
-+$frontendPkg = Join-Path $PSScriptRoot 'package.json'
-+$frontendLock = Join-Path $PSScriptRoot 'package-lock.json'
-+Copy-Item -Path $frontendPkg -Destination "$frontendPkg.bak" -Force
-+Copy-Item -Path $frontendLock -Destination "$frontendLock.bak" -Force
-+
+-New-Item -ItemType Directory -Path "$PSScriptRoot\iisnode" -Force | Out-Null
++New-Item -ItemType Directory -Path "$deployDir\iisnode" -Force | Out-Null
  
  
- # Copy server files to root for Azure compatibility
- Copy-Item -Path "server\package.json" -Destination "$PSScriptRoot\package.json" -Force
- Copy-Item -Path "server\package-lock.json" -Destination "$PSScriptRoot\package-lock.json" -Force
- Copy-Item -Path "server\server.js" -Destination "$PSScriptRoot\server.js" -Force
- Copy-Item -Path "server\web.config" -Destination "$PSScriptRoot\web.config" -Force
+ 
+-# Copy server files to root for Azure compatibility
+-Copy-Item -Path "server\package.json" -Destination "$PSScriptRoot\package.json" -Force
+-Copy-Item -Path "server\package-lock.json" -Destination "$PSScriptRoot\package-lock.json" -Force
+-Copy-Item -Path "server\server.js" -Destination "$PSScriptRoot\server.js" -Force
+-Copy-Item -Path "server\web.config" -Destination "$PSScriptRoot\web.config" -Force
++# Copy server files to deploy directory for Azure compatibility
++Copy-Item -Path "server\package.json" -Destination "$deployDir\package.json" -Force
++Copy-Item -Path "server\package-lock.json" -Destination "$deployDir\package-lock.json" -Force
++Copy-Item -Path "server\server.js" -Destination "$deployDir\server.js" -Force
++Copy-Item -Path "server\web.config" -Destination "$deployDir\web.config" -Force
  
  Write-Host "Zipping files for deploy"
- Compress-Archive -Path `
-   "build\*", `
-   "server.js", `
-   "web.config", `
-   "iisnode", `
-   "package.json", `
-   "package-lock.json", `
-   "node_modules" `
-   -DestinationPath $zipPath -Force
+-Compress-Archive -Path `
+-  "build\*", `
+-  "server.js", `
+-  "web.config", `
+-  "iisnode", `
+-  "package.json", `
+-  "package-lock.json", `
+-  "node_modules" `
+-  -DestinationPath $zipPath -Force
++Compress-Archive -Path (Join-Path $deployDir '*') -DestinationPath $zipPath -Force
  
  Write-Host "Copying deployment zip for inspection"
  Copy-Item -Path $zipPath -Destination $copyPath -Force
@@ -61,14 +77,12 @@ index cc6753c641d5d0371efac930993b9c74aa9d8d58..5672c1c4f26ea559c5f54c780351bcc6
  
  
  Write-Host "Cleaning up"
- Remove-Item -Recurse -Force "$PSScriptRoot\iisnode"
+-Remove-Item -Recurse -Force "$PSScriptRoot\iisnode"
++Remove-Item -Recurse -Force $deployDir
  Remove-Item -Force $zipPath
- ## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
- Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
- Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
- Remove-Item -Recurse -Force "$PSScriptRoot\node_modules" -ErrorAction SilentlyContinue
+-## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
+-Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
+-Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
+-Remove-Item -Recurse -Force "$PSScriptRoot\node_modules" -ErrorAction SilentlyContinue
  
-+Move-Item "$frontendPkg.bak" $frontendPkg -Force
-+Move-Item "$frontendLock.bak" $frontendLock -Force
-+
  Write-Host "✅ Done"
