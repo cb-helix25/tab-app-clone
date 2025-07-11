@@ -18,10 +18,10 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve ActiveCampaign Token',
         icon: activeIcon,
         run: async () => {
-            const res = await fetch('/api/keys/ac-automations-apitoken/preview');
-            if (!res.ok) throw new Error('Failed to fetch secret preview');
-            const data = await res.json();
-            return `Token preview: ${data.preview}`;
+            const res = await fetch('/api/keys/ac-automations-apitoken');
+            if (!res.ok) throw new Error('Failed to fetch secret');
+            await res.json();
+            return 'Token retrieved';
         }
     },
     {
@@ -58,7 +58,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Asana Client ID',
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
-            const id = userData?.[0]?.ASANAClientID;
+            const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
             if (!id) throw new Error('Asana Client ID missing');
             return 'Client ID retrieved';
         }
@@ -67,7 +67,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Asana Secret',
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
-            const secret = userData?.[0]?.ASANASecret;
+            const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
             if (!secret) throw new Error('Asana Secret missing');
             return 'Secret retrieved';
         }
@@ -76,7 +76,7 @@ export const processingActions: ProcessingAction[] = [
         label: 'Retrieve Asana Refresh Token',
         icon: asanaIcon,
         run: async (_form, _i, userData) => {
-            const token = userData?.[0]?.ASANARefreshToken;
+            const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
             if (!token) throw new Error('Asana Refresh Token missing');
             return 'Refresh Token retrieved';
         }

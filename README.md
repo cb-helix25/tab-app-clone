@@ -24,7 +24,17 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 3. Press F5 to start debugging which launches your app in Teams using a web browser. Select `Debug in Teams (Edge)` or `Debug in Teams (Chrome)`.
 4. When Teams launches in the browser, select the Add button in the dialog to install your app to Teams.
 5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
-6. To mock Key Vault credentials locally, set `USE_LOCAL_SECRETS=true` and export environment variables named after each secret with hyphens replaced by underscores.
+6. To mock Key Vault credentials locally, set `USE_LOCAL_SECRETS=true` and define variables in your `.env` file using the secret name with hyphens replaced by underscores.
+   You can copy `.env.example` to `.env` as a starting point.
+   For example:
+
+   ```env
+   USE_LOCAL_SECRETS=true
+   AC_AUTOMATIONS_APITOKEN=token
+   LZ_CLIO_V1_CLIENTID=id
+   LZ_CLIO_V1_CLIENTSECRET=secret
+   LZ_CLIO_V1_REFRESHTOKEN=refresh
+   ```
 7. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
 8. To refresh risk, compliance and ID verification data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
 9. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.

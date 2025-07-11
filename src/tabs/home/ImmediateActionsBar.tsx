@@ -159,7 +159,7 @@ const ImmediateActionsBar: React.FC<ImmediateActionsBarProps> = ({
                     <div className={noActionsIconClass}>
                         <FaCheck />
                     </div>
-                    <div className={noActionsTextClass}>You have no immediate actions.</div>
+                    <div className={noActionsTextClass}>Nothing to Action.</div>
                 </div>
             ) : (
                 <>
