@@ -7,14 +7,16 @@ $cfgPath   = Join-Path $PSScriptRoot 'server\web.config'
 Write-Host "Removing existing zip artifacts"
 Remove-Item -Path $zipPath, $copyPath -Force -ErrorAction SilentlyContinue
 
-Write-Host "Building frontend (app directory)"
-npm run build --prefix app
+
+Write-Host "Building frontend (root directory)"
+npm run build
 
 # Ensure frontend build output is in root build/ directory if needed
-if (Test-Path "app\build") {
-    Write-Host "Copying frontend build output to root build/ directory"
-    Remove-Item -Recurse -Force "$PSScriptRoot\build" -ErrorAction SilentlyContinue
-    Copy-Item -Path "app\build" -Destination "$PSScriptRoot\build" -Recurse -Force
+if (Test-Path "$PSScriptRoot\build") {
+    Write-Host "Frontend build output found in root build/ directory."
+} else {
+    Write-Host "ERROR: No build output found in root build/ directory after build."
+    exit 1
 }
 
 Write-Host "Installing server dependencies (production only)"
