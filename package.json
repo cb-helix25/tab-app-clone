@@ -1,0 +1,102 @@
+{
+    "name": "teamhub",
+    "version": "0.1.0",
+    "engines": {
+        "node": "18 || 20"
+    },
+    "private": true,
+    "dependencies": {
+        "@azure/functions": "^4.6.0",
+        "@azure/identity": "^4.5.0",
+        "@azure/keyvault-secrets": "^4.9.0",
+        "@craco/craco": "^7.1.0",
+        "@fluentui/react": "^8.123.0",
+        "@fluentui/react-charting": "^5.23.56",
+        "@fluentui/react-components": "^9.57.0",
+        "@microsoft/teams-js": "^2.34.0",
+        "@microsoft/teamsfx": "^2.2.0",
+        "@microsoft/teamsfx-react": "^3.0.0",
+        "@reduxjs/toolkit": "^2.3.0",
+        "axios": "^0.21.4",
+        "chart.js": "^4.4.7",
+        "date-fns": "^2.30.0",
+        "dompurify": "^3.2.3",
+        "framer-motion": "^12.4.11",
+        "html2canvas": "^1.4.1",
+        "jspdf": "^2.5.2",
+        "mssql": "^11.0.1",
+        "rc-slider": "^11.1.8",
+        "react": "^18.2.0",
+        "react-beautiful-dnd": "^13.1.1",
+        "react-chartjs-2": "^5.3.0",
+        "react-circular-progressbar": "^2.1.0",
+        "react-color": "^2.19.3",
+        "react-countup": "^6.5.3",
+        "react-date-range": "^1.4.0",
+        "react-dom": "^18.2.0",
+        "react-dropzone": "^14.3.5",
+        "react-icons": "^5.4.0",
+        "react-markdown": "^9.0.1",
+        "react-quill": "^2.0.0",
+        "react-redux": "^9.1.2",
+        "react-router-dom": "^6.30.0",
+        "react-scripts": "^5.0.1",
+        "react-transition-group": "^4.4.5",
+        "react-typed": "^2.0.12",
+        "react-virtualized-auto-sizer": "^1.0.25",
+        "react-window": "^1.8.11",
+        "recharts": "^2.15.1",
+        "tedious": "^18.6.1",
+        "tslib": "^2.8.1"
+    },
+    "devDependencies": {
+        "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+        "@babel/plugin-transform-private-property-in-object": "^7.25.9",
+        "@types/microsoftteams": "^1.9.6",
+        "@types/node": "^18.19.80",
+        "@types/react": "^18.0.0",
+        "@types/react-beautiful-dnd": "^13.1.8",
+        "@types/react-circular-progressbar": "^1.1.0",
+        "@types/react-date-range": "^1.4.9",
+        "@types/react-dom": "^18.0.0",
+        "@types/react-redux": "^7.1.34",
+        "@types/react-router-dom": "^5.3.3",
+        "@types/react-transition-group": "^4.4.11",
+        "@types/react-window": "^1.8.8",
+        "concurrently": "^8.2.2",
+        "env-cmd": "^10.1.0"
+    },
+    "scripts": {
+        "dev:teamsfx": "concurrently \"npm run dev-tab:teamsfx\" \"npm run dev-api:teamsfx\" \"npm run start:server\"",
+        "dev-tab:teamsfx": "env-cmd --silent -f .localConfigs npm run start",
+        "dev-api:teamsfx": "cd api && npm run dev:teamsfx",
+        "start": "react-scripts start",
+        "build": "react-scripts build",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "eject": "react-scripts eject",
+        "generate:attendance": "node scripts/generateLocalAttendance.js",
+        "generate:risk": "node scripts/generateLocalRiskAssessments.js",
+        "generate:tiller": "node scripts/generateLocalTillerResponses.js",
+        "generate:snippets": "node scripts/generateLocalSnippetEdits.js",
+        "start:server": "node server/index.js"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "homepage": "."
+}

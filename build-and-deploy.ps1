@@ -53,8 +53,7 @@ az webapp deploy --resource-group Main --name link-hub-v1 --src-path $zipPath
 Write-Host "Cleaning up"
 Remove-Item -Recurse -Force "$PSScriptRoot\iisnode"
 Remove-Item -Force $zipPath
-Remove-Item -Force "$PSScriptRoot\package.json" -ErrorAction SilentlyContinue
-Remove-Item -Force "$PSScriptRoot\package-lock.json" -ErrorAction SilentlyContinue
+## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
 Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
 Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
 
