@@ -1,88 +1,73 @@
-diff --git a/build-and-deploy.ps1 b/build-and-deploy.ps1
-index cc6753c641d5d0371efac930993b9c74aa9d8d58..eb52d1c2f55fd675bcf525e33fb7864d644808a3 100644
---- a/build-and-deploy.ps1
-+++ b/build-and-deploy.ps1
-@@ -1,65 +1,61 @@
- $ErrorActionPreference = 'Stop'
+diff --git a/server/server.js b/server/server.js
+index 549d6117e9bc58068f3d94e27736475c62643f5d..01daacaacb09ce3c4e843b7dd223cc64671a1a0d 100644
+--- a/server/server.js
++++ b/server/server.js
+@@ -1,49 +1,68 @@
+ const express = require('express');
+ const morgan = require('morgan');
+ const path = require('path');
++const { DefaultAzureCredential } = require('@azure/identity');
++const { SecretClient } = require('@azure/keyvault-secrets');
  
- $zipPath   = Join-Path $PSScriptRoot 'build.zip'
- $copyPath  = Join-Path $PSScriptRoot 'last-deploy.zip'
- $cfgPath   = Join-Path $PSScriptRoot 'server\web.config'
-+$deployDir = Join-Path $PSScriptRoot 'deploy'
+ const app = express();
+ const PORT = process.env.PORT || 8080;
  
- Write-Host "Removing existing zip artifacts"
- Remove-Item -Path $zipPath, $copyPath -Force -ErrorAction SilentlyContinue
- 
-+# Prepare a clean deployment staging directory
-+Write-Host "Preparing deployment staging directory"
-+Remove-Item -Recurse -Force $deployDir -ErrorAction SilentlyContinue
-+New-Item -ItemType Directory -Path $deployDir | Out-Null
++// Set up Key Vault client for retrieving secrets
++const credential = new DefaultAzureCredential();
++const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
++const client = new SecretClient(vaultUrl, credential);
 +
+ // When running locally index.js lives in the `server` folder and the built
+ // client files are one level up. However after deployment the build script
+ // copies `index.js` to the site root alongside the compiled client assets.
+ // Using `__dirname` directly works for both cases.
+ const buildPath = path.join(__dirname);
  
- Write-Host "Building frontend (root directory)"
- npm run build
+ // basic request logging
+ app.use(morgan('dev'));
++app.use(express.json());
  
- # Ensure frontend build output is in root build/ directory if needed
- if (Test-Path "$PSScriptRoot\build") {
-     Write-Host "Frontend build output found in root build/ directory."
-+    Write-Host "Copying build output to deploy directory"
-+    Copy-Item -Path "$PSScriptRoot\build" -Destination "$deployDir\build" -Recurse -Force
- } else {
-     Write-Host "ERROR: No build output found in root build/ directory after build."
-     exit 1
- }
+ // serve the built React files
+ app.use(express.static(buildPath));
  
- Write-Host "Installing server dependencies (production only)"
- npm ci --prefix server --only=prod
+ // simple liveness probe
+ app.get('/health', (_req, res) => {
+     res.sendStatus(200);
+ });
  
--Write-Host "Copying server dependencies to root"
--Copy-Item -Path "server\node_modules" -Destination "$PSScriptRoot\node_modules" -Recurse -Force
-+Write-Host "Copying server dependencies to deploy directory"
-+Copy-Item -Path "server\node_modules" -Destination "$deployDir\node_modules" -Recurse -Force
++// expose Key Vault secrets via simple API
++app.get('/api/keys/:name', async (req, res) => {
++    try {
++        const secret = await client.getSecret(req.params.name);
++        res.json({ value: secret.value });
++    } catch (err) {
++        console.error('Failed to retrieve secret', err);
++        res.status(500).json({ error: 'Failed to retrieve secret' });
++    }
++});
++
+ // example Server-Sent Events endpoint emitting fake progress
+ app.get('/process', (req, res) => {
+     res.setHeader('Content-Type', 'text/event-stream');
+     res.setHeader('Cache-Control', 'no-cache');
+     res.setHeader('Connection', 'keep-alive');
  
- Write-Host "Creating IISNode log directory"
--New-Item -ItemType Directory -Path "$PSScriptRoot\iisnode" -Force | Out-Null
-+New-Item -ItemType Directory -Path "$deployDir\iisnode" -Force | Out-Null
+     let progress = 0;
+     const interval = setInterval(() => {
+         progress += 10;
+         res.write(`data: ${JSON.stringify({ progress })}\n\n`);
+         if (progress >= 100) {
+             res.write('event: done\n');
+             res.write('data: {}\n\n');
+             clearInterval(interval);
+             res.end();
+         }
+     }, 500);
  
+     req.on('close', () => clearInterval(interval));
+ });
  
- 
--# Copy server files to root for Azure compatibility
--Copy-Item -Path "server\package.json" -Destination "$PSScriptRoot\package.json" -Force
--Copy-Item -Path "server\package-lock.json" -Destination "$PSScriptRoot\package-lock.json" -Force
--Copy-Item -Path "server\server.js" -Destination "$PSScriptRoot\server.js" -Force
--Copy-Item -Path "server\web.config" -Destination "$PSScriptRoot\web.config" -Force
-+# Copy server files to deploy directory for Azure compatibility
-+Copy-Item -Path "server\package.json" -Destination "$deployDir\package.json" -Force
-+Copy-Item -Path "server\package-lock.json" -Destination "$deployDir\package-lock.json" -Force
-+Copy-Item -Path "server\server.js" -Destination "$deployDir\server.js" -Force
-+Copy-Item -Path "server\web.config" -Destination "$deployDir\web.config" -Force
- 
- Write-Host "Zipping files for deploy"
--Compress-Archive -Path `
--  "build\*", `
--  "server.js", `
--  "web.config", `
--  "iisnode", `
--  "package.json", `
--  "package-lock.json", `
--  "node_modules" `
--  -DestinationPath $zipPath -Force
-+Compress-Archive -Path (Join-Path $deployDir '*') -DestinationPath $zipPath -Force
- 
- Write-Host "Copying deployment zip for inspection"
- Copy-Item -Path $zipPath -Destination $copyPath -Force
- 
- Write-Host "Deploying to Azure"
- az webapp deploy --resource-group Main --name link-hub-v1 --src-path $zipPath
- 
- 
- Write-Host "Cleaning up"
--Remove-Item -Recurse -Force "$PSScriptRoot\iisnode"
-+Remove-Item -Recurse -Force $deployDir
- Remove-Item -Force $zipPath
--## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
--Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
--Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
--Remove-Item -Recurse -Force "$PSScriptRoot\node_modules" -ErrorAction SilentlyContinue
- 
- Write-Host "✅ Done"
+ // fallback to index.html for client-side routes
+ app.get('*', (_req, res) => {
+     res.sendFile(path.join(buildPath, 'index.html'));
+ });
