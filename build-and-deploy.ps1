@@ -22,6 +22,9 @@ if (Test-Path "$PSScriptRoot\build") {
 Write-Host "Installing server dependencies (production only)"
 npm ci --prefix server --only=prod
 
+Write-Host "Copying server dependencies to root"
+Copy-Item -Path "server\node_modules" -Destination "$PSScriptRoot\node_modules" -Recurse -Force
+
 Write-Host "Creating IISNode log directory"
 New-Item -ItemType Directory -Path "$PSScriptRoot\iisnode" -Force | Out-Null
 
@@ -40,7 +43,8 @@ Compress-Archive -Path `
   "web.config", `
   "iisnode", `
   "package.json", `
-  "package-lock.json" `
+  "package-lock.json", `
+  "node_modules" `
   -DestinationPath $zipPath -Force
 
 Write-Host "Copying deployment zip for inspection"
@@ -56,5 +60,6 @@ Remove-Item -Force $zipPath
 ## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
 Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
 Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$PSScriptRoot\node_modules" -ErrorAction SilentlyContinue
 
 Write-Host "✅ Done"
