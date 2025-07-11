@@ -1,38 +1,99 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index c83a70a7a0fdf515ff985f9d491aab5944562d52..e02ded902b7360d8f2c50159074ad8f31a744265 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -1,23 +1,27 @@
- import { ProcessingStep } from './ProcessingSection';
--
--// invisible change 2.1
-+import activeIcon from '../../assets/activecampaign.svg';
+diff --git a/src/app/styles/ProcessingSection.css b/src/app/styles/ProcessingSection.css
+index 2429cc64faa593873064b0b40354a1b30fc4e37c..b08ca924901fb474f918269636ce0d5ec751c911 100644
+--- a/src/app/styles/ProcessingSection.css
++++ b/src/app/styles/ProcessingSection.css
+@@ -8,80 +8,87 @@
  
- export interface ProcessingAction {
-     label: string;
-+    icon?: string;
-     run: (formData: Record<string, any>) => Promise<string>;
+ .processing-section h3 {
+     margin: 0 0 0.5rem 0;
+     font-size: 1rem;
+     color: #333;
  }
  
- export const processingActions: ProcessingAction[] = [
-     {
--        label: 'Fetch Tokens',
-+        label: 'Retrieve ActiveCampaign Token',
-+        icon: activeIcon,
-         run: async () => {
--            await new Promise(res => setTimeout(res, 500));
--            return 'Tokens retrieved';
-+            const res = await fetch('/api/keys/ac-automations-apitoken');
-+            if (!res.ok) throw new Error('Failed to fetch secret');
-+            await res.json();
-+            return 'Token retrieved';
-         }
-     }
- ];
+ .processing-steps {
+     list-style: none;
+     padding: 0;
+     margin: 0 0 0.5rem 0;
+ }
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
--    status: 'pending'
-+    status: 'pending',
-+    icon: action.icon
- }));
+ .processing-steps li {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     padding: 4px 0;
+ }
+ 
+ .operation-icon {
+     width: 20px;
+     height: 20px;
+ }
+ 
++
+ .operation-icon.pending {
+-    animation: spin 1s linear infinite;
++    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+ }
+ 
+ .operation-icon.success {
+-    animation: pop 0.4s ease forwards;
++    animation: success-pop 0.6s ease forwards;
+ }
+ 
+ @keyframes spin {
+     from { transform: rotate(0deg); }
+     to { transform: rotate(360deg); }
+ }
+ 
+-@keyframes pop {
+-    0% { transform: scale(0.8); opacity: 0.6; }
+-    50% { transform: scale(1.2); opacity: 1; }
+-    100% { transform: scale(1); }
++@keyframes pulse {
++    0% { transform: scale(0.95); opacity: 0.6; }
++    50% { transform: scale(1.05); opacity: 1; }
++    100% { transform: scale(0.95); opacity: 0.6; }
++}
++
++@keyframes success-pop {
++    0% { transform: scale(0.8) rotate(-10deg); opacity: 0.6; }
++    50% { transform: scale(1.2) rotate(3deg); opacity: 1; }
++    100% { transform: scale(1) rotate(0); }
+ }
+ 
+ .processing-steps .message {
+     margin-left: auto;
+     font-size: 0.8rem;
+     color: #666;
+ }
+ 
+ .processing-logs {
+     font-size: 0.75rem;
+     background: #fff;
+     border: 1px solid #e1dfdd;
+     padding: 0.5rem;
+     max-height: 120px;
+     overflow-y: auto;
+ }
+ 
+ .step-success .label {
+     color: #20b26c;
+ }
+ 
+ .step-error .label {
+     color: #D65541;
+ }
+ 
+ .step-pending .label {
+     color: #333;
+     }
+     
+     .processing-collapsible {
+         overflow: hidden;
+         max-height: 0;
+         transition: max-height 0.4s ease;
+     }
+     
+     .processing-collapsible.open {
+         max-height: 800px;
+-    }
++    }

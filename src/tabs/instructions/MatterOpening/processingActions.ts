@@ -1,5 +1,5 @@
 import { ProcessingStep } from './ProcessingSection';
-import activeIcon from '../../assets/activecampaign.svg';
+import activeIcon from '../../../assets/activecampaign.svg';
 
 export interface ProcessingAction {
     label: string;

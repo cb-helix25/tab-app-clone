@@ -29,6 +29,7 @@ import OpponentDetailsStep from './OpponentDetailsStep';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
+import { processingActions, initialSteps } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -281,7 +282,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     // Processing state for matter submission
     const [isProcessing, setIsProcessing] = useState(false);
-    const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+    const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
@@ -733,96 +734,30 @@ const handleClearAll = () => {
         return count;
     };
 
-    // Simulate matter processing with realistic steps
+    // Process matter opening steps defined in processingActions
     const simulateProcessing = async () => {
         setIsProcessing(true);
-        setProcessingSteps([]);
         setProcessingLogs([]);
-
-        const steps: ProcessingStep[] = [
-            { label: 'Validating form data', status: 'pending' },
-            { label: 'Preparing matter payload', status: 'pending' },
-            { label: 'Calling matter opening API', status: 'pending' },
-            { label: 'Creating matter in system', status: 'pending' },
-            { label: 'Setting up folder structure', status: 'pending' },
-            { label: 'Configuring team assignments', status: 'pending' },
-            { label: 'Initializing compliance checks', status: 'pending' },
-            { label: 'Sending notifications', status: 'pending' },
-        ];
-
-        // Show all steps as pending initially
-        setProcessingSteps([...steps]);
+        setProcessingSteps(initialSteps);
 
         try {
-            // Step 1: Validating form data
-            await new Promise(resolve => setTimeout(resolve, 800));
-            let updatedSteps = [...steps];
-            updatedSteps[0] = { ...updatedSteps[0], status: 'success' };
-            setProcessingSteps([...updatedSteps]);
-            setProcessingLogs(prev => [...prev, '✓ Form data validation completed']);
-
-            // Step 2: Preparing matter payload
-            await new Promise(resolve => setTimeout(resolve, 600));
-            const matterPayload = generateSampleJson();
-            updatedSteps[1] = { ...updatedSteps[1], status: 'success' };
-            setProcessingSteps([...updatedSteps]);
-            setProcessingLogs(prev => [...prev, '✓ Matter payload prepared']);
-
-            // Step 3: Calling matter opening API
-            await new Promise(resolve => setTimeout(resolve, 400));
-            const baseUrl = process.env.REACT_APP_PROXY_BASE_URL || '';
-            const apiResponse = await fetch(`${baseUrl}/api/matterRequest`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(matterPayload)
-            });
-
-            if (!apiResponse.ok) {
-                throw new Error(`API call failed: ${apiResponse.status}`);
+            for (let i = 0; i < processingActions.length; i++) {
+                const action = processingActions[i];
+                const message = await action.run(generateSampleJson());
+                setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
+                setProcessingLogs(prev => [...prev, `✓ ${message}`]);
             }
 
-            const responseData = await apiResponse.json();
-            updatedSteps[2] = { ...updatedSteps[2], status: 'success' };
-            setProcessingSteps([...updatedSteps]);
-            setProcessingLogs(prev => [...prev, `✓ API call successful - Request ID: ${responseData.requestId || 'N/A'}`]);
-
-            // Continue with remaining steps
-            for (let i = 3; i < steps.length; i++) {
-                await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
-                
-                updatedSteps[i] = { ...updatedSteps[i], status: 'success' };
-                setProcessingSteps([...updatedSteps]);
-                setProcessingLogs(prev => [...prev, `✓ ${updatedSteps[i].label} completed`]);
-            }
-
-            // Final completion
-            await new Promise(resolve => setTimeout(resolve, 1000));
             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
-            setProcessingLogs(prev => [...prev, `📄 Server response: ${JSON.stringify(responseData, null, 2)}`]);
-
+            completeMatterOpening();
         } catch (error) {
             console.error('Error during processing:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-            setProcessingLogs(prev => [...prev, `❌ Error: ${errorMessage}`]);
-            
-            // Mark current step as error
-            const currentStepIndex = steps.findIndex(step => step.status === 'pending');
-            if (currentStepIndex !== -1) {
-                const errorSteps = [...steps];
-                errorSteps[currentStepIndex] = { ...errorSteps[currentStepIndex], status: 'error' };
-                setProcessingSteps([...errorSteps]);
-            }
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
+            setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
+        } finally {
+            setTimeout(() => setIsProcessing(false), 2000);
         }
-        
-        // Mark the matter opening as completed
-        completeMatterOpening();
-        
-        // Stop processing after a brief delay to show completion
-        setTimeout(() => {
-            setIsProcessing(false);
-        }, 2000);
     };
 
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
