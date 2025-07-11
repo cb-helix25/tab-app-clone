@@ -31,7 +31,7 @@ import DealCard from "./DealCard";
 import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import type { DealSummary } from "./JointClientCard";
-import { InstructionData, POID, TeamData } from "../../app/functionality/types";
+import { InstructionData, POID, TeamData, UserData } from "../../app/functionality/types";
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
 import localInstructionData from "../../localData/localInstructionData.json";
 import localInstructionCards from "../../localData/localInstructionCards.json";
@@ -49,6 +49,7 @@ interface InstructionsProps {
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
+  userData?: UserData[] | null;
   hasActiveMatter?: boolean;
   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
 }
@@ -57,6 +58,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   poidData,
   setPoidData,
   teamData,
+  userData,
   hasActiveMatter = false,
   setIsInMatterOpeningWorkflow,
 }) => {
@@ -1081,6 +1083,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           setPoidData={setPoidData}
           teamData={teamData}
           userInitials={userInitials}
+          userData={userData}
           instructionRef={selectedInstruction?.InstructionRef}
           stage={selectedInstruction?.Stage}
           clientId={selectedInstruction?.prospectId?.toString()}

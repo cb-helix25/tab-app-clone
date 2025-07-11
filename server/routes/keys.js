@@ -8,9 +8,22 @@ const credential = new DefaultAzureCredential();
 const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
 const client = new SecretClient(vaultUrl, credential);
 
+function getLocalSecret(name) {
+    const envKey = name.replace(/-/g, '_').toUpperCase();
+    return process.env[envKey];
+}
+
 router.get('/:name', async (req, res) => {
+    const name = req.params.name;
     try {
-        const name = req.params.name;
+        if (process.env.USE_LOCAL_SECRETS === 'true') {
+            const value = getLocalSecret(name);
+            if (!value) {
+                return res.status(404).json({ error: 'Secret not found' });
+            }
+            return res.json({ value });
+        }
+
         const secret = await client.getSecret(name);
         res.json({ value: secret.value });
     } catch (err) {

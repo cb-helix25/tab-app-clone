@@ -5,6 +5,7 @@ import SummaryReview from './SummaryReview';
 import ReviewConfirm from './ReviewConfirm';
 import SummaryCompleteOverlay from './SummaryCompleteOverlay';
 import { useCompletion } from './CompletionContext';
+import { UserData } from '../../../app/functionality/types';
 
 interface ReviewStepProps {
     selectedDate: Date | null;
@@ -25,6 +26,8 @@ interface ReviewStepProps {
     opponentSolicitorCompany: string;
     opponentSolicitorEmail: string;
     noConflict: boolean;
+    userInitials: string;
+    userData?: UserData[] | null;
     onBuild?: () => void;
 }
 
@@ -49,6 +52,8 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     opponentSolicitorCompany,
     opponentSolicitorEmail,
     noConflict,
+        userInitials,
+        userData,
     onBuild,
     } = props;
 
@@ -78,6 +83,8 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorCompany,
             opponentSolicitorEmail,
             noConflict,
+            userInitials,
+            userData,
         }),
         [
             selectedDate,
@@ -98,6 +105,8 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorCompany,
             opponentSolicitorEmail,
             noConflict,
+            userInitials,
+            userData,
         ]
     );
 
@@ -215,7 +224,13 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                 setDetailsConfirmed={setDetailsConfirmed}
                 edited={edited}
             />
-            <ReviewConfirm detailsConfirmed={detailsConfirmed} formData={formData} onConfirmed={handleConfirmed} />
+            <ReviewConfirm
+                detailsConfirmed={detailsConfirmed}
+                formData={formData}
+                userInitials={userInitials}
+                userData={userData}
+                onConfirmed={handleConfirmed}
+            />
         </div>
     );
 };

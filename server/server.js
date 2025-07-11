@@ -30,6 +30,18 @@ app.get('/health', (_req, res) => {
     res.sendStatus(200);
 });
 
+// expose Key Vault secret preview so the full value isn't sent to the client
+app.get('/api/keys/:name/preview', async (req, res) => {
+    try {
+        const secret = await client.getSecret(req.params.name);
+        const length = parseInt(process.env.SECRET_PREVIEW_LEN || '4', 10);
+        res.json({ preview: secret.value.slice(0, length) });
+    } catch (err) {
+        console.error('Failed to retrieve secret preview', err);
+        res.status(500).json({ error: 'Failed to retrieve secret preview' });
+    }
+});
+
 // expose Key Vault secrets via simple API
 app.get('/api/keys/:name', async (req, res) => {
     try {

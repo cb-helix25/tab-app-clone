@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 // invisible change 2.1
 import { Stack } from '@fluentui/react';
-import { POID, TeamData } from '../../app/functionality/types';
+import { POID, TeamData, UserData } from '../../app/functionality/types';
 import StepHeader from './StepHeader';
 import ClientDetails from './ClientDetails';
 import ClientHub from './ClientHub';
@@ -43,6 +43,7 @@ interface NewMattersProps {
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
     userInitials: string;
+    userData?: UserData[] | null;
     instructionRef?: string;
     clientId?: string;
     feeEarner?: string;
@@ -58,6 +59,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     setPoidData,
     teamData,
     userInitials,
+    userData,
     instructionRef = '',
     clientId = '',
     feeEarner,
@@ -602,6 +604,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         opponentSolicitorCompany={opponentSolicitorCompany}
                         opponentSolicitorEmail={opponentSolicitorEmail}
                         noConflict={noConflict}
+                        userInitials={userInitials}
+                        userData={userData}
                         onBuild={() => { }}
                     />
                 );

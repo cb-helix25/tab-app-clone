@@ -33,12 +33,23 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
     const [expanded, setExpanded] = useState(!compact);
     const [showRawData, setShowRawData] = useState(false);
 
+    const filteredData = React.useMemo(() => {
+        const copy: Record<string, any> = { ...data };
+        Object.keys(copy).forEach((k) => {
+            const lower = k.toLowerCase();
+            if (lower.includes('risk') || lower.includes('compliance')) {
+                delete copy[k];
+            }
+        });
+        return copy;
+    }, [data]);
+
     // Extract key fields from the verification data
     const firstName = data.FirstName || data.firstName || '';
     const lastName = data.LastName || data.lastName || '';
-    const clientName = firstName && lastName 
-        ? `${firstName} ${lastName}` 
-        : data.fullName || data.name || data.ClientEmail || 'Unknown Client';
+    const clientName = firstName && lastName
+        ? `${firstName} ${lastName}`
+        : data.fullName || data.name || data.ClientName || data.ClientEmail || data.Email || '';
     
     const overallResult = data.EIDOverallResult || data.overallResult || data.result || data.status || 'Unknown';
     const pepResult = data.PEPandSanctionsCheckResult || data.pepResult || data.pep || 'Not checked';
@@ -54,7 +65,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
             : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
         color: isDarkMode ? colours.dark.text : colours.light.text,
         padding: compact ? '8px 12px' : '16px',
-        borderRadius: '8px',
+        borderRadius: 0,
         border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
         boxShadow: compact 
             ? '0 1px 3px rgba(0,0,0,0.08)' 
@@ -125,7 +136,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                     <div
                         style={{
                             padding: '4px 8px',
-                            borderRadius: '12px',
+                            borderRadius: 0,
                             backgroundColor: overallColors.background,
                             color: overallColors.text,
                             border: `1px solid ${overallColors.border}40`,
@@ -166,7 +177,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                                 backgroundColor: pepColors.background,
                                 color: pepColors.text,
                                 border: `1px solid ${pepColors.border}40`,
-                                borderRadius: '6px',
+                                borderRadius: 0,
                                 fontSize: '12px',
                                 fontWeight: 600,
                                 transition: 'all 0.2s ease'
@@ -187,7 +198,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                                 backgroundColor: addressColors.background,
                                 color: addressColors.text,
                                 border: `1px solid ${addressColors.border}40`,
-                                borderRadius: '6px',
+                                borderRadius: 0,
                                 fontSize: '12px',
                                 fontWeight: 600,
                                 transition: 'all 0.2s ease'
@@ -209,7 +220,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                             <div style={{
                                 padding: '8px',
                                 backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                                borderRadius: '4px',
+                                borderRadius: 0,
                                 fontSize: '11px'
                             }}>
                                 <div style={{ fontWeight: 600, color: '#666', marginBottom: '2px' }}>ID Type</div>
@@ -221,7 +232,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                             <div style={{
                                 padding: '8px',
                                 backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                                borderRadius: '4px',
+                                borderRadius: 0,
                                 fontSize: '11px'
                             }}>
                                 <div style={{ fontWeight: 600, color: '#666', marginBottom: '2px' }}>ID</div>
@@ -274,7 +285,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                             marginTop: '8px',
                             padding: '8px',
                             backgroundColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
-                            borderRadius: '4px',
+                            borderRadius: 0,
                             border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
                             maxHeight: '120px',
                             overflowY: 'auto'
@@ -288,7 +299,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
                                     color: isDarkMode ? '#cccccc' : '#333333'
                                 }
                             }}>
-                                {JSON.stringify(data, null, 2)}
+                                {JSON.stringify(filteredData, null, 2)}
                             </Text>
                         </div>
                     )}

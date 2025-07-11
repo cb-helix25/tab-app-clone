@@ -5,10 +5,13 @@ import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
 import { processingActions, initialSteps } from './processingActions';
+import { UserData } from '../../../app/functionality/types';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
     formData: Record<string, any>;
+    userInitials: string;
+    userData?: UserData[] | null;
     onConfirmed?: () => void;
 }
 
@@ -34,7 +37,7 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, onConfirmed }) => {
+const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed }) => {
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
     const [processing, setProcessing] = useState(false);
@@ -57,7 +60,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             for (let i = 0; i < processingActions.length; i++) {
                 const action = processingActions[i];
                 updateStep(i, 'pending', `${action.label}...`);
-                const msg = await action.run(formData);
+                const msg = await action.run(formData, userInitials, userData);
                 updateStep(i, 'success', msg);
             }
 

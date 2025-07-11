@@ -660,9 +660,9 @@ const ensureLZInApprovers = (approvers: string[] = []): string[] => {
   return approvers.includes('LZ') ? approvers : [...approvers, 'LZ'];
 };
 
-//////////////////////
-// Helper: Map Lukasz/Luke (LZ) to Sam Packwood (SP) for metrics
-//////////////////////
+// Helper: Normalize metrics alias
+// - Lukasz/Luke (LZ) -> Alex Cook (AC)
+// - Samuel Packwood   -> Sam Packwood
 
 const getMetricsAlias = (
   fullName: string | undefined,
@@ -670,10 +670,14 @@ const getMetricsAlias = (
   clioId: string | number | undefined
 ) => {
   const parsedId = clioId ? parseInt(String(clioId), 10) : undefined;
-  if (fullName?.trim() === 'Lukasz Zemanek' || initials?.toUpperCase() === 'LZ') {
-    return { name: 'Sam Packwood', clioId: 142964 };
+  const trimmedName = fullName?.trim();
+  if (trimmedName === 'Lukasz Zemanek' || initials?.toUpperCase() === 'LZ') {
+    return { name: 'Alex Cook', clioId: 142961 };
   }
-  return { name: fullName?.trim() || '', clioId: parsedId };
+  if (trimmedName === 'Samuel Packwood') {
+    return { name: 'Sam Packwood', clioId: parsedId ?? 142964 };
+  }
+  return { name: trimmedName || '', clioId: parsedId };
 };
 
 //////////////////////

@@ -68,7 +68,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
         overflow: 'hidden',
         border: isDarkMode ? '1px solid #555' : 'none',
         minWidth: '280px',
-        maxWidth: '450px',
+        maxWidth: '100%',
         width: '100%',
         selectors: {
             ':hover': {
@@ -101,7 +101,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                     {primaryRisk.RiskScore && (
                         <div style={{
                             padding: '2px 8px',
-                            borderRadius: '12px',
+                            borderRadius: 0,
                             backgroundColor: getRiskColor(primaryRisk.RiskAssessmentResult || '').background,
                             color: getRiskColor(primaryRisk.RiskAssessmentResult || '').text,
                             fontSize: '0.75rem',
@@ -123,7 +123,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                         <div style={{
                             padding: '6px 8px',
                             backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                            borderRadius: '4px',
+                            borderRadius: 0,
                             fontSize: '0.8rem',
                         }}>
                             <div style={{ fontWeight: 600, color: '#666' }}>Assessor</div>
@@ -134,7 +134,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                         <div style={{
                             padding: '6px 8px',
                             backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                            borderRadius: '4px',
+                            borderRadius: 0,
                             fontSize: '0.8rem',
                         }}>
                             <div style={{ fontWeight: 600, color: '#666' }}>Date</div>
@@ -145,7 +145,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                         <div style={{
                             padding: '6px 8px',
                             backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                            borderRadius: '4px',
+                            borderRadius: 0,
                             fontSize: '0.8rem',
                         }}>
                             <div style={{ fontWeight: 600, color: '#666' }}>Value</div>
@@ -198,7 +198,13 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                 <Text variant="small" styles={{ root: { fontWeight: 600, marginBottom: 8 } }}>
                     ID Verifications ({data.idVerifications.length})
                 </Text>
-                <div style={{ display: 'grid', gap: '6px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gap: '6px',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                    }}
+                >
                     {data.idVerifications.map((verification, idx) => (
                         <IdVerificationCard
                             key={`id-verification-${idx}`}
@@ -233,7 +239,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                     {data.stage && (
                         <div style={{
                             padding: '2px 8px',
-                            borderRadius: '12px',
+                            borderRadius: 0,
                             backgroundColor: data.stage === 'completed' ? '#e6f4ea' : '#fffbe6',
                             color: data.stage === 'completed' ? '#107C10' : '#b88600',
                             fontSize: '0.75rem',
@@ -248,7 +254,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                 {data.riskAssessments.length > 0 && data.riskAssessments[0].RiskAssessmentResult && (
                     <div style={{
                         padding: '4px 8px',
-                        borderRadius: '4px',
+                        borderRadius: 0,
                         backgroundColor: getRiskColor(data.riskAssessments[0].RiskAssessmentResult).background,
                         color: getRiskColor(data.riskAssessments[0].RiskAssessmentResult).text,
                         fontSize: '0.75rem',
@@ -265,7 +271,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                     background: '#e6f7ef',
                     color: '#20b26c',
                     border: '1px solid #20b26c',
-                    borderRadius: '4px',
+                    borderRadius: 0,
                     padding: '8px 16px',
                     fontSize: '15px',
                     fontWeight: 500,
@@ -295,7 +301,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                             <div key={idx} className="client-card" style={{
                                 padding: '6px 12px',
                                 backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                                borderRadius: '4px',
+                                borderRadius: 0,
                                 fontSize: '0.85rem',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -308,7 +314,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                             padding: '2px 6px',
                                             backgroundColor: '#3690CE',
                                             color: 'white',
-                                            borderRadius: '10px',
+                                            borderRadius: 0,
                                             fontSize: '0.7rem',
                                             fontWeight: 600,
                                         }}>
@@ -320,7 +326,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                             padding: '2px 6px',
                                             backgroundColor: c.HasSubmitted ? '#107C10' : '#FFB900',
                                             color: 'white',
-                                            borderRadius: '10px',
+                                            borderRadius: 0,
                                             fontSize: '0.7rem',
                                             fontWeight: 600,
                                         }}>

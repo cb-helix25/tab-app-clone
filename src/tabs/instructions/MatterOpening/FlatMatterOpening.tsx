@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisibl
 // invisible change 2.1
 import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
-import { POID, TeamData } from '../../../app/functionality/types';
+import { POID, TeamData, UserData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
 import ClientHub from '../ClientHub';
 import StepWrapper from './StepWrapper';
@@ -73,6 +73,7 @@ interface FlatMatterOpeningProps {
     setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
     teamData?: TeamData[] | null;
     userInitials: string;
+    userData?: UserData[] | null;
     instructionRef?: string;
     clientId?: string;
     feeEarner?: string;
@@ -88,6 +89,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     setPoidData,
     teamData,
     userInitials,
+    userData,
     instructionRef = '',
     clientId = '',
     feeEarner,
@@ -282,6 +284,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
 
     // Processing state for matter submission
     const [isProcessing, setIsProcessing] = useState(false);
+    const [processingOpen, setProcessingOpen] = useState(false);
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
 
@@ -737,13 +740,14 @@ const handleClearAll = () => {
     // Process matter opening steps defined in processingActions
     const simulateProcessing = async () => {
         setIsProcessing(true);
+        setProcessingOpen(true);
         setProcessingLogs([]);
         setProcessingSteps(initialSteps);
 
         try {
             for (let i = 0; i < processingActions.length; i++) {
                 const action = processingActions[i];
-                const message = await action.run(generateSampleJson());
+                const message = await action.run(generateSampleJson(), userInitials, userData);
                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
             }
@@ -2070,12 +2074,12 @@ const handleClearAll = () => {
                                 </div>
 
                                 {/* Processing Section - Shows when processing is active */}
-                                {isProcessing && (
+                                {processingOpen && (
                                     <div style={{ marginTop: 24 }}>
-                                        <ProcessingSection 
+                                        <ProcessingSection
                                             steps={processingSteps}
                                             logs={processingLogs}
-                                            open={isProcessing}
+                                            open={processingOpen}
                                         />
                                     </div>
                                 )}

@@ -24,11 +24,12 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 3. Press F5 to start debugging which launches your app in Teams using a web browser. Select `Debug in Teams (Edge)` or `Debug in Teams (Chrome)`.
 4. When Teams launches in the browser, select the Add button in the dialog to install your app to Teams.
 5. To load the sample data used for local development, set `REACT_APP_USE_LOCAL_DATA=true` before starting the app.
-6. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
-7. To refresh risk, compliance and ID verification data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
-8. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.
-9. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
-10. Sample transactions and outstanding balances are provided when using local data.
+6. To mock Key Vault credentials locally, set `USE_LOCAL_SECRETS=true` and export environment variables named after each secret with hyphens replaced by underscores.
+7. To refresh the local attendance dataset with dummy values derived from `data/team-sql-data.json`, run `npm run generate:attendance`.
+8. To refresh risk, compliance and ID verification data for the dashboard, run `npm run generate:risk` and `npm run generate:tiller`.
+9. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.
+10. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
+11. Sample transactions and outstanding balances are provided when using local data.
 
 **Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.
 
