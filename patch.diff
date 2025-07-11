@@ -1,99 +1,74 @@
-diff --git a/src/app/styles/ProcessingSection.css b/src/app/styles/ProcessingSection.css
-index 2429cc64faa593873064b0b40354a1b30fc4e37c..b08ca924901fb474f918269636ce0d5ec751c911 100644
---- a/src/app/styles/ProcessingSection.css
-+++ b/src/app/styles/ProcessingSection.css
-@@ -8,80 +8,87 @@
+diff --git a/build-and-deploy.ps1 b/build-and-deploy.ps1
+index cc6753c641d5d0371efac930993b9c74aa9d8d58..5672c1c4f26ea559c5f54c780351bcc61f144aa5 100644
+--- a/build-and-deploy.ps1
++++ b/build-and-deploy.ps1
+@@ -6,60 +6,69 @@ $cfgPath   = Join-Path $PSScriptRoot 'server\web.config'
  
- .processing-section h3 {
-     margin: 0 0 0.5rem 0;
-     font-size: 1rem;
-     color: #333;
+ Write-Host "Removing existing zip artifacts"
+ Remove-Item -Path $zipPath, $copyPath -Force -ErrorAction SilentlyContinue
+ 
+ 
+ Write-Host "Building frontend (root directory)"
+ npm run build
+ 
+ # Ensure frontend build output is in root build/ directory if needed
+ if (Test-Path "$PSScriptRoot\build") {
+     Write-Host "Frontend build output found in root build/ directory."
+ } else {
+     Write-Host "ERROR: No build output found in root build/ directory after build."
+     exit 1
  }
  
- .processing-steps {
-     list-style: none;
-     padding: 0;
-     margin: 0 0 0.5rem 0;
- }
+ Write-Host "Installing server dependencies (production only)"
+ npm ci --prefix server --only=prod
  
- .processing-steps li {
-     display: flex;
-     align-items: center;
-     gap: 8px;
-     padding: 4px 0;
- }
+ Write-Host "Copying server dependencies to root"
+ Copy-Item -Path "server\node_modules" -Destination "$PSScriptRoot\node_modules" -Recurse -Force
  
- .operation-icon {
-     width: 20px;
-     height: 20px;
- }
+ Write-Host "Creating IISNode log directory"
+ New-Item -ItemType Directory -Path "$PSScriptRoot\iisnode" -Force | Out-Null
  
++# Backup existing frontend package files
++$frontendPkg = Join-Path $PSScriptRoot 'package.json'
++$frontendLock = Join-Path $PSScriptRoot 'package-lock.json'
++Copy-Item -Path $frontendPkg -Destination "$frontendPkg.bak" -Force
++Copy-Item -Path $frontendLock -Destination "$frontendLock.bak" -Force
 +
- .operation-icon.pending {
--    animation: spin 1s linear infinite;
-+    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
- }
  
- .operation-icon.success {
--    animation: pop 0.4s ease forwards;
-+    animation: success-pop 0.6s ease forwards;
- }
  
- @keyframes spin {
-     from { transform: rotate(0deg); }
-     to { transform: rotate(360deg); }
- }
+ # Copy server files to root for Azure compatibility
+ Copy-Item -Path "server\package.json" -Destination "$PSScriptRoot\package.json" -Force
+ Copy-Item -Path "server\package-lock.json" -Destination "$PSScriptRoot\package-lock.json" -Force
+ Copy-Item -Path "server\server.js" -Destination "$PSScriptRoot\server.js" -Force
+ Copy-Item -Path "server\web.config" -Destination "$PSScriptRoot\web.config" -Force
  
--@keyframes pop {
--    0% { transform: scale(0.8); opacity: 0.6; }
--    50% { transform: scale(1.2); opacity: 1; }
--    100% { transform: scale(1); }
-+@keyframes pulse {
-+    0% { transform: scale(0.95); opacity: 0.6; }
-+    50% { transform: scale(1.05); opacity: 1; }
-+    100% { transform: scale(0.95); opacity: 0.6; }
-+}
+ Write-Host "Zipping files for deploy"
+ Compress-Archive -Path `
+   "build\*", `
+   "server.js", `
+   "web.config", `
+   "iisnode", `
+   "package.json", `
+   "package-lock.json", `
+   "node_modules" `
+   -DestinationPath $zipPath -Force
+ 
+ Write-Host "Copying deployment zip for inspection"
+ Copy-Item -Path $zipPath -Destination $copyPath -Force
+ 
+ Write-Host "Deploying to Azure"
+ az webapp deploy --resource-group Main --name link-hub-v1 --src-path $zipPath
+ 
+ 
+ Write-Host "Cleaning up"
+ Remove-Item -Recurse -Force "$PSScriptRoot\iisnode"
+ Remove-Item -Force $zipPath
+ ## Do NOT remove root package.json or package-lock.json, as these are for the client/frontend
+ Remove-Item -Force "$PSScriptRoot\server.js" -ErrorAction SilentlyContinue
+ Remove-Item -Force "$PSScriptRoot\web.config" -ErrorAction SilentlyContinue
+ Remove-Item -Recurse -Force "$PSScriptRoot\node_modules" -ErrorAction SilentlyContinue
+ 
++Move-Item "$frontendPkg.bak" $frontendPkg -Force
++Move-Item "$frontendLock.bak" $frontendLock -Force
 +
-+@keyframes success-pop {
-+    0% { transform: scale(0.8) rotate(-10deg); opacity: 0.6; }
-+    50% { transform: scale(1.2) rotate(3deg); opacity: 1; }
-+    100% { transform: scale(1) rotate(0); }
- }
- 
- .processing-steps .message {
-     margin-left: auto;
-     font-size: 0.8rem;
-     color: #666;
- }
- 
- .processing-logs {
-     font-size: 0.75rem;
-     background: #fff;
-     border: 1px solid #e1dfdd;
-     padding: 0.5rem;
-     max-height: 120px;
-     overflow-y: auto;
- }
- 
- .step-success .label {
-     color: #20b26c;
- }
- 
- .step-error .label {
-     color: #D65541;
- }
- 
- .step-pending .label {
-     color: #333;
-     }
-     
-     .processing-collapsible {
-         overflow: hidden;
-         max-height: 0;
-         transition: max-height 0.4s ease;
-     }
-     
-     .processing-collapsible.open {
-         max-height: 800px;
--    }
-+    }
+ Write-Host "✅ Done"
