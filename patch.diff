@@ -1,171 +1,44 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index 9e5ea020e51925addde6efb2374a10461c65b8a3..cb242ee017b239a888a1d69a89a613fe9082570e 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -1,97 +1,162 @@
- import { ProcessingStep } from './ProcessingSection';
- import activeIcon from '../../../assets/activecampaign.svg';
- import clioIcon from '../../../assets/clio.svg';
- import asanaIcon from '../../../assets/asana.svg';
+diff --git a/README.md b/README.md
+index 8423f20a3f9ca0c042888c158266555c52386490..3d5f6773065aa4e32a05ec1173ac079264b03ae2 100644
+--- a/README.md
++++ b/README.md
+@@ -72,36 +72,39 @@ Following documentation will help you to extend the React with Fluent UI templat
+ - [Create multi-capability app](https://learn.microsoft.com/microsoftteams/platform/toolkit/add-capability)
+ - [Use an existing Microsoft Entra application](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-existing-aad-app)
+ - [Customize the Teams app manifest](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-preview-and-customize-app-manifest)
+ - Host your app in Azure by [provision cloud resources](https://learn.microsoft.com/microsoftteams/platform/toolkit/provision) and [deploy the code to cloud](https://learn.microsoft.com/microsoftteams/platform/toolkit/deploy)
+ - [Collaborate on app development](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-collaboration)
+ - [Set up the CI/CD pipeline](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-cicd-template)
+ - [Publish the app to your organization or the Microsoft Teams app store](https://learn.microsoft.com/microsoftteams/platform/toolkit/publish)
+ - [Enable the app for multi-tenant](https://github.com/OfficeDev/TeamsFx/wiki/Multi-tenancy-Support-for-Azure-AD-app)
+ - [Preview the app on mobile clients](https://github.com/OfficeDev/TeamsFx/wiki/Run-and-debug-your-Teams-application-on-iOS-or-Android-client)
  
-+// Store retrieved tokens for later refresh steps
-+let acToken = '';
-+let clioClientId = '';
-+let clioClientSecret = '';
-+let clioRefreshToken = '';
-+let asanaClientId = '';
-+let asanaSecret = '';
-+let asanaRefreshToken = '';
+ ## Server-side processing
+ 
+ This project now includes a lightweight Express server located in the `server` directory.
+ Start it locally with:
+ 
+ ```bash
+ npm run start:server
+ ```
+ 
+ When using Teams Toolkit for local debugging, the server starts automatically as
+ part of `npm run dev:teamsfx`.
+ 
+ The server exposes a `/health` endpoint for liveness checks and a `/process` endpoint
+ that streams basic progress events using Server-Sent Events. This provides a foundation
+ for adding real-time workflow updates after the "Submit Matter" button is pressed.
 +
- export interface ProcessingAction {
-     label: string;
-     icon?: string;
-     run: (
-         formData: Record<string, any>,
-         userInitials: string,
-         userData?: any[] | null
-     ) => Promise<string>;
- }
++Token refresh endpoints for ActiveCampaign, Clio and Asana are documented in
++[`docs/token-refresh.md`](docs/token-refresh.md).
+ ## Deployment
  
- export const processingActions: ProcessingAction[] = [
-     {
-         label: 'Retrieve ActiveCampaign Token',
-         icon: activeIcon,
-         run: async () => {
-             const res = await fetch('/api/keys/ac-automations-apitoken');
-             if (!res.ok) throw new Error('Failed to fetch secret');
--            await res.json();
-+            const data = await res.json();
-+            acToken = data.value;
-             return 'Token retrieved';
-         }
-     },
-+    {
-+        label: 'Refresh ActiveCampaign Token',
-+        icon: activeIcon,
-+        run: async () => {
-+            const url = 'https://api.activecampaign.com/api/3/account';
-+            const resp = await fetch(url, { headers: { 'Api-Token': acToken } });
-+            if (!resp.ok) throw new Error('Failed to validate token');
-+            return 'Token validated';
-+        }
-+    },
-     {
-         label: 'Retrieve Clio Client ID',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
--            await res.json();
-+            const data = await res.json();
-+            clioClientId = data.value;
-             return 'Client ID retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Clio Client Secret',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
--            await res.json();
-+            const data = await res.json();
-+            clioClientSecret = data.value;
-             return 'Client Secret retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Clio Refresh Token',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
--            await res.json();
-+            const data = await res.json();
-+            clioRefreshToken = data.value;
-             return 'Refresh Token retrieved';
-         }
-     },
-+    {
-+        label: 'Refresh Clio Access Token',
-+        icon: clioIcon,
-+        run: async () => {
-+            const params = new URLSearchParams({
-+                client_id: clioClientId,
-+                client_secret: clioClientSecret,
-+                grant_type: 'refresh_token',
-+                refresh_token: clioRefreshToken
-+            });
-+            const resp = await fetch(`https://eu.app.clio.com/oauth/token?${params.toString()}`, {
-+                method: 'POST',
-+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-+            });
-+            if (!resp.ok) throw new Error('Failed to refresh Clio token');
-+            await resp.json();
-+            return 'Clio token refreshed';
-+        }
-+    },
-     {
-         label: 'Retrieve Asana Client ID',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
-             if (!id) throw new Error('Asana Client ID missing');
-+            asanaClientId = id;
-             return 'Client ID retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Asana Secret',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
-             if (!secret) throw new Error('Asana Secret missing');
-+            asanaSecret = secret;
-             return 'Secret retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Asana Refresh Token',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
-             if (!token) throw new Error('Asana Refresh Token missing');
-+            asanaRefreshToken = token;
-             return 'Refresh Token retrieved';
-         }
-     },
-+    {
-+        label: 'Refresh Asana Access Token',
-+        icon: asanaIcon,
-+        run: async () => {
-+            const body = new URLSearchParams({
-+                grant_type: 'refresh_token',
-+                client_id: asanaClientId,
-+                client_secret: asanaSecret,
-+                refresh_token: asanaRefreshToken
-+            });
-+            const resp = await fetch('https://app.asana.com/-/oauth_token', {
-+                method: 'POST',
-+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-+                body: body.toString()
-+            });
-+            if (!resp.ok) throw new Error('Failed to refresh Asana token');
-+            await resp.json();
-+            return 'Asana token refreshed';
-+        }
-+    },
-     { label: 'Matter Request Created', run: async () => 'Done' },
-     { label: 'Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' },
-     { label: 'Clio Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Clio Matter Opened', run: async () => 'Done' },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
+ When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
-     icon: action.icon
- }));
+ Once built you can also run the server locally using:
+ 
+ ```bash
+ npm start
+ ```
+ 
+ This starts the Express server which serves the built application from the root folder.

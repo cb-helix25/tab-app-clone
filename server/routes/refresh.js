@@ -6,10 +6,12 @@ const router = express.Router();
 router.post('/activecampaign', async (_req, res) => {
     try {
         const token = await getSecret('ac-automations-apitoken');
-        const check = await fetch('https://example.activecampaign.com/api/3/account', {
+        console.log('Refreshing ActiveCampaign token');
+        const check = await fetch('https://helix-law54533.api-us1.com/api/3/account', {
             headers: { 'Api-Token': token }
         });
         if (!check.ok) {
+            console.error('ActiveCampaign token validation failed', await check.text());
             return res.status(500).json({ error: 'ActiveCampaign token check failed' });
         }
         res.json({ ok: true });
@@ -26,8 +28,10 @@ router.post('/clio/:initials', async (req, res) => {
         const clientSecret = await getSecret(`${initials}-clio-v1-clientsecret`);
         const refreshToken = await getSecret(`${initials}-clio-v1-refreshtoken`);
         const url = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+        console.log('Refreshing Clio token for', initials);
         const resp = await fetch(url, { method: 'POST' });
         if (!resp.ok) {
+            console.error('Clio token refresh failed', await resp.text());
             return res.status(500).json({ error: 'Clio token refresh failed' });
         }
         res.json({ ok: true });
@@ -48,12 +52,14 @@ router.post('/asana', async (req, res) => {
         body.append('client_id', clientId);
         body.append('client_secret', clientSecret);
         body.append('refresh_token', refreshToken);
+        console.log('Refreshing Asana token');
         const resp = await fetch('https://app.asana.com/-/oauth_token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
         });
         if (!resp.ok) {
+            console.error('Asana token refresh failed', await resp.text());
             return res.status(500).json({ error: 'Asana token refresh failed' });
         }
         res.json({ ok: true });

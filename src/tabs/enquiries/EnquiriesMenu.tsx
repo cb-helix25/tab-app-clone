@@ -13,6 +13,7 @@ interface EnquiriesMenuProps {
     setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
     isSearchActive: boolean;
     setSearchActive: React.Dispatch<React.SetStateAction<boolean>>;
+    toggleDashboard: () => void;
 }
 
 const ACTION_BAR_HEIGHT = 48;
@@ -104,6 +105,7 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
     setSearchTerm,
     isSearchActive,
     setSearchActive,
+    toggleDashboard,
 }) => {
     const { isDarkMode } = useTheme();
 
@@ -178,6 +180,11 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                     );
                 })}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div onClick={toggleDashboard} className={mergeStyles(stateButtonStyle(isDarkMode), activeState === '' && activeStateButtonStyle)}>
+                        <Text variant="medium" styles={{ root: { fontWeight: activeState === '' ? 600 : 400, color: activeState === '' ? '#ffffff' : undefined } }}>
+                            Dashboard
+                        </Text>
+                    </div>
                     <div className={searchIconContainer} onClick={() => setSearchActive(!isSearchActive)}>
                         {isSearchActive ? (
                             <Icon iconName="Cancel" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />

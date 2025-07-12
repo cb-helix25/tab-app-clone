@@ -160,7 +160,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [ratingEnquiryId, setRatingEnquiryId] = useState<string | null>(null);
   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
   const [showAll, setShowAll] = useState<boolean>(false);
-  const [activeMainTab, setActiveMainTab] = useState<string>('');
+  const [activeMainTab, setActiveMainTab] = useState<string>('Claimed');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
   const [convertedEnquiriesList, setConvertedEnquiriesList] = useState<Enquiry[]>([]);
   const [convertedPoidDataList, setConvertedPoidDataList] = useState<POID[]>([]);
@@ -174,6 +174,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Added for infinite scroll
   const [itemsToShow, setItemsToShow] = useState<number>(20);
   const loader = useRef<HTMLDivElement | null>(null);
+  const previousMainTab = useRef<string>('Claimed');
+
+  const toggleDashboard = useCallback(() => {
+    if (activeMainTab === '') {
+      setActiveMainTab(previousMainTab.current || 'Claimed');
+    } else {
+      previousMainTab.current = activeMainTab;
+      setActiveMainTab('');
+    }
+  }, [activeMainTab]);
 
   useEffect(() => {
     if (localEnquiries.length > 0) {
@@ -468,6 +478,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, [filteredEnquiries, itemsToShow]);
   const handleSetActiveState = useCallback(
     (key: string) => {
+      if (key !== '') {
+        previousMainTab.current = key;
+      }
       setActiveMainTab(key);
       setActiveSubTab('Overview');
       setItemsToShow(20);
@@ -519,6 +532,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           setActiveArea={setSelectedArea}
           activeState={activeMainTab}
           setActiveState={handleSetActiveState}
+          toggleDashboard={toggleDashboard}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           isSearchActive={isSearchActive}
