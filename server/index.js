@@ -1,6 +1,7 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');
-const path = require('path');
 const keysRouter = require('./routes/keys');
 const refreshRouter = require('./routes/refresh');
 

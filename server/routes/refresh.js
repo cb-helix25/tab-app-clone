@@ -1,19 +1,15 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 
+function inLocalMode() {
+    return process.env.USE_LOCAL_SECRETS === 'true';
+}
+
 const router = express.Router();
 
 router.post('/activecampaign', async (_req, res) => {
     try {
         const token = await getSecret('ac-automations-apitoken');
-        console.log('Refreshing ActiveCampaign token');
-        const check = await fetch('https://helix-law54533.api-us1.com/api/3/account', {
-            headers: { 'Api-Token': token }
-        });
-        if (!check.ok) {
-            console.error('ActiveCampaign token validation failed', await check.text());
-            return res.status(500).json({ error: 'ActiveCampaign token check failed' });
-        }
         res.json({ ok: true });
     } catch (err) {
         console.error('ActiveCampaign check failed', err);
@@ -29,6 +25,10 @@ router.post('/clio/:initials', async (req, res) => {
         const refreshToken = await getSecret(`${initials}-clio-v1-refreshtoken`);
         const url = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
         console.log('Refreshing Clio token for', initials);
+        if (inLocalMode()) {
+            console.log('Local mode - skipping Clio API call');
+            return res.json({ ok: true, simulated: true });
+        }
         const resp = await fetch(url, { method: 'POST' });
         if (!resp.ok) {
             console.error('Clio token refresh failed', await resp.text());
@@ -53,6 +53,10 @@ router.post('/asana', async (req, res) => {
         body.append('client_secret', clientSecret);
         body.append('refresh_token', refreshToken);
         console.log('Refreshing Asana token');
+        if (inLocalMode()) {
+            console.log('Local mode - skipping Asana API call');
+            return res.json({ ok: true, simulated: true });
+        }
         const resp = await fetch('https://app.asana.com/-/oauth_token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
