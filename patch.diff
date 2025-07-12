@@ -1,13 +1,8 @@
 diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index a77626368cacef1e80c040c9c5037fc3b2fd6643..9e5ea020e51925addde6efb2374a10461c65b8a3 100644
+index b31e5259f6dbcc76507f9d032d1f434ef7791e8e..d92ab0a45672c516f12c2f4ed6124e4541366f97 100644
 --- a/src/tabs/instructions/MatterOpening/processingActions.ts
 +++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -1,97 +1,97 @@
- import { ProcessingStep } from './ProcessingSection';
- import activeIcon from '../../../assets/activecampaign.svg';
- import clioIcon from '../../../assets/clio.svg';
- import asanaIcon from '../../../assets/asana.svg';
- 
+@@ -6,147 +6,131 @@ import asanaIcon from '../../../assets/asana.svg';
  export interface ProcessingAction {
      label: string;
      icon?: string;
@@ -23,14 +18,26 @@ index a77626368cacef1e80c040c9c5037fc3b2fd6643..9e5ea020e51925addde6efb2374a1046
          label: 'Retrieve ActiveCampaign Token',
          icon: activeIcon,
          run: async () => {
--            const res = await fetch('/api/keys/ac-automations-apitoken/preview');
--            if (!res.ok) throw new Error('Failed to fetch secret preview');
--            const data = await res.json();
--            return `Token preview: ${data.preview}`;
-+            const res = await fetch('/api/keys/ac-automations-apitoken');
-+            if (!res.ok) throw new Error('Failed to fetch secret');
-+            await res.json();
-+            return 'Token retrieved';
+             const res = await fetch('/api/keys/ac-automations-apitoken');
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             await res.json();
+             return 'Token retrieved';
+         }
+     },
+     {
+         label: 'Refresh ActiveCampaign Token',
+         icon: activeIcon,
+         run: async () => {
+-            const res = await fetch('/api/keys/ac-automations-apitoken');
+-            if (!res.ok) throw new Error('Failed to fetch secret');
+-            const { value: token } = await res.json();
+-            const check = await fetch('https://example.activecampaign.com/api/3/account', {
+-                headers: { 'Api-Token': token }
+-            });
+-            if (!check.ok) throw new Error('ActiveCampaign token check failed');
++            const res = await fetch('/api/refresh/activecampaign', { method: 'POST' });
++            if (!res.ok) throw new Error('ActiveCampaign token check failed');
+             return 'ActiveCampaign token confirmed';
          }
      },
      {
@@ -64,11 +71,31 @@ index a77626368cacef1e80c040c9c5037fc3b2fd6643..9e5ea020e51925addde6efb2374a1046
          }
      },
      {
+         label: 'Refresh Clio Token',
+         icon: clioIcon,
+         run: async (_form, initials) => {
+-            const idRes = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
+-            const secretRes = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
+-            const refreshRes = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
+-            if (!idRes.ok || !secretRes.ok || !refreshRes.ok) throw new Error('Failed to fetch secret');
+-            const { value: clientId } = await idRes.json();
+-            const { value: clientSecret } = await secretRes.json();
+-            const { value: refreshToken } = await refreshRes.json();
+-            const url = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+-            const res2 = await fetch(url, { method: 'POST' });
+-            if (!res2.ok) throw new Error('Clio token refresh failed');
++            const res = await fetch(`/api/refresh/clio/${initials.toLowerCase()}`, {
++                method: 'POST'
++            });
++            if (!res.ok) throw new Error('Clio token refresh failed');
+             return 'Clio token refreshed';
+         }
+     },
+     {
          label: 'Retrieve Asana Client ID',
          icon: asanaIcon,
          run: async (_form, _i, userData) => {
--            const id = userData?.[0]?.ASANAClientID;
-+            const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
+             const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
              if (!id) throw new Error('Asana Client ID missing');
              return 'Client ID retrieved';
          }
@@ -77,8 +104,7 @@ index a77626368cacef1e80c040c9c5037fc3b2fd6643..9e5ea020e51925addde6efb2374a1046
          label: 'Retrieve Asana Secret',
          icon: asanaIcon,
          run: async (_form, _i, userData) => {
--            const secret = userData?.[0]?.ASANASecret;
-+            const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
+             const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
              if (!secret) throw new Error('Asana Secret missing');
              return 'Secret retrieved';
          }
@@ -87,10 +113,36 @@ index a77626368cacef1e80c040c9c5037fc3b2fd6643..9e5ea020e51925addde6efb2374a1046
          label: 'Retrieve Asana Refresh Token',
          icon: asanaIcon,
          run: async (_form, _i, userData) => {
--            const token = userData?.[0]?.ASANARefreshToken;
-+            const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
+             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
              if (!token) throw new Error('Asana Refresh Token missing');
              return 'Refresh Token retrieved';
+         }
+     },
+     {
+         label: 'Refresh Asana Token',
+         icon: asanaIcon,
+         run: async (_form, _i, userData) => {
+             const clientId = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
+             const clientSecret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
+             const refreshToken = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
+             if (!clientId || !clientSecret || !refreshToken) {
+                 throw new Error('Asana credentials missing');
+             }
+-            const body = new URLSearchParams();
+-            body.append('grant_type', 'refresh_token');
+-            body.append('client_id', clientId);
+-            body.append('client_secret', clientSecret);
+-            body.append('refresh_token', refreshToken);
+-            const res = await fetch('https://app.asana.com/-/oauth_token', {
++            const res = await fetch('/api/refresh/asana', {
+                 method: 'POST',
+-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+-                body: body.toString()
++                headers: { 'Content-Type': 'application/json' },
++                body: JSON.stringify({ clientId, clientSecret, refreshToken })
+             });
+             if (!res.ok) throw new Error('Asana token refresh failed');
+             return 'Asana token refreshed';
          }
      },
      { label: 'Matter Request Created', run: async () => 'Done' },
