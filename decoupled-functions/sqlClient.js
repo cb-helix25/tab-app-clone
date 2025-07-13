@@ -1,4 +1,3 @@
-// invisible change
 const sql = require('mssql');
 let poolPromise;
 

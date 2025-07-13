@@ -1,4 +1,3 @@
-// invisible change
 // Use the same v3 programming model as other functions
 // rather than the newer "app" style to avoid runtime errors
 const { DefaultAzureCredential } = require("@azure/identity");
@@ -30,17 +29,17 @@ async function actionSnippetHandler(req, context) {
 
     if (req.method !== "POST") {
         return { status: 405, body: "Method not allowed" };
-    }
+      }
 
     const body = req.body;
     if (!body) {
         return { status: 400, body: "Invalid JSON" };
-    }
+      }
 
     const { action, payload } = body || {};
     if (!action) {
         return { status: 400, body: "Missing action" };
-    }
+      }
 
     await ensureDbPassword();
     context.log('Database password ensured');
@@ -213,7 +212,6 @@ async function actionSnippetHandler(req, context) {
             context.log('Snippet edit approved');
             return { status: 200, body: JSON.stringify({ ok: true }) };
         }
-
         case "approvePlaceholderSnippetEdit": {
             const editId = payload.editId ?? payload.EditId;
             const approvedBy = payload.approvedBy ?? payload.ApprovedBy;
@@ -269,7 +267,6 @@ async function actionSnippetHandler(req, context) {
             context.log('Placeholder snippet edit approved');
             return { status: 200, body: JSON.stringify({ ok: true }) };
         }
-
         case "deleteSnippetEdit": {
             const editId = payload.editId ?? payload.EditId;
             context.log(`Deleting snippet edit ${editId}`);

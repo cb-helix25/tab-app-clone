@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
-// invisible change 2.1
 import {
   Stack,
   mergeStyles,
@@ -43,6 +42,7 @@ import InstructionEditor from "./components/InstructionEditor";
 import InstructionBlockEditor from "./components/InstructionBlockEditor";
 import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
 import "../../app/styles/InstructionsBanner.css";
+// invisible change 2.2
 
 interface InstructionsProps {
   userInitials: string;

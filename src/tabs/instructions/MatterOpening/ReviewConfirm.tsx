@@ -1,6 +1,6 @@
 //
 import React, { useState } from 'react'; // invisible change
-// invisible change 2.1
+// invisible change 2.2
 import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
@@ -68,7 +68,13 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             setSummaryComplete(true);
             if (onConfirmed) onConfirmed();
         } catch (err) {
-            updateStep(currentIndex, 'error', `Error: ${err}`);
+            // Only mark as error if we are still within the steps
+            if (currentIndex < processingActions.length) {
+                updateStep(currentIndex, 'error', `Error: ${err}`);
+            } else {
+                // All steps completed, error happened after
+                setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Unexpected error after all steps: ${err}`]);
+            }
             console.error('❌ Matter submit failed', err);
         } finally {
             setProcessing(false);

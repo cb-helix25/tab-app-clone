@@ -8,6 +8,9 @@
     "Email": "lz@helix-law.com",
     "Clio ID": "999999",
     "Role": "Non-solicitor",
+    "ASANAClientID": "1207527383143252",
+    "ASANASecret": "55bc9a97117301098c94a0b0b4906a2f",
+    "ASANARefreshToken": "2/1203336817680917/1207527383143252:b8d5175712616e2866bd6ec8f8603bac",
     "Rate": 1000.0
   }
 ]
