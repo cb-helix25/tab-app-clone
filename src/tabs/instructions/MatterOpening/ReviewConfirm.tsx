@@ -56,18 +56,19 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
         setLogs([]);
         setSteps(initialSteps);
 
+        let currentIndex = 0;
         try {
-            for (let i = 0; i < processingActions.length; i++) {
-                const action = processingActions[i];
-                updateStep(i, 'pending', `${action.label}...`);
+            for (currentIndex = 0; currentIndex < processingActions.length; currentIndex++) {
+                const action = processingActions[currentIndex];
+                updateStep(currentIndex, 'pending', `${action.label}...`);
                 const msg = await action.run(formData, userInitials, userData);
-                updateStep(i, 'success', msg);
+                updateStep(currentIndex, 'success', msg);
             }
 
             setSummaryComplete(true);
             if (onConfirmed) onConfirmed();
         } catch (err) {
-            updateStep(0, 'error', `Error: ${err}`);
+            updateStep(currentIndex, 'error', `Error: ${err}`);
             console.error('❌ Matter submit failed', err);
         } finally {
             setProcessing(false);

@@ -1,44 +1,73 @@
-diff --git a/README.md b/README.md
-index 8423f20a3f9ca0c042888c158266555c52386490..3d5f6773065aa4e32a05ec1173ac079264b03ae2 100644
---- a/README.md
-+++ b/README.md
-@@ -72,36 +72,39 @@ Following documentation will help you to extend the React with Fluent UI templat
- - [Create multi-capability app](https://learn.microsoft.com/microsoftteams/platform/toolkit/add-capability)
- - [Use an existing Microsoft Entra application](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-existing-aad-app)
- - [Customize the Teams app manifest](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-preview-and-customize-app-manifest)
- - Host your app in Azure by [provision cloud resources](https://learn.microsoft.com/microsoftteams/platform/toolkit/provision) and [deploy the code to cloud](https://learn.microsoft.com/microsoftteams/platform/toolkit/deploy)
- - [Collaborate on app development](https://learn.microsoft.com/microsoftteams/platform/toolkit/teamsfx-collaboration)
- - [Set up the CI/CD pipeline](https://learn.microsoft.com/microsoftteams/platform/toolkit/use-cicd-template)
- - [Publish the app to your organization or the Microsoft Teams app store](https://learn.microsoft.com/microsoftteams/platform/toolkit/publish)
- - [Enable the app for multi-tenant](https://github.com/OfficeDev/TeamsFx/wiki/Multi-tenancy-Support-for-Azure-AD-app)
- - [Preview the app on mobile clients](https://github.com/OfficeDev/TeamsFx/wiki/Run-and-debug-your-Teams-application-on-iOS-or-Android-client)
+diff --git a/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx b/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
+index a0e59cbda248a2d0f500d7e64d4171083b129179..2ea601d43c429d2b4ceb92fb0492f3b06d51a884 100644
+--- a/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
++++ b/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
+@@ -34,62 +34,63 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
+                 {children}
+             </div>
+         </div>
+     );
+ };
  
- ## Server-side processing
+ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed }) => {
+     const { summaryComplete, setSummaryComplete } = useCompletion();
  
- This project now includes a lightweight Express server located in the `server` directory.
- Start it locally with:
+     const [processing, setProcessing] = useState(false);
+     const [processingOpen, setProcessingOpen] = useState(false);
+     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
+     const [logs, setLogs] = useState<string[]>([]);
  
- ```bash
- npm run start:server
- ```
+     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
+         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
+         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
+     };
  
- When using Teams Toolkit for local debugging, the server starts automatically as
- part of `npm run dev:teamsfx`.
+     const handleSubmit = async () => {
+         setProcessing(true);
+         setProcessingOpen(true);
+         setLogs([]);
+         setSteps(initialSteps);
  
- The server exposes a `/health` endpoint for liveness checks and a `/process` endpoint
- that streams basic progress events using Server-Sent Events. This provides a foundation
- for adding real-time workflow updates after the "Submit Matter" button is pressed.
-+
-+Token refresh endpoints for ActiveCampaign, Clio and Asana are documented in
-+[`docs/token-refresh.md`](docs/token-refresh.md).
- ## Deployment
++        let currentIndex = 0;
+         try {
+-            for (let i = 0; i < processingActions.length; i++) {
+-                const action = processingActions[i];
+-                updateStep(i, 'pending', `${action.label}...`);
++            for (currentIndex = 0; currentIndex < processingActions.length; currentIndex++) {
++                const action = processingActions[currentIndex];
++                updateStep(currentIndex, 'pending', `${action.label}...`);
+                 const msg = await action.run(formData, userInitials, userData);
+-                updateStep(i, 'success', msg);
++                updateStep(currentIndex, 'success', msg);
+             }
  
- When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.
+             setSummaryComplete(true);
+             if (onConfirmed) onConfirmed();
+         } catch (err) {
+-            updateStep(0, 'error', `Error: ${err}`);
++            updateStep(currentIndex, 'error', `Error: ${err}`);
+             console.error('❌ Matter submit failed', err);
+         } finally {
+             setProcessing(false);
+         }
+     };
  
- Once built you can also run the server locally using:
+     return (
+         <div className="next-steps-content">
+             <div className="declaration-section no-border">
+                 {summaryComplete ? null : (
+                     <div className="review-actions">
+                         <button className="cta-declare-btn" disabled={!detailsConfirmed} onClick={handleSubmit}>
+                             Open Matter
+                         </button>
+                     </div>
+                 )}
+             </div>
  
- ```bash
- npm start
- ```
+             {(processingOpen || processing || summaryComplete) && (
+                 <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
+             )}
+         </div>
+     );
+ };
  
- This starts the Express server which serves the built application from the root folder.
