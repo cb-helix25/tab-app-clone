@@ -42,6 +42,8 @@ New-Item -ItemType Directory -Path "$deployDir\iisnode" -Force | Out-Null
 Copy-Item -Path "server\package.json" -Destination "$deployDir\package.json" -Force
 Copy-Item -Path "server\package-lock.json" -Destination "$deployDir\package-lock.json" -Force
 Copy-Item -Path "server\server.js" -Destination "$deployDir\server.js" -Force
+Copy-Item -Path "server\routes" -Destination "$deployDir\routes" -Recurse -Force
+Copy-Item -Path "server\utils" -Destination "$deployDir\utils" -Recurse -Force
 Copy-Item -Path "server\web.config" -Destination "$deployDir\web.config" -Force
 
 Write-Host "Zipping files for deploy"

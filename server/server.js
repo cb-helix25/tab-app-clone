@@ -4,6 +4,8 @@ const express = require('express');
 const morgan = require('morgan');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
+const refreshRouter = require('./routes/refresh');
+const keysRouter = require('./routes/keys');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -22,16 +24,8 @@ const buildPath = path.join(__dirname);
 // basic request logging
 app.use(morgan('dev'));
 app.use(express.json());
+app.use('/api/refresh', refreshRouter);
 
-// serve the built React files
-app.use(express.static(buildPath));
-
-// simple liveness probe
-app.get('/health', (_req, res) => {
-    res.sendStatus(200);
-});
-
-// expose Key Vault secret preview so the full value isn't sent to the client
 app.get('/api/keys/:name/preview', async (req, res) => {
     try {
         const secret = await client.getSecret(req.params.name);
@@ -43,15 +37,15 @@ app.get('/api/keys/:name/preview', async (req, res) => {
     }
 });
 
-// expose Key Vault secrets via simple API
-app.get('/api/keys/:name', async (req, res) => {
-    try {
-        const secret = await client.getSecret(req.params.name);
-        res.json({ value: secret.value });
-    } catch (err) {
-        console.error('Failed to retrieve secret', err);
-        res.status(500).json({ error: 'Failed to retrieve secret' });
-    }
+app.use('/api/keys', keysRouter);
+app.use('/api/refresh', refreshRouter);
+
+// serve the built React files
+app.use(express.static(buildPath));
+
+// simple liveness probe
+app.get('/health', (_req, res) => {
+    res.sendStatus(200);
 });
 
 // example Server-Sent Events endpoint emitting fake progress
