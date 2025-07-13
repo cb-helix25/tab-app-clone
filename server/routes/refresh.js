@@ -9,8 +9,11 @@ const router = express.Router();
 
 router.post('/activecampaign', async (_req, res) => {
     try {
+        // Retrieve the ActiveCampaign token
         const token = await getSecret('ac-automations-apitoken');
-        res.json({ ok: true });
+
+        // Send the token back in the response
+        res.json({ ok: true, token });
     } catch (err) {
         console.error('ActiveCampaign check failed', err);
         res.status(500).json({ error: 'ActiveCampaign check failed' });

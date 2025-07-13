@@ -69,18 +69,18 @@
         "env-cmd": "^10.1.0"
     },
     "scripts": {
-        "dev:teamsfx": "concurrently \"npm run dev-tab:teamsfx\" \"npm run dev-api:teamsfx\" \"npm run start:server\"",
+        "dev:teamsfx": "concurrently \"npm run dev-tab:teamsfx\" \"npm run dev-api:teamsfx\" \"npm run start:server\" \"npm run start\"",
         "dev-tab:teamsfx": "env-cmd --silent -f .localConfigs npm run start",
         "dev-api:teamsfx": "cd api && npm run dev:teamsfx",
         "start": "react-scripts start",
+        "start:server": "node server/index.js",
         "build": "react-scripts build",
         "test": "echo \"Error: no test specified\" && exit 1",
         "eject": "react-scripts eject",
         "generate:attendance": "node scripts/generateLocalAttendance.js",
         "generate:risk": "node scripts/generateLocalRiskAssessments.js",
         "generate:tiller": "node scripts/generateLocalTillerResponses.js",
-        "generate:snippets": "node scripts/generateLocalSnippetEdits.js",
-        "start:server": "node server/index.js"
+        "generate:snippets": "node scripts/generateLocalSnippetEdits.js"
     },
     "eslintConfig": {
         "extends": [

@@ -40,6 +40,7 @@ This app has adopted [On-Behalf-Of flow](https://learn.microsoft.com/en-us/azure
 9. To regenerate the POID records derived from instructions, run `npm run generate:idverifications`.
 10. To create sample snippet edit requests for local testing, run `npm run generate:snippets`.
 11. Sample transactions and outstanding balances are provided when using local data.
+12. When running the Azure Functions backend locally, ensure a storage emulator like [Azurite](https://github.com/Azure/Azurite) is running. Otherwise set the `AzureWebJobsStorage` environment variable to a valid Storage connection string so the Functions runtime can acquire its host lock.
 
 **Congratulations**! You are running an application that can now show a beautiful web page in Teams, Outlook and the Microsoft 365 app.
 
