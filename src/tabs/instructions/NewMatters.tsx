@@ -618,6 +618,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
             case 'review':
                 return (
                     <ReviewStep
+                        clientInformation={effectivePoidData.filter(p => selectedPoidIds.includes(p.poid_id))}
                         selectedDate={selectedDate}
                         supervisingPartner={supervisingPartner}
                         originatingSolicitor={originatingSolicitor}

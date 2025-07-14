@@ -8,6 +8,7 @@ import { useCompletion } from './CompletionContext';
 import { UserData } from '../../../app/functionality/types';
 
 interface ReviewStepProps {
+    clientInformation: any[];
     selectedDate: Date | null;
     supervisingPartner: string;
     originatingSolicitor: string;
@@ -90,6 +91,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
 
     const formData = useMemo(
         () => ({
+            clientInformation,
             selectedDate: selectedDate ? selectedDate.toISOString() : null,
             supervisingPartner,
             originatingSolicitor,

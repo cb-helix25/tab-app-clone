@@ -35,9 +35,12 @@ router.post('/', async (req, res) => {
 
         // Map an individual client to Clio Person payload
         function mapPerson(client) {
+            const address = client.address || {};
+            const verification = client.verification || {};
+
             return {
-                first_name: client.first_name || client.first || '',
-                last_name: client.last_name || client.last || '',
+                first_name: client.first_name || client.first || null,
+                last_name: client.last_name || client.last || null,
                 prefix: client.prefix || null,
                 date_of_birth: client.date_of_birth || null,
                 email_addresses: [
@@ -49,17 +52,21 @@ router.post('/', async (req, res) => {
                 addresses: [
                     {
                         name: 'Home',
-                        street: `${client.address.house_number || ''} ${client.address.street || ''}`.trim(),
-                        city: client.address.city || '',
-                        province: client.address.county || '',
-                        postal_code: client.address.post_code || '',
-                        country: client.address.country || ''
+                        street: `${address.house_number || ''} ${address.street || ''}`.trim(),
+                        city: address.city || '',
+                        province: address.county || '',
+                        postal_code: address.post_code || '',
+                        country: address.country || ''
                     }
                 ],
                 custom_field_values: [
                     { value: client.poid_id, custom_field: { id: 380728 } },
-                    { value: client.verification.check_expiry, custom_field: { id: 235702 } },
-                    { id: 'picklist-32009977', field_name: 'ID Type', value: client.verification.check_result === 'DriversLicense' ? 142570 : 142567 }
+                    { value: verification.check_expiry, custom_field: { id: 235702 } },
+                    {
+                        id: 'picklist-32009977',
+                        field_name: 'ID Type',
+                        value: verification.check_result === 'DriversLicense' ? 142570 : 142567
+                    }
                 ]
             };
         }
@@ -67,7 +74,7 @@ router.post('/', async (req, res) => {
         // Map a company client to Clio Company payload
         function mapCompany(company, nameOverride) {
             const base = {
-                name: nameOverride || company.company_details?.name || '',
+                name: nameOverride || company.company_details?.name || null,
                 email_addresses: company.email
                     ? [{ name: 'Work', address: company.email, default_email: true }]
                     : [],
@@ -129,7 +136,9 @@ router.post('/', async (req, res) => {
                 results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person' }));
             }
         } else if (type === 'Company') {
-            const comp = clients.find(c => c.company_details) || clients[0];
+            const comp = clients.find(c => c.company_details?.name);
+            if (!comp) return res.status(400).json({ error: 'Missing company name' });
+
             results.push(await createOrUpdate({ ...mapCompany(comp), type: 'Company' }));
             for (const c of clients) {
                 results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person' }));
