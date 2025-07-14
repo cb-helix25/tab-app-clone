@@ -623,11 +623,16 @@ const handleClearAll = () => {
     const generateSampleJson = () => {
         const selectedClients = selectedPoidIds.map((id: string) => {
             const client = effectivePoidData.find(p => p.poid_id === id);
-            return client ? {
+            if (!client) {
+                // Preserve the selected ID even if we have no further details
+                return { poid_id: id };
+            }
+            return {
                 poid_id: client.poid_id,
                 first_name: client.first,
                 last_name: client.last,
                 email: client.email,
+                best_number: client.best_number,
                 type: client.type || 'individual',
                 nationality: client.nationality,
                 date_of_birth: client.date_of_birth,
@@ -659,8 +664,8 @@ const handleClearAll = () => {
                     check_expiry: client.check_expiry,
                     check_id: client.check_id
                 }
-            } : null;
-        }).filter(Boolean);
+            };
+        });
 
         return {
             matter_details: {
