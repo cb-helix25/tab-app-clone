@@ -130,7 +130,39 @@ export const processingActions: ProcessingAction[] = [
             return 'Access token refreshed';
         }
     },
-    { label: 'Matter Request Created', run: async () => 'Done' },
+    {
+        label: 'Matter Request Created',
+        icon: clioIcon,
+        run: async (formData, userInitials) => {
+            const payload = {
+                instructionRef: formData.matter_details?.instruction_ref || null,
+                clientType: formData.matter_details?.client_type || null,
+                description: formData.matter_details?.description || null,
+                practiceArea: formData.matter_details?.practice_area || null,
+                value: formData.matter_details?.dispute_value || null,
+                responsibleSolicitor: formData.team_assignments?.fee_earner || null,
+                originatingSolicitor: formData.team_assignments?.originating_solicitor || null,
+                supervisingPartner: formData.team_assignments?.supervising_partner || null,
+                source: formData.source_details?.source || null,
+                referrer: formData.source_details?.referrer_name || null,
+                opponent: formData.opponent_details?.opponent || null,
+                solicitor: formData.opponent_details?.solicitor || null,
+
+                createdBy: userInitials
+            };
+
+            const resp = await fetch('/api/matter-requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!resp.ok) throw new Error('Failed to record matter request');
+            const data = await resp.json();
+            return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+        }
+    },
+
     { label: 'Contact Created/Updated', run: async () => 'Done' },
     { label: 'Databases Updated', run: async () => 'Done' },
     { label: 'Clio Contact Created/Updated', run: async () => 'Done' },

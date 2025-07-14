@@ -676,13 +676,27 @@ const handleClearAll = () => {
                 source: source,
                 referrer_name: source === 'referral' ? referrerName : null
             },
-            opponent_details: opponentName ? {
-                name: opponentName,
-                email: opponentEmail || null,
+            opponent_details: opponentName || opponentSolicitorName ? {
+                opponent: {
+                    title: opponentTitle || null,
+                    first_name: opponentFirst || null,
+                    last_name: opponentLast || null,
+                    is_company: opponentHasCompany || false,
+                    company_name: opponentCompanyName || null,
+                    company_number: opponentCompanyNumber || null,
+                    email: opponentEmail || null,
+                    phone: opponentPhone || null,
+                    address: opponentAddress || null
+                },
                 solicitor: {
-                    name: opponentSolicitorName || null,
-                    company: opponentSolicitorCompany || null,
-                    email: opponentSolicitorEmail || null
+                    title: solicitorTitle || null,
+                    first_name: solicitorFirst || null,
+                    last_name: solicitorLast || null,
+                    company_name: opponentSolicitorCompany || null,
+                    company_number: solicitorCompanyNumber || null,
+                    email: opponentSolicitorEmail || null,
+                    phone: solicitorPhone || null,
+                    address: solicitorAddress || null
                 }
             } : null,
             compliance: {

@@ -6,6 +6,7 @@ const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const refreshRouter = require('./routes/refresh');
 const keysRouter = require('./routes/keys');
+const matterRequestsRouter = require('./routes/matterRequests');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -25,6 +26,7 @@ const buildPath = path.join(__dirname);
 app.use(morgan('dev'));
 app.use(express.json());
 app.use('/api/refresh', refreshRouter);
+app.use('/api/matter-requests', matterRequestsRouter);
 
 app.get('/api/keys/:name/preview', async (req, res) => {
     try {

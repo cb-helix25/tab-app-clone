@@ -1,73 +1,82 @@
-diff --git a/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx b/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
-index a0e59cbda248a2d0f500d7e64d4171083b129179..2ea601d43c429d2b4ceb92fb0492f3b06d51a884 100644
---- a/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
-+++ b/src/tabs/instructions/MatterOpening/ReviewConfirm.tsx
-@@ -34,62 +34,63 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
-                 {children}
-             </div>
-         </div>
-     );
- };
- 
- const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed }) => {
-     const { summaryComplete, setSummaryComplete } = useCompletion();
- 
-     const [processing, setProcessing] = useState(false);
-     const [processingOpen, setProcessingOpen] = useState(false);
-     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
-     const [logs, setLogs] = useState<string[]>([]);
- 
-     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
-         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
-         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
-     };
- 
-     const handleSubmit = async () => {
-         setProcessing(true);
-         setProcessingOpen(true);
-         setLogs([]);
-         setSteps(initialSteps);
- 
-+        let currentIndex = 0;
-         try {
--            for (let i = 0; i < processingActions.length; i++) {
--                const action = processingActions[i];
--                updateStep(i, 'pending', `${action.label}...`);
-+            for (currentIndex = 0; currentIndex < processingActions.length; currentIndex++) {
-+                const action = processingActions[currentIndex];
-+                updateStep(currentIndex, 'pending', `${action.label}...`);
-                 const msg = await action.run(formData, userInitials, userData);
--                updateStep(i, 'success', msg);
-+                updateStep(currentIndex, 'success', msg);
-             }
- 
-             setSummaryComplete(true);
-             if (onConfirmed) onConfirmed();
-         } catch (err) {
--            updateStep(0, 'error', `Error: ${err}`);
-+            updateStep(currentIndex, 'error', `Error: ${err}`);
-             console.error('❌ Matter submit failed', err);
-         } finally {
-             setProcessing(false);
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index ca42461af9108777a1f019042ba1cc5dc36c8fcf..c1410204f2e3e2c11665fa4742525df0e6ce05cd 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -113,68 +113,62 @@ export const processingActions: ProcessingAction[] = [
+         run: async (_form, _i, userData) => {
+             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
+             if (!token) throw new Error('Asana Refresh Token missing');
+             asanaRefreshToken = token;
+             return 'Refresh Token retrieved';
          }
-     };
+     },
+     {
+         label: 'Refresh Asana Access Token',
+         icon: asanaIcon,
+         run: async () => {
+             const resp = await fetch('/api/refresh/asana', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken })
+             });
+             if (!resp.ok) throw new Error('Asana token refresh failed');
+             return 'Access token refreshed';
+         }
+     },
+     {
+         label: 'Matter Request Created',
+         icon: clioIcon,
+         run: async (formData, userInitials) => {
+             const payload = {
+-                selectedDate: formData.matter_details?.date_created ?? null,
+-                supervisingPartner: formData.team_assignments?.supervising_partner || null,
+-                originatingSolicitor: formData.team_assignments?.originating_solicitor || null,
++                instructionRef: formData.matter_details?.instruction_ref || null,
+                 clientType: formData.matter_details?.client_type || null,
+-                selectedPoidIds: JSON.stringify((formData.client_information || []).map((c: any) => c.poid_id)),
+-                areaOfWork: formData.matter_details?.area_of_work || null,
+-                practiceArea: formData.matter_details?.practice_area || null,
+                 description: formData.matter_details?.description || null,
+-                folderStructure: formData.matter_details?.folder_structure || null,
+-                disputeValue: formData.matter_details?.dispute_value || null,
++                practiceArea: formData.matter_details?.practice_area || null,
++                value: formData.matter_details?.dispute_value || null,
++                responsibleSolicitor: formData.team_assignments?.fee_earner || null,
++                originatingSolicitor: formData.team_assignments?.originating_solicitor || null,
++                supervisingPartner: formData.team_assignments?.supervising_partner || null,
+                 source: formData.source_details?.source || null,
+-                referrerName: formData.source_details?.referrer_name || null,
+-                opponentName: formData.opponent_details?.name || null,
+-                opponentEmail: formData.opponent_details?.email || null,
+-                opponentSolicitorName: formData.opponent_details?.solicitor?.name || null,
+-                opponentSolicitorCompany: formData.opponent_details?.solicitor?.company || null,
+-                opponentSolicitorEmail: formData.opponent_details?.solicitor?.email || null,
+-                noConflict: formData.compliance?.conflict_check_completed || false,
++                referrer: formData.source_details?.referrer_name || null,
++                opponent: formData.opponent_details?.opponent || null,
++                solicitor: formData.opponent_details?.solicitor || null,
+                 createdBy: userInitials
+             };
  
-     return (
-         <div className="next-steps-content">
-             <div className="declaration-section no-border">
-                 {summaryComplete ? null : (
-                     <div className="review-actions">
-                         <button className="cta-declare-btn" disabled={!detailsConfirmed} onClick={handleSubmit}>
-                             Open Matter
-                         </button>
-                     </div>
-                 )}
-             </div>
+             const resp = await fetch('/api/matter-requests', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+             });
  
-             {(processingOpen || processing || summaryComplete) && (
-                 <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
-             )}
-         </div>
-     );
- };
+             if (!resp.ok) throw new Error('Failed to record matter request');
+             const data = await resp.json();
+             return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+         }
+     },
+     { label: 'Contact Created/Updated', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' },
+     { label: 'Clio Contact Created/Updated', run: async () => 'Done' },
+     { label: 'Clio Matter Opened', run: async () => 'Done' },
+     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' }
+ ];
+ // invisible change 2.2
  
+ export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
+     label: action.label,
