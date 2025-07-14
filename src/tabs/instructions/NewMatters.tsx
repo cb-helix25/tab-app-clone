@@ -211,6 +211,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     // Workflow
     const [clientType, setClientType] = useState(initialClientType);
     const [pendingClientType, setPendingClientType] = useState(initialClientType);
+    const [clientAsOnFile, setClientAsOnFile] = useState('');
 
     useEffect(() => {
         setClientType(initialClientType);
@@ -482,6 +483,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         handlePoidClick={handlePoidClick}
                         pendingClientType={pendingClientType}
                         setPendingClientType={setPendingClientType}
+                        clientAsOnFile={clientAsOnFile}
+                        setClientAsOnFile={setClientAsOnFile}
                         // fundsReceived and setFundsReceived removed
                         onConfirm={() =>
                             setOpenStep(stepsOrder.indexOf('poidSelection') + 1)
@@ -648,6 +651,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         noConflict={noConflict}
                         userInitials={userInitials}
                         userData={userData}
+                        clientAsOnFile={clientAsOnFile}
                         onBuild={() => { }}
                     />
                 );

@@ -224,6 +224,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     // Use initialClientType if provided (from instruction data)
     const [clientType, setClientType] = useDraftedState<string>('clientType', initialClientType || '');
     const [pendingClientType, setPendingClientType] = useDraftedState<string>('pendingClientType', initialClientType || '');
+    const [clientAsOnFile, setClientAsOnFile] = useDraftedState<string>('clientAsOnFile', '');
     // Only set on mount or when initialClientType changes, and only if not already set
     React.useEffect(() => {
         if (initialClientType && initialClientType.trim() !== '') {
@@ -672,6 +673,7 @@ const handleClearAll = () => {
                 area_of_work: areaOfWork,
                 practice_area: practiceArea,
                 description: description,
+                client_as_on_file: clientAsOnFile || null,
                 dispute_value: disputeValue || null,
                 folder_structure: folderStructure || null
             },
@@ -1330,6 +1332,8 @@ const handleClearAll = () => {
                                         pendingClientType={pendingClientType}
                                         setPendingClientType={setPendingClientType}
                                         onClientTypeChange={handleClientTypeChange}
+                                        clientAsOnFile={clientAsOnFile}
+                                        setClientAsOnFile={setClientAsOnFile}
                                     />
                                 </div>
                                 
@@ -1533,7 +1537,6 @@ const handleClearAll = () => {
                                         matterRefPreview={(() => {
                                             // Only show if a single POID is selected and client type is set
                                             if (!pendingClientType || selectedPoidIds.length === 0) return '';
-                                            // For Individual or Company, use the first selected POID
                                             const poid = effectivePoidData.find(p => p.poid_id === selectedPoidIds[0]);
                                             if (!poid) return '';
                                             let base = '';
@@ -1541,11 +1544,13 @@ const handleClearAll = () => {
                                                 base = (poid.last || '').toUpperCase();
                                             } else if (pendingClientType === 'Company') {
                                                 base = (poid.company_name || '').toUpperCase();
+                                            } else if (pendingClientType === 'Multiple Individuals' && clientAsOnFile) {
+                                                base = clientAsOnFile.toUpperCase();
+                                                const digits = Math.floor(10000 + Math.random() * 90000);
+                                                return base.slice(0, 5) + digits + '-0001';
                                             } else {
-                                                // For Multiple Individuals or Existing Client, fallback to last name or company
                                                 base = (poid.last || poid.company_name || '').toUpperCase();
                                             }
-                                            // Take first 5 chars, pad with X if less
                                             let ref = base.slice(0, 5).padEnd(5, 'X');
                                             return ref + '-0001';
                                         })()}
@@ -2073,6 +2078,10 @@ const handleClearAll = () => {
                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHouseNumber || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentStreet || '-'}</span>
                                             </div>
@@ -2138,6 +2147,10 @@ const handleClearAll = () => {
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorHouseNumber || '-'}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>

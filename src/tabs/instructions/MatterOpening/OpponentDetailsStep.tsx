@@ -1506,14 +1506,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 8 }}>
                     <TextField
                       placeholder="House/Building Number"
-                      value={localSolicitorHouseNumber}
-                      onChange={(_, v) => setLocalSolicitorHouseNumber(v || "")}
+                      value={_solicitorHouseNumber}
+                      onChange={(_, v) => _setSolicitorHouseNumber(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("solicitorHouseNumber", localSolicitorHouseNumber)
+                          ...getFieldStyle("solicitorHouseNumber", _solicitorHouseNumber)
                         },
                         fieldGroup: {
                           borderRadius: 0,

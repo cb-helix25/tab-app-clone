@@ -20,6 +20,8 @@ interface PoidSelectionStepProps {
     pendingClientType: string;
     setPendingClientType: (type: string) => void;
     onClientTypeChange?: (newType: string, shouldLimitToSingle: boolean) => void;
+    clientAsOnFile: string;
+    setClientAsOnFile: (v: string) => void;
 }
 
 // Animated transition for POID selection area
@@ -74,6 +76,8 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     pendingClientType,
     setPendingClientType,
     onClientTypeChange,
+    clientAsOnFile,
+    setClientAsOnFile
 }) => {
     const onlyShowPreselected = preselectedPoidIds && preselectedPoidIds.length > 0;
     const displayPoidData = onlyShowPreselected
@@ -230,6 +234,19 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                 {/* Removed preselected client type hints for a cleaner UI */}
             </div>
         </div>
+
+        {pendingClientType === 'Multiple Individuals' && (
+            <div style={{ margin: '8px 0' }}>
+                <div className="question-banner">Client as on File</div>
+                <input
+                    type="text"
+                    value={clientAsOnFile}
+                    onChange={e => setClientAsOnFile(e.target.value)}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #e0e0e0', borderRadius: 0 }}
+                    placeholder="Enter client name as on file"
+                />
+            </div>
+        )}
 
         {/* Show POID selection only after client type is chosen */}
         <PoidSelectionTransition show={!!pendingClientType}>

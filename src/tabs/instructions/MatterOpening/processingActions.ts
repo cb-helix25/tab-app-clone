@@ -190,7 +190,19 @@ export const processingActions: ProcessingAction[] = [
 
     { label: 'Contact Created/Updated', run: async () => 'Done' },
     { label: 'Databases Updated', run: async () => 'Done' },
-    { label: 'Clio Contact Created/Updated', run: async () => 'Done' },
+    {
+        label: 'Clio Contact Created/Updated',
+        icon: clioIcon,
+        run: async (formData, userInitials) => {
+            const resp = await fetch('/api/clio-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ formData, initials: userInitials })
+            });
+            if (!resp.ok) throw new Error('Failed to sync Clio contact');
+            return 'Clio contact synced';
+        }
+    },
     { label: 'Clio Matter Opened', run: async () => 'Done' },
     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
     { label: 'Databases Updated', run: async () => 'Done' }

@@ -41,6 +41,7 @@ interface ReviewStepProps {
     userInitials: string;
     userData?: UserData[] | null;
     onBuild?: () => void;
+    clientAsOnFile: string;
 }
 
 const ReviewStep: React.FC<ReviewStepProps> = (props) => {
@@ -79,6 +80,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
         userInitials,
         userData,
     onBuild,
+    clientAsOnFile,
     } = props;
 
     const [detailsConfirmed, setDetailsConfirmed] = useState(false);
@@ -121,6 +123,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             noConflict,
             userInitials,
             userData,
+            clientAsOnFile,
         }),
         [
             selectedDate,
@@ -155,6 +158,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             noConflict,
             userInitials,
             userData,
+            clientAsOnFile,
         ]
     );
 
@@ -178,6 +182,12 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                     <span className="field-label">Client Type:</span>{' '}
                     <span className="field-value">{clientType || 'N/A'}</span>
                 </p>
+                {clientType === 'Multiple Individuals' && (
+                    <p>
+                        <span className="field-label">Client as on File:</span>{' '}
+                        <span className="field-value">{clientAsOnFile || 'N/A'}</span>
+                    </p>
+                )}
                 <p>
                     <span className="field-label">POID(s):</span>{' '}
                     <span className="field-value">{selectedPoidIds.join(', ') || 'None'}</span>

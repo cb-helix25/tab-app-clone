@@ -1,62 +1,118 @@
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index ad43e2fee3a04be221b2fba5700b62539860de14..8b31d1551dd92cbc2a5f3fee926d41f69be9c978 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -611,55 +611,57 @@ const NewMatters: React.FC<NewMattersProps> = ({
-                         solicitorCompanyNumber={solicitorCompanyNumber}
-                         setSolicitorCompanyNumber={setSolicitorCompanyNumber}
-                     />
-                 );
-             case 'review':
-                 return (
-                     <ReviewStep
-                         selectedDate={selectedDate}
-                         supervisingPartner={supervisingPartner}
-                         originatingSolicitor={originatingSolicitor}
-                         // fundsReceived removed
-                         clientType={clientType}
-                         selectedPoidIds={selectedPoidIds}
-                         areaOfWork={areaOfWork}
-                         practiceArea={practiceArea}
-                         description={description}
-                         folderStructure={folderStructure}
-                         disputeValue={disputeValue}
-                         source={source}
-                         referrerName={referrerName}
-                         opponentName={opponentName}
-                         opponentEmail={opponentEmail}
-                         opponentSolicitorName={opponentSolicitorName}
-                         opponentSolicitorCompany={opponentSolicitorCompany}
-                         opponentSolicitorEmail={opponentSolicitorEmail}
-+                        opponentHouseNumber={opponentHouseNumber}
-                         opponentStreet={opponentStreet}
-                         opponentCity={opponentCity}
-                         opponentCounty={opponentCounty}
-                         opponentPostcode={opponentPostcode}
-                         opponentCountry={opponentCountry}
-+                        solicitorHouseNumber={solicitorHouseNumber}
-                         solicitorStreet={solicitorStreet}
-                         solicitorCity={solicitorCity}
-                         solicitorCounty={solicitorCounty}
-                         solicitorPostcode={solicitorPostcode}
-                         solicitorCountry={solicitorCountry}
-                         noConflict={noConflict}
-                         userInitials={userInitials}
-                         userData={userData}
-                         onBuild={() => { }}
-                     />
-                 );
-             default:
-                 return null;
-         }
-     };
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 4058fcaed25a5b4669204a62045dd3c8fb82060c..dfefb487e63410e143b427850a1752249be6a0b5 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -2050,50 +2050,54 @@ const handleClearAll = () => {
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Has Company:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHasCompany ? 'Yes' : 'No'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentTitle || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentFirst || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentLast || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentEmail || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
+                                             </div>
++                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
++                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHouseNumber || '-'}</span>
++                                            </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentStreet || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>City:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCity || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>County:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCounty || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPostcode || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCountry || '-'}</span>
+                                             </div>
+                                         </div>
+                                     </div>
  
-     return (
-         <CompletionProvider>
-         <Stack className="workflow-container">
-             {!hideClientSections && (
-                 <>
-                     <ClientDetails stage={stage} instructionRef={instructionRef} />
-                     <ClientHub
-                         instructionRef={instructionRef}
-                         clientId={clientId}
+                                     {/* ...removed duplicate Value/Dispute Value section... */}
+ 
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 4058fcaed25a5b4669204a62045dd3c8fb82060c..dfefb487e63410e143b427850a1752249be6a0b5 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -2117,50 +2121,54 @@ const handleClearAll = () => {
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCompanyNumber || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorTitle || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorFirst || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorLast || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorEmail || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
+                                             </div>
++                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
++                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
++                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorHouseNumber || '-'}</span>
++                                            </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorStreet || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>City:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCity || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>County:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCounty || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPostcode || '-'}</span>
+                                             </div>
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                 <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
+                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCountry || '-'}</span>
+                                             </div>
+                                         </div>
+                                     </div>
+ 
+                                     {/* Conflict Check Status */}
+                                     <div style={{ 
