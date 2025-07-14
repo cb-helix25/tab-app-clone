@@ -147,8 +147,8 @@ export const processingActions: ProcessingAction[] = [
                 referrer: formData.source_details?.referrer_name || null,
                 opponent: formData.opponent_details?.opponent || null,
                 solicitor: formData.opponent_details?.solicitor || null,
-
                 createdBy: userInitials
+                // MatterID is excluded
             };
 
             const resp = await fetch('/api/matter-requests', {

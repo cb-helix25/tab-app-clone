@@ -96,7 +96,11 @@ module.exports = async function (context, req) {
       solicitorId = res.recordset[0].OpponentID;
     }
 
-    const matterId = body.matterId || body.instructionRef;
+    const { v4: uuidv4 } = require('uuid');
+    const matterId = uuidv4();
+    const now = new Date();
+    const openTime = new Date(0); // midnight
+    openTime.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
     await pool.request()
       .input('MatterID', sql.NVarChar(255), matterId)
       .input('InstructionRef', sql.NVarChar(255), body.instructionRef || null)
@@ -111,14 +115,19 @@ module.exports = async function (context, req) {
       .input('Referrer', sql.NVarChar(255), body.referrer || null)
       .input('OpponentID', sql.UniqueIdentifier, opponentId)
       .input('OpponentSolicitorID', sql.UniqueIdentifier, solicitorId)
-      .query(`INSERT INTO Matters (
-        MatterID, InstructionRef, ClientType, Description, PracticeArea, ApproxValue,
-        ResponsibleSolicitor, OriginatingSolicitor, SupervisingPartner, Source, Referrer,
-        OpponentID, OpponentSolicitorID)
-        VALUES (
-        @MatterID, @InstructionRef, @ClientType, @Description, @PracticeArea, @ApproxValue,
-        @ResponsibleSolicitor, @OriginatingSolicitor, @SupervisingPartner, @Source, @Referrer,
-        @OpponentID, @OpponentSolicitorID)`);
+      .input('Status', sql.NVarChar(50), 'MatterRequest')
+      .input('OpenDate', sql.Date, new Date())
+      .input('OpenTime', sql.Time, openTime)
+      .query(`
+  INSERT INTO Matters (
+    MatterID, InstructionRef, ClientType, Description, PracticeArea, ApproxValue,
+    ResponsibleSolicitor, OriginatingSolicitor, SupervisingPartner, Source, Referrer,
+    OpponentID, OpponentSolicitorID, Status, OpenDate, OpenTime)
+  VALUES (
+    @MatterID, @InstructionRef, @ClientType, @Description, @PracticeArea, @ApproxValue,
+    @ResponsibleSolicitor, @OriginatingSolicitor, @SupervisingPartner, @Source, @Referrer,
+    @OpponentID, @OpponentSolicitorID, @Status, @OpenDate, @OpenTime)
+`);
 
     context.res = { status: 201, body: { ok: true, matterId } };
   } catch (err) {
