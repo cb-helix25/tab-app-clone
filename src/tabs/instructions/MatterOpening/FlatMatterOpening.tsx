@@ -1261,6 +1261,7 @@ const handleClearAll = () => {
                                         filteredPoidData={filteredPoidData}
                                         visiblePoidCount={visiblePoidCount}
                                         selectedPoidIds={selectedPoidIds}
+                                        preselectedPoidIds={preselectedPoidIds}
                                         poidSearchTerm={poidSearchTerm}
                                         setPoidSearchTerm={setPoidSearchTerm}
                                         poidGridRef={poidGridRef}

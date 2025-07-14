@@ -6,6 +6,7 @@ import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/NewMatters.css';
 import '../../app/styles/MatterOpeningCard.css';
+import '../../app/styles/RiskAssessmentPage.css';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 
 interface RiskAssessmentPageProps {
@@ -65,15 +66,11 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
         clearAllButton: null,
         jsonButton: null
     });
-    const [currentRiskPage, setCurrentRiskPage] = useState(0);
 
     const handleHeaderButtonsChange = (buttons: { clearAllButton: React.ReactNode | null; jsonButton: React.ReactNode }) => {
         setHeaderButtons(buttons);
     };
 
-    const handlePageChange = (page: number) => {
-        setCurrentRiskPage(page);
-    };
 
     // Helper function to check if there's any data to clear
     const hasDataToClear = () => {
@@ -212,7 +209,7 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
 
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
-            <div className="workflow-main matter-opening-card">
+            <div className="workflow-main matter-opening-card risk-full-width">
                 {/* Header with breadcrumb-style progress - exactly like Matter Opening */}
                 <div style={{ 
                     display: 'flex', 
@@ -223,54 +220,9 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                     background: '#fff',
                     margin: '-20px -20px 0 -20px'
                 }}>
-                    {/* Navigation breadcrumbs - both steps always visible */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                        {/* Step 1: Core Risk Factors */}
-                        <div style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: currentRiskPage === 0 ? '#3690CE' : '#6b7280',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '8px 12px',
-                            borderRadius: 6,
-                            transition: 'all 0.2s ease',
-                            fontWeight: 600,
-                            fontSize: 14,
-                            backgroundColor: currentRiskPage === 0 ? '#e3f0fc' : 'transparent'
-                        }}>
-                            <i className="ms-Icon ms-Icon--DocumentSearch" style={{ fontSize: 16 }} />
-                            Core Risk Factors
-                        </div>
-                        
-                        {/* Arrow separator */}
-                        <div style={{ 
-                            color: '#ddd',
-                            fontSize: 14,
-                            fontWeight: 400
-                        }}>
-                            →
-                        </div>
-                        
-                        {/* Step 2: Client & Transaction Assessments + AML */}
-                        <div style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: currentRiskPage === 1 ? '#3690CE' : '#6b7280',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '8px 12px',
-                            borderRadius: 6,
-                            transition: 'all 0.2s ease',
-                            fontWeight: 600,
-                            fontSize: 14,
-                            backgroundColor: currentRiskPage === 1 ? '#e3f0fc' : 'transparent'
-                        }}>
-                            <i className="ms-Icon ms-Icon--People" style={{ fontSize: 16 }} />
-                            Client & Transaction Assessments + AML
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 600 }}>
+                        <i className="ms-Icon ms-Icon--DocumentSearch" style={{ fontSize: 16 }} />
+                        Risk Assessment
                     </div>
 
                     {/* Right side controls */}
@@ -413,7 +365,6 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                         onContinue={handleContinue}
                         isComplete={isComplete}
                         onHeaderButtonsChange={handleHeaderButtonsChange}
-                        onPageChange={handlePageChange}
                     />
                 </div>
             </div>

@@ -1,608 +1,237 @@
-diff --git a/src/components/RiskAssessment.tsx b/src/components/RiskAssessment.tsx
-index ad59f67c7881337cb1d07151737d4c5cbfb7ad6f..b3f99477bc967e2128dff953df0f92dcad2f12e0 100644
---- a/src/components/RiskAssessment.tsx
-+++ b/src/components/RiskAssessment.tsx
-@@ -162,51 +162,50 @@ export interface RiskCore {
-     clientIntroducedValue: number;
-     limitation: string;
-     limitationValue: number;
-     sourceOfFunds: string;
-     sourceOfFundsValue: number;
-     valueOfInstruction: string;
-     valueOfInstructionValue: number;
+diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
+--- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
++++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+@@ -1,38 +1,39 @@
+ //
+ import React from 'react'; // invisible change
+ // invisible change 2.2
+ import { Stack } from '@fluentui/react';
+ import PoidCard from '../PoidCard';
+ import { POID, TeamData } from '../../../app/functionality/types';
+ 
+ interface PoidSelectionStepProps {
+     poidData: POID[];
+     teamData?: TeamData[] | null;
+     filteredPoidData: POID[];
+     visiblePoidCount: number;
+     selectedPoidIds: string[];
++    preselectedPoidIds?: string[];
+     poidSearchTerm: string;
+     setPoidSearchTerm: (v: string) => void;
+     poidGridRef: React.RefObject<HTMLDivElement | null>;
+     handlePoidClick: (p: POID) => void;
+     onConfirm?: () => void;
+     pendingClientType: string;
+     setPendingClientType: (type: string) => void;
+     onClientTypeChange?: (newType: string, shouldLimitToSingle: boolean) => void;
  }
  
- export interface RiskAssessmentProps {
-     riskCore: RiskCore;
-     setRiskCore: React.Dispatch<React.SetStateAction<RiskCore>>;
-     consideredClientRisk: boolean | undefined;
-     setConsideredClientRisk: React.Dispatch<React.SetStateAction<boolean | undefined>>;
-     consideredTransactionRisk: boolean | undefined;
-     setConsideredTransactionRisk: React.Dispatch<React.SetStateAction<boolean | undefined>>;
-     transactionRiskLevel: string;
-     setTransactionRiskLevel: React.Dispatch<React.SetStateAction<string>>;
-     consideredFirmWideSanctions: boolean | undefined;
-     setConsideredFirmWideSanctions: React.Dispatch<React.SetStateAction<boolean | undefined>>;
-     consideredFirmWideAML: boolean | undefined;
-     setConsideredFirmWideAML: React.Dispatch<React.SetStateAction<boolean | undefined>>;
-     onContinue: () => void;
-     isComplete: () => boolean;
-     onHeaderButtonsChange?: (buttons: { clearAllButton: React.ReactNode | null; jsonButton: React.ReactNode }) => void;
--    onPageChange?: (currentPage: number) => void;
+ // Animated transition for POID selection area
+ interface PoidSelectionTransitionProps {
+     show: boolean;
+     children: React.ReactNode;
  }
  
- const clientTypeOptions = [
-     { key: 1, text: 'Individual or Company registered in England and Wales with Companies House' },
-     { key: 2, text: 'Group Company or Subsidiary, Trust' },
-     { key: 3, text: 'Non UK Company' },
- ];
- 
- const destinationOfFundsOptions = [
-     { key: 1, text: 'Client within UK' },
-     { key: 2, text: 'Client in EU/3rd party in UK' },
-     { key: 3, text: 'Outwith UK or Client outwith EU' },
- ];
- 
- const fundsTypeOptions = [
-     { key: 1, text: 'Personal Cheque, BACS' },
-     { key: 2, text: 'Cash payment if less than £1,000' },
-     { key: 3, text: 'Cash payment above £1,000' },
- ];
- 
- const introducedOptions = [
-     { key: 1, text: 'Existing client introduction, personal introduction' },
-     { key: 2, text: 'Internet Enquiry' },
-     { key: 3, text: 'Other' },
- ];
-diff --git a/src/components/RiskAssessment.tsx b/src/components/RiskAssessment.tsx
-index ad59f67c7881337cb1d07151737d4c5cbfb7ad6f..b3f99477bc967e2128dff953df0f92dcad2f12e0 100644
---- a/src/components/RiskAssessment.tsx
-+++ b/src/components/RiskAssessment.tsx
-@@ -244,103 +243,61 @@ const datePickerStyles: Partial<IDatePickerStyles> = {
-             '& .ms-TextField-field': {
-                 padding: '0 12px',
-                 height: '100%',
-             },
-         },
-     },
-     icon: { right: 8 },
+ const PoidSelectionTransition: React.FC<PoidSelectionTransitionProps> = ({ show, children }) => { /* invisible change */
+     const [visible, setVisible] = React.useState(show);
+     const [render, setRender] = React.useState(show);
+     React.useEffect(() => {
+         if (show) {
+             setRender(true);
+             const t = window.setTimeout(() => setVisible(true), 10);
+             return () => window.clearTimeout(t);
+         } else {
+diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
+--- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
++++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+@@ -42,59 +43,66 @@ const PoidSelectionTransition: React.FC<PoidSelectionTransitionProps> = ({ show,
+         }
+     }, [show]);
+     if (!render) return null;
+     return (
+         <div
+             className={"poid-selection-animated" + (visible ? " visible" : "")}
+             style={{
+                 maxHeight: visible ? 1200 : 0,
+                 opacity: visible ? 1 : 0,
+                 overflow: 'hidden',
+                 transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s cubic-bezier(.4,0,.2,1)',
+                 pointerEvents: visible ? 'auto' : 'none',
+             }}
+         >
+             {children}
+         </div>
+     );
  };
  
- const RiskAssessment: React.FC<RiskAssessmentProps> = ({
-     riskCore,
-     setRiskCore,
-     consideredClientRisk,
-     setConsideredClientRisk,
-     consideredTransactionRisk,
-     setConsideredTransactionRisk,
-     transactionRiskLevel,
-     setTransactionRiskLevel,
-     consideredFirmWideSanctions,
-     setConsideredFirmWideSanctions,
-     consideredFirmWideAML,
-     setConsideredFirmWideAML,
-     onContinue,
-     isComplete,
-     onHeaderButtonsChange,
--    onPageChange,
- }) => {
-     const initialRiskCore = useRef<RiskCore>(riskCore);
-     const initialClientRisk = useRef<boolean | undefined>(consideredClientRisk);
-     const initialTransactionRisk = useRef<boolean | undefined>(consideredTransactionRisk);
-     const initialTransactionLevel = useRef<string>(transactionRiskLevel);
-     const initialFirmWideSanctions = useRef<boolean | undefined>(consideredFirmWideSanctions);
-     const initialFirmWideAML = useRef<boolean | undefined>(consideredFirmWideAML);
+ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
+     poidData,
+     teamData,
+     filteredPoidData,
+     visiblePoidCount,
+     selectedPoidIds,
++    preselectedPoidIds = [],
+     poidSearchTerm,
+     setPoidSearchTerm,
+     poidGridRef,
+     handlePoidClick,
+     onConfirm,
+     pendingClientType,
+     setPendingClientType,
+     onClientTypeChange,
+-}) => (
++}) => {
++    const onlyShowPreselected = preselectedPoidIds && preselectedPoidIds.length > 0;
++    const displayPoidData = onlyShowPreselected
++        ? filteredPoidData.filter((p) => preselectedPoidIds.includes(p.poid_id))
++        : filteredPoidData;
++
++    return (
+     <Stack tokens={{ childrenGap: 16 }}>
+             {/* Client Type Question Section - Now First */}
+             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
+             <div style={{ padding: 0, background: 'transparent' }}>
+                 <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>What type of client is this matter for?</div>
+                 <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
+                     {[ 
+                         { type: 'Individual', icon: 'Contact' },
+                         { type: 'Company', icon: 'CityNext' },
+                         { type: 'Multiple Individuals', icon: 'People' },
+                         { type: 'Existing Client', icon: 'ContactHeart' }
+                     ].map(({ type, icon }) => {
+                         const isActive = pendingClientType === type;
+                         return (
+                             <button
+                                 key={type}
+                                 className={`client-details-contact-bigbtn client-type-icon-btn${isActive ? ' active' : ''}`}
+                                 type="button"
+                                 onClick={() => {
+                                     // Only trigger change if type is actually changing
+                                     if (pendingClientType !== type) {
+                                         const isSingleSelectionType = type !== 'Multiple Individuals';
+                                         setPendingClientType(type);
+                                         if (onClientTypeChange) {
+                                             onClientTypeChange(type, isSingleSelectionType);
+diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
+--- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
++++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
+@@ -215,108 +223,111 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
+         .poid-grid > div:nth-child(1) { animation-delay: 0ms; }
+         .poid-grid > div:nth-child(2) { animation-delay: 100ms; }
+         .poid-grid > div:nth-child(3) { animation-delay: 200ms; }
+         .poid-grid > div:nth-child(4) { animation-delay: 300ms; }
+         .poid-grid > div:nth-child(5) { animation-delay: 400ms; }
+         .poid-grid > div:nth-child(6) { animation-delay: 500ms; }
+     `}</style>
+                 {/* Removed preselected client type hints for a cleaner UI */}
+             </div>
+         </div>
  
--    const [currentPage, setCurrentPage] = useState(0); // 0: Core risk factors, 1: Client/Transaction assessments & AML
-     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
-     const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
- 
--    // Navigation functions
--    const handleNextPage = () => {
--        if (currentPage === 0) {
--            setCurrentPage(1);
--            window.scrollTo({ top: 0, behavior: 'smooth' });
--        }
--    };
--
--    const handlePreviousPage = () => {
--        if (currentPage === 1) {
--            setCurrentPage(0);
--            window.scrollTo({ top: 0, behavior: 'smooth' });
--        }
--    };
--
--    // Check if current page is complete
--    const isCurrentPageComplete = () => {
--        if (currentPage === 0) {
--            // Core risk factors page - all core questions must be answered
--            return (
--                riskCore.clientTypeValue > 0 &&
--                riskCore.destinationOfFundsValue > 0 &&
--                riskCore.fundsTypeValue > 0 &&
--                riskCore.clientIntroducedValue > 0 &&
--                riskCore.limitationValue > 0 &&
--                riskCore.sourceOfFundsValue > 0 &&
--                riskCore.valueOfInstructionValue > 0
--            );
--        } else {
--            // Client/Transaction assessments & AML page - all consideration questions must be answered
--            return (
--                consideredClientRisk !== undefined &&
--                consideredTransactionRisk !== undefined &&
--                (consideredTransactionRisk === false || transactionRiskLevel !== '') &&
--                consideredFirmWideSanctions !== undefined &&
--                consideredFirmWideAML !== undefined
--            );
--        }
--    };
--
-     const hasDataToClear = () => {
-         const coreChanged = Object.entries(riskCore).some(
-             ([k, v]) => (initialRiskCore.current as any)[k] !== v
-         );
-         return (
-             coreChanged ||
-             consideredClientRisk !== initialClientRisk.current ||
-             consideredTransactionRisk !== initialTransactionRisk.current ||
-             transactionRiskLevel !== initialTransactionLevel.current ||
-             consideredFirmWideSanctions !== initialFirmWideSanctions.current ||
-             consideredFirmWideAML !== initialFirmWideAML.current
-         );
-     };
- 
-     const doClearAll = () => {
-         setIsClearDialogOpen(false);
-         setRiskCore({
-             clientType: '',
-             clientTypeValue: 0,
-             destinationOfFunds: '',
-             destinationOfFundsValue: 0,
-             fundsType: '',
-             fundsTypeValue: 0,
-             clientIntroduced: '',
-             clientIntroducedValue: 0,
-diff --git a/src/components/RiskAssessment.tsx b/src/components/RiskAssessment.tsx
-index ad59f67c7881337cb1d07151737d4c5cbfb7ad6f..b3f99477bc967e2128dff953df0f92dcad2f12e0 100644
---- a/src/components/RiskAssessment.tsx
-+++ b/src/components/RiskAssessment.tsx
-@@ -462,273 +419,242 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
-                             fontSize: 12,
-                             fontWeight: 500,
-                             color: '#3690CE',
-                             cursor: 'pointer',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                             transition: 'background 0.2s ease, border-color 0.2s ease',
-                         }}
-                         onMouseEnter={(e) => {
-                             e.currentTarget.style.background = '#e7f1ff';
-                             e.currentTarget.style.borderColor = '#3690CE';
-                         }}
-                         onMouseLeave={(e) => {
-                             e.currentTarget.style.background = '#f8f9fa';
-                             e.currentTarget.style.borderColor = '#e1dfdd';
-                         }}
+         {/* Show POID selection only after client type is chosen */}
+         <PoidSelectionTransition show={!!pendingClientType}>
+             {pendingClientType && (
+                 <>
+                     <div className="question-banner">Select Client(s)</div>
+                     {/* POID Grid - Changed from 3 to 2 columns with auto-fit to fill available space */}
+                     <div 
+                         style={{ 
+                             width: '100%',
+                             display: 'grid',
+                             gridTemplateColumns: (() => {
+                                 const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
+                                 const hasSelection = selectedPoidIds.length > 0;
+                                 if (isSingleSelectionType && hasSelection) {
+-                                    return '1fr'; // Single column when selected
++                                    return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : '1fr';
+                                 }
+-                                return 'repeat(2, minmax(250px, 1fr))'; // Default 2 columns
++                                return 'repeat(2, minmax(250px, 1fr))';
+                             })(),
+                             gap: '24px',
+                             justifyContent: 'space-between',
+                             padding: '12px',
+                             overflow: 'visible',
+                             border: '1px solid #e3e8ef',
+                             borderRadius: '4px',
+                             background: '#fafafa',
+                             transition: 'grid-template-columns 0.4s ease-out, gap 0.4s ease-out'
+                         }} 
+                         className="poid-grid" 
+                         ref={poidGridRef as any}
                      >
-                         <i className="ms-Icon ms-Icon--Code" style={{ fontSize: 14 }} />
-                     </button>
-                 )
-             });
-         }
-     }, [hasDataToClear(), jsonPreviewOpen, onHeaderButtonsChange]);
+                         {/** invisible change 3: Fix POID grouping logic to use ClientType, not poid.type */}
+                         {/** invisible change 4: Only filter by instruction's client type, not POID fields */}
+                         {/* No filtering by company fields; show all POIDs for the selected client type */}
+-                        {filteredPoidData
++                        {displayPoidData
+                             .filter((poid) => {
+                                 const isCompany = !!(
+                                     poid.company_name ||
+                                     poid.company_number
+                                 );
+                                 if (pendingClientType === 'Individual') {
+                                     return !isCompany;
+                                 } else if (pendingClientType === 'Company') {
+                                     return isCompany;
+                                 }
+                                 return true;
+                             })
+                             .slice(0, visiblePoidCount)
+                             .map((poid) => {
+                             const isSelected = selectedPoidIds.includes(poid.poid_id);
+                             const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
+                             const hasSelection = selectedPoidIds.length > 0;
++                            const singlePreselected = onlyShowPreselected && displayPoidData.length === 1;
+                             const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
+                             return (
+                                 <div 
+                                     key={poid.poid_id} 
+                                     onClick={() => handlePoidClick(poid)} 
+                                     role="button" 
+                                     tabIndex={0}
+                                     style={{
+                                         opacity: shouldFadeOut ? 0.3 : 1,
+                                         transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
+                                         transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                                         animation: 'fadeInUp 0.4s ease-out',
+                                         pointerEvents: shouldFadeOut ? 'none' : 'auto',
+-                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
++                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none',
++                                        gridColumn: singlePreselected ? 'span 2' : undefined
+                                     }}
+                                 >
+                                     <PoidCard 
+                                         poid={poid} 
+                                         selected={isSelected} 
+                                         onClick={() => handlePoidClick(poid)} 
+                                         teamData={teamData}
+                                         companyName={(() => {
+                                             // Try to get company name from instruction/matter/client, not from POID
+                                             // If pendingClientType is 'Company', try to find the company name from the instruction
+                                             if (pendingClientType === 'Company') {
+                                                 // Try to find the instruction for this POID (by InstructionRef, MatterId, or ProspectId)
+                                                 // This assumes you have access to the instruction data in this component or via props
+                                                 // If not, you may need to thread it through from FlatMatterOpening
+                                                 if (poid.company_name) return poid.company_name;
+                                                 // fallback: blank
+                                                 return '';
+                                             }
+                                             return undefined;
+                                         })()}
+                                     />
+                                 </div>
+                             );
+                         })}
+                     </div>
+                 </>
+             )}
+         </PoidSelectionTransition>
+     </Stack>
+-);
++    );
++};
  
--    // Notify parent of page changes
--    React.useEffect(() => {
--        if (onPageChange) {
--            onPageChange(currentPage);
--        }
--    }, [currentPage, onPageChange]);
- 
-     return (
-         <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
- 
--            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: '100%' } }}>
--                {currentPage === 0 ? (
--                    // Page 1: Core risk factors
--                    <>
--                        <QuestionGroup
--                            label="Client Type"
--                            options={clientTypeOptions}
--                            selectedKey={riskCore.clientTypeValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    clientType: t,
--                                    clientTypeValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="Destination of Funds"
--                            options={destinationOfFundsOptions}
--                            selectedKey={riskCore.destinationOfFundsValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    destinationOfFunds: t,
--                                    destinationOfFundsValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="Funds Type"
--                            options={fundsTypeOptions}
--                            selectedKey={riskCore.fundsTypeValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    fundsType: t,
--                                    fundsTypeValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="How was Client Introduced?"
--                            options={introducedOptions}
--                            selectedKey={riskCore.clientIntroducedValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    clientIntroduced: t,
--                                    clientIntroducedValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="Limitation"
--                            options={limitationOptions}
--                            selectedKey={riskCore.limitationValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    limitation: t,
--                                    limitationValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="Source of Funds"
--                            options={sourceOfFundsOptions}
--                            selectedKey={riskCore.sourceOfFundsValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    sourceOfFunds: t,
--                                    sourceOfFundsValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                        <QuestionGroup
--                            label="Value of Instruction"
--                            options={valueOfInstructionOptions}
--                            selectedKey={riskCore.valueOfInstructionValue}
--                            onChange={(k, t) =>
--                                setRiskCore({
--                                    ...riskCore,
--                                    valueOfInstruction: t,
--                                    valueOfInstructionValue: Number(k) || 0,
--                                })
--                            }
--                        />
--                    </>
--                ) : (
--                    // Page 2: Client/Transaction assessments & AML
--                    <>
--                        <QuestionGroup
--                            label="I have considered client risk factors"
--                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
--                            selectedKey={
--                                consideredClientRisk === undefined
--                                    ? undefined
--                                    : consideredClientRisk
--                                    ? 'yes'
--                                    : 'no'
--                            }
--                            onChange={(k) => setConsideredClientRisk(k === 'yes')}
--                            showPrompt={true}
--                        />
--                        <QuestionGroup
--                            label="I have considered transaction risk factors"
--                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
--                            selectedKey={
--                                consideredTransactionRisk === undefined
--                                    ? undefined
--                                    : consideredTransactionRisk
--                                    ? 'yes'
--                                    : 'no'
--                            }
--                            onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
--                            showPrompt={true}
--                        />
--                        {consideredTransactionRisk && (
--                            <QuestionGroup
--                                label="Transaction Risk Level"
--                                options={[
--                                    { key: 'Low Risk', text: 'Low Risk' },
--                                    { key: 'Medium Risk', text: 'Medium Risk' },
--                                    { key: 'High Risk', text: 'High Risk' },
--                                ]}
--                                selectedKey={transactionRiskLevel}
--                                onChange={(k) => setTransactionRiskLevel(k as string)}
--                            />
--                        )}
--                        <QuestionGroup
--                            label="I have considered the Firm Wide Sanctions Risk Assessment"
--                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
--                            selectedKey={
--                                consideredFirmWideSanctions === undefined
--                                    ? undefined
--                                    : consideredFirmWideSanctions
--                                    ? 'yes'
--                                    : 'no'
--                            }
--                            onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
--                            showPrompt={true}
--                        />
-+            <Stack horizontal tokens={{ childrenGap: 32 }} styles={{ root: { width: '100%' } }}>
-+                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 3 } }}>
-+                    <QuestionGroup
-+                        label="Client Type"
-+                        options={clientTypeOptions}
-+                        selectedKey={riskCore.clientTypeValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                clientType: t,
-+                                clientTypeValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="Destination of Funds"
-+                        options={destinationOfFundsOptions}
-+                        selectedKey={riskCore.destinationOfFundsValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                destinationOfFunds: t,
-+                                destinationOfFundsValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="Funds Type"
-+                        options={fundsTypeOptions}
-+                        selectedKey={riskCore.fundsTypeValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                fundsType: t,
-+                                fundsTypeValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="How was Client Introduced?"
-+                        options={introducedOptions}
-+                        selectedKey={riskCore.clientIntroducedValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                clientIntroduced: t,
-+                                clientIntroducedValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="Limitation"
-+                        options={limitationOptions}
-+                        selectedKey={riskCore.limitationValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                limitation: t,
-+                                limitationValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="Source of Funds"
-+                        options={sourceOfFundsOptions}
-+                        selectedKey={riskCore.sourceOfFundsValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                sourceOfFunds: t,
-+                                sourceOfFundsValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                    <QuestionGroup
-+                        label="Value of Instruction"
-+                        options={valueOfInstructionOptions}
-+                        selectedKey={riskCore.valueOfInstructionValue}
-+                        onChange={(k, t) =>
-+                            setRiskCore({
-+                                ...riskCore,
-+                                valueOfInstruction: t,
-+                                valueOfInstructionValue: Number(k) || 0,
-+                            })
-+                        }
-+                    />
-+                </Stack>
-+
-+                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 2 } }}>
-+                    <QuestionGroup
-+                        label="I have considered client risk factors"
-+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-+                        selectedKey={
-+                            consideredClientRisk === undefined
-+                                ? undefined
-+                                : consideredClientRisk
-+                                ? 'yes'
-+                                : 'no'
-+                        }
-+                        onChange={(k) => setConsideredClientRisk(k === 'yes')}
-+                        showPrompt={true}
-+                    />
-+                    <QuestionGroup
-+                        label="I have considered transaction risk factors"
-+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-+                        selectedKey={
-+                            consideredTransactionRisk === undefined
-+                                ? undefined
-+                                : consideredTransactionRisk
-+                                ? 'yes'
-+                                : 'no'
-+                        }
-+                        onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
-+                        showPrompt={true}
-+                    />
-+                    {consideredTransactionRisk && (
-                         <QuestionGroup
--                            label="I have considered the Firm Wide AML policy"
--                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
--                            selectedKey={
--                                consideredFirmWideAML === undefined
--                                    ? undefined
--                                    : consideredFirmWideAML
--                                    ? 'yes'
--                                    : 'no'
--                            }
--                            onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
--                            showPrompt={true}
-+                            label="Transaction Risk Level"
-+                            options={[
-+                                { key: 'Low Risk', text: 'Low Risk' },
-+                                { key: 'Medium Risk', text: 'Medium Risk' },
-+                                { key: 'High Risk', text: 'High Risk' },
-+                            ]}
-+                            selectedKey={transactionRiskLevel}
-+                            onChange={(k) => setTransactionRiskLevel(k as string)}
-                         />
--                        
--                        <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
--                            <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
--                            <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
--                        </Stack>
--                    </>
--                )}
-+                    )}
-+                    <QuestionGroup
-+                        label="I have considered the Firm Wide Sanctions Risk Assessment"
-+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-+                        selectedKey={
-+                            consideredFirmWideSanctions === undefined
-+                                ? undefined
-+                                : consideredFirmWideSanctions
-+                                ? 'yes'
-+                                : 'no'
-+                        }
-+                        onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
-+                        showPrompt={true}
-+                    />
-+                    <QuestionGroup
-+                        label="I have considered the Firm Wide AML policy"
-+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-+                        selectedKey={
-+                            consideredFirmWideAML === undefined
-+                                ? undefined
-+                                : consideredFirmWideAML
-+                                ? 'yes'
-+                                : 'no'
-+                        }
-+                        onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
-+                        showPrompt={true}
-+                    />
-+
-+                    <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
-+                        <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
-+                        <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
-+                    </Stack>
-+                </Stack>
-             </Stack>
--            
--            {/* Navigation and action buttons */}
-+
-             <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign="center">
--                {/* Previous page button */}
--                {currentPage === 1 && (
--                    <DefaultButton
--                        text="Previous"
--                        onClick={handlePreviousPage}
--                        styles={sharedDefaultButtonStyles}
--                    />
--                )}
--                
--                {/* Clear All Dialog */}
-                 {hasDataToClear() && (
-                     <Dialog
-                         hidden={!isClearDialogOpen}
-                         onDismiss={() => setIsClearDialogOpen(false)}
-                         dialogContentProps={{
-                             type: DialogType.normal,
-                             title: 'Clear All Data',
-                             subText: 'Are you sure you want to clear all form data? This action cannot be undone.',
-                         }}
-                         modalProps={{ isBlocking: true }}
-                     >
-                         <DialogFooter>
-                             <PrimaryButton onClick={doClearAll} text="Yes, clear all" />
-                             <DefaultButton onClick={() => setIsClearDialogOpen(false)} text="Cancel" />
-                         </DialogFooter>
-                     </Dialog>
-                 )}
--                
--                {/* Next page button or Continue button */}
--                {currentPage === 0 ? (
--                    <PrimaryButton
--                        text="Next"
--                        onClick={handleNextPage}
--                        disabled={!isCurrentPageComplete()}
--                        styles={sharedPrimaryButtonStyles}
--                    />
--                ) : (
--                    <PrimaryButton
--                        text="Continue"
--                        onClick={onContinue}
--                        disabled={!isComplete()}
--                        styles={sharedPrimaryButtonStyles}
--                    />
--                )}
-+
-+                <PrimaryButton
-+                    text="Continue"
-+                    onClick={onContinue}
-+                    disabled={!isComplete()}
-+                    styles={sharedPrimaryButtonStyles}
-+                />
-             </Stack>
--            
-+
-             {jsonPreviewOpen && (
-                 <div
-                     style={{
-                         marginTop: 12,
-                         border: '1px solid #e1dfdd',
-                         borderRadius: 6,
-                         background: '#f8f9fa',
-                         overflow: 'hidden',
-                         width: '100%',
-                         maxWidth: 620,
-                     }}
-                 >
-                     <div
-                         style={{
-                             padding: 16,
-                             maxHeight: 300,
-                             overflow: 'auto',
-                             fontSize: 10,
-                             fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                             lineHeight: 1.4,
-                             background: '#fff',
-                         }}
-                     >
-                         <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                             {JSON.stringify(generateJson(), null, 2)}
+ export default PoidSelectionStep;

@@ -11,6 +11,7 @@ interface PoidSelectionStepProps {
     filteredPoidData: POID[];
     visiblePoidCount: number;
     selectedPoidIds: string[];
+    preselectedPoidIds?: string[];
     poidSearchTerm: string;
     setPoidSearchTerm: (v: string) => void;
     poidGridRef: React.RefObject<HTMLDivElement | null>;
@@ -64,6 +65,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     filteredPoidData,
     visiblePoidCount,
     selectedPoidIds,
+    preselectedPoidIds = [],
     poidSearchTerm,
     setPoidSearchTerm,
     poidGridRef,
@@ -72,8 +74,14 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     pendingClientType,
     setPendingClientType,
     onClientTypeChange,
-}) => (
-    <Stack tokens={{ childrenGap: 16 }}>
+}) => {
+    const onlyShowPreselected = preselectedPoidIds && preselectedPoidIds.length > 0;
+    const displayPoidData = onlyShowPreselected
+        ? filteredPoidData.filter((p) => preselectedPoidIds.includes(p.poid_id))
+        : filteredPoidData;
+
+    return (
+        <Stack tokens={{ childrenGap: 16 }}>
             {/* Client Type Question Section - Now First */}
             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
             <div style={{ padding: 0, background: 'transparent' }}>
@@ -237,9 +245,9 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
                                 const hasSelection = selectedPoidIds.length > 0;
                                 if (isSingleSelectionType && hasSelection) {
-                                    return '1fr'; // Single column when selected
+                                    return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : '1fr';
                                 }
-                                return 'repeat(2, minmax(250px, 1fr))'; // Default 2 columns
+                                return 'repeat(2, minmax(250px, 1fr))';
                             })(),
                             gap: '24px',
                             justifyContent: 'space-between',
@@ -256,7 +264,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                         {/** invisible change 3: Fix POID grouping logic to use ClientType, not poid.type */}
                         {/** invisible change 4: Only filter by instruction's client type, not POID fields */}
                         {/* No filtering by company fields; show all POIDs for the selected client type */}
-                        {filteredPoidData
+                            {displayPoidData
                             .filter((poid) => {
                                 const isCompany = !!(
                                     poid.company_name ||
@@ -274,6 +282,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                             const isSelected = selectedPoidIds.includes(poid.poid_id);
                             const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
                             const hasSelection = selectedPoidIds.length > 0;
+                                const singlePreselected = onlyShowPreselected && displayPoidData.length === 1;
                             const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
                             return (
                                 <div 
@@ -287,7 +296,8 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                         transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
                                         animation: 'fadeInUp 0.4s ease-out',
                                         pointerEvents: shouldFadeOut ? 'none' : 'auto',
-                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
+                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none',
+                                        gridColumn: singlePreselected ? 'span 2' : undefined
                                     }}
                                 >
                                     <PoidCard 
@@ -317,6 +327,7 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             )}
         </PoidSelectionTransition>
     </Stack>
-);
+    );
+};
 
 export default PoidSelectionStep;

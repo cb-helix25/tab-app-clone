@@ -184,7 +184,6 @@ export interface RiskAssessmentProps {
     onContinue: () => void;
     isComplete: () => boolean;
     onHeaderButtonsChange?: (buttons: { clearAllButton: React.ReactNode | null; jsonButton: React.ReactNode }) => void;
-    onPageChange?: (currentPage: number) => void;
 }
 
 const clientTypeOptions = [
@@ -266,7 +265,6 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     onContinue,
     isComplete,
     onHeaderButtonsChange,
-    onPageChange,
 }) => {
     const initialRiskCore = useRef<RiskCore>(riskCore);
     const initialClientRisk = useRef<boolean | undefined>(consideredClientRisk);
@@ -275,49 +273,8 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     const initialFirmWideSanctions = useRef<boolean | undefined>(consideredFirmWideSanctions);
     const initialFirmWideAML = useRef<boolean | undefined>(consideredFirmWideAML);
 
-    const [currentPage, setCurrentPage] = useState(0); // 0: Core risk factors, 1: Client/Transaction assessments & AML
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
     const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
-
-    // Navigation functions
-    const handleNextPage = () => {
-        if (currentPage === 0) {
-            setCurrentPage(1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
-    const handlePreviousPage = () => {
-        if (currentPage === 1) {
-            setCurrentPage(0);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
-    // Check if current page is complete
-    const isCurrentPageComplete = () => {
-        if (currentPage === 0) {
-            // Core risk factors page - all core questions must be answered
-            return (
-                riskCore.clientTypeValue > 0 &&
-                riskCore.destinationOfFundsValue > 0 &&
-                riskCore.fundsTypeValue > 0 &&
-                riskCore.clientIntroducedValue > 0 &&
-                riskCore.limitationValue > 0 &&
-                riskCore.sourceOfFundsValue > 0 &&
-                riskCore.valueOfInstructionValue > 0
-            );
-        } else {
-            // Client/Transaction assessments & AML page - all consideration questions must be answered
-            return (
-                consideredClientRisk !== undefined &&
-                consideredTransactionRisk !== undefined &&
-                (consideredTransactionRisk === false || transactionRiskLevel !== '') &&
-                consideredFirmWideSanctions !== undefined &&
-                consideredFirmWideAML !== undefined
-            );
-        }
-    };
 
     const hasDataToClear = () => {
         const coreChanged = Object.entries(riskCore).some(
@@ -484,193 +441,172 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
         }
     }, [hasDataToClear(), jsonPreviewOpen, onHeaderButtonsChange]);
 
-    // Notify parent of page changes
-    React.useEffect(() => {
-        if (onPageChange) {
-            onPageChange(currentPage);
-        }
-    }, [currentPage, onPageChange]);
 
     return (
         <Stack tokens={{ childrenGap: 24 }} horizontalAlign="center">
 
-            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { width: '100%' } }}>
-                {currentPage === 0 ? (
-                    // Page 1: Core risk factors
-                    <>
-                        <QuestionGroup
-                            label="Client Type"
-                            options={clientTypeOptions}
-                            selectedKey={riskCore.clientTypeValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    clientType: t,
-                                    clientTypeValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="Destination of Funds"
-                            options={destinationOfFundsOptions}
-                            selectedKey={riskCore.destinationOfFundsValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    destinationOfFunds: t,
-                                    destinationOfFundsValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="Funds Type"
-                            options={fundsTypeOptions}
-                            selectedKey={riskCore.fundsTypeValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    fundsType: t,
-                                    fundsTypeValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="How was Client Introduced?"
-                            options={introducedOptions}
-                            selectedKey={riskCore.clientIntroducedValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    clientIntroduced: t,
-                                    clientIntroducedValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="Limitation"
-                            options={limitationOptions}
-                            selectedKey={riskCore.limitationValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    limitation: t,
-                                    limitationValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="Source of Funds"
-                            options={sourceOfFundsOptions}
-                            selectedKey={riskCore.sourceOfFundsValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    sourceOfFunds: t,
-                                    sourceOfFundsValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                        <QuestionGroup
-                            label="Value of Instruction"
-                            options={valueOfInstructionOptions}
-                            selectedKey={riskCore.valueOfInstructionValue}
-                            onChange={(k, t) =>
-                                setRiskCore({
-                                    ...riskCore,
-                                    valueOfInstruction: t,
-                                    valueOfInstructionValue: Number(k) || 0,
-                                })
-                            }
-                        />
-                    </>
-                ) : (
-                    // Page 2: Client/Transaction assessments & AML
-                    <>
-                        <QuestionGroup
-                            label="I have considered client risk factors"
-                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                            selectedKey={
-                                consideredClientRisk === undefined
-                                    ? undefined
-                                    : consideredClientRisk
-                                    ? 'yes'
-                                    : 'no'
-                            }
-                            onChange={(k) => setConsideredClientRisk(k === 'yes')}
-                            showPrompt={true}
-                        />
-                        <QuestionGroup
-                            label="I have considered transaction risk factors"
-                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                            selectedKey={
-                                consideredTransactionRisk === undefined
-                                    ? undefined
-                                    : consideredTransactionRisk
-                                    ? 'yes'
-                                    : 'no'
-                            }
-                            onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
-                            showPrompt={true}
-                        />
-                        {consideredTransactionRisk && (
-                            <QuestionGroup
-                                label="Transaction Risk Level"
-                                options={[
-                                    { key: 'Low Risk', text: 'Low Risk' },
-                                    { key: 'Medium Risk', text: 'Medium Risk' },
-                                    { key: 'High Risk', text: 'High Risk' },
-                                ]}
-                                selectedKey={transactionRiskLevel}
-                                onChange={(k) => setTransactionRiskLevel(k as string)}
-                            />
-                        )}
-                        <QuestionGroup
-                            label="I have considered the Firm Wide Sanctions Risk Assessment"
-                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                            selectedKey={
-                                consideredFirmWideSanctions === undefined
-                                    ? undefined
-                                    : consideredFirmWideSanctions
-                                    ? 'yes'
-                                    : 'no'
-                            }
-                            onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
-                            showPrompt={true}
-                        />
-                        <QuestionGroup
-                            label="I have considered the Firm Wide AML policy"
-                            options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
-                            selectedKey={
-                                consideredFirmWideAML === undefined
-                                    ? undefined
-                                    : consideredFirmWideAML
-                                    ? 'yes'
-                                    : 'no'
-                            }
-                            onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
-                            showPrompt={true}
-                        />
-                        
-                        <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
-                            <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
-                            <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
-                        </Stack>
-                    </>
-                )}
-            </Stack>
-            
-            {/* Navigation and action buttons */}
-            <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign="center">
-                {/* Previous page button */}
-                {currentPage === 1 && (
-                    <DefaultButton
-                        text="Previous"
-                        onClick={handlePreviousPage}
-                        styles={sharedDefaultButtonStyles}
+            <Stack horizontal tokens={{ childrenGap: 32 }} styles={{ root: { width: '100%' } }}>
+                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 3 } }}>
+                    <QuestionGroup
+                        label="Client Type"
+                        options={clientTypeOptions}
+                        selectedKey={riskCore.clientTypeValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                clientType: t,
+                                clientTypeValue: Number(k) || 0,
+                            })
+                        }
                     />
-                )}
-                
-                {/* Clear All Dialog */}
+                    <QuestionGroup
+                        label="Destination of Funds"
+                        options={destinationOfFundsOptions}
+                        selectedKey={riskCore.destinationOfFundsValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                destinationOfFunds: t,
+                                destinationOfFundsValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                    <QuestionGroup
+                        label="Funds Type"
+                        options={fundsTypeOptions}
+                        selectedKey={riskCore.fundsTypeValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                fundsType: t,
+                                fundsTypeValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                    <QuestionGroup
+                        label="How was Client Introduced?"
+                        options={introducedOptions}
+                        selectedKey={riskCore.clientIntroducedValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                clientIntroduced: t,
+                                clientIntroducedValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                    <QuestionGroup
+                        label="Limitation"
+                        options={limitationOptions}
+                        selectedKey={riskCore.limitationValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                limitation: t,
+                                limitationValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                    <QuestionGroup
+                        label="Source of Funds"
+                        options={sourceOfFundsOptions}
+                        selectedKey={riskCore.sourceOfFundsValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                sourceOfFunds: t,
+                                sourceOfFundsValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                    <QuestionGroup
+                        label="Value of Instruction"
+                        options={valueOfInstructionOptions}
+                        selectedKey={riskCore.valueOfInstructionValue}
+                        onChange={(k, t) =>
+                            setRiskCore({
+                                ...riskCore,
+                                valueOfInstruction: t,
+                                valueOfInstructionValue: Number(k) || 0,
+                            })
+                        }
+                    />
+                </Stack>
+
+                <Stack tokens={{ childrenGap: 20 }} styles={{ root: { flex: 2 } }}>
+                    <QuestionGroup
+                        label="I have considered client risk factors"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredClientRisk === undefined
+                                ? undefined
+                                : consideredClientRisk
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredClientRisk(k === 'yes')}
+                        showPrompt={true}
+                    />
+                    <QuestionGroup
+                        label="I have considered transaction risk factors"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredTransactionRisk === undefined
+                                ? undefined
+                                : consideredTransactionRisk
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredTransactionRisk(k === 'yes')}
+                        showPrompt={true}
+                    />
+                    {consideredTransactionRisk && (
+                        <QuestionGroup
+                            label="Transaction Risk Level"
+                            options={[
+                                { key: 'Low Risk', text: 'Low Risk' },
+                                { key: 'Medium Risk', text: 'Medium Risk' },
+                                { key: 'High Risk', text: 'High Risk' },
+                            ]}
+                            selectedKey={transactionRiskLevel}
+                            onChange={(k) => setTransactionRiskLevel(k as string)}
+                        />
+                    )}
+                    <QuestionGroup
+                        label="I have considered the Firm Wide Sanctions Risk Assessment"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredFirmWideSanctions === undefined
+                                ? undefined
+                                : consideredFirmWideSanctions
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredFirmWideSanctions(k === 'yes')}
+                        showPrompt={true}
+                    />
+                    <QuestionGroup
+                        label="I have considered the Firm Wide AML policy"
+                        options={[{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }]}
+                        selectedKey={
+                            consideredFirmWideAML === undefined
+                                ? undefined
+                                : consideredFirmWideAML
+                                ? 'yes'
+                                : 'no'
+                        }
+                        onChange={(k) => setConsideredFirmWideAML(k === 'yes')}
+                        showPrompt={true}
+                    />
+
+                    <Stack tokens={{ childrenGap: 4 }} horizontalAlign="center">
+                        <span style={{ fontWeight: 600 }}>Score: {riskScore}</span>
+                        <span style={{ fontWeight: 600 }}>Risk Result: {riskResult}</span>
+                    </Stack>
+                </Stack>
+            </Stack>
+
+            <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign="center">
                 {hasDataToClear() && (
                     <Dialog
                         hidden={!isClearDialogOpen}
@@ -688,25 +624,15 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                         </DialogFooter>
                     </Dialog>
                 )}
-                
-                {/* Next page button or Continue button */}
-                {currentPage === 0 ? (
-                    <PrimaryButton
-                        text="Next"
-                        onClick={handleNextPage}
-                        disabled={!isCurrentPageComplete()}
-                        styles={sharedPrimaryButtonStyles}
-                    />
-                ) : (
-                    <PrimaryButton
-                        text="Continue"
-                        onClick={onContinue}
-                        disabled={!isComplete()}
-                        styles={sharedPrimaryButtonStyles}
-                    />
-                )}
+
+                <PrimaryButton
+                    text="Continue"
+                    onClick={onContinue}
+                    disabled={!isComplete()}
+                    styles={sharedPrimaryButtonStyles}
+                />
             </Stack>
-            
+
             {jsonPreviewOpen && (
                 <div
                     style={{
