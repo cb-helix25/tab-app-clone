@@ -1,237 +1,209 @@
-diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
---- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-@@ -1,38 +1,39 @@
- //
- import React from 'react'; // invisible change
- // invisible change 2.2
- import { Stack } from '@fluentui/react';
- import PoidCard from '../PoidCard';
- import { POID, TeamData } from '../../../app/functionality/types';
+diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
+index 7afc8d05348f46dc8fc90e5cd3055b726767f792..ad43e2fee3a04be221b2fba5700b62539860de14 100644
+--- a/src/tabs/instructions/NewMatters.tsx
++++ b/src/tabs/instructions/NewMatters.tsx
+@@ -217,60 +217,70 @@ const NewMatters: React.FC<NewMattersProps> = ({
+         setPendingClientType(initialClientType);
+     }, [initialClientType]);
+     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
+     const [areaOfWork, setAreaOfWork] = useState('');
+     const [practiceArea, setPracticeArea] = useState('');
  
- interface PoidSelectionStepProps {
-     poidData: POID[];
-     teamData?: TeamData[] | null;
-     filteredPoidData: POID[];
-     visiblePoidCount: number;
-     selectedPoidIds: string[];
-+    preselectedPoidIds?: string[];
-     poidSearchTerm: string;
-     setPoidSearchTerm: (v: string) => void;
-     poidGridRef: React.RefObject<HTMLDivElement | null>;
-     handlePoidClick: (p: POID) => void;
-     onConfirm?: () => void;
-     pendingClientType: string;
-     setPendingClientType: (type: string) => void;
-     onClientTypeChange?: (newType: string, shouldLimitToSingle: boolean) => void;
- }
+     const [description, setDescription] = useState('');
+     const [folderStructure, setFolderStructure] = useState('');
+     const [disputeValue, setDisputeValue] = useState('');
+     // Preselect "Search" as the default value for the source field
+     const [source, setSource] = useState('search');
+     const [referrerName, setReferrerName] = useState('');
  
- // Animated transition for POID selection area
- interface PoidSelectionTransitionProps {
-     show: boolean;
-     children: React.ReactNode;
- }
+     const [opponentName, setOpponentName] = useState('');
+     const [opponentEmail, setOpponentEmail] = useState('');
+     const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
+     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
+     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
+     const [noConflict, setNoConflict] = useState(false);
  
- const PoidSelectionTransition: React.FC<PoidSelectionTransitionProps> = ({ show, children }) => { /* invisible change */
-     const [visible, setVisible] = React.useState(show);
-     const [render, setRender] = React.useState(show);
-     React.useEffect(() => {
-         if (show) {
-             setRender(true);
-             const t = window.setTimeout(() => setVisible(true), 10);
-             return () => window.clearTimeout(t);
-         } else {
-diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
---- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-@@ -42,59 +43,66 @@ const PoidSelectionTransition: React.FC<PoidSelectionTransitionProps> = ({ show,
+     // Opponent fields
+     const [opponentTitle, setOpponentTitle] = useState('');
+     const [opponentFirst, setOpponentFirst] = useState('');
+     const [opponentLast, setOpponentLast] = useState('');
+     const [opponentPhone, setOpponentPhone] = useState('');
+-    const [opponentAddress, setOpponentAddress] = useState('');
++    const [opponentHouseNumber, setOpponentHouseNumber] = useState('');
++    const [opponentStreet, setOpponentStreet] = useState('');
++    const [opponentCity, setOpponentCity] = useState('');
++    const [opponentCounty, setOpponentCounty] = useState('');
++    const [opponentPostcode, setOpponentPostcode] = useState('');
++    const [opponentCountry, setOpponentCountry] = useState('');
+     const [opponentHasCompany, setOpponentHasCompany] = useState(false);
+     const [opponentCompanyName, setOpponentCompanyName] = useState('');
+     const [opponentCompanyNumber, setOpponentCompanyNumber] = useState('');
+     // Solicitor fields
+     const [solicitorTitle, setSolicitorTitle] = useState('');
+     const [solicitorFirst, setSolicitorFirst] = useState('');
+     const [solicitorLast, setSolicitorLast] = useState('');
+     const [solicitorPhone, setSolicitorPhone] = useState('');
+-    const [solicitorAddress, setSolicitorAddress] = useState('');
++    const [solicitorHouseNumber, setSolicitorHouseNumber] = useState('');
++    const [solicitorStreet, setSolicitorStreet] = useState('');
++    const [solicitorCity, setSolicitorCity] = useState('');
++    const [solicitorCounty, setSolicitorCounty] = useState('');
++    const [solicitorPostcode, setSolicitorPostcode] = useState('');
++    const [solicitorCountry, setSolicitorCountry] = useState('');
+     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useState('');
+ 
+     const [visiblePoidCount, setVisiblePoidCount] = useState(12);
+     const [poidSearchTerm, setPoidSearchTerm] = useState('');
+     const poidGridRef = useRef<HTMLDivElement | null>(null);
+     const [activePoid, setActivePoid] = useState<POID | null>(null);
+ 
+     const stepsOrder: StepKey[] = useMemo(() => {
+         const order: StepKey[] = ['clientInfo'];
+         if (!instructionRef) {
+             order.push('poidSelection');
          }
-     }, [show]);
-     if (!render) return null;
+         order.push(
+             'areaOfWork',
+             'practiceArea',
+             'description',
+             'disputeValue',
+             'source',
+             'folderStructure',
+             'opponentDetails',
+             'review'
+         );
+         return order;
+     }, [instructionRef]);
+ 
+diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
+index 7afc8d05348f46dc8fc90e5cd3055b726767f792..ad43e2fee3a04be221b2fba5700b62539860de14 100644
+--- a/src/tabs/instructions/NewMatters.tsx
++++ b/src/tabs/instructions/NewMatters.tsx
+@@ -538,93 +548,123 @@ const NewMatters: React.FC<NewMattersProps> = ({
+             case 'opponentDetails':
+                 return (
+                     <OpponentDetailsStep
+                         opponentName={opponentName}
+                         setOpponentName={setOpponentName}
+                         opponentEmail={opponentEmail}
+                         setOpponentEmail={setOpponentEmail}
+                         opponentSolicitorName={opponentSolicitorName}
+                         setOpponentSolicitorName={setOpponentSolicitorName}
+                         opponentSolicitorCompany={opponentSolicitorCompany}
+                         setOpponentSolicitorCompany={setOpponentSolicitorCompany}
+                         opponentSolicitorEmail={opponentSolicitorEmail}
+                         setOpponentSolicitorEmail={setOpponentSolicitorEmail}
+                         noConflict={noConflict}
+                         setNoConflict={setNoConflict}
+                         disputeValue={disputeValue}
+                         setDisputeValue={setDisputeValue}
+                         opponentTitle={opponentTitle}
+                         setOpponentTitle={setOpponentTitle}
+                         opponentFirst={opponentFirst}
+                         setOpponentFirst={setOpponentFirst}
+                         opponentLast={opponentLast}
+                         setOpponentLast={setOpponentLast}
+                         opponentPhone={opponentPhone}
+                         setOpponentPhone={setOpponentPhone}
+-                        opponentAddress={opponentAddress}
+-                        setOpponentAddress={setOpponentAddress}
++                        opponentHouseNumber={opponentHouseNumber}
++                        setOpponentHouseNumber={setOpponentHouseNumber}
++                        opponentStreet={opponentStreet}
++                        setOpponentStreet={setOpponentStreet}
++                        opponentCity={opponentCity}
++                        setOpponentCity={setOpponentCity}
++                        opponentCounty={opponentCounty}
++                        setOpponentCounty={setOpponentCounty}
++                        opponentPostcode={opponentPostcode}
++                        setOpponentPostcode={setOpponentPostcode}
++                        opponentCountry={opponentCountry}
++                        setOpponentCountry={setOpponentCountry}
+                         opponentHasCompany={opponentHasCompany}
+                         setOpponentHasCompany={setOpponentHasCompany}
+                         opponentCompanyName={opponentCompanyName}
+                         setOpponentCompanyName={setOpponentCompanyName}
+                         opponentCompanyNumber={opponentCompanyNumber}
+                         setOpponentCompanyNumber={setOpponentCompanyNumber}
+                         solicitorTitle={solicitorTitle}
+                         setSolicitorTitle={setSolicitorTitle}
+                         solicitorFirst={solicitorFirst}
+                         setSolicitorFirst={setSolicitorFirst}
+                         solicitorLast={solicitorLast}
+                         setSolicitorLast={setSolicitorLast}
+                         solicitorPhone={solicitorPhone}
+                         setSolicitorPhone={setSolicitorPhone}
+-                        solicitorAddress={solicitorAddress}
+-                        setSolicitorAddress={setSolicitorAddress}
++                        solicitorHouseNumber={solicitorHouseNumber}
++                        setSolicitorHouseNumber={setSolicitorHouseNumber}
++                        solicitorStreet={solicitorStreet}
++                        setSolicitorStreet={setSolicitorStreet}
++                        solicitorCity={solicitorCity}
++                        setSolicitorCity={setSolicitorCity}
++                        solicitorCounty={solicitorCounty}
++                        setSolicitorCounty={setSolicitorCounty}
++                        solicitorPostcode={solicitorPostcode}
++                        setSolicitorPostcode={setSolicitorPostcode}
++                        solicitorCountry={solicitorCountry}
++                        setSolicitorCountry={setSolicitorCountry}
+                         solicitorCompanyNumber={solicitorCompanyNumber}
+                         setSolicitorCompanyNumber={setSolicitorCompanyNumber}
+                     />
+                 );
+             case 'review':
+                 return (
+                     <ReviewStep
+                         selectedDate={selectedDate}
+                         supervisingPartner={supervisingPartner}
+                         originatingSolicitor={originatingSolicitor}
+                         // fundsReceived removed
+                         clientType={clientType}
+                         selectedPoidIds={selectedPoidIds}
+                         areaOfWork={areaOfWork}
+                         practiceArea={practiceArea}
+                         description={description}
+                         folderStructure={folderStructure}
+                         disputeValue={disputeValue}
+                         source={source}
+                         referrerName={referrerName}
+                         opponentName={opponentName}
+                         opponentEmail={opponentEmail}
+                         opponentSolicitorName={opponentSolicitorName}
+                         opponentSolicitorCompany={opponentSolicitorCompany}
+                         opponentSolicitorEmail={opponentSolicitorEmail}
++                        opponentStreet={opponentStreet}
++                        opponentCity={opponentCity}
++                        opponentCounty={opponentCounty}
++                        opponentPostcode={opponentPostcode}
++                        opponentCountry={opponentCountry}
++                        solicitorStreet={solicitorStreet}
++                        solicitorCity={solicitorCity}
++                        solicitorCounty={solicitorCounty}
++                        solicitorPostcode={solicitorPostcode}
++                        solicitorCountry={solicitorCountry}
+                         noConflict={noConflict}
+                         userInitials={userInitials}
+                         userData={userData}
+                         onBuild={() => { }}
+                     />
+                 );
+             default:
+                 return null;
+         }
+     };
+ 
      return (
-         <div
-             className={"poid-selection-animated" + (visible ? " visible" : "")}
-             style={{
-                 maxHeight: visible ? 1200 : 0,
-                 opacity: visible ? 1 : 0,
-                 overflow: 'hidden',
-                 transition: 'max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s cubic-bezier(.4,0,.2,1)',
-                 pointerEvents: visible ? 'auto' : 'none',
-             }}
-         >
-             {children}
-         </div>
-     );
- };
- 
- const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
-     poidData,
-     teamData,
-     filteredPoidData,
-     visiblePoidCount,
-     selectedPoidIds,
-+    preselectedPoidIds = [],
-     poidSearchTerm,
-     setPoidSearchTerm,
-     poidGridRef,
-     handlePoidClick,
-     onConfirm,
-     pendingClientType,
-     setPendingClientType,
-     onClientTypeChange,
--}) => (
-+}) => {
-+    const onlyShowPreselected = preselectedPoidIds && preselectedPoidIds.length > 0;
-+    const displayPoidData = onlyShowPreselected
-+        ? filteredPoidData.filter((p) => preselectedPoidIds.includes(p.poid_id))
-+        : filteredPoidData;
-+
-+    return (
-     <Stack tokens={{ childrenGap: 16 }}>
-             {/* Client Type Question Section - Now First */}
-             <div className="client-type-selection" style={{ width: '100%', margin: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' }}>
-             <div style={{ padding: 0, background: 'transparent' }}>
-                 <div className="question-banner" style={{ width: '100%', boxSizing: 'border-box' }}>What type of client is this matter for?</div>
-                 <div className="client-details-contact-bigrow" style={{ marginBottom: 8, display: 'flex', gap: 8 }}>
-                     {[ 
-                         { type: 'Individual', icon: 'Contact' },
-                         { type: 'Company', icon: 'CityNext' },
-                         { type: 'Multiple Individuals', icon: 'People' },
-                         { type: 'Existing Client', icon: 'ContactHeart' }
-                     ].map(({ type, icon }) => {
-                         const isActive = pendingClientType === type;
-                         return (
-                             <button
-                                 key={type}
-                                 className={`client-details-contact-bigbtn client-type-icon-btn${isActive ? ' active' : ''}`}
-                                 type="button"
-                                 onClick={() => {
-                                     // Only trigger change if type is actually changing
-                                     if (pendingClientType !== type) {
-                                         const isSingleSelectionType = type !== 'Multiple Individuals';
-                                         setPendingClientType(type);
-                                         if (onClientTypeChange) {
-                                             onClientTypeChange(type, isSingleSelectionType);
-diff --git a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-index 5aca784733f832bb00a1b0f4c766cf73b9d47e14..2f256e5a9bcd37c582063f24c461a9720f467d06 100644
---- a/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/PoidSelectionStep.tsx
-@@ -215,108 +223,111 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
-         .poid-grid > div:nth-child(1) { animation-delay: 0ms; }
-         .poid-grid > div:nth-child(2) { animation-delay: 100ms; }
-         .poid-grid > div:nth-child(3) { animation-delay: 200ms; }
-         .poid-grid > div:nth-child(4) { animation-delay: 300ms; }
-         .poid-grid > div:nth-child(5) { animation-delay: 400ms; }
-         .poid-grid > div:nth-child(6) { animation-delay: 500ms; }
-     `}</style>
-                 {/* Removed preselected client type hints for a cleaner UI */}
-             </div>
-         </div>
- 
-         {/* Show POID selection only after client type is chosen */}
-         <PoidSelectionTransition show={!!pendingClientType}>
-             {pendingClientType && (
+         <CompletionProvider>
+         <Stack className="workflow-container">
+             {!hideClientSections && (
                  <>
-                     <div className="question-banner">Select Client(s)</div>
-                     {/* POID Grid - Changed from 3 to 2 columns with auto-fit to fill available space */}
-                     <div 
-                         style={{ 
-                             width: '100%',
-                             display: 'grid',
-                             gridTemplateColumns: (() => {
-                                 const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
-                                 const hasSelection = selectedPoidIds.length > 0;
-                                 if (isSingleSelectionType && hasSelection) {
--                                    return '1fr'; // Single column when selected
-+                                    return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : '1fr';
-                                 }
--                                return 'repeat(2, minmax(250px, 1fr))'; // Default 2 columns
-+                                return 'repeat(2, minmax(250px, 1fr))';
-                             })(),
-                             gap: '24px',
-                             justifyContent: 'space-between',
-                             padding: '12px',
-                             overflow: 'visible',
-                             border: '1px solid #e3e8ef',
-                             borderRadius: '4px',
-                             background: '#fafafa',
-                             transition: 'grid-template-columns 0.4s ease-out, gap 0.4s ease-out'
-                         }} 
-                         className="poid-grid" 
-                         ref={poidGridRef as any}
-                     >
-                         {/** invisible change 3: Fix POID grouping logic to use ClientType, not poid.type */}
-                         {/** invisible change 4: Only filter by instruction's client type, not POID fields */}
-                         {/* No filtering by company fields; show all POIDs for the selected client type */}
--                        {filteredPoidData
-+                        {displayPoidData
-                             .filter((poid) => {
-                                 const isCompany = !!(
-                                     poid.company_name ||
-                                     poid.company_number
-                                 );
-                                 if (pendingClientType === 'Individual') {
-                                     return !isCompany;
-                                 } else if (pendingClientType === 'Company') {
-                                     return isCompany;
-                                 }
-                                 return true;
-                             })
-                             .slice(0, visiblePoidCount)
-                             .map((poid) => {
-                             const isSelected = selectedPoidIds.includes(poid.poid_id);
-                             const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
-                             const hasSelection = selectedPoidIds.length > 0;
-+                            const singlePreselected = onlyShowPreselected && displayPoidData.length === 1;
-                             const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
-                             return (
-                                 <div 
-                                     key={poid.poid_id} 
-                                     onClick={() => handlePoidClick(poid)} 
-                                     role="button" 
-                                     tabIndex={0}
-                                     style={{
-                                         opacity: shouldFadeOut ? 0.3 : 1,
-                                         transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
-                                         transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
-                                         animation: 'fadeInUp 0.4s ease-out',
-                                         pointerEvents: shouldFadeOut ? 'none' : 'auto',
--                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none'
-+                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none',
-+                                        gridColumn: singlePreselected ? 'span 2' : undefined
-                                     }}
-                                 >
-                                     <PoidCard 
-                                         poid={poid} 
-                                         selected={isSelected} 
-                                         onClick={() => handlePoidClick(poid)} 
-                                         teamData={teamData}
-                                         companyName={(() => {
-                                             // Try to get company name from instruction/matter/client, not from POID
-                                             // If pendingClientType is 'Company', try to find the company name from the instruction
-                                             if (pendingClientType === 'Company') {
-                                                 // Try to find the instruction for this POID (by InstructionRef, MatterId, or ProspectId)
-                                                 // This assumes you have access to the instruction data in this component or via props
-                                                 // If not, you may need to thread it through from FlatMatterOpening
-                                                 if (poid.company_name) return poid.company_name;
-                                                 // fallback: blank
-                                                 return '';
-                                             }
-                                             return undefined;
-                                         })()}
-                                     />
-                                 </div>
-                             );
-                         })}
-                     </div>
-                 </>
-             )}
-         </PoidSelectionTransition>
-     </Stack>
--);
-+    );
-+};
- 
- export default PoidSelectionStep;
+                     <ClientDetails stage={stage} instructionRef={instructionRef} />
+                     <ClientHub
+                         instructionRef={instructionRef}
+                         clientId={clientId}
+                         feeEarner={feeEarner}
+                         idExpiry={idExpiry}
+                         idVerified={false}
+                         matterRef={matterRef}
+                     />

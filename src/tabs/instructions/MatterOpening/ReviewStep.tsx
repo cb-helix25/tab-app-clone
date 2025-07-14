@@ -25,6 +25,16 @@ interface ReviewStepProps {
     opponentSolicitorName: string;
     opponentSolicitorCompany: string;
     opponentSolicitorEmail: string;
+    opponentStreet: string;
+    opponentCity: string;
+    opponentCounty: string;
+    opponentPostcode: string;
+    opponentCountry: string;
+    solicitorStreet: string;
+    solicitorCity: string;
+    solicitorCounty: string;
+    solicitorPostcode: string;
+    solicitorCountry: string;
     noConflict: boolean;
     userInitials: string;
     userData?: UserData[] | null;
@@ -51,6 +61,16 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     opponentSolicitorName,
     opponentSolicitorCompany,
     opponentSolicitorEmail,
+    opponentStreet,
+    opponentCity,
+    opponentCounty,
+    opponentPostcode,
+    opponentCountry,
+    solicitorStreet,
+    solicitorCity,
+    solicitorCounty,
+    solicitorPostcode,
+    solicitorCountry,
     noConflict,
         userInitials,
         userData,
@@ -82,6 +102,16 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorName,
             opponentSolicitorCompany,
             opponentSolicitorEmail,
+            opponentStreet,
+            opponentCity,
+            opponentCounty,
+            opponentPostcode,
+            opponentCountry,
+            solicitorStreet,
+            solicitorCity,
+            solicitorCounty,
+            solicitorPostcode,
+            solicitorCountry,
             noConflict,
             userInitials,
             userData,
@@ -104,6 +134,16 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorName,
             opponentSolicitorCompany,
             opponentSolicitorEmail,
+            opponentStreet,
+            opponentCity,
+            opponentCounty,
+            opponentPostcode,
+            opponentCountry,
+            solicitorStreet,
+            solicitorCity,
+            solicitorCounty,
+            solicitorPostcode,
+            solicitorCountry,
             noConflict,
             userInitials,
             userData,
@@ -169,10 +209,50 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                     <span className="field-value">{opponentName || 'N/A'} ({opponentEmail || 'N/A'})</span>
                 </p>
                 <p>
+                    <span className="field-label">Opponent Street:</span>{' '}
+                    <span className="field-value">{opponentStreet || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Opponent City:</span>{' '}
+                    <span className="field-value">{opponentCity || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Opponent County:</span>{' '}
+                    <span className="field-value">{opponentCounty || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Opponent Postcode:</span>{' '}
+                    <span className="field-value">{opponentPostcode || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Opponent Country:</span>{' '}
+                    <span className="field-value">{opponentCountry || 'N/A'}</span>
+                </p>
+                <p>
                     <span className="field-label">Opponent Solicitor:</span>{' '}
                     <span className="field-value">
                         {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'})
                     </span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor Street:</span>{' '}
+                    <span className="field-value">{solicitorStreet || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor City:</span>{' '}
+                    <span className="field-value">{solicitorCity || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor County:</span>{' '}
+                    <span className="field-value">{solicitorCounty || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor Postcode:</span>{' '}
+                    <span className="field-value">{solicitorPostcode || 'N/A'}</span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor Country:</span>{' '}
+                    <span className="field-value">{solicitorCountry || 'N/A'}</span>
                 </p>
                 <p>
                     <span className="field-label">Conflict of Interest:</span>{' '}

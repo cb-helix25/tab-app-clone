@@ -25,7 +25,7 @@ async function ensureDbPassword() {
 }
 
 module.exports = async function (context, req) {
-  context.log('recordMatterRequest function triggered');
+  context.log('recordOpponents function triggered');
 
   if (req.method !== 'POST') {
     context.res = { status: 405, body: 'Method not allowed' };
@@ -38,8 +38,8 @@ module.exports = async function (context, req) {
     await ensureDbPassword();
     const pool = await getSqlPool();
 
-    let opponentId = body.opponentId || null;
-    if (!opponentId && body.opponent) {
+    let opponentId = null;
+    if (body.opponent) {
       const op = body.opponent;
       const res = await pool.request()
         .input('PartyRole', sql.NVarChar(50), 'Opponent')
@@ -51,12 +51,12 @@ module.exports = async function (context, req) {
         .input('CompanyNumber', sql.NVarChar(50), op.company_number || null)
         .input('Email', sql.NVarChar(255), op.email || null)
         .input('Phone', sql.NVarChar(50), op.phone || null)
-        .input('HouseNumber', sql.NVarChar(50), null)
-        .input('Street', sql.NVarChar(255), op.address || null)
-        .input('City', sql.NVarChar(100), null)
-        .input('County', sql.NVarChar(100), null)
-        .input('Postcode', sql.NVarChar(20), null)
-        .input('Country', sql.NVarChar(100), null)
+        .input('HouseNumber', sql.NVarChar(50), op.address?.house_number || null)
+        .input('Street', sql.NVarChar(255), op.address?.street || null)
+        .input('City', sql.NVarChar(100), op.address?.city || null)
+        .input('County', sql.NVarChar(100), op.address?.county || null)
+        .input('Postcode', sql.NVarChar(20), op.address?.post_code || null)
+        .input('Country', sql.NVarChar(100), op.address?.country || null)
         .query(`INSERT INTO Opponents (
           PartyRole, IsCompany, Title, FirstName, LastName, CompanyName, CompanyNumber,
           Email, Phone, HouseNumber, Street, City, County, Postcode, Country)
@@ -67,11 +67,11 @@ module.exports = async function (context, req) {
       opponentId = res.recordset[0].OpponentID;
     }
 
-    let solicitorId = body.solicitorId || null;
-    if (!solicitorId && body.solicitor) {
+    let solicitorId = null;
+    if (body.solicitor) {
       const sol = body.solicitor;
       const res = await pool.request()
-        .input('PartyRole', sql.NVarChar(50), 'Solicitor')
+        .input('PartyRole', sql.NVarChar(50), 'Opponent Solicitor')
         .input('IsCompany', sql.Bit, sol.is_company ? 1 : 0)
         .input('Title', sql.NVarChar(20), sol.title || null)
         .input('FirstName', sql.NVarChar(100), sol.first_name || null)
@@ -80,12 +80,12 @@ module.exports = async function (context, req) {
         .input('CompanyNumber', sql.NVarChar(50), sol.company_number || null)
         .input('Email', sql.NVarChar(255), sol.email || null)
         .input('Phone', sql.NVarChar(50), sol.phone || null)
-        .input('HouseNumber', sql.NVarChar(50), null)
-        .input('Street', sql.NVarChar(255), sol.address || null)
-        .input('City', sql.NVarChar(100), null)
-        .input('County', sql.NVarChar(100), null)
-        .input('Postcode', sql.NVarChar(20), null)
-        .input('Country', sql.NVarChar(100), null)
+        .input('HouseNumber', sql.NVarChar(50), sol.address?.house_number || null)
+        .input('Street', sql.NVarChar(255), sol.address?.street || null)
+        .input('City', sql.NVarChar(100), sol.address?.city || null)
+        .input('County', sql.NVarChar(100), sol.address?.county || null)
+        .input('Postcode', sql.NVarChar(20), sol.address?.post_code || null)
+        .input('Country', sql.NVarChar(100), sol.address?.country || null)
         .query(`INSERT INTO Opponents (
           PartyRole, IsCompany, Title, FirstName, LastName, CompanyName, CompanyNumber,
           Email, Phone, HouseNumber, Street, City, County, Postcode, Country)
@@ -96,42 +96,9 @@ module.exports = async function (context, req) {
       solicitorId = res.recordset[0].OpponentID;
     }
 
-    const { v4: uuidv4 } = require('uuid');
-    const matterId = uuidv4();
-    const now = new Date();
-    const openTime = new Date(0); // midnight
-    openTime.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
-    await pool.request()
-      .input('MatterID', sql.NVarChar(255), matterId)
-      .input('InstructionRef', sql.NVarChar(255), body.instructionRef || null)
-      .input('ClientType', sql.NVarChar(255), body.clientType || null)
-      .input('Description', sql.NVarChar(sql.MAX), body.description || null)
-      .input('PracticeArea', sql.NVarChar(255), body.practiceArea || null)
-      .input('ApproxValue', sql.NVarChar(50), body.value || null)
-      .input('ResponsibleSolicitor', sql.NVarChar(255), body.responsibleSolicitor || null)
-      .input('OriginatingSolicitor', sql.NVarChar(255), body.originatingSolicitor || null)
-      .input('SupervisingPartner', sql.NVarChar(255), body.supervisingPartner || null)
-      .input('Source', sql.NVarChar(255), body.source || null)
-      .input('Referrer', sql.NVarChar(255), body.referrer || null)
-      .input('OpponentID', sql.UniqueIdentifier, opponentId)
-      .input('OpponentSolicitorID', sql.UniqueIdentifier, solicitorId)
-      .input('Status', sql.NVarChar(50), 'MatterRequest')
-      .input('OpenDate', sql.Date, new Date())
-      .input('OpenTime', sql.Time, openTime)
-      .query(`
-  INSERT INTO Matters (
-    MatterID, InstructionRef, ClientType, Description, PracticeArea, ApproxValue,
-    ResponsibleSolicitor, OriginatingSolicitor, SupervisingPartner, Source, Referrer,
-    OpponentID, OpponentSolicitorID, Status, OpenDate, OpenTime)
-  VALUES (
-    @MatterID, @InstructionRef, @ClientType, @Description, @PracticeArea, @ApproxValue,
-    @ResponsibleSolicitor, @OriginatingSolicitor, @SupervisingPartner, @Source, @Referrer,
-    @OpponentID, @OpponentSolicitorID, @Status, @OpenDate, @OpenTime)
-`);
-
-    context.res = { status: 201, body: { ok: true, matterId } };
+    context.res = { status: 200, body: { opponentId, solicitorId } };
   } catch (err) {
-    context.log.error('recordMatterRequest error:', err);
-    context.res = { status: 500, body: { error: 'Failed to insert matter request', detail: err.message } };
+    context.log.error('recordOpponents error:', err);
+    context.res = { status: 500, body: { error: 'Failed to insert opponents', detail: err.message } };
   }
 };

@@ -51,8 +51,18 @@ interface OpponentDetailsStepProps {
   opponentLast?: string;
   setOpponentPhone?: (v: string) => void;
   opponentPhone?: string;
-  setOpponentAddress?: (v: string) => void;
-  opponentAddress?: string;
+  setOpponentHouseNumber?: (v: string) => void;
+  opponentHouseNumber?: string;
+  setOpponentStreet?: (v: string) => void;
+  opponentStreet?: string;
+  setOpponentCity?: (v: string) => void;
+  opponentCity?: string;
+  setOpponentCounty?: (v: string) => void;
+  opponentCounty?: string;
+  setOpponentPostcode?: (v: string) => void;
+  opponentPostcode?: string;
+  setOpponentCountry?: (v: string) => void;
+  opponentCountry?: string;
   opponentHasCompany?: boolean;
   setOpponentHasCompany?: (v: boolean) => void;
   opponentCompanyName?: string;
@@ -68,8 +78,18 @@ interface OpponentDetailsStepProps {
   solicitorLast?: string;
   setSolicitorPhone?: (v: string) => void;
   solicitorPhone?: string;
-  setSolicitorAddress?: (v: string) => void;
-  solicitorAddress?: string;
+  setSolicitorHouseNumber?: (v: string) => void;
+  solicitorHouseNumber?: string;
+  setSolicitorStreet?: (v: string) => void;
+  solicitorStreet?: string;
+  setSolicitorCity?: (v: string) => void;
+  solicitorCity?: string;
+  setSolicitorCounty?: (v: string) => void;
+  solicitorCounty?: string;
+  setSolicitorPostcode?: (v: string) => void;
+  solicitorPostcode?: string;
+  setSolicitorCountry?: (v: string) => void;
+  solicitorCountry?: string;
   solicitorCompanyNumber?: string;
   setSolicitorCompanyNumber?: (v: string) => void;
   // Choice tracking
@@ -191,8 +211,18 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   opponentLast,
   setOpponentPhone,
   opponentPhone,
-  setOpponentAddress,
-  opponentAddress,
+  setOpponentHouseNumber,
+  opponentHouseNumber,
+  setOpponentStreet,
+  opponentStreet,
+  setOpponentCity,
+  opponentCity,
+  setOpponentCounty,
+  opponentCounty,
+  setOpponentPostcode,
+  opponentPostcode,
+  setOpponentCountry,
+  opponentCountry,
   opponentHasCompany,
   setOpponentHasCompany,
   opponentCompanyName,
@@ -207,8 +237,18 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   solicitorLast,
   setSolicitorPhone,
   solicitorPhone,
-  setSolicitorAddress,
-  solicitorAddress,
+  setSolicitorHouseNumber,
+  solicitorHouseNumber,
+  setSolicitorStreet,
+  solicitorStreet,
+  setSolicitorCity,
+  solicitorCity,
+  setSolicitorCounty,
+  solicitorCounty,
+  setSolicitorPostcode,
+  solicitorPostcode,
+  setSolicitorCountry,
+  solicitorCountry,
   solicitorCompanyNumber,
   setSolicitorCompanyNumber,
   // Choice tracking
@@ -229,23 +269,22 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const [localSolicitorFirst, setLocalSolicitorFirst] = React.useState("");
   const [localSolicitorLast, setLocalSolicitorLast] = React.useState("");
   const [localSolicitorPhone, setLocalSolicitorPhone] = React.useState("");
-  const [localSolicitorAddress, setLocalSolicitorAddress] = React.useState("");
   const [localSolicitorCompanyNumber, setLocalSolicitorCompanyNumber] = React.useState("");
 
   // Add local state for address fields if not provided by parent
-  const [localOpponentHouseNumber, setLocalOpponentHouseNumber] = React.useState("");
-  const [localOpponentStreet, setLocalOpponentStreet] = React.useState("");
-  const [localOpponentCity, setLocalOpponentCity] = React.useState("");
-  const [localOpponentCounty, setLocalOpponentCounty] = React.useState("");
-  const [localOpponentPostcode, setLocalOpponentPostcode] = React.useState("");
-  const [localOpponentCountry, setLocalOpponentCountry] = React.useState("");
+  const [localOpponentHouseNumber, setLocalOpponentHouseNumber] = useDraftedState<string>('opponentHouseNumber', "");
+  const [localOpponentStreet, setLocalOpponentStreet] = useDraftedState<string>('opponentStreet', "");
+  const [localOpponentCity, setLocalOpponentCity] = useDraftedState<string>('opponentCity', "");
+  const [localOpponentCounty, setLocalOpponentCounty] = useDraftedState<string>('opponentCounty', "");
+  const [localOpponentPostcode, setLocalOpponentPostcode] = useDraftedState<string>('opponentPostcode', "");
+  const [localOpponentCountry, setLocalOpponentCountry] = useDraftedState<string>('opponentCountry', "");
 
-  const [localSolicitorHouseNumber, setLocalSolicitorHouseNumber] = React.useState("");
-  const [localSolicitorStreet, setLocalSolicitorStreet] = React.useState("");
-  const [localSolicitorCity, setLocalSolicitorCity] = React.useState("");
-  const [localSolicitorCounty, setLocalSolicitorCounty] = React.useState("");
-  const [localSolicitorPostcode, setLocalSolicitorPostcode] = React.useState("");
-  const [localSolicitorCountry, setLocalSolicitorCountry] = React.useState("");
+  const [localSolicitorHouseNumber, setLocalSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', "");
+  const [localSolicitorStreet, setLocalSolicitorStreet] = useDraftedState<string>('solicitorStreet', "");
+  const [localSolicitorCity, setLocalSolicitorCity] = useDraftedState<string>('solicitorCity', "");
+  const [localSolicitorCounty, setLocalSolicitorCounty] = useDraftedState<string>('solicitorCounty', "");
+  const [localSolicitorPostcode, setLocalSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', "");
+  const [localSolicitorCountry, setLocalSolicitorCountry] = useDraftedState<string>('solicitorCountry', "");
 
   // Use parent state if provided, else local state
   const _opponentTitle = opponentTitle ?? localOpponentTitle;
@@ -256,8 +295,18 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const _setOpponentLast = setOpponentLast ?? setLocalOpponentLast;
   const _opponentPhone = opponentPhone ?? localOpponentPhone;
   const _setOpponentPhone = setOpponentPhone ?? setLocalOpponentPhone;
-  const _opponentAddress = opponentAddress ?? localOpponentAddress;
-  const _setOpponentAddress = setOpponentAddress ?? setLocalOpponentAddress;
+  const _opponentHouseNumber = opponentHouseNumber ?? localOpponentHouseNumber;
+  const _setOpponentHouseNumber = setOpponentHouseNumber ?? setLocalOpponentHouseNumber;
+  const _opponentStreet = opponentStreet ?? localOpponentStreet;
+  const _setOpponentStreet = setOpponentStreet ?? setLocalOpponentStreet;
+  const _opponentCity = opponentCity ?? localOpponentCity;
+  const _setOpponentCity = setOpponentCity ?? setLocalOpponentCity;
+  const _opponentCounty = opponentCounty ?? localOpponentCounty;
+  const _setOpponentCounty = setOpponentCounty ?? setLocalOpponentCounty;
+  const _opponentPostcode = opponentPostcode ?? localOpponentPostcode;
+  const _setOpponentPostcode = setOpponentPostcode ?? setLocalOpponentPostcode;
+  const _opponentCountry = opponentCountry ?? localOpponentCountry;
+  const _setOpponentCountry = setOpponentCountry ?? setLocalOpponentCountry;
   const _opponentHasCompany = opponentHasCompany ?? localOpponentHasCompany;
   const _setOpponentHasCompany = setOpponentHasCompany ?? setLocalOpponentHasCompany;
   const _opponentCompanyName = opponentCompanyName ?? localOpponentCompanyName;
@@ -272,8 +321,18 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
   const _setSolicitorLast = setSolicitorLast ?? setLocalSolicitorLast;
   const _solicitorPhone = solicitorPhone ?? localSolicitorPhone;
   const _setSolicitorPhone = setSolicitorPhone ?? setLocalSolicitorPhone;
-  const _solicitorAddress = solicitorAddress ?? localSolicitorAddress;
-  const _setSolicitorAddress = setSolicitorAddress ?? setLocalSolicitorAddress;
+  const _solicitorHouseNumber = solicitorHouseNumber ?? localSolicitorHouseNumber;
+  const _setSolicitorHouseNumber = setSolicitorHouseNumber ?? setLocalSolicitorHouseNumber;
+  const _solicitorStreet = solicitorStreet ?? localSolicitorStreet;
+  const _setSolicitorStreet = setSolicitorStreet ?? setLocalSolicitorStreet;
+  const _solicitorCity = solicitorCity ?? localSolicitorCity;
+  const _setSolicitorCity = setSolicitorCity ?? setLocalSolicitorCity;
+  const _solicitorCounty = solicitorCounty ?? localSolicitorCounty;
+  const _setSolicitorCounty = setSolicitorCounty ?? setLocalSolicitorCounty;
+  const _solicitorPostcode = solicitorPostcode ?? localSolicitorPostcode;
+  const _setSolicitorPostcode = setSolicitorPostcode ?? setLocalSolicitorPostcode;
+  const _solicitorCountry = solicitorCountry ?? localSolicitorCountry;
+  const _setSolicitorCountry = setSolicitorCountry ?? setLocalSolicitorCountry;
   const _solicitorCompanyNumber = solicitorCompanyNumber ?? localSolicitorCompanyNumber;
   const _setSolicitorCompanyNumber = setSolicitorCompanyNumber ?? setLocalSolicitorCompanyNumber;
 
@@ -989,14 +1048,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 8 }}>
                     <TextField
                       placeholder="House/Building Number"
-                      value={localOpponentHouseNumber}
-                      onChange={(_, v) => setLocalOpponentHouseNumber(v || "")}
+                      value={_opponentHouseNumber}
+                      onChange={(_, v) => _setOpponentHouseNumber(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("opponentHouseNumber", localOpponentHouseNumber)
+                          ...getFieldStyle("opponentHouseNumber", _opponentHouseNumber)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1018,14 +1077,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="Street"
-                      value={localOpponentStreet}
-                      onChange={(_, v) => setLocalOpponentStreet(v || "")}
+                      value={_opponentStreet}
+                      onChange={(_, v) => _setOpponentStreet(v || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("opponentStreet", localOpponentStreet)
+                          ...getFieldStyle("opponentStreet", _opponentStreet)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1047,14 +1106,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="City/Town"
-                      value={localOpponentCity}
-                      onChange={(_, v) => setLocalOpponentCity(v || "")}
+                      value={_opponentCity}
+                      onChange={(_, v) => _setOpponentCity(v || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("opponentCity", localOpponentCity)
+                          ...getFieldStyle("opponentCity", _opponentCity)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1076,14 +1135,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="County"
-                      value={localOpponentCounty}
-                      onChange={(_, v) => setLocalOpponentCounty(v || "")}
+                      value={_opponentCounty}
+                      onChange={(_, v) => _setOpponentCounty(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("opponentCounty", localOpponentCounty)
+                          ...getFieldStyle("opponentCounty", _opponentCounty)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1105,14 +1164,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="Post Code"
-                      value={localOpponentPostcode}
-                      onChange={(_, v) => setLocalOpponentPostcode(v || "")}
+                      value={_opponentPostcode}
+                      onChange={(_, v) => _setOpponentPostcode(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("opponentPostcode", localOpponentPostcode)
+                          ...getFieldStyle("opponentPostcode", _opponentPostcode)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1139,15 +1198,15 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         key: c.name,
                         text: `${c.name} (${c.code})`
                       }))}
-                      selectedKey={localOpponentCountry}
-                      onChange={(_, o) => setLocalOpponentCountry(o?.key as string || "")}
+                      selectedKey={_opponentCountry}
+                      onChange={(_, o) => _setOpponentCountry(o?.key as string || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
                           alignSelf: 'flex-end',
-                          ...getFieldStyle("opponentCountry", localOpponentCountry, true)
+                          ...getFieldStyle("opponentCountry", _opponentCountry, true)
                         },
                         dropdown: { borderRadius: 0, height: 38, background: "transparent", ...noFocusOutline },
                         title: {
@@ -1449,14 +1508,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="Street"
-                      value={localSolicitorStreet}
-                      onChange={(_, v) => setLocalSolicitorStreet(v || "")}
+                      value={_solicitorStreet}
+                      onChange={(_, v) => _setSolicitorStreet(v || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("solicitorStreet", localSolicitorStreet)
+                          ...getFieldStyle("solicitorStreet", _solicitorStreet)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1477,14 +1536,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="City/Town"
-                      value={localSolicitorCity}
-                      onChange={(_, v) => setLocalSolicitorCity(v || "")}
+                      value={_solicitorCity}
+                      onChange={(_, v) => _setSolicitorCity(v || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("solicitorCity", localSolicitorCity)
+                          ...getFieldStyle("solicitorCity", _solicitorCity)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1505,14 +1564,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="County"
-                      value={localSolicitorCounty}
-                      onChange={(_, v) => setLocalSolicitorCounty(v || "")}
+                      value={_solicitorCounty}
+                      onChange={(_, v) => _setSolicitorCounty(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("solicitorCounty", localSolicitorCounty)
+                          ...getFieldStyle("solicitorCounty", _solicitorCounty)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1533,14 +1592,14 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                     />
                     <TextField
                       placeholder="Post Code"
-                      value={localSolicitorPostcode}
-                      onChange={(_, v) => setLocalSolicitorPostcode(v || "")}
+                      value={_solicitorPostcode}
+                      onChange={(_, v) => _setSolicitorPostcode(v || "")}
                       styles={{
                         root: {
                           minWidth: 80,
                           flex: 1,
                           height: 38,
-                          ...getFieldStyle("solicitorPostcode", localSolicitorPostcode)
+                          ...getFieldStyle("solicitorPostcode", _solicitorPostcode)
                         },
                         fieldGroup: {
                           borderRadius: 0,
@@ -1566,15 +1625,15 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                         key: c.name,
                         text: `${c.name} (${c.code})`
                       }))}
-                      selectedKey={localSolicitorCountry}
-                      onChange={(_, o) => setLocalSolicitorCountry(o?.key as string || "")}
+                      selectedKey={_solicitorCountry}
+                      onChange={(_, o) => _setSolicitorCountry(o?.key as string || "")}
                       styles={{
                         root: {
                           minWidth: 100,
                           flex: 1,
                           height: 38,
                           alignSelf: 'flex-end',
-                          ...getFieldStyle("solicitorCountry", localSolicitorCountry, true)
+                          ...getFieldStyle("solicitorCountry", _solicitorCountry, true)
                         },
                         dropdown: { borderRadius: 0, height: 38, background: "transparent", ...noFocusOutline },
                         title: {

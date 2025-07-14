@@ -267,7 +267,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [opponentFirst, setOpponentFirst] = useDraftedState<string>('opponentFirst', '');
     const [opponentLast, setOpponentLast] = useDraftedState<string>('opponentLast', '');
     const [opponentPhone, setOpponentPhone] = useDraftedState<string>('opponentPhone', '');
-    const [opponentAddress, setOpponentAddress] = useDraftedState<string>('opponentAddress', '');
+    const [opponentHouseNumber, setOpponentHouseNumber] = useDraftedState<string>('opponentHouseNumber', '');
+    const [opponentStreet, setOpponentStreet] = useDraftedState<string>('opponentStreet', '');
+    const [opponentCity, setOpponentCity] = useDraftedState<string>('opponentCity', '');
+    const [opponentCounty, setOpponentCounty] = useDraftedState<string>('opponentCounty', '');
+    const [opponentPostcode, setOpponentPostcode] = useDraftedState<string>('opponentPostcode', '');
+    const [opponentCountry, setOpponentCountry] = useDraftedState<string>('opponentCountry', '');
     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
@@ -276,7 +281,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
     const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
     const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
-    const [solicitorAddress, setSolicitorAddress] = useDraftedState<string>('solicitorAddress', '');
+    const [solicitorHouseNumber, setSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', '');
+    const [solicitorStreet, setSolicitorStreet] = useDraftedState<string>('solicitorStreet', '');
+    const [solicitorCity, setSolicitorCity] = useDraftedState<string>('solicitorCity', '');
+    const [solicitorCounty, setSolicitorCounty] = useDraftedState<string>('solicitorCounty', '');
+    const [solicitorPostcode, setSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', '');
+    const [solicitorCountry, setSolicitorCountry] = useDraftedState<string>('solicitorCountry', '');
     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
 
     // Summary review confirmation state
@@ -686,7 +696,14 @@ const handleClearAll = () => {
                     company_number: opponentCompanyNumber || null,
                     email: opponentEmail || null,
                     phone: opponentPhone || null,
-                    address: opponentAddress || null
+                    address: {
+                        house_number: opponentHouseNumber || null,
+                        street: opponentStreet || null,
+                        city: opponentCity || null,
+                        county: opponentCounty || null,
+                        post_code: opponentPostcode || null,
+                        country: opponentCountry || null
+                    }
                 },
                 solicitor: {
                     title: solicitorTitle || null,
@@ -696,7 +713,14 @@ const handleClearAll = () => {
                     company_number: solicitorCompanyNumber || null,
                     email: opponentSolicitorEmail || null,
                     phone: solicitorPhone || null,
-                    address: solicitorAddress || null
+                    address: {
+                        house_number: solicitorHouseNumber || null,
+                        street: solicitorStreet || null,
+                        city: solicitorCity || null,
+                        county: solicitorCounty || null,
+                        post_code: solicitorPostcode || null,
+                        country: solicitorCountry || null
+                    }
                 }
             } : null,
             compliance: {
@@ -721,9 +745,9 @@ const handleClearAll = () => {
                opponentName || opponentEmail || opponentSolicitorName || 
                opponentSolicitorCompany || opponentSolicitorEmail ||
                opponentTitle || opponentFirst || opponentLast || opponentPhone ||
-               opponentAddress || opponentHasCompany || opponentCompanyName ||
+               opponentHouseNumber || opponentStreet || opponentCity || opponentCounty || opponentPostcode || opponentCountry || opponentHasCompany || opponentCompanyName ||
                opponentCompanyNumber || solicitorTitle || solicitorFirst ||
-               solicitorLast || solicitorPhone || solicitorAddress ||
+               solicitorLast || solicitorPhone || solicitorHouseNumber || solicitorStreet || solicitorCity || solicitorCounty || solicitorPostcode || solicitorCountry ||
                solicitorCompanyNumber || summaryConfirmed || noConflict ||
                (selectedDate && selectedDate.getTime() !== new Date().setHours(0,0,0,0)) ||
                teamMember !== defaultTeamMember || supervisingPartner ||
@@ -811,7 +835,12 @@ const handleClearAll = () => {
         setOpponentFirst('');
         setOpponentLast('');
         setOpponentPhone('');
-        setOpponentAddress('');
+        setOpponentHouseNumber('');
+        setOpponentStreet('');
+        setOpponentCity('');
+        setOpponentCounty('');
+        setOpponentPostcode('');
+        setOpponentCountry('');
         setOpponentHasCompany(false);
         setOpponentCompanyName('');
         setOpponentCompanyNumber('');
@@ -819,7 +848,12 @@ const handleClearAll = () => {
         setSolicitorFirst('');
         setSolicitorLast('');
         setSolicitorPhone('');
-        setSolicitorAddress('');
+        setSolicitorHouseNumber('');
+        setSolicitorStreet('');
+        setSolicitorCity('');
+        setSolicitorCounty('');
+        setSolicitorPostcode('');
+        setSolicitorCountry('');
         setSolicitorCompanyNumber('');
         setSummaryConfirmed(false); // Reset summary confirmation
         setActivePoid(null);
@@ -1306,8 +1340,18 @@ const handleClearAll = () => {
                                             setOpponentLast={setOpponentLast}
                                             opponentPhone={opponentPhone}
                                             setOpponentPhone={setOpponentPhone}
-                                            opponentAddress={opponentAddress}
-                                            setOpponentAddress={setOpponentAddress}
+                                            opponentHouseNumber={opponentHouseNumber}
+                                            setOpponentHouseNumber={setOpponentHouseNumber}
+                                            opponentStreet={opponentStreet}
+                                            setOpponentStreet={setOpponentStreet}
+                                            opponentCity={opponentCity}
+                                            setOpponentCity={setOpponentCity}
+                                            opponentCounty={opponentCounty}
+                                            setOpponentCounty={setOpponentCounty}
+                                            opponentPostcode={opponentPostcode}
+                                            setOpponentPostcode={setOpponentPostcode}
+                                            opponentCountry={opponentCountry}
+                                            setOpponentCountry={setOpponentCountry}
                                             opponentHasCompany={opponentHasCompany}
                                             setOpponentHasCompany={setOpponentHasCompany}
                                             opponentCompanyName={opponentCompanyName}
@@ -1322,8 +1366,18 @@ const handleClearAll = () => {
                                             setSolicitorLast={setSolicitorLast}
                                             solicitorPhone={solicitorPhone}
                                             setSolicitorPhone={setSolicitorPhone}
-                                            solicitorAddress={solicitorAddress}
-                                            setSolicitorAddress={setSolicitorAddress}
+                                            solicitorHouseNumber={solicitorHouseNumber}
+                                            setSolicitorHouseNumber={setSolicitorHouseNumber}
+                                            solicitorStreet={solicitorStreet}
+                                            setSolicitorStreet={setSolicitorStreet}
+                                            solicitorCity={solicitorCity}
+                                            setSolicitorCity={setSolicitorCity}
+                                            solicitorCounty={solicitorCounty}
+                                            setSolicitorCounty={setSolicitorCounty}
+                                            solicitorPostcode={solicitorPostcode}
+                                            setSolicitorPostcode={setSolicitorPostcode}
+                                            solicitorCountry={solicitorCountry}
+                                            setSolicitorCountry={setSolicitorCountry}
                                             solicitorCompanyNumber={solicitorCompanyNumber}
                                             setSolicitorCompanyNumber={setSolicitorCompanyNumber}
                                             opponentChoiceMade={opponentChoiceMade}
@@ -1992,8 +2046,24 @@ const handleClearAll = () => {
                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Address:</span>
-                                                <span style={{ fontWeight:  500, fontSize: 13 }}>{opponentAddress || '-'}</span>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentStreet || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>City:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCity || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>County:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCounty || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPostcode || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCountry || '-'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -2043,8 +2113,24 @@ const handleClearAll = () => {
                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#666', fontSize: 13 }}>Address:</span>
-                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorAddress || '-'}</span>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorStreet || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>City:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCity || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>County:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCounty || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPostcode || '-'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCountry || '-'}</span>
                                             </div>
                                         </div>
                                     </div>

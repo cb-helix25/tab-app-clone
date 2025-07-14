@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const keysRouter = require('./routes/keys');
 const refreshRouter = require('./routes/refresh');
 const matterRequestsRouter = require('./routes/matterRequests');
+const opponentsRouter = require('./routes/opponents');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/api/keys', keysRouter);
 app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
+app.use('/api/opponents', opponentsRouter);
 
 const buildPath = path.join(__dirname, 'static');
 app.use(express.static(buildPath));

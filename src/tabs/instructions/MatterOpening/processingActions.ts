@@ -11,6 +11,8 @@ let clioRefreshToken = '';
 let asanaClientId = '';
 let asanaSecret = '';
 let asanaRefreshToken = '';
+let opponentId = '';
+let solicitorId = '';
 
 export interface ProcessingAction {
     label: string;
@@ -131,6 +133,29 @@ export const processingActions: ProcessingAction[] = [
         }
     },
     {
+        label: 'Opponent Details Updated',
+        icon: clioIcon,
+        run: async (formData, userInitials) => {
+            const payload = {
+                opponent: formData.opponent_details?.opponent || null,
+                solicitor: formData.opponent_details?.solicitor || null,
+                createdBy: userInitials
+            };
+
+            const resp = await fetch('/api/opponents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!resp.ok) throw new Error('Failed to update opponent details');
+            const data = await resp.json();
+            opponentId = data.opponentId || '';
+            solicitorId = data.solicitorId || '';
+            return 'Opponent details updated';
+        }
+    },
+    {
         label: 'Matter Request Created',
         icon: clioIcon,
         run: async (formData, userInitials) => {
@@ -145,8 +170,8 @@ export const processingActions: ProcessingAction[] = [
                 supervisingPartner: formData.team_assignments?.supervising_partner || null,
                 source: formData.source_details?.source || null,
                 referrer: formData.source_details?.referrer_name || null,
-                opponent: formData.opponent_details?.opponent || null,
-                solicitor: formData.opponent_details?.solicitor || null,
+                opponentId: opponentId || null,
+                solicitorId: solicitorId || null,
                 createdBy: userInitials
                 // MatterID is excluded
             };
