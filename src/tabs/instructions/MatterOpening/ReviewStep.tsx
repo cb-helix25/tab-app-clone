@@ -25,11 +25,13 @@ interface ReviewStepProps {
     opponentSolicitorName: string;
     opponentSolicitorCompany: string;
     opponentSolicitorEmail: string;
+    opponentHouseNumber: string;
     opponentStreet: string;
     opponentCity: string;
     opponentCounty: string;
     opponentPostcode: string;
     opponentCountry: string;
+    solicitorHouseNumber: string;
     solicitorStreet: string;
     solicitorCity: string;
     solicitorCounty: string;
@@ -61,11 +63,13 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     opponentSolicitorName,
     opponentSolicitorCompany,
     opponentSolicitorEmail,
+    opponentHouseNumber,
     opponentStreet,
     opponentCity,
     opponentCounty,
     opponentPostcode,
     opponentCountry,
+    solicitorHouseNumber,
     solicitorStreet,
     solicitorCity,
     solicitorCounty,
@@ -102,11 +106,13 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorName,
             opponentSolicitorCompany,
             opponentSolicitorEmail,
+            opponentHouseNumber,
             opponentStreet,
             opponentCity,
             opponentCounty,
             opponentPostcode,
             opponentCountry,
+            solicitorHouseNumber,
             solicitorStreet,
             solicitorCity,
             solicitorCounty,
@@ -134,11 +140,13 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorName,
             opponentSolicitorCompany,
             opponentSolicitorEmail,
+            opponentHouseNumber,
             opponentStreet,
             opponentCity,
             opponentCounty,
             opponentPostcode,
             opponentCountry,
+            solicitorHouseNumber,
             solicitorStreet,
             solicitorCity,
             solicitorCounty,
@@ -209,6 +217,10 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                     <span className="field-value">{opponentName || 'N/A'} ({opponentEmail || 'N/A'})</span>
                 </p>
                 <p>
+                    <span className="field-label">Opponent House No.:</span>{' '}
+                    <span className="field-value">{opponentHouseNumber || 'N/A'}</span>
+                </p>
+                <p>
                     <span className="field-label">Opponent Street:</span>{' '}
                     <span className="field-value">{opponentStreet || 'N/A'}</span>
                 </p>
@@ -233,6 +245,10 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                     <span className="field-value">
                         {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'})
                     </span>
+                </p>
+                <p>
+                    <span className="field-label">Solicitor House No.:</span>{' '}
+                    <span className="field-value">{solicitorHouseNumber || 'N/A'}</span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor Street:</span>{' '}
@@ -278,6 +294,18 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             opponentSolicitorName,
             opponentSolicitorCompany,
             opponentSolicitorEmail,
+            opponentHouseNumber,
+            opponentStreet,
+            opponentCity,
+            opponentCounty,
+            opponentPostcode,
+            opponentCountry,
+            solicitorHouseNumber,
+            solicitorStreet,
+            solicitorCity,
+            solicitorCounty,
+            solicitorPostcode,
+            solicitorCountry,
             noConflict,
         ]
     );

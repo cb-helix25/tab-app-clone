@@ -340,41 +340,67 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
 
   // Add this function inside the component
   const fillDummyData = () => {
-    // Don't change opponent type if already selected
     if (!opponentType) {
       setOpponentType('Company');
     }
-    
-    // Use AI as fallback if skipping/using dummy data
-    _setOpponentTitle("AI");
+
+    _setOpponentTitle('AI');
     _setOpponentFirst(dummyData.opponentFirst);
     _setOpponentLast(dummyData.opponentLast);
     setOpponentEmail(dummyData.opponentEmail);
     _setOpponentPhone(dummyData.opponentPhone);
-    setLocalOpponentHouseNumber(dummyData.opponentHouseNumber);
-    setLocalOpponentStreet(dummyData.opponentStreet);
-    setLocalOpponentCity(dummyData.opponentCity);
-    setLocalOpponentCounty(dummyData.opponentCounty);
-    setLocalOpponentPostcode(dummyData.opponentPostcode);
-    setLocalOpponentCountry(dummyData.opponentCountry);
-    // No need for _setOpponentHasCompany as it's replaced by opponentType
+    _setOpponentHouseNumber(dummyData.opponentHouseNumber);
+    _setOpponentStreet(dummyData.opponentStreet);
+    _setOpponentCity(dummyData.opponentCity);
+    _setOpponentCounty(dummyData.opponentCounty);
+    _setOpponentPostcode(dummyData.opponentPostcode);
+    _setOpponentCountry(dummyData.opponentCountry);
     _setOpponentCompanyName(dummyData.opponentCompanyName);
     _setOpponentCompanyNumber(dummyData.opponentCompanyNumber);
 
     setOpponentSolicitorCompany(dummyData.opponentSolicitorCompany);
     _setSolicitorCompanyNumber(dummyData.solicitorCompanyNumber);
-    // Use AI as fallback if skipping/using dummy data
-    _setSolicitorTitle("AI");
+    _setSolicitorTitle('AI');
     _setSolicitorFirst(dummyData.solicitorFirst);
     _setSolicitorLast(dummyData.solicitorLast);
     setOpponentSolicitorEmail(dummyData.opponentSolicitorEmail);
     _setSolicitorPhone(dummyData.solicitorPhone);
-    setLocalSolicitorHouseNumber(dummyData.solicitorHouseNumber);
-    setLocalSolicitorStreet(dummyData.solicitorStreet);
-    setLocalSolicitorCity(dummyData.solicitorCity);
-    setLocalSolicitorCounty(dummyData.solicitorCounty);
-    setLocalSolicitorPostcode(dummyData.solicitorPostcode);
-    setLocalSolicitorCountry(dummyData.solicitorCountry);
+    _setSolicitorHouseNumber(dummyData.solicitorHouseNumber);
+    _setSolicitorStreet(dummyData.solicitorStreet);
+    _setSolicitorCity(dummyData.solicitorCity);
+    _setSolicitorCounty(dummyData.solicitorCounty);
+    _setSolicitorPostcode(dummyData.solicitorPostcode);
+    _setSolicitorCountry(dummyData.solicitorCountry);
+
+    setTouchedFields(prev => ({
+      ...prev,
+      opponentTitle: true,
+      opponentFirst: true,
+      opponentLast: true,
+      opponentEmail: true,
+      opponentPhone: true,
+      opponentHouseNumber: true,
+      opponentStreet: true,
+      opponentCity: true,
+      opponentCounty: true,
+      opponentPostcode: true,
+      opponentCountry: true,
+      opponentCompanyName: true,
+      opponentCompanyNumber: true,
+      opponentSolicitorCompany: true,
+      solicitorCompanyNumber: true,
+      solicitorTitle: true,
+      solicitorFirst: true,
+      solicitorLast: true,
+      opponentSolicitorEmail: true,
+      solicitorPhone: true,
+      solicitorHouseNumber: true,
+      solicitorStreet: true,
+      solicitorCity: true,
+      solicitorCounty: true,
+      solicitorPostcode: true,
+      solicitorCountry: true,
+    }));
   };
 
   // Persisted state for preview and opponent choices
