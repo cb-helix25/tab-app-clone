@@ -36,26 +36,40 @@ router.post('/', async (req, res) => {
             const lookupResp = await fetch(`https://eu.app.clio.com/api/v4/contacts.json?query=${query}`, { headers });
             if (!lookupResp.ok) throw new Error('Lookup failed');
             const lookupData = await lookupResp.json();
+
             let url = 'https://eu.app.clio.com/api/v4/contacts.json';
             let method = 'POST';
             if (lookupData.data && lookupData.data.length > 0) {
                 url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}.json`;
                 method = 'PUT';
             }
+
+            const { type: contactType, ...rest } = contact;
+
+            const payload = {
+                data: {
+                    type: contactType,
+                    attributes: rest
+                }
+            };
+
+            console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
+
             const resp = await fetch(url, {
                 method,
                 headers,
-                body: JSON.stringify({ contact })
+                body: JSON.stringify(payload)
             });
 
             if (!resp.ok) {
-                const text = await resp.text(); // read error body
-                console.error('Clio contact create/update failed:', text); // log it
+                const text = await resp.text();
+                console.error('Clio contact create/update failed:', text);
                 throw new Error('Create/update failed');
             }
 
             return resp.json();
         }
+
 
         if (type === 'Individual') {
             for (const c of clients) {
