@@ -39,8 +39,8 @@ router.post('/', async (req, res) => {
             const verification = client.verification || {};
 
             return {
-                first_name: client.first_name || client.first || null,
-                last_name: client.last_name || client.last || null,
+                first_name: client.first_name || client.first || '',
+                last_name: client.last_name || client.last || '',
                 prefix: client.prefix || null,
                 date_of_birth: client.date_of_birth || null,
                 email_addresses: [
@@ -118,7 +118,12 @@ router.post('/', async (req, res) => {
             }
 
             const { type: contactType, ...attributes } = contact;
-            const payload = { data: { type: contactType, attributes } };
+            const payload = {
+                data: {
+                    type: 'contacts',
+                    attributes: { type: contactType, ...attributes }
+                }
+            };
             console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
 
             const resp = await fetch(url, { method, headers, body: JSON.stringify(payload) });

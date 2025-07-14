@@ -63,13 +63,14 @@ A minimal payload looks like the example below, based on Clio's documentation:
     "attributes": {
       "first_name": "John",
       "last_name": "Smith",
-      "email_addresses": [{
-        "name": "Home",
-        "address": "john@example.com",
-        "default_email": true
-      }]
-    },
-    "type": "Person"
+      "email_addresses": [
+        {
+          "name": "Home",
+          "address": "john@example.com",
+          "default_email": true
+        }
+      ]
+    }
   }
 }
 ```
