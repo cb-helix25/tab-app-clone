@@ -1,82 +1,43 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index ca42461af9108777a1f019042ba1cc5dc36c8fcf..c1410204f2e3e2c11665fa4742525df0e6ce05cd 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -113,68 +113,62 @@ export const processingActions: ProcessingAction[] = [
-         run: async (_form, _i, userData) => {
-             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
-             if (!token) throw new Error('Asana Refresh Token missing');
-             asanaRefreshToken = token;
-             return 'Refresh Token retrieved';
-         }
-     },
-     {
-         label: 'Refresh Asana Access Token',
-         icon: asanaIcon,
-         run: async () => {
-             const resp = await fetch('/api/refresh/asana', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken })
-             });
-             if (!resp.ok) throw new Error('Asana token refresh failed');
-             return 'Access token refreshed';
-         }
-     },
-     {
-         label: 'Matter Request Created',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const payload = {
--                selectedDate: formData.matter_details?.date_created ?? null,
--                supervisingPartner: formData.team_assignments?.supervising_partner || null,
--                originatingSolicitor: formData.team_assignments?.originating_solicitor || null,
-+                instructionRef: formData.matter_details?.instruction_ref || null,
-                 clientType: formData.matter_details?.client_type || null,
--                selectedPoidIds: JSON.stringify((formData.client_information || []).map((c: any) => c.poid_id)),
--                areaOfWork: formData.matter_details?.area_of_work || null,
--                practiceArea: formData.matter_details?.practice_area || null,
-                 description: formData.matter_details?.description || null,
--                folderStructure: formData.matter_details?.folder_structure || null,
--                disputeValue: formData.matter_details?.dispute_value || null,
-+                practiceArea: formData.matter_details?.practice_area || null,
-+                value: formData.matter_details?.dispute_value || null,
-+                responsibleSolicitor: formData.team_assignments?.fee_earner || null,
-+                originatingSolicitor: formData.team_assignments?.originating_solicitor || null,
-+                supervisingPartner: formData.team_assignments?.supervising_partner || null,
-                 source: formData.source_details?.source || null,
--                referrerName: formData.source_details?.referrer_name || null,
--                opponentName: formData.opponent_details?.name || null,
--                opponentEmail: formData.opponent_details?.email || null,
--                opponentSolicitorName: formData.opponent_details?.solicitor?.name || null,
--                opponentSolicitorCompany: formData.opponent_details?.solicitor?.company || null,
--                opponentSolicitorEmail: formData.opponent_details?.solicitor?.email || null,
--                noConflict: formData.compliance?.conflict_check_completed || false,
-+                referrer: formData.source_details?.referrer_name || null,
-+                opponent: formData.opponent_details?.opponent || null,
-+                solicitor: formData.opponent_details?.solicitor || null,
-                 createdBy: userInitials
-             };
+diff --git a/server/routes/matterRequests.js b/server/routes/matterRequests.js
+index c09e7f777e4f3565ab7203e2e2d9f710dfe79a11..e0724c1009867a4e667781e05f432fe9e60bdf1e 100644
+--- a/server/routes/matterRequests.js
++++ b/server/routes/matterRequests.js
+@@ -1,33 +1,36 @@
+ const express = require('express');
+ const { getSecret } = require('../utils/getSecret');
  
-             const resp = await fetch('/api/matter-requests', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-             });
+ const router = express.Router();
  
-             if (!resp.ok) throw new Error('Failed to record matter request');
-             const data = await resp.json();
-             return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+ router.post('/', async (req, res) => {
+-    const baseUrl = process.env.MATTER_REQUEST_FUNC_BASE_URL ||
+-        'https://instructions-vnet-functions.azurewebsites.net/api/recordMatterRequest';
++    let baseUrl = process.env.MATTER_REQUEST_FUNC_BASE_URL;
++    if (!baseUrl) {
++        const secretName = process.env.MATTER_REQUEST_FUNC_BASE_URL_SECRET || 'recordMatterRequest-url';
++        baseUrl = await getSecret(secretName);
++    }
+     try {
+         let code = process.env.MATTER_REQUEST_FUNC_CODE;
+         if (!code) {
+             const secretName = process.env.MATTER_REQUEST_FUNC_CODE_SECRET || 'recordMatterRequest-code';
+             code = await getSecret(secretName);
          }
-     },
-     { label: 'Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' },
-     { label: 'Clio Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Clio Matter Opened', run: async () => 'Done' },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
- // invisible change 2.2
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
+         const url = `${baseUrl}?code=${code}`;
+         const resp = await fetch(url, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(req.body)
+         });
+ 
+         if (!resp.ok) {
+             const text = await resp.text();
+             console.error('Matter request failed', text);
+             return res.status(500).json({ error: 'Matter request failed' });
+         }
+ 
+         res.json({ message: 'Matter request recorded; further IDs will be patched in later steps' });
+     } catch (err) {
+         console.error('Matter request error', err);
+         res.status(500).json({ error: 'Matter request failed' });
+     }

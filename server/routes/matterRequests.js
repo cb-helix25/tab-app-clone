@@ -4,7 +4,8 @@ const { getSecret } = require('../utils/getSecret');
 const router = express.Router();
 
 router.post('/', async (req, res) => {
-    const baseUrl = process.env.MATTER_REQUEST_FUNC_BASE_URL ||
+    const baseUrl =
+        process.env.MATTER_REQUEST_FUNC_BASE_URL ||
         'https://instructions-vnet-functions.azurewebsites.net/api/recordMatterRequest';
     try {
         let code = process.env.MATTER_REQUEST_FUNC_CODE;
