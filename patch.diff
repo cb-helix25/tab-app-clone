@@ -1,56 +1,58 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index b6179bb55049ffb26921a987b618de088de50c25..ad776de6d4711871b3e90f6616935e62c479897b 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -178,39 +178,50 @@ export const processingActions: ProcessingAction[] = [
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index 63bf718d0185f6c955326eef6c0530838f1e8a75..8f24cac2d9ef555f69185c843bac5da22417af74 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -7,50 +7,53 @@ router.post('/', async (req, res) => {
+     const { formData, initials } = req.body || {};
+     if (!formData || !initials) {
+         return res.status(400).json({ error: 'Missing data' });
+     }
  
-             const resp = await fetch('/api/matter-requests', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-             });
+     try {
+         const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
+         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
+         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
  
-             if (!resp.ok) throw new Error('Failed to record matter request');
-             const data = await resp.json();
-             return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+         const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
+         if (!tokenResp.ok) {
+             const text = await tokenResp.text();
+             console.error('Clio token refresh failed', text);
+             return res.status(500).json({ error: 'Token refresh failed' });
          }
-     },
+         const { access_token } = await tokenResp.json();
+         const headers = {
+             'Content-Type': 'application/json',
+             Authorization: `Bearer ${access_token}`
+         };
  
-     { label: 'Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' },
-     {
-         label: 'Clio Contact Created/Updated',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-contacts', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials })
-             });
-             if (!resp.ok) throw new Error('Failed to sync Clio contact');
--            return 'Clio contact synced';
-+            const data = await resp.json();
-+            if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
-+            const names = (data.results || [])
-+                .map((r: any) => {
-+                    const attrs = r.data?.attributes || {};
-+                    if (attrs.first_name || attrs.last_name) {
-+                        return `${attrs.first_name || ''} ${attrs.last_name || ''}`.trim();
-+                    }
-+                    return attrs.name;
-+                })
-+                .filter(Boolean);
-+            return `Clio contacts synced: ${names.join(', ')}`;
-         }
-     },
-     { label: 'Clio Matter Opened', run: async () => 'Done' },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
- // invisible change 2.2
+         const results = [];
+         const clients = formData.client_information || [];
++        if (clients.length === 0) {
++            return res.status(400).json({ error: 'No client information provided' });
++        }
+         const type = formData.matter_details?.client_type || 'Individual';
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
-     icon: action.icon
- }));
+         function mapPerson(client) {
+             return {
+                 first_name: client.first_name || client.first || '',
+                 last_name: client.last_name || client.last || '',
+                 prefix: client.prefix || null,
+                 date_of_birth: client.date_of_birth || null,
+                 email_addresses: [
+                     {
+                         name: 'Home',
+                         address: client.email || '',
+                         default_email: true
+                     }
+                 ],
+                 phone_numbers: client.best_number
+                     ? [
+                         {
+                             name: 'Home',
+                             number: client.best_number,
+                             default_number: true
+                         }
+                     ]
+                     : [],
+                 addresses: [
