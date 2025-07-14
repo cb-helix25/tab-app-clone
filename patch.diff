@@ -1,209 +1,102 @@
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index 7afc8d05348f46dc8fc90e5cd3055b726767f792..ad43e2fee3a04be221b2fba5700b62539860de14 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -217,60 +217,70 @@ const NewMatters: React.FC<NewMattersProps> = ({
-         setPendingClientType(initialClientType);
-     }, [initialClientType]);
-     const [selectedPoidIds, setSelectedPoidIds] = useState<string[]>([]);
-     const [areaOfWork, setAreaOfWork] = useState('');
-     const [practiceArea, setPracticeArea] = useState('');
+diff --git a/decoupled-functions/recordMatterRequest/index.js b/decoupled-functions/recordMatterRequest/index.js
+index 786b3b1af64568354e95fc53083d07effed85aec..d25f26905faa3179d0785c495f1d723b5cd792e0 100644
+--- a/decoupled-functions/recordMatterRequest/index.js
++++ b/decoupled-functions/recordMatterRequest/index.js
+@@ -29,85 +29,85 @@ module.exports = async function (context, req) {
  
-     const [description, setDescription] = useState('');
-     const [folderStructure, setFolderStructure] = useState('');
-     const [disputeValue, setDisputeValue] = useState('');
-     // Preselect "Search" as the default value for the source field
-     const [source, setSource] = useState('search');
-     const [referrerName, setReferrerName] = useState('');
+   if (req.method !== 'POST') {
+     context.res = { status: 405, body: 'Method not allowed' };
+     return;
+   }
  
-     const [opponentName, setOpponentName] = useState('');
-     const [opponentEmail, setOpponentEmail] = useState('');
-     const [opponentSolicitorName, setOpponentSolicitorName] = useState('');
-     const [opponentSolicitorCompany, setOpponentSolicitorCompany] = useState('');
-     const [opponentSolicitorEmail, setOpponentSolicitorEmail] = useState('');
-     const [noConflict, setNoConflict] = useState(false);
+   const body = req.body || {};
  
-     // Opponent fields
-     const [opponentTitle, setOpponentTitle] = useState('');
-     const [opponentFirst, setOpponentFirst] = useState('');
-     const [opponentLast, setOpponentLast] = useState('');
-     const [opponentPhone, setOpponentPhone] = useState('');
--    const [opponentAddress, setOpponentAddress] = useState('');
-+    const [opponentHouseNumber, setOpponentHouseNumber] = useState('');
-+    const [opponentStreet, setOpponentStreet] = useState('');
-+    const [opponentCity, setOpponentCity] = useState('');
-+    const [opponentCounty, setOpponentCounty] = useState('');
-+    const [opponentPostcode, setOpponentPostcode] = useState('');
-+    const [opponentCountry, setOpponentCountry] = useState('');
-     const [opponentHasCompany, setOpponentHasCompany] = useState(false);
-     const [opponentCompanyName, setOpponentCompanyName] = useState('');
-     const [opponentCompanyNumber, setOpponentCompanyNumber] = useState('');
-     // Solicitor fields
-     const [solicitorTitle, setSolicitorTitle] = useState('');
-     const [solicitorFirst, setSolicitorFirst] = useState('');
-     const [solicitorLast, setSolicitorLast] = useState('');
-     const [solicitorPhone, setSolicitorPhone] = useState('');
--    const [solicitorAddress, setSolicitorAddress] = useState('');
-+    const [solicitorHouseNumber, setSolicitorHouseNumber] = useState('');
-+    const [solicitorStreet, setSolicitorStreet] = useState('');
-+    const [solicitorCity, setSolicitorCity] = useState('');
-+    const [solicitorCounty, setSolicitorCounty] = useState('');
-+    const [solicitorPostcode, setSolicitorPostcode] = useState('');
-+    const [solicitorCountry, setSolicitorCountry] = useState('');
-     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useState('');
+   try {
+     await ensureDbPassword();
+     const pool = await getSqlPool();
  
-     const [visiblePoidCount, setVisiblePoidCount] = useState(12);
-     const [poidSearchTerm, setPoidSearchTerm] = useState('');
-     const poidGridRef = useRef<HTMLDivElement | null>(null);
-     const [activePoid, setActivePoid] = useState<POID | null>(null);
+     let opponentId = body.opponentId || null;
+     if (!opponentId && body.opponent) {
+       const op = body.opponent;
+       const res = await pool.request()
+         .input('PartyRole', sql.NVarChar(50), 'Opponent')
+         .input('IsCompany', sql.Bit, op.is_company ? 1 : 0)
+         .input('Title', sql.NVarChar(20), op.title || null)
+         .input('FirstName', sql.NVarChar(100), op.first_name || null)
+         .input('LastName', sql.NVarChar(100), op.last_name || null)
+         .input('CompanyName', sql.NVarChar(255), op.company_name || null)
+         .input('CompanyNumber', sql.NVarChar(50), op.company_number || null)
+         .input('Email', sql.NVarChar(255), op.email || null)
+         .input('Phone', sql.NVarChar(50), op.phone || null)
+-        .input('HouseNumber', sql.NVarChar(50), null)
+-        .input('Street', sql.NVarChar(255), op.address || null)
+-        .input('City', sql.NVarChar(100), null)
+-        .input('County', sql.NVarChar(100), null)
+-        .input('Postcode', sql.NVarChar(20), null)
+-        .input('Country', sql.NVarChar(100), null)
++        .input('HouseNumber', sql.NVarChar(50), op.address?.house_number || null)
++        .input('Street', sql.NVarChar(255), op.address?.street || null)
++        .input('City', sql.NVarChar(100), op.address?.city || null)
++        .input('County', sql.NVarChar(100), op.address?.county || null)
++        .input('Postcode', sql.NVarChar(20), op.address?.post_code || null)
++        .input('Country', sql.NVarChar(100), op.address?.country || null)
+         .query(`INSERT INTO Opponents (
+           PartyRole, IsCompany, Title, FirstName, LastName, CompanyName, CompanyNumber,
+           Email, Phone, HouseNumber, Street, City, County, Postcode, Country)
+           OUTPUT INSERTED.OpponentID
+           VALUES (
+           @PartyRole, @IsCompany, @Title, @FirstName, @LastName, @CompanyName, @CompanyNumber,
+           @Email, @Phone, @HouseNumber, @Street, @City, @County, @Postcode, @Country)`);
+       opponentId = res.recordset[0].OpponentID;
+     }
  
-     const stepsOrder: StepKey[] = useMemo(() => {
-         const order: StepKey[] = ['clientInfo'];
-         if (!instructionRef) {
-             order.push('poidSelection');
-         }
-         order.push(
-             'areaOfWork',
-             'practiceArea',
-             'description',
-             'disputeValue',
-             'source',
-             'folderStructure',
-             'opponentDetails',
-             'review'
-         );
-         return order;
-     }, [instructionRef]);
+     let solicitorId = body.solicitorId || null;
+     if (!solicitorId && body.solicitor) {
+       const sol = body.solicitor;
+       const res = await pool.request()
+         .input('PartyRole', sql.NVarChar(50), 'Solicitor')
+         .input('IsCompany', sql.Bit, sol.is_company ? 1 : 0)
+         .input('Title', sql.NVarChar(20), sol.title || null)
+         .input('FirstName', sql.NVarChar(100), sol.first_name || null)
+         .input('LastName', sql.NVarChar(100), sol.last_name || null)
+         .input('CompanyName', sql.NVarChar(255), sol.company_name || null)
+         .input('CompanyNumber', sql.NVarChar(50), sol.company_number || null)
+         .input('Email', sql.NVarChar(255), sol.email || null)
+         .input('Phone', sql.NVarChar(50), sol.phone || null)
+-        .input('HouseNumber', sql.NVarChar(50), null)
+-        .input('Street', sql.NVarChar(255), sol.address || null)
+-        .input('City', sql.NVarChar(100), null)
+-        .input('County', sql.NVarChar(100), null)
+-        .input('Postcode', sql.NVarChar(20), null)
+-        .input('Country', sql.NVarChar(100), null)
++        .input('HouseNumber', sql.NVarChar(50), sol.address?.house_number || null)
++        .input('Street', sql.NVarChar(255), sol.address?.street || null)
++        .input('City', sql.NVarChar(100), sol.address?.city || null)
++        .input('County', sql.NVarChar(100), sol.address?.county || null)
++        .input('Postcode', sql.NVarChar(20), sol.address?.post_code || null)
++        .input('Country', sql.NVarChar(100), sol.address?.country || null)
+         .query(`INSERT INTO Opponents (
+           PartyRole, IsCompany, Title, FirstName, LastName, CompanyName, CompanyNumber,
+           Email, Phone, HouseNumber, Street, City, County, Postcode, Country)
+           OUTPUT INSERTED.OpponentID
+           VALUES (
+           @PartyRole, @IsCompany, @Title, @FirstName, @LastName, @CompanyName, @CompanyNumber,
+           @Email, @Phone, @HouseNumber, @Street, @City, @County, @Postcode, @Country)`);
+       solicitorId = res.recordset[0].OpponentID;
+     }
  
-diff --git a/src/tabs/instructions/NewMatters.tsx b/src/tabs/instructions/NewMatters.tsx
-index 7afc8d05348f46dc8fc90e5cd3055b726767f792..ad43e2fee3a04be221b2fba5700b62539860de14 100644
---- a/src/tabs/instructions/NewMatters.tsx
-+++ b/src/tabs/instructions/NewMatters.tsx
-@@ -538,93 +548,123 @@ const NewMatters: React.FC<NewMattersProps> = ({
-             case 'opponentDetails':
-                 return (
-                     <OpponentDetailsStep
-                         opponentName={opponentName}
-                         setOpponentName={setOpponentName}
-                         opponentEmail={opponentEmail}
-                         setOpponentEmail={setOpponentEmail}
-                         opponentSolicitorName={opponentSolicitorName}
-                         setOpponentSolicitorName={setOpponentSolicitorName}
-                         opponentSolicitorCompany={opponentSolicitorCompany}
-                         setOpponentSolicitorCompany={setOpponentSolicitorCompany}
-                         opponentSolicitorEmail={opponentSolicitorEmail}
-                         setOpponentSolicitorEmail={setOpponentSolicitorEmail}
-                         noConflict={noConflict}
-                         setNoConflict={setNoConflict}
-                         disputeValue={disputeValue}
-                         setDisputeValue={setDisputeValue}
-                         opponentTitle={opponentTitle}
-                         setOpponentTitle={setOpponentTitle}
-                         opponentFirst={opponentFirst}
-                         setOpponentFirst={setOpponentFirst}
-                         opponentLast={opponentLast}
-                         setOpponentLast={setOpponentLast}
-                         opponentPhone={opponentPhone}
-                         setOpponentPhone={setOpponentPhone}
--                        opponentAddress={opponentAddress}
--                        setOpponentAddress={setOpponentAddress}
-+                        opponentHouseNumber={opponentHouseNumber}
-+                        setOpponentHouseNumber={setOpponentHouseNumber}
-+                        opponentStreet={opponentStreet}
-+                        setOpponentStreet={setOpponentStreet}
-+                        opponentCity={opponentCity}
-+                        setOpponentCity={setOpponentCity}
-+                        opponentCounty={opponentCounty}
-+                        setOpponentCounty={setOpponentCounty}
-+                        opponentPostcode={opponentPostcode}
-+                        setOpponentPostcode={setOpponentPostcode}
-+                        opponentCountry={opponentCountry}
-+                        setOpponentCountry={setOpponentCountry}
-                         opponentHasCompany={opponentHasCompany}
-                         setOpponentHasCompany={setOpponentHasCompany}
-                         opponentCompanyName={opponentCompanyName}
-                         setOpponentCompanyName={setOpponentCompanyName}
-                         opponentCompanyNumber={opponentCompanyNumber}
-                         setOpponentCompanyNumber={setOpponentCompanyNumber}
-                         solicitorTitle={solicitorTitle}
-                         setSolicitorTitle={setSolicitorTitle}
-                         solicitorFirst={solicitorFirst}
-                         setSolicitorFirst={setSolicitorFirst}
-                         solicitorLast={solicitorLast}
-                         setSolicitorLast={setSolicitorLast}
-                         solicitorPhone={solicitorPhone}
-                         setSolicitorPhone={setSolicitorPhone}
--                        solicitorAddress={solicitorAddress}
--                        setSolicitorAddress={setSolicitorAddress}
-+                        solicitorHouseNumber={solicitorHouseNumber}
-+                        setSolicitorHouseNumber={setSolicitorHouseNumber}
-+                        solicitorStreet={solicitorStreet}
-+                        setSolicitorStreet={setSolicitorStreet}
-+                        solicitorCity={solicitorCity}
-+                        setSolicitorCity={setSolicitorCity}
-+                        solicitorCounty={solicitorCounty}
-+                        setSolicitorCounty={setSolicitorCounty}
-+                        solicitorPostcode={solicitorPostcode}
-+                        setSolicitorPostcode={setSolicitorPostcode}
-+                        solicitorCountry={solicitorCountry}
-+                        setSolicitorCountry={setSolicitorCountry}
-                         solicitorCompanyNumber={solicitorCompanyNumber}
-                         setSolicitorCompanyNumber={setSolicitorCompanyNumber}
-                     />
-                 );
-             case 'review':
-                 return (
-                     <ReviewStep
-                         selectedDate={selectedDate}
-                         supervisingPartner={supervisingPartner}
-                         originatingSolicitor={originatingSolicitor}
-                         // fundsReceived removed
-                         clientType={clientType}
-                         selectedPoidIds={selectedPoidIds}
-                         areaOfWork={areaOfWork}
-                         practiceArea={practiceArea}
-                         description={description}
-                         folderStructure={folderStructure}
-                         disputeValue={disputeValue}
-                         source={source}
-                         referrerName={referrerName}
-                         opponentName={opponentName}
-                         opponentEmail={opponentEmail}
-                         opponentSolicitorName={opponentSolicitorName}
-                         opponentSolicitorCompany={opponentSolicitorCompany}
-                         opponentSolicitorEmail={opponentSolicitorEmail}
-+                        opponentStreet={opponentStreet}
-+                        opponentCity={opponentCity}
-+                        opponentCounty={opponentCounty}
-+                        opponentPostcode={opponentPostcode}
-+                        opponentCountry={opponentCountry}
-+                        solicitorStreet={solicitorStreet}
-+                        solicitorCity={solicitorCity}
-+                        solicitorCounty={solicitorCounty}
-+                        solicitorPostcode={solicitorPostcode}
-+                        solicitorCountry={solicitorCountry}
-                         noConflict={noConflict}
-                         userInitials={userInitials}
-                         userData={userData}
-                         onBuild={() => { }}
-                     />
-                 );
-             default:
-                 return null;
-         }
-     };
- 
-     return (
-         <CompletionProvider>
-         <Stack className="workflow-container">
-             {!hideClientSections && (
-                 <>
-                     <ClientDetails stage={stage} instructionRef={instructionRef} />
-                     <ClientHub
-                         instructionRef={instructionRef}
-                         clientId={clientId}
-                         feeEarner={feeEarner}
-                         idExpiry={idExpiry}
-                         idVerified={false}
-                         matterRef={matterRef}
-                     />
+     const { v4: uuidv4 } = require('uuid');
+     const matterId = uuidv4();
+     const now = new Date();
+     const openTime = new Date(0); // midnight
+     openTime.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+     await pool.request()
+       .input('MatterID', sql.NVarChar(255), matterId)
+       .input('InstructionRef', sql.NVarChar(255), body.instructionRef || null)
+       .input('ClientType', sql.NVarChar(255), body.clientType || null)
+       .input('Description', sql.NVarChar(sql.MAX), body.description || null)
+       .input('PracticeArea', sql.NVarChar(255), body.practiceArea || null)
+       .input('ApproxValue', sql.NVarChar(50), body.value || null)
+       .input('ResponsibleSolicitor', sql.NVarChar(255), body.responsibleSolicitor || null)
+       .input('OriginatingSolicitor', sql.NVarChar(255), body.originatingSolicitor || null)
+       .input('SupervisingPartner', sql.NVarChar(255), body.supervisingPartner || null)
