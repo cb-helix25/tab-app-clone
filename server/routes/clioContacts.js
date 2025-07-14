@@ -31,6 +31,77 @@ router.post('/', async (req, res) => {
         const clients = formData.client_information || [];
         const type = formData.matter_details?.client_type || 'Individual';
 
+        function mapPerson(client) {
+            return {
+                first_name: client.first_name || client.first || '',
+                last_name: client.last_name || client.last || '',
+                prefix: client.prefix || null,
+                date_of_birth: client.date_of_birth || null,
+                email_addresses: [
+                    {
+                        name: 'Home',
+                        address: client.email || '',
+                        default_email: true
+                    }
+                ],
+                phone_numbers: client.best_number
+                    ? [
+                        {
+                            name: 'Home',
+                            number: client.best_number,
+                            default_number: true
+                        }
+                    ]
+                    : [],
+                addresses: [
+                    {
+                        name: 'Home',
+                        street: `${client.house_building_number || ''} ${client.street || ''}`.trim(),
+                        city: client.city || '',
+                        province: client.county || '',
+                        postal_code: client.post_code || '',
+                        country: client.country || ''
+                    }
+                ]
+            };
+        }
+
+        function mapCompany(company, nameOverride) {
+            return {
+                name: nameOverride || company.company_details?.name || company.company_name || '',
+                email_addresses: company.email
+                    ? [
+                        {
+                            name: 'Work',
+                            address: company.email,
+                            default_email: true
+                        }
+                    ]
+                    : [],
+                phone_numbers: company.best_number
+                    ? [
+                        {
+                            name: 'Work',
+                            number: company.best_number,
+                            default_number: true
+                        }
+                    ]
+                    : [],
+                addresses: company.company_house_building_number || company.company_street
+                    ? [
+                        {
+                            name: 'Work',
+                            street: `${company.company_house_building_number || ''} ${company.company_street || ''}`.trim(),
+                            city: company.company_city || '',
+                            province: company.company_county || '',
+                            postal_code: company.company_post_code || '',
+                            country: company.company_country || ''
+                        }
+                    ]
+                    : []
+            };
+        }
+
         async function createOrUpdate(contact) {
             const query = encodeURIComponent(contact.email);
             const lookupResp = await fetch(`https://eu.app.clio.com/api/v4/contacts.json?query=${query}`, { headers });
@@ -73,33 +144,28 @@ router.post('/', async (req, res) => {
 
         if (type === 'Individual') {
             for (const c of clients) {
-                const contact = {
-                    first_name: c.first_name,
-                    last_name: c.last_name,
-                    email: c.email,
-                    type: 'Person'
-                };
-                results.push(await createOrUpdate(contact));
+                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person', email: c.email }));
             }
-        } else {
-            // Company contact from first client with company_details
-            const company = clients.find(c => c.company_details);
-            if (company && company.company_details) {
-                const contact = {
-                    name: company.company_details.name,
-                    email: company.email,
-                    type: 'Company'
-                };
-                results.push(await createOrUpdate(contact));
+        } else if (type === 'Company') {
+            const companyClient = clients.find(c => c.company_details) || clients[0];
+            if (companyClient) {
+                results.push(await createOrUpdate({ ...mapCompany(companyClient), type: 'Company', email: companyClient.email }));
             }
             for (const c of clients) {
-                const contact = {
-                    first_name: c.first_name,
-                    last_name: c.last_name,
-                    email: c.email,
-                    type: 'Person'
-                };
-                results.push(await createOrUpdate(contact));
+                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person', email: c.email }));
+            }
+        } else if (type === 'Multiple Individuals') {
+            const name = formData.matter_details?.client_as_on_file || 'Multiple Clients';
+            const firstClient = clients[0];
+            if (firstClient) {
+                results.push(await createOrUpdate({ ...mapCompany(firstClient, name), type: 'Company', email: firstClient.email }));
+            }
+            for (const c of clients) {
+                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person', email: c.email }));
+            }
+        } else {
+            for (const c of clients) {
+                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person', email: c.email }));
             }
         }
 

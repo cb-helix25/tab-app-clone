@@ -98,6 +98,8 @@ for adding real-time workflow updates after the "Submit Matter" button is presse
 
 Token refresh endpoints for ActiveCampaign, Clio and Asana are documented in
 [`docs/token-refresh.md`](docs/token-refresh.md).
+Documentation for the Clio contact synchronisation step is available in
+[`docs/clio-contact-sync.md`](docs/clio-contact-sync.md).
 ## Deployment
 
 When deploying to Azure Web Apps on Windows, build the project first so that the root directory contains `index.js` and the compiled React files. The provided [build-and-deploy.ps1](build-and-deploy.ps1) script automates this by running the build, copying the server files and their dependencies along with `web.config`, and then zipping the result for deployment. Deploying the repository directly without building will result in a 500 error because IIS cannot locate `index.js` or the required Node modules.

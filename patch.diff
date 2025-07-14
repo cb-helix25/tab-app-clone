@@ -1,118 +1,56 @@
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 4058fcaed25a5b4669204a62045dd3c8fb82060c..dfefb487e63410e143b427850a1752249be6a0b5 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -2050,50 +2050,54 @@ const handleClearAll = () => {
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Has Company:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHasCompany ? 'Yes' : 'No'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentTitle || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentFirst || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentLast || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentEmail || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPhone || '-'}</span>
-                                             </div>
-+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-+                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
-+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentHouseNumber || '-'}</span>
-+                                            </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentStreet || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>City:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCity || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>County:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCounty || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentPostcode || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentCountry || '-'}</span>
-                                             </div>
-                                         </div>
-                                     </div>
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index b6179bb55049ffb26921a987b618de088de50c25..ad776de6d4711871b3e90f6616935e62c479897b 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -178,39 +178,50 @@ export const processingActions: ProcessingAction[] = [
  
-                                     {/* ...removed duplicate Value/Dispute Value section... */}
+             const resp = await fetch('/api/matter-requests', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+             });
  
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 4058fcaed25a5b4669204a62045dd3c8fb82060c..dfefb487e63410e143b427850a1752249be6a0b5 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -2117,50 +2121,54 @@ const handleClearAll = () => {
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Company Number:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCompanyNumber || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Title:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorTitle || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>First Name:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorFirst || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Last Name:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorLast || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Email:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{opponentSolicitorEmail || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Phone:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPhone || '-'}</span>
-                                             </div>
-+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-+                                                <span style={{ color: '#666', fontSize: 13 }}>House/Building:</span>
-+                                                <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorHouseNumber || '-'}</span>
-+                                            </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Street:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorStreet || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>City:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCity || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>County:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCounty || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Postcode:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorPostcode || '-'}</span>
-                                             </div>
-                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                 <span style={{ color: '#666', fontSize: 13 }}>Country:</span>
-                                                 <span style={{ fontWeight: 500, fontSize: 13 }}>{solicitorCountry || '-'}</span>
-                                             </div>
-                                         </div>
-                                     </div>
+             if (!resp.ok) throw new Error('Failed to record matter request');
+             const data = await resp.json();
+             return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+         }
+     },
  
-                                     {/* Conflict Check Status */}
-                                     <div style={{ 
+     { label: 'Contact Created/Updated', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' },
+     {
+         label: 'Clio Contact Created/Updated',
+         icon: clioIcon,
+         run: async (formData, userInitials) => {
+             const resp = await fetch('/api/clio-contacts', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ formData, initials: userInitials })
+             });
+             if (!resp.ok) throw new Error('Failed to sync Clio contact');
+-            return 'Clio contact synced';
++            const data = await resp.json();
++            if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
++            const names = (data.results || [])
++                .map((r: any) => {
++                    const attrs = r.data?.attributes || {};
++                    if (attrs.first_name || attrs.last_name) {
++                        return `${attrs.first_name || ''} ${attrs.last_name || ''}`.trim();
++                    }
++                    return attrs.name;
++                })
++                .filter(Boolean);
++            return `Clio contacts synced: ${names.join(', ')}`;
+         }
+     },
+     { label: 'Clio Matter Opened', run: async () => 'Done' },
+     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' }
+ ];
+ // invisible change 2.2
+ 
+ export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
+     label: action.label,
+     status: 'pending',
+     icon: action.icon
+ }));

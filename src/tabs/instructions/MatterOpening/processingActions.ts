@@ -200,7 +200,18 @@ export const processingActions: ProcessingAction[] = [
                 body: JSON.stringify({ formData, initials: userInitials })
             });
             if (!resp.ok) throw new Error('Failed to sync Clio contact');
-            return 'Clio contact synced';
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
+            const names = (data.results || [])
+                .map((r: any) => {
+                    const attrs = r.data?.attributes || {};
+                    if (attrs.first_name || attrs.last_name) {
+                        return `${attrs.first_name || ''} ${attrs.last_name || ''}`.trim();
+                    }
+                    return attrs.name;
+                })
+                .filter(Boolean);
+            return `Clio contacts synced: ${names.join(', ')}`;
         }
     },
     { label: 'Clio Matter Opened', run: async () => 'Done' },
