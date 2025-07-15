@@ -1090,6 +1090,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           hideClientSections={!selectedInstruction}
           initialClientType={selectedInstruction?.ClientType}
           preselectedPoidIds={preselectedPoidIds}
+          instructionPhone={selectedInstruction?.Phone}
         />
       </Stack>
     );

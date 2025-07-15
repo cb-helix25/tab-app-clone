@@ -82,6 +82,7 @@ interface FlatMatterOpeningProps {
     hideClientSections?: boolean;
     initialClientType?: string;
     preselectedPoidIds?: string[];
+    instructionPhone?: string;
 }
 
 const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
@@ -99,8 +100,8 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     hideClientSections = false,
     initialClientType = '',
     preselectedPoidIds = [],
+    instructionPhone,
 }) => {
-    const [clientPhone, setClientPhone] = useDraftedState<string>('clientPhone', '');
     const idExpiry = useMemo(() => {
         const d = new Date();
         d.setDate(d.getDate() + 30);
@@ -110,11 +111,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const showPoidSelection = !instructionRef;
     const defaultPoidData: POID[] = useMemo(
         () =>
-            (idVerifications as any[]).map((v) => ({
+        (poidData && poidData.length > 0
+            ? poidData
+            : (idVerifications as any[]).map((v) => ({
                 poid_id: String(v.InternalId),
                 first: v.FirstName,
                 last: v.LastName,
                 email: v.Email,
+                best_number: (v as any).Phone || '',
                 nationality: v.Nationality,
                 nationality_iso: v.NationalityAlpha2,
                 date_of_birth: v.DOB,
@@ -148,7 +152,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
                 type: v.type,
                 client_id: v.ClientId,
                 matter_id: v.MatterId,
-            })) as POID[],
+            }))) as POID[],
         []
     );
     
@@ -635,6 +639,7 @@ const handleClearAll = () => {
                 (client as any).phone_number ||
                 (client as any).phoneNumber ||
                 (client as any).Phone ||
+                instructionPhone ||
                 null;
             const email = client.email || (client as any).Email || '';
 
@@ -1544,8 +1549,6 @@ const handleClearAll = () => {
                                     partnerOptions={getPartnerInitials(teamData || localTeamDataJson)}
                                     requestingUser={requestingUserNickname}
                                     requestingUserClioId={requestingUserClioId}
-                                    phone={clientPhone}
-                                    setPhone={setClientPhone}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
                                     {/* Move NetDocuments Folder Structure above Area of Work */}

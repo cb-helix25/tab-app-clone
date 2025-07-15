@@ -28,9 +28,6 @@ interface ClientInfoStepProps {
     partnerOptions: string[];
     requestingUser: string;
     requestingUserClioId: string;
-    /** Newly added props */
-    phone: string;
-    setPhone: (p: string) => void;
     onContinue?: () => void;
 }
 
@@ -50,8 +47,6 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
     partnerOptions,
     requestingUser,
     requestingUserClioId,
-    phone,           // ← destructured
-    setPhone,        // ← destructured
     onContinue,
 }) => {
     const separatorStyle = mergeStyles({
@@ -354,13 +349,6 @@ const ClientInfoStep: React.FC<ClientInfoStepProps> = ({
                     selectedValue={supervisingPartner}
                     onSelectionChange={setSupervisingPartner}
                     variant="grid"
-                />
-
-                {/* Client Phone (new) */}
-                <TextField
-                    label="Client Phone"
-                    value={phone}
-                    onChange={(_, newValue) => setPhone(newValue || '')}
                 />
 
                 {onContinue && (

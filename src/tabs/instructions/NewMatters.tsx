@@ -52,6 +52,7 @@ interface NewMattersProps {
     hideClientSections?: boolean;
     /** Sets the initial client type when launching the workflow */
     initialClientType?: string;
+    instructionPhone?: string;
 }
 
 const NewMatters: React.FC<NewMattersProps> = ({
@@ -67,17 +68,20 @@ const NewMatters: React.FC<NewMattersProps> = ({
     matterRef,
     hideClientSections = false,
     initialClientType = '',
+    instructionPhone,
 }) => {
     const [openStep, setOpenStep] = useState<number>(0); // invisible change
-    const [clientPhone, setClientPhone] = useState('');
 
     const defaultPoidData: POID[] = useMemo(
         () =>
-            (idVerifications as any[]).map((v) => ({
+        (poidData && poidData.length > 0
+            ? poidData
+            : (idVerifications as any[]).map((v) => ({
                 poid_id: String(v.InternalId),
                 first: v.FirstName,
                 last: v.LastName,
                 email: v.Email,
+                best_number: (v as any).Phone || '',
                 nationality: v.Nationality,
                 nationality_iso: v.NationalityAlpha2,
                 date_of_birth: v.DOB,
@@ -110,7 +114,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                 type: v.type,
                 client_id: v.ClientId,
                 matter_id: v.MatterId,
-            })) as POID[],
+            }))) as POID[],
         []
     );
     // Filter out any invalid POID entries that might be causing issues
@@ -463,8 +467,6 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         partnerOptions={partnerAndSolicitorOptions}
                         requestingUser={requestingUserNickname}
                         requestingUserClioId={requestingUserClioId}
-                        phone={clientPhone}
-                        setPhone={setClientPhone}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1
@@ -656,7 +658,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         userInitials={userInitials}
                         userData={userData}
                         clientAsOnFile={clientAsOnFile}
-                        phone={clientPhone}
+                        phone={instructionPhone ?? ''}
                         onBuild={() => { }}
                     />
                 );

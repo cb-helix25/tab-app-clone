@@ -31,6 +31,7 @@ function mergeData() {
             entry.FirstName = inst.FirstName || null;
             entry.LastName = inst.LastName || null;
             entry.Email = inst.Email || null;
+            entry.Phone = inst.Phone || null;
             entry.Nationality = inst.Nationality || null;
             entry.NationalityAlpha2 = inst.NationalityAlpha2 || null;
             entry.DOB = inst.DOB || null;
