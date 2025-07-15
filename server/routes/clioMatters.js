@@ -2,6 +2,7 @@ const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');  // if you don’t have global fetch
 
 const PRACTICE_AREAS = {
     "Adjudication Advice & Dispute": 949034,
@@ -86,15 +87,14 @@ router.post('/', async (req, res) => {
     }
 
     try {
+        // 1. Refresh Clio token
         const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
-
         const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
         if (!tokenResp.ok) {
-            const text = await tokenResp.text();
-            console.error('Clio token refresh failed', text);
+            console.error('Clio token refresh failed', await tokenResp.text());
             return res.status(500).json({ error: 'Token refresh failed' });
         }
         const { access_token } = await tokenResp.json();
@@ -103,63 +103,55 @@ router.post('/', async (req, res) => {
             Authorization: `Bearer ${access_token}`
         };
 
+        // 2. Compute IDs and values
         const primaryId = companyId || contactIds[0];
-
-        const instructionRef = formData.matter_details?.instruction_ref || '';
-        const practiceAreaName = formData.matter_details?.practice_area || '';
-        const practiceAreaId = PRACTICE_AREAS[practiceAreaName] || null;
-
-        const responsibleName = formData.team_assignments?.fee_earner || '';
-        const originatingName = formData.team_assignments?.originating_solicitor || '';
-        const supervisingName = formData.team_assignments?.supervising_partner || '';
-
-        const responsibleId = getClioId(responsibleName);
-        const originatingId = getClioId(originatingName);
+        const md = formData.matter_details;
+        const instructionRef = md.instruction_ref || '';
+        const practiceAreaId = PRACTICE_AREAS[md.practice_area] || null;
+        const responsibleId = getClioId(formData.team_assignments.fee_earner);
+        const originatingId = getClioId(formData.team_assignments.originating_solicitor);
         const riskResult = getRiskResult(instructionRef);
 
         const customFieldValues = [
-            { value: supervisingName || null, custom_field: { id: 232574 } },
-            { value: formData.matter_details?.folder_structure || null, custom_field: { id: 299746 } },
-            { value: formData.matter_details?.dispute_value || null, custom_field: { id: 378566 } },
-            { value: instructionRef || null, custom_field: { id: 380728 } }
+            { value: formData.team_assignments.supervising_partner, custom_field: { id: 232574 } },
+            { value: md.folder_structure, custom_field: { id: 299746 } },
+            { value: md.dispute_value, custom_field: { id: 378566 } },
+            { value: instructionRef, custom_field: { id: 380728 } }
         ].filter(cf => cf.value);
 
+        // 3. Build Matter payload
         const matterPayload = {
             data: {
-                type: 'matters',
-                attributes: {
-                    billable: true,
-                    client_id: primaryId,
-                    client_reference: instructionRef || null,
-                    description: formData.matter_details?.description || '',
-                    practice_area: practiceAreaId,
-                    responsible_attorney_id: responsibleId,
-                    originating_attorney_id: originatingId,
-                    status: 'Open',
-                    risk_result: riskResult || null,
-                    custom_field_values: customFieldValues
-                },
-                relationships: {
-                    client: { data: { type: 'contacts', id: primaryId } }
-                }
+                billable: true,
+                client: { id: primaryId },
+                client_reference: instructionRef || null,
+                description: md.description,
+                practice_area: { id: practiceAreaId },
+                responsible_attorney: { id: responsibleId },
+                originating_attorney: { id: originatingId },
+                status: 'open',
+                risk_result: riskResult || null,
+                custom_field_values: customFieldValues
             }
         };
 
-        const resp = await fetch('https://eu.app.clio.com/api/v4/matters', {
+        // 4. Debug log
+        console.error('Matter payload ➞', JSON.stringify(matterPayload, null, 2));
+
+        // 5. Create Matter
+        const resp = await fetch('https://eu.app.clio.com/api/v4/matters.json', {
             method: 'POST',
             headers,
             body: JSON.stringify(matterPayload)
         });
-
         if (!resp.ok) {
-            const text = await resp.text();
-            console.error('Clio matter create failed', text);
+            console.error('Clio matter create failed', await resp.text());
             return res.status(500).json({ error: 'Matter creation failed' });
         }
+        const { data } = await resp.json();
+        const matterId = data.id;
 
-        const data = await resp.json();
-        const matterId = data.data?.id;
-
+        // 6. Link related contacts
         if (matterId && contactIds.length > 1) {
             for (const id of contactIds.slice(1)) {
                 const relPayload = {
@@ -172,7 +164,7 @@ router.post('/', async (req, res) => {
                         }
                     }
                 };
-                const relResp = await fetch('https://eu.app.clio.com/api/v4/relationships', {
+                const relResp = await fetch('https://eu.app.clio.com/api/v4/relationships.json', {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(relPayload)
@@ -183,6 +175,7 @@ router.post('/', async (req, res) => {
             }
         }
 
+        // 7. Return result
         res.json({ ok: true, matterId });
     } catch (err) {
         console.error('Clio matter error', err);

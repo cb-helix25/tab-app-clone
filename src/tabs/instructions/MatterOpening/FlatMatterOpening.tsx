@@ -29,7 +29,7 @@ import OpponentDetailsStep from './OpponentDetailsStep';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
-import { processingActions, initialSteps } from './processingActions';
+import { processingActions, initialSteps, registerClientIdCallback } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -93,7 +93,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     userInitials,
     userData,
     instructionRef = '',
-    clientId = '',
+    clientId: initialClientId = '',
     feeEarner,
     stage = 'New Matter',
     matterRef,
@@ -107,6 +107,12 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
         d.setDate(d.getDate() + 30);
         return d.toLocaleDateString('en-GB');
     }, []); // invisible change
+
+    const [clientId, setClientId] = useState<string | null>(initialClientId || null);
+    useEffect(() => {
+        registerClientIdCallback(setClientId);
+        return () => registerClientIdCallback(null);
+    }, []);
 
     const showPoidSelection = !instructionRef;
     const defaultPoidData: POID[] = useMemo(

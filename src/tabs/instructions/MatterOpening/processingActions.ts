@@ -15,6 +15,11 @@ let opponentId = '';
 let solicitorId = '';
 let clioContactIds: string[] = [];
 let clioCompanyId: string | null = null;
+let clientIdCallback: ((id: string | null) => void) | null = null;
+
+export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
+    clientIdCallback = cb;
+}
 
 export interface ProcessingAction {
     label: string;
@@ -222,6 +227,11 @@ export const processingActions: ProcessingAction[] = [
                     names.push(attrs.name);
                 }
             });
+            const person = (data.results || []).find((r: any) => r.data?.type === 'Person');
+            const newId = person?.data?.id ? String(person.data.id) : null;
+            if (newId && clientIdCallback) {
+                clientIdCallback(newId);
+            }
             return `Clio contacts synced: ${names.join(', ')}`;
         }
     },

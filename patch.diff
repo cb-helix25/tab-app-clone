@@ -1,172 +1,112 @@
-diff --git a/server/routes/clioMatters.js b/server/routes/clioMatters.js
-index 67b572a1fba4f57000ed4084a6983183560dd4ff..5259691c85dc246719924daf00e0639c9decd8da 100644
---- a/server/routes/clioMatters.js
-+++ b/server/routes/clioMatters.js
-@@ -1,62 +1,165 @@
- const express = require('express');
- const { getSecret } = require('../utils/getSecret');
-+const fs = require('fs');
-+const path = require('path');
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index 6fa0dbc754dea6ed414bc461b02704051769fa10..a87c212bbc19bd75d403b55433f04b2a6f4b8c4a 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -1,42 +1,47 @@
+ import { ProcessingStep } from './ProcessingSection';
+ import activeIcon from '../../../assets/activecampaign.svg';
+ import clioIcon from '../../../assets/clio.svg';
+ import asanaIcon from '../../../assets/asana.svg';
+ 
+ // locally cached values so refresh endpoints can be called in sequence
+ let acToken = '';
+ let clioClientId = '';
+ let clioClientSecret = '';
+ let clioRefreshToken = '';
+ let asanaClientId = '';
+ let asanaSecret = '';
+ let asanaRefreshToken = '';
+ let opponentId = '';
+ let solicitorId = '';
+ let clioContactIds: string[] = [];
+ let clioCompanyId: string | null = null;
++let clientIdCallback: ((id: string | null) => void) | null = null;
 +
-+const PRACTICE_AREAS = {
-+    "Adjudication Advice & Dispute": 949034,
-+    "Boundary and Nuisance Advice": 948938,
-+    "Breach of Lease Advice": 948827,
-+    "Business Contract Dispute": 948896,
-+    "Civil/Commercial Fraud Advice": 948878,
-+    "Commercial Contract - Drafting": 948914,
-+    "Construction Contract Advice": 948917,
-+    "Contentious Probate": 948932,
-+    "Contract Dispute": 948824,
-+    "Director Rights & Dispute Advice": 948866,
-+    "Disciplinary - Advising": 949040,
-+    "Employment Contract - Drafting": 948959,
-+    "Employment Retainer Instruction": 948908,
-+    "Final Account Recovery": 949022,
-+    "Handbook - Drafting": 948962,
-+    "Injunction Advice": 949874,
-+    "Intellectual Property": 1160218,
-+    "Interim Payment Recovery": 949025,
-+    "Landlord & Tenant - Commercial Dispute": 948863,
-+    "Landlord & Tenant - Residential Dispute": 948854,
-+    "Miscellaneous (None of the above)": 948830,
-+    "Miscellaneous (None of the above)_1": 948830,
-+    "Partnership Advice": 1872650,
-+    "Post Termination Dispute": 948947,
-+    "Professional Negligence": 948815,
-+    "Restrictive Covenant Advice": 948953,
-+    "Right of Way": 949037,
-+    "Service charge Recovery & Dispute Advice": 948956,
-+    "Settlement Agreement - Advising": 948944,
-+    "Shareholder Rights & Dispute Advice": 948851,
-+    "Small Claim Advice": 948950,
-+    "Statutory Demand - Advising": 948911,
-+    "Statutory Demand - Drafting": 949046,
-+    "Terms and Conditions - Drafting": 948941,
-+    "Trespass": 948965,
-+    "Trust Advice": 949031,
-+    "Trust of Land (TOLATA) Advice": 948860,
-+    "Unpaid Invoice/Debt Dispute": 948920,
-+    "Unpaid Loan Recovery": 948887,
-+    "Winding Up Petition Advice": 949049
-+};
-+
-+const teamPath = path.join(__dirname, '..', '..', 'data', 'team-sql-data.json');
-+let teamData = [];
-+try {
-+    teamData = JSON.parse(fs.readFileSync(teamPath, 'utf-8'));
-+} catch (err) {
-+    console.warn('Failed to load team data', err);
-+}
-+
-+const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
-+let riskData = [];
-+try {
-+    riskData = JSON.parse(fs.readFileSync(riskPath, 'utf-8'));
-+} catch (err) {
-+    console.warn('Failed to load risk data', err);
-+}
-+
-+function getClioId(fullName) {
-+    if (!fullName) return null;
-+    const found = teamData.find(t => {
-+        const name = (t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim()).toLowerCase();
-+        return name === fullName.toLowerCase();
-+    });
-+    return found ? String(found['Clio ID'] || '') : null;
-+}
-+
-+function getRiskResult(ref) {
-+    if (!ref) return null;
-+    const entry = riskData.find(r => (r.InstructionRef || '').toLowerCase() === ref.toLowerCase());
-+    return entry ? entry.RiskAssessmentResult || null : null;
++export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
++    clientIdCallback = cb;
 +}
  
- const router = express.Router();
+ export interface ProcessingAction {
+     label: string;
+     icon?: string;
+     run: (
+         formData: Record<string, any>,
+         userInitials: string,
+         userData?: any[] | null
+     ) => Promise<string>;
+ }
  
- router.post('/', async (req, res) => {
-     const { formData, initials, contactIds = [], companyId } = req.body || {};
-     if (!formData || !initials || contactIds.length === 0) {
-         return res.status(400).json({ error: 'Missing data' });
-     }
- 
-     try {
-         const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
-         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
-         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
- 
-         const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
-         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
-         if (!tokenResp.ok) {
-             const text = await tokenResp.text();
-             console.error('Clio token refresh failed', text);
-             return res.status(500).json({ error: 'Token refresh failed' });
+ export const processingActions: ProcessingAction[] = [
+     {
+         label: 'Retrieve ActiveCampaign Token',
+         icon: activeIcon,
+         run: async () => {
+             const res = await fetch('/api/keys/ac-automations-apitoken');
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             const data = await res.json();
+             acToken = data.value;
+             return 'Token retrieved';
          }
-         const { access_token } = await tokenResp.json();
-         const headers = {
-             'Content-Type': 'application/json',
-             Authorization: `Bearer ${access_token}`
-         };
- 
-         const primaryId = companyId || contactIds[0];
-+
-+        const instructionRef = formData.matter_details?.instruction_ref || '';
-+        const practiceAreaName = formData.matter_details?.practice_area || '';
-+        const practiceAreaId = PRACTICE_AREAS[practiceAreaName] || null;
-+
-+        const responsibleName = formData.team_assignments?.fee_earner || '';
-+        const originatingName = formData.team_assignments?.originating_solicitor || '';
-+        const supervisingName = formData.team_assignments?.supervising_partner || '';
-+
-+        const responsibleId = getClioId(responsibleName);
-+        const originatingId = getClioId(originatingName);
-+        const riskResult = getRiskResult(instructionRef);
-+
-+        const customFieldValues = [
-+            { value: supervisingName || null, custom_field: { id: 232574 } },
-+            { value: formData.matter_details?.folder_structure || null, custom_field: { id: 299746 } },
-+            { value: formData.matter_details?.dispute_value || null, custom_field: { id: 378566 } },
-+            { value: instructionRef || null, custom_field: { id: 380728 } }
-+        ].filter(cf => cf.value);
-+
-         const matterPayload = {
-             data: {
-                 type: 'matters',
-                 attributes: {
-+                    billable: true,
-+                    client_id: primaryId,
-+                    client_reference: instructionRef || null,
-                     description: formData.matter_details?.description || '',
--                    practice_area: formData.matter_details?.practice_area || '',
--                    status: 'Open'
-+                    practice_area: practiceAreaId,
-+                    responsible_attorney_id: responsibleId,
-+                    originating_attorney_id: originatingId,
-+                    status: 'Open',
-+                    risk_result: riskResult || null,
-+                    custom_field_values: customFieldValues
-                 },
-                 relationships: {
-                     client: { data: { type: 'contacts', id: primaryId } }
+     },
+     {
+         label: 'Refresh ActiveCampaign Token',
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index 6fa0dbc754dea6ed414bc461b02704051769fa10..a87c212bbc19bd75d403b55433f04b2a6f4b8c4a 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -200,50 +205,55 @@ export const processingActions: ProcessingAction[] = [
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ formData, initials: userInitials })
+             });
+             if (!resp.ok) throw new Error('Failed to sync Clio contact');
+             const data = await resp.json();
+             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
+             const names: string[] = [];
+             clioContactIds = [];
+             clioCompanyId = null;
+             (data.results || []).forEach((r: any) => {
+                 const attrs = r.data?.attributes || {};
+                 const id = r.data?.id;
+                 if (id) {
+                     clioContactIds.push(String(id));
                  }
-             }
-         };
- 
-         const resp = await fetch('https://eu.app.clio.com/api/v4/matters', {
-             method: 'POST',
-             headers,
-             body: JSON.stringify(matterPayload)
-         });
- 
-         if (!resp.ok) {
-             const text = await resp.text();
-             console.error('Clio matter create failed', text);
-             return res.status(500).json({ error: 'Matter creation failed' });
+                 if (r.data?.type === 'Company') {
+                     clioCompanyId = String(id);
+                 }
+                 if (attrs.first_name || attrs.last_name) {
+                     names.push(`${attrs.first_name || ''} ${attrs.last_name || ''}`.trim());
+                 } else if (attrs.name) {
+                     names.push(attrs.name);
+                 }
+             });
++            const person = (data.results || []).find((r: any) => r.data?.type === 'Person');
++            const newId = person?.data?.id ? String(person.data.id) : null;
++            if (newId && clientIdCallback) {
++                clientIdCallback(newId);
++            }
+             return `Clio contacts synced: ${names.join(', ')}`;
          }
+     },
+     {
+         label: 'Clio Matter Opened',
+         icon: clioIcon,
+         run: async (formData, userInitials) => {
+             const resp = await fetch('/api/clio-matters', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
+             });
+             if (!resp.ok) throw new Error('Failed to create Clio matter');
+             const data = await resp.json();
+             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
+             return `Matter created with ID ${data.matterId}`;
+         }
+     },
+     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' }
+ ];
+ // invisible change 2.2
  
-         const data = await resp.json();
-         const matterId = data.data?.id;
- 
-         if (matterId && contactIds.length > 1) {
-             for (const id of contactIds.slice(1)) {
-                 const relPayload = {
+ export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
+     label: action.label,
