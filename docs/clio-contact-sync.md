@@ -78,3 +78,7 @@ A minimal payload looks like the example below, based on Clio's documentation:
 Refer to [Clio's API reference](https://docs.developers.clio.com/api-reference/#tag/Contacts/operation/Contact#create) for the complete schema.
 
 This repository previously lacked documentation for this contact synchronisation step. Use this file as a reference when updating or troubleshooting the `processingActions` pipeline.
+
+## Updates
+
+If an existing contact with the same email address is found, the route issues a `PATCH` request to Clio's API instead of creating a new record. Only the provided fields are modified in Clio. Custom fields such as **Date of ID Expiry** and **TillerID** are sent on every create or update.

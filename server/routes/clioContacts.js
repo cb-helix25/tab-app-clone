@@ -131,6 +131,10 @@ router.post('/', async (req, res) => {
             }
             const idType = (company.verification?.check_result || company.check_result) === 'DriversLicense' ? 142570 : 142567;
             customFieldValues.push({ value: idType, custom_field: { id: 235699 } });
+            const tillerId = company.verification?.check_id || company.check_id;
+            if (tillerId) {
+                customFieldValues.push({ value: tillerId, custom_field: { id: 286228 } });
+            }
             if (company.company_details?.number) {
                 customFieldValues.push({ value: company.company_details.number, custom_field: { id: 368788 } });
             }
@@ -144,7 +148,10 @@ router.post('/', async (req, res) => {
         // Create or update a contact in Clio
         async function createOrUpdate(contact) {
             const query = encodeURIComponent(contact.email_addresses[0]?.address || '');
-            const lookupResp = await fetch(`https://eu.app.clio.com/api/v4/contacts?query=${query}`, { headers });
+            const lookupResp = await fetch(
+                `https://eu.app.clio.com/api/v4/contacts?query=${query}`,
+                { headers }
+            );
             if (!lookupResp.ok) throw new Error('Lookup failed');
             const lookupData = await lookupResp.json();
 
@@ -152,7 +159,7 @@ router.post('/', async (req, res) => {
             let method = 'POST';
             if (lookupData.data?.length) {
                 url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}`;
-                method = 'PUT';
+                method = 'PATCH';
             }
             const { type: contactType, name, ...attributes } = contact;
 
