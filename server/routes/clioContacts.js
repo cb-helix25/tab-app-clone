@@ -92,8 +92,9 @@ router.post('/', async (req, res) => {
                 },
                 custom_field_values: (() => {
                     const cfs = [];
-                    if (client.poid_id) {
-                        cfs.push({ value: client.poid_id, custom_field: { id: 380728 } });
+                    const ref = formData?.matter_details?.instruction_ref;
+                    if (ref) {
+                        cfs.push({ value: ref, custom_field: { id: 380728 } });
                     }
                     if (expiry) {
                         cfs.push({ value: expiry, custom_field: { id: 235702 } });
@@ -139,8 +140,9 @@ router.post('/', async (req, res) => {
             };
 
             const customFieldValues = [];
-            if (company.poid_id) {
-                customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
+            const ref = formData?.matter_details?.instruction_ref;
+            if (ref) {
+                customFieldValues.push({ value: ref, custom_field: { id: 380728 } });
             }
             const expiry =
                 company.verification?.check_expiry ||
