@@ -79,10 +79,8 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
     clientAsOnFile,
     setClientAsOnFile
 }) => {
-    const onlyShowPreselected = preselectedPoidIds && preselectedPoidIds.length > 0;
-    const displayPoidData = onlyShowPreselected
-        ? filteredPoidData.filter((p) => preselectedPoidIds.includes(p.poid_id))
-        : filteredPoidData;
+    const onlyShowPreselected = preselectedPoidIds?.length === 1 && filteredPoidData.length === 1;
+    const displayPoidData = filteredPoidData;
 
     return (
         <Stack tokens={{ childrenGap: 16 }}>

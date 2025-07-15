@@ -30,13 +30,20 @@ router.post('/', async (req, res) => {
         };
 
         const results = [];
-        const clients = formData.client_information || [];
+        let clients = formData.client_information || [];
+        clients = clients.filter(c =>
+            c.first_name || c.first || c.last_name || c.last || (c.company_details && c.company_details.name)
+        );
         const type = formData.matter_details?.client_type || 'Individual';
 
         // Map an individual client to Clio Person payload
         function mapPerson(client) {
             const address = client.address || {};
             const verification = client.verification || {};
+            const idType = verification.check_result === 'DriversLicense' ? 142570 : 142567;
+            const tillerId = verification.check_id || null;
+
+            const phone = client.best_number || null;
 
             return {
                 first_name: client.first_name || client.first || '',
@@ -46,8 +53,8 @@ router.post('/', async (req, res) => {
                 email_addresses: [
                     { name: 'Home', address: client.email || '', default_email: true }
                 ],
-                phone_numbers: client.best_number
-                    ? [{ name: 'Home', number: client.best_number, default_number: true }]
+                phone_numbers: phone
+                    ? [{ name: 'Home', number: phone, default_number: true }]
                     : [],
                 addresses: [
                     {
@@ -59,69 +66,84 @@ router.post('/', async (req, res) => {
                         country: address.country || ''
                     }
                 ],
+                company: {
+                    name: client.company_details?.name || null
+                },
                 custom_field_values: [
                     { value: client.poid_id, custom_field: { id: 380728 } },
                     { value: verification.check_expiry, custom_field: { id: 235702 } },
-                    {
-                        id: 'picklist-32009977',
-                        field_name: 'ID Type',
-                        value: verification.check_result === 'DriversLicense' ? 142570 : 142567
-                    }
+                    { value: idType, custom_field: { id: 235699 } },
+                    { value: tillerId, custom_field: { id: 286228 } }
                 ]
             };
         }
 
         // Map a company client to Clio Company payload
         function mapCompany(company, nameOverride) {
+            const phone =
+                company.best_number || company.company_details?.phone || null;
+
             const base = {
                 name: nameOverride || company.company_details?.name || null,
                 email_addresses: company.email
                     ? [{ name: 'Work', address: company.email, default_email: true }]
                     : [],
-                phone_numbers: company.best_number
-                    ? [{ name: 'Work', number: company.best_number, default_number: true }]
+                phone_numbers: phone
+                    ? [{ name: 'Work', number: phone, default_number: true }]
                     : [],
                 addresses: company.company_details?.address
-                    ? [{
-                        name: 'Work',
-                        street: `${company.company_details.address.house_number || ''} ${company.company_details.address.street || ''}`.trim(),
-                        city: company.company_details.address.city || '',
-                        province: company.company_details.address.county || '',
-                        postal_code: company.company_details.address.post_code || '',
-                        country: company.company_details.address.country || ''
-                    }]
+                    ? [
+                        {
+                            name: 'Work',
+                            street: `${company.company_details.address.house_number || ''} ${company.company_details.address.street || ''}`.trim(),
+                            city: company.company_details.address.city || '',
+                            province: company.company_details.address.county || '',
+                            postal_code: company.company_details.address.post_code || '',
+                            country: company.company_details.address.country || ''
+                        }
+                    ]
                     : []
             };
 
             const customFieldValues = [];
-            if (company.poid_id) customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
-            if (company.verification?.check_expiry) customFieldValues.push({ value: company.verification.check_expiry, custom_field: { id: 235702 } });
+            if (company.poid_id) {
+                customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
+            }
+            if (company.verification?.check_expiry) {
+                customFieldValues.push({ value: company.verification.check_expiry, custom_field: { id: 235702 } });
+            }
             const idType = company.verification?.check_result === 'DriversLicense' ? 142570 : 142567;
-            customFieldValues.push({ id: 'picklist-32009977', field_name: 'ID Type', value: idType });
-            if (company.company_details?.number) customFieldValues.push({ value: company.company_details.number, custom_field: { id: 368788 } });
+            customFieldValues.push({ value: idType, custom_field: { id: 235699 } });
+            if (company.company_details?.number) {
+                customFieldValues.push({ value: company.company_details.number, custom_field: { id: 368788 } });
+            }
 
-            return { ...base, custom_field_values: customFieldValues };
+            return {
+                ...base,
+                custom_field_values: customFieldValues
+            };
         }
 
         // Create or update a contact in Clio
         async function createOrUpdate(contact) {
             const query = encodeURIComponent(contact.email_addresses[0]?.address || '');
-            const lookupResp = await fetch(`https://eu.app.clio.com/api/v4/contacts.json?query=${query}`, { headers });
+            const lookupResp = await fetch(`https://eu.app.clio.com/api/v4/contacts?query=${query}`, { headers });
             if (!lookupResp.ok) throw new Error('Lookup failed');
             const lookupData = await lookupResp.json();
 
-            let url = 'https://eu.app.clio.com/api/v4/contacts.json';
+            let url = 'https://eu.app.clio.com/api/v4/contacts';
             let method = 'POST';
             if (lookupData.data?.length) {
-                url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}.json`;
+                url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}`;
                 method = 'PUT';
             }
+            const { type: contactType, name, ...attributes } = contact;
 
-            const { type: contactType, ...attributes } = contact;
             const payload = {
                 data: {
-                    type: 'contacts',
-                    attributes: { type: contactType, ...attributes }
+                    type: contactType,
+                    ...(contactType === 'Company' ? { name } : {}),
+                    ...attributes
                 }
             };
             console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
@@ -135,23 +157,22 @@ router.post('/', async (req, res) => {
             return resp.json();
         }
 
-        // Main logic
-        if (type === 'Individual') {
-            for (const c of clients) {
-                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person' }));
-            }
-        } else if (type === 'Company') {
-            const comp = clients.find(c => c.company_details?.name);
-            if (!comp) return res.status(400).json({ error: 'Missing company name' });
+        // Create company contact if present in any client
+        const companySource = clients.find(c => c.company_details?.name);
+        if (companySource) {
+            results.push(await createOrUpdate({ ...mapCompany(companySource), type: 'Company' }));
+        }
 
-            results.push(await createOrUpdate({ ...mapCompany(comp), type: 'Company' }));
-            for (const c of clients) {
-                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person' }));
+        // Create valid person contacts
+        for (const c of clients) {
+            const hasName = !!(c.first_name || c.last_name || c.first || c.last);
+            if (!hasName) {
+                console.warn(`Skipping client ${c.poid_id} — no name provided`);
+                continue;
             }
-        } else {
-            for (const c of clients) {
-                results.push(await createOrUpdate({ ...mapPerson(c), type: 'Person' }));
-            }
+
+            const personPayload = { ...mapPerson(c), type: 'Person' };
+            results.push(await createOrUpdate(personPayload));
         }
 
         res.json({ ok: true, results });
