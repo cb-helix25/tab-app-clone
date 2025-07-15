@@ -1,111 +1,224 @@
-diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
-index 28165b1a4d67f883e8a14d5716d5589e4beac5c4..c889f98c80f006c42df2ebee1d9b8c25dd08ead9 100644
---- a/server/routes/clioContacts.js
-+++ b/server/routes/clioContacts.js
-@@ -26,94 +26,103 @@ router.post('/', async (req, res) => {
-         const { access_token } = await tokenResp.json();
-         const headers = {
-             'Content-Type': 'application/json',
-             Authorization: `Bearer ${access_token}`
-         };
+diff --git a/api/src/functions/generateReportDataset.ts b/api/src/functions/generateReportDataset.ts
+index 03b6d3339acda4b47a70468e630ae6c01b527bf9..a18ccb1b19f1141f22e4fa37fbe292e68f00b7d3 100644
+--- a/api/src/functions/generateReportDataset.ts
++++ b/api/src/functions/generateReportDataset.ts
+@@ -92,50 +92,51 @@ interface POID {
+   prefix?: string;
+   date_of_birth?: string;
+   best_number?: string;
+   email?: string;
+   passport_number?: string;
+   drivers_license_number?: string;
+   house_building_number?: string;
+   street?: string;
+   city?: string;
+   county?: string;
+   post_code?: string;
+   country?: string;
+   country_code?: string;
+   company_name?: string;
+   company_number?: string;
+   company_house_building_number?: string;
+   company_street?: string;
+   company_city?: string;
+   company_county?: string;
+   company_post_code?: string;
+   company_country?: string;
+   company_country_code?: string;
+   stage?: string;
+   check_result?: string;
+   check_id?: string;
++  check_expiry?: string;
+   additional_id_submission_id?: string;
+   additional_id_submission_url?: string;
+   additional_id_submission_date?: string;
+   client_id?: string;
+   related_client_id?: string;
+   matter_id?: string;
+   risk_assessor?: string;
+   risk_assessment_date?: string;
+ }
  
-         const results = [];
-         let clients = formData.client_information || [];
-         clients = clients.filter(c =>
-             c.first_name || c.first || c.last_name || c.last || (c.company_details && c.company_details.name)
-         );
-         const type = formData.matter_details?.client_type || 'Individual';
+ interface Transaction {
+   intake_id: number;
+   intake_date: string;
+   transaction_id: string;
+   matter_ref: string;
+   matter_description: string;
+   fe: string;
+   amount: number;
+   transaction_date: string;
+   from_client: boolean;
+   money_sender: string | null;
+   type: string;
+   status?: string | null;
+ }
  
-         // Map an individual client to Clio Person payload
-         function mapPerson(client) {
-             const address = client.address || {};
-             const verification = client.verification || {};
-             const idType = verification.check_result === 'DriversLicense' ? 142570 : 142567;
-             const tillerId = verification.check_id || null;
+diff --git a/api/src/functions/generateReportDataset.ts b/api/src/functions/generateReportDataset.ts
+index 03b6d3339acda4b47a70468e630ae6c01b527bf9..a18ccb1b19f1141f22e4fa37fbe292e68f00b7d3 100644
+--- a/api/src/functions/generateReportDataset.ts
++++ b/api/src/functions/generateReportDataset.ts
+@@ -297,50 +298,51 @@ function assignPOIDColumnValue(row: POID, colName: keyof POID, value: any) {
+     case "prefix":
+     case "date_of_birth":
+     case "best_number":
+     case "email":
+     case "passport_number":
+     case "drivers_license_number":
+     case "house_building_number":
+     case "street":
+     case "city":
+     case "county":
+     case "post_code":
+     case "country":
+     case "country_code":
+     case "company_name":
+     case "company_number":
+     case "company_house_building_number":
+     case "company_street":
+     case "company_city":
+     case "company_county":
+     case "company_post_code":
+     case "company_country":
+     case "company_country_code":
+     case "stage":
+     case "check_result":
+     case "check_id":
++    case "check_expiry":
+     case "additional_id_submission_id":
+     case "additional_id_submission_url":
+     case "additional_id_submission_date":
+     case "client_id":
+     case "related_client_id":
+     case "matter_id":
+     case "risk_assessor":
+     case "risk_assessment_date":
+       row[colName] = value != null ? String(value) : undefined;
+       break;
+   }
+ }
  
-             const phone =
-                 client.best_number ||
-                 client.phone ||
-                 client.phone_number ||
-                 client.phoneNumber ||
-+                client.Phone ||
-                 null;
+ function assignTransactionColumnValue(row: Transaction, colName: keyof Transaction, value: any) {
+   switch (colName) {
+     case "intake_id":
+     case "amount":
+       row[colName] = value != null ? Number(value) : 0;
+       break;
+     case "from_client":
+       row[colName] = value != null ? Boolean(value) : false;
+       break;
+     case "money_sender":
+       row[colName] = value != null ? String(value) : null;
+       break;
+diff --git a/api/src/functions/generateReportDataset.ts b/api/src/functions/generateReportDataset.ts
+index 03b6d3339acda4b47a70468e630ae6c01b527bf9..a18ccb1b19f1141f22e4fa37fbe292e68f00b7d3 100644
+--- a/api/src/functions/generateReportDataset.ts
++++ b/api/src/functions/generateReportDataset.ts
+@@ -919,50 +921,51 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
+             prefix,
+             date_of_birth,
+             best_number,
+             email,
+             passport_number,
+             drivers_license_number,
+             house_building_number,
+             street,
+             city,
+             county,
+             post_code,
+             country,
+             country_code,
+             company_name,
+             company_number,
+             company_house_building_number,
+             company_street,
+             company_city,
+             company_county,
+             company_post_code,
+             company_country,
+             company_country_code,
+             stage,
+             check_result,
+             check_id,
++            check_expiry,
+             additional_id_submission_id,
+             additional_id_submission_url,
+             additional_id_submission_date,
+             client_id,
+             related_client_id,
+             matter_id,
+             risk_assessor,
+             risk_assessment_date
+           FROM poid
+           WHERE submission_date BETWEEN @DateFrom AND @DateTo
+           ORDER BY submission_date DESC
+         `;
+         const request = new SqlRequest(query, (err) => {
+           if (err) {
+             context.error("SQL Query Error (poidData):", err);
+             reject(err);
+           }
+         });
+         request.addParameter("DateFrom", TYPES.Date, dateFrom);
+         request.addParameter("DateTo", TYPES.Date, dateTo);
  
-             return {
-                 first_name: client.first_name || client.first || '',
-                 last_name: client.last_name || client.last || '',
-                 prefix: client.prefix || null,
-                 date_of_birth: client.date_of_birth || null,
-                 email_addresses: [
--                    { name: 'Home', address: client.email || '', default_email: true }
-+                    {
-+                        name: 'Home',
-+                        address: client.email || client.Email || '',
-+                        default_email: true
-+                    }
-                 ],
-                 phone_numbers: phone
-                     ? [{ name: 'Home', number: phone, default_number: true }]
-                     : [],
-                 addresses: [
-                     {
-                         name: 'Home',
-                         street: `${address.house_number || ''} ${address.street || ''}`.trim(),
-                         city: address.city || '',
-                         province: address.county || '',
-                         postal_code: address.post_code || '',
-                         country: address.country || ''
-                     }
-                 ],
-                 company: {
-                     name: client.company_details?.name || null
-                 },
-                 custom_field_values: [
-                     { value: client.poid_id, custom_field: { id: 380728 } },
-                     { value: verification.check_expiry, custom_field: { id: 235702 } },
-                     { value: idType, custom_field: { id: 235699 } },
-                     { value: tillerId, custom_field: { id: 286228 } }
-                 ]
-             };
-         }
+         request.on("row", (columns) => {
+           const row: POID = {
+             poid_id: "",
+             type: undefined,
+diff --git a/api/src/functions/generateReportDataset.ts b/api/src/functions/generateReportDataset.ts
+index 03b6d3339acda4b47a70468e630ae6c01b527bf9..a18ccb1b19f1141f22e4fa37fbe292e68f00b7d3 100644
+--- a/api/src/functions/generateReportDataset.ts
++++ b/api/src/functions/generateReportDataset.ts
+@@ -981,50 +984,51 @@ export async function generateReportDatasetHandler(req: HttpRequest, context: In
+             prefix: undefined,
+             date_of_birth: undefined,
+             best_number: undefined,
+             email: undefined,
+             passport_number: undefined,
+             drivers_license_number: undefined,
+             house_building_number: undefined,
+             street: undefined,
+             city: undefined,
+             county: undefined,
+             post_code: undefined,
+             country: undefined,
+             country_code: undefined,
+             company_name: undefined,
+             company_number: undefined,
+             company_house_building_number: undefined,
+             company_street: undefined,
+             company_city: undefined,
+             company_county: undefined,
+             company_post_code: undefined,
+             company_country: undefined,
+             company_country_code: undefined,
+             stage: undefined,
+             check_result: undefined,
+             check_id: undefined,
++            check_expiry: undefined,
+             additional_id_submission_id: undefined,
+             additional_id_submission_url: undefined,
+             additional_id_submission_date: undefined,
+             client_id: undefined,
+             related_client_id: undefined,
+             matter_id: undefined,
+             risk_assessor: undefined,
+             risk_assessment_date: undefined,
+           };
+           columns.forEach((column) => {
+             assignPOIDColumnValue(row, column.metadata.colName as keyof POID, column.value);
+           });
+           result.push(row);
+         });
  
-         // Map a company client to Clio Company payload
-         function mapCompany(company, nameOverride) {
-             const phone =
--                company.best_number || company.company_details?.phone || null;
-+                company.best_number ||
-+                company.company_details?.phone ||
-+                company.phone ||
-+                company.Phone ||
-+                null;
+         request.on("requestCompleted", () => resolve(result));
+         connection.execSql(request);
+       });
+     }
  
-             const base = {
-                 name: nameOverride || company.company_details?.name || null,
-                 email_addresses: company.email
--                    ? [{ name: 'Work', address: company.email, default_email: true }]
-+                    ? [{ name: 'Work', address: company.email || company.Email, default_email: true }]
-                     : [],
-                 phone_numbers: phone
-                     ? [{ name: 'Work', number: phone, default_number: true }]
-                     : [],
-                 addresses: company.company_details?.address
-                     ? [
-                         {
-                             name: 'Work',
-                             street: `${company.company_details.address.house_number || ''} ${company.company_details.address.street || ''}`.trim(),
-                             city: company.company_details.address.city || '',
-                             province: company.company_details.address.county || '',
-                             postal_code: company.company_details.address.post_code || '',
-                             country: company.company_details.address.country || ''
-                         }
-                     ]
-                     : []
-             };
- 
-             const customFieldValues = [];
-             if (company.poid_id) {
-                 customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
-             }
-             if (company.verification?.check_expiry) {
-                 customFieldValues.push({ value: company.verification.check_expiry, custom_field: { id: 235702 } });
-             }
+     if (datasets.includes("transactions")) {
+       responseData.transactions = await new Promise<Transaction[]>((resolve, reject) => {
+         const result: Transaction[] = [];
+         const query = `
+           SELECT *

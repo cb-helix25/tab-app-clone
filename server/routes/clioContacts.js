@@ -40,8 +40,10 @@ router.post('/', async (req, res) => {
         function mapPerson(client) {
             const address = client.address || {};
             const verification = client.verification || {};
-            const idType = verification.check_result === 'DriversLicense' ? 142570 : 142567;
-            const tillerId = verification.check_id || null;
+            const checkResult = verification.check_result || client.check_result;
+            const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
+            const tillerId = verification.check_id || client.check_id || null;
+            const expiry = verification.check_expiry || client.check_expiry;
 
             const phone =
                 client.best_number ||
@@ -81,7 +83,7 @@ router.post('/', async (req, res) => {
                 },
                 custom_field_values: [
                     { value: client.poid_id, custom_field: { id: 380728 } },
-                    { value: verification.check_expiry, custom_field: { id: 235702 } },
+                    { value: expiry, custom_field: { id: 235702 } },
                     { value: idType, custom_field: { id: 235699 } },
                     { value: tillerId, custom_field: { id: 286228 } }
                 ]
@@ -123,10 +125,11 @@ router.post('/', async (req, res) => {
             if (company.poid_id) {
                 customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
             }
-            if (company.verification?.check_expiry) {
-                customFieldValues.push({ value: company.verification.check_expiry, custom_field: { id: 235702 } });
+            const expiry = company.verification?.check_expiry || company.check_expiry;
+            if (expiry) {
+                customFieldValues.push({ value: expiry, custom_field: { id: 235702 } });
             }
-            const idType = company.verification?.check_result === 'DriversLicense' ? 142570 : 142567;
+            const idType = (company.verification?.check_result || company.check_result) === 'DriversLicense' ? 142570 : 142567;
             customFieldValues.push({ value: idType, custom_field: { id: 235699 } });
             if (company.company_details?.number) {
                 customFieldValues.push({ value: company.company_details.number, custom_field: { id: 368788 } });
