@@ -43,7 +43,12 @@ router.post('/', async (req, res) => {
             const idType = verification.check_result === 'DriversLicense' ? 142570 : 142567;
             const tillerId = verification.check_id || null;
 
-            const phone = client.best_number || null;
+            const phone =
+                client.best_number ||
+                client.phone ||
+                client.phone_number ||
+                client.phoneNumber ||
+                null;
 
             return {
                 first_name: client.first_name || client.first || '',
@@ -159,8 +164,13 @@ router.post('/', async (req, res) => {
 
         // Create company contact if present in any client
         const companySource = clients.find(c => c.company_details?.name);
+        let companyResult = null;
         if (companySource) {
-            results.push(await createOrUpdate({ ...mapCompany(companySource), type: 'Company' }));
+            companyResult = await createOrUpdate({
+                ...mapCompany(companySource),
+                type: 'Company'
+            });
+            results.push(companyResult);
         }
 
         // Create valid person contacts
@@ -172,6 +182,15 @@ router.post('/', async (req, res) => {
             }
 
             const personPayload = { ...mapPerson(c), type: 'Person' };
+            if (companyResult && companyResult.data?.id) {
+                personPayload.company = {
+                    id: companyResult.data.id,
+                    name: companyResult.data.attributes?.name,
+                    initials: companyResult.data.attributes?.initials,
+                    type: 'Company',
+                    etag: companyResult.data.attributes?.etag
+                };
+            }
             results.push(await createOrUpdate(personPayload));
         }
 

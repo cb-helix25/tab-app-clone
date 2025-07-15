@@ -1,100 +1,131 @@
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 4b70ec8c877ff8b3e612530bb23573139cbcc046..c3243282641d47feef86bfb6ea7396457db8a8e7 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -601,88 +601,92 @@ const handleClearAll = () => {
- 
-     const handleBackToForm = () => {
-         setCurrentStep(1);
-         setSummaryConfirmed(false); // Reset confirmation when going back to edit
-         // Scroll to top when changing steps
-         window.scrollTo({ top: 0, behavior: 'smooth' });
-     };
- 
-     const handleClientTypeChange = (newType: string, shouldLimitToSingle: boolean) => {
-         // Always clear POID selection when switching between Individual and Company (or vice versa)
-         if (
-             (newType === 'Individual' && selectedPoidIds.length > 0) ||
-             (newType === 'Company' && selectedPoidIds.length > 0) ||
-             (newType === 'Multiple Individuals' && selectedPoidIds.length > 1)
-         ) {
-             setSelectedPoidIds([]);
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index 693e641031c33588d0920e4e321f8f33b15afc08..28165b1a4d67f883e8a14d5716d5589e4beac5c4 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -21,51 +21,56 @@ router.post('/', async (req, res) => {
+         if (!tokenResp.ok) {
+             const text = await tokenResp.text();
+             console.error('Clio token refresh failed', text);
+             return res.status(500).json({ error: 'Token refresh failed' });
          }
-         setSearchBoxFocused(false); // Collapse search box after client type selection
-         setPoidSearchTerm(''); // Optionally clear search term
-     };
+         const { access_token } = await tokenResp.json();
+         const headers = {
+             'Content-Type': 'application/json',
+             Authorization: `Bearer ${access_token}`
+         };
  
-     // Helper to generate sample JSON object
-     const generateSampleJson = () => {
-         const selectedClients = selectedPoidIds.map((id: string) => {
-             const client = effectivePoidData.find(p => p.poid_id === id);
--            return client ? {
-+            if (!client) {
-+                // Preserve the selected ID even if we have no further details
-+                return { poid_id: id };
-+            }
-+            return {
-                 poid_id: client.poid_id,
-                 first_name: client.first,
-                 last_name: client.last,
-                 email: client.email,
-                 type: client.type || 'individual',
-                 nationality: client.nationality,
-                 date_of_birth: client.date_of_birth,
-                 address: {
-                     house_number: client.house_building_number,
-                     street: client.street,
-                     city: client.city,
-                     county: client.county,
-                     post_code: client.post_code,
-                     country: client.country
-                 },
-                 company_details: client.company_name ? {
-                     name: client.company_name,
-                     number: client.company_number,
-                     address: {
-                         house_number: client.company_house_building_number,
-                         street: client.company_street,
-                         city: client.company_city,
-                         county: client.company_county,
-                         post_code: client.company_post_code,
-                         country: client.company_country
+         const results = [];
+         let clients = formData.client_information || [];
+         clients = clients.filter(c =>
+             c.first_name || c.first || c.last_name || c.last || (c.company_details && c.company_details.name)
+         );
+         const type = formData.matter_details?.client_type || 'Individual';
+ 
+         // Map an individual client to Clio Person payload
+         function mapPerson(client) {
+             const address = client.address || {};
+             const verification = client.verification || {};
+             const idType = verification.check_result === 'DriversLicense' ? 142570 : 142567;
+             const tillerId = verification.check_id || null;
+ 
+-            const phone = client.best_number || null;
++            const phone =
++                client.best_number ||
++                client.phone ||
++                client.phone_number ||
++                client.phoneNumber ||
++                null;
+ 
+             return {
+                 first_name: client.first_name || client.first || '',
+                 last_name: client.last_name || client.last || '',
+                 prefix: client.prefix || null,
+                 date_of_birth: client.date_of_birth || null,
+                 email_addresses: [
+                     { name: 'Home', address: client.email || '', default_email: true }
+                 ],
+                 phone_numbers: phone
+                     ? [{ name: 'Home', number: phone, default_number: true }]
+                     : [],
+                 addresses: [
+                     {
+                         name: 'Home',
+                         street: `${address.house_number || ''} ${address.street || ''}`.trim(),
+                         city: address.city || '',
+                         province: address.county || '',
+                         postal_code: address.post_code || '',
+                         country: address.country || ''
                      }
-                 } : null,
-                 verification: {
-                     stage: client.stage,
-                     check_result: client.check_result,
-                     pep_sanctions_result: client.pep_sanctions_result,
-                     address_verification_result: client.address_verification_result,
-                     check_expiry: client.check_expiry,
-                     check_id: client.check_id
-                 }
--            } : null;
--        }).filter(Boolean);
-+            };
-+        });
+                 ],
+                 company: {
+                     name: client.company_details?.name || null
+                 },
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index 693e641031c33588d0920e4e321f8f33b15afc08..28165b1a4d67f883e8a14d5716d5589e4beac5c4 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -137,49 +142,63 @@ router.post('/', async (req, res) => {
+                 url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}`;
+                 method = 'PUT';
+             }
+             const { type: contactType, name, ...attributes } = contact;
  
-         return {
-             matter_details: {
-                 instruction_ref: instructionRef || null,
-                 client_id: clientId || null,
-                 matter_ref: matterRef || null,
-                 stage: stage,
-                 date_created: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
-                 client_type: clientType,
-                 area_of_work: areaOfWork,
-                 practice_area: practiceArea,
-                 description: description,
-                 client_as_on_file: clientAsOnFile || null,
-                 dispute_value: disputeValue || null,
-                 folder_structure: folderStructure || null
-             },
-             team_assignments: {
-                 fee_earner: teamMember,
-                 supervising_partner: supervisingPartner,
-                 originating_solicitor: originatingSolicitor,
-                 requesting_user: requestingUserNickname
-             },
-             client_information: selectedClients,
-             source_details: {
-                 source: source,
+             const payload = {
+                 data: {
+                     type: contactType,
+                     ...(contactType === 'Company' ? { name } : {}),
+                     ...attributes
+                 }
+             };
+             console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
+ 
+             const resp = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+             if (!resp.ok) {
+                 const text = await resp.text();
+                 console.error('Clio contact create/update failed:', text);
+                 throw new Error('Create/update failed');
+             }
+             return resp.json();
+         }
+ 
+         // Create company contact if present in any client
+         const companySource = clients.find(c => c.company_details?.name);
++        let companyResult = null;
+         if (companySource) {
+-            results.push(await createOrUpdate({ ...mapCompany(companySource), type: 'Company' }));
++            companyResult = await createOrUpdate({
++                ...mapCompany(companySource),
++                type: 'Company'
++            });
++            results.push(companyResult);
+         }
+ 
+         // Create valid person contacts
+         for (const c of clients) {
+             const hasName = !!(c.first_name || c.last_name || c.first || c.last);
+             if (!hasName) {
+                 console.warn(`Skipping client ${c.poid_id} — no name provided`);
+                 continue;
+             }
+ 
+             const personPayload = { ...mapPerson(c), type: 'Person' };
++            if (companyResult && companyResult.data?.id) {
++                personPayload.company = {
++                    id: companyResult.data.id,
++                    name: companyResult.data.attributes?.name,
++                    initials: companyResult.data.attributes?.initials,
++                    type: 'Company',
++                    etag: companyResult.data.attributes?.etag
++                };
++            }
+             results.push(await createOrUpdate(personPayload));
+         }
+ 
+         res.json({ ok: true, results });
+     } catch (err) {
+         console.error('Clio contact error', err);
+         res.status(500).json({ error: 'Failed to sync contacts' });
+     }
+ });
+ 
+ module.exports = router;
