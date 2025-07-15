@@ -269,7 +269,16 @@ router.post('/', async (req, res) => {
 
         const personContact = results.find(r => r?.data?.type === 'Person');
         const matterClientId = personContact?.data?.id;
-        const description = formData.matter_details?.description;
+        const {
+            description,
+            stage,
+            date_created,
+            client_type,
+            area_of_work,
+            practice_area,
+            dispute_value,
+            folder_structure
+        } = formData.matter_details || {};
 
         if (!matterClientId || !description) {
             throw new Error('Missing client_id or description for matter creation');
@@ -281,7 +290,15 @@ router.post('/', async (req, res) => {
                 attributes: {
                     client_id: matterClientId,
                     description,
-                    // Optional: add more attributes from formData.matter_details as needed
+                    stage,
+                    opened_at: date_created || new Date().toISOString(),
+                    matter_type: client_type,
+                    custom_field_values: [
+                        { value: area_of_work, custom_field: { id: 123456 } },
+                        { value: practice_area, custom_field: { id: 123457 } },
+                        { value: dispute_value, custom_field: { id: 123458 } },
+                        { value: folder_structure, custom_field: { id: 123459 } },
+                    ]
                 }
             }
         };
