@@ -90,12 +90,20 @@ router.post('/', async (req, res) => {
                 company: {
                     name: client.company_details?.name || null
                 },
-                custom_field_values: [
-                    { value: client.poid_id, custom_field: { id: 380728 } },
-                    { value: expiry, custom_field: { id: 235702 } },
-                    { value: idType, custom_field: { id: 235699 } },
-                    { value: tillerId, custom_field: { id: 286228 } }
-                ]
+                custom_field_values: (() => {
+                    const cfs = [];
+                    if (client.poid_id) {
+                        cfs.push({ value: client.poid_id, custom_field: { id: 380728 } });
+                    }
+                    if (expiry) {
+                        cfs.push({ value: expiry, custom_field: { id: 235702 } });
+                    }
+                    cfs.push({ value: idType, custom_field: { id: 235699 } });
+                    if (tillerId) {
+                        cfs.push({ value: tillerId, custom_field: { id: 286228 } });
+                    }
+                    return cfs;
+                })()
             };
         }
 
@@ -258,6 +266,41 @@ router.post('/', async (req, res) => {
             }
             results.push(await createOrUpdate(personPayload));
         }
+
+        const personContact = results.find(r => r?.data?.type === 'Person');
+        const matterClientId = personContact?.data?.id;
+        const description = formData.matter_details?.description;
+
+        if (!matterClientId || !description) {
+            throw new Error('Missing client_id or description for matter creation');
+        }
+
+        const matterPayload = {
+            data: {
+                type: 'Matter',
+                attributes: {
+                    client_id: matterClientId,
+                    description,
+                    // Optional: add more attributes from formData.matter_details as needed
+                }
+            }
+        };
+
+        const matterResp = await fetch('https://eu.app.clio.com/api/v4/matters', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(matterPayload)
+        });
+
+        if (!matterResp.ok) {
+            const text = await matterResp.text();
+            console.error('Clio matter create failed', text);
+            throw new Error('Matter creation failed');
+        }
+
+        const matterResult = await matterResp.json();
+        results.push(matterResult);
+
 
         res.json({ ok: true, results });
     } catch (err) {
