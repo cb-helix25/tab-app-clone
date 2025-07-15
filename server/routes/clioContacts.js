@@ -42,8 +42,17 @@ router.post('/', async (req, res) => {
             const verification = client.verification || {};
             const checkResult = verification.check_result || client.check_result;
             const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
-            const tillerId = verification.check_id || client.check_id || null;
-            const expiry = verification.check_expiry || client.check_expiry;
+            const tillerId =
+                verification.check_id ||
+                client.check_id ||
+                client.EIDCheckId ||
+                client.checkId ||
+                null;
+            const expiry =
+                verification.check_expiry ||
+                client.check_expiry ||
+                client.CheckExpiry ||
+                client.checkExpiry;
 
             const phone =
                 client.best_number ||
@@ -125,13 +134,21 @@ router.post('/', async (req, res) => {
             if (company.poid_id) {
                 customFieldValues.push({ value: company.poid_id, custom_field: { id: 380728 } });
             }
-            const expiry = company.verification?.check_expiry || company.check_expiry;
+            const expiry =
+                company.verification?.check_expiry ||
+                company.check_expiry ||
+                company.CheckExpiry ||
+                company.checkExpiry;
             if (expiry) {
                 customFieldValues.push({ value: expiry, custom_field: { id: 235702 } });
             }
             const idType = (company.verification?.check_result || company.check_result) === 'DriversLicense' ? 142570 : 142567;
             customFieldValues.push({ value: idType, custom_field: { id: 235699 } });
-            const tillerId = company.verification?.check_id || company.check_id;
+            const tillerId =
+                company.verification?.check_id ||
+                company.check_id ||
+                company.EIDCheckId ||
+                company.checkId;
             if (tillerId) {
                 customFieldValues.push({ value: tillerId, custom_field: { id: 286228 } });
             }
