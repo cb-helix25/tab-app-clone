@@ -8,6 +8,7 @@ const refreshRouter = require('./routes/refresh');
 const keysRouter = require('./routes/keys');
 const matterRequestsRouter = require('./routes/matterRequests');
 const opponentsRouter = require('./routes/opponents');
+const clioMattersRouter = require('./routes/clioMatters');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -29,6 +30,7 @@ app.use(express.json());
 app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
 app.use('/api/opponents', opponentsRouter);
+app.use('/api/clio-matters', clioMattersRouter);
 
 app.get('/api/keys/:name/preview', async (req, res) => {
     try {

@@ -157,11 +157,40 @@ router.post('/', async (req, res) => {
 
             let url = 'https://eu.app.clio.com/api/v4/contacts';
             let method = 'POST';
+            let existingFields = [];
             if (lookupData.data?.length) {
-                url = `https://eu.app.clio.com/api/v4/contacts/${lookupData.data[0].id}`;
+                const contactId = lookupData.data[0].id;
+                url = `https://eu.app.clio.com/api/v4/contacts/${contactId}`;
                 method = 'PATCH';
+
+                // Retrieve existing custom field IDs so we can update them
+                try {
+                    const detailUrl = `${url}?fields=custom_field_values{id,value,custom_field}`;
+                    const details = await fetch(detailUrl, { headers });
+                    if (details.ok) {
+                        const data = await details.json();
+                        existingFields = data.data?.custom_field_values || [];
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch existing contact details', err);
+                }
             }
             const { type: contactType, name, ...attributes } = contact;
+
+            if (method === 'PATCH') {
+                if (!Array.isArray(attributes.custom_field_values)) attributes.custom_field_values = [];
+                attributes.custom_field_values = attributes.custom_field_values
+                    // Remove duplicates by custom_field.id, keep only one per field
+                    .filter((cf, i, arr) =>
+                        cf?.custom_field?.id &&
+                        arr.findIndex(x => x.custom_field?.id === cf.custom_field?.id) === i
+                    )
+                    .map(cf => {
+                        const existing = existingFields.find(e => e.custom_field?.id === cf.custom_field?.id);
+                        return existing ? { ...cf, id: existing.id } : cf;
+                    });
+            }
+
 
             const payload = {
                 data: {

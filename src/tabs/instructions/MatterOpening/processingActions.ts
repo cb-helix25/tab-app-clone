@@ -13,6 +13,8 @@ let asanaSecret = '';
 let asanaRefreshToken = '';
 let opponentId = '';
 let solicitorId = '';
+let clioContactIds: string[] = [];
+let clioCompanyId: string | null = null;
 
 export interface ProcessingAction {
     label: string;
@@ -202,19 +204,42 @@ export const processingActions: ProcessingAction[] = [
             if (!resp.ok) throw new Error('Failed to sync Clio contact');
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
-            const names = (data.results || [])
-                .map((r: any) => {
-                    const attrs = r.data?.attributes || {};
-                    if (attrs.first_name || attrs.last_name) {
-                        return `${attrs.first_name || ''} ${attrs.last_name || ''}`.trim();
-                    }
-                    return attrs.name;
-                })
-                .filter(Boolean);
+            const names: string[] = [];
+            clioContactIds = [];
+            clioCompanyId = null;
+            (data.results || []).forEach((r: any) => {
+                const attrs = r.data?.attributes || {};
+                const id = r.data?.id;
+                if (id) {
+                    clioContactIds.push(String(id));
+                }
+                if (r.data?.type === 'Company') {
+                    clioCompanyId = String(id);
+                }
+                if (attrs.first_name || attrs.last_name) {
+                    names.push(`${attrs.first_name || ''} ${attrs.last_name || ''}`.trim());
+                } else if (attrs.name) {
+                    names.push(attrs.name);
+                }
+            });
             return `Clio contacts synced: ${names.join(', ')}`;
         }
     },
-    { label: 'Clio Matter Opened', run: async () => 'Done' },
+    {
+        label: 'Clio Matter Opened',
+        icon: clioIcon,
+        run: async (formData, userInitials) => {
+            const resp = await fetch('/api/clio-matters', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
+            });
+            if (!resp.ok) throw new Error('Failed to create Clio matter');
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
+            return `Matter created with ID ${data.matterId}`;
+        }
+    },
     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
     { label: 'Databases Updated', run: async () => 'Done' }
 ];
