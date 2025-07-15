@@ -69,6 +69,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
     initialClientType = '',
 }) => {
     const [openStep, setOpenStep] = useState<number>(0); // invisible change
+    const [clientPhone, setClientPhone] = useState('');
 
     const defaultPoidData: POID[] = useMemo(
         () =>
@@ -462,6 +463,8 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         partnerOptions={partnerAndSolicitorOptions}
                         requestingUser={requestingUserNickname}
                         requestingUserClioId={requestingUserClioId}
+                        phone={clientPhone}
+                        setPhone={setClientPhone}
                         onContinue={() =>
                             setOpenStep(
                                 stepsOrder.indexOf('clientInfo') + 1
@@ -653,6 +656,7 @@ const NewMatters: React.FC<NewMattersProps> = ({
                         userInitials={userInitials}
                         userData={userData}
                         clientAsOnFile={clientAsOnFile}
+                        phone={clientPhone}
                         onBuild={() => { }}
                     />
                 );

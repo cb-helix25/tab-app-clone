@@ -85,6 +85,7 @@ interface FlatMatterOpeningProps {
 }
 
 const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+
     poidData,
     setPoidData,
     teamData,
@@ -99,6 +100,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     initialClientType = '',
     preselectedPoidIds = [],
 }) => {
+    const [clientPhone, setClientPhone] = useDraftedState<string>('clientPhone', '');
     const idExpiry = useMemo(() => {
         const d = new Date();
         d.setDate(d.getDate() + 30);
@@ -627,12 +629,21 @@ const handleClearAll = () => {
                 // Preserve the selected ID even if we have no further details
                 return { poid_id: id };
             }
+            const phone =
+                client.best_number ||
+                (client as any).phone ||
+                (client as any).phone_number ||
+                (client as any).phoneNumber ||
+                (client as any).Phone ||
+                null;
+            const email = client.email || (client as any).Email || '';
+
             return {
                 poid_id: client.poid_id,
                 first_name: client.first,
                 last_name: client.last,
-                email: client.email,
-                best_number: client.best_number,
+                email,
+                best_number: phone,
                 type: client.type || 'individual',
                 nationality: client.nationality,
                 date_of_birth: client.date_of_birth,
@@ -1533,6 +1544,8 @@ const handleClearAll = () => {
                                     partnerOptions={getPartnerInitials(teamData || localTeamDataJson)}
                                     requestingUser={requestingUserNickname}
                                     requestingUserClioId={requestingUserClioId}
+                                    phone={clientPhone}
+                                    setPhone={setClientPhone}
                                 />
                                 <Stack tokens={{ childrenGap: 24 }} style={{ marginTop: 24 }}>
                                     {/* Move NetDocuments Folder Structure above Area of Work */}

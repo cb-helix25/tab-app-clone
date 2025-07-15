@@ -8,7 +8,8 @@
       "default",
       {
         "aria-valid-attr-value": "off",
-        "aria-allowed-attr": "off"
+        "aria-allowed-attr": "off",
+        "aria-command-name": "off"
       }
     ],
     "axe/forms": [

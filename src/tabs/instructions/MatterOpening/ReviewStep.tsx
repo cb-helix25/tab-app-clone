@@ -1,4 +1,3 @@
-//
 import React, { useState, useMemo, useEffect } from 'react'; // invisible change
 // invisible change 2.2
 import SummaryReview from './SummaryReview';
@@ -43,14 +42,14 @@ interface ReviewStepProps {
     userData?: UserData[] | null;
     onBuild?: () => void;
     clientAsOnFile: string;
+    phone: string; // <-- New required prop
 }
 
-const ReviewStep: React.FC<ReviewStepProps> = (props) => {
-    const {
+const ReviewStep: React.FC<ReviewStepProps> = ({
+    clientInformation,
     selectedDate,
     supervisingPartner,
     originatingSolicitor,
-    // fundsReceived removed
     clientType,
     selectedPoidIds,
     areaOfWork,
@@ -78,12 +77,12 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     solicitorPostcode,
     solicitorCountry,
     noConflict,
-        userInitials,
-        userData,
+    userInitials,
+    userData,
     onBuild,
     clientAsOnFile,
-    } = props;
-
+    phone, // <-- destructured here
+}) => {
     const [detailsConfirmed, setDetailsConfirmed] = useState(false);
     const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
     const [edited, setEdited] = useState(false);
@@ -92,10 +91,9 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
     const formData = useMemo(
         () => ({
             clientInformation,
-            selectedDate: selectedDate ? selectedDate.toISOString() : null,
+            selectedDate: selectedDate?.toISOString() ?? null,
             supervisingPartner,
             originatingSolicitor,
-            // fundsReceived removed
             clientType,
             selectedPoidIds,
             areaOfWork,
@@ -126,8 +124,10 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             userInitials,
             userData,
             clientAsOnFile,
+            phone, // <-- included in payload
         }),
         [
+            clientInformation,
             selectedDate,
             supervisingPartner,
             originatingSolicitor,
@@ -161,6 +161,7 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             userInitials,
             userData,
             clientAsOnFile,
+            phone, // <-- dependency too
         ]
     );
 
@@ -169,17 +170,26 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             <div>
                 <p>
                     <span className="field-label">Date:</span>{' '}
-                    <span className="field-value">{selectedDate ? selectedDate.toLocaleDateString() : 'N/A'}</span>
+                    <span className="field-value">
+                        {selectedDate ? selectedDate.toLocaleDateString() : 'N/A'}
+                    </span>
+                </p>
+                <p>
+                    <span className="field-label">Phone:</span>{' '}
+                    <span className="field-value">{phone || 'N/A'}</span> {/* <-- new row */}
                 </p>
                 <p>
                     <span className="field-label">Supervising Partner:</span>{' '}
-                    <span className="field-value">{supervisingPartner || 'N/A'}</span>
+                    <span className="field-value">
+                        {supervisingPartner || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Originating Solicitor:</span>{' '}
-                    <span className="field-value">{originatingSolicitor || 'N/A'}</span>
+                    <span className="field-value">
+                        {originatingSolicitor || 'N/A'}
+                    </span>
                 </p>
-                {/* Funds row removed */}
                 <p>
                     <span className="field-label">Client Type:</span>{' '}
                     <span className="field-value">{clientType || 'N/A'}</span>
@@ -187,12 +197,16 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                 {clientType === 'Multiple Individuals' && (
                     <p>
                         <span className="field-label">Client as on File:</span>{' '}
-                        <span className="field-value">{clientAsOnFile || 'N/A'}</span>
+                        <span className="field-value">
+                            {clientAsOnFile || 'N/A'}
+                        </span>
                     </p>
                 )}
                 <p>
                     <span className="field-label">POID(s):</span>{' '}
-                    <span className="field-value">{selectedPoidIds.join(', ') || 'None'}</span>
+                    <span className="field-value">
+                        {selectedPoidIds.join(', ') || 'None'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Area of Work:</span>{' '}
@@ -208,7 +222,9 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                 </p>
                 <p>
                     <span className="field-label">Folder Structure:</span>{' '}
-                    <span className="field-value">{folderStructure || 'N/A'}</span>
+                    <span className="field-value">
+                        {folderStructure || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Dispute Value:</span>{' '}
@@ -221,20 +237,28 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                 {source === 'referral' && (
                     <p>
                         <span className="field-label">Referrer Name:</span>{' '}
-                        <span className="field-value">{referrerName || 'N/A'}</span>
+                        <span className="field-value">
+                            {referrerName || 'N/A'}
+                        </span>
                     </p>
                 )}
                 <p>
                     <span className="field-label">Opponent:</span>{' '}
-                    <span className="field-value">{opponentName || 'N/A'} ({opponentEmail || 'N/A'})</span>
+                    <span className="field-value">
+                        {opponentName || 'N/A'} ({opponentEmail || 'N/A'})
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent House No.:</span>{' '}
-                    <span className="field-value">{opponentHouseNumber || 'N/A'}</span>
+                    <span className="field-value">
+                        {opponentHouseNumber || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent Street:</span>{' '}
-                    <span className="field-value">{opponentStreet || 'N/A'}</span>
+                    <span className="field-value">
+                        {opponentStreet || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent City:</span>{' '}
@@ -242,54 +266,78 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
                 </p>
                 <p>
                     <span className="field-label">Opponent County:</span>{' '}
-                    <span className="field-value">{opponentCounty || 'N/A'}</span>
+                    <span className="field-value">
+                        {opponentCounty || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent Postcode:</span>{' '}
-                    <span className="field-value">{opponentPostcode || 'N/A'}</span>
+                    <span className="field-value">
+                        {opponentPostcode || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent Country:</span>{' '}
-                    <span className="field-value">{opponentCountry || 'N/A'}</span>
+                    <span className="field-value">
+                        {opponentCountry || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Opponent Solicitor:</span>{' '}
                     <span className="field-value">
-                        {opponentSolicitorName || 'N/A'} - {opponentSolicitorCompany || 'N/A'} ({opponentSolicitorEmail || 'N/A'})
+                        {opponentSolicitorName || 'N/A'} –{' '}
+                        {opponentSolicitorCompany || 'N/A'} (
+                        {opponentSolicitorEmail || 'N/A'})
                     </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor House No.:</span>{' '}
-                    <span className="field-value">{solicitorHouseNumber || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorHouseNumber || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor Street:</span>{' '}
-                    <span className="field-value">{solicitorStreet || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorStreet || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor City:</span>{' '}
-                    <span className="field-value">{solicitorCity || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorCity || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor County:</span>{' '}
-                    <span className="field-value">{solicitorCounty || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorCounty || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor Postcode:</span>{' '}
-                    <span className="field-value">{solicitorPostcode || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorPostcode || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Solicitor Country:</span>{' '}
-                    <span className="field-value">{solicitorCountry || 'N/A'}</span>
+                    <span className="field-value">
+                        {solicitorCountry || 'N/A'}
+                    </span>
                 </p>
                 <p>
                     <span className="field-label">Conflict of Interest:</span>{' '}
-                    <span className="field-value">{noConflict ? 'No' : 'Yes'}</span>
+                    <span className="field-value">
+                        {noConflict ? 'No' : 'Yes'}
+                    </span>
                 </p>
             </div>
         ),
         [
+            clientInformation,
             selectedDate,
+            phone,
             supervisingPartner,
             originatingSolicitor,
             clientType,
@@ -319,20 +367,20 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
             solicitorPostcode,
             solicitorCountry,
             noConflict,
+            clientAsOnFile,
         ]
     );
 
     useEffect(() => {
         if (summaryComplete && snapshot) {
-            const changed = JSON.stringify(formData) !== JSON.stringify(snapshot);
-            setEdited(changed);
+            setEdited(JSON.stringify(formData) !== JSON.stringify(snapshot));
         }
     }, [formData, snapshot, summaryComplete]);
 
     const handleConfirmed = () => {
         setSnapshot(formData);
         setDetailsConfirmed(false);
-        if (onBuild) onBuild();
+        onBuild?.();
     };
 
     return (
@@ -356,4 +404,3 @@ const ReviewStep: React.FC<ReviewStepProps> = (props) => {
 };
 
 export default ReviewStep;
-  

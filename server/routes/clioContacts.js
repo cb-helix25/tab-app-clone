@@ -48,6 +48,7 @@ router.post('/', async (req, res) => {
                 client.phone ||
                 client.phone_number ||
                 client.phoneNumber ||
+                client.Phone ||
                 null;
 
             return {
@@ -56,7 +57,11 @@ router.post('/', async (req, res) => {
                 prefix: client.prefix || null,
                 date_of_birth: client.date_of_birth || null,
                 email_addresses: [
-                    { name: 'Home', address: client.email || '', default_email: true }
+                    {
+                        name: 'Home',
+                        address: client.email || client.Email || '',
+                        default_email: true
+                    }
                 ],
                 phone_numbers: phone
                     ? [{ name: 'Home', number: phone, default_number: true }]
@@ -86,12 +91,16 @@ router.post('/', async (req, res) => {
         // Map a company client to Clio Company payload
         function mapCompany(company, nameOverride) {
             const phone =
-                company.best_number || company.company_details?.phone || null;
+                company.best_number ||
+                company.company_details?.phone ||
+                company.phone ||
+                company.Phone ||
+                null;
 
             const base = {
                 name: nameOverride || company.company_details?.name || null,
                 email_addresses: company.email
-                    ? [{ name: 'Work', address: company.email, default_email: true }]
+                    ? [{ name: 'Work', address: company.email || company.Email, default_email: true }]
                     : [],
                 phone_numbers: phone
                     ? [{ name: 'Work', number: phone, default_number: true }]
