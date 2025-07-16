@@ -82,3 +82,13 @@ This repository previously lacked documentation for this contact synchronisation
 ## Updates
 
 If an existing contact with the same email address is found, the route issues a `PATCH` request to Clio's API instead of creating a new record. Only the provided fields are modified in Clio. Custom fields such as **Date of ID Expiry** and **TillerID** are sent on every create or update.
+
+## Field Inspection
+
+To help troubleshoot data issues the route now fetches full contact details and the list of available custom fields. Empty fields are counted and logged as part of the processing action result.
+
+```
+GET {{clio_api_base.url}}/custom_fields.json?fields=id,etag,created_at,updated_at,name,parent_type,field_type,displayed,deleted,required,display_order
+```
+
+For each contact that already exists in Clio the API returns the number of missing base attributes and undefined custom field values. This count is included in the response under `emptyFieldCount` and surfaced in the UI log.

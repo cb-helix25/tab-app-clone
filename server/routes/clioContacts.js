@@ -30,6 +30,21 @@ router.post('/', async (req, res) => {
             Authorization: `Bearer ${access_token}`
         };
 
+        const clioApiBase = process.env.CLIO_API_BASE || 'https://eu.app.clio.com/api/v4';
+
+        // fetch custom field definitions once so we can log missing fields later
+        let customFields = [];
+        try {
+            const cfUrl = `${clioApiBase}/custom_fields.json?fields=id,etag,created_at,updated_at,name,parent_type,field_type,displayed,deleted,required,display_order`;
+            const cfResp = await fetch(cfUrl, { headers });
+            if (cfResp.ok) {
+                const cfData = await cfResp.json();
+                customFields = cfData.data || [];
+            }
+        } catch (err) {
+            console.warn('Failed to retrieve custom field list', err);
+        }
+
         const results = [];
         let clients = formData.client_information || [];
         clients = clients.filter(c =>
@@ -174,6 +189,43 @@ router.post('/', async (req, res) => {
         }
 
         // Create or update a contact in Clio
+        function countEmpty(detail) {
+            if (!detail || !detail.attributes) return 0;
+            const attrs = detail.attributes;
+            const baseFields = [
+                'prefix',
+                'first_name',
+                'middle_name',
+                'last_name',
+                'title',
+                'avatar',
+                'phone_numbers',
+                'email_addresses',
+                'date_of_birth',
+                'addresses'
+            ];
+            let count = 0;
+            baseFields.forEach(f => {
+                const val = attrs[f];
+                if (
+                    val === null ||
+                    val === undefined ||
+                    (Array.isArray(val) ? val.length === 0 : typeof val === 'object' && Object.keys(val).length === 0)
+                ) {
+                    count += 1;
+                }
+            });
+
+            if (Array.isArray(customFields)) {
+                const relevant = customFields.filter(cf => cf.parent_type === detail.type);
+                relevant.forEach(cf => {
+                    const exists = (attrs.custom_field_values || []).some(v => v.custom_field?.id === cf.id || v.id === cf.id);
+                    if (!exists) count += 1;
+                });
+            }
+            return count;
+        }
+
         async function createOrUpdate(contact) {
             const query = encodeURIComponent(contact.email_addresses[0]?.address || '');
             const lookupResp = await fetch(
@@ -186,6 +238,7 @@ router.post('/', async (req, res) => {
             let url = 'https://eu.app.clio.com/api/v4/contacts';
             let method = 'POST';
             let existingFields = [];
+            let emptyFieldCount = 0;
             if (lookupData.data?.length) {
                 const contactId = lookupData.data[0].id;
                 url = `https://eu.app.clio.com/api/v4/contacts/${contactId}`;
@@ -193,13 +246,13 @@ router.post('/', async (req, res) => {
 
                 // Retrieve existing custom field IDs so we can update them
                 try {
-                    const clioApiBase = process.env.CLIO_API_BASE || 'https://eu.app.clio.com/api/v4';
                     const contactId = lookupData.data[0].id;
                     const detailUrl = `${clioApiBase}/contacts/${contactId}?fields=id,type,prefix,name,first_name,middle_name,last_name,title,company,avatar,email_addresses{name,address,default_email},phone_numbers{name,number,default_number},date_of_birth,addresses{name,street,city,province,postal_code,country},custom_field_values{id,field_name,value}`;
                     const details = await fetch(detailUrl, { headers });
                     if (details.ok) {
                         const data = await details.json();
                         existingFields = data.data?.custom_field_values || [];
+                        emptyFieldCount = countEmpty(data.data);
                     }
                 } catch (err) {
                     console.warn('Failed to fetch existing contact details', err);
@@ -210,15 +263,20 @@ router.post('/', async (req, res) => {
             if (method === 'PATCH') {
                 if (!Array.isArray(attributes.custom_field_values)) attributes.custom_field_values = [];
                 attributes.custom_field_values = attributes.custom_field_values
-                    // Remove duplicates by custom_field.id, keep only one per field
                     .filter((cf, i, arr) =>
                         cf?.custom_field?.id &&
                         arr.findIndex(x => x.custom_field?.id === cf.custom_field?.id) === i
                     )
                     .map(cf => {
-                        const existing = existingFields.find(e => e.custom_field?.id === cf.custom_field?.id);
-                        return existing ? { ...cf, id: existing.id } : cf;
+                        // Support both Clio's old and new custom_field keys
+                        const existing = existingFields.find(e =>
+                            (e.custom_field?.id || e.custom_field_id) == cf.custom_field.id
+                        );
+                        return existing
+                            ? { ...cf, id: existing.id } // Update (supply Clio's ID)
+                            : cf; // New (no ID)
                     });
+
             }
 
 
@@ -238,6 +296,7 @@ router.post('/', async (req, res) => {
                 throw new Error('Create/update failed');
             }
             const respJson = await resp.json();
+            respJson.emptyFieldCount = emptyFieldCount;
             console.log('Received from Clio:', JSON.stringify(respJson, null, 2));
             return respJson;
         }

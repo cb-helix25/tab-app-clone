@@ -210,11 +210,15 @@ export const processingActions: ProcessingAction[] = [
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
             const names: string[] = [];
+            let emptyTotal = 0;
             clioContactIds = [];
             clioCompanyId = null;
             (data.results || []).forEach((r: any) => {
                 const attrs = r.data?.attributes || {};
                 const id = r.data?.id;
+                if (typeof r.emptyFieldCount === 'number') {
+                    emptyTotal += r.emptyFieldCount;
+                }
                 if (id) {
                     clioContactIds.push(String(id));
                 }
@@ -232,7 +236,7 @@ export const processingActions: ProcessingAction[] = [
             if (newId && clientIdCallback) {
                 clientIdCallback(newId);
             }
-            return `Clio contacts synced: ${names.join(', ')}`;
+            return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
         }
     },
     {

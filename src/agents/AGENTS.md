@@ -27,6 +27,9 @@ Add further mappings below as they become available.
 | `2`         | `fail`| `complete`| Notify operations of failed check   |
 | `2`         | `*`   | `error`   | Log error and alert on-call team    |
 
+### Clio Field Inspection
+When synchronising contacts with Clio the system retrieves available custom fields via `custom_fields.json`. Any missing base attributes or undefined custom field values are counted and returned as `emptyFieldCount` for reference in the processing log.
+
 ### checkType 3 – Risk & Compliance
 | checkTypeId | result | status    | Action                                      |
 |-------------|-------|-----------|---------------------------------------------|
