@@ -22,6 +22,7 @@
         "chart.js": "^4.4.7",
         "date-fns": "^2.30.0",
         "docx": "^9.5.1",
+        "docx-templates": "^4.14.1",
         "dompurify": "^3.2.3",
         "dotenv": "^16.4.2",
         "framer-motion": "^12.4.11",
@@ -56,6 +57,8 @@
     "devDependencies": {
         "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
         "@babel/plugin-transform-private-property-in-object": "^7.25.9",
+        "@testing-library/react": "^14.2.1",
+        "@types/jest": "^29.5.14",
         "@types/microsoftteams": "^1.9.6",
         "@types/node": "^18.19.80",
         "@types/react": "^18.0.0",
@@ -67,8 +70,12 @@
         "@types/react-router-dom": "^5.3.3",
         "@types/react-transition-group": "^4.4.11",
         "@types/react-window": "^1.8.8",
+        "@types/supertest": "^2.0.12",
         "concurrently": "^8.2.2",
-        "env-cmd": "^10.1.0"
+        "env-cmd": "^10.1.0",
+        "jest": "^29.7.0",
+        "supertest": "^6.3.3",
+        "ts-jest": "^29.1.1"
     },
     "scripts": {
         "dev:teamsfx": "concurrently \"npm run dev-tab:teamsfx\" \"npm run dev-api:teamsfx\" \"npm run start:server\" \"npm run start\"",
@@ -78,7 +85,7 @@
         "start": "react-scripts start",
         "start:server": "node server/index.js",
         "build": "react-scripts build",
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "jest",
         "eject": "react-scripts eject",
         "generate:attendance": "node scripts/generateLocalAttendance.js",
         "generate:risk": "node scripts/generateLocalRiskAssessments.js",

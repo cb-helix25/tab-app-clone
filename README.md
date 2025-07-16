@@ -123,3 +123,4 @@ The Draft Client Care Letter (CCL) feature lets you automatically produce a bran
 * `PATCH /api/ccl/:matterId` – regenerate the Word file after editing the JSON.
 
 Generated files are stored under `public/ccls` and served statically. The matter opening workflow includes a new **Generate Draft CCL** step which calls this API and surfaces the resulting download link.
+Each generation overwrites the previous file; no versioning layer yet.

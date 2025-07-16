@@ -23,4 +23,6 @@ api/local.settings.json
 env/.env.*
 env/.env.dev
 .env.local
-src/localData/
+src/localData
+public/ccls/*.docx
+server/node_modules/

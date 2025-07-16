@@ -1,12 +1,7 @@
 import React from 'react';
+import { CCLJson } from '../../app/functionality/types';
 
-export interface DraftCCLData {
-    header: string;
-    scopeOfWork: string;
-    fees: string;
-    terms: string;
-    signatures: string;
-}
+export type DraftCCLData = CCLJson;
 
 interface DraftCCLEditorProps {
     value: DraftCCLData;
@@ -21,18 +16,32 @@ const DraftCCLEditor: React.FC<DraftCCLEditorProps> = ({ value, onChange, readOn
         onChange({ ...value, [key]: e.target.value });
     };
 
+    const insert = (field: keyof DraftCCLData, token: keyof DraftCCLData) => {
+        onChange({ ...value, [field]: (value[field] || '') + `{{${token}}}` });
+    };
+
+    const tokens = Object.keys(value) as (keyof DraftCCLData)[];
+
+    const renderField = (label: string, key: keyof DraftCCLData) => (
+        <div>
+            <h4>{label}</h4>
+            <textarea style={fieldStyle} value={value[key]} onChange={update(key)} readOnly={readOnly} />
+            <select disabled={readOnly} onChange={e => insert(key, e.target.value as keyof DraftCCLData)} defaultValue="">
+                <option value="" disabled>Insert field...</option>
+                {tokens.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                ))}
+            </select>
+        </div>
+    );
+
     return (
         <div>
-            <h4>Header</h4>
-            <textarea style={fieldStyle} value={value.header} onChange={update('header')} readOnly={readOnly} />
-            <h4>Scope of Work</h4>
-            <textarea style={fieldStyle} value={value.scopeOfWork} onChange={update('scopeOfWork')} readOnly={readOnly} />
-            <h4>Fees</h4>
-            <textarea style={fieldStyle} value={value.fees} onChange={update('fees')} readOnly={readOnly} />
-            <h4>Terms and Conditions</h4>
-            <textarea style={fieldStyle} value={value.terms} onChange={update('terms')} readOnly={readOnly} />
-            <h4>Signatures</h4>
-            <textarea style={fieldStyle} value={value.signatures} onChange={update('signatures')} readOnly={readOnly} />
+            {renderField('Header', 'header')}
+            {renderField('Scope of Work', 'scopeOfWork')}
+            {renderField('Fees', 'fees')}
+            {renderField('Terms and Conditions', 'terms')}
+            {renderField('Signatures', 'signatures')}
         </div>
     );
 };

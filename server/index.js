@@ -8,7 +8,7 @@ const matterRequestsRouter = require('./routes/matterRequests');
 const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
-const cclRouter = require('./routes/ccl');
+const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -23,6 +23,7 @@ app.use('/api/opponents', opponentsRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/ccl', cclRouter);
+app.use('/ccls', express.static(CCL_DIR));
 
 const buildPath = path.join(__dirname, 'static');
 app.use(express.static(buildPath));

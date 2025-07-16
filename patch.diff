@@ -1,89 +1,39 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index 477ac328b693c9a617cb48d8f9e9fa248844a4cf..4359ea37b8f79a3d957b5002b96bbefe4e0fae4f 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -1,29 +1,30 @@
- import { ProcessingStep } from './ProcessingSection';
- import activeIcon from '../../../assets/activecampaign.svg';
- import clioIcon from '../../../assets/clio.svg';
- import asanaIcon from '../../../assets/asana.svg';
-+import cclIcon from '../../../assets/ccl.svg';
+diff --git a/src/app/functionality/types.ts b/src/app/functionality/types.ts
+index 19f0802a22a7d5ba8b3058af79cc01dc1d2a762f..501ccbf703eceeb3d8768afe72239576a9a7b8ac 100644
+--- a/src/app/functionality/types.ts
++++ b/src/app/functionality/types.ts
+@@ -481,26 +481,34 @@ export interface InstructionData {
+   prospectId: number;
+   deals: any[];
+   /**
+    * Joint clients associated with the prospect.  Older implementations
+    * used the `jointClients` field while newer ones may expose this data
+    * via `joinedClients`.  Both shapes are captured here.
+    */
+   jointClients: any[];
+   joinedClients?: any[];
+   instructions: any[];
+   documents: any[];
+   /**
+    * Compliance/risk assessment details.  Depending on the backend
+    * version this may be returned under `riskAssessments` or
+    * `compliance`.  Consumers should handle either form.
+    */
+   riskAssessments: any[];
+   compliance?: any[];
  
- // locally cached values so refresh endpoints can be called in sequence
- let acToken = '';
- let clioClientId = '';
- let clioClientSecret = '';
- let clioRefreshToken = '';
- let asanaClientId = '';
- let asanaSecret = '';
- let asanaRefreshToken = '';
- let opponentId = '';
- let solicitorId = '';
- let clioContactIds: string[] = [];
- let clioCompanyId: string | null = null;
- let clientIdCallback: ((id: string | null) => void) | null = null;
- 
- export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
-     clientIdCallback = cb;
+   /**
+    * Electronic ID verification results.  May be returned as
+    * `electronicIDChecks` or `idVerifications`.
+    */
+   electronicIDChecks: any[];
+   idVerifications?: any[];
++}
++
++export interface CCLJson {
++  header: string;
++  scopeOfWork: string;
++  fees: string;
++  terms: string;
++  signatures: string;
  }
- 
- export interface ProcessingAction {
-     label: string;
-     icon?: string;
-     run: (
-         formData: Record<string, any>,
-         userInitials: string,
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index 477ac328b693c9a617cb48d8f9e9fa248844a4cf..4359ea37b8f79a3d957b5002b96bbefe4e0fae4f 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -232,35 +233,49 @@ export const processingActions: ProcessingAction[] = [
-                 }
-             });
-             const person = (data.results || []).find((r: any) => r.data?.type === 'Person');
-             const newId = person?.data?.id ? String(person.data.id) : null;
-             if (newId && clientIdCallback) {
-                 clientIdCallback(newId);
-             }
-             return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
-         }
-     },
-     {
-         label: 'Clio Matter Opened',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-matters', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
-             });
-             if (!resp.ok) throw new Error('Failed to create Clio matter');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
-             return `Matter created with ID ${data.matterId}`;
-         }
-     },
-+    {
-+        label: 'Generate Draft CCL',
-+        icon: cclIcon,
-+        run: async (formData, userInitials) => {
-+            const resp = await fetch('/api/ccl', {
-+                method: 'POST',
-+                headers: { 'Content-Type': 'application/json' },
-+                body: JSON.stringify({ matterId: formData.matter_details.matter_ref, draftJson: formData })
-+            });
-+            if (!resp.ok) throw new Error('CCL generation failed');
-+            const { url } = await resp.json();
-+            return `Draft CCL created · ${url}`;
-+        }
-+    },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
- // invisible change 2.2
- 
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
-     icon: action.icon
- }));

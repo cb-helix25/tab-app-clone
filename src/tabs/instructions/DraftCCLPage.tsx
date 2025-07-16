@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Stack, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
-import { InstructionData } from '../../app/functionality/types';
-import DraftCCLEditor, { DraftCCLData } from './DraftCCLEditor';
+import { InstructionData, CCLJson } from '../../app/functionality/types';
+import DraftCCLEditor from './DraftCCLEditor';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/MatterOpeningCard.css';
 
@@ -15,21 +15,22 @@ interface DraftCCLPageProps {
 const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instructions, matterId }) => {
     const [selectedRef, setSelectedRef] = useState<string>(instruction?.InstructionRef || '');
     const [confirmed, setConfirmed] = useState<boolean>(!!instruction || !!matterId);
-    const [draft, setDraft] = useState<DraftCCLData>({
-        header: '',
-        scopeOfWork: '',
-        fees: '',
-        terms: '',
-        signatures: '',
+    const [state, setState] = useState<{ draftJson: CCLJson; url: string; saving: boolean; generating: boolean }>({
+        draftJson: { header: '', scopeOfWork: '', fees: '', terms: '', signatures: '' },
+        url: '',
+        saving: false,
+        generating: false
     });
     useEffect(() => {
         if (matterId) {
             fetch(`/api/ccl/${matterId}`)
                 .then(r => (r.ok ? r.json() : null))
                 .then(d => {
-                    if (d && d.draftJson) setDraft(d.draftJson);
+                    if (d) {
+                        setState(s => ({ ...s, draftJson: d.json || s.draftJson, url: d.url || '' }));
+                    }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     }, [matterId]);
 
@@ -50,24 +51,24 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
     );
 
     if (!confirmed && instructions) {
-    return (
-        <Stack tokens={dashboardTokens} className="workflow-container">
-            <div className="workflow-main matter-opening-card">
-                <div className="step-header">
-                    <h3 className="step-title">Select Instruction for Client Care Letter</h3>
+        return (
+            <Stack tokens={dashboardTokens} className="workflow-container">
+                <div className="workflow-main matter-opening-card">
+                    <div className="step-header">
+                        <h3 className="step-title">Select Instruction for Client Care Letter</h3>
+                    </div>
+                    <div className="step-content">
+                        <Dropdown
+                            placeholder="Select Instruction"
+                            options={allInstructions}
+                            selectedKey={selectedRef}
+                            onChange={(_, o) => setSelectedRef(o?.key as string)}
+                            styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
+                        />
+                        <PrimaryButton text="Continue" disabled={!selectedRef} onClick={() => setConfirmed(true)} />
+                    </div>
                 </div>
-                <div className="step-content">
-                    <Dropdown
-                        placeholder="Select Instruction"
-                        options={allInstructions}
-                        selectedKey={selectedRef}
-                        onChange={(_, o) => setSelectedRef(o?.key as string)}
-                        styles={{ root: { maxWidth: 300, marginBottom: 16 } }}
-                    />
-                    <PrimaryButton text="Continue" disabled={!selectedRef} onClick={() => setConfirmed(true)} />
-                </div>
-            </div>
-        </Stack>
+            </Stack>
         );
     }
 
@@ -75,20 +76,32 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
 
     const handleSave = async () => {
         if (!inst) return;
-        await fetch(`/api/ccl/${matterId}`, {
+        setState(s => ({ ...s, saving: true }));
+        const resp = await fetch(`/api/ccl/${matterId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ draftJson: draft })
+            body: JSON.stringify({ draftJson: state.draftJson })
         });
+        if (resp.ok) {
+            const d = await resp.json();
+            setState(s => ({ ...s, url: d.url || s.url }));
+        }
+        setState(s => ({ ...s, saving: false }));
     };
 
     const handleGenerate = async () => {
         if (!inst && !matterId) return;
-        await fetch('/api/ccl', {
+        setState(s => ({ ...s, generating: true }));
+        const resp = await fetch('/api/ccl', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matterId: matterId || selectedRef, draftJson: draft })
+            body: JSON.stringify({ matterId: matterId || selectedRef, draftJson: state.draftJson })
         });
+        if (resp.ok) {
+            const d = await resp.json();
+            setState(s => ({ ...s, url: d.url || s.url }));
+        }
+        setState(s => ({ ...s, generating: false }));
     };
 
     return (
@@ -98,10 +111,13 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
                     <h3 className="step-title">Client Care Letter</h3>
                 </div>
                 <div className="step-content">
-                    <DraftCCLEditor value={draft} onChange={setDraft} />
+                    <DraftCCLEditor value={state.draftJson} onChange={draftJson => setState(s => ({ ...s, draftJson }))} />
                     <div style={{ marginTop: 16 }}>
-                        <PrimaryButton text="Save Draft" onClick={handleSave} style={{ marginRight: 8 }} />
-                        <PrimaryButton text="Generate Word" onClick={handleGenerate} />
+                        <PrimaryButton text="Save Draft" disabled={state.saving || state.generating} onClick={handleSave} style={{ marginRight: 8 }} />
+                        <PrimaryButton text="Generate Word" disabled={state.saving || state.generating} onClick={handleGenerate} />
+                        {state.url && (
+                            <a href={state.url} style={{ marginLeft: 12 }} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
+                        )}
                     </div>
                 </div>
             </div>

@@ -847,8 +847,7 @@ const handleClearAll = () => {
                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
                 if (action.label === 'Generate Draft CCL') {
-                    const parts = message.split('·');
-                    if (parts.length > 1) url = parts[1].trim();
+                    url = message;
                 }
             }
 

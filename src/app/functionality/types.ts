@@ -504,3 +504,11 @@ export interface InstructionData {
   electronicIDChecks: any[];
   idVerifications?: any[];
 }
+
+export interface CCLJson {
+  header: string;
+  scopeOfWork: string;
+  fees: string;
+  terms: string;
+  signatures: string;
+}
