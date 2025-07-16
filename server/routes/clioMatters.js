@@ -2,7 +2,6 @@ const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const fs = require('fs');
 const path = require('path');
-const fetch = require('node-fetch');
 
 const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
