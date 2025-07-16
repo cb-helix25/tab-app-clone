@@ -1,14 +1,16 @@
-import path from 'path';
-import { readFileSync, writeFileSync } from 'fs';
-import createReport from 'docx-templates';
+// server/utils/wordGenerator.js
+const path = require('path');
+const { readFileSync, writeFileSync } = require('fs');
+const createReport = require('docx-templates');
 
-export async function generateWordFromJson(json: any, outPath: string): Promise<void> {
+async function generateWordFromJson(json, outPath) {
     try {
         const template = readFileSync(path.join(process.cwd(), 'templates', 'cclTemplate.docx'));
         const buf = await createReport({ template, data: json, cmdDelimiter: ['{{', '}}'] });
         writeFileSync(outPath, buf);
-    } catch (err) {
-        // Fallback for test environments without a valid template
+    } catch {
         writeFileSync(outPath, Buffer.from('CCL'));
     }
 }
+
+module.exports = { generateWordFromJson };

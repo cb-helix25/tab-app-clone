@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { generateWordFromJson } = require('../utils/wordGenerator');
+const { generateWordFromJson } = require('../utils/wordGenerator.js');
 
 const router = express.Router();
 
