@@ -2,7 +2,7 @@ const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const fs = require('fs');
 const path = require('path');
-const fetch = require('node-fetch');  // if you don’t have global fetch
+const fetch = require('node-fetch');
 
 const PRACTICE_AREAS = {
     "Adjudication Advice & Dispute": 949034,
@@ -47,6 +47,22 @@ const PRACTICE_AREAS = {
     "Winding Up Petition Advice": 949049
 };
 
+// Hard-coded picklist option mappings
+const ND_OPTIONS = {
+    "Adjudication": 187069,
+    "Residential Possession": 187072,
+    "Employment": 187075,
+    "Default": 187078
+};
+const VALUE_OPTIONS = {
+    "Less than £10k": 244802,
+    "£10k - £500k": 244805,
+    "£501k - £1m": 244808,
+    "£1m - £5m": 244811,
+    "£5m - £20m": 244814,
+    "Over £20m": 244817
+};
+
 const teamPath = path.join(__dirname, '..', '..', 'data', 'team-sql-data.json');
 let teamData = [];
 try {
@@ -54,7 +70,6 @@ try {
 } catch (err) {
     console.warn('Failed to load team data', err);
 }
-
 const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
 let riskData = [];
 try {
@@ -66,123 +81,74 @@ try {
 function getClioId(fullName) {
     if (!fullName) return null;
     const found = teamData.find(t => {
-        const name = (t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim()).toLowerCase();
+        const name = (t['Full Name'] || `${t.First || ''} ${t.Last || ''}`).trim().toLowerCase();
         return name === fullName.toLowerCase();
     });
-    return found ? String(found['Clio ID'] || '') : null;
+    return found ? String(found['Clio ID']) : null;
 }
-
 function getRiskResult(ref) {
     if (!ref) return null;
     const entry = riskData.find(r => (r.InstructionRef || '').toLowerCase() === ref.toLowerCase());
-    return entry ? entry.RiskAssessmentResult || null : null;
+    return entry ? entry.RiskAssessmentResult : null;
 }
 
 const router = express.Router();
-
 router.post('/', async (req, res) => {
-    const { formData, initials, contactIds = [], companyId } = req.body || {};
-    if (!formData || !initials || contactIds.length === 0) {
-        return res.status(400).json({ error: 'Missing data' });
-    }
-
+    const { formData, initials } = req.body || {};
+    if (!formData || !initials) return res.status(400).json({ error: 'Missing data' });
     try {
-        // 1. Refresh Clio token
-        const clientIdSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
-        const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
-        const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
-        const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientIdSecret}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
-        const tokenResp = await fetch(tokenUrl, { method: 'POST' });
-        if (!tokenResp.ok) {
-            console.error('Clio token refresh failed', await tokenResp.text());
-            return res.status(500).json({ error: 'Token refresh failed' });
-        }
-        const { access_token } = await tokenResp.json();
-        const headers = {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${access_token}`
-        };
+        // 1. Refresh token
+        const cid = await getSecret(`${initials}-clio-v1-clientid`);
+        const cs = await getSecret(`${initials}-clio-v1-clientsecret`);
+        const rt = await getSecret(`${initials}-clio-v1-refreshtoken`);
+        const tv = `https://eu.app.clio.com/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
+        const tr = await fetch(tv, { method: 'POST' });
+        if (!tr.ok) throw new Error(await tr.text());
+        const { access_token } = await tr.json();
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${access_token}` };
 
-        // 2. Determine clientId (use created/found contact)
-        const clientId = companyId || contactIds[0];
-
-        // 3. Compute IDs and values
+        // 2. Extract matter data
         const md = formData.matter_details;
-        const instructionRef = md.instruction_ref || '';
-        const practiceAreaId = PRACTICE_AREAS[md.practice_area] || null;
-        const responsibleId = getClioId(formData.team_assignments.fee_earner);
-        const originatingId = getClioId(formData.team_assignments.originating_solicitor);
-        const riskResult = getRiskResult(instructionRef);
+        const { instruction_ref, description, date_created, client_type, practice_area, folder_structure, dispute_value } = md;
 
-        const customFieldValues = [
+        // 3. Build custom fields
+        const cf = [
             { value: formData.team_assignments.supervising_partner, custom_field: { id: 232574 } },
-            { value: md.folder_structure, custom_field: { id: 299746 } },
-            { value: md.dispute_value, custom_field: { id: 378566 } },
-            { value: instructionRef, custom_field: { id: 380728 } }
-        ].filter(cf => cf.value);
+            ND_OPTIONS[folder_structure] && { value: ND_OPTIONS[folder_structure], custom_field: { id: 299746 } },
+            VALUE_OPTIONS[dispute_value] && { value: VALUE_OPTIONS[dispute_value], custom_field: { id: 378566 } },
+            { value: instruction_ref, custom_field: { id: 380728 } }
+        ].filter(Boolean);
 
-        // 4. Build Matter payload
-        const matterPayload = {
+        // 4. Lookup client contact
+        const first = formData.client_information[0];
+        const pr = await fetch(`https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`, { headers });
+        const pid = (await pr.json()).data[0].id;
+
+        // 5. Build matter payload
+        const payload = {
             data: {
                 billable: true,
-                client: { id: clientId },
-                client_reference: instructionRef || null,
-                description: md.description,
-                practice_area: { id: practiceAreaId },
-                responsible_attorney: { id: responsibleId },
-                originating_attorney: { id: originatingId },
-                status: 'open',
-                risk_result: riskResult || null,
-                custom_field_values: customFieldValues
+                client: { id: pid },
+                client_reference: instruction_ref,
+                description,
+                practice_area: { id: PRACTICE_AREAS[practice_area] },
+                responsible_attorney: { id: getClioId(formData.team_assignments.fee_earner) },
+                originating_attorney: { id: getClioId(formData.team_assignments.originating_solicitor) },
+                status: 'Open',
+                risk_result: getRiskResult(instruction_ref),
+                custom_field_values: cf
             }
         };
+        console.error('Matter payload →', JSON.stringify(payload, null, 2));
 
-        // 5. Debug log
-        console.error('Matter payload ➞', JSON.stringify(matterPayload, null, 2));
-
-        // 6. Create Matter
-        const resp = await fetch('https://eu.app.clio.com/api/v4/matters.json', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(matterPayload)
-        });
-        if (!resp.ok) {
-            console.error('Clio matter create failed', await resp.text());
-            return res.status(500).json({ error: 'Matter creation failed' });
-        }
-        const { data } = await resp.json();
-        const matterId = data.id;
-
-        // 7. Link related contacts
-        if (matterId && contactIds.length > 1) {
-            for (const id of contactIds.slice(1)) {
-                const relPayload = {
-                    data: {
-                        type: 'relationships',
-                        attributes: { relationship_type: 'Related Client' },
-                        relationships: {
-                            primary: { data: { type: 'matters', id: matterId } },
-                            related: { data: { type: 'contacts', id } }
-                        }
-                    }
-                };
-                const relResp = await fetch('https://eu.app.clio.com/api/v4/relationships.json', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(relPayload)
-                });
-                if (!relResp.ok) {
-                    console.error(`Failed to link contact ${id}`, await relResp.text());
-                }
-            }
-        }
-
-        // 8. Return result
-        res.json({ ok: true, matterId });
-    } catch (err) {
-        console.error('Clio matter error', err);
-        res.status(500).json({ error: 'Failed to create matter' });
+        // 6. Create matter
+        const mr = await fetch('https://eu.app.clio.com/api/v4/matters.json', { method: 'POST', headers, body: JSON.stringify(payload) });
+        if (!mr.ok) throw new Error(await mr.text());
+        const matter = (await mr.json()).data;
+        res.json({ ok: true, matter });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
     }
 });
-
 module.exports = router;

@@ -298,10 +298,10 @@ router.post('/', async (req, res) => {
                 matter_type: client_type,
                 status: 'open',
                 custom_field_values: [
-                    { value: area_of_work, custom_field: { id: 123456 } },
-                    { value: practice_area, custom_field: { id: 123457 } },
-                    { value: dispute_value, custom_field: { id: 123458 } },
-                    { value: folder_structure, custom_field: { id: 123459 } },
+                    { value: area_of_work, id: 299746 },
+                    { value: practice_area, id: PRACTICE_AREAS[practice_area] },
+                    { value: dispute_value, id: 378566 },
+                    { value: folder_structure, id: 299746 }
                 ].filter(cf => cf.value)
             }
         };
