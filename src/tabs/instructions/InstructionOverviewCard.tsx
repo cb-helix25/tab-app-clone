@@ -4,6 +4,8 @@ import React from 'react';
 import { mergeStyles } from '@fluentui/react';
 import { Link } from 'react-router-dom';
 import cclIcon from '../assets/ccl.svg';
+import localUserData from '../../localData/localUserData.json';
+import { getDraftCclPath } from '../../utils/paths';
 import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionOverviewCard.css';
@@ -37,6 +39,8 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
     const riskStatus = risk?.RiskAssessmentResult || '-';
     const eidStatus = eid?.EIDStatus || '-';
     const complianceStatus = compliance?.Status || '-';
+    const currentUser = (localUserData as any[])[0] || {};
+    const showDraft = currentUser.Role === 'Partner' || currentUser.Role === 'Solicitor';
 
     return (
         <div className={cardClass} style={style}>
@@ -63,11 +67,13 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
                     <span className="summary-value">{complianceStatus}</span>
                 </div>
             </div>
-            <div className="overview-actions">
-                <Link to={`/draft-ccl/${instruction.InstructionRef}`} className="action-link">
-                    <img src={cclIcon} alt="" width={20} height={20} /> Draft CCL
-                </Link>
-            </div>
+            {showDraft && (
+                <div className="overview-actions">
+                    <Link to={getDraftCclPath(instruction.InstructionRef)} className="action-link">
+                        <img src={cclIcon} alt="" width={20} height={20} /> Draft CCL
+                    </Link>
+                </div>
+            )}
         </div>
       );
 };

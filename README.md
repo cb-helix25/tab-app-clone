@@ -116,6 +116,8 @@ This starts the Express server which serves the built application from the root 
 
 The Draft Client Care Letter (CCL) feature lets you automatically produce a branded Word document for a matter.
 
+UI path: Instructions ▶︎ Draft CCL  (/instructions/:matterId/draft-ccl)
+
 ### API
 
 * `POST /api/ccl` – generate a new CCL. Payload `{ matterId, draftJson }`.

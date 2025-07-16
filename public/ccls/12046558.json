@@ -1,0 +1,175 @@
+{
+  "matter_details": {
+    "instruction_ref": "HLX-20007-56789",
+    "client_id": null,
+    "matter_ref": null,
+    "stage": "completed",
+    "date_created": null,
+    "client_type": "Company",
+    "area_of_work": "Property",
+    "practice_area": "Landlord & Tenant – Residential Dispute",
+    "description": "test item description",
+    "client_as_on_file": null,
+    "dispute_value": "£10k - £500k",
+    "folder_structure": "Residential Possession"
+  },
+  "team_assignments": {
+    "fee_earner": "Lukasz Zemanek",
+    "supervising_partner": "AC",
+    "originating_solicitor": "Lukasz Zemanek",
+    "requesting_user": "Luke"
+  },
+  "client_information": [
+    {
+      "poid_id": "HLX-20007-56789",
+      "first_name": "Luke",
+      "last_name": "Zemanek",
+      "email": "lztestitem@helix-law.com",
+      "best_number": "0778 3949281",
+      "type": "individual",
+      "nationality": "United Kingdom",
+      "date_of_birth": "1996-11-09",
+      "address": {
+        "house_number": "33",
+        "street": "Bbb",
+        "city": "Bb",
+        "county": "Bn",
+        "post_code": "fff",
+        "country": "United Kingdom"
+      },
+      "company_details": {
+        "name": "Helix Law Ltd",
+        "number": "000017777",
+        "address": {
+          "house_number": "33",
+          "street": "Bbb",
+          "city": "gasg",
+          "county": "sdfgsdfg",
+          "post_code": "sfgsdfg",
+          "country": "United Kingdom"
+        }
+      },
+      "verification": {
+        "stage": "completed"
+      }
+    },
+    {
+      "poid_id": "6",
+      "first_name": "Luke",
+      "last_name": "Zemanek",
+      "email": "lztestitem@helix-law.com",
+      "best_number": "0778 3949281",
+      "type": "individual",
+      "nationality": "United Kingdom",
+      "date_of_birth": "1996-11-09",
+      "address": {
+        "house_number": "33",
+        "street": "Bbb",
+        "city": "Bb",
+        "county": "Bn",
+        "post_code": "fff",
+        "country": "United Kingdom"
+      },
+      "company_details": {
+        "name": "Helix Law Ltd",
+        "number": "000017777",
+        "address": {
+          "house_number": "33",
+          "street": "Bbb",
+          "city": "gasg",
+          "county": "sdfgsdfg",
+          "post_code": "sfgsdfg",
+          "country": "United Kingdom"
+        }
+      },
+      "verification": {
+        "stage": "completed"
+      }
+    },
+    {
+      "poid_id": "102",
+      "first_name": "Joint",
+      "last_name": "Client",
+      "email": "jc1@helix-law.com",
+      "best_number": "0778 3949281",
+      "type": "individual",
+      "nationality": "United Kingdom",
+      "date_of_birth": "1980-01-01",
+      "address": {
+        "house_number": "",
+        "street": "",
+        "city": "",
+        "county": "",
+        "post_code": "",
+        "country": "United Kingdom"
+      },
+      "company_details": {
+        "name": "Helix Law Ltd",
+        "number": "000017777",
+        "address": {
+          "house_number": "33",
+          "street": "Bbb",
+          "city": "gasg",
+          "county": "sdfgsdfg",
+          "post_code": "sfgsdfg",
+          "country": "United Kingdom"
+        }
+      },
+      "verification": {
+        "stage": "completed"
+      }
+    }
+  ],
+  "source_details": {
+    "source": "search",
+    "referrer_name": null
+  },
+  "opponent_details": {
+    "opponent": {
+      "title": "AI",
+      "first_name": "A. Placeholder",
+      "last_name": "Entity",
+      "is_company": false,
+      "company_name": "Phantom Entity Ltd",
+      "company_number": "AE001",
+      "email": "ae@hlx.place",
+      "phone": "00000000000",
+      "address": {
+        "house_number": "0",
+        "street": "Trace Null Row",
+        "city": "Lowlight",
+        "county": "Eidolonshire",
+        "post_code": "NX01 0AE",
+        "country": "United Kingdom"
+      }
+    },
+    "solicitor": {
+      "title": "AI",
+      "first_name": "A. Placeholder",
+      "last_name": "Solicitor",
+      "company_name": "Null Proxy LLP",
+      "company_number": "AE-LAW-00X",
+      "email": "relay@hlx.place",
+      "phone": "00000000001",
+      "address": {
+        "house_number": "1",
+        "street": "Obscura Street",
+        "city": "Lowlight",
+        "county": "Eidolonshire",
+        "post_code": "NX01 0AE",
+        "country": "United Kingdom"
+      }
+    }
+  },
+  "compliance": {
+    "conflict_check_completed": true,
+    "id_verification_required": true,
+    "pep_sanctions_check_required": true
+  },
+  "metadata": {
+    "created_by": "LZ",
+    "created_at": "2025-07-16T21:28:14.172Z",
+    "form_version": "1.0",
+    "processing_status": "pending_review"
+  }
+}

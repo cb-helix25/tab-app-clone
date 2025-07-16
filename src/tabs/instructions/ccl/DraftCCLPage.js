@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Stack, PrimaryButton } from '@fluentui/react';
+import { useParams } from 'react-router-dom';
 import DraftCCLEditor from './DraftCCLEditor';
-import cclSchema from '../../app/functionality/cclSchema';
-import localUserData from '../../localData/localUserData.json';
-import '../instructions/componentTokens';
-import '../../app/styles/MatterOpeningCard.css';
+import cclSchema from '../../../app/functionality/cclSchema';
+import localUserData from '../../../localData/localUserData.json';
+import '../componentTokens';
+import '../../../app/styles/MatterOpeningCard.css';
 
 const dashboardTokens = { childrenGap: 12 };
 
-const DraftCCLPage = ({ matterId }) => {
+const DraftCCLPage = ({ matterId: propMatterId }) => {
+    const params = useParams();
+    const matterId = propMatterId || params.matterId;
     const [draftJson, setDraftJson] = useState({ ...cclSchema });
     const [url, setUrl] = useState('');
     const [saving, setSaving] = useState(false);

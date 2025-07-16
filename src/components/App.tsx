@@ -14,6 +14,7 @@ import { lazy, Suspense } from "react";
 const Privacy = lazy(() => import("./Privacy"));
 const TermsOfUse = lazy(() => import("./TermsOfUse"));
 const Tab = lazy(() => import("./Tab"));
+const DraftCCLRouteWrapper = lazy(() => import("../tabs/instructions/ccl/DraftCCLRouteWrapper"));
 import { TeamsFxContext } from "./Context";
 import config from "./sample/lib/config";
 
@@ -49,6 +50,7 @@ export default function App() {
                 <Routes>
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/termsofuse" element={<TermsOfUse />} />
+                  <Route path="/instructions/:matterId/draft-ccl" element={<DraftCCLRouteWrapper />} />
                   <Route path="/tab" element={<Tab />} />
                   <Route path="*" element={<Navigate to={"/tab"} />}></Route>
                 </Routes>
