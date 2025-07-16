@@ -351,7 +351,8 @@ router.post('/', async (req, res) => {
             throw new Error('Missing client_id or description for matter creation');
         }
 
-        const paId = PRACTICE_AREAS[practice_area];
+        const normalizedPracticeArea = (practice_area || '').replace(/[–—]/g, '-').trim();
+        const paId = PRACTICE_AREAS[normalizedPracticeArea];
         if (!paId) throw new Error(`Unknown practice_area “${practice_area}”`);
 
         const matterPayload = {
