@@ -17,9 +17,15 @@ let solicitorId = '';
 let clioContactIds: string[] = [];
 let clioCompanyId: string | null = null;
 let clientIdCallback: ((id: string | null) => void) | null = null;
+let matterId: string | null = null;
+let matterIdCallback: ((id: string | null) => void) | null = null;
 
 export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
     clientIdCallback = cb;
+}
+
+export function registerMatterIdCallback(cb: ((id: string | null) => void) | null) {
+    matterIdCallback = cb;
 }
 
 export interface ProcessingResult {
@@ -257,17 +263,21 @@ export const processingActions: ProcessingAction[] = [
             if (!resp.ok) throw new Error('Failed to create Clio matter');
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
-            return `Matter created with ID ${data.matterId}`;
+            const id = data.matterId || data.matter?.id || null;
+            matterId = id ? String(id) : null;
+            if (matterId && matterIdCallback) matterIdCallback(matterId);
+            return `Matter created with ID ${matterId}`;
         }
     },
     {
         label: 'Generate Draft CCL',
         icon: cclIcon,
         run: async (formData, userInitials) => {
+            const id = matterId || formData.matter_details.matter_ref;
             const resp = await fetch('/api/ccl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ matterId: formData.matter_details.matter_ref, draftJson: formData })
+                body: JSON.stringify({ matterId: id, draftJson: formData })
             });
             if (!resp.ok) throw new Error('CCL generation failed');
             const { url } = await resp.json();

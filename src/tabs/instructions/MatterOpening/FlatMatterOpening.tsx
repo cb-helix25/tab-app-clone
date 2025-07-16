@@ -29,7 +29,7 @@ import OpponentDetailsStep from './OpponentDetailsStep';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
-import { processingActions, initialSteps, registerClientIdCallback } from './processingActions';
+import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -109,9 +109,14 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, []); // invisible change
 
     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
+    const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
     useEffect(() => {
         registerClientIdCallback(setClientId);
-        return () => registerClientIdCallback(null);
+        registerMatterIdCallback(setMatterIdState);
+        return () => {
+            registerClientIdCallback(null);
+            registerMatterIdCallback(null);
+        };
     }, []);
 
     const showPoidSelection = !instructionRef;
@@ -694,7 +699,7 @@ const handleClearAll = () => {
             matter_details: {
                 instruction_ref: instructionRef || null,
                 client_id: clientId || null,
-                matter_ref: matterRef || null,
+                matter_ref: matterIdState || matterRef || null,
                 stage: stage,
                 date_created: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
                 client_type: clientType,
