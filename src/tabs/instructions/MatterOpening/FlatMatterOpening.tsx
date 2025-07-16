@@ -310,6 +310,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [processingOpen, setProcessingOpen] = useState(false);
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
+    const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
@@ -837,6 +838,7 @@ const handleClearAll = () => {
         setProcessingOpen(true);
         setProcessingLogs([]);
         setProcessingSteps(initialSteps);
+        let url = '';
 
         try {
             for (let i = 0; i < processingActions.length; i++) {
@@ -844,6 +846,10 @@ const handleClearAll = () => {
                 const message = await action.run(generateSampleJson(), userInitials, userData);
                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
+                if (action.label === 'Generate Draft CCL') {
+                    const parts = message.split('·');
+                    if (parts.length > 1) url = parts[1].trim();
+                }
             }
 
             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
@@ -856,6 +862,8 @@ const handleClearAll = () => {
         } finally {
             setTimeout(() => setIsProcessing(false), 2000);
         }
+        setGeneratedCclUrl(url);
+        return { url };
     };
 
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
@@ -2338,7 +2346,7 @@ const handleClearAll = () => {
                                         onClick={() => {
                                             if (summaryConfirmed && !isProcessing) {
                                                 // Start the processing simulation
-                                                simulateProcessing();
+                                                simulateProcessing().then(r => r && setGeneratedCclUrl(r.url));
                                             }
                                         }}
                                         style={{

@@ -1,20 +1,37 @@
-import React, { useState, useMemo } from 'react';
-// invisible change 2.1
-//
+import React, { useState, useMemo, useEffect } from 'react';
 import { Stack, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
 import { InstructionData } from '../../app/functionality/types';
+import DraftCCLEditor, { DraftCCLData } from './DraftCCLEditor';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/MatterOpeningCard.css';
 
 interface DraftCCLPageProps {
-    onBack: () => void;
+    onBack?: () => void;
     instruction?: any;
     instructions?: InstructionData[];
+    matterId?: string;
 }
 
-const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instructions }) => {
+const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instructions, matterId }) => {
     const [selectedRef, setSelectedRef] = useState<string>(instruction?.InstructionRef || '');
-    const [confirmed, setConfirmed] = useState<boolean>(!!instruction);
+    const [confirmed, setConfirmed] = useState<boolean>(!!instruction || !!matterId);
+    const [draft, setDraft] = useState<DraftCCLData>({
+        header: '',
+        scopeOfWork: '',
+        fees: '',
+        terms: '',
+        signatures: '',
+    });
+    useEffect(() => {
+        if (matterId) {
+            fetch(`/api/ccl/${matterId}`)
+                .then(r => (r.ok ? r.json() : null))
+                .then(d => {
+                    if (d && d.draftJson) setDraft(d.draftJson);
+                })
+                .catch(() => {});
+        }
+    }, [matterId]);
 
     const allInstructions = useMemo(
         () =>
@@ -56,6 +73,24 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
 
     const inst = instruction || selected;
 
+    const handleSave = async () => {
+        if (!inst) return;
+        await fetch(`/api/ccl/${matterId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ draftJson: draft })
+        });
+    };
+
+    const handleGenerate = async () => {
+        if (!inst && !matterId) return;
+        await fetch('/api/ccl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matterId: matterId || selectedRef, draftJson: draft })
+        });
+    };
+
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
@@ -63,13 +98,11 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
                     <h3 className="step-title">Client Care Letter</h3>
                 </div>
                 <div className="step-content">
-                    {inst && (
-                    <iframe
-                        title="Client Care Letter"
-                        src={require('../../assets/ccl.pdf')}
-                        style={{ width: '100%', height: '80vh', border: 'none' }}
-                    />
-                    )}
+                    <DraftCCLEditor value={draft} onChange={setDraft} />
+                    <div style={{ marginTop: 16 }}>
+                        <PrimaryButton text="Save Draft" onClick={handleSave} style={{ marginRight: 8 }} />
+                        <PrimaryButton text="Generate Word" onClick={handleGenerate} />
+                    </div>
                 </div>
             </div>
         </Stack>

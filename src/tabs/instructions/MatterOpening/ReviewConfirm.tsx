@@ -5,6 +5,7 @@ import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
 import { processingActions, initialSteps } from './processingActions';
+import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
 import { UserData } from '../../../app/functionality/types';
 
 interface ReviewConfirmProps {
@@ -44,10 +45,16 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const [processingOpen, setProcessingOpen] = useState(false);
     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
     const [logs, setLogs] = useState<string[]>([]);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
+    };
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
     };
 
     const handleSubmit = async () => {
@@ -63,6 +70,9 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                 updateStep(currentIndex, 'pending', `${action.label}...`);
                 const msg = await action.run(formData, userInitials, userData);
                 updateStep(currentIndex, 'success', msg);
+                if (action.label === 'Generate Draft CCL') {
+                    showToast('Draft CCL generated', 'success');
+                }
             }
 
             setSummaryComplete(true);
@@ -96,6 +106,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             {(processingOpen || processing || summaryComplete) && (
                 <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
             )}
+            <OperationStatusToast visible={toast !== null} message={toast?.message || ''} type={toast?.type || 'info'} />
         </div>
     );
 };

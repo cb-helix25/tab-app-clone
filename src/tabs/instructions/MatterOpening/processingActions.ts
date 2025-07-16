@@ -2,6 +2,7 @@ import { ProcessingStep } from './ProcessingSection';
 import activeIcon from '../../../assets/activecampaign.svg';
 import clioIcon from '../../../assets/clio.svg';
 import asanaIcon from '../../../assets/asana.svg';
+import cclIcon from '../../../assets/ccl.svg';
 
 // locally cached values so refresh endpoints can be called in sequence
 let acToken = '';
@@ -252,6 +253,20 @@ export const processingActions: ProcessingAction[] = [
             const data = await resp.json();
             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
             return `Matter created with ID ${data.matterId}`;
+        }
+    },
+    {
+        label: 'Generate Draft CCL',
+        icon: cclIcon,
+        run: async (formData, userInitials) => {
+            const resp = await fetch('/api/ccl', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ matterId: formData.matter_details.matter_ref, draftJson: formData })
+            });
+            if (!resp.ok) throw new Error('CCL generation failed');
+            const { url } = await resp.json();
+            return `Draft CCL created · ${url}`;
         }
     },
     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },

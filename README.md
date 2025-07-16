@@ -111,3 +111,15 @@ npm start
 ```
 
 This starts the Express server which serves the built application from the root folder.
+
+## Draft CCL Workflow
+
+The Draft Client Care Letter (CCL) feature lets you automatically produce a branded Word document for a matter.
+
+### API
+
+* `POST /api/ccl` – generate a new CCL. Payload `{ matterId, draftJson }`.
+* `GET /api/ccl/:matterId` – retrieve the latest draft JSON and download URL.
+* `PATCH /api/ccl/:matterId` – regenerate the Word file after editing the JSON.
+
+Generated files are stored under `public/ccls` and served statically. The matter opening workflow includes a new **Generate Draft CCL** step which calls this API and surfaces the resulting download link.
