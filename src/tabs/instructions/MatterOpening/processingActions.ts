@@ -269,6 +269,8 @@ export const processingActions: ProcessingAction[] = [
             return `Matter created with ID ${matterId}`;
         }
     },
+    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+    { label: 'Databases Updated', run: async () => 'Done' },
     {
         label: 'Generate Draft CCL',
         icon: cclIcon,
@@ -283,9 +285,7 @@ export const processingActions: ProcessingAction[] = [
             const { url } = await resp.json();
             return { message: 'Draft CCL created', url };
         }
-    },
-    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-    { label: 'Databases Updated', run: async () => 'Done' }
+    }
 ];
 // invisible change 2.2
 

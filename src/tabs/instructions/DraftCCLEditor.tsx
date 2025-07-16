@@ -1,5 +1,6 @@
 import React from 'react';
 import { CCLJson } from '../../app/functionality/types';
+import { tokens as cclTokens } from '../../app/functionality/cclSchema';
 
 export type DraftCCLData = CCLJson;
 
@@ -20,7 +21,7 @@ const DraftCCLEditor: React.FC<DraftCCLEditorProps> = ({ value, onChange, readOn
         onChange({ ...value, [field]: (value[field] || '') + `{{${token}}}` });
     };
 
-    const tokens = Object.keys(value) as (keyof DraftCCLData)[];
+    const tokens = cclTokens as (keyof DraftCCLData)[];
 
     const renderField = (label: string, key: keyof DraftCCLData) => (
         <div>

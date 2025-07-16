@@ -3,18 +3,54 @@ const path = require('path');
 const fs = require('fs');
 const { generateWordFromJson } = require('../utils/wordGenerator.js');
 
+const localUsers = require('../../src/localData/localUserData.json');
+
+function findUserByName(name) {
+    if (!name) return null;
+    return (localUsers || []).find(u => {
+        const full = u['Full Name'] || `${u.First} ${u.Last}`;
+        return full.toLowerCase() === name.toLowerCase();
+    }) || null;
+}
+
 async function mergeMatterFields(matterId, payload) {
     const base = `http://localhost:${process.env.PORT || 8080}`;
+    let matterData = {};
     try {
         const resp = await fetch(`${base}/api/matters/${matterId}`);
         if (resp.ok) {
-            const data = await resp.json();
-            return { ...payload, ...data };
+            matterData = await resp.json();
+            console.log('matter lookup →', matterData);
         }
     } catch (err) {
         console.warn('Matter lookup failed', err);
     }
-    return payload;
+
+    const data = { ...payload };
+    const firstClient = data.client_information?.[0] || {};
+    if (firstClient.prefix) {
+        data.insert_clients_name = `${firstClient.prefix} ${firstClient.first_name || ''} ${firstClient.last_name || ''}`.trim();
+    } else {
+        data.insert_clients_name = firstClient.company_details?.name || '';
+    }
+    data.insert_heading_eg_matter_description = data.matter_details?.description || '';
+    data.matter = data.matter_details?.matter_ref || data.matter_details?.instruction_ref || matterData.display_number;
+    data.name_of_person_handling_matter = data.team_assignments?.fee_earner || '';
+
+    const feeUser = findUserByName(data.team_assignments?.fee_earner);
+    data.status = feeUser?.Role || '';
+
+    const helpers = [
+        data.team_assignments?.fee_earner,
+        data.team_assignments?.originating_solicitor,
+        data.team_assignments?.supervising_partner
+    ].filter(Boolean);
+    data.names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries = helpers.map(n => {
+        const u = findUserByName(n);
+        return u ? `${n} <${u.Email}>` : n;
+    }).join(', ');
+
+    return { ...data, display_number: matterData.display_number };
 }
 
 const router = express.Router();

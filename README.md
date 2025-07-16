@@ -116,7 +116,8 @@ This starts the Express server which serves the built application from the root 
 
 The Draft Client Care Letter (CCL) feature lets you automatically produce a branded Word document for a matter.
 
-Draft CCL lives alongside Overview & Risk in the matter-opening tabs. Partners & Solicitors will see a "Draft CCL" tab where they can edit, save, generate and download the CCL.
+Draft CCL lives alongside Overview & Risk in the matter-opening tabs. Partners & Solicitors will see a **Draft CCL** tab where they can edit, save, generate and download the CCL.
+Navigation: `Instructions ▸ Draft CCL`.
 
 ### API
 
@@ -164,19 +165,19 @@ Token mapping:
 
 | Token | Source |
 | ----- | ------ |
-| `insert_clients_name` | prefix + first + last OR companyName |
-| `insert_heading_eg_matter_description` | matterDescription |
-| `matter` | displayNumber |
-| `name_of_person_handling_matter` | responsibleSolicitor.name |
-| `status` | responsibleSolicitor.role |
-| `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries` | manual + team emails |
-| `insert_current_position_and_scope_of_retainer` | scopeOfRetainer |
-| `next_steps` | nextSteps |
-| `realistic_timescale` | timescale |
-| `estimate` | estimate.estimateText |
-| `figure` | estimate.figure |
-| `next_stage` | estimate.nextStage |
-| `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible` | estimate.noEstimateReason |
+| `insert_clients_name` | `poid.prefix` + first + last if available, otherwise `company_details.name` |
+| `insert_heading_eg_matter_description` | `matter_details.description` |
+| `matter` | `matter_details.matter_ref` → fallback to `instruction_ref` → fetch `/api/matters/:id` and use `display_number` |
+| `name_of_person_handling_matter` | `team_assignments.fee_earner` |
+| `status` | role of the fee earner from `localUserData` |
+| `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries` | combined string of fee earner, originating solicitor and supervising partner with emails |
+| `insert_current_position_and_scope_of_retainer` | manual entry |
+| `next_steps` | manual entry |
+| `realistic_timescale` | manual entry |
+| `estimate` | manual entry |
+| `figure` | manual entry |
+| `next_stage` | manual entry |
+| `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible` | manual entry |
 
 Quick demo using `curl`:
 

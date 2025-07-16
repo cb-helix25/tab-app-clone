@@ -3,7 +3,7 @@ const express = require('express');
 const { router: cclRouter, CCL_DIR } = require('../routes/ccl');
 const fs = require('fs');
 const path = require('path');
-const cclSchema = require('../../src/app/functionality/cclSchema');
+const { schema: cclSchema } = require('../../src/app/functionality/cclSchema');
 
 describe('CCL API', () => {
     const app = express();

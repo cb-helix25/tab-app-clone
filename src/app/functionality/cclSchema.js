@@ -2,7 +2,7 @@
  * Default Draft CCL merge field schema.
  * Each key corresponds to a token in the Word template.
  */
-module.exports = {
+const schema = {
     insert_clients_name: '',
     insert_heading_eg_matter_description: '',
     matter: '',
@@ -17,3 +17,7 @@ module.exports = {
     next_stage: '',
     we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: ''
 };
+
+const tokens = Object.keys(schema);
+
+module.exports = { schema, tokens };
