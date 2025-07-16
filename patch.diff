@@ -1,23 +1,238 @@
-diff --git a/server/utils/wordGenerator.js b/server/utils/wordGenerator.js
-index e29ebb2a264be4325cc420d842f36b639745de12..d0d0cddd8ee83d4dc9b32d1a13a87e0fb620f919 100644
---- a/server/utils/wordGenerator.js
-+++ b/server/utils/wordGenerator.js
-@@ -1,16 +1,18 @@
- const path = require('path');
- const { readFileSync, writeFileSync } = require('fs');
- const createReport = require('docx-templates').default;
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index c5dc2d20892434b2f99c94e053a41b649ba9f12f..f0669b403d10552f14a79a98b1f18a6f988cbf42 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -21,50 +21,52 @@ import {
+ } from 'react-icons/fa';
+ import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+ import { InstructionData, POID, TeamData, UserData } from "../../app/functionality/types";
+ import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
+ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
+ import InstructionEditor from "./components/InstructionEditor";
+ import InstructionBlockEditor from "./components/InstructionBlockEditor";
+ import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
+ import "../../app/styles/InstructionsBanner.css";
+ // invisible change 2.2
++import DraftCCLPage from "./ccl/DraftCCLPage";
++import localUserData from "../../localData/localUserData.json";
  
-+// `json` should already have any nested fields flattened so tokens like
-+// {{responsibleSolicitor_name}} resolve correctly.
- async function generateWordFromJson(json, outPath) {
-     try {
-         const template = readFileSync(path.join(process.cwd(), 'templates', 'cclTemplate.docx'));
-         const buf = await createReport({ template, data: json, cmdDelimiter: ['{{', '}}'] });
-         writeFileSync(outPath, buf);
-     } catch (err) {
-         // Fallback for test environments without a valid template
-         writeFileSync(outPath, Buffer.from('CCL'));
-     }
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+   userData?: UserData[] | null;
+   hasActiveMatter?: boolean;
+   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
  }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+   userData,
+   hasActiveMatter = false,
+   setIsInMatterOpeningWorkflow,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index c5dc2d20892434b2f99c94e053a41b649ba9f12f..f0669b403d10552f14a79a98b1f18a6f988cbf42 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -77,50 +79,52 @@ const Instructions: React.FC<InstructionsProps> = ({
+   const overviewGridRef = useRef<HTMLDivElement | null>(null);
+   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
  
- module.exports = { generateWordFromJson };
+   // Notify parent when matter opening workflow state changes
+   useEffect(() => {
+     if (setIsInMatterOpeningWorkflow) {
+       setIsInMatterOpeningWorkflow(showNewMatterPage);
+     }
+   }, [showNewMatterPage, setIsInMatterOpeningWorkflow]);
+ 
+   // Check for navigation trigger from Home component
+   useEffect(() => {
+     const shouldOpenMatterOpening = localStorage.getItem('openMatterOpening');
+     if (shouldOpenMatterOpening === 'true') {
+       // Clear the flag
+       localStorage.removeItem('openMatterOpening');
+       // Open matter opening if not already open
+       if (!showNewMatterPage) {
+         setShowNewMatterPage(true);
+       }
+     }
+   }, []); // Only run on mount
+   
+   const [activePivot, setActivePivot] = useState<string>("overview");
+   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
++  const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
++  const showDraftPivot = currentUser?.Role === 'Partner' || currentUser?.Role === 'Solicitor';
+ 
+   // Clear selection when leaving overview tab
+   useEffect(() => {
+     if (activePivot !== "overview") {
+       setSelectedInstruction(null);
+     }
+   }, [activePivot]);
+ 
+   useEffect(() => {
+     if (activePivot !== "risk") {
+       setRiskFilterRef(null);
+     }
+   }, [activePivot]);
+ 
+   const ACTION_BAR_HEIGHT = 48;
+ 
+   const quickLinksStyle = (dark: boolean) =>
+     mergeStyles({
+       backgroundColor: dark
+         ? colours.dark.sectionBackground
+         : colours.light.sectionBackground,
+       boxShadow: dark
+         ? "0 2px 4px rgba(0,0,0,0.4)"
+         : "0 2px 4px rgba(0,0,0,0.1)",
+       padding: "0 24px",
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index c5dc2d20892434b2f99c94e053a41b649ba9f12f..f0669b403d10552f14a79a98b1f18a6f988cbf42 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -364,50 +368,61 @@ const Instructions: React.FC<InstructionsProps> = ({
+                 icon="Money"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "deals"}
+                 onClick={() => setActivePivot("deals")}
+                 iconColor={activePivot === "deals" ? colours.cta : colours.greyText}
+                 orientation="row"
+               />
+               <QuickActionsCard
+                 title="Clients"
+                 icon="People"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "clients"}
+                 onClick={() => setActivePivot("clients")}
+                 iconColor={activePivot === "clients" ? colours.cta : colours.greyText}
+                 orientation="row"
+               />
+               <QuickActionsCard
+                 title="Risk & Compliance"
+                 icon="Shield"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "risk"}
+                 onClick={() => setActivePivot("risk")}
+                 iconColor={activePivot === "risk" ? colours.cta : colours.greyText}
+                 orientation="row"
+               />
++              {showDraftPivot && (
++                <QuickActionsCard
++                  title="Draft CCL"
++                  icon="Edit"
++                  isDarkMode={isDarkMode}
++                  selected={activePivot === "draft-ccl"}
++                  onClick={() => setActivePivot("draft-ccl")}
++                  iconColor={activePivot === "draft-ccl" ? colours.cta : colours.greyText}
++                  orientation="row"
++                />
++              )}
+               <QuickActionsCard
+                 title="Scenarios"
+                 icon="Settings"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "states"}
+                 onClick={() => !isProduction && setActivePivot("states")}
+                 iconColor={activePivot === "states" ? colours.cta : colours.greyText}
+                 orientation="row"
+                 disabled={isProduction}
+               />
+               <QuickActionsCard
+                 title="Editor"
+                 icon="Edit"
+                 isDarkMode={isDarkMode}
+                 selected={activePivot === "demo"}
+                 onClick={() => !isProduction && setActivePivot("demo")}
+                 iconColor={activePivot === "demo" ? colours.cta : colours.greyText}
+                 orientation="row"
+                 disabled={isProduction}
+               />
+             </div>
+           </>
+         )}
+       </>,
+     );
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index c5dc2d20892434b2f99c94e053a41b649ba9f12f..f0669b403d10552f14a79a98b1f18a6f988cbf42 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1224,50 +1239,53 @@ const Instructions: React.FC<InstructionsProps> = ({
+               >
+                 Risk &amp; Compliance
+               </Text>
+               <div className={gridContainerStyle}>
+                 {groupedRiskComplianceData.length === 0 && (
+                   <Text>No risk data available.</Text>
+                 )}
+                 {groupedRiskComplianceData.map((groupedItem, idx) => {
+                   const row = Math.floor(idx / 4);
+                   const col = idx % 4;
+                   const animationDelay = row * 0.2 + col * 0.1;
+                   return (
+                     <RiskComplianceCard
+                       key={`${groupedItem.instructionRef}-${idx}`}
+                       data={groupedItem}
+                       animationDelay={animationDelay}
+                       onOpenInstruction={() =>
+                         handleOpenInstruction(groupedItem.instructionRef)
+                       }
+                     />
+                   );
+                 })}
+               </div>
+             </>
+           )}
++          {activePivot === "draft-ccl" && (
++            <DraftCCLPage matterId={selectedInstruction?.InstructionRef} />
++          )}
+           {activePivot === "states" && (
+             <div className={scenariosContainerStyle}>
+               {instructionCardStates.map((state, idx) => (
+                 <InstructionStateCard key={idx} data={state} />
+               ))}
+             </div>
+           )}
+           {activePivot === "demo" && (
+             <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+               <h2 style={{ color: colours.darkBlue, marginBottom: '16px' }}>
+                 Instructions Editor
+               </h2>
+               <p style={{ color: colours.greyText, marginBottom: '24px' }}>
+                 Create professional instruction content using templates and placeholders
+               </p>
+               <InstructionBlockEditor 
+                 value=""
+                 onChange={(value) => console.log('Editor content:', value)}
+               />
+             </div>
+           )}
+         </div>
+         {/* Global Action Area - always visible, enhanced when instruction selected */}
+         {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
+           <div 

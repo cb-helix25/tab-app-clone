@@ -116,7 +116,7 @@ This starts the Express server which serves the built application from the root 
 
 The Draft Client Care Letter (CCL) feature lets you automatically produce a branded Word document for a matter.
 
-UI path: Instructions ▶︎ Draft CCL  (/instructions/:matterId/draft-ccl)
+Draft CCL lives alongside Overview & Risk in the matter-opening tabs. Partners & Solicitors will see a "Draft CCL" tab where they can edit, save, generate and download the CCL.
 
 ### API
 

@@ -1,11 +1,8 @@
 import React from 'react';
 // invisible change 2.1
 //
-import { mergeStyles } from '@fluentui/react';
-import { Link } from 'react-router-dom';
-import cclIcon from '../assets/ccl.svg';
+import { mergeStyles, PrimaryButton } from '@fluentui/react';
 import localUserData from '../../localData/localUserData.json';
-import { getDraftCclPath } from '../../utils/paths';
 import { cardStyles } from './componentTokens';
 import { ClientInfo } from './JointClientCard';
 import '../../app/styles/InstructionOverviewCard.css';
@@ -19,6 +16,7 @@ interface OverviewCardProps {
     compliance?: any;
     prospectId?: number;
     animationDelay?: number;
+    onOpenDraftCcl?: (ref: string) => void;
 }
 
 const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
@@ -29,6 +27,7 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
     eid,
     compliance,
     animationDelay = 0,
+    onOpenDraftCcl,         // ← add this
 }) => {
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
@@ -69,9 +68,11 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
             </div>
             {showDraft && (
                 <div className="overview-actions">
-                    <Link to={getDraftCclPath(instruction.InstructionRef)} className="action-link">
-                        <img src={cclIcon} alt="" width={20} height={20} /> Draft CCL
-                    </Link>
+                    <PrimaryButton
+                        iconProps={{ iconName: 'Edit' }}
+                        text="Draft CCL"
+                        onClick={() => onOpenDraftCcl?.(instruction.InstructionRef)}
+                    />
                 </div>
             )}
         </div>

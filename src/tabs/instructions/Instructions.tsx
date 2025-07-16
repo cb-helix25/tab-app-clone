@@ -43,6 +43,8 @@ import InstructionBlockEditor from "./components/InstructionBlockEditor";
 import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
 import "../../app/styles/InstructionsBanner.css";
 // invisible change 2.2
+import DraftCCLPage from "./ccl/DraftCCLPage";
+import localUserData from "../../localData/localUserData.json";
 
 interface InstructionsProps {
   userInitials: string;
@@ -99,6 +101,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   const [activePivot, setActivePivot] = useState<string>("overview");
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
+  const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
+  const showDraftPivot = currentUser?.Role === 'Partner' || currentUser?.Role === 'Solicitor';
 
   // Clear selection when leaving overview tab
   useEffect(() => {
@@ -386,6 +390,17 @@ const Instructions: React.FC<InstructionsProps> = ({
                 iconColor={activePivot === "risk" ? colours.cta : colours.greyText}
                 orientation="row"
               />
+              {showDraftPivot && (
+                <QuickActionsCard
+                  title="Draft CCL"
+                  icon="Edit"
+                  isDarkMode={isDarkMode}
+                  selected={activePivot === "draft-ccl"}
+                  onClick={() => setActivePivot("draft-ccl")}
+                  iconColor={activePivot === "draft-ccl" ? colours.cta : colours.greyText}
+                  orientation="row"
+                />
+              )}
               <QuickActionsCard
                 title="Scenarios"
                 icon="Settings"
@@ -1245,6 +1260,9 @@ const Instructions: React.FC<InstructionsProps> = ({
                 })}
               </div>
             </>
+          )}
+          {activePivot === "draft-ccl" && (
+            <DraftCCLPage matterId={selectedInstruction?.InstructionRef} />
           )}
           {activePivot === "states" && (
             <div className={scenariosContainerStyle}>
