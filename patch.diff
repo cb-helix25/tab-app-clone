@@ -1,33 +1,64 @@
-diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
-index 13a50c78003f575bf5cd53cfed28f99dc34dd3bd..90aa51129419380f2e38d09649e1734737f31a16 100644
---- a/server/routes/clioContacts.js
-+++ b/server/routes/clioContacts.js
-@@ -1,27 +1,28 @@
+diff --git a/server/server.js b/server/server.js
+index 2a392f96f5d629adc68184a643d5b0e0a1245cf1..7efb755a1d9bf81abee54ed7af268b7589e66c66 100644
+--- a/server/server.js
++++ b/server/server.js
+@@ -1,57 +1,59 @@
+ const path = require('path');
+ require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
  const express = require('express');
- const { getSecret } = require('../utils/getSecret');
-+const { PRACTICE_AREAS } = require('../utils/clioConstants');
+ const morgan = require('morgan');
+ const { DefaultAzureCredential } = require('@azure/identity');
+ const { SecretClient } = require('@azure/keyvault-secrets');
+ const refreshRouter = require('./routes/refresh');
+ const keysRouter = require('./routes/keys');
+ const matterRequestsRouter = require('./routes/matterRequests');
+ const opponentsRouter = require('./routes/opponents');
++const clioContactsRouter = require('./routes/clioContacts');
+ const clioMattersRouter = require('./routes/clioMatters');
  
- const router = express.Router();
+ const app = express();
+ const PORT = process.env.PORT || 8080;
  
- router.post('/', async (req, res) => {
-     const { formData, initials } = req.body || {};
-     if (!formData || !initials) {
-         return res.status(400).json({ error: 'Missing data' });
-     }
+ // Set up Key Vault client for retrieving secrets
+ const credential = new DefaultAzureCredential();
+ const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
+ const client = new SecretClient(vaultUrl, credential);
  
+ // When running locally index.js lives in the `server` folder and the built
+ // client files are one level up. However after deployment the build script
+ // copies `index.js` to the site root alongside the compiled client assets.
+ // Using `__dirname` directly works for both cases.
+ const buildPath = path.join(__dirname);
+ 
+ // basic request logging
+ app.use(morgan('dev'));
+ app.use(express.json());
+ app.use('/api/refresh', refreshRouter);
+ app.use('/api/matter-requests', matterRequestsRouter);
+ app.use('/api/opponents', opponentsRouter);
++app.use('/api/clio-contacts', clioContactsRouter);
+ app.use('/api/clio-matters', clioMattersRouter);
+ 
+ app.get('/api/keys/:name/preview', async (req, res) => {
      try {
-         // Fetch Clio credentials
-         const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
-         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
-         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
+         const secret = await client.getSecret(req.params.name);
+         const length = parseInt(process.env.SECRET_PREVIEW_LEN || '4', 10);
+         res.json({ preview: secret.value.slice(0, length) });
+     } catch (err) {
+         console.error('Failed to retrieve secret preview', err);
+         res.status(500).json({ error: 'Failed to retrieve secret preview' });
+     }
+ });
  
-         // Refresh access token
-         const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
-         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
-         if (!tokenResp.ok) {
-             const text = await tokenResp.text();
-             console.error('Clio token refresh failed', text);
-             return res.status(500).json({ error: 'Token refresh failed' });
-         }
-         const { access_token } = await tokenResp.json();
-         const headers = {
+ app.use('/api/keys', keysRouter);
+ app.use('/api/refresh', refreshRouter);
+ 
+ // serve the built React files
+ app.use(express.static(buildPath));
+ 
+ // simple liveness probe
+ app.get('/health', (_req, res) => {
+     res.sendStatus(200);
+ });
+ 
+ // example Server-Sent Events endpoint emitting fake progress
