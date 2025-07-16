@@ -195,7 +195,7 @@ router.post('/', async (req, res) => {
                 try {
                     const clioApiBase = process.env.CLIO_API_BASE || 'https://eu.app.clio.com/api/v4';
                     const contactId = lookupData.data[0].id;
-                    const detailUrl = `${clioApiBase}/contacts/${contactId}?fields=type,prefix,name,first_name,middle_name,last_name,title,company,avatar,email_addresses{name,address,default_email},phone_numbers{name,number,default_number},date_of_birth,addresses{name,street,city,province,postal_code,country},custom_field_values{id,field_name,value}`;
+                    const detailUrl = `${clioApiBase}/contacts/${contactId}?fields=id,type,prefix,name,first_name,middle_name,last_name,title,company,avatar,email_addresses{name,address,default_email},phone_numbers{name,number,default_number},date_of_birth,addresses{name,street,city,province,postal_code,country},custom_field_values{id,field_name,value}`;
                     const details = await fetch(detailUrl, { headers });
                     if (details.ok) {
                         const data = await details.json();
