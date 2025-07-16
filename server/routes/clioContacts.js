@@ -233,8 +233,9 @@ router.post('/', async (req, res) => {
 
         async function createOrUpdate(contact) {
             const query = encodeURIComponent(contact.email_addresses[0]?.address || '');
+            // only search People when contact.type === 'Person', or Contacts for 'Company'
             const lookupResp = await fetch(
-                `https://eu.app.clio.com/api/v4/contacts?query=${query}`,
+                `https://eu.app.clio.com/api/v4/contacts?query=${query}&type=${contact.type}`,
                 { headers }
             );
             if (!lookupResp.ok) throw new Error('Lookup failed');
