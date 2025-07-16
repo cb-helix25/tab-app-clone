@@ -122,5 +122,64 @@ The Draft Client Care Letter (CCL) feature lets you automatically produce a bran
 * `GET /api/ccl/:matterId` – retrieve the latest draft JSON and download URL.
 * `PATCH /api/ccl/:matterId` – regenerate the Word file after editing the JSON.
 
-Generated files are stored under `public/ccls` and served statically. The matter opening workflow includes a new **Generate Draft CCL** step which calls this API and surfaces the resulting download link.
-Each generation overwrites the previous file; no versioning layer yet.
+Generated files are stored under `public/ccls` and served statically. The matter opening workflow includes a **Generate Draft CCL** step which calls this API and surfaces the resulting download link. Each generation overwrites the previous file.
+
+Example payload using the merge-field schema from `src/app/functionality/cclSchema.js`:
+
+```json
+{
+  "matterId": "123",
+  "draftJson": {
+    "insert_clients_name": "ACME Ltd",
+    "insert_heading_eg_matter_description": "Share purchase",
+    "matter": "HLX-00001-12345",
+    "name_of_person_handling_matter": "Jane Doe",
+    "status": "Solicitor",
+    "names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries": "John Example <john@example.com>",
+    "insert_current_position_and_scope_of_retainer": "Initial advice",
+    "next_steps": "Draft agreement",
+    "realistic_timescale": "2 weeks",
+    "estimate": "Fixed fee",
+    "figure": "1000",
+    "next_stage": "Exchange",
+    "we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible": "TBC"
+  }
+}
+```
+
+Manual entry is required for:
+
+* `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries`
+* `insert_current_position_and_scope_of_retainer`
+* `next_steps`
+* `realistic_timescale`
+* `estimate`
+* `figure`
+* `next_stage`
+* `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible`
+
+Token mapping:
+
+| Token | Source |
+| ----- | ------ |
+| `insert_clients_name` | prefix + first + last OR companyName |
+| `insert_heading_eg_matter_description` | matterDescription |
+| `matter` | displayNumber |
+| `name_of_person_handling_matter` | responsibleSolicitor.name |
+| `status` | responsibleSolicitor.role |
+| `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries` | manual + team emails |
+| `insert_current_position_and_scope_of_retainer` | scopeOfRetainer |
+| `next_steps` | nextSteps |
+| `realistic_timescale` | timescale |
+| `estimate` | estimate.estimateText |
+| `figure` | estimate.figure |
+| `next_stage` | estimate.nextStage |
+| `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible` | estimate.noEstimateReason |
+
+Quick demo using `curl`:
+
+```bash
+curl -X POST http://localhost:8080/api/ccl \
+  -H "Content-Type: application/json" \
+  -d @payload.json
+```

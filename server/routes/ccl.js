@@ -3,6 +3,20 @@ const path = require('path');
 const fs = require('fs');
 const { generateWordFromJson } = require('../utils/wordGenerator.js');
 
+async function mergeMatterFields(matterId, payload) {
+    const base = `http://localhost:${process.env.PORT || 8080}`;
+    try {
+        const resp = await fetch(`${base}/api/matters/${matterId}`);
+        if (resp.ok) {
+            const data = await resp.json();
+            return { ...payload, ...data };
+        }
+    } catch (err) {
+        console.warn('Matter lookup failed', err);
+    }
+    return payload;
+}
+
 const router = express.Router();
 
 const CCL_DIR = path.join(process.cwd(), 'public', 'ccls');
@@ -13,10 +27,13 @@ const jsonPath = (id) => path.join(CCL_DIR, `${id}.json`);
 
 router.post('/', async (req, res) => {
     const { matterId, draftJson } = req.body || {};
-    if (!matterId || !draftJson) return res.status(400).json({ error: 'Missing data' });
+    if (!matterId || typeof draftJson !== 'object') {
+        return res.status(400).json({ error: 'Invalid payload' });
+    }
     try {
-        await generateWordFromJson(draftJson, filePath(matterId));
-        fs.writeFileSync(jsonPath(matterId), JSON.stringify(draftJson, null, 2));
+        const merged = await mergeMatterFields(matterId, draftJson);
+        await generateWordFromJson(merged, filePath(matterId));
+        fs.writeFileSync(jsonPath(matterId), JSON.stringify(merged, null, 2));
         res.json({ ok: true, url: `/ccls/${matterId}.docx` });
     } catch (err) {
         console.error('CCL generation failed', err);
@@ -27,10 +44,13 @@ router.post('/', async (req, res) => {
 router.patch('/:matterId', async (req, res) => {
     const { draftJson } = req.body || {};
     const { matterId } = req.params;
-    if (!draftJson) return res.status(400).json({ error: 'Missing draftJson' });
+    if (typeof draftJson !== 'object') {
+        return res.status(400).json({ error: 'Invalid draftJson' });
+    }
     try {
-        await generateWordFromJson(draftJson, filePath(matterId));
-        fs.writeFileSync(jsonPath(matterId), JSON.stringify(draftJson, null, 2));
+        const merged = await mergeMatterFields(matterId, draftJson);
+        await generateWordFromJson(merged, filePath(matterId));
+        fs.writeFileSync(jsonPath(matterId), JSON.stringify(merged, null, 2));
         res.json({ ok: true, url: `/ccls/${matterId}.docx` });
     } catch (err) {
         console.error('CCL regeneration failed', err);

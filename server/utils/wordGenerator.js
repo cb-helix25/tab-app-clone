@@ -2,6 +2,9 @@ const path = require('path');
 const { readFileSync, writeFileSync } = require('fs');
 const createReport = require('docx-templates').default;
 
+// `json` should already have any nested fields flattened so tokens like
+// {{responsibleSolicitor_name}} resolve correctly.
+
 async function generateWordFromJson(json, outPath) {
     try {
         const template = readFileSync(path.join(process.cwd(), 'templates', 'cclTemplate.docx'));

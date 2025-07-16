@@ -1,8 +1,9 @@
-import request from 'supertest';
-import express from 'express';
-import { router as cclRouter, CCL_DIR } from '../routes/ccl';
-import fs from 'fs';
-import path from 'path';
+const request = require('supertest');
+const express = require('express');
+const { router: cclRouter, CCL_DIR } = require('../routes/ccl');
+const fs = require('fs');
+const path = require('path');
+const cclSchema = require('../../src/app/functionality/cclSchema');
 
 describe('CCL API', () => {
     const app = express();
@@ -11,7 +12,9 @@ describe('CCL API', () => {
 
     it('POST /api/ccl generates file', async () => {
         const matterId = 'test123';
-        const draftJson = { header: 'h', scopeOfWork: 's', fees: 'f', terms: 't', signatures: 'sig' };
+        const draftJson = Object.fromEntries(
+            Object.keys(cclSchema).map(k => [k, 'x'])
+        );
         const res = await request(app).post('/api/ccl').send({ matterId, draftJson });
         expect(res.status).toBe(200);
         const file = path.join(CCL_DIR, `${matterId}.docx`);
