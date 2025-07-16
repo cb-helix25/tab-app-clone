@@ -1,39 +1,117 @@
-diff --git a/src/app/functionality/types.ts b/src/app/functionality/types.ts
-index 19f0802a22a7d5ba8b3058af79cc01dc1d2a762f..501ccbf703eceeb3d8768afe72239576a9a7b8ac 100644
---- a/src/app/functionality/types.ts
-+++ b/src/app/functionality/types.ts
-@@ -481,26 +481,34 @@ export interface InstructionData {
-   prospectId: number;
-   deals: any[];
-   /**
-    * Joint clients associated with the prospect.  Older implementations
-    * used the `jointClients` field while newer ones may expose this data
-    * via `joinedClients`.  Both shapes are captured here.
-    */
-   jointClients: any[];
-   joinedClients?: any[];
-   instructions: any[];
-   documents: any[];
-   /**
-    * Compliance/risk assessment details.  Depending on the backend
-    * version this may be returned under `riskAssessments` or
-    * `compliance`.  Consumers should handle either form.
-    */
-   riskAssessments: any[];
-   compliance?: any[];
- 
-   /**
-    * Electronic ID verification results.  May be returned as
-    * `electronicIDChecks` or `idVerifications`.
-    */
-   electronicIDChecks: any[];
-   idVerifications?: any[];
-+}
-+
-+export interface CCLJson {
-+  header: string;
-+  scopeOfWork: string;
-+  fees: string;
-+  terms: string;
-+  signatures: string;
- }
+diff --git a/src/localData/localIdVerifications.json b/src/localData/localIdVerifications.json
+index 49a0db703b5254779197507907cdab2b1ba8b8ec..5a9675e6c79042e07dfdd057b770a9dd502373e4 100644
+--- a/src/localData/localIdVerifications.json
++++ b/src/localData/localIdVerifications.json
+@@ -175,27 +175,112 @@
+         "EIDProvider": "tiller",
+         "EIDStatus": "completed",
+         "EIDScore": null,
+         "EIDRawResponse": null,
+         "EIDCheckedDate": "2025-06-22",
+         "EIDCheckedTime": "16:45:00",
+         "CheckExpiry": "2025-12-22",
+         "EIDOverallResult": "Review",
+         "PEPAndSanctionsCheckResult": "Passed",
+         "AddressVerificationResult": "Review",
+         "FirstName": "Michael",
+         "LastName": "Chen",
+         "Email": "test@example.com",
+         "Nationality": "United Kingdom",
+         "NationalityAlpha2": "GB",
+         "DOB": "1990-01-01",
+         "PassportNumber": "EE1234567",
+         "DriversLicenseNumber": null,
+         "HouseNumber": "1",
+         "Street": "Test Street",
+         "City": "Test City",
+         "County": "Test County",
+         "Postcode": "TE5 7ST",
+         "Country": "United Kingdom",
+         "CountryCode": "GB"
++    },
++    {
++        "InternalId": 6,
++        "InstructionRef": "HLX-20007-56789",
++        "MatterId": null,
++        "DealJointClientId": null,
++        "ClientId": null,
++        "ProspectId": 20007,
++        "ClientEmail": "lztestitem@helix-law.com",
++        "IsLeadClient": true,
++        "AdditionalIDDate": "2025-07-16",
++        "AdditionalIDTime": "10:00:00",
++        "EIDCheckId": "dae42f06-0366-4265-a46d-cef18311fd73",
++        "EIDProvider": "tiller",
++        "EIDStatus": "completed",
++        "EIDScore": null,
++        "EIDRawResponse": null,
++        "EIDCheckedDate": "2025-07-16",
++        "EIDCheckedTime": "10:00:00",
++        "CheckExpiry": "2025-12-16",
++        "EIDOverallResult": "Passed",
++        "PEPAndSanctionsCheckResult": "Passed",
++        "AddressVerificationResult": "Passed",
++        "FirstName": "Luke",
++        "LastName": "Zemanek",
++        "Email": "lztestitem@helix-law.com",
++        "Nationality": "United Kingdom",
++        "NationalityAlpha2": "GB",
++        "DOB": "1996-11-09",
++        "PassportNumber": null,
++        "DriversLicenseNumber": null,
++        "HouseNumber": "33",
++        "Street": "Bbb",
++        "City": "Bb",
++        "County": "Bn",
++        "Postcode": "fff",
++        "Country": "United Kingdom",
++        "CountryCode": "GB",
++        "CompanyName": "Helix Law Ltd",
++        "CompanyNumber": "000017777",
++        "CompanyHouseNumber": "33",
++        "CompanyStreet": "Bbb",
++        "CompanyCity": "gasg",
++        "CompanyCounty": "sdfgsdfg",
++        "CompanyPostcode": "sfgsdfg",
++        "CompanyCountry": "United Kingdom",
++        "CompanyCountryCode": "GB"
++    },
++    {
++        "InternalId": 102,
++        "InstructionRef": "HLX-20007-56789",
++        "MatterId": null,
++        "DealJointClientId": 32,
++        "ClientId": null,
++        "ProspectId": 20007,
++        "ClientEmail": "jc1@helix-law.com",
++        "IsLeadClient": false,
++        "AdditionalIDDate": null,
++        "AdditionalIDTime": null,
++        "EIDCheckId": "pending-joint-32",
++        "EIDProvider": "tiller",
++        "EIDStatus": "pending",
++        "EIDScore": null,
++        "EIDRawResponse": null,
++        "EIDCheckedDate": null,
++        "EIDCheckedTime": null,
++        "CheckExpiry": null,
++        "EIDOverallResult": null,
++        "PEPAndSanctionsCheckResult": null,
++        "AddressVerificationResult": null,
++        "FirstName": "Joint",
++        "LastName": "Client",
++        "Email": "jc1@helix-law.com",
++        "Nationality": "United Kingdom",
++        "NationalityAlpha2": "GB",
++        "DOB": "1980-01-01",
++        "PassportNumber": null,
++        "DriversLicenseNumber": null,
++        "HouseNumber": "",
++        "Street": "",
++        "City": "",
++        "County": "",
++        "Postcode": "",
++        "Country": "United Kingdom",
++        "CountryCode": "GB"
+     }
+ ]

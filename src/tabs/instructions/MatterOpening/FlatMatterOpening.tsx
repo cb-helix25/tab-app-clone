@@ -843,11 +843,12 @@ const handleClearAll = () => {
         try {
             for (let i = 0; i < processingActions.length; i++) {
                 const action = processingActions[i];
-                const message = await action.run(generateSampleJson(), userInitials, userData);
+                const result = await action.run(generateSampleJson(), userInitials, userData);
+                const message = typeof result === 'string' ? result : result.message;
                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
-                if (action.label === 'Generate Draft CCL') {
-                    url = message;
+                if (typeof result === 'object' && result.url) {
+                    url = result.url;
                 }
             }
 

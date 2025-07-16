@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Stack, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
-import { InstructionData, CCLJson } from '../../app/functionality/types';
+import { InstructionData, CCLJson, UserData } from '../../app/functionality/types';
+import localUserData from '../../localData/localUserData.json';
 import DraftCCLEditor from './DraftCCLEditor';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/MatterOpeningCard.css';
@@ -21,6 +22,9 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
         saving: false,
         generating: false
     });
+
+    const currentUser: UserData | undefined = (localUserData as UserData[])[0];
+    const canGenerate = currentUser?.Role === 'Partner';
     useEffect(() => {
         if (matterId) {
             fetch(`/api/ccl/${matterId}`)
@@ -114,7 +118,9 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({ onBack, instruction, instru
                     <DraftCCLEditor value={state.draftJson} onChange={draftJson => setState(s => ({ ...s, draftJson }))} />
                     <div style={{ marginTop: 16 }}>
                         <PrimaryButton text="Save Draft" disabled={state.saving || state.generating} onClick={handleSave} style={{ marginRight: 8 }} />
-                        <PrimaryButton text="Generate Word" disabled={state.saving || state.generating} onClick={handleGenerate} />
+                        {canGenerate && (
+                            <PrimaryButton text="Generate Word" disabled={state.saving || state.generating} onClick={handleGenerate} />
+                        )}
                         {state.url && (
                             <a href={state.url} style={{ marginLeft: 12 }} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
                         )}

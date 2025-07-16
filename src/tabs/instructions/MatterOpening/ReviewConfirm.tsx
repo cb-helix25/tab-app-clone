@@ -46,6 +46,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
     const [logs, setLogs] = useState<string[]>([]);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const [cclUrl, setCclUrl] = useState<string>('');
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
@@ -68,9 +69,11 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             for (currentIndex = 0; currentIndex < processingActions.length; currentIndex++) {
                 const action = processingActions[currentIndex];
                 updateStep(currentIndex, 'pending', `${action.label}...`);
-                const msg = await action.run(formData, userInitials, userData);
-                updateStep(currentIndex, 'success', msg);
-                if (action.label === 'Generate Draft CCL') {
+                const result = await action.run(formData, userInitials, userData);
+                const message = typeof result === 'string' ? result : result.message;
+                updateStep(currentIndex, 'success', message);
+                if (action.label === 'Generate Draft CCL' && typeof result === 'object' && result.url) {
+                    setCclUrl(result.url);
                     showToast('Draft CCL generated', 'success');
                 }
             }
@@ -105,6 +108,11 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
 
             {(processingOpen || processing || summaryComplete) && (
                 <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
+            )}
+            {cclUrl && (
+                <div style={{ marginTop: 8 }}>
+                    <a href={cclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
+                </div>
             )}
             <OperationStatusToast visible={toast !== null} message={toast?.message || ''} type={toast?.type || 'info'} />
         </div>

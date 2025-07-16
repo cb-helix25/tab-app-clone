@@ -22,6 +22,11 @@ export function registerClientIdCallback(cb: ((id: string | null) => void) | nul
     clientIdCallback = cb;
 }
 
+export interface ProcessingResult {
+    message: string;
+    url?: string;
+}
+
 export interface ProcessingAction {
     label: string;
     icon?: string;
@@ -29,7 +34,7 @@ export interface ProcessingAction {
         formData: Record<string, any>,
         userInitials: string,
         userData?: any[] | null
-    ) => Promise<string>;
+    ) => Promise<string | ProcessingResult>;
 }
 
 export const processingActions: ProcessingAction[] = [
@@ -266,7 +271,7 @@ export const processingActions: ProcessingAction[] = [
             });
             if (!resp.ok) throw new Error('CCL generation failed');
             const { url } = await resp.json();
-            return `Draft CCL created · ${url}`;
+            return { message: 'Draft CCL created', url };
         }
     },
     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
