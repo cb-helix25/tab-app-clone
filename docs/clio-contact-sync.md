@@ -91,4 +91,4 @@ To help troubleshoot data issues the route now fetches full contact details and 
 GET {{clio_api_base.url}}/custom_fields.json?fields=id,etag,created_at,updated_at,name,parent_type,field_type,displayed,deleted,required,display_order
 ```
 
-For each contact that already exists in Clio the API returns the number of missing base attributes and undefined custom field values. This count is included in the response under `emptyFieldCount` and surfaced in the UI log.
+For each contact that already exists in Clio the API returns the number of missing base attributes and undefined custom field values. The custom field list also lets the code match existing values by `field_name` so updates reuse the correct IDs. This count is included in the response under `emptyFieldCount` and surfaced in the UI log.

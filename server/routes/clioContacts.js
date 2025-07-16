@@ -34,12 +34,17 @@ router.post('/', async (req, res) => {
 
         // fetch custom field definitions once so we can log missing fields later
         let customFields = [];
+        let cfNameMap = {};
         try {
             const cfUrl = `${clioApiBase}/custom_fields.json?fields=id,etag,created_at,updated_at,name,parent_type,field_type,displayed,deleted,required,display_order`;
             const cfResp = await fetch(cfUrl, { headers });
             if (cfResp.ok) {
                 const cfData = await cfResp.json();
                 customFields = cfData.data || [];
+                cfNameMap = customFields.reduce((map, cf) => {
+                    map[cf.id] = cf.name;
+                    return map;
+                }, {});
             }
         } catch (err) {
             console.warn('Failed to retrieve custom field list', err);
@@ -219,7 +224,7 @@ router.post('/', async (req, res) => {
             if (Array.isArray(customFields)) {
                 const relevant = customFields.filter(cf => cf.parent_type === detail.type);
                 relevant.forEach(cf => {
-                    const exists = (attrs.custom_field_values || []).some(v => v.custom_field?.id === cf.id || v.id === cf.id);
+                    const exists = (attrs.custom_field_values || []).some(v => v.field_name === cf.name);
                     if (!exists) count += 1;
                 });
             }
@@ -268,13 +273,9 @@ router.post('/', async (req, res) => {
                         arr.findIndex(x => x.custom_field?.id === cf.custom_field?.id) === i
                     )
                     .map(cf => {
-                        // Support both Clio's old and new custom_field keys
-                        const existing = existingFields.find(e =>
-                            (e.custom_field?.id || e.custom_field_id) == cf.custom_field.id
-                        );
-                        return existing
-                            ? { ...cf, id: existing.id } // Update (supply Clio's ID)
-                            : cf; // New (no ID)
+                        const name = cfNameMap[cf.custom_field.id];
+                        const existing = existingFields.find(e => e.field_name === name);
+                        return existing ? { ...cf, id: existing.id } : cf;
                     });
 
             }

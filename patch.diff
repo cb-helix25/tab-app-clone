@@ -1,83 +1,181 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index a87c212bbc19bd75d403b55433f04b2a6f4b8c4a..477ac328b693c9a617cb48d8f9e9fa248844a4cf 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -188,73 +188,77 @@ export const processingActions: ProcessingAction[] = [
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-             });
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index 0e322ec11c093a005156dc6074a6d326094effc7..2697994eb57f53de2007591263ab35fb9e1f50cd 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -12,56 +12,61 @@ router.post('/', async (req, res) => {
  
-             if (!resp.ok) throw new Error('Failed to record matter request');
-             const data = await resp.json();
-             return data.message || 'Matter request recorded; further IDs will be patched in later steps';
+     try {
+         // Fetch Clio credentials
+         const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
+         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
+         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
+ 
+         // Refresh access token
+         const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
+         if (!tokenResp.ok) {
+             const text = await tokenResp.text();
+             console.error('Clio token refresh failed', text);
+             return res.status(500).json({ error: 'Token refresh failed' });
          }
-     },
+         const { access_token } = await tokenResp.json();
+         const headers = {
+             'Content-Type': 'application/json',
+             Authorization: `Bearer ${access_token}`
+         };
  
-     { label: 'Contact Created/Updated', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' },
-     {
-         label: 'Clio Contact Created/Updated',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-contacts', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials })
-             });
-             if (!resp.ok) throw new Error('Failed to sync Clio contact');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
-             const names: string[] = [];
-+            let emptyTotal = 0;
-             clioContactIds = [];
-             clioCompanyId = null;
-             (data.results || []).forEach((r: any) => {
-                 const attrs = r.data?.attributes || {};
-                 const id = r.data?.id;
-+                if (typeof r.emptyFieldCount === 'number') {
-+                    emptyTotal += r.emptyFieldCount;
-+                }
-                 if (id) {
-                     clioContactIds.push(String(id));
-                 }
-                 if (r.data?.type === 'Company') {
-                     clioCompanyId = String(id);
-                 }
-                 if (attrs.first_name || attrs.last_name) {
-                     names.push(`${attrs.first_name || ''} ${attrs.last_name || ''}`.trim());
-                 } else if (attrs.name) {
-                     names.push(attrs.name);
-                 }
-             });
-             const person = (data.results || []).find((r: any) => r.data?.type === 'Person');
-             const newId = person?.data?.id ? String(person.data.id) : null;
-             if (newId && clientIdCallback) {
-                 clientIdCallback(newId);
+         const clioApiBase = process.env.CLIO_API_BASE || 'https://eu.app.clio.com/api/v4';
+ 
+         // fetch custom field definitions once so we can log missing fields later
+         let customFields = [];
++        let cfNameMap = {};
+         try {
+             const cfUrl = `${clioApiBase}/custom_fields.json?fields=id,etag,created_at,updated_at,name,parent_type,field_type,displayed,deleted,required,display_order`;
+             const cfResp = await fetch(cfUrl, { headers });
+             if (cfResp.ok) {
+                 const cfData = await cfResp.json();
+                 customFields = cfData.data || [];
++                cfNameMap = customFields.reduce((map, cf) => {
++                    map[cf.id] = cf.name;
++                    return map;
++                }, {});
              }
--            return `Clio contacts synced: ${names.join(', ')}`;
-+            return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
+         } catch (err) {
+             console.warn('Failed to retrieve custom field list', err);
          }
-     },
-     {
-         label: 'Clio Matter Opened',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-matters', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
-             });
-             if (!resp.ok) throw new Error('Failed to create Clio matter');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
-             return `Matter created with ID ${data.matterId}`;
-         }
-     },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
- // invisible change 2.2
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
+         const results = [];
+         let clients = formData.client_information || [];
+         clients = clients.filter(c =>
+             c.first_name || c.first || c.last_name || c.last || (c.company_details && c.company_details.name)
+         );
+         const type = formData.matter_details?.client_type || 'Individual';
+ 
+         // Map an individual client to Clio Person payload
+         function mapPerson(client) {
+             const address = client.address || {};
+             const verification = client.verification || {};
+             const checkResult = verification.check_result || client.check_result;
+             const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
+             const tillerId =
+                 verification.check_id ||
+                 client.check_id ||
+                 client.EIDCheckId ||
+                 client.checkId ||
+                 null;
+             const expiry =
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index 0e322ec11c093a005156dc6074a6d326094effc7..2697994eb57f53de2007591263ab35fb9e1f50cd 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -197,106 +202,102 @@ router.post('/', async (req, res) => {
+                 'first_name',
+                 'middle_name',
+                 'last_name',
+                 'title',
+                 'avatar',
+                 'phone_numbers',
+                 'email_addresses',
+                 'date_of_birth',
+                 'addresses'
+             ];
+             let count = 0;
+             baseFields.forEach(f => {
+                 const val = attrs[f];
+                 if (
+                     val === null ||
+                     val === undefined ||
+                     (Array.isArray(val) ? val.length === 0 : typeof val === 'object' && Object.keys(val).length === 0)
+                 ) {
+                     count += 1;
+                 }
+             });
+ 
+             if (Array.isArray(customFields)) {
+                 const relevant = customFields.filter(cf => cf.parent_type === detail.type);
+                 relevant.forEach(cf => {
+-                    const exists = (attrs.custom_field_values || []).some(v => v.custom_field?.id === cf.id || v.id === cf.id);
++                    const exists = (attrs.custom_field_values || []).some(v => v.field_name === cf.name);
+                     if (!exists) count += 1;
+                 });
+             }
+             return count;
+         }
+ 
+         async function createOrUpdate(contact) {
+             const query = encodeURIComponent(contact.email_addresses[0]?.address || '');
+             const lookupResp = await fetch(
+                 `https://eu.app.clio.com/api/v4/contacts?query=${query}`,
+                 { headers }
+             );
+             if (!lookupResp.ok) throw new Error('Lookup failed');
+             const lookupData = await lookupResp.json();
+ 
+             let url = 'https://eu.app.clio.com/api/v4/contacts';
+             let method = 'POST';
+             let existingFields = [];
+             let emptyFieldCount = 0;
+             if (lookupData.data?.length) {
+                 const contactId = lookupData.data[0].id;
+                 url = `https://eu.app.clio.com/api/v4/contacts/${contactId}`;
+                 method = 'PATCH';
+ 
+                 // Retrieve existing custom field IDs so we can update them
+                 try {
+                     const contactId = lookupData.data[0].id;
+                     const detailUrl = `${clioApiBase}/contacts/${contactId}?fields=id,type,prefix,name,first_name,middle_name,last_name,title,company,avatar,email_addresses{name,address,default_email},phone_numbers{name,number,default_number},date_of_birth,addresses{name,street,city,province,postal_code,country},custom_field_values{id,field_name,value}`;
+                     const details = await fetch(detailUrl, { headers });
+                     if (details.ok) {
+                         const data = await details.json();
+                         existingFields = data.data?.custom_field_values || [];
+                         emptyFieldCount = countEmpty(data.data);
+                     }
+                 } catch (err) {
+                     console.warn('Failed to fetch existing contact details', err);
+                 }
+             }
+             const { type: contactType, name, ...attributes } = contact;
+ 
+             if (method === 'PATCH') {
+                 if (!Array.isArray(attributes.custom_field_values)) attributes.custom_field_values = [];
+                 attributes.custom_field_values = attributes.custom_field_values
+                     .filter((cf, i, arr) =>
+                         cf?.custom_field?.id &&
+                         arr.findIndex(x => x.custom_field?.id === cf.custom_field?.id) === i
+                     )
+                     .map(cf => {
+-                        // Support both Clio's old and new custom_field keys
+-                        const existing = existingFields.find(e =>
+-                            (e.custom_field?.id || e.custom_field_id) == cf.custom_field.id
+-                        );
+-                        return existing
+-                            ? { ...cf, id: existing.id } // Update (supply Clio's ID)
+-                            : cf; // New (no ID)
++                        const name = cfNameMap[cf.custom_field.id];
++                        const existing = existingFields.find(e => e.field_name === name);
++                        return existing ? { ...cf, id: existing.id } : cf;
+                     });
+ 
+             }
+ 
+ 
+             const payload = {
+                 data: {
+                     type: contactType,
+                     ...(contactType === 'Company' ? { name } : {}),
+                     ...attributes
+                 }
+             };
+             console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
+ 
+             const resp = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+             if (!resp.ok) {
+                 const text = await resp.text();
+                 console.error('Clio contact create/update failed:', text);
+                 throw new Error('Create/update failed');
+             }
+             const respJson = await resp.json();
+             respJson.emptyFieldCount = emptyFieldCount;
+             console.log('Received from Clio:', JSON.stringify(respJson, null, 2));
+             return respJson;
+         }
