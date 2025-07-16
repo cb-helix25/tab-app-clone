@@ -4,48 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
 
-const PRACTICE_AREAS = {
-    "Adjudication Advice & Dispute": 949034,
-    "Boundary and Nuisance Advice": 948938,
-    "Breach of Lease Advice": 948827,
-    "Business Contract Dispute": 948896,
-    "Civil/Commercial Fraud Advice": 948878,
-    "Commercial Contract - Drafting": 948914,
-    "Construction Contract Advice": 948917,
-    "Contentious Probate": 948932,
-    "Contract Dispute": 948824,
-    "Director Rights & Dispute Advice": 948866,
-    "Disciplinary - Advising": 949040,
-    "Employment Contract - Drafting": 948959,
-    "Employment Retainer Instruction": 948908,
-    "Final Account Recovery": 949022,
-    "Handbook - Drafting": 948962,
-    "Injunction Advice": 949874,
-    "Intellectual Property": 1160218,
-    "Interim Payment Recovery": 949025,
-    "Landlord & Tenant - Commercial Dispute": 948863,
-    "Landlord & Tenant - Residential Dispute": 948854,
-    "Miscellaneous (None of the above)": 948830,
-    "Miscellaneous (None of the above)_1": 948830,
-    "Partnership Advice": 1872650,
-    "Post Termination Dispute": 948947,
-    "Professional Negligence": 948815,
-    "Restrictive Covenant Advice": 948953,
-    "Right of Way": 949037,
-    "Service charge Recovery & Dispute Advice": 948956,
-    "Settlement Agreement - Advising": 948944,
-    "Shareholder Rights & Dispute Advice": 948851,
-    "Small Claim Advice": 948950,
-    "Statutory Demand - Advising": 948911,
-    "Statutory Demand - Drafting": 949046,
-    "Terms and Conditions - Drafting": 948941,
-    "Trespass": 948965,
-    "Trust Advice": 949031,
-    "Trust of Land (TOLATA) Advice": 948860,
-    "Unpaid Invoice/Debt Dispute": 948920,
-    "Unpaid Loan Recovery": 948887,
-    "Winding Up Petition Advice": 949049
-};
+const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
 // Hard-coded picklist option mappings
 const ND_OPTIONS = {
@@ -116,7 +75,7 @@ router.post('/', async (req, res) => {
             { value: formData.team_assignments.supervising_partner, custom_field: { id: 232574 } },
             ND_OPTIONS[folder_structure] && { value: ND_OPTIONS[folder_structure], custom_field: { id: 299746 } },
             VALUE_OPTIONS[dispute_value] && { value: VALUE_OPTIONS[dispute_value], custom_field: { id: 378566 } },
-            { value: instruction_ref, custom_field: { id: 380728 } }
+            { value: instruction_ref, custom_field: { id: 380722 } }
         ].filter(Boolean);
 
         // 4. Lookup client contact

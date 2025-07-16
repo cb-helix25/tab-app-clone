@@ -1,5 +1,6 @@
 const express = require('express');
 const { getSecret } = require('../utils/getSecret');
+const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
 const router = express.Router();
 
@@ -288,6 +289,9 @@ router.post('/', async (req, res) => {
             throw new Error('Missing client_id or description for matter creation');
         }
 
+        const paId = PRACTICE_AREAS[practice_area];
+        if (!paId) throw new Error(`Unknown practice_area “${practice_area}”`);
+
         const matterPayload = {
             data: {
                 billable: true,
@@ -297,12 +301,15 @@ router.post('/', async (req, res) => {
                 opened_at: date_created || new Date().toISOString(),
                 matter_type: client_type,
                 status: 'open',
+
+                // standard practice_area enum → NOT custom field
+                practice_area: { id: paId },
+
                 custom_field_values: [
-                    { value: area_of_work, id: 299746 },
-                    { value: practice_area, id: PRACTICE_AREAS[practice_area] },
-                    { value: dispute_value, id: 378566 },
-                    { value: folder_structure, id: 299746 }
-                ].filter(cf => cf.value)
+                    area_of_work && { value: area_of_work, custom_field: { id: 299746 } },
+                    dispute_value && { value: dispute_value, custom_field: { id: 378566 } },
+                    folder_structure && { value: folder_structure, custom_field: { id: 246757 } }
+                ].filter(Boolean)
             }
         };
 
