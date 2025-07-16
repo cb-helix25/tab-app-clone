@@ -234,7 +234,9 @@ router.post('/', async (req, res) => {
                 console.error('Clio contact create/update failed:', text);
                 throw new Error('Create/update failed');
             }
-            return resp.json();
+            const respJson = await resp.json();
+            console.log('Received from Clio:', JSON.stringify(respJson, null, 2));
+            return respJson;
         }
 
         // Create company contact if present in any client
@@ -288,22 +290,23 @@ router.post('/', async (req, res) => {
 
         const matterPayload = {
             data: {
-                type: 'Matter',
-                attributes: {
-                    client_id: matterClientId,
-                    description,
-                    stage,
-                    opened_at: date_created || new Date().toISOString(),
-                    matter_type: client_type,
-                    custom_field_values: [
-                        { value: area_of_work, custom_field: { id: 123456 } },
-                        { value: practice_area, custom_field: { id: 123457 } },
-                        { value: dispute_value, custom_field: { id: 123458 } },
-                        { value: folder_structure, custom_field: { id: 123459 } },
-                    ]
-                }
+                billable: true,
+                client: { id: matterClientId },
+                description,
+                stage,
+                opened_at: date_created || new Date().toISOString(),
+                matter_type: client_type,
+                status: 'open',
+                custom_field_values: [
+                    { value: area_of_work, custom_field: { id: 123456 } },
+                    { value: practice_area, custom_field: { id: 123457 } },
+                    { value: dispute_value, custom_field: { id: 123458 } },
+                    { value: folder_structure, custom_field: { id: 123459 } },
+                ].filter(cf => cf.value)
             }
         };
+
+        console.log('Matter payload →', JSON.stringify(matterPayload, null, 2));
 
         const matterResp = await fetch('https://eu.app.clio.com/api/v4/matters', {
             method: 'POST',

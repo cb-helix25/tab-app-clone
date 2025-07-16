@@ -88,10 +88,10 @@ router.post('/', async (req, res) => {
 
     try {
         // 1. Refresh Clio token
-        const clientId = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
+        const clientIdSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientid`);
         const clientSecret = await getSecret(`${initials.toLowerCase()}-clio-v1-clientsecret`);
         const refreshToken = await getSecret(`${initials.toLowerCase()}-clio-v1-refreshtoken`);
-        const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
+        const tokenUrl = `https://eu.app.clio.com/oauth/token?client_id=${clientIdSecret}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`;
         const tokenResp = await fetch(tokenUrl, { method: 'POST' });
         if (!tokenResp.ok) {
             console.error('Clio token refresh failed', await tokenResp.text());
@@ -103,8 +103,10 @@ router.post('/', async (req, res) => {
             Authorization: `Bearer ${access_token}`
         };
 
-        // 2. Compute IDs and values
-        const primaryId = companyId || contactIds[0];
+        // 2. Determine clientId (use created/found contact)
+        const clientId = companyId || contactIds[0];
+
+        // 3. Compute IDs and values
         const md = formData.matter_details;
         const instructionRef = md.instruction_ref || '';
         const practiceAreaId = PRACTICE_AREAS[md.practice_area] || null;
@@ -119,11 +121,11 @@ router.post('/', async (req, res) => {
             { value: instructionRef, custom_field: { id: 380728 } }
         ].filter(cf => cf.value);
 
-        // 3. Build Matter payload
+        // 4. Build Matter payload
         const matterPayload = {
             data: {
                 billable: true,
-                client: { id: primaryId },
+                client: { id: clientId },
                 client_reference: instructionRef || null,
                 description: md.description,
                 practice_area: { id: practiceAreaId },
@@ -135,10 +137,10 @@ router.post('/', async (req, res) => {
             }
         };
 
-        // 4. Debug log
+        // 5. Debug log
         console.error('Matter payload ➞', JSON.stringify(matterPayload, null, 2));
 
-        // 5. Create Matter
+        // 6. Create Matter
         const resp = await fetch('https://eu.app.clio.com/api/v4/matters.json', {
             method: 'POST',
             headers,
@@ -151,7 +153,7 @@ router.post('/', async (req, res) => {
         const { data } = await resp.json();
         const matterId = data.id;
 
-        // 6. Link related contacts
+        // 7. Link related contacts
         if (matterId && contactIds.length > 1) {
             for (const id of contactIds.slice(1)) {
                 const relPayload = {
@@ -175,7 +177,7 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // 7. Return result
+        // 8. Return result
         res.json({ ok: true, matterId });
     } catch (err) {
         console.error('Clio matter error', err);

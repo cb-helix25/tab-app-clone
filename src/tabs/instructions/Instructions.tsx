@@ -1065,6 +1065,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   };
 
+  const handleStartNewMatter = () => {
+    if (!pendingInstruction) return;
+    clearMatterOpeningDraft();
+    setSelectedInstruction(pendingInstruction);
+    setPendingInstruction(null);
+    setShowNewMatterPage(true);
+    setIsResumeDialogOpen(false);
+  };
+
 
   if (showNewMatterPage) {
     // Preselect POIDs by matching InstructionRef
@@ -1416,15 +1425,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             }}
             text="Resume"
           />
-          <DefaultButton
-            onClick={() => {
-              clearMatterOpeningDraft();
-              setIsResumeDialogOpen(false);
-              setSelectedInstruction(pendingInstruction);
-              setShowNewMatterPage(true);
-            }}
-            text="Start New"
-          />
+          <DefaultButton onClick={handleStartNewMatter} text="Start New" />
         </DialogFooter>
       </Dialog>
     </>

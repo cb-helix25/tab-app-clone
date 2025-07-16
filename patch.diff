@@ -1,112 +1,145 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index 6fa0dbc754dea6ed414bc461b02704051769fa10..a87c212bbc19bd75d403b55433f04b2a6f4b8c4a 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -1,42 +1,47 @@
- import { ProcessingStep } from './ProcessingSection';
- import activeIcon from '../../../assets/activecampaign.svg';
- import clioIcon from '../../../assets/clio.svg';
- import asanaIcon from '../../../assets/asana.svg';
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index a57d5d4fed08dcd173cd6a566f9ac16e956fc883..6eebc4274a8c835fe2570ab165bd0799d0899c5f 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -212,51 +212,53 @@ router.post('/', async (req, res) => {
+                         cf?.custom_field?.id &&
+                         arr.findIndex(x => x.custom_field?.id === cf.custom_field?.id) === i
+                     )
+                     .map(cf => {
+                         const existing = existingFields.find(e => e.custom_field?.id === cf.custom_field?.id);
+                         return existing ? { ...cf, id: existing.id } : cf;
+                     });
+             }
  
- // locally cached values so refresh endpoints can be called in sequence
- let acToken = '';
- let clioClientId = '';
- let clioClientSecret = '';
- let clioRefreshToken = '';
- let asanaClientId = '';
- let asanaSecret = '';
- let asanaRefreshToken = '';
- let opponentId = '';
- let solicitorId = '';
- let clioContactIds: string[] = [];
- let clioCompanyId: string | null = null;
-+let clientIdCallback: ((id: string | null) => void) | null = null;
+ 
+             const payload = {
+                 data: {
+                     type: contactType,
+                     ...(contactType === 'Company' ? { name } : {}),
+                     ...attributes
+                 }
+             };
+             console.log('Sending to Clio:', JSON.stringify(payload, null, 2));
+ 
+             const resp = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+             if (!resp.ok) {
+                 const text = await resp.text();
+                 console.error('Clio contact create/update failed:', text);
+                 throw new Error('Create/update failed');
+             }
+-            return resp.json();
++            const respJson = await resp.json();
++            console.log('Received from Clio:', JSON.stringify(respJson, null, 2));
++            return respJson;
+         }
+ 
+         // Create company contact if present in any client
+         const companySource = clients.find(c => c.company_details?.name);
+         let companyResult = null;
+         if (companySource) {
+             companyResult = await createOrUpdate({
+                 ...mapCompany(companySource),
+                 type: 'Company'
+             });
+             results.push(companyResult);
+         }
+ 
+         // Create valid person contacts
+         for (const c of clients) {
+             const hasName = !!(c.first_name || c.last_name || c.first || c.last);
+             if (!hasName) {
+                 console.warn(`Skipping client ${c.poid_id} — no name provided`);
+                 continue;
+             }
+ 
+             const personPayload = { ...mapPerson(c), type: 'Person' };
+             if (companyResult && companyResult.data?.id) {
+                 personPayload.company = {
+                     id: companyResult.data.id,
+diff --git a/server/routes/clioContacts.js b/server/routes/clioContacts.js
+index a57d5d4fed08dcd173cd6a566f9ac16e956fc883..6eebc4274a8c835fe2570ab165bd0799d0899c5f 100644
+--- a/server/routes/clioContacts.js
++++ b/server/routes/clioContacts.js
+@@ -266,66 +268,67 @@ router.post('/', async (req, res) => {
+                     etag: companyResult.data.attributes?.etag
+                 };
+             }
+             results.push(await createOrUpdate(personPayload));
+         }
+ 
+         const personContact = results.find(r => r?.data?.type === 'Person');
+         const matterClientId = personContact?.data?.id;
+         const {
+             description,
+             stage,
+             date_created,
+             client_type,
+             area_of_work,
+             practice_area,
+             dispute_value,
+             folder_structure
+         } = formData.matter_details || {};
+ 
+         if (!matterClientId || !description) {
+             throw new Error('Missing client_id or description for matter creation');
+         }
+ 
+         const matterPayload = {
+             data: {
+-                type: 'Matter',
+-                attributes: {
+-                    client_id: matterClientId,
+-                    description,
+-                    stage,
+-                    opened_at: date_created || new Date().toISOString(),
+-                    matter_type: client_type,
+-                    custom_field_values: [
+-                        { value: area_of_work, custom_field: { id: 123456 } },
+-                        { value: practice_area, custom_field: { id: 123457 } },
+-                        { value: dispute_value, custom_field: { id: 123458 } },
+-                        { value: folder_structure, custom_field: { id: 123459 } },
+-                    ]
+-                }
++                billable: true,
++                client: { id: matterClientId },
++                description,
++                stage,
++                opened_at: date_created || new Date().toISOString(),
++                matter_type: client_type,
++                status: 'open',
++                custom_field_values: [
++                    { value: area_of_work, custom_field: { id: 123456 } },
++                    { value: practice_area, custom_field: { id: 123457 } },
++                    { value: dispute_value, custom_field: { id: 123458 } },
++                    { value: folder_structure, custom_field: { id: 123459 } },
++                ].filter(cf => cf.value)
+             }
+         };
+ 
++        console.log('Matter payload →', JSON.stringify(matterPayload, null, 2));
 +
-+export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
-+    clientIdCallback = cb;
-+}
+         const matterResp = await fetch('https://eu.app.clio.com/api/v4/matters', {
+             method: 'POST',
+             headers,
+             body: JSON.stringify(matterPayload)
+         });
  
- export interface ProcessingAction {
-     label: string;
-     icon?: string;
-     run: (
-         formData: Record<string, any>,
-         userInitials: string,
-         userData?: any[] | null
-     ) => Promise<string>;
- }
+         if (!matterResp.ok) {
+             const text = await matterResp.text();
+             console.error('Clio matter create failed', text);
+             throw new Error('Matter creation failed');
+         }
  
- export const processingActions: ProcessingAction[] = [
-     {
-         label: 'Retrieve ActiveCampaign Token',
-         icon: activeIcon,
-         run: async () => {
-             const res = await fetch('/api/keys/ac-automations-apitoken');
-             if (!res.ok) throw new Error('Failed to fetch secret');
-             const data = await res.json();
-             acToken = data.value;
-             return 'Token retrieved';
-         }
-     },
-     {
-         label: 'Refresh ActiveCampaign Token',
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index 6fa0dbc754dea6ed414bc461b02704051769fa10..a87c212bbc19bd75d403b55433f04b2a6f4b8c4a 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -200,50 +205,55 @@ export const processingActions: ProcessingAction[] = [
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials })
-             });
-             if (!resp.ok) throw new Error('Failed to sync Clio contact');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to sync Clio contact');
-             const names: string[] = [];
-             clioContactIds = [];
-             clioCompanyId = null;
-             (data.results || []).forEach((r: any) => {
-                 const attrs = r.data?.attributes || {};
-                 const id = r.data?.id;
-                 if (id) {
-                     clioContactIds.push(String(id));
-                 }
-                 if (r.data?.type === 'Company') {
-                     clioCompanyId = String(id);
-                 }
-                 if (attrs.first_name || attrs.last_name) {
-                     names.push(`${attrs.first_name || ''} ${attrs.last_name || ''}`.trim());
-                 } else if (attrs.name) {
-                     names.push(attrs.name);
-                 }
-             });
-+            const person = (data.results || []).find((r: any) => r.data?.type === 'Person');
-+            const newId = person?.data?.id ? String(person.data.id) : null;
-+            if (newId && clientIdCallback) {
-+                clientIdCallback(newId);
-+            }
-             return `Clio contacts synced: ${names.join(', ')}`;
-         }
-     },
-     {
-         label: 'Clio Matter Opened',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-matters', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
-             });
-             if (!resp.ok) throw new Error('Failed to create Clio matter');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
-             return `Matter created with ID ${data.matterId}`;
-         }
-     },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
- // invisible change 2.2
+         const matterResult = await matterResp.json();
+         results.push(matterResult);
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
+ 
+         res.json({ ok: true, results });
+     } catch (err) {
+         console.error('Clio contact error', err);
+         res.status(500).json({ error: 'Failed to sync contacts' });
+     }
+ });
+ 
+ module.exports = router;
