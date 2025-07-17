@@ -345,9 +345,12 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
-    
+
     // Deal/Service info
-    const serviceDescription = (poid as any).service_description || (poid as any).ServiceDescription;
+    const serviceDescription =
+        (poid as any).service_description ||
+        (poid as any).ServiceDescription ||
+        paymentProduct;
     const dealAmount = (poid as any).amount || (poid as any).Amount || paymentAmount;
     
     // ID Verification fields

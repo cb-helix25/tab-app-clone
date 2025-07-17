@@ -84,8 +84,19 @@ router.post('/', async (req, res) => {
 
         // 4. Lookup client contact
         const first = formData.client_information[0];
-        const pr = await fetch(`https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`, { headers });
-        const pid = (await pr.json()).data[0].id;
+        if (!first || !first.email) {
+            throw new Error('Missing client email for contact lookup');
+        }
+        const pr = await fetch(
+            `https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`,
+            { headers }
+        );
+        if (!pr.ok) throw new Error('Contact lookup failed');
+        const pdata = await pr.json();
+        const pid = pdata?.data?.length ? pdata.data[0].id : null;
+        if (!pid) {
+            throw new Error(`Contact not found for ${first.email}`);
+        }
 
         // 5. Build matter payload
         const payload = {

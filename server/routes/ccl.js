@@ -2,7 +2,9 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { generateWordFromJson } = require('../utils/wordGenerator.js');
-const { tokens: cclTokens } = require('../../src/app/functionality/cclSchema');
+const {
+    tokens: cclTokens
+} = require(path.join(process.cwd(), 'src', 'app', 'functionality', 'cclSchema.js'));
 const EXTRA_TOKENS = [
     'and_or_intervals_eg_every_three_months',
     'contact_details_for_marketing_opt_out',
@@ -15,7 +17,12 @@ const EXTRA_TOKENS = [
     'may_will'
 ];
 
-const localUsers = require('../../src/localData/localUserData.json');
+let localUsers = [];
+try {
+    localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
+} catch {
+    localUsers = [];
+}
 
 function findUserByName(name) {
     if (!name) return null;

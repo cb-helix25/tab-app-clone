@@ -1,187 +1,57 @@
-diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
-index 35baf79cb83ee79ae969010a5826e277061181f2..6350a785d2a5638aea7d4d49db0f6fd329c8bc32 100644
---- a/src/tabs/instructions/PoidCard.tsx
-+++ b/src/tabs/instructions/PoidCard.tsx
-@@ -38,50 +38,64 @@ function getExpiryCountdown(expiryDateString: string | undefined): string | null
-     // Set to midnight (00:00) the day after expiry
-     const expiryMidnight = new Date(expiryDate);
-     expiryMidnight.setDate(expiryMidnight.getDate() + 1);
-     expiryMidnight.setHours(0, 0, 0, 0);
-     const now = new Date();
-     let diff = expiryMidnight.getTime() - now.getTime();
-     if (diff <= 0) return 'expired';
-     // Calculate months, days, hours
-     const msPerHour = 1000 * 60 * 60;
-     const msPerDay = msPerHour * 24;
-     // Months: rough calculation (30d per month)
-     const months = Math.floor(diff / (msPerDay * 30));
-     diff -= months * msPerDay * 30;
-     const days = Math.floor(diff / msPerDay);
-     diff -= days * msPerDay;
-     const hours = Math.floor(diff / msPerHour);
-     // Format string
-     let parts = [];
-     if (months > 0) parts.push(`${months}m`);
-     if (days > 0) parts.push(`${days}d`);
-     if (hours > 0) parts.push(`${hours}h`);
-     if (parts.length === 0) parts.push('<1h');
-     return `expires in ${parts.join(' ')}`;
+diff --git a/server/routes/ccl.js b/server/routes/ccl.js
+index 588cec3a9525b64261025be18b1e8f38f4d3bf08..9d03f15be0418ade26e7d3e6e0f83d7e33b4f424 100644
+--- a/server/routes/ccl.js
++++ b/server/routes/ccl.js
+@@ -1,43 +1,50 @@
+ const express = require('express');
+ const path = require('path');
+ const fs = require('fs');
+ const { generateWordFromJson } = require('../utils/wordGenerator.js');
+-const { tokens: cclTokens } = require('../../src/app/functionality/cclSchema');
++const {
++    tokens: cclTokens
++} = require(path.join(process.cwd(), 'src', 'app', 'functionality', 'cclSchema.js'));
+ const EXTRA_TOKENS = [
+     'and_or_intervals_eg_every_three_months',
+     'contact_details_for_marketing_opt_out',
+     'explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement',
+     'figure_or_range',
+     'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees',
+     'in_total_including_vat_or_for_the_next_steps_in_your_matter',
+     'instructions_link',
+     'link_to_preference_centre',
+     'may_will'
+ ];
+ 
+-const localUsers = require('../../src/localData/localUserData.json');
++let localUsers = [];
++try {
++    localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
++} catch {
++    localUsers = [];
++}
+ 
+ function findUserByName(name) {
+     if (!name) return null;
+     return (localUsers || []).find(u => {
+         const full = u['Full Name'] || `${u.First} ${u.Last}`;
+         return full.toLowerCase() === name.toLowerCase();
+     }) || null;
  }
  
-+const getVerificationColor = (result: string) => {
-+    const level = result?.toLowerCase();
-+    if (level === 'passed' || level === 'pass' || level === 'approved') {
-+        return { background: '#e6f4ea', text: '#107C10', border: '#107C10' };
-+    }
-+    if (level === 'review' || level === 'pending') {
-+        return { background: '#fffbe6', text: '#b88600', border: '#FFB900' };
-+    }
-+    if (level === 'failed' || level === 'fail' || level === 'rejected') {
-+        return { background: '#fde7e9', text: '#d13438', border: '#d13438' };
-+    }
-+    return { background: '#f4f4f6', text: '#666', border: '#e1dfdd' };
-+};
-+
- // Helper to calculate age from a date string
- const calculateAge = (dob: string): number => {
-     const birthDate = new Date(dob);
-     const today = new Date();
-     let age = today.getFullYear() - birthDate.getFullYear();
-     const m = today.getMonth() - birthDate.getMonth();
-     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-         age--;
+ async function mergeMatterFields(matterId, payload) {
+     const base = `http://localhost:${process.env.PORT || 8080}`;
+     let matterData = {};
+     if (matterId) {
+         try {
+             const resp = await fetch(`${base}/api/matters/${matterId}`);
+             if (resp.ok) {
+                 matterData = await resp.json();
+             }
+         } catch (err) {
+             console.warn('Matter lookup failed', err);
+         }
      }
-     return age;
- };
  
- interface PoidCardProps {
-     poid: POID;
-     selected: boolean;
-     onClick: () => void;
-     teamData?: TeamData[] | null;
-     companyName?: string; // invisible change 3: now passed from parent, not POID
- }
- 
- // Updated card dimensions to fit nicely in a 2-column grid
- const baseCardStyle = mergeStyles({
-     position: 'relative',
-     padding: '15px',
-     borderRadius: '0px',
-diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
-index 35baf79cb83ee79ae969010a5826e277061181f2..6350a785d2a5638aea7d4d49db0f6fd329c8bc32 100644
---- a/src/tabs/instructions/PoidCard.tsx
-+++ b/src/tabs/instructions/PoidCard.tsx
-@@ -264,96 +278,113 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData,
-     const dob = poid.date_of_birth;
-     const age = dob ? calculateAge(dob) : undefined;
-     const nationality = poid.nationality;
-     const nationalityAlpha2 = poid.nationality_iso || poid.country_code;
-     const email = (poid as any).email || (poid as any).Email;
-     const phone = (poid as any).phone || (poid as any).Phone;
-     // Defensive: POID type may use camelCase for some fields, fallback to those if needed
-     // Defensive: fallback to camelCase only if POID type allows index signature
-     const address = [
-         (poid as any).house_number || (poid as any).HouseNumber,
-         (poid as any).street || (poid as any).Street,
-         (poid as any).city || (poid as any).City,
-         (poid as any).county || (poid as any).County,
-         (poid as any).post_code || (poid as any).Postcode,
-         (poid as any).country || (poid as any).Country
-     ].filter(Boolean).join(', ');
-     const idType = (poid as any).id_type || (poid as any).IdType;
-     const passport = (poid as any).passport_number || (poid as any).PassportNumber;
-     const driversLicense = (poid as any).drivers_license_number || (poid as any).DriversLicenseNumber;
-     const instructionRef = (poid as any).instruction_ref || (poid as any).InstructionRef;
-     const matterId = (poid as any).matter_id || (poid as any).MatterId;
-     const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
-     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
-     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
-     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
-+    const verificationColors = getVerificationColor((poid as any).check_result || '');
-     // --- End new fields ---
- 
-     return (
-         <div onClick={onClick} className={cardStyle}>
-             <div className={contentStyle}>
-                 <Stack tokens={{ childrenGap: 8 }}>
-                     {/* Name and Company */}
-                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
-                         <Text
-                             variant="mediumPlus"
-                             styles={{
-                                 root: {
-                                     fontWeight: 700,
-                                     color: colours.highlight,
-                                     fontFamily: 'Raleway, sans-serif',
-                                     lineHeight: '1.2',
-                                 },
-                             }}
-                         >
-                             {companyName && (
-                                 <>
-                                     <span style={{ color: '#666', fontWeight: 600, marginRight: '4px' }}>{companyName}</span>
-                                     <span style={{ color: '#999', marginRight: '4px' }}>|</span>
-                                 </>
-                             )}
-                             {fullName}
-                         </Text>
-                         {age !== undefined && (
-                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{age} yrs</Text>
-                         )}
-                         {nationalityAlpha2 && (
-                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{nationalityAlpha2}</Text>
-                         )}
-                         <div style={{ flex: 1 }} />
-                         <Icon
-                             iconName={backgroundIconName}
-                             style={{
-                                 fontSize: 22,
-                                 opacity: 0.3,
-                                 transition: 'opacity 0.2s',
-                                 color: colours.highlight,
-                                 marginLeft: 8,
-                                 verticalAlign: 'middle',
-                             }}
-                             className="inlinePersonCompanyIcon"
-                         />
-+                        {poid.check_result && (
-+                            <div
-+                                style={{
-+                                    padding: '2px 8px',
-+                                    borderRadius: 0,
-+                                    backgroundColor: verificationColors.background,
-+                                    color: verificationColors.text,
-+                                    border: `1px solid ${verificationColors.border}40`,
-+                                    fontSize: '0.75rem',
-+                                    fontWeight: 600,
-+                                    marginLeft: 8,
-+                                }}
-+                            >
-+                                {poid.check_result}
-+                            </div>
-+                        )}
-                     </Stack>
-                     {/* Email, Phone */}
-                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                         {email && <Text variant="small" styles={{ root: { color: '#444' } }}>{email}</Text>}
-                         {phone && <Text variant="small" styles={{ root: { color: '#444' } }}>{phone}</Text>}
-                     </Stack>
-                     {/* Address */}
-                     {address && <Text variant="small" styles={{ root: { color: '#666' } }}>{address}</Text>}
-                     {/* ID Type and Numbers */}
-                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                         {idType && <Text variant="small" styles={{ root: { color: '#444' } }}>ID: {idType}</Text>}
-                         {passport && <Text variant="small" styles={{ root: { color: '#444' } }}>Passport: {passport}</Text>}
-                         {driversLicense && <Text variant="small" styles={{ root: { color: '#444' } }}>DL: {driversLicense}</Text>}
-                     </Stack>
-                     {/* Payment info if present */}
-                     {(paymentResult || paymentAmount || paymentProduct) && (
-                         <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                             {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555' } }}>Payment: {paymentResult}</Text>}
-                             {paymentAmount && <Text variant="small" styles={{ root: { color: '#444' } }}>£{paymentAmount}</Text>}
-                             {paymentProduct && <Text variant="small" styles={{ root: { color: '#444' } }}>{paymentProduct}</Text>}
-                         </Stack>
-                     )}
-                     {/* Instruction/Deal IDs for traceability */}
-                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                         {instructionRef && <Text variant="small" styles={{ root: { color: '#888' } }}>Ref: {instructionRef}</Text>}
+     const flat = { ...payload };
+     const firstClient = flat.client_information?.[0] || {};
