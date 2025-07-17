@@ -34,7 +34,6 @@ import { InstructionData, POID, TeamData, UserData } from "../../app/functionali
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
 import localInstructionData from "../../localData/localInstructionData.json";
 import localInstructionCards from "../../localData/localInstructionCards.json";
-import InstructionStateCard, { InstructionStateData } from "./InstructionStateCard";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
@@ -78,6 +77,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
   const overviewGridRef = useRef<HTMLDivElement | null>(null);
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
+  const [forceNewMatter, setForceNewMatter] = useState(false);
 
   // Notify parent when matter opening workflow state changes
   useEffect(() => {
@@ -102,7 +102,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [activePivot, setActivePivot] = useState<string>("overview");
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
-  const showDraftPivot = currentUser?.Role === 'Partner';
+  const showDraftPivot = true; // Allow all users to see Draft CCL
 
   // Clear selection when leaving overview tab
   useEffect(() => {
@@ -243,6 +243,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       setShowNewMatterPage(false);
       setSelectedInstruction(null);
       setPendingInstructionRef('');
+      setForceNewMatter(false);
     } else if (showRiskPage) {
       setShowRiskPage(false);
       setSelectedRisk(null);
@@ -364,21 +365,12 @@ const Instructions: React.FC<InstructionsProps> = ({
                 orientation="row"
               />
               <QuickActionsCard
-                title="Deals"
-                icon="Money"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "deals"}
-                onClick={() => setActivePivot("deals")}
-                iconColor={activePivot === "deals" ? colours.cta : colours.greyText}
-                orientation="row"
-              />
-              <QuickActionsCard
-                title="Clients"
+                title="Deals & Clients"
                 icon="People"
                 isDarkMode={isDarkMode}
-                selected={activePivot === "clients"}
-                onClick={() => setActivePivot("clients")}
-                iconColor={activePivot === "clients" ? colours.cta : colours.greyText}
+                selected={activePivot === "deals-clients"}
+                onClick={() => setActivePivot("deals-clients")}
+                iconColor={activePivot === "deals-clients" ? colours.cta : colours.greyText}
                 orientation="row"
               />
               <QuickActionsCard
@@ -392,7 +384,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               />
               {showDraftPivot && (
                 <QuickActionsCard
-                  title="Draft CCL"
+                  title="CCL"
                   icon="Edit"
                   isDarkMode={isDarkMode}
                   selected={activePivot === "draft-ccl"}
@@ -401,16 +393,6 @@ const Instructions: React.FC<InstructionsProps> = ({
                   orientation="row"
                 />
               )}
-              <QuickActionsCard
-                title="Scenarios"
-                icon="Settings"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "states"}
-                onClick={() => !isProduction && setActivePivot("states")}
-                iconColor={activePivot === "states" ? colours.cta : colours.greyText}
-                orientation="row"
-                disabled={isProduction}
-              />
               <QuickActionsCard
                 title="Editor"
                 icon="Edit"
@@ -920,16 +902,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     });
   }, [instructionData]);
 
-  const instructionCardStates = useMemo(() => {
-    const map = new Map<string, InstructionStateData>();
-    (localInstructionCards as InstructionStateData[]).forEach((state) => {
-      if (!map.has(state.scenario)) {
-        map.set(state.scenario, state);
-      }
-    });
-    return Array.from(map.values());
-  }, []);
-
   const handleOpenMatter = (inst: any) => {
     if (hasActiveMatterOpening()) {
       setPendingInstruction(inst);
@@ -937,6 +909,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     } else {
       setSelectedInstruction(inst);
       setPendingInstructionRef('');
+      setForceNewMatter(false);
       setShowNewMatterPage(true);
     }
   };
@@ -971,16 +944,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
     maxWidth: "1200px",
-    width: "100%",
-    margin: "0 auto",
-    boxSizing: "border-box",
-  });
-
-  const scenariosContainerStyle = mergeStyles({
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: "16px",
-    maxWidth: "600px",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",
@@ -1085,8 +1048,13 @@ const Instructions: React.FC<InstructionsProps> = ({
     clearMatterOpeningDraft();
     setSelectedInstruction(pendingInstruction);
     setPendingInstruction(null);
+    setForceNewMatter(true);
     setShowNewMatterPage(true);
     setIsResumeDialogOpen(false);
+    // Force a small delay to ensure localStorage is cleared before component mounts
+    setTimeout(() => {
+      setForceNewMatter(false);
+    }, 100);
   };
 
 
@@ -1103,6 +1071,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
         <FlatMatterOpening
+          key={forceNewMatter ? `new-${Date.now()}` : `matter-${selectedInstruction?.InstructionRef || 'default'}`}
           poidData={idVerificationOptions}
           setPoidData={setPoidData}
           teamData={teamData}
@@ -1209,30 +1178,45 @@ const Instructions: React.FC<InstructionsProps> = ({
               })}
             </div>
           )}
-          {activePivot === "deals" && (
-            <DealsPivot
-              deals={deals}
-              handleOpenInstruction={handleOpenInstruction}
-            />
-          )}
-          {activePivot === "clients" && (
-            <div className={gridContainerStyle}>
-              {clients.map((c, idx) => {
-                const row = Math.floor(idx / 4);
-                const col = idx % 4;
-                const animationDelay = row * 0.2 + col * 0.1;
-                // Gather all instructions for lookup by email
-                const allInstructions = instructionData.flatMap(p => p.instructions ?? []);
-                return (
-                  <JointClientCard
-                    key={idx}
-                    client={c}
-                    animationDelay={animationDelay}
-                    onOpenInstruction={handleOpenInstruction}
-                    allInstructions={allInstructions}
-                  />
-                );
-              })}
+          {activePivot === "deals-clients" && (
+            <div>
+              {/* Deals Section */}
+              <Text
+                variant="mediumPlus"
+                styles={{ root: { fontWeight: 600, marginBottom: 16 } }}
+              >
+                Deals
+              </Text>
+              <DealsPivot
+                deals={deals}
+                handleOpenInstruction={handleOpenInstruction}
+              />
+              
+              {/* Clients Section */}
+              <Text
+                variant="mediumPlus"
+                styles={{ root: { fontWeight: 600, marginTop: 32, marginBottom: 16 } }}
+              >
+                Clients
+              </Text>
+              <div className={gridContainerStyle}>
+                {clients.map((c, idx) => {
+                  const row = Math.floor(idx / 4);
+                  const col = idx % 4;
+                  const animationDelay = row * 0.2 + col * 0.1;
+                  // Gather all instructions for lookup by email
+                  const allInstructions = instructionData.flatMap(p => p.instructions ?? []);
+                  return (
+                    <JointClientCard
+                      key={idx}
+                      client={c}
+                      animationDelay={animationDelay}
+                      onOpenInstruction={handleOpenInstruction}
+                      allInstructions={allInstructions}
+                    />
+                  );
+                })}
+              </div>
             </div>
           )}
           {activePivot === "risk" && (
@@ -1267,13 +1251,6 @@ const Instructions: React.FC<InstructionsProps> = ({
           )}
           {activePivot === "draft-ccl" && (
             <DraftCCLPage matterId={selectedInstruction?.InstructionRef} />
-          )}
-          {activePivot === "states" && (
-            <div className={scenariosContainerStyle}>
-              {instructionCardStates.map((state, idx) => (
-                <InstructionStateCard key={idx} data={state} />
-              ))}
-            </div>
           )}
           {activePivot === "demo" && (
             <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
@@ -1443,6 +1420,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             onClick={() => {
               setIsResumeDialogOpen(false);
               setSelectedInstruction(pendingInstruction);
+              setForceNewMatter(false);
               setShowNewMatterPage(true);
             }}
             text="Resume"

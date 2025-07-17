@@ -122,9 +122,9 @@ const containerStyle: React.CSSProperties = { /* invisible change */
 };
 
 const answeredFieldStyle = {
-  background: "#d6e8ff",
+  background: "#3690CE22",
   color: "#061733",
-  border: "1.5px solid #3690CE",
+  border: "1px solid #3690CE",
   borderRadius: 0,
   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   transition: "background 0.2s, color 0.2s, border 0.2s"
@@ -909,9 +909,9 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, o) => _setOpponentTitle(o?.key as string)}
                       styles={{
                         root: {
-                          flex: '0 0 20%',
+                          flex: '0 0 auto',
                           minWidth: 80,
-                          maxWidth: '20%',
+                          width: '18%',
                           height: 38,
                           alignSelf: 'flex-end',
                           ...getFieldStyle("opponentTitle", _opponentTitle, true)
@@ -940,9 +940,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, v) => _setOpponentFirst(v || "")}
                       styles={{
                         root: {
-                          flex: '0 0 40%',
+                          flex: '1 1 auto',
                           minWidth: 100,
-                          maxWidth: '40%',
                           height: 38,
                           ...getFieldStyle("opponentFirst", _opponentFirst)
                         },
@@ -970,9 +969,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, v) => _setOpponentLast(v || "")}
                       styles={{
                         root: {
-                          flex: '0 0 40%',
+                          flex: '1 1 auto',
                           minWidth: 100,
-                          maxWidth: '40%',
                           height: 38,
                           ...getFieldStyle("opponentLast", _opponentLast)
                         },
@@ -1341,9 +1339,9 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, o) => _setSolicitorTitle(o?.key as string)}
                       styles={{
                         root: {
-                          flex: '0 0 20%',
+                          flex: '0 0 auto',
                           minWidth: 80,
-                          maxWidth: '20%',
+                          width: '18%',
                           height: 38,
                           alignSelf: 'flex-end',
                           ...getFieldStyle("solicitorTitle", _solicitorTitle, true)
@@ -1372,9 +1370,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, v) => _setSolicitorFirst(v || "")}
                       styles={{
                         root: {
-                          flex: '0 0 40%',
+                          flex: '1 1 auto',
                           minWidth: 100,
-                          maxWidth: '40%',
                           height: 38,
                           ...getFieldStyle("solicitorFirst", _solicitorFirst)
                         },
@@ -1402,9 +1399,8 @@ const OpponentDetailsStep: React.FC<OpponentDetailsStepProps> = ({
                       onChange={(_, v) => _setSolicitorLast(v || "")}
                       styles={{
                         root: {
-                          flex: '0 0 40%',
+                          flex: '1 1 auto',
                           minWidth: 100,
-                          maxWidth: '40%',
                           height: 38,
                           ...getFieldStyle("solicitorLast", _solicitorLast)
                         },

@@ -104,10 +104,11 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 onClick={() => {
                                     // Only trigger change if type is actually changing
                                     if (pendingClientType !== type) {
-                                        const isSingleSelectionType = type !== 'Multiple Individuals';
+                                        // Multiple Individuals and Company allow unlimited selections, others are more restrictive
+                                        const allowsUnlimitedSelections = type === 'Multiple Individuals' || type === 'Company';
                                         setPendingClientType(type);
                                         if (onClientTypeChange) {
-                                            onClientTypeChange(type, isSingleSelectionType);
+                                            onClientTypeChange(type, !allowsUnlimitedSelections);
                                         }
                                     }
                                 }}
@@ -180,6 +181,8 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                         );
                     })}
                 </div>
+                
+                {/* Removed helper text for selection rules for cleaner UI */}
     <style>{`
         .client-type-selection .client-type-icon-btn .client-type-label {
             pointer-events: none;
@@ -221,6 +224,35 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
             }
         }
         
+        /* Compact animation for selected cards */
+        @keyframes compactScale {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(0.9);
+            }
+        }
+        
+        /* POID grid container animation */
+        .poid-grid {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Ensure all POID cards have consistent dimensions */
+        .poid-grid > div {
+            min-height: 180px;
+            max-height: 220px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .poid-grid > div > * {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
         /* Stagger animation for cards */
         .poid-grid > div:nth-child(1) { animation-delay: 0ms; }
         .poid-grid > div:nth-child(2) { animation-delay: 100ms; }
@@ -235,12 +267,25 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
 
         {pendingClientType === 'Multiple Individuals' && (
             <div style={{ margin: '8px 0' }}>
-                <div className="question-banner">Client as on File</div>
+                <div className="question-banner">Confirm Client as on File</div>
                 <input
                     type="text"
                     value={clientAsOnFile}
                     onChange={e => setClientAsOnFile(e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #e0e0e0', borderRadius: 0 }}
+                    style={{ 
+                        width: '100%', 
+                        padding: '8px 12px', 
+                        height: '38px',
+                        boxSizing: 'border-box',
+                        background: clientAsOnFile ? "#3690CE22" : "#fff",
+                        color: "#061733",
+                        border: clientAsOnFile ? "1px solid #3690CE" : "1px solid #e3e8ef",
+                        borderRadius: 0,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                        transition: "background 0.2s, color 0.2s, border 0.2s",
+                        outline: "none",
+                        fontSize: "14px"
+                    }}
                     placeholder="Enter client name as on file"
                 />
             </div>
@@ -250,37 +295,133 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
         <PoidSelectionTransition show={!!pendingClientType}>
             {pendingClientType && (
                 <>
-                    <div className="question-banner">Select Client(s)</div>
-                    {/* POID Grid - Changed from 3 to 2 columns with auto-fit to fill available space */}
+                    {/* Show selected company when in director selection phase - this replaces the banner */}
+                    {pendingClientType === 'Company' && (() => {
+                        const currentSelectedPoids = selectedPoidIds.map(id => 
+                            displayPoidData.find(p => p.poid_id === id)
+                        ).filter(Boolean);
+                        
+                        const selectedCompany = currentSelectedPoids.find(p => 
+                            p && !!(p.company_name || p.company_number)
+                        );
+                        
+                        if (selectedCompany) {
+                            return (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <div style={{ 
+                                        fontSize: '14px', 
+                                        fontWeight: '600', 
+                                        color: '#323130', 
+                                        marginBottom: '8px' 
+                                    }}>
+                                        Selected Company:
+                                    </div>
+                                    <div style={{
+                                        border: '2px solid #3690CE',
+                                        borderRadius: '4px',
+                                        background: '#f8fbff',
+                                        padding: '12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        marginBottom: '16px'
+                                    }}>
+                                        <i className="ms-Icon ms-Icon--CityNext" style={{ 
+                                            fontSize: '24px', 
+                                            color: '#3690CE' 
+                                        }} />
+                                        <div>
+                                            <div style={{ 
+                                                fontWeight: '600', 
+                                                color: '#323130',
+                                                fontSize: '16px'
+                                            }}>
+                                                {selectedCompany.company_name || 'Company'}
+                                            </div>
+                                            {selectedCompany.company_number && (
+                                                <div style={{ 
+                                                    fontSize: '12px', 
+                                                    color: '#666' 
+                                                }}>
+                                                    Company No: {selectedCompany.company_number}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="question-banner">
+                                        Select Directors (Optional)
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
+                    
+                    {/* Only show banner for non-Company types or when no company is selected yet */}
+                    {(pendingClientType !== 'Company' || !(() => {
+                        const currentSelectedPoids = selectedPoidIds.map(id => 
+                            displayPoidData.find(p => p.poid_id === id)
+                        ).filter(Boolean);
+                        return currentSelectedPoids.some(p => p && !!(p.company_name || p.company_number));
+                    })()) && (
+                        <div className="question-banner">
+                            {pendingClientType === 'Company' ? 'Select Company' : 
+                             pendingClientType === 'Multiple Individuals' ? 'Select Client(s)' : 'Select Client'}
+                        </div>
+                    )}
+                    {/* POID Grid - Compact layout when selections are made */}
                     <div 
                         style={{ 
                             width: '100%',
                             display: 'grid',
                             gridTemplateColumns: (() => {
-                                const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
                                 const hasSelection = selectedPoidIds.length > 0;
-                                if (isSingleSelectionType && hasSelection) {
-                                    return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : '1fr';
-                                }
+                                
+                                // For other client types - keep standard layout to prevent visual jumping
                                 return 'repeat(2, minmax(250px, 1fr))';
+                                
+                                // Default: standard 2-column layout for selection
+                                return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : 'repeat(2, minmax(250px, 1fr))';
                             })(),
-                            gap: '24px',
-                            justifyContent: 'space-between',
-                            padding: '12px',
+                            gap: (() => {
+                                // For other client types - keep normal spacing to prevent visual jumping
+                                return '24px';
+                            })(),
+                            justifyContent: (() => {
+                                // For other client types - keep normal alignment to prevent visual jumping
+                                return 'space-between';
+                            })(),
+                            padding: (() => {
+                                // For other client types - keep normal padding to prevent visual jumping
+                                return '12px';
+                            })(),
                             overflow: 'visible',
                             border: '1px solid #e3e8ef',
                             borderRadius: '4px',
                             background: '#fafafa',
-                            transition: 'grid-template-columns 0.4s ease-out, gap 0.4s ease-out'
+                            transition: 'all 0.4s ease-out',
+                            // Make container height adjust to content when selections are made
+                            minHeight: (() => {
+                                // For other client types - keep normal height to prevent visual jumping
+                                return undefined;
+                            })(),
+                            // Add max height for smooth animation
+                            maxHeight: (() => {
+                                // For other client types - keep normal max height to prevent visual jumping
+                                return 'none';
+                            })()
                         }} 
                         className="poid-grid" 
                         ref={poidGridRef as any}
                     >
                         {/** invisible change 3: Fix POID grouping logic to use ClientType, not poid.type */}
                         {/** invisible change 4: Only filter by instruction's client type, not POID fields */}
-                        {/* No filtering by company fields; show all POIDs for the selected client type */}
-                            {displayPoidData
-                            .filter((poid) => {
+                        {/* When selections are made, only show selected cards. Otherwise show all available */}
+                        {(() => {
+                            const hasSelection = selectedPoidIds.length > 0;
+                            
+                            // Filter POIDs based on client type
+                            const filteredData = displayPoidData.filter((poid) => {
                                 const isCompany = !!(
                                     poid.company_name ||
                                     poid.company_number
@@ -288,55 +429,108 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                                 if (pendingClientType === 'Individual') {
                                     return !isCompany;
                                 } else if (pendingClientType === 'Company') {
-                                    return isCompany;
+                                    // Two-stage selection for Company type
+                                    const currentSelectedPoids = selectedPoidIds.map(id => 
+                                        displayPoidData.find(p => p.poid_id === id)
+                                    ).filter(Boolean);
+                                    
+                                    const hasCompanySelected = currentSelectedPoids.some(p => 
+                                        p && !!(p.company_name || p.company_number)
+                                    );
+                                    
+                                    if (!hasCompanySelected) {
+                                        // Stage 1: Show only companies until one is selected
+                                        return isCompany;
+                                    } else {
+                                        // Stage 2: Show only individuals for director selection
+                                        return !isCompany;
+                                    }
+                                } else if (pendingClientType === 'Multiple Individuals') {
+                                    // Show only individuals for multiple selection
+                                    return !isCompany;
                                 }
-                                return true;
-                            })
-                            .slice(0, visiblePoidCount)
-                            .map((poid) => {
-                            const isSelected = selectedPoidIds.includes(poid.poid_id);
-                            const isSingleSelectionType = pendingClientType === 'Individual' || pendingClientType === 'Company';
-                            const hasSelection = selectedPoidIds.length > 0;
+                                return true; // Existing Client shows all
+                            });
+
+                            // Special handling for Company type two-stage selection
+                            let cardsToShow;
+                            if (pendingClientType === 'Company') {
+                                const currentSelectedPoids = selectedPoidIds.map(id => 
+                                    displayPoidData.find(p => p.poid_id === id)
+                                ).filter(Boolean);
+                                
+                                const hasCompanySelected = currentSelectedPoids.some(p => 
+                                    p && !!(p.company_name || p.company_number)
+                                );
+                                
+                                if (hasCompanySelected) {
+                                    // Stage 2: Show only available directors (hide the selected company from this view)
+                                    cardsToShow = filteredData.slice(0, visiblePoidCount);
+                                } else {
+                                    // Stage 1: Show only available companies
+                                    cardsToShow = filteredData.slice(0, visiblePoidCount);
+                                }
+                            } else {
+                                // For other client types, use different logic based on whether multiple selection is allowed
+                                if (pendingClientType === 'Multiple Individuals') {
+                                    // Always show all available options for multiple selection
+                                    cardsToShow = filteredData.slice(0, visiblePoidCount);
+                                } else {
+                                    // Single selection types: show only selected when there's a selection
+                                    cardsToShow = hasSelection 
+                                        ? filteredData.filter(poid => selectedPoidIds.includes(poid.poid_id))
+                                        : filteredData.slice(0, visiblePoidCount);
+                                }
+                            }
+
+                            return cardsToShow.map((poid) => {
+                                const isSelected = selectedPoidIds.includes(poid.poid_id);
                                 const singlePreselected = onlyShowPreselected && displayPoidData.length === 1;
-                            const shouldFadeOut = isSingleSelectionType && hasSelection && !isSelected;
-                            return (
-                                <div 
-                                    key={poid.poid_id} 
-                                    onClick={() => handlePoidClick(poid)} 
-                                    role="button" 
-                                    tabIndex={0}
-                                    style={{
-                                        opacity: shouldFadeOut ? 0.3 : 1,
-                                        transform: shouldFadeOut ? 'scale(0.95)' : 'translateY(0)',
-                                        transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
-                                        animation: 'fadeInUp 0.4s ease-out',
-                                        pointerEvents: shouldFadeOut ? 'none' : 'auto',
-                                        filter: shouldFadeOut ? 'grayscale(70%)' : 'none',
-                                        gridColumn: singlePreselected ? 'span 2' : undefined
-                                    }}
-                                >
-                                    <PoidCard 
-                                        poid={poid} 
-                                        selected={isSelected} 
+                                
+                                return (
+                                    <div 
+                                        key={poid.poid_id} 
                                         onClick={() => handlePoidClick(poid)} 
-                                        teamData={teamData}
-                                        companyName={(() => {
-                                            // Try to get company name from instruction/matter/client, not from POID
-                                            // If pendingClientType is 'Company', try to find the company name from the instruction
-                                            if (pendingClientType === 'Company') {
-                                                // Try to find the instruction for this POID (by InstructionRef, MatterId, or ProspectId)
-                                                // This assumes you have access to the instruction data in this component or via props
-                                                // If not, you may need to thread it through from FlatMatterOpening
-                                                if (poid.company_name) return poid.company_name;
-                                                // fallback: blank
-                                                return '';
-                                            }
-                                            return undefined;
-                                        })()}
-                                    />
-                                </div>
-                            );
-                        })}
+                                        role="button" 
+                                        tabIndex={0}
+                                        style={{
+                                            opacity: 1, // Always full opacity for visible cards
+                                            transform: 'translateY(0)',
+                                            transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
+                                            animation: 'fadeInUp 0.4s ease-out',
+                                            pointerEvents: 'auto',
+                                            filter: 'none',
+                                            gridColumn: singlePreselected ? 'span 2' : undefined,
+                                            // Add compact scaling for selected cards
+                                            ...(() => {
+                                                // For other client types - no scaling to prevent visual jumping
+                                                return {};
+                                            })()
+                                        }}
+                                    >
+                                        <PoidCard 
+                                            poid={poid} 
+                                            selected={isSelected} 
+                                            onClick={() => handlePoidClick(poid)} 
+                                            teamData={teamData}
+                                            companyName={(() => {
+                                                // Try to get company name from instruction/matter/client, not from POID
+                                                // If pendingClientType is 'Company', try to find the company name from the instruction
+                                                if (pendingClientType === 'Company') {
+                                                    // Try to find the instruction for this POID (by InstructionRef, MatterId, or ProspectId)
+                                                    // This assumes you have access to the instruction data in this component or via props
+                                                    // If not, you may need to thread it through from FlatMatterOpening
+                                                    if (poid.company_name) return poid.company_name;
+                                                    // fallback: blank
+                                                    return '';
+                                                }
+                                                return undefined;
+                                            })()}
+                                        />
+                                    </div>
+                                );
+                            });
+                        })()}
                     </div>
                 </>
             )}

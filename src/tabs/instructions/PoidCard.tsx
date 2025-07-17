@@ -244,8 +244,9 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
         'poid-card'
     );
 
-    // Choose icon based on POID type.
-    const backgroundIconName = poid.type === "Yes" ? "CityNext" : "Contact";
+    // Choose icon based on whether POID has company information
+    const isCompany = !!(poid.company_name || poid.company_number);
+    const backgroundIconName = isCompany ? "CityNext" : "Contact";
 
     const teamMember = teamData?.find(
         (member) => member.Email?.toLowerCase() === poid.poc?.toLowerCase()

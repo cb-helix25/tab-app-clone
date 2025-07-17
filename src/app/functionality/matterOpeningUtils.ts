@@ -118,6 +118,7 @@ export const clearMatterOpeningDraft = (): void => {
     'matterOpeningDraft_noConflict',
     'matterOpeningDraft_enterOpponentNow',
     'matterOpeningDraft_opponentType',
+    'matterOpeningDraft_currentStep',
     'matterOpeningDraft_showSummary',
     'matterOpeningDraft_hasInput',
     'matterOpeningDraft_completed'

@@ -62,8 +62,8 @@
 
 
 .team-select {
-    appearance: menulist;
     -webkit-appearance: menulist;
+    appearance: menulist;
     background: white;
     border: none;
     /* container already has border */

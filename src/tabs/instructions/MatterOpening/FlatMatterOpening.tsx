@@ -346,18 +346,48 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, [filteredPoidData]);
 
     const handlePoidClick = (poid: POID) => {
-        const isSingleSelectionType = pendingClientType !== 'Multiple Individuals';
+        const isCompany = !!(poid.company_name || poid.company_number);
+        
         if (selectedPoidIds.includes(poid.poid_id)) {
+            // Remove selection
             setSelectedPoidIds((prev: string[]) => prev.filter((id: string) => id !== poid.poid_id));
             if (activePoid && activePoid.poid_id === poid.poid_id) {
                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
                 setActivePoid(remaining || null);
             }
         } else {
-            if (isSingleSelectionType) {
+            // Add selection based on client type rules
+            if (pendingClientType === 'Individual' || pendingClientType === 'Existing Client') {
+                // Single selection only
                 setSelectedPoidIds([poid.poid_id]);
                 setActivePoid(poid);
-            } else {
+            } else if (pendingClientType === 'Company') {
+                // Company type: Two-stage selection
+                const currentSelectedPoids = selectedPoidIds.map(id => 
+                    effectivePoidData.find(p => p.poid_id === id)
+                ).filter(Boolean);
+                
+                const hasCompanySelected = currentSelectedPoids.some(p => 
+                    p && !!(p.company_name || p.company_number)
+                );
+                
+                if (isCompany) {
+                    // Selecting a company - replace any existing company
+                    const newSelections = selectedPoidIds.filter(id => {
+                        const p = effectivePoidData.find(poid => poid.poid_id === id);
+                        return p && !(p.company_name || p.company_number); // Keep individuals (directors)
+                    });
+                    setSelectedPoidIds([...newSelections, poid.poid_id]);
+                } else {
+                    // Selecting an individual (director) - only allowed if company is already selected
+                    if (hasCompanySelected) {
+                        // Allow multiple directors - just add to existing selections
+                        setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
+                    }
+                }
+                setActivePoid(poid);
+            } else if (pendingClientType === 'Multiple Individuals') {
+                // Multiple individuals allowed - unlimited selections
                 setSelectedPoidIds((prev: string[]) => [...prev, poid.poid_id]);
                 setActivePoid(poid);
             }
@@ -625,12 +655,10 @@ const handleClearAll = () => {
     };
 
     const handleClientTypeChange = (newType: string, shouldLimitToSingle: boolean) => {
-        // Always clear POID selection when switching between Individual and Company (or vice versa)
-        if (
-            (newType === 'Individual' && selectedPoidIds.length > 0) ||
-            (newType === 'Company' && selectedPoidIds.length > 0) ||
-            (newType === 'Multiple Individuals' && selectedPoidIds.length > 1)
-        ) {
+        // Only clear POID selection when actually switching to a different client type
+        // Don't clear if we're staying on the same type (this prevents clearing during multiple selections)
+        if (pendingClientType !== newType) {
+            // Clear selections when switching between different client types
             setSelectedPoidIds([]);
         }
         setSearchBoxFocused(false); // Collapse search box after client type selection
