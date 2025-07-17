@@ -102,7 +102,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [activePivot, setActivePivot] = useState<string>("overview");
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
-  const showDraftPivot = currentUser?.Role === 'Partner' || currentUser?.Role === 'Solicitor';
+  const showDraftPivot = currentUser?.Role === 'Partner';
 
   // Clear selection when leaving overview tab
   useEffect(() => {
@@ -961,9 +961,9 @@ const Instructions: React.FC<InstructionsProps> = ({
     setActivePivot('risk');
   };
 
-
-  const handleOpenInstruction = (ref: string) => {
-    setActivePivot("overview");
+  const handleOpenDraftCcl = (ref: string) => {
+    setSelectedInstruction({ InstructionRef: ref } as any);
+    setActivePivot('draft-ccl');
   };
 
   const gridContainerStyle = mergeStyles({
@@ -1148,6 +1148,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     );
   }
 
+
+  function handleOpenInstruction(ref: string): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <>

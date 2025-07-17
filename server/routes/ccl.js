@@ -2,6 +2,18 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { generateWordFromJson } = require('../utils/wordGenerator.js');
+const { tokens: cclTokens } = require('../../src/app/functionality/cclSchema');
+const EXTRA_TOKENS = [
+    'and_or_intervals_eg_every_three_months',
+    'contact_details_for_marketing_opt_out',
+    'explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement',
+    'figure_or_range',
+    'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees',
+    'in_total_including_vat_or_for_the_next_steps_in_your_matter',
+    'instructions_link',
+    'link_to_preference_centre',
+    'may_will'
+];
 
 const localUsers = require('../../src/localData/localUserData.json');
 
@@ -16,41 +28,60 @@ function findUserByName(name) {
 async function mergeMatterFields(matterId, payload) {
     const base = `http://localhost:${process.env.PORT || 8080}`;
     let matterData = {};
-    try {
-        const resp = await fetch(`${base}/api/matters/${matterId}`);
-        if (resp.ok) {
-            matterData = await resp.json();
-            console.log('matter lookup →', matterData);
+    if (matterId) {
+        try {
+            const resp = await fetch(`${base}/api/matters/${matterId}`);
+            if (resp.ok) {
+                matterData = await resp.json();
+            }
+        } catch (err) {
+            console.warn('Matter lookup failed', err);
         }
-    } catch (err) {
-        console.warn('Matter lookup failed', err);
     }
 
-    const data = { ...payload };
-    const firstClient = data.client_information?.[0] || {};
+    const flat = { ...payload };
+    const firstClient = flat.client_information?.[0] || {};
     if (firstClient.prefix) {
-        data.insert_clients_name = `${firstClient.prefix} ${firstClient.first_name || ''} ${firstClient.last_name || ''}`.trim();
+        flat.insert_clients_name = `${firstClient.prefix} ${firstClient.first_name || ''} ${firstClient.last_name || ''}`.trim();
     } else {
-        data.insert_clients_name = firstClient.company_details?.name || '';
+        flat.insert_clients_name = firstClient.company_details?.name || '';
     }
-    data.insert_heading_eg_matter_description = data.matter_details?.description || '';
-    data.matter = data.matter_details?.matter_ref || data.matter_details?.instruction_ref || matterData.display_number;
-    data.name_of_person_handling_matter = data.team_assignments?.fee_earner || '';
+    flat.insert_heading_eg_matter_description = flat.matter_details?.description || '';
+    flat.matter = flat.matter_details?.matter_ref || flat.matter_details?.instruction_ref || '';
+    if (matterData.display_number) flat.matter = matterData.display_number;
+    flat.name_of_person_handling_matter = flat.team_assignments?.fee_earner || '';
 
-    const feeUser = findUserByName(data.team_assignments?.fee_earner);
-    data.status = feeUser?.Role || '';
+    const feeUser = findUserByName(flat.team_assignments?.fee_earner);
+    flat.status = feeUser?.Role || '';
+    flat.email = feeUser?.Email || '';
 
     const helpers = [
-        data.team_assignments?.fee_earner,
-        data.team_assignments?.originating_solicitor,
-        data.team_assignments?.supervising_partner
+        flat.team_assignments?.fee_earner,
+        flat.team_assignments?.originating_solicitor,
+        flat.team_assignments?.supervising_partner
     ].filter(Boolean);
-    data.names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries = helpers.map(n => {
+    flat.names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries = helpers.map(n => {
         const u = findUserByName(n);
         return u ? `${n} <${u.Email}>` : n;
     }).join(', ');
 
-    return { ...data, display_number: matterData.display_number };
+    if (!flat.identify_the_other_party_eg_your_opponents) {
+        const opp = flat.opponents?.[0];
+        if (opp) flat.identify_the_other_party_eg_your_opponents = opp.name || opp.company || '';
+    }
+
+    flat.name_of_handler = flat.name_of_person_handling_matter;
+    flat.handler = flat.name_of_person_handling_matter;
+    flat.name = flat.insert_clients_name;
+
+    for (const key of cclTokens) {
+        if (flat[key] === undefined) flat[key] = '';
+    }
+    for (const key of EXTRA_TOKENS) {
+        if (flat[key] === undefined) flat[key] = '';
+    }
+
+    return { ...flat, display_number: matterData.display_number };
 }
 
 const router = express.Router();

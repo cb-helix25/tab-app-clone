@@ -1,58 +1,30 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index a58c334bfd78c92f7c830cab6a9e430b5cd9542e..055235cb3ca26043e961a0abf12b08c7953197be 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -247,50 +247,50 @@ export const processingActions: ProcessingAction[] = [
-             const newId = person?.data?.id ? String(person.data.id) : null;
-             if (newId && clientIdCallback) {
-                 clientIdCallback(newId);
-             }
-             return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
-         }
-     },
-     {
-         label: 'Clio Matter Opened',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const resp = await fetch('/api/clio-matters', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ formData, initials: userInitials, contactIds: clioContactIds, companyId: clioCompanyId })
-             });
-             if (!resp.ok) throw new Error('Failed to create Clio matter');
-             const data = await resp.json();
-             if (!data.ok) throw new Error(data.error || 'Failed to create Clio matter');
-             const id = data.matterId || data.matter?.id || null;
-             matterId = id ? String(id) : null;
-             if (matterId && matterIdCallback) matterIdCallback(matterId);
-             return `Matter created with ID ${matterId}`;
-         }
-     },
-+    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-+    { label: 'Databases Updated', run: async () => 'Done' },
-     {
-         label: 'Generate Draft CCL',
-         icon: cclIcon,
-         run: async (formData, userInitials) => {
-             const id = matterId || formData.matter_details.matter_ref;
-             const resp = await fetch('/api/ccl', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ matterId: id, draftJson: formData })
-             });
-             if (!resp.ok) throw new Error('CCL generation failed');
-             const { url } = await resp.json();
-             return { message: 'Draft CCL created', url };
-         }
--    },
--    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
--    { label: 'Databases Updated', run: async () => 'Done' }
-+    }
- ];
- // invisible change 2.2
+diff --git a/src/app/functionality/cclSchema.js b/src/app/functionality/cclSchema.js
+index 59af590c84537430fc35275fc0557fc2e62dbe56..f5eb6d02c845af082204efcd9b6c8433378069d9 100644
+--- a/src/app/functionality/cclSchema.js
++++ b/src/app/functionality/cclSchema.js
+@@ -1,23 +1,25 @@
+ /**
+  * Default Draft CCL merge field schema.
+  * Each key corresponds to a token in the Word template.
+  */
+ const schema = {
+     insert_clients_name: '',
+     insert_heading_eg_matter_description: '',
+     matter: '',
+     name_of_person_handling_matter: '',
+     status: '',
+     names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries: '',
++    identify_the_other_party_eg_your_opponents: '',
++    email: '',
+     insert_current_position_and_scope_of_retainer: '',
+     next_steps: '',
+     realistic_timescale: '',
+     estimate: '',
+     figure: '',
+     next_stage: '',
+     we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: ''
+ };
  
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
-     icon: action.icon
- }));
+ const tokens = Object.keys(schema);
+ 
+ module.exports = { schema, tokens };

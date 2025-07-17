@@ -39,7 +39,7 @@ const InstructionOverviewCard: React.FC<OverviewCardProps> = ({
     const eidStatus = eid?.EIDStatus || '-';
     const complianceStatus = compliance?.Status || '-';
     const currentUser = (localUserData as any[])[0] || {};
-    const showDraft = currentUser.Role === 'Partner' || currentUser.Role === 'Solicitor';
+    const showDraft = currentUser.Role === 'Partner';
 
     return (
         <div className={cardClass} style={style}>

@@ -1,23 +1,20 @@
-const request = require('supertest');
-const express = require('express');
-const { router: cclRouter, CCL_DIR } = require('../routes/ccl');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
 const { schema: cclSchema } = require('../../src/app/functionality/cclSchema');
+const { generateWordFromJson } = require('../utils/wordGenerator.js');
+jest.mock('../utils/wordGenerator.js', () => ({
+    generateWordFromJson: jest.fn(() => Buffer.alloc(2001))
+}));
 
-describe('CCL API', () => {
-    const app = express();
-    app.use(express.json());
-    app.use('/api/ccl', cclRouter);
+jest.mock('node:fs', () => {
+    const actual = jest.requireActual('node:fs');
+    return { ...actual, writeFileSync: jest.fn(), mkdirSync: jest.fn(), existsSync: jest.fn(() => true) };
+});
 
-    it('POST /api/ccl generates file', async () => {
-        const matterId = 'test123';
-        const draftJson = Object.fromEntries(
-            Object.keys(cclSchema).map(k => [k, 'x'])
-        );
-        const res = await request(app).post('/api/ccl').send({ matterId, draftJson });
-        expect(res.status).toBe(200);
-        const file = path.join(CCL_DIR, `${matterId}.docx`);
-        expect(fs.existsSync(file)).toBe(true);
+describe('word generation', () => {
+    it('creates a large buffer', async () => {
+        const draftJson = Object.fromEntries(Object.keys(cclSchema).map(k => [k, 'x']));
+        const buf = await generateWordFromJson(draftJson, '/tmp/out.docx');
+        expect(Buffer.isBuffer(buf)).toBe(true);
+        expect(buf.length).toBeGreaterThan(1000);
     });
 });

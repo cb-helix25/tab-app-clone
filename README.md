@@ -171,6 +171,8 @@ Token mapping:
 | `name_of_person_handling_matter` | `team_assignments.fee_earner` |
 | `status` | role of the fee earner from `localUserData` |
 | `names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries` | combined string of fee earner, originating solicitor and supervising partner with emails |
+| `identify_the_other_party_eg_your_opponents` | first opponent name if provided |
+| `email` | email of the fee earner |
 | `insert_current_position_and_scope_of_retainer` | manual entry |
 | `next_steps` | manual entry |
 | `realistic_timescale` | manual entry |
@@ -179,10 +181,12 @@ Token mapping:
 | `next_stage` | manual entry |
 | `we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible` | manual entry |
 
+If the `/api/matters/:id` request fails, `instruction_ref` is used as the `matter` value.
+
 Quick demo using `curl`:
 
 ```bash
 curl -X POST http://localhost:8080/api/ccl \
   -H "Content-Type: application/json" \
-  -d @payload.json
+  -d '{"matterId":"123","draftJson":{"insert_clients_name":"ACME","insert_heading_eg_matter_description":"Share purchase","matter":"HLX-00001-12345","name_of_person_handling_matter":"Jane Doe","status":"Solicitor"}}'
 ```

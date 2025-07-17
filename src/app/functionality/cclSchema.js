@@ -9,6 +9,8 @@ const schema = {
     name_of_person_handling_matter: '',
     status: '',
     names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries: '',
+    identify_the_other_party_eg_your_opponents: '',
+    email: '',
     insert_current_position_and_scope_of_retainer: '',
     next_steps: '',
     realistic_timescale: '',
