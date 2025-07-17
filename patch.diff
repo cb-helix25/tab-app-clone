@@ -1,30 +1,39 @@
-diff --git a/src/app/functionality/cclSchema.js b/src/app/functionality/cclSchema.js
-index 59af590c84537430fc35275fc0557fc2e62dbe56..f5eb6d02c845af082204efcd9b6c8433378069d9 100644
---- a/src/app/functionality/cclSchema.js
-+++ b/src/app/functionality/cclSchema.js
-@@ -1,23 +1,25 @@
- /**
-  * Default Draft CCL merge field schema.
-  * Each key corresponds to a token in the Word template.
-  */
- const schema = {
-     insert_clients_name: '',
-     insert_heading_eg_matter_description: '',
-     matter: '',
-     name_of_person_handling_matter: '',
-     status: '',
-     names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries: '',
-+    identify_the_other_party_eg_your_opponents: '',
-+    email: '',
-     insert_current_position_and_scope_of_retainer: '',
-     next_steps: '',
-     realistic_timescale: '',
-     estimate: '',
-     figure: '',
-     next_stage: '',
-     we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: ''
- };
+diff --git a/server/routes/matters.js b/server/routes/matters.js
+index 92e5401f0a0d6fd016cebe6189f31fe1f94e8f36..8860d7dd13e3d26b41b3773e495ec9688629a156 100644
+--- a/server/routes/matters.js
++++ b/server/routes/matters.js
+@@ -1,29 +1,32 @@
+ const express = require('express');
+ const { getSecret } = require('../utils/getSecret');
  
- const tokens = Object.keys(schema);
+ const router = express.Router();
  
- module.exports = { schema, tokens };
+ router.get('/:id', async (req, res) => {
+     const { id } = req.params;
+     try {
+         const initials = (process.env.CLIO_USER_INITIALS || 'lz').toLowerCase();
+         const cid = await getSecret(`${initials}-clio-v1-clientid`);
+         const cs = await getSecret(`${initials}-clio-v1-clientsecret`);
+         const rt = await getSecret(`${initials}-clio-v1-refreshtoken`);
+-        const tokenUrl = `https://app.clio.com/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
++        // Use the EU endpoint by default to match credentials
++        const clioBase = process.env.CLIO_BASE || 'https://eu.app.clio.com';
++        const tokenUrl = `${clioBase}/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
+         const tr = await fetch(tokenUrl, { method: 'POST' });
+         if (!tr.ok) throw new Error(await tr.text());
+         const { access_token } = await tr.json();
+-        const resp = await fetch(`https://app.clio.com/api/v4/matters/${id}`, {
++        const clioApiBase = process.env.CLIO_API_BASE || `${clioBase}/api/v4`;
++        const resp = await fetch(`${clioApiBase}/matters/${id}`, {
+             headers: { Authorization: `Bearer ${access_token}` }
+         });
+         if (!resp.ok) throw new Error(await resp.text());
+         const data = await resp.json();
+         res.json({ display_number: data?.data?.display_number || '' });
+     } catch (err) {
+         console.error('Matter proxy failed', err);
+         res.status(500).json({ error: 'Failed to fetch matter' });
+     }
+ });
+ 
+ module.exports = router;
