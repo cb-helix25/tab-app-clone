@@ -60,6 +60,20 @@ function getExpiryCountdown(expiryDateString: string | undefined): string | null
     return `expires in ${parts.join(' ')}`;
 }
 
+const getVerificationColor = (result: string) => {
+    const level = result?.toLowerCase();
+    if (level === 'passed' || level === 'pass' || level === 'approved') {
+        return { background: '#e6f4ea', text: '#107C10', border: '#107C10' };
+    }
+    if (level === 'review' || level === 'pending') {
+        return { background: '#fffbe6', text: '#b88600', border: '#FFB900' };
+    }
+    if (level === 'failed' || level === 'fail' || level === 'rejected') {
+        return { background: '#fde7e9', text: '#d13438', border: '#d13438' };
+    }
+    return { background: '#f4f4f6', text: '#666', border: '#e1dfdd' };
+};
+
 // Helper to calculate age from a date string
 const calculateAge = (dob: string): number => {
     const birthDate = new Date(dob);
@@ -93,11 +107,12 @@ const baseCardStyle = mergeStyles({
     boxSizing: 'border-box',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     fontFamily: 'Raleway, sans-serif',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-    overflow: 'hidden',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease, height 0.3s ease, z-index 0.2s ease',
+    overflow: 'visible',
+    zIndex: 1, // Default z-index for cards
     selectors: {
         ':hover': {
-            transform: 'translateY(-4px)',
+            transform: 'translateY(-2px)', // Reduced movement to avoid too much overlap
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         },
         // Show icon in full opacity on hover
@@ -188,12 +203,36 @@ const contentStyle = mergeStyles({
 // Animate in the links on card hover
 const cardWithLinksHover = mergeStyles({
     selectors: {
+        ':hover': {
+            zIndex: '10 !important', // Bring expanded card above others
+            boxShadow: '0 6px 20px rgba(0,0,0,0.2) !important', // Enhanced shadow when expanded
+            border: '1px solid #e1e5ea', // Subtle border when expanded
+            transform: 'translateY(-2px) !important', // Consistent with base hover
+        },
         ':hover .profileLink': {
             opacity: 1,
             pointerEvents: 'auto',
             height: '44px', // Animate in height for links
         },
+        ':hover .expandableContact': {
+            maxHeight: '250px',
+            opacity: 1,
+            padding: '8px',
+            marginTop: '4px',
+        },
     },
+});
+
+// Expandable contact section
+const expandableContactStyle = mergeStyles({
+    maxHeight: '0px',
+    opacity: 0,
+    overflow: 'hidden',
+    transition: 'max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease',
+    backgroundColor: '#f8f9fb',
+    border: '1px solid #e1e5ea',
+    padding: '0px',
+    marginTop: '0px',
 });
 
 // New style for profile link buttons - same size and behaviour as client type buttons
@@ -286,6 +325,21 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
+    
+    // Deal/Service info
+    const serviceDescription = (poid as any).service_description || (poid as any).ServiceDescription;
+    const dealAmount = (poid as any).amount || (poid as any).Amount || paymentAmount;
+    
+    // ID Verification fields
+    const checkResult = (poid as any).check_result || poid.check_result;
+    const pepSanctionsResult = (poid as any).pep_sanctions_result || poid.pep_sanctions_result || (poid as any).PEPAndSanctionsCheckResult;
+    const addressVerificationResult = (poid as any).address_verification_result || poid.address_verification_result || (poid as any).AddressVerificationResult;
+    const checkExpiry = (poid as any).check_expiry || poid.check_expiry || (poid as any).CheckExpiry;
+    const checkId = (poid as any).check_id || poid.check_id || (poid as any).EIDCheckId;
+    
+    const verificationColors = getVerificationColor(checkResult || '');
+    const pepColors = getVerificationColor(pepSanctionsResult || '');
+    const addressColors = getVerificationColor(addressVerificationResult || '');
     // --- End new fields ---
 
     return (
@@ -332,20 +386,151 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             }}
                             className="inlinePersonCompanyIcon"
                         />
+                        {checkResult && (
+                            <div
+                                style={{
+                                    padding: '2px 8px',
+                                    borderRadius: 0,
+                                    backgroundColor: verificationColors.background,
+                                    color: verificationColors.text,
+                                    border: `1px solid ${verificationColors.border}40`,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    marginLeft: 8,
+                                }}
+                            >
+                                {checkResult}
+                            </div>
+                        )}
                     </Stack>
-                    {/* Email, Phone */}
-                    <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                        {email && <Text variant="small" styles={{ root: { color: '#444' } }}>{email}</Text>}
-                        {phone && <Text variant="small" styles={{ root: { color: '#444' } }}>{phone}</Text>}
-                    </Stack>
-                    {/* Address */}
-                    {address && <Text variant="small" styles={{ root: { color: '#666' } }}>{address}</Text>}
-                    {/* ID Type and Numbers */}
-                    <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                        {idType && <Text variant="small" styles={{ root: { color: '#444' } }}>ID: {idType}</Text>}
-                        {passport && <Text variant="small" styles={{ root: { color: '#444' } }}>Passport: {passport}</Text>}
-                        {driversLicense && <Text variant="small" styles={{ root: { color: '#444' } }}>DL: {driversLicense}</Text>}
-                    </Stack>
+                    {/* Service Description and Amount */}
+                    {(serviceDescription || dealAmount) && (
+                        <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ marginBottom: '4px' }}>
+                            {serviceDescription && (
+                                <Text variant="small" styles={{ root: { color: '#3690CE', fontWeight: 600, fontSize: '0.85rem' } }}>
+                                    {serviceDescription}
+                                </Text>
+                            )}
+                            {dealAmount && (
+                                <Text variant="small" styles={{ root: { color: '#107C10', fontWeight: 700, fontSize: '0.85rem' } }}>
+                                    £{dealAmount}
+                                </Text>
+                            )}
+                        </Stack>
+                    )}
+                    {/* Expandable Contact & ID Details */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <Icon iconName="ContactInfo" styles={{ root: { fontSize: '14px', color: '#666' } }} />
+                        <Text variant="small" styles={{ root: { color: '#666', fontSize: '0.8rem' } }}>
+                            Contact & ID Details
+                        </Text>
+                    </div>
+                    <div className={expandableContactStyle + ' expandableContact'}>
+                        <Stack tokens={{ childrenGap: 6 }}>
+                            {/* Contact Information */}
+                            {(email || phone) && (
+                                <Stack tokens={{ childrenGap: 4 }}>
+                                    {email && (
+                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
+                                            📧 {email}
+                                        </Text>
+                                    )}
+                                    {phone && (
+                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
+                                            📞 {phone}
+                                        </Text>
+                                    )}
+                                </Stack>
+                            )}
+                            {/* Address */}
+                            {address && (
+                                <Text variant="xSmall" styles={{ root: { color: '#666', fontSize: '0.75rem', fontStyle: 'italic' } }}>
+                                    📍 {address}
+                                </Text>
+                            )}
+                            {/* ID Documents */}
+                            {(passport || driversLicense || idType) && (
+                                <Stack tokens={{ childrenGap: 4 }}>
+                                    {idType && (
+                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
+                                            🆔 ID Type: {idType}
+                                        </Text>
+                                    )}
+                                    {passport && (
+                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'monospace' } }}>
+                                            🛂 Passport: {passport}
+                                        </Text>
+                                    )}
+                                    {driversLicense && (
+                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'monospace' } }}>
+                                            🚗 License: {driversLicense}
+                                        </Text>
+                                    )}
+                                </Stack>
+                            )}
+                        </Stack>
+                    </div>
+                    {/* ID Verification Status - Integrated */}
+                    {(pepSanctionsResult || addressVerificationResult) && (
+                        <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                            {pepSanctionsResult && (
+                                <div style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: pepColors.background,
+                                    color: pepColors.text,
+                                    border: `1px solid ${pepColors.border}30`,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="Shield" styles={{ root: { fontSize: '10px' } }} />
+                                    PEP: {pepSanctionsResult}
+                                </div>
+                            )}
+                            {addressVerificationResult && (
+                                <div style={{
+                                    padding: '2px 6px',
+                                    backgroundColor: addressColors.background,
+                                    color: addressColors.text,
+                                    border: `1px solid ${addressColors.border}30`,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}>
+                                    <Icon iconName="MapPin" styles={{ root: { fontSize: '10px' } }} />
+                                    Address: {addressVerificationResult}
+                                </div>
+                            )}
+                        </Stack>
+                    )}
+                    {/* Verification expiry and ID - subtle info */}
+                    {(checkExpiry || checkId) && (
+                        <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                            {checkExpiry && (
+                                <Text variant="xSmall" styles={{ root: { 
+                                    color: getExpiryCountdown(checkExpiry) === 'expired' ? '#d13438' : '#888',
+                                    fontStyle: 'italic',
+                                    fontSize: '0.7rem'
+                                }}}>
+                                    {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
+                                </Text>
+                            )}
+                            {checkId && (
+                                <Text variant="xSmall" styles={{ root: { 
+                                    color: '#aaa', 
+                                    fontFamily: 'monospace', 
+                                    fontSize: '0.65rem',
+                                    letterSpacing: '0.5px'
+                                }}}>
+                                    #{checkId.length > 12 ? `${checkId.substring(0, 12)}...` : checkId}
+                                </Text>
+                            )}
+                        </Stack>
+                    )}
                     {/* Payment info if present */}
                     {(paymentResult || paymentAmount || paymentProduct) && (
                         <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
@@ -360,114 +545,6 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                         {matterId && <Text variant="small" styles={{ root: { color: '#888' } }}>Matter: {matterId}</Text>}
                         {prospectId && <Text variant="small" styles={{ root: { color: '#888' } }}>Prospect: {prospectId}</Text>}
                     </Stack>
-                    {/* Verification Status - as before */}
-                    {poid.check_result && (
-                        <Stack tokens={{ childrenGap: 4 }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '4px 8px',
-                                    backgroundColor: '#f7f7fa',
-                                    borderLeft:
-                                        poid.check_result && poid.check_result.toLowerCase() === 'passed'
-                                            ? '3px solid #107C10'
-                                        : poid.check_result && poid.check_result.toLowerCase() === 'review'
-                                            ? '3px solid #FFB900'
-                                            : '3px solid #D83B01',
-                                    marginTop: '4px',
-                                    marginBottom: '2px',
-                                    fontWeight: 400,
-                                    fontSize: '0.9rem',
-                                    color:
-                                        poid.check_result && poid.check_result.toLowerCase() === 'passed'
-                                            ? '#107C10'
-                                        : poid.check_result && poid.check_result.toLowerCase() === 'review'
-                                            ? '#FFB900'
-                                            : '#D83B01',
-                                    width: '100%'
-                                }}
-                            >
-                                <span style={{ display: 'flex', alignItems: 'center' }}>
-                                    <Icon
-                                        iconName={
-                                            poid.check_result && poid.check_result.toLowerCase() === 'passed'
-                                                ? 'CompletedSolid'
-                                                : 'Warning'
-                                        }
-                                        styles={{
-                                            root: {
-                                                marginRight: 4,
-                                                fontSize: '9px',
-                                                color:
-                                                    poid.check_result && poid.check_result.toLowerCase() === 'passed'
-                                                        ? '#107C10'
-                                                    : poid.check_result && poid.check_result.toLowerCase() === 'review'
-                                                        ? '#FFB900'
-                                                        : '#D83B01',
-                                            },
-                                        }}
-                                    />
-                                    <span
-                                        style={{
-                                            color:
-                                                poid.check_result && poid.check_result.toLowerCase() === 'passed'
-                                                    ? '#107C10'
-                                                : poid.check_result && poid.check_result.toLowerCase() === 'review'
-                                                    ? '#FFB900'
-                                                    : '#D83B01',
-                                        }}
-                                    >
-                                        ID Verification: {poid.check_result}
-                                    </span>
-                                </span>
-                                {poid.check_expiry && (
-                                    <span style={{ fontWeight: 400, fontSize: '0.85em', color: '#555', fontStyle: 'italic', marginLeft: 12 }}>
-                                        {getExpiryCountdown(poid.check_expiry)}
-                                    </span>
-                                )}
-                            </div>
-                            {(poid.check_expiry || poid.check_id) && (
-                                <div
-                                    style={{
-                                        background: '#f7f7fa',
-                                        border: '1px solid #e1dfdd',
-                                        borderRadius: 4,
-                                        padding: '6px 12px',
-                                        margin: '10px 0 10px 0',
-                                        fontSize: '0.85rem',
-                                        color: '#444',
-                                        display: 'block',
-                                    }}
-                                >
-                                    <div>
-                                        <b>Date:</b> {poid.check_expiry ? new Date(poid.check_expiry).toLocaleDateString() : '—'}
-                                    </div>
-                                    {poid.check_id && (
-                                        <>
-                                            <div style={{ borderTop: '1px solid #e1dfdd', margin: '6px 0' }} />
-                                            <div>
-                                                <b>ID:</b> {poid.check_id}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', marginLeft: 0, marginTop: 0, marginBottom: 0, width: '100%' }}>
-                                {poid.pep_sanctions_result && (
-                                    <span style={verificationButtonStyle(poid.pep_sanctions_result.toLowerCase())}>
-                                        PEP & Sanctions: {poid.pep_sanctions_result}
-                                    </span>
-                                )}
-                                {poid.address_verification_result && (
-                                    <span style={verificationButtonStyle(poid.address_verification_result.toLowerCase())}>
-                                        Address: {poid.address_verification_result}
-                                    </span>
-                                )}
-                            </div>
-                        </Stack>
-                    )}
                 </Stack>
             </div>
             <div className={bottomContainerStyle}>

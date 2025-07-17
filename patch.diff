@@ -1,39 +1,187 @@
-diff --git a/server/routes/matters.js b/server/routes/matters.js
-index 92e5401f0a0d6fd016cebe6189f31fe1f94e8f36..8860d7dd13e3d26b41b3773e495ec9688629a156 100644
---- a/server/routes/matters.js
-+++ b/server/routes/matters.js
-@@ -1,29 +1,32 @@
- const express = require('express');
- const { getSecret } = require('../utils/getSecret');
+diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
+index 35baf79cb83ee79ae969010a5826e277061181f2..6350a785d2a5638aea7d4d49db0f6fd329c8bc32 100644
+--- a/src/tabs/instructions/PoidCard.tsx
++++ b/src/tabs/instructions/PoidCard.tsx
+@@ -38,50 +38,64 @@ function getExpiryCountdown(expiryDateString: string | undefined): string | null
+     // Set to midnight (00:00) the day after expiry
+     const expiryMidnight = new Date(expiryDate);
+     expiryMidnight.setDate(expiryMidnight.getDate() + 1);
+     expiryMidnight.setHours(0, 0, 0, 0);
+     const now = new Date();
+     let diff = expiryMidnight.getTime() - now.getTime();
+     if (diff <= 0) return 'expired';
+     // Calculate months, days, hours
+     const msPerHour = 1000 * 60 * 60;
+     const msPerDay = msPerHour * 24;
+     // Months: rough calculation (30d per month)
+     const months = Math.floor(diff / (msPerDay * 30));
+     diff -= months * msPerDay * 30;
+     const days = Math.floor(diff / msPerDay);
+     diff -= days * msPerDay;
+     const hours = Math.floor(diff / msPerHour);
+     // Format string
+     let parts = [];
+     if (months > 0) parts.push(`${months}m`);
+     if (days > 0) parts.push(`${days}d`);
+     if (hours > 0) parts.push(`${hours}h`);
+     if (parts.length === 0) parts.push('<1h');
+     return `expires in ${parts.join(' ')}`;
+ }
  
- const router = express.Router();
- 
- router.get('/:id', async (req, res) => {
-     const { id } = req.params;
-     try {
-         const initials = (process.env.CLIO_USER_INITIALS || 'lz').toLowerCase();
-         const cid = await getSecret(`${initials}-clio-v1-clientid`);
-         const cs = await getSecret(`${initials}-clio-v1-clientsecret`);
-         const rt = await getSecret(`${initials}-clio-v1-refreshtoken`);
--        const tokenUrl = `https://app.clio.com/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
-+        // Use the EU endpoint by default to match credentials
-+        const clioBase = process.env.CLIO_BASE || 'https://eu.app.clio.com';
-+        const tokenUrl = `${clioBase}/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
-         const tr = await fetch(tokenUrl, { method: 'POST' });
-         if (!tr.ok) throw new Error(await tr.text());
-         const { access_token } = await tr.json();
--        const resp = await fetch(`https://app.clio.com/api/v4/matters/${id}`, {
-+        const clioApiBase = process.env.CLIO_API_BASE || `${clioBase}/api/v4`;
-+        const resp = await fetch(`${clioApiBase}/matters/${id}`, {
-             headers: { Authorization: `Bearer ${access_token}` }
-         });
-         if (!resp.ok) throw new Error(await resp.text());
-         const data = await resp.json();
-         res.json({ display_number: data?.data?.display_number || '' });
-     } catch (err) {
-         console.error('Matter proxy failed', err);
-         res.status(500).json({ error: 'Failed to fetch matter' });
++const getVerificationColor = (result: string) => {
++    const level = result?.toLowerCase();
++    if (level === 'passed' || level === 'pass' || level === 'approved') {
++        return { background: '#e6f4ea', text: '#107C10', border: '#107C10' };
++    }
++    if (level === 'review' || level === 'pending') {
++        return { background: '#fffbe6', text: '#b88600', border: '#FFB900' };
++    }
++    if (level === 'failed' || level === 'fail' || level === 'rejected') {
++        return { background: '#fde7e9', text: '#d13438', border: '#d13438' };
++    }
++    return { background: '#f4f4f6', text: '#666', border: '#e1dfdd' };
++};
++
+ // Helper to calculate age from a date string
+ const calculateAge = (dob: string): number => {
+     const birthDate = new Date(dob);
+     const today = new Date();
+     let age = today.getFullYear() - birthDate.getFullYear();
+     const m = today.getMonth() - birthDate.getMonth();
+     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+         age--;
      }
- });
+     return age;
+ };
  
- module.exports = router;
+ interface PoidCardProps {
+     poid: POID;
+     selected: boolean;
+     onClick: () => void;
+     teamData?: TeamData[] | null;
+     companyName?: string; // invisible change 3: now passed from parent, not POID
+ }
+ 
+ // Updated card dimensions to fit nicely in a 2-column grid
+ const baseCardStyle = mergeStyles({
+     position: 'relative',
+     padding: '15px',
+     borderRadius: '0px',
+diff --git a/src/tabs/instructions/PoidCard.tsx b/src/tabs/instructions/PoidCard.tsx
+index 35baf79cb83ee79ae969010a5826e277061181f2..6350a785d2a5638aea7d4d49db0f6fd329c8bc32 100644
+--- a/src/tabs/instructions/PoidCard.tsx
++++ b/src/tabs/instructions/PoidCard.tsx
+@@ -264,96 +278,113 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData,
+     const dob = poid.date_of_birth;
+     const age = dob ? calculateAge(dob) : undefined;
+     const nationality = poid.nationality;
+     const nationalityAlpha2 = poid.nationality_iso || poid.country_code;
+     const email = (poid as any).email || (poid as any).Email;
+     const phone = (poid as any).phone || (poid as any).Phone;
+     // Defensive: POID type may use camelCase for some fields, fallback to those if needed
+     // Defensive: fallback to camelCase only if POID type allows index signature
+     const address = [
+         (poid as any).house_number || (poid as any).HouseNumber,
+         (poid as any).street || (poid as any).Street,
+         (poid as any).city || (poid as any).City,
+         (poid as any).county || (poid as any).County,
+         (poid as any).post_code || (poid as any).Postcode,
+         (poid as any).country || (poid as any).Country
+     ].filter(Boolean).join(', ');
+     const idType = (poid as any).id_type || (poid as any).IdType;
+     const passport = (poid as any).passport_number || (poid as any).PassportNumber;
+     const driversLicense = (poid as any).drivers_license_number || (poid as any).DriversLicenseNumber;
+     const instructionRef = (poid as any).instruction_ref || (poid as any).InstructionRef;
+     const matterId = (poid as any).matter_id || (poid as any).MatterId;
+     const prospectId = (poid as any).prospect_id || (poid as any).ProspectId;
+     const paymentResult = (poid as any).payment_result || (poid as any).PaymentResult;
+     const paymentAmount = (poid as any).payment_amount || (poid as any).PaymentAmount;
+     const paymentProduct = (poid as any).payment_product || (poid as any).PaymentProduct;
++    const verificationColors = getVerificationColor((poid as any).check_result || '');
+     // --- End new fields ---
+ 
+     return (
+         <div onClick={onClick} className={cardStyle}>
+             <div className={contentStyle}>
+                 <Stack tokens={{ childrenGap: 8 }}>
+                     {/* Name and Company */}
+                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ width: '100%' }}>
+                         <Text
+                             variant="mediumPlus"
+                             styles={{
+                                 root: {
+                                     fontWeight: 700,
+                                     color: colours.highlight,
+                                     fontFamily: 'Raleway, sans-serif',
+                                     lineHeight: '1.2',
+                                 },
+                             }}
+                         >
+                             {companyName && (
+                                 <>
+                                     <span style={{ color: '#666', fontWeight: 600, marginRight: '4px' }}>{companyName}</span>
+                                     <span style={{ color: '#999', marginRight: '4px' }}>|</span>
+                                 </>
+                             )}
+                             {fullName}
+                         </Text>
+                         {age !== undefined && (
+                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{age} yrs</Text>
+                         )}
+                         {nationalityAlpha2 && (
+                             <Text variant="small" styles={{ root: { fontFamily: 'Raleway, sans-serif', lineHeight: '1.2', color: '#555' } }}>{nationalityAlpha2}</Text>
+                         )}
+                         <div style={{ flex: 1 }} />
+                         <Icon
+                             iconName={backgroundIconName}
+                             style={{
+                                 fontSize: 22,
+                                 opacity: 0.3,
+                                 transition: 'opacity 0.2s',
+                                 color: colours.highlight,
+                                 marginLeft: 8,
+                                 verticalAlign: 'middle',
+                             }}
+                             className="inlinePersonCompanyIcon"
+                         />
++                        {poid.check_result && (
++                            <div
++                                style={{
++                                    padding: '2px 8px',
++                                    borderRadius: 0,
++                                    backgroundColor: verificationColors.background,
++                                    color: verificationColors.text,
++                                    border: `1px solid ${verificationColors.border}40`,
++                                    fontSize: '0.75rem',
++                                    fontWeight: 600,
++                                    marginLeft: 8,
++                                }}
++                            >
++                                {poid.check_result}
++                            </div>
++                        )}
+                     </Stack>
+                     {/* Email, Phone */}
+                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                         {email && <Text variant="small" styles={{ root: { color: '#444' } }}>{email}</Text>}
+                         {phone && <Text variant="small" styles={{ root: { color: '#444' } }}>{phone}</Text>}
+                     </Stack>
+                     {/* Address */}
+                     {address && <Text variant="small" styles={{ root: { color: '#666' } }}>{address}</Text>}
+                     {/* ID Type and Numbers */}
+                     <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                         {idType && <Text variant="small" styles={{ root: { color: '#444' } }}>ID: {idType}</Text>}
+                         {passport && <Text variant="small" styles={{ root: { color: '#444' } }}>Passport: {passport}</Text>}
+                         {driversLicense && <Text variant="small" styles={{ root: { color: '#444' } }}>DL: {driversLicense}</Text>}
+                     </Stack>
+                     {/* Payment info if present */}
+                     {(paymentResult || paymentAmount || paymentProduct) && (
+                         <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                             {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555' } }}>Payment: {paymentResult}</Text>}
+                             {paymentAmount && <Text variant="small" styles={{ root: { color: '#444' } }}>£{paymentAmount}</Text>}
+                             {paymentProduct && <Text variant="small" styles={{ root: { color: '#444' } }}>{paymentProduct}</Text>}
+                         </Stack>
+                     )}
+                     {/* Instruction/Deal IDs for traceability */}
+                     <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                         {instructionRef && <Text variant="small" styles={{ root: { color: '#888' } }}>Ref: {instructionRef}</Text>}
