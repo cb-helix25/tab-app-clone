@@ -45,6 +45,10 @@ Copy-Item -Path "server\server.js" -Destination "$deployDir\server.js" -Force
 Copy-Item -Path "server\routes" -Destination "$deployDir\routes" -Recurse -Force
 Copy-Item -Path "server\utils" -Destination "$deployDir\utils" -Recurse -Force
 Copy-Item -Path "server\web.config" -Destination "$deployDir\web.config" -Force
+# Include shared merge field schema required by CCL routes
+$schemaDir = Join-Path $deployDir 'src\app\functionality'
+New-Item -ItemType Directory -Path $schemaDir -Force | Out-Null
+Copy-Item -Path "src\app\functionality\cclSchema.js" -Destination $schemaDir -Force
 
 Write-Host "Zipping files for deploy"
 Compress-Archive -Path (Join-Path $deployDir '*') -DestinationPath $zipPath -Force

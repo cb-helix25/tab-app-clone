@@ -237,15 +237,21 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
         /* POID grid container animation */
         .poid-grid {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* Ensure all POID cards have consistent dimensions */
-        .poid-grid > div {
-            min-height: 180px;
-            max-height: 220px;
-            display: flex;
-            flex-direction: column;
-        }
+        }                        /* Ensure all POID cards have consistent dimensions */
+                        .poid-grid {
+                            display: grid;
+                            grid-template-columns: repeat(2, minmax(250px, 1fr));
+                            gap: 24px;
+                            grid-auto-rows: auto; /* Allow rows to adjust to content height */
+                            align-items: start; /* Align items to start to prevent stretching */
+                        }
+                        
+                        .poid-grid > div {
+                            min-height: 180px;
+                            display: flex;
+                            flex-direction: column;
+                            /* Remove max-height constraint to allow expansion */
+                        }
         
         .poid-grid > div > * {
             flex: 1;
@@ -373,43 +379,12 @@ const PoidSelectionStep: React.FC<PoidSelectionStepProps> = ({
                     <div 
                         style={{ 
                             width: '100%',
-                            display: 'grid',
-                            gridTemplateColumns: (() => {
-                                const hasSelection = selectedPoidIds.length > 0;
-                                
-                                // For other client types - keep standard layout to prevent visual jumping
-                                return 'repeat(2, minmax(250px, 1fr))';
-                                
-                                // Default: standard 2-column layout for selection
-                                return onlyShowPreselected ? 'repeat(2, minmax(250px, 1fr))' : 'repeat(2, minmax(250px, 1fr))';
-                            })(),
-                            gap: (() => {
-                                // For other client types - keep normal spacing to prevent visual jumping
-                                return '24px';
-                            })(),
-                            justifyContent: (() => {
-                                // For other client types - keep normal alignment to prevent visual jumping
-                                return 'space-between';
-                            })(),
-                            padding: (() => {
-                                // For other client types - keep normal padding to prevent visual jumping
-                                return '12px';
-                            })(),
                             overflow: 'visible',
                             border: '1px solid #e3e8ef',
                             borderRadius: '4px',
                             background: '#fafafa',
                             transition: 'all 0.4s ease-out',
-                            // Make container height adjust to content when selections are made
-                            minHeight: (() => {
-                                // For other client types - keep normal height to prevent visual jumping
-                                return undefined;
-                            })(),
-                            // Add max height for smooth animation
-                            maxHeight: (() => {
-                                // For other client types - keep normal max height to prevent visual jumping
-                                return 'none';
-                            })()
+                            padding: '12px',
                         }} 
                         className="poid-grid" 
                         ref={poidGridRef as any}

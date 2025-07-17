@@ -21,19 +21,24 @@ const VALUE_OPTIONS = {
     "Over £20m": 244817
 };
 
-const teamPath = path.join(__dirname, '..', '..', 'data', 'team-sql-data.json');
 let teamData = [];
-try {
-    teamData = JSON.parse(fs.readFileSync(teamPath, 'utf-8'));
-} catch (err) {
-    console.warn('Failed to load team data', err);
+const teamPath = path.join(__dirname, '..', '..', 'data', 'team-sql-data.json');
+if (fs.existsSync(teamPath)) {
+    try {
+        teamData = JSON.parse(fs.readFileSync(teamPath, 'utf-8'));
+    } catch (err) {
+        console.warn('Invalid team data JSON:', err);
+    }
 }
-const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
+
 let riskData = [];
-try {
-    riskData = JSON.parse(fs.readFileSync(riskPath, 'utf-8'));
-} catch (err) {
-    console.warn('Failed to load risk data', err);
+const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
+if (fs.existsSync(riskPath)) {
+    try {
+        riskData = JSON.parse(fs.readFileSync(riskPath, 'utf-8'));
+    } catch (err) {
+        console.warn('Invalid risk data JSON:', err);
+    }
 }
 
 function getClioId(fullName) {

@@ -218,8 +218,20 @@ const cardWithLinksHover = mergeStyles({
             maxHeight: '250px',
             opacity: 1,
             padding: '8px',
-            marginTop: '4px',
+            marginTop: '0px', // No gap for visual connection
         },
+        ':hover .chevron-indicator': {
+            transform: 'rotate(180deg)',
+        },
+        ':hover .expandableContact .contact-item': {
+            animation: 'cascadeIn 0.4s ease-out forwards',
+        },
+        ':hover .expandableContact .contact-item:nth-child(1)': { animationDelay: '0.05s' },
+        ':hover .expandableContact .contact-item:nth-child(2)': { animationDelay: '0.1s' },
+        ':hover .expandableContact .contact-item:nth-child(3)': { animationDelay: '0.15s' },
+        ':hover .expandableContact .contact-item:nth-child(4)': { animationDelay: '0.2s' },
+        ':hover .expandableContact .contact-item:nth-child(5)': { animationDelay: '0.25s' },
+        ':hover .expandableContact .contact-item:nth-child(6)': { animationDelay: '0.3s' },
     },
 });
 
@@ -228,11 +240,19 @@ const expandableContactStyle = mergeStyles({
     maxHeight: '0px',
     opacity: 0,
     overflow: 'hidden',
-    transition: 'max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease',
+    transition: 'max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease',
     backgroundColor: '#f8f9fb',
     border: '1px solid #e1e5ea',
+    borderTop: 'none', // Connect seamlessly to the header
     padding: '0px',
     marginTop: '0px',
+    selectors: {
+        '.contact-item': {
+            opacity: 0,
+            transform: 'translateY(8px)',
+            transition: 'none', // Disable default transitions for cascade effect
+        }
+    }
 });
 
 // New style for profile link buttons - same size and behaviour as client type buttons
@@ -403,70 +423,90 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             </div>
                         )}
                     </Stack>
-                    {/* Service Description and Amount */}
-                    {(serviceDescription || dealAmount) && (
-                        <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center" style={{ marginBottom: '4px' }}>
-                            {serviceDescription && (
-                                <Text variant="small" styles={{ root: { color: '#3690CE', fontWeight: 600, fontSize: '0.85rem' } }}>
-                                    {serviceDescription}
-                                </Text>
-                            )}
-                            {dealAmount && (
-                                <Text variant="small" styles={{ root: { color: '#107C10', fontWeight: 700, fontSize: '0.85rem' } }}>
-                                    £{dealAmount}
-                                </Text>
-                            )}
-                        </Stack>
-                    )}
-                    {/* Expandable Contact & ID Details */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <Icon iconName="ContactInfo" styles={{ root: { fontSize: '14px', color: '#666' } }} />
-                        <Text variant="small" styles={{ root: { color: '#666', fontSize: '0.8rem' } }}>
-                            Contact & ID Details
+                    {/* Instruction Ref - right under the name */}
+                    {instructionRef && (
+                        <Text variant="xSmall" styles={{ root: { 
+                            color: '#aaa', 
+                            fontFamily: 'Raleway, sans-serif', 
+                            fontSize: '0.65rem',
+                            letterSpacing: '0.5px'
+                        }}}>
+                            {instructionRef}
                         </Text>
+                    )}
+                    {/* Service Description and Amount - REMOVED to avoid duplication */}
+                    {/* Expandable Contact & ID Details */}
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: '8px', 
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        border: '1px solid #e1e5ea',
+                        backgroundColor: '#f8f9fb',
+                        marginBottom: '0px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Icon iconName="ContactInfo" styles={{ root: { fontSize: '14px', color: '#666' } }} />
+                            <Text variant="small" styles={{ root: { color: '#666', fontSize: '0.8rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                Contact & ID Details
+                            </Text>
+                        </div>
+                        <Icon iconName="ChevronDown" styles={{ root: { fontSize: '12px', color: '#666', transition: 'transform 0.3s ease' } }} className="chevron-indicator" />
                     </div>
                     <div className={expandableContactStyle + ' expandableContact'}>
                         <Stack tokens={{ childrenGap: 6 }}>
                             {/* Contact Information */}
-                            {(email || phone) && (
-                                <Stack tokens={{ childrenGap: 4 }}>
-                                    {email && (
-                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
-                                            📧 {email}
-                                        </Text>
-                                    )}
-                                    {phone && (
-                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
-                                            📞 {phone}
-                                        </Text>
-                                    )}
-                                </Stack>
+                            {email && (
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Icon iconName="Mail" styles={{ root: { fontSize: '12px', color: '#666' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                        {email}
+                                    </Text>
+                                </div>
+                            )}
+                            {phone && (
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Icon iconName="Phone" styles={{ root: { fontSize: '12px', color: '#666' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                        {phone}
+                                    </Text>
+                                </div>
                             )}
                             {/* Address */}
                             {address && (
-                                <Text variant="xSmall" styles={{ root: { color: '#666', fontSize: '0.75rem', fontStyle: 'italic' } }}>
-                                    📍 {address}
-                                </Text>
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                                    <Icon iconName="MapPin" styles={{ root: { fontSize: '12px', color: '#666', marginTop: '1px' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#666', fontSize: '0.75rem', fontStyle: 'italic', fontFamily: 'Raleway, sans-serif' } }}>
+                                        {address}
+                                    </Text>
+                                </div>
                             )}
                             {/* ID Documents */}
-                            {(passport || driversLicense || idType) && (
-                                <Stack tokens={{ childrenGap: 4 }}>
-                                    {idType && (
-                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem' } }}>
-                                            🆔 ID Type: {idType}
-                                        </Text>
-                                    )}
-                                    {passport && (
-                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'monospace' } }}>
-                                            🛂 Passport: {passport}
-                                        </Text>
-                                    )}
-                                    {driversLicense && (
-                                        <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'monospace' } }}>
-                                            🚗 License: {driversLicense}
-                                        </Text>
-                                    )}
-                                </Stack>
+                            {idType && (
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Icon iconName="ContactCard" styles={{ root: { fontSize: '12px', color: '#666' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                        ID Type: {idType}
+                                    </Text>
+                                </div>
+                            )}
+                            {passport && (
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Icon iconName="Permissions" styles={{ root: { fontSize: '12px', color: '#666' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                        Passport: {passport}
+                                    </Text>
+                                </div>
+                            )}
+                            {driversLicense && (
+                                <div className="contact-item" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Icon iconName="Car" styles={{ root: { fontSize: '12px', color: '#666' } }} />
+                                    <Text variant="xSmall" styles={{ root: { color: '#444', fontSize: '0.75rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                        License: {driversLicense}
+                                    </Text>
+                                </div>
                             )}
                         </Stack>
                     </div>
@@ -507,44 +547,51 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             )}
                         </Stack>
                     )}
-                    {/* Verification expiry and ID - subtle info */}
-                    {(checkExpiry || checkId) && (
-                        <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                            {checkExpiry && (
-                                <Text variant="xSmall" styles={{ root: { 
-                                    color: getExpiryCountdown(checkExpiry) === 'expired' ? '#d13438' : '#888',
-                                    fontStyle: 'italic',
-                                    fontSize: '0.7rem'
-                                }}}>
-                                    {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
-                                </Text>
-                            )}
-                            {checkId && (
-                                <Text variant="xSmall" styles={{ root: { 
-                                    color: '#aaa', 
-                                    fontFamily: 'monospace', 
-                                    fontSize: '0.65rem',
-                                    letterSpacing: '0.5px'
-                                }}}>
-                                    #{checkId.length > 12 ? `${checkId.substring(0, 12)}...` : checkId}
-                                </Text>
-                            )}
-                        </Stack>
+                    {/* Correlation ID - on its own line */}
+                    {checkId && (
+                        <Text variant="xSmall" styles={{ root: { 
+                            color: '#aaa', 
+                            fontFamily: 'Raleway, sans-serif', 
+                            fontSize: '0.65rem',
+                            letterSpacing: '0.5px'
+                        }}}>
+                            #{checkId}
+                        </Text>
+                    )}
+                    {/* Verification expiry - subtle info */}
+                    {checkExpiry && (
+                        <Text variant="xSmall" styles={{ root: { 
+                            color: getExpiryCountdown(checkExpiry) === 'expired' ? '#d13438' : '#888',
+                            fontStyle: 'italic',
+                            fontSize: '0.7rem',
+                            fontFamily: 'Raleway, sans-serif'
+                        }}}>
+                            {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
+                        </Text>
                     )}
                     {/* Payment info if present */}
-                    {(paymentResult || paymentAmount || paymentProduct) && (
-                        <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                            {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555' } }}>Payment: {paymentResult}</Text>}
-                            {paymentAmount && <Text variant="small" styles={{ root: { color: '#444' } }}>£{paymentAmount}</Text>}
-                            {paymentProduct && <Text variant="small" styles={{ root: { color: '#444' } }}>{paymentProduct}</Text>}
+                    {(paymentResult || paymentAmount || paymentProduct || serviceDescription || dealAmount) && (
+                        <Stack tokens={{ childrenGap: 4 }} verticalAlign="center">
+                            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                                {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555', fontFamily: 'Raleway, sans-serif' } }}>Payment: {paymentResult}</Text>}
+                            </Stack>
+                            {(serviceDescription || dealAmount) && (
+                                <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                                    {serviceDescription && (
+                                        <Text variant="small" styles={{ root: { color: '#3690CE', fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                            {serviceDescription}
+                                        </Text>
+                                    )}
+                                    {dealAmount && (
+                                        <Text variant="small" styles={{ root: { color: '#107C10', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                            £{dealAmount}
+                                        </Text>
+                                    )}
+                                </Stack>
+                            )}
                         </Stack>
                     )}
-                    {/* Instruction/Deal IDs for traceability */}
-                    <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                        {instructionRef && <Text variant="small" styles={{ root: { color: '#888' } }}>Ref: {instructionRef}</Text>}
-                        {matterId && <Text variant="small" styles={{ root: { color: '#888' } }}>Matter: {matterId}</Text>}
-                        {prospectId && <Text variant="small" styles={{ root: { color: '#888' } }}>Prospect: {prospectId}</Text>}
-                    </Stack>
+                    {/* Instruction/Deal IDs for traceability - REMOVED, moved up with name */}
                 </Stack>
             </div>
             <div className={bottomContainerStyle}>
@@ -557,6 +604,17 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
             <style>{`
                 .poid-card:hover .inlinePersonCompanyIcon {
                     opacity: 1 !important;
+                }
+                
+                @keyframes cascadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(8px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
                 }
             `}</style>
         </div>
