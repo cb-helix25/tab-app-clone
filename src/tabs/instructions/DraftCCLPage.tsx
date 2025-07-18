@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Stack, PrimaryButton, Dropdown, IDropdownOption } from '@fluentui/react';
 import { InstructionData, CCLJson, UserData } from '../../app/functionality/types';
 import localUserData from '../../localData/localUserData.json';
-import UnifiedInstructionCCLEditor from './components/UnifiedInstructionCCLEditor';
+import HelixInstructionCCLDocumentEditor from './components/HelixInstructionCCLDocumentEditor';
 import { dashboardTokens } from './componentTokens';
 import '../../app/styles/MatterOpeningCard.css';
 
@@ -110,7 +110,7 @@ const DraftCCLPage: React.FC<DraftCCLPageProps> = ({
                     <h3 className="step-title">Client Care Letter</h3>
                 </div>
                 <div className="step-content">
-                    <UnifiedInstructionCCLEditor
+                    <HelixInstructionCCLDocumentEditor
                         initialContent={JSON.stringify(state.draftJson)}
                         initialEmail={{
                             to: inst?.Client?.Email || '',
