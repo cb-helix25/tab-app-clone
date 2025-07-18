@@ -99,6 +99,15 @@ router.post('/', async (req, res) => {
         }
 
         // 5. Build matter payload
+        const responsibleId = getClioId(formData.team_assignments.fee_earner);
+        const originatingId = getClioId(formData.team_assignments.originating_solicitor);
+
+        if (!responsibleId) {
+            throw new Error(`Responsible solicitor not found for ${formData.team_assignments.fee_earner}`);
+        }
+        if (!originatingId) {
+            throw new Error(`Originating solicitor not found for ${formData.team_assignments.originating_solicitor}`);
+        }
         const payload = {
             data: {
                 billable: true,
@@ -106,8 +115,8 @@ router.post('/', async (req, res) => {
                 client_reference: instruction_ref,
                 description,
                 practice_area: { id: PRACTICE_AREAS[practice_area] },
-                responsible_attorney: { id: getClioId(formData.team_assignments.fee_earner) },
-                originating_attorney: { id: getClioId(formData.team_assignments.originating_solicitor) },
+                responsible_attorney: { id: responsibleId },
+                originating_attorney: { id: originatingId },
                 status: 'Open',
                 risk_result: getRiskResult(instruction_ref),
                 custom_field_values: cf
