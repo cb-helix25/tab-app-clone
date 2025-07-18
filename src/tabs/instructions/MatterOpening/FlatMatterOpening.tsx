@@ -441,6 +441,21 @@ const handleClearAll = () => {
         return found ? found['Clio ID'] || '' : '';
     }
 
+    // Helper to get initials from full name via team data
+    function getInitialsFromName(name: string, teamData: any[]): string {
+        if (!name) return '';
+        const found = teamData.find(t => {
+            const full = (t['Full Name'] || `${t.First || ''} ${t.Last || ''}`).trim();
+            return full.toLowerCase() === name.toLowerCase();
+        });
+        if (found && found.Initials) return found.Initials;
+        return name
+            .split(' ')
+            .filter(Boolean)
+            .map(part => part[0].toUpperCase())
+            .join('');
+    }
+
     // Determine requesting user nickname based on environment
     const requestingUserNickname =
         process.env.NODE_ENV === 'production'
@@ -742,7 +757,9 @@ const handleClearAll = () => {
                 fee_earner: teamMember,
                 supervising_partner: supervisingPartner,
                 originating_solicitor: originatingSolicitor,
-                requesting_user: requestingUserNickname
+                requesting_user: requestingUserNickname,
+                fee_earner_initials: getInitialsFromName(teamMember, teamData || localTeamDataJson),
+                originating_solicitor_initials: getInitialsFromName(originatingSolicitor, teamData || localTeamDataJson)
             },
             client_information: selectedClients,
             source_details: {

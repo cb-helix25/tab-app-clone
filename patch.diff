@@ -1,57 +1,145 @@
-diff --git a/server/routes/ccl.js b/server/routes/ccl.js
-index 588cec3a9525b64261025be18b1e8f38f4d3bf08..9d03f15be0418ade26e7d3e6e0f83d7e33b4f424 100644
---- a/server/routes/ccl.js
-+++ b/server/routes/ccl.js
-@@ -1,43 +1,50 @@
- const express = require('express');
- const path = require('path');
- const fs = require('fs');
- const { generateWordFromJson } = require('../utils/wordGenerator.js');
--const { tokens: cclTokens } = require('../../src/app/functionality/cclSchema');
-+const {
-+    tokens: cclTokens
-+} = require(path.join(process.cwd(), 'src', 'app', 'functionality', 'cclSchema.js'));
- const EXTRA_TOKENS = [
-     'and_or_intervals_eg_every_three_months',
-     'contact_details_for_marketing_opt_out',
-     'explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement',
-     'figure_or_range',
-     'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees',
-     'in_total_including_vat_or_for_the_next_steps_in_your_matter',
-     'instructions_link',
-     'link_to_preference_centre',
-     'may_will'
- ];
+diff --git a/src/tabs/instructions/components/UnifiedInstructionCCLEditor.tsx b/src/tabs/instructions/components/UnifiedInstructionCCLEditor.tsx
+index 7bdd5292ac68bbe22a32a59a57fd5966e736db80..6ae59f2daf153386f43a497e0a2c12b61659d5fc 100644
+--- a/src/tabs/instructions/components/UnifiedInstructionCCLEditor.tsx
++++ b/src/tabs/instructions/components/UnifiedInstructionCCLEditor.tsx
+@@ -1,118 +1,136 @@
+ import React, { useMemo, useState } from 'react';
+-import { Stack, TextField, Label, DefaultButton } from '@fluentui/react';
++import { Stack, TextField, Label, DefaultButton, FontIcon } from '@fluentui/react';
+ import EnhancedPitchBuilderFeatures from '../../enquiries/pitch-builder/EnhancedPitchBuilderFeatures';
+ import PlaceholderManager from './PlaceholderManager';
+ import EmailHeaderFields from '../../enquiries/pitch-builder/EmailHeaderFields';
+ import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
+ import { formContainerStyle } from '../../../CustomForms/BespokeForms';
++import ExperimentalAssistant from '../../enquiries/pitch-builder/ExperimentalAssistant';
  
--const localUsers = require('../../src/localData/localUserData.json');
-+let localUsers = [];
-+try {
-+    localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
-+} catch {
-+    localUsers = [];
-+}
- 
- function findUserByName(name) {
-     if (!name) return null;
-     return (localUsers || []).find(u => {
-         const full = u['Full Name'] || `${u.First} ${u.Last}`;
-         return full.toLowerCase() === name.toLowerCase();
-     }) || null;
+ interface UnifiedInstructionCCLEditorProps {
+     initialContent?: string;
+     initialEmail?: {
+         to: string;
+         cc: string;
+         bcc: string;
+         subject: string;
+     };
+     onSave?: (content: string, placeholders: Record<string, string>) => Promise<void>;
+     isDarkMode?: boolean;
  }
  
- async function mergeMatterFields(matterId, payload) {
-     const base = `http://localhost:${process.env.PORT || 8080}`;
-     let matterData = {};
-     if (matterId) {
-         try {
-             const resp = await fetch(`${base}/api/matters/${matterId}`);
-             if (resp.ok) {
-                 matterData = await resp.json();
-             }
-         } catch (err) {
-             console.warn('Matter lookup failed', err);
-         }
-     }
+ const PLACEHOLDER_REGEX = /\{\{(.*?)\}\}/g;
  
-     const flat = { ...payload };
-     const firstClient = flat.client_information?.[0] || {};
+ const UnifiedInstructionCCLEditor: React.FC<UnifiedInstructionCCLEditorProps> = ({
+     initialContent = '',
+     initialEmail = { to: '', cc: '', bcc: '', subject: '' },
+     onSave,
+     isDarkMode = false,
+ }) => {
+     const [content, setContent] = useState(initialContent);
+     const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
+     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
++    const [assistantOpen, setAssistantOpen] = useState(false);
+ 
+     const [to, setTo] = useState(initialEmail.to);
+     const [cc, setCc] = useState(initialEmail.cc);
+     const [bcc, setBcc] = useState(initialEmail.bcc);
+     const [subject, setSubject] = useState(initialEmail.subject);
+ 
+     const placeholders = useMemo(
+         () => Array.from(new Set(Array.from(content.matchAll(PLACEHOLDER_REGEX)).map(m => m[1]))),
+         [content]
+     );
+ 
+     const preview = useMemo(() => {
+         let p = content;
+         placeholders.forEach(ph => {
+             const val = placeholderValues[ph] || '';
+             p = p.replace(new RegExp(`\\{\\{${ph}\\}\}`, 'g'), val);
+         });
+         return p;
+     }, [content, placeholders, placeholderValues]);
+ 
++    const allComplete = useMemo(
++        () => placeholders.every(ph => (placeholderValues[ph] ?? '') !== ''),
++        [placeholders, placeholderValues]
++    );
++
+     const handleSave = async () => {
+         if (onSave) {
+             await onSave(content, placeholderValues);
+         }
+         setToast({ message: 'Document saved', type: 'success' });
+     };
+ 
+     return (
+         <Stack tokens={{ childrenGap: 16 }}>
+             <EnhancedPitchBuilderFeatures
+                 isDarkMode={isDarkMode}
+                 content={content}
+                 onContentChange={setContent}
+                 onSave={async () => {
+                     await handleSave();
+                 }}
+                 showToast={(message, type) => setToast({ message, type })}
+             />
+ 
+             <textarea
+                 style={{ width: '100%', minHeight: 160, padding: 8 }}
+                 value={content}
+                 onChange={e => setContent(e.target.value)}
+             />
+ 
+             {placeholders.length > 0 && (
+                 <Stack tokens={{ childrenGap: 8 }}>
+-                    <Label>Placeholders</Label>
++                    <Label>
++                        Placeholders
++                        {allComplete && (
++                            <FontIcon iconName="CheckMark" style={{ marginLeft: 6, color: '#107c10' }} />
++                        )}
++                    </Label>
+                     {placeholders.map(ph => (
+                         <TextField
+                             key={ph}
+                             label={ph}
+                             value={placeholderValues[ph] || ''}
+-                            onChange={(_, v) => setPlaceholderValues(pv => ({ ...pv, [ph]: v || '' }))}
++                            onChange={(_, v) =>
++                                setPlaceholderValues(pv => ({ ...pv, [ph]: v || '' }))
++                            }
+                         />
+                     ))}
+                 </Stack>
+             )}
+ 
+             <Label>Live Preview</Label>
+             <div style={{ border: '1px solid #ccc', padding: 8 }}>
+                 <PlaceholderManager value={preview} onChange={setContent} />
+             </div>
+ 
+             <EmailHeaderFields
+                 to={to}
+                 cc={cc}
+                 bcc={bcc}
+                 subject={subject}
+                 setTo={setTo}
+                 setCc={setCc}
+                 setBcc={setBcc}
+                 setSubject={setSubject}
+                 initialNotes={undefined}
+                 isDarkMode={isDarkMode}
+                 formContainerStyle={formContainerStyle}
+                 labelStyle=""
+             />
+ 
+-            <DefaultButton text="Save Document" onClick={handleSave} />
++            <Stack horizontal tokens={{ childrenGap: 8 }}>
++                <DefaultButton text="Save Document" onClick={handleSave} />
++                <DefaultButton text="Open Assistant" onClick={() => setAssistantOpen(true)} />
++            </Stack>
+ 
+             <OperationStatusToast visible={toast !== null} message={toast?.message || ''} type={toast?.type || 'info'} />
++            <ExperimentalAssistant isOpen={assistantOpen} onDismiss={() => setAssistantOpen(false)} emailText={preview} />
+         </Stack>
+     );
+ };
+ 
+ export default UnifiedInstructionCCLEditor;

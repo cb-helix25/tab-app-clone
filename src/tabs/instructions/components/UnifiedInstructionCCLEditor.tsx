@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Stack, TextField, Label, DefaultButton } from '@fluentui/react';
+import { Stack, TextField, Label, DefaultButton, FontIcon } from '@fluentui/react';
 import EnhancedPitchBuilderFeatures from '../../enquiries/pitch-builder/EnhancedPitchBuilderFeatures';
 import PlaceholderManager from './PlaceholderManager';
 import EmailHeaderFields from '../../enquiries/pitch-builder/EmailHeaderFields';
 import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
 import { formContainerStyle } from '../../../CustomForms/BespokeForms';
+import ExperimentalAssistant from '../../enquiries/pitch-builder/ExperimentalAssistant';
 
 interface UnifiedInstructionCCLEditorProps {
     initialContent?: string;
@@ -29,6 +30,7 @@ const UnifiedInstructionCCLEditor: React.FC<UnifiedInstructionCCLEditorProps> = 
     const [content, setContent] = useState(initialContent);
     const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({});
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const [assistantOpen, setAssistantOpen] = useState(false);
 
     const [to, setTo] = useState(initialEmail.to);
     const [cc, setCc] = useState(initialEmail.cc);
@@ -48,6 +50,11 @@ const UnifiedInstructionCCLEditor: React.FC<UnifiedInstructionCCLEditorProps> = 
         });
         return p;
     }, [content, placeholders, placeholderValues]);
+
+    const allComplete = useMemo(
+        () => placeholders.every(ph => (placeholderValues[ph] ?? '') !== ''),
+        [placeholders, placeholderValues]
+    );
 
     const handleSave = async () => {
         if (onSave) {
@@ -76,13 +83,20 @@ const UnifiedInstructionCCLEditor: React.FC<UnifiedInstructionCCLEditorProps> = 
 
             {placeholders.length > 0 && (
                 <Stack tokens={{ childrenGap: 8 }}>
-                    <Label>Placeholders</Label>
+                    <Label>
+                        Placeholders
+                        {allComplete && (
+                            <FontIcon iconName="CheckMark" style={{ marginLeft: 6, color: '#107c10' }} />
+                        )}
+                    </Label>
                     {placeholders.map(ph => (
                         <TextField
                             key={ph}
                             label={ph}
                             value={placeholderValues[ph] || ''}
-                            onChange={(_, v) => setPlaceholderValues(pv => ({ ...pv, [ph]: v || '' }))}
+                            onChange={(_, v) =>
+                                setPlaceholderValues(pv => ({ ...pv, [ph]: v || '' }))
+                            }
                         />
                     ))}
                 </Stack>
@@ -108,9 +122,13 @@ const UnifiedInstructionCCLEditor: React.FC<UnifiedInstructionCCLEditorProps> = 
                 labelStyle=""
             />
 
-            <DefaultButton text="Save Document" onClick={handleSave} />
+            <Stack horizontal tokens={{ childrenGap: 8 }}>
+                <DefaultButton text="Save Document" onClick={handleSave} />
+                <DefaultButton text="Open Assistant" onClick={() => setAssistantOpen(true)} />
+            </Stack>
 
             <OperationStatusToast visible={toast !== null} message={toast?.message || ''} type={toast?.type || 'info'} />
+            <ExperimentalAssistant isOpen={assistantOpen} onDismiss={() => setAssistantOpen(false)} emailText={preview} />
         </Stack>
     );
 };

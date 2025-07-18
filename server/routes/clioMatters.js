@@ -2,6 +2,7 @@ const express = require('express');
 const { getSecret } = require('../utils/getSecret');
 const fs = require('fs');
 const path = require('path');
+const teamLookup = require('../utils/teamLookup');
 
 const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
@@ -21,15 +22,6 @@ const VALUE_OPTIONS = {
     "Over £20m": 244817
 };
 
-let teamData = [];
-const teamPath = path.join(__dirname, '..', '..', 'data', 'team-sql-data.json');
-if (fs.existsSync(teamPath)) {
-    try {
-        teamData = JSON.parse(fs.readFileSync(teamPath, 'utf-8'));
-    } catch (err) {
-        console.warn('Invalid team data JSON:', err);
-    }
-}
 
 let riskData = [];
 const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
@@ -41,14 +33,6 @@ if (fs.existsSync(riskPath)) {
     }
 }
 
-function getClioId(fullName) {
-    if (!fullName) return null;
-    const found = teamData.find(t => {
-        const name = (t['Full Name'] || `${t.First || ''} ${t.Last || ''}`).trim().toLowerCase();
-        return name === fullName.toLowerCase();
-    });
-    return found ? String(found['Clio ID']) : null;
-}
 function getRiskResult(ref) {
     if (!ref) return null;
     const entry = riskData.find(r => (r.InstructionRef || '').toLowerCase() === ref.toLowerCase());
@@ -99,14 +83,17 @@ router.post('/', async (req, res) => {
         }
 
         // 5. Build matter payload
-        const responsibleId = getClioId(formData.team_assignments.fee_earner);
-        const originatingId = getClioId(formData.team_assignments.originating_solicitor);
+        const responsibleId = await teamLookup.getClioId(initials);
+        const originatingInitials = formData.team_assignments.originating_solicitor_initials;
+        const originatingId  = await teamLookup.getClioId(originatingInitials);
 
         if (!responsibleId) {
-            throw new Error(`Responsible solicitor not found for ${formData.team_assignments.fee_earner}`);
+            console.error(`No Clio ID for ${initials}`);
+            throw new Error('No Clio ID for ' + initials);
         }
         if (!originatingId) {
-            throw new Error(`Originating solicitor not found for ${formData.team_assignments.originating_solicitor}`);
+            console.error(`No Clio ID for ${originatingInitials}`);
+            throw new Error('No Clio ID for ' + originatingInitials);
         }
         const payload = {
             data: {
