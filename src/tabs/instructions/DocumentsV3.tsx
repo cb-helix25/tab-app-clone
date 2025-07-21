@@ -276,9 +276,17 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     const [userHasInteracted, setUserHasInteracted] = useState<boolean>(!!selectedInstructionProp);
     const [selectedTemplate, setSelectedTemplate] = useState<'ccl' | 'custom' | null>(initialTemplate ?? null);
     const [instructionSearchTerm, setInstructionSearchTerm] = useState<string>('');
-    
+
     // Step 2: Editor & Template Fields
     const [documentContent, setDocumentContent] = useState('');
+
+    // Apply initial template on mount
+    useEffect(() => {
+        if (initialTemplate) {
+            setSelectedTemplate(initialTemplate);
+            setDocumentContent(MESSAGE_TEMPLATES[initialTemplate]);
+        }
+    }, [initialTemplate]);
     const [templateFields, setTemplateFields] = useState<Record<string, string>>({
         insert_clients_name: '',
         insert_heading_eg_matter_description: '',

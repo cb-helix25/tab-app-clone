@@ -1,255 +1,152 @@
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index abff9c7fc993bdf519c7d835a1d5525103c96293..b68cb1d43f9d11a425e9fb8b43cda712feae36c3 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -393,54 +393,63 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                   color: '#20b26c',
-                 }}
-               />
-             )}
-           </button>
-         </div>
-       );
-     };
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 3ba345a617e10ed26cdbeb3cef964265225cb1a2..5a4cd1e9b947ca639966593ef29996961da0b699 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -98,96 +98,103 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+     stage = 'New Matter',
+     matterRef,
+     hideClientSections = false,
+     initialClientType = '',
+     preselectedPoidIds = [],
+     instructionPhone,
+ }) => {
+     const idExpiry = useMemo(() => {
+         const d = new Date();
+         d.setDate(d.getDate() + 30);
+         return d.toLocaleDateString('en-GB');
+     }, []); // invisible change
  
-     useLayoutEffect(() => {
-         function updateCompact() {
-             const el = tabsRef.current;
-             if (!el) return;
-             const width = el.offsetWidth;
-             const needed = 4 * 90 + 3 * 8; // four tabs, min width plus gap
-             setCompact(width < needed);
-         }
-         updateCompact();
-         window.addEventListener('resize', updateCompact);
-         return () => window.removeEventListener('resize', updateCompact);
+     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
+     const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
+     useEffect(() => {
+         registerClientIdCallback(setClientId);
+         registerMatterIdCallback(setMatterIdState);
+         return () => {
+             registerClientIdCallback(null);
+             registerMatterIdCallback(null);
+         };
      }, []);
  
-     const isPoid = stage === 'poid';
+     const showPoidSelection = !instructionRef;
+-    const defaultPoidData: POID[] = useMemo(
+-        () =>
+-        (poidData && poidData.length > 0
++    const defaultPoidData: POID[] = useMemo(() => {
++        const mapped = (poidData && poidData.length > 0
+             ? poidData
+             : (idVerifications as any[]).map((v) => ({
+-                poid_id: String(v.InternalId),
+-                first: v.FirstName,
+-                last: v.LastName,
+-                email: v.Email,
+-                best_number: (v as any).Phone || '',
+-                nationality: v.Nationality,
+-                nationality_iso: v.NationalityAlpha2,
+-                date_of_birth: v.DOB,
+-                passport_number: v.PassportNumber,
+-                drivers_license_number: v.DriversLicenseNumber,
+-                house_building_number: v.HouseNumber,
+-                street: v.Street,
+-                city: v.City,
+-                county: v.County,
+-                post_code: v.Postcode,
+-                country: v.Country,
+-                country_code: v.CountryCode,
+-                company_name: v.company_name || v.CompanyName,
+-                company_number: v.company_number || v.CompanyNumber,
+-                company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
+-                company_street: v.company_street || v.CompanyStreet,
+-                company_city: v.company_city || v.CompanyCity,
+-                company_county: v.company_county || v.CompanyCounty,
+-                company_post_code: v.company_post_code || v.CompanyPostcode,
+-                company_country: v.company_country || v.CompanyCountry,
+-                company_country_code: v.company_country_code || v.CompanyCountryCode,
+-                // Electronic ID verification fields
+-                stage: v.stage,
+-                check_result: v.EIDOverallResult,
+-                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+-                address_verification_result: v.AddressVerificationResult,
+-                check_expiry: v.CheckExpiry,
+-                check_id: v.EIDCheckId, // <-- Add this line to map EIDCheckId to check_id
+-                poc: v.poc,
+-                prefix: v.prefix,
+-                type: v.type,
+-                client_id: v.ClientId,
+-                matter_id: v.MatterId,
+-            }))) as POID[],
+-        []
+-    );
++                  poid_id: String(v.InternalId),
++                  first: v.FirstName,
++                  last: v.LastName,
++                  email: v.Email,
++                  best_number: (v as any).Phone || '',
++                  nationality: v.Nationality,
++                  nationality_iso: v.NationalityAlpha2,
++                  date_of_birth: v.DOB,
++                  passport_number: v.PassportNumber,
++                  drivers_license_number: v.DriversLicenseNumber,
++                  house_building_number: v.HouseNumber,
++                  street: v.Street,
++                  city: v.City,
++                  county: v.County,
++                  post_code: v.Postcode,
++                  country: v.Country,
++                  country_code: v.CountryCode,
++                  company_name: v.company_name || v.CompanyName,
++                  company_number: v.company_number || v.CompanyNumber,
++                  company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
++                  company_street: v.company_street || v.CompanyStreet,
++                  company_city: v.company_city || v.CompanyCity,
++                  company_county: v.company_county || v.CompanyCounty,
++                  company_post_code: v.company_post_code || v.CompanyPostcode,
++                  company_country: v.company_country || v.CompanyCountry,
++                  company_country_code: v.company_country_code || v.CompanyCountryCode,
++                  // Electronic ID verification fields
++                  stage: v.stage,
++                  check_result: v.EIDOverallResult,
++                  pep_sanctions_result: v.PEPAndSanctionsCheckResult,
++                  address_verification_result: v.AddressVerificationResult,
++                  check_expiry: v.CheckExpiry,
++                  check_id: v.EIDCheckId,
++                  poc: v.poc,
++                  prefix: v.prefix,
++                  type: v.type,
++                  client_id: v.ClientId,
++                  matter_id: v.MatterId,
++              }))) as POID[];
++
++        const uniqueMap = new Map<string, POID>();
++        mapped.forEach((p) => {
++            const key = p.email?.toLowerCase() || `${p.first?.toLowerCase() || ''}|${p.last?.toLowerCase() || ''}`;
++            if (key && !uniqueMap.has(key)) {
++                uniqueMap.set(key, p);
++            }
++        });
++        return Array.from(uniqueMap.values());
++    }, []);
+     
+     // Filter out any invalid POID entries that might be causing issues
+     const validPoidData = useMemo(() => {
+         return defaultPoidData.filter(poid => 
+             // Ensure each POID has at least first and last name populated
+             poid && poid.first && poid.last && 
+             // Make sure it's not just a number
+             isNaN(Number(poid.first)) && isNaN(Number(poid.last))
+         );
+     }, [defaultPoidData]);
+     
+     // Force use of only validated local POID data
+     const effectivePoidData: POID[] = validPoidData;
+         
+     // Debug logging removed
  
-   const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
--    <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
-+    <div
-+      style={{
-+        fontWeight: 600,
-+        fontSize: '0.65rem',
-+        color: '#aaa',
-+        fontFamily: 'Raleway, sans-serif',
-+        letterSpacing: '0.5px',
-+        marginTop: 4,
-+      }}
-+    >
-       {deal.ServiceDescription}
-       {typeof deal.Amount === 'number' && (
--        <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
-+        <span style={{ fontWeight: 600, color: '#3690CE' }}>
-           {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-         </span>
-       )}
-     </div>
-   ) : null;
- 
-   const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
-     const status = (deal.Status || '').toLowerCase();
-     const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
-     const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
-     const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
-     function getDurationBanner(start: Date, end: Date, closed: boolean) {
-       let diff = end.getTime() - start.getTime();
-       if (diff <= 0) return closed ? 'Closed' : 'Expired';
-       const msPerHour = 1000 * 60 * 60;
-       const msPerDay = msPerHour * 24;
-       const msPerWeek = msPerDay * 7;
-       const msPerMonth = msPerDay * 30.44;
-       const years = Math.floor(diff / (msPerMonth * 12));
-       diff -= years * msPerMonth * 12;
-       const months = Math.floor(diff / msPerMonth);
-       diff -= months * msPerMonth;
-       const weeks = Math.floor(diff / msPerWeek);
-       diff -= weeks * msPerWeek;
-       const days = Math.floor(diff / msPerDay);
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index abff9c7fc993bdf519c7d835a1d5525103c96293..b68cb1d43f9d11a425e9fb8b43cda712feae36c3 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -555,74 +564,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                         {/* Multi/single client icon to the left of name */}
-                         <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
-                           {(() => {
-                             // Use same logic as tags: multi if deal?.IsMultiClient or (deal?.jointClients?.length > 1)
-                             const isMulti = (deal && (deal.IsMultiClient || (deal.jointClients && deal.jointClients.length > 1)))
-                               || (instruction.ClientType && instruction.ClientType.toLowerCase().includes('joint'));
-                             return isMulti ? (
-                               <FaUsers title="Joint Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
-                             ) : (
-                               <FaUser title="Single Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
-                             );
-                           })()}
-                         </span>
-                         <span
-                             className="header-name"
-                             style={{
-                                 color: collapsed ? '#fff' : colours.light.text,
-                                 fontWeight: 600,
-                                 fontSize: 18,
-                                 letterSpacing: 0.1,
-                                 alignSelf: 'center',
-                             }}
-                         >
-                             {leadName}
-                         </span>
--                        <span
--                            className="header-pipe"
--                            style={{
--                                display: 'inline-block',
--                                width: 1,
--                                height: 20,
--                                background: collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
--                                margin: '0 12px',
--                                verticalAlign: 'middle',
--                                alignSelf: 'center',
--                            }}
--                        />
--                        <span
--                            className="header-instruction-ref"
--                            style={{
--                                fontWeight: 400,
--                                color: collapsed ? 'rgba(255,255,255,0.7)' : '#888',
--                                fontSize: 16,
--                                letterSpacing: 0.2,
--                                alignSelf: 'center',
--                            }}
--                        >
--                            {instruction.InstructionRef || '—'}
--                        </span>
-                     </span>
-                     <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                         {selected && (
-                             <span
-                                 className="header-selected-label"
-                                 style={{
-                                     marginLeft: 0,
-                                     padding: '2px 8px',
-                                     fontSize: '0.7rem',
-                                     fontWeight: 600,
-                                     backgroundColor: collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
-                                     color: '#fff',
-                                     borderRadius: '12px',
-                                     alignSelf: 'center',
-                                     border: collapsed ? 'none' : '1px solid #3690CE',
-                                 }}
-                             >
-                                 SELECTED
-                             </span>
-                         )}
-                         <span
-                             className="plusminus-icon"
-                             aria-hidden="true"
-                             style={{
-                                 marginLeft: 16,
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index abff9c7fc993bdf519c7d835a1d5525103c96293..b68cb1d43f9d11a425e9fb8b43cda712feae36c3 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -653,51 +638,50 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                     borderBottom: 'none',
-                     borderRadius: '0 0 0 0',
-                     background: 'transparent',
-                     position: 'relative',
-                     zIndex: 1
-                   }}>
-                     <div className="client-details-contact-bigbtn static" style={{
-                         background: '#fff',
-                         border: '1.5px solid #e1dfdd',
-                         boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                         padding: '12px 16px',
-                         display: 'flex',
-                         flexDirection: 'column',
-                         alignItems: 'flex-start',
-                         minWidth: 0,
-                         width: '100%',
-                         borderRadius: 0,
-                         margin: 0,
-                         borderLeft: 'none',
-                         borderRight: 'none',
-                         borderTop: 'none',
-                         borderBottom: 'none',
-                         boxSizing: 'border-box',
-                     }}>
-               {bannerElement}
--              {serviceElement}
-               <div
-                 ref={contentRef}
-                 style={{
-                   maxHeight,
-                   overflow: 'hidden',
-                   transition: 'max-height 0.5s ease',
-                   width: '100%',
-                 }}
-               >
-                 {/* --- TAGS ROW --- */}
-                 <div style={{
-                   display: 'flex',
-                   flexDirection: 'row',
-                   alignItems: 'center',
-                   minHeight: 28,
-                   marginBottom: '8px',
-                   position: 'relative',
-                 }}>
-                           {/* Tags row, will wrap before JSON icon */}
-                           <div style={{
-                             display: 'flex',
-                             flexWrap: 'wrap',
-                             gap: 8,
-                             alignItems: 'center',
-                             minHeight: 28,
-diff --git a/src/tabs/instructions/InstructionCard.tsx b/src/tabs/instructions/InstructionCard.tsx
-index abff9c7fc993bdf519c7d835a1d5525103c96293..b68cb1d43f9d11a425e9fb8b43cda712feae36c3 100644
---- a/src/tabs/instructions/InstructionCard.tsx
-+++ b/src/tabs/instructions/InstructionCard.tsx
-@@ -1274,31 +1258,45 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
-                                                      );
-                                                  }
-                                                  return <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>;
-                                              })}
-                                              {risk && !risk.hasOwnProperty('ComplianceDate') && (
-                                                  <li><strong>Assessment Date & Time:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</li>
-                                              )}
-                                         </ul>
-                                     </div>
-                                 )}
-                                 {selectedStatus === 'comp' && (
-                                     <div className="detail-group open">
-                                         <div className="detail-summary">Compliance</div>
-                                         <ul className="detail-list">
-                                              {compliance && Object.entries(compliance).map(([k,v]) => (
-                                                 <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                             ))}
-                                         </ul>
-                                     </div>
-                                 )}
-                             </div>
-                         </div>
-                     )}
- 
-                 </div>
-+                {serviceElement}
-+                {instruction.InstructionRef && (
-+                    <div
-+                        style={{
-+                            color: '#aaa',
-+                            fontFamily: 'Raleway, sans-serif',
-+                            fontSize: '0.65rem',
-+                            letterSpacing: '0.5px',
-+                            marginTop: 4,
-+                        }}
-+                    >
-+                        {instruction.InstructionRef}
-+                    </div>
-+                )}
-             </div>
-         </div>
-     );
- }
- 
- export default InstructionCard;
+     const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', null);
+     const localTeamData = useMemo(() => localTeamDataJson, []);
+     const defaultPartnerOptions = defaultPartners;
+     const partnerOptionsList = useMemo(() => {
+         const activeTeam = teamData || localTeamData;
+         if (activeTeam) {
+             const names = activeTeam
+                 .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
+                 .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())

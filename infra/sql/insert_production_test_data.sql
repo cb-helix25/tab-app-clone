@@ -36,8 +36,8 @@ DELETE FROM dbo.Documents;
 INSERT INTO dbo.Documents
     (DocumentId, InstructionRef, DocumentType, FileName, BlobUrl, FileSizeBytes, UploadedBy, UploadedAt, Notes)
 VALUES
-    (4, 'HLX-20003-12345', NULL, 'doc.pdf', 'https://example.com/doc4.pdf', NULL, NULL, '2025-01-02T10:00:00', NULL),
-    (2, 'HLX-20006-45678', NULL, 'doc.pdf', 'https://example.com/doc2.pdf', NULL, NULL, '2025-01-02T11:00:00', NULL);
+    (4, 'HLX-20003-12345', NULL, 'doc.pdf', 'https://example.com/doc4.pdf', 123456, NULL, '2025-01-02T10:00:00', NULL),
+    (2, 'HLX-20006-45678', NULL, 'doc.pdf', 'https://example.com/doc2.pdf', 234567, NULL, '2025-01-02T11:00:00', NULL);
 
 -- Insert data for IDVerifications table
 DELETE FROM dbo.IDVerifications;

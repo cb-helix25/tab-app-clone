@@ -113,7 +113,7 @@
             "DocumentType": null,
             "FileName": "agreement.pdf",
             "BlobUrl": "https://example.com/agreement.pdf",
-            "FileSizeBytes": null,
+            "FileSizeBytes": 152340,
             "UploadedBy": null,
             "UploadedAt": "2025-07-11T09:00:00",
             "Notes": null
@@ -124,7 +124,7 @@
             "DocumentType": null,
             "FileName": "terms.pdf",
             "BlobUrl": "https://example.com/terms.pdf",
-            "FileSizeBytes": null,
+            "FileSizeBytes": 182345,
             "UploadedBy": null,
             "UploadedAt": "2025-07-11T09:05:00",
             "Notes": null
@@ -201,7 +201,7 @@
         "DocumentType": null,
         "FileName": "agreement.pdf",
         "BlobUrl": "https://example.com/agreement.pdf",
-        "FileSizeBytes": null,
+        "FileSizeBytes": 152340,
         "UploadedBy": null,
         "UploadedAt": "2025-07-11T09:00:00",
         "Notes": null
@@ -212,7 +212,7 @@
         "DocumentType": null,
         "FileName": "terms.pdf",
         "BlobUrl": "https://example.com/terms.pdf",
-        "FileSizeBytes": null,
+        "FileSizeBytes": 182345,
         "UploadedBy": null,
         "UploadedAt": "2025-07-11T09:05:00",
         "Notes": null
@@ -252,7 +252,7 @@
             "DocumentType": null,
             "FileName": "evidence1.pdf",
             "BlobUrl": "https://example.com/evidence1.pdf",
-            "FileSizeBytes": null,
+            "FileSizeBytes": 258900,
             "UploadedBy": null,
             "UploadedAt": "2025-07-16T10:00:00",
             "Notes": null
@@ -340,7 +340,7 @@
         "DocumentType": null,
         "FileName": "evidence1.pdf",
         "BlobUrl": "https://example.com/evidence1.pdf",
-        "FileSizeBytes": null,
+        "FileSizeBytes": 258900,
         "UploadedBy": null,
         "UploadedAt": "2025-07-16T10:00:00",
         "Notes": null

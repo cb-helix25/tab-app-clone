@@ -43,6 +43,11 @@ interface InstructionEditorProps {
     matterType?: string;
     instructionRef?: string;
     className?: string;
+    /**
+     * Controls display of the template callout above the editor. Defaults to
+     * `true` to maintain existing behaviour.
+     */
+    showTemplateCallout?: boolean;
 }
 
 // Default instruction templates for export
@@ -211,7 +216,8 @@ const InstructionEditor: React.FC<InstructionEditorProps> = ({
     clientName = '',
     matterType = '',
     instructionRef = '',
-    className = ''
+    className = '',
+    showTemplateCallout = true
 }) => {
     const { isDarkMode } = useTheme();
     const editorRef = useRef<HTMLDivElement>(null);
@@ -278,10 +284,12 @@ const InstructionEditor: React.FC<InstructionEditorProps> = ({
     return (
         <div className={`instruction-editor ${className}`}>
             <div className="editor-main">
-                <div className="template-callout">
-                    <h4>PitchBuilder-Style Template Editor</h4>
-                    <p>Insert templates and placeholders to create professional instruction content. Click "Insert Template" to choose from predefined templates, or use the placeholder buttons to add dynamic content.</p>
-                </div>
+                {showTemplateCallout && (
+                    <div className="template-callout">
+                        <h4>PitchBuilder-Style Template Editor</h4>
+                        <p>Insert templates and placeholders to create professional instruction content. Click "Insert Template" to choose from predefined templates, or use the placeholder buttons to add dynamic content.</p>
+                    </div>
+                )}
 
                 <div className="editor-content">
                     <div className="editor-toolbar">

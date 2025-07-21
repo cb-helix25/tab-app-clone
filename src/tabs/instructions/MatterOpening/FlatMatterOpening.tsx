@@ -120,52 +120,68 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     }, []);
 
     const showPoidSelection = !instructionRef;
-    const defaultPoidData: POID[] = useMemo(
-        () =>
-        (poidData && poidData.length > 0
+    const defaultPoidData: POID[] = useMemo(() => {
+        const mapped = (poidData && poidData.length > 0
             ? poidData
             : (idVerifications as any[]).map((v) => ({
-                poid_id: String(v.InternalId),
-                first: v.FirstName,
-                last: v.LastName,
-                email: v.Email,
-                best_number: (v as any).Phone || '',
-                nationality: v.Nationality,
-                nationality_iso: v.NationalityAlpha2,
-                date_of_birth: v.DOB,
-                passport_number: v.PassportNumber,
-                drivers_license_number: v.DriversLicenseNumber,
-                house_building_number: v.HouseNumber,
-                street: v.Street,
-                city: v.City,
-                county: v.County,
-                post_code: v.Postcode,
-                country: v.Country,
-                country_code: v.CountryCode,
-                company_name: v.company_name || v.CompanyName,
-                company_number: v.company_number || v.CompanyNumber,
-                company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
-                company_street: v.company_street || v.CompanyStreet,
-                company_city: v.company_city || v.CompanyCity,
-                company_county: v.company_county || v.CompanyCounty,
-                company_post_code: v.company_post_code || v.CompanyPostcode,
-                company_country: v.company_country || v.CompanyCountry,
-                company_country_code: v.company_country_code || v.CompanyCountryCode,
-                // Electronic ID verification fields
-                stage: v.stage,
-                check_result: v.EIDOverallResult,
-                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
-                address_verification_result: v.AddressVerificationResult,
-                check_expiry: v.CheckExpiry,
-                check_id: v.EIDCheckId, // <-- Add this line to map EIDCheckId to check_id
-                poc: v.poc,
-                prefix: v.prefix,
-                type: v.type,
-                client_id: v.ClientId,
-                matter_id: v.MatterId,
-            }))) as POID[],
-        []
-    );
+                  poid_id: String(v.InternalId),
+                  first: v.FirstName,
+                  last: v.LastName,
+                  email: v.Email,
+                  best_number: (v as any).Phone || '',
+                  nationality: v.Nationality,
+                  nationality_iso: v.NationalityAlpha2,
+                  date_of_birth: v.DOB,
+                  passport_number: v.PassportNumber,
+                  drivers_license_number: v.DriversLicenseNumber,
+                  house_building_number: v.HouseNumber,
+                  street: v.Street,
+                  city: v.City,
+                  county: v.County,
+                  post_code: v.Postcode,
+                  country: v.Country,
+                  country_code: v.CountryCode,
+                  company_name: v.company_name || v.CompanyName,
+                  company_number: v.company_number || v.CompanyNumber,
+                  company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
+                  company_street: v.company_street || v.CompanyStreet,
+                  company_city: v.company_city || v.CompanyCity,
+                  company_county: v.company_county || v.CompanyCounty,
+                  company_post_code: v.company_post_code || v.CompanyPostcode,
+                  company_country: v.company_country || v.CompanyCountry,
+                  company_country_code: v.company_country_code || v.CompanyCountryCode,
+                  // Electronic ID verification fields
+                  stage: v.stage,
+                  check_result: v.EIDOverallResult,
+                  pep_sanctions_result: v.PEPAndSanctionsCheckResult,
+                  address_verification_result: v.AddressVerificationResult,
+                  check_expiry: v.CheckExpiry,
+                  check_id: v.EIDCheckId,
+                  poc: v.poc,
+                  prefix: v.prefix,
+                  type: v.type,
+                  client_id: v.ClientId,
+                  matter_id: v.MatterId,
+                InstructionRef: v.InstructionRef,
+            }))) as POID[];
+        const uniqueMap = new Map<string, POID>();
+        mapped.forEach((p) => {
+            const key = (p.email || '').toLowerCase() || `${p.first?.toLowerCase() || ''}|${p.last?.toLowerCase() || ''}`;
+            if (!key) return;
+            const inst = (p as any).InstructionRef || (p as any).instruction_ref || '';
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, p);
+                return;
+            }
+            const existing = uniqueMap.get(key)!;
+            const existingInst = (existing as any).InstructionRef || (existing as any).instruction_ref || '';
+            if (instructionRef && inst === instructionRef && existingInst !== instructionRef) {
+                // Prefer POID belonging to the active instruction
+                uniqueMap.set(key, p);
+            }
+        });
+        return Array.from(uniqueMap.values());
+    }, [poidData, instructionRef]);
     
     // Filter out any invalid POID entries that might be causing issues
     const validPoidData = useMemo(() => {

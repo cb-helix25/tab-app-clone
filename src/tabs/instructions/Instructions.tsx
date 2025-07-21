@@ -1474,11 +1474,15 @@ const Instructions: React.FC<InstructionsProps> = ({
     // Preselect POIDs by matching InstructionRef
     let preselectedPoidIds: string[] = [];
     if (selectedInstruction && selectedInstruction.InstructionRef) {
-      // Use idVerificationOptions (the POID data) to find all POIDs with matching InstructionRef
-      preselectedPoidIds = (idVerificationOptions || [])
-        .filter((poid: any) => poid && (poid.InstructionRef === selectedInstruction.InstructionRef))
-        .map((poid: any) => String(poid.poid_id))
-        .filter(Boolean);
+      const unique = new Map<string, string>();
+      (idVerificationOptions || []).forEach((poid: any) => {
+        if (!poid || poid.InstructionRef !== selectedInstruction.InstructionRef) return;
+        const key = (poid.email || '').toLowerCase();
+        if (!unique.has(key)) {
+          unique.set(key, String(poid.poid_id));
+        }
+      });
+      preselectedPoidIds = Array.from(unique.values());
     }
     return (
       <Stack tokens={dashboardTokens} className={newMatterContainerStyle}>
@@ -2065,6 +2069,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
                   value={followUpContent}
                   onChange={setFollowUpContent}
                   templates={[]}
+                  showTemplateCallout={false}
                 />
                 <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                   <PrimaryButton
