@@ -697,8 +697,8 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
                             outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
-                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 120) + 'px',
-                            minWidth: '120px',
+                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 80) + 'px',
+                            minWidth: '80px',
                             maxWidth: '600px',
                             display: 'inline-block',
                             margin: '2px',
@@ -723,7 +723,7 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
                             const textWidth = target.value.length > 0 
                                 ? measureTextWidth(target.value, 14)
                                 : measureTextWidth(placeholderText, 14);
-                            const newWidth = Math.max(textWidth + 20, target.value.length > 0 ? 80 : 120);
+                            const newWidth = Math.max(textWidth + 20, 80);
                             target.style.width = newWidth + 'px';
                         }}
                     />

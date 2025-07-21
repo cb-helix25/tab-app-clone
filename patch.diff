@@ -1,152 +1,85 @@
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 3ba345a617e10ed26cdbeb3cef964265225cb1a2..5a4cd1e9b947ca639966593ef29996961da0b699 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -98,96 +98,103 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
-     stage = 'New Matter',
-     matterRef,
-     hideClientSections = false,
-     initialClientType = '',
-     preselectedPoidIds = [],
-     instructionPhone,
- }) => {
-     const idExpiry = useMemo(() => {
-         const d = new Date();
-         d.setDate(d.getDate() + 30);
-         return d.toLocaleDateString('en-GB');
-     }, []); // invisible change
- 
-     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
-     const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
-     useEffect(() => {
-         registerClientIdCallback(setClientId);
-         registerMatterIdCallback(setMatterIdState);
-         return () => {
-             registerClientIdCallback(null);
-             registerMatterIdCallback(null);
-         };
-     }, []);
- 
-     const showPoidSelection = !instructionRef;
--    const defaultPoidData: POID[] = useMemo(
--        () =>
--        (poidData && poidData.length > 0
-+    const defaultPoidData: POID[] = useMemo(() => {
-+        const mapped = (poidData && poidData.length > 0
-             ? poidData
-             : (idVerifications as any[]).map((v) => ({
--                poid_id: String(v.InternalId),
--                first: v.FirstName,
--                last: v.LastName,
--                email: v.Email,
--                best_number: (v as any).Phone || '',
--                nationality: v.Nationality,
--                nationality_iso: v.NationalityAlpha2,
--                date_of_birth: v.DOB,
--                passport_number: v.PassportNumber,
--                drivers_license_number: v.DriversLicenseNumber,
--                house_building_number: v.HouseNumber,
--                street: v.Street,
--                city: v.City,
--                county: v.County,
--                post_code: v.Postcode,
--                country: v.Country,
--                country_code: v.CountryCode,
--                company_name: v.company_name || v.CompanyName,
--                company_number: v.company_number || v.CompanyNumber,
--                company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
--                company_street: v.company_street || v.CompanyStreet,
--                company_city: v.company_city || v.CompanyCity,
--                company_county: v.company_county || v.CompanyCounty,
--                company_post_code: v.company_post_code || v.CompanyPostcode,
--                company_country: v.company_country || v.CompanyCountry,
--                company_country_code: v.company_country_code || v.CompanyCountryCode,
--                // Electronic ID verification fields
--                stage: v.stage,
--                check_result: v.EIDOverallResult,
--                pep_sanctions_result: v.PEPAndSanctionsCheckResult,
--                address_verification_result: v.AddressVerificationResult,
--                check_expiry: v.CheckExpiry,
--                check_id: v.EIDCheckId, // <-- Add this line to map EIDCheckId to check_id
--                poc: v.poc,
--                prefix: v.prefix,
--                type: v.type,
--                client_id: v.ClientId,
--                matter_id: v.MatterId,
--            }))) as POID[],
--        []
--    );
-+                  poid_id: String(v.InternalId),
-+                  first: v.FirstName,
-+                  last: v.LastName,
-+                  email: v.Email,
-+                  best_number: (v as any).Phone || '',
-+                  nationality: v.Nationality,
-+                  nationality_iso: v.NationalityAlpha2,
-+                  date_of_birth: v.DOB,
-+                  passport_number: v.PassportNumber,
-+                  drivers_license_number: v.DriversLicenseNumber,
-+                  house_building_number: v.HouseNumber,
-+                  street: v.Street,
-+                  city: v.City,
-+                  county: v.County,
-+                  post_code: v.Postcode,
-+                  country: v.Country,
-+                  country_code: v.CountryCode,
-+                  company_name: v.company_name || v.CompanyName,
-+                  company_number: v.company_number || v.CompanyNumber,
-+                  company_house_building_number: v.company_house_building_number || v.CompanyHouseNumber,
-+                  company_street: v.company_street || v.CompanyStreet,
-+                  company_city: v.company_city || v.CompanyCity,
-+                  company_county: v.company_county || v.CompanyCounty,
-+                  company_post_code: v.company_post_code || v.CompanyPostcode,
-+                  company_country: v.company_country || v.CompanyCountry,
-+                  company_country_code: v.company_country_code || v.CompanyCountryCode,
-+                  // Electronic ID verification fields
-+                  stage: v.stage,
-+                  check_result: v.EIDOverallResult,
-+                  pep_sanctions_result: v.PEPAndSanctionsCheckResult,
-+                  address_verification_result: v.AddressVerificationResult,
-+                  check_expiry: v.CheckExpiry,
-+                  check_id: v.EIDCheckId,
-+                  poc: v.poc,
-+                  prefix: v.prefix,
-+                  type: v.type,
-+                  client_id: v.ClientId,
-+                  matter_id: v.MatterId,
-+              }))) as POID[];
-+
-+        const uniqueMap = new Map<string, POID>();
-+        mapped.forEach((p) => {
-+            const key = p.email?.toLowerCase() || `${p.first?.toLowerCase() || ''}|${p.last?.toLowerCase() || ''}`;
-+            if (key && !uniqueMap.has(key)) {
-+                uniqueMap.set(key, p);
-+            }
-+        });
-+        return Array.from(uniqueMap.values());
-+    }, []);
-     
-     // Filter out any invalid POID entries that might be causing issues
-     const validPoidData = useMemo(() => {
-         return defaultPoidData.filter(poid => 
-             // Ensure each POID has at least first and last name populated
-             poid && poid.first && poid.last && 
-             // Make sure it's not just a number
-             isNaN(Number(poid.first)) && isNaN(Number(poid.last))
-         );
-     }, [defaultPoidData]);
-     
-     // Force use of only validated local POID data
-     const effectivePoidData: POID[] = validPoidData;
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index dd138f3df95f3b4e4f2bd2125168b2ec330a5a13..ad7d42a68e27277a62fde724d54b521c872fe5e7 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -675,77 +675,77 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
+                 parts.push(
+                     <input
+                         key={match.index}
+                         type="text"
+                         value=""
+                         placeholder={placeholderText}
+                         onChange={(e) => {
+                             setTemplateFields(prev => ({
+                                 ...prev,
+                                 [variableName]: e.target.value
+                             }));
+                         }}
+                         onClick={(e) => handleFieldClick(variableName, e)}
+                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                         onMouseLeave={handleFieldHoverLeave}
+                         style={{
+                             backgroundColor: '#fff3cd',
+                             color: '#856404',
+                             padding: '4px 8px',
+                             borderRadius: '4px',
+                             fontWeight: 500,
+                             border: '2px dashed #ffeaa7',
+                             outline: 'none',
+                             fontFamily: 'Raleway, sans-serif',
+                             fontSize: '14px',
+-                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 120) + 'px',
+-                            minWidth: '120px',
++                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 80) + 'px',
++                            minWidth: '80px',
+                             maxWidth: '600px',
+                             display: 'inline-block',
+                             margin: '2px',
+                             fontStyle: 'italic',
+                             transition: 'all 0.2s ease'
+                         }}
+                         onFocus={(e) => {
+                             e.target.style.backgroundColor = '#ffeaa7';
+                             e.target.style.borderStyle = 'solid';
+                             e.target.style.transform = 'scale(1.05)';
+                             e.target.style.fontStyle = 'normal';
+                         }}
+                         onBlur={(e) => {
+                             e.target.style.backgroundColor = '#fff3cd';
+                             e.target.style.borderStyle = 'dashed';
+                             e.target.style.transform = 'scale(1)';
+                             e.target.style.fontStyle = 'italic';
+                         }}
+                         onInput={(e) => {
+                             // Dynamic width adjustment as user types
+                             const target = e.target as HTMLInputElement;
+                             const textWidth = target.value.length > 0 
+                                 ? measureTextWidth(target.value, 14)
+                                 : measureTextWidth(placeholderText, 14);
+-                            const newWidth = Math.max(textWidth + 20, target.value.length > 0 ? 80 : 120);
++                            const newWidth = Math.max(textWidth + 20, 80);
+                             target.style.width = newWidth + 'px';
+                         }}
+                     />
+                 );
+             }
+             
+             lastIndex = match.index + match[0].length;
+         }
          
-     // Debug logging removed
- 
-     const [selectedDate, setSelectedDate] = useDraftedState<Date | null>('selectedDate', null);
-     const localTeamData = useMemo(() => localTeamDataJson, []);
-     const defaultPartnerOptions = defaultPartners;
-     const partnerOptionsList = useMemo(() => {
-         const activeTeam = teamData || localTeamData;
-         if (activeTeam) {
-             const names = activeTeam
-                 .filter((t) => (t.Role || '').toLowerCase().includes('partner'))
-                 .map((t) => t['Full Name'] || `${t.First || ''} ${t.Last || ''}`.trim())
+         // Add any remaining editable text
+         if (lastIndex < content.length) {
+             const textSegment = content.substring(lastIndex);
+             parts.push(
+                 <span
+                     key={`text-${lastIndex}`}
+                     contentEditable
+                     suppressContentEditableWarning={true}
+                     onBlur={(e) => {
+                         const newText = e.target.textContent || '';
+                         const beforeText = content.substring(0, lastIndex);
+                         const newContent = beforeText + newText;
+                         setDocumentContent(newContent);
+                     }}
+                     style={{
+                         outline: 'none',
