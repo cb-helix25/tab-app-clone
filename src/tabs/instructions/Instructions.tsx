@@ -1339,9 +1339,16 @@ const Instructions: React.FC<InstructionsProps> = ({
     setActivePivot('risk');
   };
 
+
+  // Always open CCL template for global Draft CCL action
   const handleOpenDraftCcl = (ref: string) => {
     setSelectedInstruction({ InstructionRef: ref } as any);
+    // Set a global variable or state to force initialTemplate to 'ccl'
+    // If DocumentsV3 is rendered here, pass initialTemplate='ccl' directly
+    // If not, ensure the prop is always 'ccl' for this action
     setActivePivot('draft-ccl');
+    // Optionally, if you use a state for initialTemplate, set it here:
+    // setInitialTemplate('ccl');
   };
 
   const gridContainerStyle = mergeStyles({
@@ -1633,6 +1640,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           {activePivot === "documents2" && (
             <DocumentsV3
               selectedInstructionProp={selectedInstruction}
+              initialTemplate={selectedInstruction ? 'ccl' : undefined}
               instructions={instructionData}
             />
           )}

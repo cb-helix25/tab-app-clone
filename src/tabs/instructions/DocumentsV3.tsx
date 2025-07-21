@@ -251,6 +251,7 @@ const MESSAGE_TEMPLATES = {
 interface DocumentsV3Props {
     isInstructionBasedMode?: boolean;
     selectedInstructionProp?: InstructionData;
+    initialTemplate?: 'ccl' | 'custom';
     matterData?: any;
     instructions?: InstructionData[];
 }
@@ -258,19 +259,22 @@ interface DocumentsV3Props {
 const DocumentsV3: React.FC<DocumentsV3Props> = ({ 
     isInstructionBasedMode = false, 
     selectedInstructionProp, 
+    initialTemplate,
     matterData, 
     instructions = [] 
 }) => {
     const { isDarkMode } = useTheme();
     
     // Step management - 3 distinct pages
-    const [currentStep, setCurrentStep] = useState(1);
-    
+    // If both instruction and template are provided, skip to editor
+    const skipSelection = !!selectedInstructionProp && !!initialTemplate;
+    const [currentStep, setCurrentStep] = useState(skipSelection ? 2 : 1);
+
     // Step 1: Instruction & Template Selection
     const [selectedInstruction, setSelectedInstruction] = useState<InstructionData | null>(selectedInstructionProp || null);
     const [hasSelectedInstruction, setHasSelectedInstruction] = useState<boolean>(!!selectedInstructionProp);
     const [userHasInteracted, setUserHasInteracted] = useState<boolean>(!!selectedInstructionProp);
-    const [selectedTemplate, setSelectedTemplate] = useState<'ccl' | 'custom' | null>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<'ccl' | 'custom' | null>(initialTemplate ?? null);
     const [instructionSearchTerm, setInstructionSearchTerm] = useState<string>('');
     
     // Step 2: Editor & Template Fields
