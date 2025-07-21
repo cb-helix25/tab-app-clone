@@ -23,7 +23,8 @@ import {
     FaFileAudio,
     FaFileVideo,
     FaUsers,
-    FaUser
+    FaUser,
+    FaPoundSign
 } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
@@ -327,7 +328,7 @@ const DealCard: React.FC<DealCardProps> = ({
             other: {} as any
         };
 
-        const basicFields = ['ServiceDescription', 'AreaOfWork', 'InstructionRef', 'DealId'];
+        const basicFields = ['ServiceDescription', 'AreaOfWork', 'DealId'];
         const financialFields = ['Amount', 'Fee', 'Cost', 'Value', 'Price', 'Budget'];
         const timingFields = ['PitchedDate', 'PitchedTime', 'CloseDate', 'CloseTime', 'CreatedDate', 'Date', 'Time'];
         const contactFields = ['firstName', 'lastName', 'Email', 'Phone', 'Contact', 'Client'];
@@ -392,11 +393,15 @@ const DealCard: React.FC<DealCardProps> = ({
         if (deal.PitchValidUntil) {
             const validUntilDate = new Date(deal.PitchValidUntil);
             if (isValid(validUntilDate)) {
-                validUntilText = ` (valid until ${format(validUntilDate, 'd MMM yyyy')})`;
+                validUntilText = `valid until ${format(validUntilDate, 'd MMM yyyy')}`;
             }
         }
         
-        return { text: `${pitcherName} pitched ${name} ${descriptor}${validUntilText}`, urgent: diffHours >= 5 };
+        return { 
+            text: `${pitcherName} pitched ${name} ${descriptor}`, 
+            validUntil: validUntilText,
+            urgent: diffHours >= 5 
+        };
     };
 
     const getCloseInfo = () => {
@@ -475,14 +480,6 @@ const DealCard: React.FC<DealCardProps> = ({
         '--animation-delay': `${animationDelay}s`,
     } as React.CSSProperties;
 
-    const formattedDate = deal.PitchedDate
-        ? format(new Date(deal.PitchedDate), 'd MMM yyyy')
-        : undefined;
-
-    const statusStyle: React.CSSProperties = {
-        color: statusColour(status),
-    };
-    
     // Construct full name from available fields - check multiple case variations
     const firstName = deal.firstName || deal.FirstName || '';
     const lastName = deal.lastName || deal.LastName || deal.surname || deal.Surname || '';
@@ -506,7 +503,7 @@ const DealCard: React.FC<DealCardProps> = ({
 
     return (
         <div className={cardClass} style={style} onClick={onOpenInstruction}>
-            {/* Full Name Display with ProspectID-Passcode */}
+            {/* Full Name Display with Deal Icon and InstructionRef */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -518,15 +515,18 @@ const DealCard: React.FC<DealCardProps> = ({
                 borderBottom: '1px solid rgba(0,0,0,0.1)',
                 paddingBottom: '6px'
             }}>
-                <span>{fullName || 'Client Name'}</span>
-                {prospectInfo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaPoundSign style={{ fontSize: '14px', color: '#666' }} />
+                    <span>{fullName || 'Client Name'}</span>
+                </div>
+                {deal.InstructionRef && (
                     <span style={{
                         fontSize: '0.8rem',
                         fontWeight: 400,
                         color: isDarkMode ? 'rgba(255,255,255,0.7)' : '#666',
                         fontFamily: 'monospace'
                     }}>
-                        {prospectInfo}
+                        {deal.InstructionRef}
                     </span>
                 )}
             </div>
@@ -539,16 +539,28 @@ const DealCard: React.FC<DealCardProps> = ({
                     fontStyle: 'italic',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: '6px'
                 }}>
-                    <span style={{ 
-                        width: '4px', 
-                        height: '4px', 
-                        borderRadius: '50%', 
-                        backgroundColor: '#ef4444',
-                        flexShrink: 0
-                    }}></span>
-                    {pitchInfo.text}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ 
+                            width: '4px', 
+                            height: '4px', 
+                            borderRadius: '50%', 
+                            backgroundColor: '#ef4444',
+                            flexShrink: 0
+                        }}></span>
+                        {pitchInfo.text}
+                    </div>
+                    {pitchInfo.validUntil && (
+                        <span style={{
+                            fontSize: '0.7rem',
+                            color: isDarkMode ? 'rgba(255,255,255,0.5)' : '#999',
+                            fontWeight: 500
+                        }}>
+                            {pitchInfo.validUntil}
+                        </span>
+                    )}
                 </div>
             )}
             {isClosed && closeInfo.text && (
@@ -665,53 +677,40 @@ const DealCard: React.FC<DealCardProps> = ({
                             </div>
                         </div>
                     )}
-                    {formattedDate && (
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Pitched</div>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{formattedDate}</div>
+                    {/* Joint Clients - always show with count */}
+                    <div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Joint Clients</div>
+                        <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            <FaUsers
+                                style={{
+                                    fontSize: '12px',
+                                    color: colours.cta,
+                                    lineHeight: 1
+                                }}
+                            />
+                            {hasJointClients(deal) ? deal.jointClients.length : 0}
                         </div>
-                    )}
-                    {deal.InstructionRef && (
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Instruction Ref</div>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                                {deal.InstructionRef}
-                            </div>
-                        </div>
-                    )}
-                    {hasJointClients(deal) && (
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Joint Clients</div>
-                            <div style={{ 
-                                fontSize: '0.8rem', 
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}>
-                                <FaUsers
-                                    style={{
-                                        fontSize: '12px',
-                                        color: colours.cta,
-                                        lineHeight: 1
-                                    }}
-                                />
-                                {deal.jointClients.length}
-                            </div>
-                        </div>
-                    )}
-                    {hasDocuments(deal) && (
-                        <div>
-                            <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Documents</div>
-                            <div style={{ 
-                                fontSize: '0.8rem', 
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                flexWrap: 'wrap'
-                            }}>
-                                {analyzeDocumentTypes(deal.documents).map((docType, index) => (
+                    </div>
+                    
+                    {/* Documents - always show with count */}
+                    <div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Documents</div>
+                        <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            flexWrap: 'wrap'
+                        }}>
+                            {hasDocuments(deal) ? (
+                                analyzeDocumentTypes(deal.documents).map((docType, index) => (
                                     <div key={docType.type} style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -732,10 +731,12 @@ const DealCard: React.FC<DealCardProps> = ({
                                         </span>
                                         <span>{docType.count}</span>
                                     </div>
-                                ))}
-                            </div>
+                                ))
+                            ) : (
+                                <span>0</span>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 

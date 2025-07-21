@@ -9,6 +9,7 @@ const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
 const mattersRouter = require('./routes/matters');
+const riskAssessmentsRouter = require('./routes/riskAssessments');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/api/keys', keysRouter);
 app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
 app.use('/api/opponents', opponentsRouter);
+app.use('/api/risk-assessments', riskAssessmentsRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/matters', mattersRouter);

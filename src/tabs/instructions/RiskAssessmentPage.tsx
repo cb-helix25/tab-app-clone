@@ -34,6 +34,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
     });
+    const [limitationDate, setLimitationDate] = useState<Date | undefined>();
+    const [limitationDateTbc, setLimitationDateTbc] = useState(false);
     const [complianceDate, setComplianceDate] = useState<Date | undefined>(
         existingRisk?.ComplianceDate ? new Date(existingRisk.ComplianceDate) : new Date(),
     );
@@ -79,7 +81,9 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                consideredTransactionRisk === true ||
                transactionRiskLevel !== '' ||
                consideredFirmWideSanctions === true ||
-               consideredFirmWideAML === true;
+            consideredFirmWideAML === true ||
+            limitationDate !== undefined ||
+            limitationDateTbc;
     };
 
     // Clear all selections and inputs
@@ -107,6 +111,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
         setTransactionRiskLevel('');
         setConsideredFirmWideSanctions(false);
         setConsideredFirmWideAML(false);
+        setLimitationDate(undefined);
+        setLimitationDateTbc(false);
     };
 
     const isComplete = () =>
@@ -115,7 +121,8 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
         consideredTransactionRisk !== undefined &&
         (consideredTransactionRisk ? transactionRiskLevel !== '' : true) &&
         consideredFirmWideSanctions !== undefined &&
-        consideredFirmWideAML !== undefined;
+        consideredFirmWideAML !== undefined &&
+        (riskCore.limitationValue === 1 || limitationDateTbc || !!limitationDate);
 
     const handleContinue = async () => {
         if (!isComplete()) return;
@@ -143,6 +150,16 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                 complianceExpiry.setMonth(complianceExpiry.getMonth() + 6);
             }
 
+            let limitationText = riskCore.limitation;
+            if ([2, 3].includes(riskCore.limitationValue)) {
+                const datePart = limitationDateTbc
+                    ? 'TBC'
+                    : limitationDate
+                        ? limitationDate.toLocaleDateString('en-GB')
+                        : '';
+                if (datePart) limitationText += ` - ${datePart}`;
+            }
+
             const payload = {
                 MatterId: instructionRef, // Using instruction ref as matter ID
                 InstructionRef: instructionRef,
@@ -157,8 +174,10 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                 FundsType_Value: riskCore.fundsTypeValue,
                 HowWasClientIntroduced: riskCore.clientIntroduced,
                 HowWasClientIntroduced_Value: riskCore.clientIntroducedValue,
-                Limitation: riskCore.limitation,
+                Limitation: limitationText,
                 Limitation_Value: riskCore.limitationValue,
+                LimitationDate: limitationDate ? limitationDate.toISOString() : null,
+                LimitationDateTbc: limitationDateTbc,
                 SourceOfFunds: riskCore.sourceOfFunds,
                 SourceOfFunds_Value: riskCore.sourceOfFundsValue,
                 ValueOfInstruction: riskCore.valueOfInstruction,
@@ -175,15 +194,7 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
 
             console.log('📋 Submitting risk assessment:', payload);
 
-            const baseUrl = process.env.REACT_APP_PROXY_BASE_URL || '';
-            const functionCode = process.env.REACT_APP_INSERT_RISK_ASSESSMENT_CODE || '';
-            const functionPath = process.env.REACT_APP_INSERT_RISK_ASSESSMENT_PATH || 'insertRiskAssessment';
-            
-            const url = functionCode 
-                ? `${baseUrl}/${functionPath}?code=${functionCode}`
-                : `${baseUrl}/${functionPath}`;
-
-            const response = await fetch(url, {
+            const response = await fetch('/api/risk-assessments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -362,6 +373,10 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
                         setConsideredFirmWideSanctions={setConsideredFirmWideSanctions}
                         consideredFirmWideAML={consideredFirmWideAML}
                         setConsideredFirmWideAML={setConsideredFirmWideAML}
+                        limitationDate={limitationDate}
+                        setLimitationDate={setLimitationDate}
+                        limitationDateTbc={limitationDateTbc}
+                        setLimitationDateTbc={setLimitationDateTbc}
                         onContinue={handleContinue}
                         isComplete={isComplete}
                         onHeaderButtonsChange={handleHeaderButtonsChange}

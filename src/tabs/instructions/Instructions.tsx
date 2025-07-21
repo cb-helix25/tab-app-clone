@@ -1082,152 +1082,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     [riskComplianceData, riskFilterRef],
   );
 
-  // Group risk compliance data by instruction reference
-  const groupedRiskComplianceData = useMemo(() => {
-    const grouped = new Map<string, {
-      instructionRef: string;
-      riskAssessments: any[];
-      idVerifications: any[];
-      clients: any[];
-      serviceDescription?: string;
-      stage?: string;
-      allData: any[];
-    }>();
-
-    filteredRiskComplianceData.forEach(item => {
-      const instructionRef = item.InstructionRef || item.MatterId || 'Unknown';
-      
-      if (!grouped.has(instructionRef)) {
-        grouped.set(instructionRef, {
-          instructionRef,
-          riskAssessments: [],
-          idVerifications: [],
-          clients: item.clients || [],
-          serviceDescription: item.ServiceDescription,
-          stage: item.Stage,
-          allData: []
-        });
-      }
-
-      const group = grouped.get(instructionRef)!;
-      group.allData.push(item);
-
-      // Categorize the item based on its properties
-      if (item.CheckId || item.EIDStatus || item.EIDCheckedDate || 
-          item.CheckResult || item.PEPandSanctionsCheckResult || 
-          item.AddressVerificationCheckResult) {
-        // This is an ID verification item
-        group.idVerifications.push(item);
-      } else {
-        // This is a risk assessment item
-        group.riskAssessments.push(item);
-      }
-
-      // Update shared properties (take from latest item)
-      if (item.ServiceDescription) group.serviceDescription = item.ServiceDescription;
-      if (item.Stage) group.stage = item.Stage;
-      if (item.clients && item.clients.length > 0) group.clients = item.clients;
-    });
-
-    // Now enhance each group with proper ID verification data from instructionData
-    Array.from(grouped.values()).forEach(group => {
-      // Find the corresponding instruction data for this instruction ref
-      const instructionItem = instructionData.find(p => 
-        p.instructions?.some((inst: any) => inst.InstructionRef === group.instructionRef)
-      );
-      
-      if (instructionItem) {
-        const instruction = instructionItem.instructions?.find((inst: any) => 
-          inst.InstructionRef === group.instructionRef
-        );
-        
-        // Get all ID verifications for this instruction
-        const allIdVerifications = [
-          ...(instructionItem.idVerifications || []),
-          ...(instruction?.idVerifications || [])
-        ].filter(idv => idv.InstructionRef === group.instructionRef);
-        
-        // Add these to the group's ID verifications
-        group.idVerifications.push(...allIdVerifications);
-        
-        // Update stage and service description from instruction if available
-        if (instruction && !group.stage) {
-          group.stage = instruction.Stage;
-        }
-        
-        // Find the deal for this instruction to get service description
-        const deal = instructionItem.deals?.find((d: any) => d.InstructionRef === group.instructionRef);
-        if (deal && !group.serviceDescription) {
-          group.serviceDescription = deal.ServiceDescription;
-        }
-        
-        // Enhanced client data with proper names and ID verification status
-        const enhancedClients: any[] = [];
-        
-        // Get deals for this instruction (needed for both lead and joint client processing)
-        const deals = instructionItem.deals?.filter((d: any) => d.InstructionRef === group.instructionRef) || [];
-        
-        // Add lead client from instruction data with basic fallback
-        if (instruction) {
-          const leadIdVerification = allIdVerifications.find(idv => 
-            idv.ClientEmail?.toLowerCase() === instruction.Email?.toLowerCase()
-          );
-          
-          enhancedClients.push({
-            ClientEmail: instruction.Email,
-            FirstName: instruction.FirstName || instruction.Name?.split(' ')[0] || 'Client',
-            LastName: instruction.LastName || instruction.Name?.split(' ').slice(1).join(' ') || '',
-            CompanyName: instruction.CompanyName,
-            Lead: true,
-            HasSubmitted: true, // If instruction exists, they've submitted
-            idVerification: leadIdVerification
-          });
-        }
-        
-        // Add joint clients from deal data AND prospect data
-        
-        // Get all joint clients from both prospect level and deal level
-        const allJointClients = [
-          // Prospect-level joint clients (filter by DealId matching this instruction's deals)
-          ...(instructionItem.jointClients || instructionItem.joinedClients || []).filter(jc => 
-            deals.some(d => d.DealId === jc.DealId)
-          ),
-          // Deal-level joint clients
-          ...deals.flatMap(d => d.jointClients || [])
-        ];
-        
-        // Process all joint clients
-        allJointClients.forEach((jc: any) => {
-          const jointIdVerification = allIdVerifications.find(idv => 
-            idv.ClientEmail?.toLowerCase() === jc.ClientEmail?.toLowerCase()
-          );
-          
-          // Try to find instruction data for this joint client
-          const jointInstruction = instructionData
-            .flatMap(p => p.instructions || [])
-            .find((inst: any) => inst.Email?.toLowerCase() === jc.ClientEmail?.toLowerCase());
-          
-          enhancedClients.push({
-            ClientEmail: jc.ClientEmail,
-            FirstName: jointInstruction?.FirstName || jc.FirstName || jc.Name?.split(' ')[0],
-            LastName: jointInstruction?.LastName || jc.LastName || jc.Name?.split(' ').slice(1).join(' '),
-            CompanyName: jointInstruction?.CompanyName || jc.CompanyName,
-            Lead: false,
-            HasSubmitted: jc.HasSubmitted || Boolean(jointInstruction),
-            idVerification: jointIdVerification
-          });
-        });
-        
-        // Replace the clients array with enhanced data
-        if (enhancedClients.length > 0) {
-          group.clients = enhancedClients;
-        }
-      }
-    });
-
-    return Array.from(grouped.values());
-  }, [filteredRiskComplianceData, instructionData]);
-
+  // Create POID data for client address information
   const idVerificationOptions = useMemo(() => {
     const seen = new Set<string>();
     return instructionData.flatMap((p) => {
@@ -1311,6 +1166,181 @@ const Instructions: React.FC<InstructionsProps> = ({
       });
     });
   }, [instructionData]);
+
+  // Group risk compliance data by instruction reference
+  const groupedRiskComplianceData = useMemo(() => {
+    const grouped = new Map<string, {
+      instructionRef: string;
+      riskAssessments: any[];
+      idVerifications: any[];
+      clients: any[];
+      serviceDescription?: string;
+      stage?: string;
+      allData: any[];
+    }>();
+
+    filteredRiskComplianceData.forEach(item => {
+      const instructionRef = item.InstructionRef || item.MatterId || 'Unknown';
+      
+      if (!grouped.has(instructionRef)) {
+        grouped.set(instructionRef, {
+          instructionRef,
+          riskAssessments: [],
+          idVerifications: [],
+          clients: item.clients || [],
+          serviceDescription: item.ServiceDescription,
+          stage: item.Stage,
+          allData: []
+        });
+      }
+
+      const group = grouped.get(instructionRef)!;
+      group.allData.push(item);
+
+      // Categorize the item based on its properties
+      if (item.CheckId || item.EIDStatus || item.EIDCheckedDate || 
+          item.CheckResult || item.PEPandSanctionsCheckResult || 
+          item.AddressVerificationCheckResult) {
+        // This is an ID verification item
+        group.idVerifications.push(item);
+      } else {
+        // This is a risk assessment item
+        group.riskAssessments.push(item);
+      }
+
+      // Update shared properties (take from latest item)
+      if (item.ServiceDescription) group.serviceDescription = item.ServiceDescription;
+      if (item.Stage) group.stage = item.Stage;
+      if (item.clients && item.clients.length > 0) group.clients = item.clients;
+    });
+
+    // Now enhance each group with proper ID verification data from instructionData
+    Array.from(grouped.values()).forEach(group => {
+      // Find the corresponding instruction data for this instruction ref
+      const instructionItem = instructionData.find(p => 
+        p.instructions?.some((inst: any) => inst.InstructionRef === group.instructionRef)
+      );
+      
+      if (instructionItem) {
+        const instruction = instructionItem.instructions?.find((inst: any) => 
+          inst.InstructionRef === group.instructionRef
+        );
+        
+        // Get all ID verifications for this instruction
+        const allIdVerifications = [
+          ...(instructionItem.idVerifications || []),
+          ...(instruction?.idVerifications || [])
+        ].filter(idv => idv.InstructionRef === group.instructionRef);
+        
+        // Add these to the group's ID verifications
+        group.idVerifications.push(...allIdVerifications);
+        
+        // Add instruction data to allData for personal info lookup
+        if (instruction) {
+          group.allData.push(instruction);
+        }
+        
+        // Update stage and service description from instruction if available
+        if (instruction && !group.stage) {
+          group.stage = instruction.Stage;
+        }
+        
+        // Find the deal for this instruction to get service description
+        const deal = instructionItem.deals?.find((d: any) => d.InstructionRef === group.instructionRef);
+        if (deal && !group.serviceDescription) {
+          group.serviceDescription = deal.ServiceDescription;
+        }
+        
+        // Enhanced client data with proper names and ID verification status
+        const enhancedClients: any[] = [];
+        
+        // Get deals for this instruction (needed for both lead and joint client processing)
+        const deals = instructionItem.deals?.filter((d: any) => d.InstructionRef === group.instructionRef) || [];
+        
+        // Add lead client from instruction data with basic fallback
+        if (instruction) {
+          const leadIdVerification = allIdVerifications.find(idv => 
+            idv.ClientEmail?.toLowerCase() === instruction.Email?.toLowerCase()
+          );
+          
+          // Find POID data for this client to get address information
+          const leadPoidData = idVerificationOptions?.find(poid => 
+            poid.email?.toLowerCase() === instruction.Email?.toLowerCase()
+          );
+          
+          enhancedClients.push({
+            ClientEmail: instruction.Email,
+            FirstName: instruction.FirstName || instruction.Name?.split(' ')[0] || 'Client',
+            LastName: instruction.LastName || instruction.Name?.split(' ').slice(1).join(' ') || '',
+            CompanyName: instruction.CompanyName,
+            Lead: true,
+            HasSubmitted: true, // If instruction exists, they've submitted
+            idVerification: leadIdVerification,
+            // Add address information from POID data
+            house_building_number: leadPoidData?.house_building_number,
+            street: leadPoidData?.street,
+            city: leadPoidData?.city,
+            county: leadPoidData?.county,
+            post_code: leadPoidData?.post_code,
+            country: leadPoidData?.country
+          });
+        }
+        
+        // Add joint clients from deal data AND prospect data
+        
+        // Get all joint clients from both prospect level and deal level
+        const allJointClients = [
+          // Prospect-level joint clients (filter by DealId matching this instruction's deals)
+          ...(instructionItem.jointClients || instructionItem.joinedClients || []).filter(jc => 
+            deals.some(d => d.DealId === jc.DealId)
+          ),
+          // Deal-level joint clients
+          ...deals.flatMap(d => d.jointClients || [])
+        ];
+        
+        // Process all joint clients
+        allJointClients.forEach((jc: any) => {
+          const jointIdVerification = allIdVerifications.find(idv => 
+            idv.ClientEmail?.toLowerCase() === jc.ClientEmail?.toLowerCase()
+          );
+          
+          // Try to find instruction data for this joint client
+          const jointInstruction = instructionData
+            .flatMap(p => p.instructions || [])
+            .find((inst: any) => inst.Email?.toLowerCase() === jc.ClientEmail?.toLowerCase());
+          
+          // Find POID data for this joint client to get address information
+          const jointPoidData = idVerificationOptions?.find(poid => 
+            poid.email?.toLowerCase() === jc.ClientEmail?.toLowerCase()
+          );
+          
+          enhancedClients.push({
+            ClientEmail: jc.ClientEmail,
+            FirstName: jointInstruction?.FirstName || jc.FirstName || jc.Name?.split(' ')[0],
+            LastName: jointInstruction?.LastName || jc.LastName || jc.Name?.split(' ').slice(1).join(' '),
+            CompanyName: jointInstruction?.CompanyName || jc.CompanyName,
+            Lead: false,
+            HasSubmitted: jc.HasSubmitted || Boolean(jointInstruction),
+            idVerification: jointIdVerification,
+            // Add address information from POID data
+            house_building_number: jointPoidData?.house_building_number,
+            street: jointPoidData?.street,
+            city: jointPoidData?.city,
+            county: jointPoidData?.county,
+            post_code: jointPoidData?.post_code,
+            country: jointPoidData?.country
+          });
+        });
+        
+        // Replace the clients array with enhanced data
+        if (enhancedClients.length > 0) {
+          group.clients = enhancedClients;
+        }
+      }
+    });
+
+    return Array.from(grouped.values());
+  }, [filteredRiskComplianceData, instructionData, idVerificationOptions]);
 
   const handleOpenMatter = (inst: any) => {
     if (hasActiveMatterOpening()) {

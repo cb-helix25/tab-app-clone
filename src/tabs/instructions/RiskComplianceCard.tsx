@@ -18,7 +18,15 @@ import {
   FaFileAudio,
   FaFileVideo,
   FaFileUpload,
-  FaLink
+  FaLink,
+  FaUserShield,
+  FaMapMarkerAlt,
+  FaBirthdayCake,
+  FaPhone,
+  FaFlag,
+  FaIdCard,
+  FaClock,
+  FaBuilding
 } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
@@ -73,6 +81,36 @@ const handleDocumentClick = (doc: any) => {
     link.click();
     document.body.removeChild(link);
   }
+};
+
+// Utility functions for additional data display
+const calculateAge = (dateOfBirth: string): number => {
+  if (!dateOfBirth) return 0;
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const formatDocumentNumber = (docNumber: string, docType: 'passport' | 'license'): string => {
+  if (!docNumber) return '';
+  // Mask middle characters for privacy, show first 2 and last 2
+  if (docNumber.length <= 4) return docNumber;
+  const visible = 2;
+  const masked = '*'.repeat(docNumber.length - (visible * 2));
+  return docNumber.substring(0, visible) + masked + docNumber.substring(docNumber.length - visible);
+};
+
+const getCountryFlag = (countryCode: string): string => {
+  if (!countryCode || countryCode.length !== 2) return '🌍';
+  const codePoints = countryCode.toUpperCase().split('').map(char => 
+    0x1F1E6 + char.charCodeAt(0) - 'A'.charCodeAt(0)
+  );
+  return String.fromCodePoint(...codePoints);
 };
 
 // Copy document URL to clipboard
@@ -690,10 +728,59 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                     fontWeight: 600,
                                     color: '#3690CE'
                                 }}>
-                                    Lead: {`${leadClient.FirstName || ''} ${leadClient.LastName || ''}`.trim() || 
-                                           leadClient.CompanyName || 
-                                           leadClient.ClientEmail?.split('@')[0] || 'Client'}
+                                    {(() => {
+                                        // Get personal info to include title in name
+                                        const personalInfo = data.allData.find(item => 
+                                            item.email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase() ||
+                                            item.Email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase()
+                                        );
+                                        const prefix = personalInfo?.prefix || personalInfo?.Title;
+                                        const firstName = leadClient.FirstName || '';
+                                        const lastName = leadClient.LastName || '';
+                                        const fullName = prefix ? 
+                                            `${prefix} ${firstName} ${lastName}`.trim() :
+                                            `${firstName} ${lastName}`.trim();
+                                        
+                                        return `Lead: ${fullName || leadClient.CompanyName || leadClient.ClientEmail?.split('@')[0] || 'Client'}`;
+                                    })()}
                                 </span>
+                                
+                                {/* Compact age and nationality display like POID cards */}
+                                {(() => {
+                                    const personalInfo = data.allData.find(item => 
+                                        item.email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase() ||
+                                        item.Email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase()
+                                    );
+                                    
+                                    const dob = personalInfo?.date_of_birth || personalInfo?.DOB;
+                                    const age = dob ? calculateAge(dob) : null;
+                                    const nationality = personalInfo?.nationality || personalInfo?.Nationality;
+                                    const countryCode = personalInfo?.nationality_iso || personalInfo?.NationalityAlpha2;
+                                    
+                                    if (!age && !nationality) return null;
+                                    
+                                    return (
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            fontSize: '0.75rem',
+                                            color: '#555',
+                                            marginLeft: '8px'
+                                        }}>
+                                            {age && (
+                                                <span style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                    {age} yrs
+                                                </span>
+                                            )}
+                                            {nationality && countryCode && (
+                                                <span style={{ fontFamily: 'Raleway, sans-serif', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                    {countryCode}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                             <div style={{
                                 fontSize: '0.8rem',
@@ -767,17 +854,25 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                                 {leadClient.idVerification.PEPAndSanctionsCheckResult && (
                                                                     <span style={{ 
                                                                         color: getRiskColor(leadClient.idVerification.PEPAndSanctionsCheckResult),
-                                                                        fontWeight: 500 
+                                                                        fontWeight: 500,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '3px'
                                                                     }}>
-                                                                        PEP: {leadClient.idVerification.PEPAndSanctionsCheckResult}
+                                                                        <FaUserShield style={{ fontSize: '10px' }} />
+                                                                        PEP & Sanctions: {leadClient.idVerification.PEPAndSanctionsCheckResult}
                                                                     </span>
                                                                 )}
                                                                 {leadClient.idVerification.AddressVerificationResult && (
                                                                     <span style={{ 
                                                                         color: getRiskColor(leadClient.idVerification.AddressVerificationResult),
-                                                                        fontWeight: 500 
+                                                                        fontWeight: 500,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '3px'
                                                                     }}>
-                                                                        Addr: {leadClient.idVerification.AddressVerificationResult}
+                                                                        <FaMapMarkerAlt style={{ fontSize: '10px' }} />
+                                                                        Address: {leadClient.idVerification.AddressVerificationResult}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -792,10 +887,287 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                 <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
                                                 <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
                                                     {new Date(leadClient.idVerification.EIDCheckedDate).toLocaleDateString()}
+                                                    {leadClient.idVerification.EIDCheckedTime && (
+                                                        <span style={{ color: '#666', fontWeight: 400, marginLeft: '4px' }}>
+                                                            <FaClock style={{ fontSize: '9px', marginRight: '2px' }} />
+                                                            {leadClient.idVerification.EIDCheckedTime.substring(0, 5)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.CheckExpiry && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Check Expires:</span>
+                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
+                                                    {new Date(leadClient.idVerification.CheckExpiry).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.EIDProvider && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Provider:</span>
+                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px', textTransform: 'capitalize' }}>
+                                                    {leadClient.idVerification.EIDProvider}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
+                                    
+                                    {/* Compact contact and document info with address */}
+                                    {(() => {
+                                        const personalInfo = data.allData.find(item => 
+                                            item.email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase() ||
+                                            item.Email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase()
+                                        );
+                                        
+                                        const phone = personalInfo?.best_number || personalInfo?.Phone;
+                                        const passport = personalInfo?.passport_number || personalInfo?.PassportNumber;
+                                        const license = personalInfo?.drivers_license_number || personalInfo?.DriversLicenseNumber;
+                                        
+                                        // Address information
+                                        const address = [
+                                            personalInfo?.house_building_number,
+                                            personalInfo?.street,
+                                            personalInfo?.city,
+                                            personalInfo?.county,
+                                            personalInfo?.post_code,
+                                            personalInfo?.country
+                                        ].filter(Boolean).join(', ');
+                                        
+                                        if (!phone && !passport && !license && !address) return null;
+                                        
+                                        return (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                paddingTop: '8px',
+                                                borderTop: '1px solid rgba(54, 144, 206, 0.15)',
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr 1fr',
+                                                gap: '12px',
+                                                fontSize: '0.65rem'
+                                            }}>
+                                                {/* Left column: Phone and Document */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    {phone && (
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '4px'
+                                                        }}>
+                                                            <FaPhone style={{ 
+                                                                fontSize: '9px', 
+                                                                color: '#3690CE',
+                                                                flexShrink: 0
+                                                            }} />
+                                                            <span style={{ color: '#666' }}>Phone:</span>
+                                                            <span style={{ fontWeight: 500, color: '#24292f' }}>{phone}</span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {passport && (
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '4px'
+                                                        }}>
+                                                            <FaIdCard style={{ 
+                                                                fontSize: '9px', 
+                                                                color: '#3690CE',
+                                                                flexShrink: 0
+                                                            }} />
+                                                            <span style={{ color: '#666' }}>Passport:</span>
+                                                            <span style={{ 
+                                                                fontWeight: 500, 
+                                                                color: '#24292f',
+                                                                fontFamily: 'monospace',
+                                                                fontSize: '0.6rem',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                {formatDocumentNumber(passport, 'passport')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {license && !passport && (
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '4px'
+                                                        }}>
+                                                            <FaIdCard style={{ 
+                                                                fontSize: '9px', 
+                                                                color: '#3690CE',
+                                                                flexShrink: 0
+                                                            }} />
+                                                            <span style={{ color: '#666' }}>License:</span>
+                                                            <span style={{ 
+                                                                fontWeight: 500, 
+                                                                color: '#24292f',
+                                                                fontFamily: 'monospace',
+                                                                fontSize: '0.6rem',
+                                                                letterSpacing: '0.5px'
+                                                            }}>
+                                                                {formatDocumentNumber(license, 'license')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Right column: Address */}
+                                                {address && (
+                                                    <div style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'flex-start', 
+                                                        gap: '4px'
+                                                    }}>
+                                                        <FaMapMarkerAlt style={{ 
+                                                            fontSize: '9px', 
+                                                            color: '#3690CE',
+                                                            flexShrink: 0,
+                                                            marginTop: '1px'
+                                                        }} />
+                                                        <div>
+                                                            <div style={{ color: '#666', marginBottom: '2px' }}>Address:</div>
+                                                            <div style={{ 
+                                                                fontWeight: 500, 
+                                                                color: '#24292f',
+                                                                lineHeight: '1.3',
+                                                                fontSize: '0.6rem'
+                                                            }}>
+                                                                {address}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                    
+                                    {/* Company Information Section for Lead Client */}
+                                    {leadClient.CompanyName && (
+                                        <div style={{
+                                            marginTop: '12px',
+                                            paddingTop: '8px',
+                                            borderTop: '1px solid rgba(54, 144, 206, 0.15)',
+                                        }}>
+                                            <div style={{
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                marginBottom: '6px',
+                                                fontFamily: 'Raleway, sans-serif'
+                                            }}>
+                                                Company Information
+                                            </div>
+                                            
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                                gap: '6px',
+                                                fontSize: '0.65rem'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <FaBuilding style={{ fontSize: '9px', color: '#3690CE' }} />
+                                                    <span style={{ color: '#666' }}>Company:</span>
+                                                    <span style={{ fontWeight: 500, color: '#24292f' }}>{leadClient.CompanyName}</span>
+                                                </div>
+                                                
+                                                {(() => {
+                                                    const personalInfo = data.allData.find(item => 
+                                                        item.email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase() ||
+                                                        item.Email?.toLowerCase() === leadClient.ClientEmail?.toLowerCase()
+                                                    );
+                                                    const companyNumber = personalInfo?.company_number || personalInfo?.CompanyNumber;
+                                                    
+                                                    return companyNumber ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <FaIdCard style={{ fontSize: '9px', color: '#3690CE' }} />
+                                                            <span style={{ color: '#666' }}>Company No:</span>
+                                                            <span style={{ fontWeight: 500, color: '#24292f', fontFamily: 'monospace' }}>{companyNumber}</span>
+                                                        </div>
+                                                    ) : null;
+                                                })()}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Address Information */}
+                                    {(leadClient.address || leadClient.house_building_number || leadClient.street || 
+                                      leadClient.city || leadClient.post_code || leadClient.country || 
+                                      (expanded && leadClient.ClientEmail)) && (
+                                        <div style={{
+                                            marginTop: '12px',
+                                            paddingTop: '8px',
+                                            borderTop: '1px solid rgba(54, 144, 206, 0.15)',
+                                        }}>
+                                            <div style={{
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                color: '#3690CE',
+                                                marginBottom: '6px',
+                                                fontFamily: 'Raleway, sans-serif'
+                                            }}>
+                                                Registered Address
+                                            </div>
+                                            <div style={{
+                                                fontSize: '0.7rem',
+                                                color: '#24292f',
+                                                lineHeight: '1.4',
+                                                fontFamily: 'Raleway, sans-serif'
+                                            }}>
+                                                {leadClient.address ? (
+                                                    // Legacy address structure
+                                                    <>
+                                                        {leadClient.address.house_number && `${leadClient.address.house_number} `}
+                                                        {leadClient.address.street && `${leadClient.address.street}`}
+                                                        {(leadClient.address.house_number || leadClient.address.street) && <br />}
+                                                        {leadClient.address.city && `${leadClient.address.city}`}
+                                                        {leadClient.address.county && `, ${leadClient.address.county}`}
+                                                        {(leadClient.address.city || leadClient.address.county) && <br />}
+                                                        {leadClient.address.post_code && `${leadClient.address.post_code}`}
+                                                        {leadClient.address.country && `, ${leadClient.address.country}`}
+                                                    </>
+                                                ) : (leadClient.house_building_number || leadClient.street || leadClient.city || 
+                                                     leadClient.post_code || leadClient.country) ? (
+                                                    // POID-style flat structure
+                                                    <>
+                                                        {leadClient.house_building_number && `${leadClient.house_building_number} `}
+                                                        {leadClient.street && `${leadClient.street}`}
+                                                        {(leadClient.house_building_number || leadClient.street) && <br />}
+                                                        {leadClient.city && `${leadClient.city}`}
+                                                        {leadClient.county && `, ${leadClient.county}`}
+                                                        {(leadClient.city || leadClient.county) && <br />}
+                                                        {leadClient.post_code && `${leadClient.post_code}`}
+                                                        {leadClient.country && `, ${leadClient.country}`}
+                                                    </>
+                                                ) : (
+                                                    // No address data available - show placeholder
+                                                    <div style={{
+                                                        color: '#666',
+                                                        fontStyle: 'italic',
+                                                        fontSize: '0.65rem',
+                                                        fontFamily: 'Raleway, sans-serif'
+                                                    }}>
+                                                        Address information not available
+                                                        {expanded && (
+                                                            <div style={{ 
+                                                                marginTop: '4px', 
+                                                                fontSize: '0.6rem', 
+                                                                color: '#999',
+                                                                fontFamily: 'Raleway, sans-serif'
+                                                            }}>
+                                                                Client: {leadClient.ClientEmail}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
                                     
                                     {/* Correlation ID - Read-only style */}
                                     {leadClient.idVerification.EIDCheckId && (
@@ -861,10 +1233,59 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                         fontSize: '0.85rem', 
                                         fontWeight: 500
                                     }}>
-                                        Joint: {`${client.FirstName || ''} ${client.LastName || ''}`.trim() || 
-                                               client.CompanyName || 
-                                               client.ClientEmail?.split('@')[0] || 'Client'}
+                                        {(() => {
+                                            // Get personal info to include title in name
+                                            const personalInfo = data.allData.find(item => 
+                                                item.email?.toLowerCase() === client.ClientEmail?.toLowerCase() ||
+                                                item.Email?.toLowerCase() === client.ClientEmail?.toLowerCase()
+                                            );
+                                            const prefix = personalInfo?.prefix || personalInfo?.Title;
+                                            const firstName = client.FirstName || '';
+                                            const lastName = client.LastName || '';
+                                            const fullName = prefix ? 
+                                                `${prefix} ${firstName} ${lastName}`.trim() :
+                                                `${firstName} ${lastName}`.trim();
+                                            
+                                            return `Joint: ${fullName || client.CompanyName || client.ClientEmail?.split('@')[0] || 'Client'}`;
+                                        })()}
                                     </span>
+                                    
+                                    {/* Compact age and nationality display like POID cards */}
+                                    {(() => {
+                                        const personalInfo = data.allData.find(item => 
+                                            item.email?.toLowerCase() === client.ClientEmail?.toLowerCase() ||
+                                            item.Email?.toLowerCase() === client.ClientEmail?.toLowerCase()
+                                        );
+                                        
+                                        const dob = personalInfo?.date_of_birth || personalInfo?.DOB;
+                                        const age = dob ? calculateAge(dob) : null;
+                                        const nationality = personalInfo?.nationality || personalInfo?.Nationality;
+                                        const countryCode = personalInfo?.nationality_iso || personalInfo?.NationalityAlpha2;
+                                        
+                                        if (!age && !nationality) return null;
+                                        
+                                        return (
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                fontSize: '0.75rem',
+                                                color: '#555',
+                                                marginLeft: '8px'
+                                            }}>
+                                                {age && (
+                                                    <span style={{ fontFamily: 'Raleway, sans-serif' }}>
+                                                        {age} yrs
+                                                    </span>
+                                                )}
+                                                {nationality && countryCode && (
+                                                    <span style={{ fontFamily: 'Raleway, sans-serif', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                        {countryCode}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 <div style={{
                                     fontSize: '0.8rem',
@@ -938,17 +1359,25 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                                     {client.idVerification.PEPAndSanctionsCheckResult && (
                                                                         <span style={{ 
                                                                             color: getRiskColor(client.idVerification.PEPAndSanctionsCheckResult),
-                                                                            fontWeight: 500 
+                                                                            fontWeight: 500,
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '3px'
                                                                         }}>
-                                                                            PEP: {client.idVerification.PEPAndSanctionsCheckResult}
+                                                                            <FaUserShield style={{ fontSize: '10px' }} />
+                                                                            PEP & Sanctions: {client.idVerification.PEPAndSanctionsCheckResult}
                                                                         </span>
                                                                     )}
                                                                     {client.idVerification.AddressVerificationResult && (
                                                                         <span style={{ 
                                                                             color: getRiskColor(client.idVerification.AddressVerificationResult),
-                                                                            fontWeight: 500 
+                                                                            fontWeight: 500,
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '3px'
                                                                         }}>
-                                                                            Addr: {client.idVerification.AddressVerificationResult}
+                                                                            <FaMapMarkerAlt style={{ fontSize: '10px' }} />
+                                                                            Address: {client.idVerification.AddressVerificationResult}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -963,10 +1392,287 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                     <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
                                                     <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
                                                         {new Date(client.idVerification.EIDCheckedDate).toLocaleDateString()}
+                                                        {client.idVerification.EIDCheckedTime && (
+                                                            <span style={{ color: '#666', fontWeight: 400, marginLeft: '4px' }}>
+                                                                <FaClock style={{ fontSize: '9px', marginRight: '2px' }} />
+                                                                {client.idVerification.EIDCheckedTime.substring(0, 5)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.CheckExpiry && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Check Expires:</span>
+                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
+                                                        {new Date(client.idVerification.CheckExpiry).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.EIDProvider && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Provider:</span>
+                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px', textTransform: 'capitalize' }}>
+                                                        {client.idVerification.EIDProvider}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
+                                        
+                                        {/* Compact contact and document info with address */}
+                                        {(() => {
+                                            const personalInfo = data.allData.find(item => 
+                                                item.email?.toLowerCase() === client.ClientEmail?.toLowerCase() ||
+                                                item.Email?.toLowerCase() === client.ClientEmail?.toLowerCase()
+                                            );
+                                            
+                                            const phone = personalInfo?.best_number || personalInfo?.Phone;
+                                            const passport = personalInfo?.passport_number || personalInfo?.PassportNumber;
+                                            const license = personalInfo?.drivers_license_number || personalInfo?.DriversLicenseNumber;
+                                            
+                                            // Address information
+                                            const address = [
+                                                personalInfo?.house_building_number,
+                                                personalInfo?.street,
+                                                personalInfo?.city,
+                                                personalInfo?.county,
+                                                personalInfo?.post_code,
+                                                personalInfo?.country
+                                            ].filter(Boolean).join(', ');
+                                            
+                                            if (!phone && !passport && !license && !address) return null;
+                                            
+                                            return (
+                                                <div style={{
+                                                    marginTop: '12px',
+                                                    paddingTop: '8px',
+                                                    borderTop: '1px solid rgba(102, 102, 102, 0.15)',
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr',
+                                                    gap: '12px',
+                                                    fontSize: '0.65rem'
+                                                }}>
+                                                    {/* Left column: Phone and Document */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                        {phone && (
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '4px'
+                                                            }}>
+                                                                <FaPhone style={{ 
+                                                                    fontSize: '9px', 
+                                                                    color: '#666',
+                                                                    flexShrink: 0
+                                                                }} />
+                                                                <span style={{ color: '#666' }}>Phone:</span>
+                                                                <span style={{ fontWeight: 500, color: '#24292f' }}>{phone}</span>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {passport && (
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '4px'
+                                                            }}>
+                                                                <FaIdCard style={{ 
+                                                                    fontSize: '9px', 
+                                                                    color: '#666',
+                                                                    flexShrink: 0
+                                                                }} />
+                                                                <span style={{ color: '#666' }}>Passport:</span>
+                                                                <span style={{ 
+                                                                    fontWeight: 500, 
+                                                                    color: '#24292f',
+                                                                    fontFamily: 'monospace',
+                                                                    fontSize: '0.6rem',
+                                                                    letterSpacing: '0.5px'
+                                                                }}>
+                                                                    {formatDocumentNumber(passport, 'passport')}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {license && !passport && (
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '4px'
+                                                            }}>
+                                                                <FaIdCard style={{ 
+                                                                    fontSize: '9px', 
+                                                                    color: '#666',
+                                                                    flexShrink: 0
+                                                                }} />
+                                                                <span style={{ color: '#666' }}>License:</span>
+                                                                <span style={{ 
+                                                                    fontWeight: 500, 
+                                                                    color: '#24292f',
+                                                                    fontFamily: 'monospace',
+                                                                    fontSize: '0.6rem',
+                                                                    letterSpacing: '0.5px'
+                                                                }}>
+                                                                    {formatDocumentNumber(license, 'license')}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* Right column: Address */}
+                                                    {address && (
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'flex-start', 
+                                                            gap: '4px'
+                                                        }}>
+                                                            <FaMapMarkerAlt style={{ 
+                                                                fontSize: '9px', 
+                                                                color: '#666',
+                                                                flexShrink: 0,
+                                                                marginTop: '1px'
+                                                            }} />
+                                                            <div>
+                                                                <div style={{ color: '#666', marginBottom: '2px' }}>Address:</div>
+                                                                <div style={{ 
+                                                                    fontWeight: 500, 
+                                                                    color: '#24292f',
+                                                                    lineHeight: '1.3',
+                                                                    fontSize: '0.6rem'
+                                                                }}>
+                                                                    {address}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                        
+                                        {/* Company Information Section for Joint Client */}
+                                        {client.CompanyName && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                paddingTop: '8px',
+                                                borderTop: '1px solid rgba(102, 102, 102, 0.15)',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 600,
+                                                    color: '#666',
+                                                    marginBottom: '6px',
+                                                    fontFamily: 'Raleway, sans-serif'
+                                                }}>
+                                                    Company Information
+                                                </div>
+                                                
+                                                <div style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                                    gap: '6px',
+                                                    fontSize: '0.65rem'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <FaBuilding style={{ fontSize: '9px', color: '#666' }} />
+                                                        <span style={{ color: '#666' }}>Company:</span>
+                                                        <span style={{ fontWeight: 500, color: '#24292f' }}>{client.CompanyName}</span>
+                                                    </div>
+                                                    
+                                                    {(() => {
+                                                        const personalInfo = data.allData.find(item => 
+                                                            item.email?.toLowerCase() === client.ClientEmail?.toLowerCase() ||
+                                                            item.Email?.toLowerCase() === client.ClientEmail?.toLowerCase()
+                                                        );
+                                                        const companyNumber = personalInfo?.company_number || personalInfo?.CompanyNumber;
+                                                        
+                                                        return companyNumber ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <FaIdCard style={{ fontSize: '9px', color: '#666' }} />
+                                                                <span style={{ color: '#666' }}>Company No:</span>
+                                                                <span style={{ fontWeight: 500, color: '#24292f', fontFamily: 'monospace' }}>{companyNumber}</span>
+                                                            </div>
+                                                        ) : null;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Address Information */}
+                                        {(client.address || client.house_building_number || client.street || 
+                                          client.city || client.post_code || client.country || 
+                                          (expanded && client.ClientEmail)) && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                paddingTop: '8px',
+                                                borderTop: '1px solid rgba(102, 102, 102, 0.15)',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 600,
+                                                    color: '#666',
+                                                    marginBottom: '6px',
+                                                    fontFamily: 'Raleway, sans-serif'
+                                                }}>
+                                                    Registered Address
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '0.7rem',
+                                                    color: '#24292f',
+                                                    lineHeight: '1.4',
+                                                    fontFamily: 'Raleway, sans-serif'
+                                                }}>
+                                                    {client.address ? (
+                                                        // Legacy address structure
+                                                        <>
+                                                            {client.address.house_number && `${client.address.house_number} `}
+                                                            {client.address.street && `${client.address.street}`}
+                                                            {(client.address.house_number || client.address.street) && <br />}
+                                                            {client.address.city && `${client.address.city}`}
+                                                            {client.address.county && `, ${client.address.county}`}
+                                                            {(client.address.city || client.address.county) && <br />}
+                                                            {client.address.post_code && `${client.address.post_code}`}
+                                                            {client.address.country && `, ${client.address.country}`}
+                                                        </>
+                                                    ) : (client.house_building_number || client.street || client.city || 
+                                                         client.post_code || client.country) ? (
+                                                        // POID-style flat structure
+                                                        <>
+                                                            {client.house_building_number && `${client.house_building_number} `}
+                                                            {client.street && `${client.street}`}
+                                                            {(client.house_building_number || client.street) && <br />}
+                                                            {client.city && `${client.city}`}
+                                                            {client.county && `, ${client.county}`}
+                                                            {(client.city || client.county) && <br />}
+                                                            {client.post_code && `${client.post_code}`}
+                                                            {client.country && `, ${client.country}`}
+                                                        </>
+                                                    ) : (
+                                                        // No address data available - show placeholder
+                                                        <div style={{
+                                                            color: '#666',
+                                                            fontStyle: 'italic',
+                                                            fontSize: '0.65rem',
+                                                            fontFamily: 'Raleway, sans-serif'
+                                                        }}>
+                                                            Address information not available
+                                                            {expanded && (
+                                                                <div style={{ 
+                                                                    marginTop: '4px', 
+                                                                    fontSize: '0.6rem', 
+                                                                    color: '#999',
+                                                                    fontFamily: 'Raleway, sans-serif'
+                                                                }}>
+                                                                    Client: {client.ClientEmail}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         
                                         {/* Correlation ID - Read-only style */}
                                         {client.idVerification.EIDCheckId && (

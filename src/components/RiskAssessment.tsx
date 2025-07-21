@@ -9,6 +9,7 @@ import {
     DialogFooter,
     DatePicker,
     IDatePickerStyles,
+    Checkbox,
 } from '@fluentui/react';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import '../app/styles/MultiSelect.css';
@@ -181,6 +182,10 @@ export interface RiskAssessmentProps {
     setConsideredFirmWideSanctions: React.Dispatch<React.SetStateAction<boolean | undefined>>;
     consideredFirmWideAML: boolean | undefined;
     setConsideredFirmWideAML: React.Dispatch<React.SetStateAction<boolean | undefined>>;
+    limitationDate: Date | undefined;
+    setLimitationDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+    limitationDateTbc: boolean;
+    setLimitationDateTbc: React.Dispatch<React.SetStateAction<boolean>>;
     onContinue: () => void;
     isComplete: () => boolean;
     onHeaderButtonsChange?: (buttons: { clearAllButton: React.ReactNode | null; jsonButton: React.ReactNode }) => void;
@@ -262,6 +267,10 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
     setConsideredFirmWideSanctions,
     consideredFirmWideAML,
     setConsideredFirmWideAML,
+    limitationDate,
+    setLimitationDate,
+    limitationDateTbc,
+    setLimitationDateTbc,
     onContinue,
     isComplete,
     onHeaderButtonsChange,
@@ -507,6 +516,26 @@ const RiskAssessment: React.FC<RiskAssessmentProps> = ({
                             })
                         }
                     />
+                    {[2, 3].includes(riskCore.limitationValue) && (
+                        <Stack tokens={{ childrenGap: 8 }}>
+                            <DatePicker
+                                value={limitationDate}
+                                onSelectDate={(d) => setLimitationDate(d || undefined)}
+                                styles={datePickerStyles}
+                                placeholder="Limitation Date"
+                                formatDate={(d?: Date) => (d ? d.toLocaleDateString('en-GB') : '')}
+                                disabled={limitationDateTbc}
+                            />
+                            <Checkbox
+                                label="Limitation Date TBC"
+                                checked={limitationDateTbc}
+                                onChange={(_, c) => {
+                                    setLimitationDateTbc(!!c);
+                                    if (c) setLimitationDate(undefined);
+                                }}
+                            />
+                        </Stack>
+                    )}
                     <QuestionGroup
                         label="Source of Funds"
                         options={sourceOfFundsOptions}
