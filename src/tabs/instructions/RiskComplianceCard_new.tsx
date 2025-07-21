@@ -185,7 +185,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                 <div style={{
                     backgroundColor: isCompleted ? '#e6f4ea' : data.stage === 'initialised' ? '#e8f4fd' : '#fffbe6',
                     borderLeft: `3px solid ${isCompleted ? '#20b26c' : data.stage === 'initialised' ? '#3690CE' : '#FFB900'}`,
-                    color: isCompleted ? '#20b26c' : data.stage === 'initialised' ? '#1a73e8' : '#b88600',
+                    color: isCompleted ? '#20b26c' : data.stage === 'initialised' ? '#3690CE' : '#b88600',
                     fontWeight: 500,
                     fontSize: '0.85rem',
                     padding: '6px 12px',

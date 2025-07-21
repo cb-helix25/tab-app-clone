@@ -1,9 +1,76 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import { FaUser, FaUsers } from 'react-icons/fa';
+import { 
+  FaUser, 
+  FaUsers, 
+  FaFileAlt, 
+  FaDownload, 
+  FaCalendarAlt,
+  FaFilePdf,
+  FaFileWord,
+  FaFileExcel,
+  FaFilePowerpoint,
+  FaFileArchive,
+  FaFileImage,
+  FaFileAudio,
+  FaFileVideo,
+  FaFileUpload
+} from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
+
+// File type icon mapping
+const iconMap: Record<string, JSX.Element> = {
+  pdf: <FaFilePdf style={{ fontSize: '20px' }} />,
+  doc: <FaFileWord style={{ fontSize: '20px' }} />,
+  docx: <FaFileWord style={{ fontSize: '20px' }} />,
+  xls: <FaFileExcel style={{ fontSize: '20px' }} />,
+  xlsx: <FaFileExcel style={{ fontSize: '20px' }} />,
+  ppt: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+  pptx: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+  txt: <FaFileAlt style={{ fontSize: '20px' }} />,
+  zip: <FaFileArchive style={{ fontSize: '20px' }} />,
+  rar: <FaFileArchive style={{ fontSize: '20px' }} />,
+  jpg: <FaFileImage style={{ fontSize: '20px' }} />,
+  jpeg: <FaFileImage style={{ fontSize: '20px' }} />,
+  png: <FaFileImage style={{ fontSize: '20px' }} />,
+  mp3: <FaFileAudio style={{ fontSize: '20px' }} />,
+  mp4: <FaFileVideo style={{ fontSize: '20px' }} />,
+};
+
+// Get file type-specific icon
+const getFileIcon = (filename?: string): JSX.Element => {
+  if (!filename) return <FaFileUpload style={{ fontSize: '20px' }} />;
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return iconMap[ext] || <FaFileAlt style={{ fontSize: '20px' }} />;
+};
+
+// Smart document handler - preview for PDFs/images, download for others
+const handleDocumentClick = (doc: any) => {
+  if (!doc.BlobUrl && !doc.DocumentUrl) return;
+  
+  const url = doc.BlobUrl || doc.DocumentUrl;
+  const filename = doc.FileName || '';
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  
+  // Previewable file types
+  const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+  
+  if (previewableTypes.includes(ext)) {
+    // Open in new tab for preview
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    // Force download for non-previewable files
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
 
 interface InstructionInfo {
     InstructionRef: string;
@@ -225,7 +292,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 <div style={{
                     backgroundColor: isCompleted ? '#e6f4ea' : stage === 'initialised' ? '#e8f4fd' : '#fffbe6',
                     borderLeft: `3px solid ${isCompleted ? '#20b26c' : stage === 'initialised' ? '#3690CE' : '#FFB900'}`,
-                    color: isCompleted ? '#20b26c' : stage === 'initialised' ? '#1a73e8' : '#b88600',
+                    color: isCompleted ? '#20b26c' : stage === 'initialised' ? '#3690CE' : '#b88600',
                     fontWeight: 500,
                     fontSize: '0.85rem',
                     padding: '6px 12px',
@@ -464,6 +531,116 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Expanded Documents Section */}
+            {expanded && documents && documents.length > 0 && (
+                <div style={{
+                    marginTop: '16px',
+                    padding: '16px',
+                    backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(54, 144, 206, 0.1)'
+                }}>
+                    <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: '#3690CE',
+                        marginBottom: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                    }}>
+                        <FaFileAlt /> Deal Documents
+                    </div>
+                    
+                    <div style={{
+                        display: 'grid',
+                        gap: '8px',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
+                    }}>
+                        {documents.map((doc: any, docIndex: number) => (
+                            <div key={docIndex} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '12px 14px',
+                                backgroundColor: 'white',
+                                borderRadius: '4px',
+                                border: '1px solid #e1e4e8',
+                                fontSize: '0.75rem',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    flex: 1
+                                }}>
+                                    <div style={{
+                                        marginRight: '12px',
+                                        fontSize: '1.1rem',
+                                        color: '#3690CE'
+                                    }}>
+                                        {getFileIcon(doc.FileName)}
+                                    </div>
+                                    <div>
+                                        <div style={{
+                                            fontWeight: 500,
+                                            color: '#24292f',
+                                            marginBottom: '4px'
+                                        }}>
+                                            {doc.FileName || 'Unnamed document'}
+                                        </div>
+                                        {doc.FileSizeBytes && (
+                                            <div style={{
+                                                color: '#666',
+                                                fontSize: '0.7rem'
+                                            }}>
+                                                {Math.round(doc.FileSizeBytes / 1024)}KB
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                {(doc.BlobUrl || doc.DocumentUrl) && (
+                                    <button
+                                        onClick={() => handleDocumentClick(doc)}
+                                        style={{
+                                            color: '#3690CE',
+                                            textDecoration: 'none',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 500,
+                                            padding: '6px 10px',
+                                            borderRadius: '4px',
+                                            border: '1px solid #3690CE',
+                                            backgroundColor: 'transparent',
+                                            transition: 'all 0.2s ease',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#3690CE';
+                                            e.currentTarget.style.color = 'white';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = '#3690CE';
+                                        }}
+                                    >
+                                        <FaDownload style={{ fontSize: '0.65rem' }} /> 
+                                        {(() => {
+                                            const filename = doc.FileName || '';
+                                            const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+                                            const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+                                            return previewableTypes.includes(ext) ? 'Preview' : 'Download';
+                                        })()}
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

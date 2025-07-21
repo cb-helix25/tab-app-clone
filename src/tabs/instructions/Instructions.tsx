@@ -20,6 +20,7 @@ import {
   FaRegFolder,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
+import { FaShieldAlt } from 'react-icons/fa';
 import QuickActionsCard from "../home/QuickActionsCard";
 import { useTheme } from "../../app/functionality/ThemeContext";
 import { useNavigator } from "../../app/functionality/NavigatorContext";
@@ -34,6 +35,7 @@ import { InstructionData, POID, TeamData, UserData } from "../../app/functionali
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
 import localInstructionData from "../../localData/localInstructionData.json";
 import localInstructionCards from "../../localData/localInstructionCards.json";
+import localIdVerifications from "../../localData/localIdVerifications.json";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
@@ -214,7 +216,23 @@ const Instructions: React.FC<InstructionsProps> = ({
       const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
 
       if (useLocalData) {
-        setInstructionData(localInstructionData as InstructionData[]);
+        // Merge local instruction data with ID verification data
+        const instructionsWithIdVerifications = (localInstructionData as InstructionData[]).map(prospect => ({
+          ...prospect,
+          // Add ID verifications to prospect level
+          idVerifications: (localIdVerifications as any[]).filter(
+            (idv: any) => prospect.instructions?.some((inst: any) => inst.InstructionRef === idv.InstructionRef)
+          ),
+          // Also add to instructions level for easier access
+          instructions: prospect.instructions?.map(inst => ({
+            ...inst,
+            idVerifications: (localIdVerifications as any[]).filter(
+              (idv: any) => idv.InstructionRef === inst.InstructionRef
+            )
+          }))
+        }));
+        
+        setInstructionData(instructionsWithIdVerifications);
         return;
       }
       const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
@@ -464,6 +482,110 @@ const Instructions: React.FC<InstructionsProps> = ({
               }
             `}</style>
           </div>
+        ) : riskFilterRef ? (
+          <div className={detailNavStyle(isDarkMode)}>
+            <div 
+              className="nav-back-button"
+              onClick={() => setRiskFilterRef(null)}
+              style={{
+                background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+                border: '1px solid #e1dfdd',
+                borderRadius: '0',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                marginRight: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e7f1ff';
+                e.currentTarget.style.border = '1px solid #3690CE';
+                e.currentTarget.style.width = '150px';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
+                e.currentTarget.style.border = '1px solid #e1dfdd';
+                e.currentTarget.style.width = '32px';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+              }}
+              title="Back to Risk & Compliance"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setRiskFilterRef(null);
+                }
+              }}
+            >
+              {/* ChevronLeft Icon */}
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 16 16" 
+                fill="none"
+                style={{
+                  transition: 'color 0.3s, opacity 0.3s',
+                  color: isDarkMode ? '#ffffff' : '#666666',
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <path 
+                  d="M10 12L6 8L10 4" 
+                  stroke="currentColor" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              
+              {/* Expandable Text */}
+              <span 
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#3690CE',
+                  opacity: 0,
+                  transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+                className="back-text"
+              >
+                Back to Risk & Compliance
+              </span>
+            </div>
+            
+            <span style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: isDarkMode ? colours.dark.text : colours.light.text,
+              marginLeft: '8px'
+            }}>
+              Risk & Compliance: {riskFilterRef}
+            </span>
+            
+            <style>{`
+              .nav-back-button:hover .back-text {
+                opacity: 1 !important;
+              }
+              .nav-back-button:hover svg {
+                opacity: 0 !important;
+              }
+            `}</style>
+          </div>
         ) : (
           <>
             {/* Quick Actions Bar with Pivot Navigation */}
@@ -512,6 +634,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     selectedInstruction,
     hasActiveMatter,
     selectedDealRef,
+    riskFilterRef,
   ]);
 
   const containerStyle = mergeStyles({
@@ -600,10 +723,10 @@ const Instructions: React.FC<InstructionsProps> = ({
           }
         });
         const eidSource = [
-          ...(prospect.electronicIDChecks ?? prospect.idVerifications ?? []),
-          ...((inst as any).electronicIDChecks ??
-            (inst as any).idVerifications ??
-            []),
+          ...(prospect.electronicIDChecks ?? []),
+          ...(prospect.idVerifications ?? []),
+          ...((inst as any).electronicIDChecks ?? []),
+          ...((inst as any).idVerifications ?? []),
           ...dealsForInst.flatMap((d) => [
             ...(d.instruction?.electronicIDChecks ?? []),
             ...(d.instruction?.idVerifications ?? []),
@@ -672,6 +795,14 @@ const Instructions: React.FC<InstructionsProps> = ({
       ? "ID Verified"
       : "Review ID"
     : "Verify ID";
+  
+  // Payment status logic
+  const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
+  const paymentCompleted = paymentResult === "successful";
+  
+  // Open Matter button should only be enabled when both ID is verified AND payment is complete
+  const canOpenMatter = poidPassed && paymentCompleted;
+  
   const disableOtherActions = false; // Enable all actions regardless of selection
 
   const unlinkedDeals = useMemo(
@@ -852,12 +983,46 @@ const Instructions: React.FC<InstructionsProps> = ({
             ...(p.jointClients ?? p.joinedClients ?? []),
             ...dealsForInst.flatMap((d) => d.jointClients ?? []),
           ];
+          
+          // Helper function to find client details from instruction data
+          const findClientDetails = (email: string) => {
+            // Look in instructions for matching email
+            const matchingInstruction = instructions.find((inst: any) => 
+              inst.Email?.toLowerCase() === email?.toLowerCase()
+            );
+            if (matchingInstruction) {
+              return {
+                FirstName: matchingInstruction.FirstName,
+                LastName: matchingInstruction.LastName,
+                CompanyName: matchingInstruction.CompanyName,
+                Phone: matchingInstruction.Phone,
+              };
+            }
+            
+            // Look in joint clients data for additional details
+            const jointClient = prospectClients.find((jc: any) => 
+              jc.ClientEmail?.toLowerCase() === email?.toLowerCase()
+            );
+            if (jointClient) {
+              return {
+                FirstName: jointClient.FirstName || jointClient.Name?.split(' ')[0],
+                LastName: jointClient.LastName || jointClient.Name?.split(' ').slice(1).join(' '),
+                CompanyName: jointClient.CompanyName,
+                Phone: jointClient.Phone,
+              };
+            }
+            
+            return {};
+          };
+          
           prospectClients.forEach((jc) => {
             if (dealsForInst.some((d) => d.DealId === jc.DealId)) {
+              const clientDetails = findClientDetails(jc.ClientEmail);
               clientsForInst.push({
                 ClientEmail: jc.ClientEmail,
                 HasSubmitted: jc.HasSubmitted,
                 Lead: false,
+                ...clientDetails,
                 deals: [
                   {
                     DealId: jc.DealId,
@@ -873,9 +1038,11 @@ const Instructions: React.FC<InstructionsProps> = ({
           });
           dealsForInst.forEach((d) => {
             if (d.LeadClientEmail) {
+              const clientDetails = findClientDetails(d.LeadClientEmail);
               clientsForInst.push({
                 ClientEmail: d.LeadClientEmail,
                 Lead: true,
+                ...clientDetails,
                 deals: [
                   {
                     DealId: d.DealId,
@@ -923,7 +1090,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     }>();
 
     filteredRiskComplianceData.forEach(item => {
-      const instructionRef = item.MatterId || item.InstructionRef || 'Unknown';
+      const instructionRef = item.InstructionRef || item.MatterId || 'Unknown';
       
       if (!grouped.has(instructionRef)) {
         grouped.set(instructionRef, {
@@ -957,8 +1124,104 @@ const Instructions: React.FC<InstructionsProps> = ({
       if (item.clients && item.clients.length > 0) group.clients = item.clients;
     });
 
+    // Now enhance each group with proper ID verification data from instructionData
+    Array.from(grouped.values()).forEach(group => {
+      // Find the corresponding instruction data for this instruction ref
+      const instructionItem = instructionData.find(p => 
+        p.instructions?.some((inst: any) => inst.InstructionRef === group.instructionRef)
+      );
+      
+      if (instructionItem) {
+        const instruction = instructionItem.instructions?.find((inst: any) => 
+          inst.InstructionRef === group.instructionRef
+        );
+        
+        // Get all ID verifications for this instruction
+        const allIdVerifications = [
+          ...(instructionItem.idVerifications || []),
+          ...(instruction?.idVerifications || [])
+        ].filter(idv => idv.InstructionRef === group.instructionRef);
+        
+        // Add these to the group's ID verifications
+        group.idVerifications.push(...allIdVerifications);
+        
+        // Update stage and service description from instruction if available
+        if (instruction && !group.stage) {
+          group.stage = instruction.Stage;
+        }
+        
+        // Find the deal for this instruction to get service description
+        const deal = instructionItem.deals?.find((d: any) => d.InstructionRef === group.instructionRef);
+        if (deal && !group.serviceDescription) {
+          group.serviceDescription = deal.ServiceDescription;
+        }
+        
+        // Enhanced client data with proper names and ID verification status
+        const enhancedClients: any[] = [];
+        
+        // Get deals for this instruction (needed for both lead and joint client processing)
+        const deals = instructionItem.deals?.filter((d: any) => d.InstructionRef === group.instructionRef) || [];
+        
+        // Add lead client from instruction data with basic fallback
+        if (instruction) {
+          const leadIdVerification = allIdVerifications.find(idv => 
+            idv.ClientEmail?.toLowerCase() === instruction.Email?.toLowerCase()
+          );
+          
+          enhancedClients.push({
+            ClientEmail: instruction.Email,
+            FirstName: instruction.FirstName || instruction.Name?.split(' ')[0] || 'Client',
+            LastName: instruction.LastName || instruction.Name?.split(' ').slice(1).join(' ') || '',
+            CompanyName: instruction.CompanyName,
+            Lead: true,
+            HasSubmitted: true, // If instruction exists, they've submitted
+            idVerification: leadIdVerification
+          });
+        }
+        
+        // Add joint clients from deal data AND prospect data
+        
+        // Get all joint clients from both prospect level and deal level
+        const allJointClients = [
+          // Prospect-level joint clients (filter by DealId matching this instruction's deals)
+          ...(instructionItem.jointClients || instructionItem.joinedClients || []).filter(jc => 
+            deals.some(d => d.DealId === jc.DealId)
+          ),
+          // Deal-level joint clients
+          ...deals.flatMap(d => d.jointClients || [])
+        ];
+        
+        // Process all joint clients
+        allJointClients.forEach((jc: any) => {
+          const jointIdVerification = allIdVerifications.find(idv => 
+            idv.ClientEmail?.toLowerCase() === jc.ClientEmail?.toLowerCase()
+          );
+          
+          // Try to find instruction data for this joint client
+          const jointInstruction = instructionData
+            .flatMap(p => p.instructions || [])
+            .find((inst: any) => inst.Email?.toLowerCase() === jc.ClientEmail?.toLowerCase());
+          
+          enhancedClients.push({
+            ClientEmail: jc.ClientEmail,
+            FirstName: jointInstruction?.FirstName || jc.FirstName || jc.Name?.split(' ')[0],
+            LastName: jointInstruction?.LastName || jc.LastName || jc.Name?.split(' ').slice(1).join(' '),
+            CompanyName: jointInstruction?.CompanyName || jc.CompanyName,
+            Lead: false,
+            HasSubmitted: jc.HasSubmitted || Boolean(jointInstruction),
+            idVerification: jointIdVerification
+          });
+        });
+        
+        // Replace the clients array with enhanced data
+        if (enhancedClients.length > 0) {
+          group.clients = enhancedClients;
+        }
+      }
+    });
+
     return Array.from(grouped.values());
-  }, [filteredRiskComplianceData]);
+  }, [filteredRiskComplianceData, instructionData]);
 
   const idVerificationOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -984,6 +1247,11 @@ const Instructions: React.FC<InstructionsProps> = ({
         const inst = instructions.find((i: any) => i.InstructionRef === instRef) ?? (v.fromInstruction ? v : null);
         const merged: any = { ...inst, ...v };
         delete merged.EIDRawResponse;
+        
+        // Add verification results and status information
+        const eidOverallResult = v.EIDOverallResult || merged.EIDOverallResult;
+        const eidStatus = v.EIDStatus || merged.EIDStatus;
+        
         return [
           {
             poid_id: String(merged.InternalId ?? key),
@@ -1014,6 +1282,24 @@ const Instructions: React.FC<InstructionsProps> = ({
             company_country: merged.CompanyCountry,
             company_country_code: merged.CompanyCountryCode,
             stage: merged.Stage,
+            // Add verification status and results
+            EIDOverallResult: eidOverallResult,
+            EIDStatus: eidStatus,
+            CheckResult: v.CheckResult,
+            DocumentType: v.DocumentType,
+            DocumentNumber: v.DocumentNumber,
+            IssuedDate: v.IssuedDate,
+            ExpiryDate: v.ExpiryDate,
+            IssuingCountry: v.IssuingCountry,
+            CheckDate: v.CheckDate,
+            FraudScore: v.FraudScore,
+            AuthenticityScore: v.AuthenticityScore,
+            QualityScore: v.QualityScore,
+            BiometricScore: v.BiometricScore,
+            Notes: v.Notes,
+            // Add individual verification results for address and PEP checks
+            AddressVerificationResult: eidOverallResult === 'Passed' ? 'Passed' : eidOverallResult === 'Failed' ? 'Review' : eidOverallResult === 'Review' ? 'Review' : null,
+            PEPAndSanctionsCheckResult: eidOverallResult === 'Passed' ? 'Passed' : eidOverallResult === 'Failed' ? 'Review' : eidOverallResult === 'Review' ? 'Review' : null,
             ...merged,
           },
         ];
@@ -1274,6 +1560,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                         prospectId={item.prospectId}
                         documentCount={item.documentCount ?? 0}
                         animationDelay={animationDelay}
+                        expanded={overviewItems.length === 1 || selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
                         onSelect={() => {
                           // Toggle selection: if already selected, unselect; otherwise select
@@ -1292,22 +1579,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 
                   );
                 })}
-                {unlinkedDeals.map((deal, idx) => {
-                  const base = overviewItems.length + idx;
-                  const row = Math.floor(base / 4);
-                  const col = base % 4;
-                  const animationDelay = row * 0.2 + col * 0.1;
-                  return (
-                    <div key={`unlinked-${idx}`} className={overviewItemStyle}>
-                      <DealCard
-                        deal={deal}
-                        animationDelay={animationDelay}
-                        teamData={teamData}
-                        userInitials={userInitials}
-                      />
-                    </div>
-                );
-              })}
             </div>
           )}
           {activePivot === "deals-clients" && (
@@ -1336,11 +1607,13 @@ const Instructions: React.FC<InstructionsProps> = ({
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const animationDelay = row * 0.2 + col * 0.1;
+                  const isExpanded = groupedRiskComplianceData.length === 1 && !!riskFilterRef;
                   return (
                     <RiskComplianceCard
                       key={`${groupedItem.instructionRef}-${idx}`}
                       data={groupedItem}
                       animationDelay={animationDelay}
+                      expanded={isExpanded}
                       onOpenInstruction={() =>
                         handleOpenInstruction(groupedItem.instructionRef)
                       }
@@ -1458,18 +1731,27 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
-              onClick={handleGlobalOpenMatter}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              onClick={canOpenMatter ? handleGlobalOpenMatter : undefined}
+              onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
                 borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1,
+                opacity: canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
-                pointerEvents: 'auto',
+                pointerEvents: canOpenMatter ? 'auto' : 'none',
+                cursor: canOpenMatter ? 'pointer' : 'not-allowed',
+                backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
               }}
+              title={
+                !canOpenMatter
+                  ? `${!poidPassed ? "ID verification" : ""} ${
+                      !poidPassed && !paymentCompleted ? " and " : ""
+                    } ${!paymentCompleted ? "payment" : ""} required to open matter`
+                  : ""
+              }
             >
               <span className="global-action-icon icon-hover" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
@@ -1499,17 +1781,26 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
-              onClick={() => setActivePivot("documents2")}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
-              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              onClick={canOpenMatter ? () => setActivePivot("documents2") : undefined}
+              onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
                 borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1,
+                opacity: canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
-                pointerEvents: 'auto',
+                pointerEvents: canOpenMatter ? 'auto' : 'none',
+                cursor: canOpenMatter ? 'pointer' : 'not-allowed',
+                backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
               }}
+              title={
+                !canOpenMatter
+                  ? `${!poidPassed ? "ID verification" : ""} ${
+                      !poidPassed && !paymentCompleted ? " and " : ""
+                    } ${!paymentCompleted ? "payment" : ""} required to draft CCL`
+                  : ""
+              }
             >
               <span className="global-action-icon icon-hover" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,

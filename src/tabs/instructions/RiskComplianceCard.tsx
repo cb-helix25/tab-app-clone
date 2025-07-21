@@ -1,9 +1,100 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import { FaShieldAlt, FaUser, FaUsers } from 'react-icons/fa';
+import { 
+  FaShieldAlt, 
+  FaUser, 
+  FaUsers, 
+  FaFileAlt, 
+  FaDownload, 
+  FaCalendarAlt, 
+  FaClipboardList,
+  FaFilePdf,
+  FaFileWord,
+  FaFileExcel,
+  FaFilePowerpoint,
+  FaFileArchive,
+  FaFileImage,
+  FaFileAudio,
+  FaFileVideo,
+  FaFileUpload,
+  FaLink
+} from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
+
+// File type icon mapping
+const iconMap: Record<string, JSX.Element> = {
+  pdf: <FaFilePdf style={{ fontSize: '20px' }} />,
+  doc: <FaFileWord style={{ fontSize: '20px' }} />,
+  docx: <FaFileWord style={{ fontSize: '20px' }} />,
+  xls: <FaFileExcel style={{ fontSize: '20px' }} />,
+  xlsx: <FaFileExcel style={{ fontSize: '20px' }} />,
+  ppt: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+  pptx: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+  txt: <FaFileAlt style={{ fontSize: '20px' }} />,
+  zip: <FaFileArchive style={{ fontSize: '20px' }} />,
+  rar: <FaFileArchive style={{ fontSize: '20px' }} />,
+  jpg: <FaFileImage style={{ fontSize: '20px' }} />,
+  jpeg: <FaFileImage style={{ fontSize: '20px' }} />,
+  png: <FaFileImage style={{ fontSize: '20px' }} />,
+  mp3: <FaFileAudio style={{ fontSize: '20px' }} />,
+  mp4: <FaFileVideo style={{ fontSize: '20px' }} />,
+};
+
+// Get file type-specific icon
+const getFileIcon = (filename?: string): JSX.Element => {
+  if (!filename) return <FaFileUpload style={{ fontSize: '20px' }} />;
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return iconMap[ext] || <FaFileAlt style={{ fontSize: '20px' }} />;
+};
+
+// Smart document handler - preview for PDFs/images, download for others
+const handleDocumentClick = (doc: any) => {
+  if (!doc.BlobUrl && !doc.DocumentUrl) return;
+  
+  const url = doc.BlobUrl || doc.DocumentUrl;
+  const filename = doc.FileName || '';
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  
+  // Previewable file types
+  const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+  
+  if (previewableTypes.includes(ext)) {
+    // Open in new tab for preview
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    // Force download for non-previewable files
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
+// Copy document URL to clipboard
+const handleCopyUrl = async (doc: any) => {
+  const url = doc.BlobUrl || doc.DocumentUrl;
+  if (!url) return;
+  
+  try {
+    await navigator.clipboard.writeText(url);
+    // You could add a toast notification here if needed
+    console.log('URL copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy URL:', err);
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
+};
 
 interface GroupedRiskData {
     instructionRef: string;
@@ -21,6 +112,7 @@ interface RiskComplianceCardProps {
     onOpenInstruction?: () => void;
     selected?: boolean;
     onSelect?: () => void;
+    expanded?: boolean;
 }
 
 const getRiskColor = (riskLevel: string) => {
@@ -60,8 +152,8 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
     onOpenInstruction,
     selected = false,
     onSelect,
+    expanded = false,
 }) => {
-    const isCompleted = data.stage?.toLowerCase() === 'completed';
     const primaryRisk = data.riskAssessments[0];
     const leadClient = data.clients?.find(c => c.Lead) || data.clients?.[0];
     const jointClients = data.clients?.filter(c => !c.Lead) || [];
@@ -74,40 +166,58 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
         ['medium'].includes(riskResult.toLowerCase()) ? 'review' : 'flagged'
         : 'pending';
     
-    // Get individual client verification statuses
-    const getClientVerificationStatus = (clientEmail: string) => {
-        const clientVerifications = data.idVerifications.filter(v => 
-            v.ClientEmail?.toLowerCase() === clientEmail?.toLowerCase()
-        );
-        return getVerificationStatus(clientVerifications);
+    // Get individual client verification statuses from enhanced client data
+    const getClientVerificationStatus = (client: any) => {
+        if (!client) return 'pending';
+        
+        // Use the idVerification data attached to the client object
+        if (client.idVerification) {
+            const eidResult = client.idVerification.EIDOverallResult?.toLowerCase();
+            const eidStatus = client.idVerification.EIDStatus?.toLowerCase();
+            
+            if (eidResult === 'passed' || eidResult === 'pass') {
+                return 'complete';
+            } else if (eidResult === 'failed' || eidResult === 'fail') {
+                return 'review';
+            } else if (eidStatus === 'completed') {
+                return 'in-progress'; // Completed but not passed
+            } else if (eidStatus === 'pending') {
+                return 'pending';
+            }
+        }
+        
+        // Fallback to checking if they have submitted
+        return client.HasSubmitted ? 'in-progress' : 'pending';
     };
     
-    // Get instruction title
-    const instructionTitle = isMultiClient ? 'Joint Clients' : 
-        leadClient ? 
-            `${leadClient.FirstName || ''} ${leadClient.LastName || ''}`.trim() ||
-            leadClient.CompanyName || leadClient.ClientEmail?.split('@')[0] || 'Client'
-            : 'Client';
+    // Get instruction title - prioritize lead client name over "Joint Clients"
+    const instructionTitle = leadClient ? 
+        `${leadClient.FirstName || ''} ${leadClient.LastName || ''}`.trim() ||
+        leadClient.CompanyName || leadClient.ClientEmail?.split('@')[0] || 'Client'
+        : isMultiClient ? 'Joint Clients' : 'Client';
 
     const cardClass = mergeStyles('riskComplianceCard', {
         backgroundColor: colours.light.sectionBackground,
         borderRadius: '0px',
-        padding: '16px',
+        padding: expanded ? '24px' : '16px',
         color: colours.light.text,
         cursor: 'pointer',
         position: 'relative',
         border: selected 
             ? '2px solid #3690CE' 
-            : isCompleted 
-                ? '0.25px solid #20b26c' 
+            : expanded 
+                ? '2px solid #3690CE'
                 : '1px solid #e1e4e8',
         boxShadow: selected
             ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
-            : isCompleted 
-                ? 'inset 0 0 2px #20b26c15, 0 2px 8px rgba(0,0,0,0.08)'
+            : expanded
+                ? '0 0 0 1px #3690CE10, 0 8px 32px rgba(54, 144, 206, 0.12)'
                 : '0 2px 8px rgba(0,0,0,0.08)',
-        opacity: isCompleted ? 0.6 : 1,
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
+        opacity: 1,
+        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease, padding 0.3s ease',
+        width: expanded ? '100%' : 'auto',
+        maxWidth: expanded ? 'none' : '450px',
+        gridColumn: expanded ? '1 / -1' : 'auto', // Span all columns when expanded
         selectors: {
             ':hover': {
                 boxShadow: selected
@@ -187,22 +297,6 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                 )}
             </div>
 
-            {/* Stage/Status Banner */}
-            {data.stage && (
-                <div style={{
-                    backgroundColor: isCompleted ? '#e6f4ea' : data.stage === 'initialised' ? '#e8f4fd' : '#fffbe6',
-                    borderLeft: `3px solid ${isCompleted ? '#20b26c' : data.stage === 'initialised' ? '#3690CE' : '#FFB900'}`,
-                    color: isCompleted ? '#20b26c' : data.stage === 'initialised' ? '#1a73e8' : '#b88600',
-                    fontWeight: 500,
-                    fontSize: '0.85rem',
-                    padding: '6px 12px',
-                    marginBottom: '12px',
-                    borderRadius: '0px',
-                }}>
-                    Stage: {data.stage}
-                </div>
-            )}
-
             {/* Service Description */}
             {data.serviceDescription && (
                 <div style={{
@@ -252,10 +346,13 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                 }}>
                     Risk Assessment
                 </div>
+                
+                {/* Basic Summary Row */}
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                    gap: '8px'
+                    gap: '8px',
+                    marginBottom: primaryRisk ? '12px' : '0'
                 }}>
                     {/* Risk Status */}
                     <div>
@@ -310,6 +407,243 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                         </div>
                     )}
                 </div>
+
+                {/* Detailed Risk Factors */}
+                {primaryRisk && (
+                    <div style={{
+                        borderTop: '1px solid #e1e4e8',
+                        paddingTop: '8px'
+                    }}>
+                        <div style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: '#666',
+                            marginBottom: '6px'
+                        }}>
+                            Risk Factor Details
+                        </div>
+                        
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: '6px',
+                            fontSize: '0.7rem'
+                        }}>
+                            {/* Client Type */}
+                            {primaryRisk.ClientType && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Client Type:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.ClientType} 
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.ClientType_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Value of Instruction */}
+                            {primaryRisk.ValueOfInstruction && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Value:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.ValueOfInstruction}
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.ValueOfInstruction_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Source of Funds */}
+                            {primaryRisk.SourceOfFunds && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Source of Funds:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.SourceOfFunds}
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.SourceOfFunds_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Destination of Funds */}
+                            {primaryRisk.DestinationOfFunds && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Destination:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.DestinationOfFunds}
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.DestinationOfFunds_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Funds Type */}
+                            {primaryRisk.FundsType && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Funds Type:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.FundsType}
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.FundsType_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Client Introduction */}
+                            {primaryRisk.HowWasClientIntroduced && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Introduction:</span>
+                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                        {primaryRisk.HowWasClientIntroduced}
+                                        <span style={{ color: '#666', fontSize: '0.65rem', marginLeft: '4px' }}>
+                                            ({primaryRisk.HowWasClientIntroduced_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Limitation */}
+                            {primaryRisk.Limitation && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Limitation:</span>
+                                    <div style={{ 
+                                        color: primaryRisk.Limitation_Value === 3 ? '#d13438' : '#24292f', 
+                                        fontWeight: primaryRisk.Limitation_Value === 3 ? 600 : 500, 
+                                        fontSize: '0.75rem' 
+                                    }}>
+                                        {primaryRisk.Limitation}
+                                        <span style={{ 
+                                            color: primaryRisk.Limitation_Value === 3 ? '#d13438' : '#666', 
+                                            fontSize: '0.65rem', 
+                                            marginLeft: '4px',
+                                            fontWeight: primaryRisk.Limitation_Value === 3 ? 600 : 400
+                                        }}>
+                                            ({primaryRisk.Limitation_Value}/3)
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Transaction Risk Level */}
+                            {primaryRisk.TransactionRiskLevel && (
+                                <div style={{ marginBottom: '4px' }}>
+                                    <span style={{ color: '#666', fontWeight: 500 }}>Transaction Risk:</span>
+                                    <div style={{ 
+                                        color: getRiskColor(primaryRisk.TransactionRiskLevel), 
+                                        fontWeight: 500, 
+                                        fontSize: '0.75rem' 
+                                    }}>
+                                        {primaryRisk.TransactionRiskLevel}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Compliance Confirmations */}
+                        <div style={{
+                            marginTop: '8px',
+                            paddingTop: '6px',
+                            borderTop: '1px solid #e8e8e8',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                            gap: '4px',
+                            fontSize: '0.7rem'
+                        }}>
+                            {/* Client Risk Factors */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: primaryRisk.ClientRiskFactorsConsidered ? '#20b26c' : '#d13438'
+                                }} />
+                                <span style={{ color: '#666', fontWeight: 500 }}>Client Risk Factors:</span>
+                                <span style={{ 
+                                    color: primaryRisk.ClientRiskFactorsConsidered ? '#20b26c' : '#d13438',
+                                    fontWeight: 600 
+                                }}>
+                                    {primaryRisk.ClientRiskFactorsConsidered ? 'Considered' : 'Not Considered'}
+                                </span>
+                            </div>
+
+                            {/* Transaction Risk Factors */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: primaryRisk.TransactionRiskFactorsConsidered ? '#20b26c' : '#d13438'
+                                }} />
+                                <span style={{ color: '#666', fontWeight: 500 }}>Transaction Risk:</span>
+                                <span style={{ 
+                                    color: primaryRisk.TransactionRiskFactorsConsidered ? '#20b26c' : '#d13438',
+                                    fontWeight: 600 
+                                }}>
+                                    {primaryRisk.TransactionRiskFactorsConsidered ? 'Considered' : 'Not Considered'}
+                                </span>
+                            </div>
+
+                            {/* AML Policy */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: primaryRisk.FirmWideAMLPolicyConsidered ? '#20b26c' : '#d13438'
+                                }} />
+                                <span style={{ color: '#666', fontWeight: 500 }}>AML Policy:</span>
+                                <span style={{ 
+                                    color: primaryRisk.FirmWideAMLPolicyConsidered ? '#20b26c' : '#d13438',
+                                    fontWeight: 600 
+                                }}>
+                                    {primaryRisk.FirmWideAMLPolicyConsidered ? 'Considered' : 'Not Considered'}
+                                </span>
+                            </div>
+
+                            {/* Sanctions Risk */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    backgroundColor: primaryRisk.FirmWideSanctionsRiskConsidered ? '#20b26c' : '#d13438'
+                                }} />
+                                <span style={{ color: '#666', fontWeight: 500 }}>Sanctions Risk:</span>
+                                <span style={{ 
+                                    color: primaryRisk.FirmWideSanctionsRiskConsidered ? '#20b26c' : '#d13438',
+                                    fontWeight: 600 
+                                }}>
+                                    {primaryRisk.FirmWideSanctionsRiskConsidered ? 'Considered' : 'Not Considered'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Compliance Expiry Warning */}
+                        {primaryRisk.ComplianceExpiry && (
+                            <div style={{
+                                marginTop: '8px',
+                                padding: '6px 8px',
+                                backgroundColor: new Date(primaryRisk.ComplianceExpiry) < new Date() ? '#fff5f5' : '#f0f9ff',
+                                border: `1px solid ${new Date(primaryRisk.ComplianceExpiry) < new Date() ? '#fecaca' : '#bfdbfe'}`,
+                                borderRadius: '2px',
+                                fontSize: '0.7rem'
+                            }}>
+                                <span style={{ 
+                                    color: new Date(primaryRisk.ComplianceExpiry) < new Date() ? '#dc2626' : '#1d4ed8',
+                                    fontWeight: 500 
+                                }}>
+                                    Expires: {format(new Date(primaryRisk.ComplianceExpiry), 'd MMM yyyy')}
+                                    {new Date(primaryRisk.ComplianceExpiry) < new Date() && ' (EXPIRED)'}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Client Compliance Details */}
@@ -362,8 +696,8 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                             <div style={{
                                 fontSize: '0.8rem',
                                 fontWeight: 600,
-                                color: getClientVerificationStatus(leadClient.ClientEmail || '') === 'complete' ? '#20b26c' :
-                                       getClientVerificationStatus(leadClient.ClientEmail || '') === 'in-progress' ? '#3690CE' : '#666',
+                                color: getClientVerificationStatus(leadClient) === 'complete' ? '#20b26c' :
+                                       getClientVerificationStatus(leadClient) === 'in-progress' ? '#3690CE' : '#666',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '4px',
@@ -373,18 +707,130 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                     width: '8px',
                                     height: '8px',
                                     borderRadius: '50%',
-                                    backgroundColor: getClientVerificationStatus(leadClient.ClientEmail || '') === 'complete' ? '#20b26c' :
-                                                   getClientVerificationStatus(leadClient.ClientEmail || '') === 'in-progress' ? '#3690CE' : '#ccc'
+                                    backgroundColor: getClientVerificationStatus(leadClient) === 'complete' ? '#20b26c' :
+                                                   getClientVerificationStatus(leadClient) === 'in-progress' ? '#3690CE' : '#ccc'
                                 }} />
-                                ID Verification: {getClientVerificationStatus(leadClient.ClientEmail || '') === 'complete' ? 'Verified' :
-                                                 getClientVerificationStatus(leadClient.ClientEmail || '') === 'in-progress' ? 'In Progress' : 'Pending'}
+                                ID Verification: {getClientVerificationStatus(leadClient) === 'complete' ? 'Verified' :
+                                                 getClientVerificationStatus(leadClient) === 'in-progress' ? 'In Progress' : 'Pending'}
                             </div>
+                            
+                            {/* Expanded ID Verification Details for Lead Client */}
+                            {expanded && leadClient.idVerification && (
+                                <div style={{
+                                    marginLeft: '20px',
+                                    marginTop: '8px',
+                                    padding: '12px',
+                                    backgroundColor: 'rgba(54, 144, 206, 0.05)',
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(54, 144, 206, 0.15)'
+                                }}>
+                                    <div style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        color: '#3690CE',
+                                        marginBottom: '8px'
+                                    }}>
+                                        ID Verification Details
+                                    </div>
+                                    
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                        gap: '8px',
+                                        fontSize: '0.7rem'
+                                    }}>
+                                        {leadClient.idVerification.EIDOverallResult && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Overall Result:</span>
+                                                <div style={{ 
+                                                    color: leadClient.idVerification.EIDOverallResult.toLowerCase() === 'passed' ? '#20b26c' : '#d13438',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {leadClient.idVerification.EIDOverallResult}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.DocumentType && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
+                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                                    {leadClient.idVerification.DocumentType}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.CheckDate && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
+                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                                    {format(new Date(leadClient.idVerification.CheckDate), 'd MMM yyyy')}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.FraudScore && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
+                                                <div style={{ 
+                                                    color: parseInt(leadClient.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {leadClient.idVerification.FraudScore}%
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.AuthenticityScore && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
+                                                <div style={{ 
+                                                    color: parseInt(leadClient.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {leadClient.idVerification.AuthenticityScore}%
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {leadClient.idVerification.QualityScore && (
+                                            <div>
+                                                <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
+                                                <div style={{ 
+                                                    color: parseInt(leadClient.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.75rem'
+                                                }}>
+                                                    {leadClient.idVerification.QualityScore}%
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {leadClient.idVerification.Notes && (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
+                                            <div style={{ 
+                                                color: '#24292f', 
+                                                fontSize: '0.7rem',
+                                                marginTop: '2px',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                {leadClient.idVerification.Notes}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* Joint Clients */}
                     {jointClients.map((client, index) => {
-                        const clientVerificationStatus = getClientVerificationStatus(client.ClientEmail || '');
+                        const clientVerificationStatus = getClientVerificationStatus(client);
                         return (
                             <div key={index} style={{
                                 marginBottom: index < jointClients.length - 1 ? '6px' : '0'
@@ -425,83 +871,370 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                     ID Verification: {clientVerificationStatus === 'complete' ? 'Verified' :
                                                      clientVerificationStatus === 'in-progress' ? 'In Progress' : 'Pending'}
                                 </div>
+                                
+                                {/* Expanded ID Verification Details for Joint Client */}
+                                {expanded && client.idVerification && (
+                                    <div style={{
+                                        marginLeft: '20px',
+                                        marginTop: '8px',
+                                        padding: '12px',
+                                        backgroundColor: 'rgba(102, 102, 102, 0.05)',
+                                        borderRadius: '4px',
+                                        border: '1px solid rgba(102, 102, 102, 0.15)'
+                                    }}>
+                                        <div style={{
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            color: '#666',
+                                            marginBottom: '8px'
+                                        }}>
+                                            ID Verification Details
+                                        </div>
+                                        
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                            gap: '8px',
+                                            fontSize: '0.7rem'
+                                        }}>
+                                            {client.idVerification.EIDOverallResult && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Overall Result:</span>
+                                                    <div style={{ 
+                                                        color: client.idVerification.EIDOverallResult.toLowerCase() === 'passed' ? '#20b26c' : '#d13438',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {client.idVerification.EIDOverallResult}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.DocumentType && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
+                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                                        {client.idVerification.DocumentType}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.CheckDate && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
+                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+                                                        {format(new Date(client.idVerification.CheckDate), 'd MMM yyyy')}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.FraudScore && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
+                                                    <div style={{ 
+                                                        color: parseInt(client.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {client.idVerification.FraudScore}%
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.AuthenticityScore && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
+                                                    <div style={{ 
+                                                        color: parseInt(client.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {client.idVerification.AuthenticityScore}%
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {client.idVerification.QualityScore && (
+                                                <div>
+                                                    <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
+                                                    <div style={{ 
+                                                        color: parseInt(client.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem'
+                                                    }}>
+                                                        {client.idVerification.QualityScore}%
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {client.idVerification.Notes && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
+                                                <div style={{ 
+                                                    color: '#24292f', 
+                                                    fontSize: '0.7rem',
+                                                    marginTop: '2px',
+                                                    fontStyle: 'italic'
+                                                }}>
+                                                    {client.idVerification.Notes}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
                 </div>
             )}
 
-            {/* Quick Summary Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: '8px',
-                backgroundColor: 'rgba(0,0,0,0.02)',
-                padding: '8px',
-                borderRadius: '0px'
-            }}>
-                {/* Overall Compliance Status */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Overall Status</div>
+            {/* Documents Section - shown when expanded */}
+            {expanded && data.allData && (
+                <div style={{
+                    marginTop: '16px',
+                    padding: '16px',
+                    backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(54, 144, 206, 0.1)'
+                }}>
                     <div style={{
                         fontSize: '0.8rem',
                         fontWeight: 600,
-                        color: isCompleted ? '#20b26c' : '#3690CE',
+                        color: '#3690CE',
+                        marginBottom: '12px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '6px'
                     }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: isCompleted ? '#20b26c' : '#3690CE'
-                        }} />
-                        {isCompleted ? 'Complete' : data.stage || 'In Progress'}
+                        � Compliance Documents
                     </div>
+                    
+                    {(() => {
+                        const documents = data.allData
+                            .filter(item => item.documents && item.documents.length > 0)
+                            .flatMap(item => item.documents);
+                        
+                        if (documents.length === 0) {
+                            return (
+                                <div style={{
+                                    fontSize: '0.75rem',
+                                    color: '#666',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    padding: '8px'
+                                }}>
+                                    No documents uploaded
+                                </div>
+                            );
+                        }
+                        
+                        return (
+                            <div style={{
+                                display: 'grid',
+                                gap: '8px',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'
+                            }}>
+                                {documents.map((doc: any, docIndex: number) => (
+                                    <div key={docIndex} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '10px 12px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '4px',
+                                        border: '1px solid #e1e4e8',
+                                        fontSize: '0.75rem',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            flex: 1
+                                        }}>
+                                            <div style={{
+                                                marginRight: '10px',
+                                                fontSize: '1.1rem',
+                                                color: '#3690CE'
+                                            }}>
+                                                {getFileIcon(doc.FileName)}
+                                            </div>
+                                            <div>
+                                                <div style={{
+                                                    fontWeight: 500,
+                                                    color: '#24292f',
+                                                    marginBottom: '2px'
+                                                }}>
+                                                    {doc.FileName || 'Unnamed document'}
+                                                </div>
+                                                <div style={{
+                                                    color: '#666',
+                                                    fontSize: '0.7rem',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '2px'
+                                                }}>
+                                                    {doc.DocumentId && (
+                                                        <span style={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
+                                                            ID: {doc.DocumentId}
+                                                        </span>
+                                                    )}
+                                                    {doc.FileSizeBytes && (
+                                                        <span>{Math.round(doc.FileSizeBytes / 1024)}KB</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {/* Copy URL Link Icon */}
+                                            {(doc.BlobUrl || doc.DocumentUrl) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopyUrl(doc);
+                                                    }}
+                                                    style={{
+                                                        color: '#666',
+                                                        backgroundColor: 'transparent',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: '4px',
+                                                        borderRadius: '3px',
+                                                        fontSize: '0.8rem',
+                                                        transition: 'all 0.2s ease',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                                        e.currentTarget.style.color = '#3690CE';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                                        e.currentTarget.style.color = '#666';
+                                                    }}
+                                                    title="Copy document URL"
+                                                >
+                                                    <FaLink />
+                                                </button>
+                                            )}
+                                            {/* Download/Preview Button */}
+                                            {(doc.BlobUrl || doc.DocumentUrl) && (
+                                                <button
+                                                    onClick={() => handleDocumentClick(doc)}
+                                                    style={{
+                                                        color: '#3690CE',
+                                                        textDecoration: 'none',
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 500,
+                                                        padding: '4px 8px',
+                                                        borderRadius: '3px',
+                                                        border: '1px solid #3690CE',
+                                                        backgroundColor: 'transparent',
+                                                        transition: 'all 0.2s ease',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#3690CE';
+                                                        e.currentTarget.style.color = 'white';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                                        e.currentTarget.style.color = '#3690CE';
+                                                    }}
+                                                >
+                                                    <FaDownload style={{ fontSize: '0.65rem' }} /> 
+                                                    {(() => {
+                                                        const filename = doc.FileName || '';
+                                                        const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+                                                        const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+                                                        return previewableTypes.includes(ext) ? 'Preview' : 'Download';
+                                                    })()} Document
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
                 </div>
+            )}
 
-                {/* Total Clients */}
-                {isMultiClient && (
+            {/* Quick Summary Grid - shown when not expanded */}
+            {!expanded && (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: '8px',
+                    backgroundColor: 'rgba(0,0,0,0.02)',
+                    padding: '8px',
+                    borderRadius: '0px'
+                }}>
+                    {/* Overall Compliance Status */}
                     <div>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Total Clients</div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                            {data.clients.length} ({leadClient ? '1 Lead + ' : ''}{jointClients.length} Joint)
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Overall Status</div>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            color: '#3690CE',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: '#3690CE'
+                            }} />
+                            {data.stage || 'In Progress'}
                         </div>
                     </div>
-                )}
 
-                {/* Verifications Complete */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>ID Verified</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                        {data.clients ? 
-                            data.clients.filter(c => getClientVerificationStatus(c.ClientEmail || '') === 'complete').length 
-                            : 0} / {data.clients?.length || 0}
+                    {/* Total Clients */}
+                    {isMultiClient && (
+                        <div>
+                            <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Total Clients</div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                {data.clients.length} ({leadClient ? '1 Lead + ' : ''}{jointClients.length} Joint)
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Verifications Complete */}
+                    <div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>ID Verified</div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                            {data.clients ? 
+                                data.clients.filter(c => getClientVerificationStatus(c) === 'complete').length 
+                                : 0} / {data.clients?.length || 0}
+                        </div>
+                    </div>
+
+                    {/* Risk Level */}
+                    <div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Risk Level</div>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            color: getRiskColor(riskResult || ''),
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: getRiskColor(riskResult || '')
+                            }} />
+                            {riskResult || 'Pending'}
+                        </div>
                     </div>
                 </div>
-
-                {/* Risk Level */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Risk Level</div>
-                    <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: getRiskColor(riskResult || ''),
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: getRiskColor(riskResult || '')
-                        }} />
-                        {riskResult || 'Pending'}
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
     );
 };
