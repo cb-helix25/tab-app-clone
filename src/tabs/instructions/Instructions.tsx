@@ -18,6 +18,7 @@ import {
   FaRegFileAlt,
   FaFolder,
   FaRegFolder,
+  FaCheckCircle,
 } from 'react-icons/fa';
 import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
 import { FaShieldAlt } from 'react-icons/fa';
@@ -795,6 +796,10 @@ const Instructions: React.FC<InstructionsProps> = ({
       ? "ID Verified"
       : "Review ID"
     : "Verify ID";
+
+  const riskResult =
+    selectedOverviewItem?.risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
+  const riskButtonDisabled = !!riskResult;
   
   // Payment status logic
   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
@@ -1355,7 +1360,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",
@@ -1662,34 +1667,34 @@ const Instructions: React.FC<InstructionsProps> = ({
           >
             <button
               className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}${selectedInstruction ? ' selected' : ''}`}
-              onClick={handleGlobalEIDCheck}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onClick={verifyButtonDisabled ? undefined : handleGlobalEIDCheck}
+              onMouseDown={e => !verifyButtonDisabled && e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => !verifyButtonDisabled && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
                 borderColor: verifyButtonDisabled
-                  ? 'var(--helix-green, #107c10)'
+                  ? '#d4ddd4'
                   : verifyButtonReview
                   ? '#ffe066'
                   : selectedInstruction
                   ? '#3690CE'
                   : undefined,
                 backgroundColor: verifyButtonDisabled
-                  ? 'rgba(115, 171, 96, 0.2)'
+                  ? '#f8faf8'
                   : verifyButtonReview
                   ? '#fffbe6'
                   : undefined,
-                opacity: verifyButtonDisabled ? 1 : 1, // Always enabled
+                opacity: verifyButtonDisabled ? 0.75 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s, border-color 0.2s ease',
-                pointerEvents: verifyButtonDisabled ? 'none' : 'auto',
+                pointerEvents: 'auto', // Always allow hover effects
               }}
             >
               <span
                 className="global-action-icon icon-hover"
                 style={{
                   color: verifyButtonDisabled
-                    ? 'var(--helix-green, #107c10)'
+                    ? '#6b8e6b'
                     : verifyButtonReview
                     ? '#bfa100'
                     : selectedInstruction
@@ -1697,46 +1702,76 @@ const Instructions: React.FC<InstructionsProps> = ({
                     : undefined,
                 }}
               >
-                <FaIdBadge className="icon-outline" />
-                <FaRegIdBadge className="icon-filled" />
+                {verifyButtonDisabled ? <FaCheckCircle /> : (
+                  <>
+                    <FaIdBadge className="icon-outline" />
+                    <FaRegIdBadge className="icon-filled" />
+                  </>
+                )}
               </span>
               <span
                 className="global-action-label"
                 style={{
                   color: verifyButtonDisabled
-                    ? 'var(--helix-green, #107c10)'
+                    ? '#6b8e6b'
                     : verifyButtonReview
                     ? '#bfa100'
                     : selectedInstruction
                     ? '#3690CE'
                     : undefined,
+                  textDecoration: verifyButtonDisabled ? 'line-through' : 'none',
+                  textDecorationColor: verifyButtonDisabled ? '#6b8e6b' : undefined,
+                  textDecorationThickness: verifyButtonDisabled ? '1px' : undefined,
                 }}
               >
                 {verifyButtonLabel}
               </span>
             </button>
             <button
-              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
-              onClick={handleGlobalRiskAssessment}
-              onMouseDown={e => e.currentTarget.classList.add('pressed')}
-              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              className={`global-action-btn${riskButtonDisabled ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}`}
+              onClick={riskButtonDisabled ? undefined : handleGlobalRiskAssessment}
+              onMouseDown={e => !riskButtonDisabled && e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => !riskButtonDisabled && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: 1,
+                borderColor: riskButtonDisabled
+                  ? '#d4ddd4'
+                  : selectedInstruction
+                  ? '#3690CE'
+                  : undefined,
+                backgroundColor: riskButtonDisabled 
+                  ? '#f8faf8' 
+                  : undefined,
+                opacity: riskButtonDisabled ? 0.75 : 1,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s, border-color 0.2s ease',
-                pointerEvents: 'auto',
+                pointerEvents: 'auto', // Always allow hover effects
+                cursor: riskButtonDisabled ? 'default' : 'pointer',
               }}
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: riskButtonDisabled
+                  ? '#6b8e6b'
+                  : selectedInstruction
+                  ? '#3690CE'
+                  : undefined,
               }}>
-                <MdAssessment className="icon-outline" />
-                <MdOutlineAssessment className="icon-filled" />
+                {riskButtonDisabled ? <FaCheckCircle /> : (
+                  <>
+                    <MdAssessment className="icon-outline" />
+                    <MdOutlineAssessment className="icon-filled" />
+                  </>
+                )}
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: riskButtonDisabled
+                  ? '#6b8e6b'
+                  : selectedInstruction
+                  ? '#3690CE'
+                  : undefined,
+                textDecoration: riskButtonDisabled ? 'line-through' : 'none',
+                textDecorationColor: riskButtonDisabled ? '#6b8e6b' : undefined,
+                textDecorationThickness: riskButtonDisabled ? '1px' : undefined,
               }}>
                 Assess Risk
               </span>
@@ -1919,7 +1954,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
     display: "grid",
     gridTemplateColumns: selectedDealRef ? "1fr" : "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
-    maxWidth: selectedDealRef ? "100%" : "1200px",
+    maxWidth: selectedDealRef ? "100%" : "1440px",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",

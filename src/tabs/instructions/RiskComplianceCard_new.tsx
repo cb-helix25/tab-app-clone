@@ -250,7 +250,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                             borderRadius: '50%',
                             backgroundColor: getRiskColor(riskResult || '')
                         }} />
-                        {riskStatus === 'approved' ? 'Approved' :
+                        {riskStatus === 'approved' ? 'Assessed' :
                          riskStatus === 'review' ? 'Review' :
                          riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
                     </div>

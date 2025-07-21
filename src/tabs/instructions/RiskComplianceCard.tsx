@@ -371,7 +371,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                 borderRadius: '50%',
                                 backgroundColor: getRiskColor(riskResult || '')
                             }} />
-                            {riskStatus === 'approved' ? 'Approved' :
+                            {riskStatus === 'approved' ? 'Assessed' :
                              riskStatus === 'review' ? 'Review' :
                              riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
                         </div>
@@ -634,7 +634,7 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                 fontSize: '0.7rem'
                             }}>
                                 <span style={{ 
-                                    color: new Date(primaryRisk.ComplianceExpiry) < new Date() ? '#dc2626' : '#1d4ed8',
+                                    color: new Date(primaryRisk.ComplianceExpiry) < new Date() ? '#dc2626' : '#3690CE',
                                     fontWeight: 500 
                                 }}>
                                     Expires: {format(new Date(primaryRisk.ComplianceExpiry), 'd MMM yyyy')}
@@ -752,6 +752,65 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                             </div>
                                         )}
                                         
+                                        {/* PEP & Sanctions and Address Verification on one line */}
+                                        {(leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                          leadClient.idVerification.pep_sanctions_result || 
+                                          leadClient.idVerification.PepSanctionsResult ||
+                                          leadClient.idVerification.AddressVerificationResult || 
+                                          leadClient.idVerification.address_verification_result || 
+                                          leadClient.idVerification.AddressResult) && (
+                                            <div style={{ gridColumn: '1 / -1', marginBottom: '8px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    {(leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                                      leadClient.idVerification.pep_sanctions_result || 
+                                                      leadClient.idVerification.PepSanctionsResult) && (
+                                                        <div style={{
+                                                            padding: '2px 6px',
+                                                            backgroundColor: (leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                                                            leadClient.idVerification.pep_sanctions_result || 
+                                                                            leadClient.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#e6f4ea' : '#fffbe6',
+                                                            color: (leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                                                  leadClient.idVerification.pep_sanctions_result || 
+                                                                  leadClient.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#107C10' : '#b88600',
+                                                            border: `1px solid ${(leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                                                                leadClient.idVerification.pep_sanctions_result || 
+                                                                                leadClient.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#107C10' : '#FFB900'}30`,
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 500,
+                                                            borderRadius: '2px'
+                                                        }}>
+                                                            PEP: {leadClient.idVerification.PEPAndSanctionsCheckResult || 
+                                                                 leadClient.idVerification.pep_sanctions_result || 
+                                                                 leadClient.idVerification.PepSanctionsResult}
+                                                        </div>
+                                                    )}
+                                                    {(leadClient.idVerification.AddressVerificationResult || 
+                                                      leadClient.idVerification.address_verification_result || 
+                                                      leadClient.idVerification.AddressResult) && (
+                                                        <div style={{
+                                                            padding: '2px 6px',
+                                                            backgroundColor: (leadClient.idVerification.AddressVerificationResult || 
+                                                                            leadClient.idVerification.address_verification_result || 
+                                                                            leadClient.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#e6f4ea' : '#fffbe6',
+                                                            color: (leadClient.idVerification.AddressVerificationResult || 
+                                                                  leadClient.idVerification.address_verification_result || 
+                                                                  leadClient.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#107C10' : '#b88600',
+                                                            border: `1px solid ${(leadClient.idVerification.AddressVerificationResult || 
+                                                                                leadClient.idVerification.address_verification_result || 
+                                                                                leadClient.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#107C10' : '#FFB900'}30`,
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 500,
+                                                            borderRadius: '2px'
+                                                        }}>
+                                                            Address: {leadClient.idVerification.AddressVerificationResult || 
+                                                                     leadClient.idVerification.address_verification_result || 
+                                                                     leadClient.idVerification.AddressResult}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         {leadClient.idVerification.DocumentType && (
                                             <div>
                                                 <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
@@ -766,45 +825,6 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                 <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
                                                 <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
                                                     {format(new Date(leadClient.idVerification.CheckDate), 'd MMM yyyy')}
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.FraudScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.FraudScore}%
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.AuthenticityScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.AuthenticityScore}%
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.QualityScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.QualityScore}%
                                                 </div>
                                             </div>
                                         )}
@@ -896,6 +916,65 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                 </div>
                                             )}
                                             
+                                            {/* PEP & Sanctions and Address Verification on one line */}
+                                            {(client.idVerification.PEPAndSanctionsCheckResult || 
+                                              client.idVerification.pep_sanctions_result || 
+                                              client.idVerification.PepSanctionsResult ||
+                                              client.idVerification.AddressVerificationResult || 
+                                              client.idVerification.address_verification_result || 
+                                              client.idVerification.AddressResult) && (
+                                                <div style={{ gridColumn: '1 / -1', marginBottom: '8px' }}>
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        {(client.idVerification.PEPAndSanctionsCheckResult || 
+                                                          client.idVerification.pep_sanctions_result || 
+                                                          client.idVerification.PepSanctionsResult) && (
+                                                            <div style={{
+                                                                padding: '2px 6px',
+                                                                backgroundColor: (client.idVerification.PEPAndSanctionsCheckResult || 
+                                                                                client.idVerification.pep_sanctions_result || 
+                                                                                client.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#e6f4ea' : '#fffbe6',
+                                                                color: (client.idVerification.PEPAndSanctionsCheckResult || 
+                                                                      client.idVerification.pep_sanctions_result || 
+                                                                      client.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#107C10' : '#b88600',
+                                                                border: `1px solid ${(client.idVerification.PEPAndSanctionsCheckResult || 
+                                                                                    client.idVerification.pep_sanctions_result || 
+                                                                                    client.idVerification.PepSanctionsResult || '').toLowerCase() === 'passed' ? '#107C10' : '#FFB900'}30`,
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 500,
+                                                                borderRadius: '2px'
+                                                            }}>
+                                                                PEP: {client.idVerification.PEPAndSanctionsCheckResult || 
+                                                                     client.idVerification.pep_sanctions_result || 
+                                                                     client.idVerification.PepSanctionsResult}
+                                                            </div>
+                                                        )}
+                                                        {(client.idVerification.AddressVerificationResult || 
+                                                          client.idVerification.address_verification_result || 
+                                                          client.idVerification.AddressResult) && (
+                                                            <div style={{
+                                                                padding: '2px 6px',
+                                                                backgroundColor: (client.idVerification.AddressVerificationResult || 
+                                                                                client.idVerification.address_verification_result || 
+                                                                                client.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#e6f4ea' : '#fffbe6',
+                                                                color: (client.idVerification.AddressVerificationResult || 
+                                                                      client.idVerification.address_verification_result || 
+                                                                      client.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#107C10' : '#b88600',
+                                                                border: `1px solid ${(client.idVerification.AddressVerificationResult || 
+                                                                                    client.idVerification.address_verification_result || 
+                                                                                    client.idVerification.AddressResult || '').toLowerCase() === 'passed' ? '#107C10' : '#FFB900'}30`,
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 500,
+                                                                borderRadius: '2px'
+                                                            }}>
+                                                                Address: {client.idVerification.AddressVerificationResult || 
+                                                                         client.idVerification.address_verification_result || 
+                                                                         client.idVerification.AddressResult}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
                                             {client.idVerification.DocumentType && (
                                                 <div>
                                                     <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
@@ -910,45 +989,6 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                     <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
                                                     <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
                                                         {format(new Date(client.idVerification.CheckDate), 'd MMM yyyy')}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.FraudScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.FraudScore}%
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.AuthenticityScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.AuthenticityScore}%
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.QualityScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.QualityScore}%
                                                     </div>
                                                 </div>
                                             )}

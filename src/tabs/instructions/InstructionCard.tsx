@@ -519,7 +519,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                             backgroundColor: riskStatus === 'complete' ? '#20b26c' : 
                                            riskStatus === 'flagged' ? '#FFB900' : '#ccc'
                         }} />
-                        {riskStatus === 'complete' ? 'Approved' : 
+                        {riskStatus === 'complete' ? 'Assessed' :
                          riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
                     </div>
                 </div>
