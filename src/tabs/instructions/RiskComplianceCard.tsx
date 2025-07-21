@@ -753,70 +753,91 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                 <div style={{ 
                                                     color: getRiskColor(leadClient.idVerification.EIDOverallResult || ''),
                                                     fontWeight: 600,
-                                                    fontSize: '0.75rem'
+                                                    fontSize: '0.75rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    marginTop: '2px'
                                                 }}>
-                                                    {leadClient.idVerification.EIDOverallResult}
+                                                    <span>{leadClient.idVerification.EIDOverallResult}</span>
+                                                    {(leadClient.idVerification.PEPAndSanctionsCheckResult || leadClient.idVerification.AddressVerificationResult) && (
+                                                        <>
+                                                            <span style={{ color: '#ccc' }}>|</span>
+                                                            <div style={{ display: 'flex', gap: '4px', fontSize: '0.65rem' }}>
+                                                                {leadClient.idVerification.PEPAndSanctionsCheckResult && (
+                                                                    <span style={{ 
+                                                                        color: getRiskColor(leadClient.idVerification.PEPAndSanctionsCheckResult),
+                                                                        fontWeight: 500 
+                                                                    }}>
+                                                                        PEP: {leadClient.idVerification.PEPAndSanctionsCheckResult}
+                                                                    </span>
+                                                                )}
+                                                                {leadClient.idVerification.AddressVerificationResult && (
+                                                                    <span style={{ 
+                                                                        color: getRiskColor(leadClient.idVerification.AddressVerificationResult),
+                                                                        fontWeight: 500 
+                                                                    }}>
+                                                                        Addr: {leadClient.idVerification.AddressVerificationResult}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
                                         
-                                        {leadClient.idVerification.DocumentType && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
-                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
-                                                    {leadClient.idVerification.DocumentType}
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.CheckDate && (
+                                        {leadClient.idVerification.EIDCheckedDate && (
                                             <div>
                                                 <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
-                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
-                                                    {format(new Date(leadClient.idVerification.CheckDate), 'd MMM yyyy')}
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.FraudScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.FraudScore}%
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.AuthenticityScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.AuthenticityScore}%
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {leadClient.idVerification.QualityScore && (
-                                            <div>
-                                                <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
-                                                <div style={{ 
-                                                    color: parseInt(leadClient.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.75rem'
-                                                }}>
-                                                    {leadClient.idVerification.QualityScore}%
+                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
+                                                    {new Date(leadClient.idVerification.EIDCheckedDate).toLocaleDateString()}
                                                 </div>
                                             </div>
                                         )}
                                     </div>
+                                    
+                                    {/* Correlation ID - Read-only style */}
+                                    {leadClient.idVerification.EIDCheckId && (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            paddingTop: '8px',
+                                            borderTop: '1px solid rgba(54, 144, 206, 0.1)',
+                                            fontSize: '0.65rem',
+                                            color: '#888',
+                                            fontFamily: 'monospace',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            Check ID: {leadClient.idVerification.EIDCheckId}
+                                        </div>
+                                    )}
+                                    
+                                    {/* CTA Button placeholder - only show if not Passed */}
+                                    {leadClient.idVerification.EIDOverallResult && 
+                                     leadClient.idVerification.EIDOverallResult.toLowerCase() !== 'passed' && (
+                                        <div style={{
+                                            marginTop: '12px',
+                                            paddingTop: '8px',
+                                            borderTop: '1px solid rgba(54, 144, 206, 0.1)'
+                                        }}>
+                                            <button style={{
+                                                padding: '6px 12px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                backgroundColor: colours.red,
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '3px',
+                                                cursor: 'pointer',
+                                                transition: 'opacity 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                            >
+                                                Review Required
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -903,70 +924,91 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                     <div style={{ 
                                                         color: getRiskColor(client.idVerification.EIDOverallResult || ''),
                                                         fontWeight: 600,
-                                                        fontSize: '0.75rem'
+                                                        fontSize: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        marginTop: '2px'
                                                     }}>
-                                                        {client.idVerification.EIDOverallResult}
+                                                        <span>{client.idVerification.EIDOverallResult}</span>
+                                                        {(client.idVerification.PEPAndSanctionsCheckResult || client.idVerification.AddressVerificationResult) && (
+                                                            <>
+                                                                <span style={{ color: '#ccc' }}>|</span>
+                                                                <div style={{ display: 'flex', gap: '4px', fontSize: '0.65rem' }}>
+                                                                    {client.idVerification.PEPAndSanctionsCheckResult && (
+                                                                        <span style={{ 
+                                                                            color: getRiskColor(client.idVerification.PEPAndSanctionsCheckResult),
+                                                                            fontWeight: 500 
+                                                                        }}>
+                                                                            PEP: {client.idVerification.PEPAndSanctionsCheckResult}
+                                                                        </span>
+                                                                    )}
+                                                                    {client.idVerification.AddressVerificationResult && (
+                                                                        <span style={{ 
+                                                                            color: getRiskColor(client.idVerification.AddressVerificationResult),
+                                                                            fontWeight: 500 
+                                                                        }}>
+                                                                            Addr: {client.idVerification.AddressVerificationResult}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
                                             
-                                            {client.idVerification.DocumentType && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
-                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
-                                                        {client.idVerification.DocumentType}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.CheckDate && (
+                                            {client.idVerification.EIDCheckedDate && (
                                                 <div>
                                                     <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
-                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
-                                                        {format(new Date(client.idVerification.CheckDate), 'd MMM yyyy')}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.FraudScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.FraudScore}%
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.AuthenticityScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.AuthenticityScore}%
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {client.idVerification.QualityScore && (
-                                                <div>
-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
-                                                    <div style={{ 
-                                                        color: parseInt(client.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }}>
-                                                        {client.idVerification.QualityScore}%
+                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem', marginTop: '2px' }}>
+                                                        {new Date(client.idVerification.EIDCheckedDate).toLocaleDateString()}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
+                                        
+                                        {/* Correlation ID - Read-only style */}
+                                        {client.idVerification.EIDCheckId && (
+                                            <div style={{
+                                                marginTop: '8px',
+                                                paddingTop: '8px',
+                                                borderTop: '1px solid rgba(102, 102, 102, 0.1)',
+                                                fontSize: '0.65rem',
+                                                color: '#888',
+                                                fontFamily: 'monospace',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                Check ID: {client.idVerification.EIDCheckId}
+                                            </div>
+                                        )}
+                                        
+                                        {/* CTA Button placeholder - only show if not Passed */}
+                                        {client.idVerification.EIDOverallResult && 
+                                         client.idVerification.EIDOverallResult.toLowerCase() !== 'passed' && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                paddingTop: '8px',
+                                                borderTop: '1px solid rgba(102, 102, 102, 0.1)'
+                                            }}>
+                                                <button style={{
+                                                    padding: '6px 12px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 600,
+                                                    backgroundColor: colours.red,
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                    borderRadius: '3px',
+                                                    cursor: 'pointer',
+                                                    transition: 'opacity 0.2s'
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                                                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                                >
+                                                    Review Required
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
