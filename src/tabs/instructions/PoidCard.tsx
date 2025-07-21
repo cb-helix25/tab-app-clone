@@ -129,9 +129,16 @@ const darkCardStyle = mergeStyles({
 });
 
 const selectedCardStyle = mergeStyles({
-    // border removed to prevent card from shrinking or shifting
+    // Keep border on selection, matching instruction card styling
+    border: `1px solid ${colours.highlight}`,
     background: `linear-gradient(135deg, #3690CE22, #3690CE33)`,
     fontFamily: 'Raleway, sans-serif',
+    selectors: {
+        // Keep icon at full opacity when selected
+        '.inlinePersonCompanyIcon': {
+            opacity: '1 !important',
+        }
+    }
 });
 
 const iconStyle = mergeStyles({
@@ -351,7 +358,7 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
         (poid as any).service_description ||
         (poid as any).ServiceDescription ||
         paymentProduct;
-    const dealAmount = (poid as any).amount || (poid as any).Amount || paymentAmount;
+    const dealAmount = parseFloat((poid as any).amount || (poid as any).Amount || paymentAmount) || 0;
     
     // ID Verification fields
     const checkResult = (poid as any).check_result || poid.check_result;
@@ -572,22 +579,24 @@ const PoidCard: React.FC<PoidCardProps> = ({ poid, selected, onClick, teamData, 
                             {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
                         </Text>
                     )}
-                    {/* Payment info if present */}
-                    {(paymentResult || paymentAmount || paymentProduct || serviceDescription || dealAmount) && (
+                    {/* Payment info if present - only show if there's meaningful data */}
+                    {(paymentResult || (serviceDescription && serviceDescription.trim() && serviceDescription !== '0') || (dealAmount && dealAmount > 0 && !isNaN(dealAmount))) && (
                         <Stack tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                                {paymentResult && <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555', fontFamily: 'Raleway, sans-serif' } }}>Payment: {paymentResult}</Text>}
-                            </Stack>
-                            {(serviceDescription || dealAmount) && (
+                            {paymentResult && (
                                 <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                                    {serviceDescription && (
+                                    <Text variant="small" styles={{ root: { color: paymentResult === 'successful' ? '#107C10' : paymentResult === 'failed' ? '#D83B01' : '#555', fontFamily: 'Raleway, sans-serif' } }}>Payment: {paymentResult}</Text>
+                                </Stack>
+                            )}
+                            {((serviceDescription && serviceDescription.trim() && serviceDescription !== '0') || (dealAmount && dealAmount > 0 && !isNaN(dealAmount))) && (
+                                <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
+                                    {serviceDescription && serviceDescription.trim() && serviceDescription !== '0' && (
                                         <Text variant="small" styles={{ root: { color: '#3690CE', fontWeight: 600, fontSize: '0.85rem', fontFamily: 'Raleway, sans-serif' } }}>
                                             {serviceDescription}
                                         </Text>
                                     )}
-                                    {dealAmount && (
-                                        <Text variant="small" styles={{ root: { color: '#107C10', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'Raleway, sans-serif' } }}>
-                                            £{dealAmount}
+                                    {dealAmount && dealAmount > 0 && !isNaN(dealAmount) && (
+                                        <Text variant="small" styles={{ root: { color: '#3690CE', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'Raleway, sans-serif' } }}>
+                                            £{dealAmount.toLocaleString()}
                                         </Text>
                                     )}
                                 </Stack>

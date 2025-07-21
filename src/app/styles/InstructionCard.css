@@ -25,9 +25,56 @@
   border-radius: 8px;
   overflow: visible; /* allow expanded cards to grow */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, 
+              transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              margin 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              top 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              bottom 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
   width: 100%;
   margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  will-change: transform, margin, top, bottom;
+}
+
+/* Ensure expanded cards have higher z-index and proper flow */
+.instruction-card-container.expanded {
+  z-index: 10;
+}
+
+/* Ensure detail sections expand properly within card flow */
+.instruction-card-container .detail-section-expandable {
+  position: relative !important;
+  z-index: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Smooth transitions for all instruction cards when layout changes */
+.instruction-cards-container .instruction-card-container,
+.instructions-grid .instruction-card-container,
+.masonry-container .instruction-card-container {
+  transition: transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              margin 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              top 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              position 0.4s cubic-bezier(0.4, 0.0, 0.2, 1),
+              box-shadow 0.3s ease;
+  will-change: transform, margin, top;
+}
+
+/* Ensure smooth layout reflow for grid/masonry layouts */
+.instructions-grid,
+.masonry-container,
+.instruction-cards-container {
+  transition: height 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  will-change: height;
+}
+
+/* Specific smooth positioning for flexbox/block layouts */
+.instruction-card-container {
+  transition-property: transform, margin, box-shadow, height, top, bottom;
+  transition-duration: 0.4s, 0.4s, 0.3s, 0.4s, 0.4s, 0.4s;
+  transition-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .instruction-card-container:hover {
@@ -161,11 +208,30 @@
     overflow: visible; /* allow status details to expand */
     border-radius: 0;
     break-inside: avoid;
-    transition: margin-bottom 0.4s linear;
+    transition: margin-bottom 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), 
+                height 0.4s cubic-bezier(0.4, 0.0, 0.2, 1), 
+                transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    min-height: fit-content;
+    will-change: height, transform;
     }
 
 .instructionCard.collapsed {
     overflow: hidden; /* keep previous behaviour when collapsed */
+}
+
+/* Smooth animations for expandable detail sections */
+.instruction-detail-expandable {
+    transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+    will-change: opacity, max-height, transform;
+}
+
+.instruction-detail-expandable[style*="transform: rotate(180deg)"] {
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Smooth hover effects for expandable headers */
+div[style*="cursor: pointer"][style*="transition: all 0.2s ease"] {
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
 }
 
 
@@ -865,13 +931,20 @@
   right: 0;
   background: #fff;
   border-top: 1px solid #e1dfdd;
-  padding: 16px 24px;
+  padding: 8px 24px; /* Reduced vertical padding only (from 16px) */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px; /* Back to original gap for 4 buttons */
+  gap: 12px; /* Keep original gap - no horizontal changes */
   z-index: 1000;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  transition: padding 0.35s cubic-bezier(0.23, 1, 0.32, 1); /* Ultra-smooth easing curve */
+}
+
+/* Expanded state - when instruction selected or on hover */
+.global-action-area:hover,
+.global-action-area.expanded {
+  padding: 16px 24px; /* Original full vertical padding */
 }
 
 
@@ -879,9 +952,9 @@
 .global-action-btn {
   position: relative;
   overflow: hidden;
-  min-width: 76.8px; /* Back to original size for 4 buttons */
-  min-height: 76.8px;
-  height: 76.8px;
+  min-width: 76.8px; /* Keep original width */
+  min-height: 60px; /* Reduced height only for compact state */
+  height: 60px; /* Reduced height only for compact state */
   padding: 0;
   display: flex;
   align-items: center;
@@ -890,11 +963,19 @@
   border: 1px solid #e0e0e0;
   border-radius: 0;
   box-shadow: none;
-  transition: background 0.2s, border 0.2s;
+  transition: height 0.35s cubic-bezier(0.23, 1, 0.32, 1), min-height 0.35s cubic-bezier(0.23, 1, 0.32, 1), background 0.2s, border 0.2s; /* Focused only on height changes with ultra-smooth easing */
   outline: none;
   cursor: pointer;
   flex: 1;
-  max-width: 120px; /* Back to original size for 4 buttons */
+  max-width: 120px; /* Keep original max width */
+}
+
+/* Expanded state for buttons - when parent is hovered or has expanded class */
+.global-action-area:hover .global-action-btn,
+.global-action-area.expanded .global-action-btn {
+  min-height: 76.8px; /* Original full height */
+  height: 76.8px; /* Original full height */
+  /* Width properties removed - keeping original widths */
 }
 
 
@@ -940,13 +1021,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 30px; /* Keep consistent size to avoid jitter */
   opacity: 1;
-  transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s;
+  transition: opacity 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s cubic-bezier(.4,0,.2,1), color 0.2s; /* Removed font-size transition */
   z-index: 1;
   color: #6B6B6B;
   pointer-events: none;
 }
+
+/* Remove the expanded icon size change to prevent jitter */
 
 .global-action-icon svg {
   display: block;
@@ -1014,13 +1097,31 @@
   margin: auto;
 }
 
-/* On hover, show outline and hide filled */
+/* Default hover behavior: show outline and hide filled */
 .global-action-btn:hover .global-action-icon .icon-outline {
   display: flex !important;
 }
 
 .global-action-btn:hover .global-action-icon .icon-filled {
   display: none !important;
+}
+
+/* Selected state: when instruction is selected, show outline icons by default */
+.global-action-btn.selected .global-action-icon .icon-outline {
+  display: flex !important; /* Show outline when selected */
+}
+
+.global-action-btn.selected .global-action-icon .icon-filled {
+  display: none !important; /* Hide filled when selected */
+}
+
+/* Selected state hover: show filled icons (reverse of normal hover) */
+.global-action-btn.selected:hover .global-action-icon .icon-outline {
+  display: none !important;
+}
+
+.global-action-btn.selected:hover .global-action-icon .icon-filled {
+  display: flex !important;
 }/* Completed state styling for Verify ID action */
 .global-action-btn.completed {
   background: #e6f7ef !important; /* Match status box background */

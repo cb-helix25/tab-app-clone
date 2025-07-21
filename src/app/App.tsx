@@ -199,10 +199,16 @@ const App: React.FC<AppProps> = ({
       setActiveTab('instructions');
     };
 
+    const handleNavigateToUnclaimed = () => {
+      setActiveTab('enquiries');
+    };
+
     window.addEventListener('navigateToInstructions', handleNavigateToInstructions);
-    
+    window.addEventListener('navigateToUnclaimedEnquiries', handleNavigateToUnclaimed);
+
     return () => {
       window.removeEventListener('navigateToInstructions', handleNavigateToInstructions);
+      window.removeEventListener('navigateToUnclaimedEnquiries', handleNavigateToUnclaimed);
     };
   }, []);
 

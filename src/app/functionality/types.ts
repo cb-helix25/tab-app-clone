@@ -478,6 +478,9 @@ export interface AnnualLeaveRecord {
 }
 
 export interface InstructionData {
+  id?: string;
+  title?: string;
+  description?: string;
   prospectId: number;
   deals: any[];
   /**

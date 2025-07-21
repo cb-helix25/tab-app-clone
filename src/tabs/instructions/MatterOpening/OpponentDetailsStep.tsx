@@ -124,28 +124,28 @@ const containerStyle: React.CSSProperties = { /* invisible change */
 const answeredFieldStyle = {
   background: "#3690CE22",
   color: "#061733",
-  border: "1px solid #3690CE",
+  border: "none",
   borderRadius: 0,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+  boxShadow: "none",
   transition: "background 0.2s, color 0.2s, border 0.2s"
 };
 const unansweredFieldStyle = {
   background: "#fff",
   color: "#061733",
-  border: "1px solid #e3e8ef",
+  border: "none",
   borderRadius: 0,
   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   transition: "background 0.2s, color 0.2s, border 0.2s"
 };
 // Pressed state mimics .navigatorPivot .ms-Pivot-link:active from NavigatorPivot.css
 const pressedFieldStyle = {
-  background: "rgba(0, 0, 0, 0.2)",
+  background: "rgba(0, 0, 0, 0.05)",
   color: "var(--helix-highlight, #3690CE)",
-  border: "1.5px solid transparent", // Remove blue border
+  border: "0.25px solid rgba(54, 144, 206, 0.4)",
   borderRadius: 0,
-  boxShadow: "inset 0 0 8px rgba(0, 0, 0, 0.3)",
-  transform: "scale(0.97)",
-  outline: "none"
+  boxShadow: "none",
+  outline: "none",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
 };
 
 const addressFields = [

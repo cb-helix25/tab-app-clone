@@ -1,265 +1,356 @@
 import React from 'react';
-import { Stack, Text, Icon } from '@fluentui/react';
-import { useTheme } from '../../app/functionality/ThemeContext';
+import { format } from 'date-fns';
+import { mergeStyles } from '@fluentui/react';
+import { FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 
 interface RiskAssessmentCardProps {
-    riskAssessment: any;
-    compactMode?: boolean;
+    assessment: any;
+    compact?: boolean;
+    animationDelay?: number;
+    onClick?: () => void;
 }
 
 const getRiskColor = (riskLevel: string) => {
     const level = riskLevel?.toLowerCase();
-    if (level?.includes('low')) return { color: '#107C10', bg: '#DFF6DD' };
-    if (level?.includes('medium')) return { color: '#FF8C00', bg: '#FFF4E6' };
-    if (level?.includes('high')) return { color: '#D83B01', bg: '#FDF3F2' };
-    return { color: '#666', bg: '#F3F2F1' };
+    if (level?.includes('low') || level === 'pass' || level === 'approved') {
+        return '#20b26c';
+    }
+    if (level?.includes('medium')) {
+        return '#FFB900';
+    }
+    if (level?.includes('high') || level === 'fail' || level === 'rejected') {
+        return '#d13438';
+    }
+    return '#666';
 };
 
-const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({ 
-    riskAssessment, 
-    compactMode = false 
+const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
+    assessment,
+    compact = false,
+    animationDelay = 0,
+    onClick,
 }) => {
-    const { isDarkMode } = useTheme();
-    
-    if (!riskAssessment) return null;
+    const riskResult = assessment?.RiskAssessmentResult;
+    const isHighRisk = riskResult?.toLowerCase().includes('high') || riskResult?.toLowerCase() === 'fail';
+    const riskColor = getRiskColor(riskResult);
 
-    const riskColor = getRiskColor(riskAssessment.RiskAssessmentResult);
-    const assessmentDate = riskAssessment.ComplianceDate 
-        ? new Date(riskAssessment.ComplianceDate).toLocaleDateString()
-        : null;
-    const expiryDate = riskAssessment.ComplianceExpiry 
-        ? new Date(riskAssessment.ComplianceExpiry).toLocaleDateString()
-        : null;
+    const cardClass = mergeStyles('riskAssessmentCard', {
+        backgroundColor: colours.light.sectionBackground,
+        borderRadius: '0px',
+        padding: compact ? '12px' : '16px',
+        color: colours.light.text,
+        cursor: onClick ? 'pointer' : 'default',
+        position: 'relative',
+        border: isHighRisk 
+            ? '0.5px solid #d13438' 
+            : '1px solid #e1e4e8',
+        boxShadow: isHighRisk 
+            ? 'inset 0 0 3px #d1343820, 0 2px 8px rgba(209, 52, 56, 0.1)'
+            : '0 2px 8px rgba(0,0,0,0.08)',
+        transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+        selectors: onClick ? {
+            ':hover': {
+                boxShadow: isHighRisk
+                    ? 'inset 0 0 3px #d1343840, 0 4px 16px rgba(209, 52, 56, 0.15)'
+                    : '0 4px 16px rgba(0,0,0,0.12)',
+                transform: 'translateY(-1px)',
+            },
+        } : {},
+    });
 
-    if (compactMode) {
-        return (
-            <div style={{
-                padding: '12px',
-                backgroundColor: isDarkMode ? '#2A2A2A' : '#F9F9F9',
-                borderRadius: '6px',
-                border: '1px solid #E1DFDD'
-            }}>
-                <Stack tokens={{ childrenGap: 8 }}>
-                    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                        <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
-                            Risk Assessment
-                        </Text>
-                        <div style={{
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            backgroundColor: riskColor.bg,
-                            color: riskColor.color,
-                            fontSize: '0.7rem',
-                            fontWeight: 600
-                        }}>
-                            {riskAssessment.RiskAssessmentResult}
-                        </div>
-                    </Stack>
-                    
-                    <Stack horizontal wrap tokens={{ childrenGap: 12 }}>
-                        {riskAssessment.RiskAssessor && (
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                By: {riskAssessment.RiskAssessor}
-                            </Text>
-                        )}
-                        {riskAssessment.RiskScore && (
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                Score: {riskAssessment.RiskScore}
-                            </Text>
-                        )}
-                        {assessmentDate && (
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                Date: {assessmentDate}
-                            </Text>
-                        )}
-                    </Stack>
-                </Stack>
-            </div>
-        );
-    }
+    const style: React.CSSProperties = {
+        '--animation-delay': `${animationDelay}s`,
+    } as React.CSSProperties;
+
+    const handleClick = () => {
+        if (onClick) {
+            onClick();
+        }
+    };
 
     return (
-        <div style={{
-            padding: '16px',
-            backgroundColor: isDarkMode ? '#2A2A2A' : '#FFFFFF',
-            borderRadius: '8px',
-            border: '1px solid #E1DFDD',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-            <Stack tokens={{ childrenGap: 12 }}>
-                {/* Header */}
-                <Stack horizontal verticalAlign="center" horizontalAlign="space-between">
-                    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                        <Icon iconName="Shield" styles={{ root: { fontSize: 16, color: colours.highlight } }} />
-                        <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: colours.highlight } }}>
-                            Risk Assessment
-                        </Text>
-                    </Stack>
-                    <div style={{
-                        padding: '4px 12px',
-                        borderRadius: '16px',
-                        backgroundColor: riskColor.bg,
-                        color: riskColor.color,
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        border: `1px solid ${riskColor.color}20`
+        <div className={cardClass} style={style} onClick={handleClick}>
+            {/* Risk Warning Indicator */}
+            {isHighRisk && (
+                <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#d13438',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: '11px',
+                    zIndex: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                    <FaExclamationTriangle />
+                </div>
+            )}
+
+            {/* Client Header */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: compact ? '0.9rem' : '1rem',
+                fontWeight: 600,
+                color: '#24292f',
+                marginBottom: compact ? '6px' : '8px',
+                borderBottom: '1px solid rgba(0,0,0,0.1)',
+                paddingBottom: compact ? '4px' : '6px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaShieldAlt style={{ fontSize: compact ? '12px' : '14px', color: '#666' }} />
+                    <span>
+                        {assessment?.ClientName ? 
+                            `Risk Assessment - ${assessment.ClientName}` : 
+                            'Risk Assessment'}
+                    </span>
+                </div>
+                {assessment?.InstructionRef && (
+                    <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 400,
+                        color: '#666',
+                        fontFamily: 'monospace'
                     }}>
-                        {riskAssessment.RiskAssessmentResult}
-                    </div>
-                </Stack>
+                        {assessment.InstructionRef}
+                    </span>
+                )}
+            </div>
 
-                {/* Assessor and Dates */}
-                <Stack horizontal wrap tokens={{ childrenGap: 16 }} verticalAlign="center">
-                    {riskAssessment.RiskAssessor && (
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon iconName="Contact" styles={{ root: { fontSize: 12, color: '#666' } }} />
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                Assessed by: <strong>{riskAssessment.RiskAssessor}</strong>
-                            </Text>
-                        </Stack>
-                    )}
-                    {assessmentDate && (
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon iconName="Calendar" styles={{ root: { fontSize: 12, color: '#666' } }} />
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                Date: <strong>{assessmentDate}</strong>
-                            </Text>
-                        </Stack>
-                    )}
-                    {expiryDate && (
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon iconName="Clock" styles={{ root: { fontSize: 12, color: '#666' } }} />
-                            <Text variant="small" styles={{ root: { color: '#666' } }}>
-                                Expires: <strong>{expiryDate}</strong>
-                            </Text>
-                        </Stack>
-                    )}
-                </Stack>
+            {/* Risk Status Banner */}
+            <div style={{
+                backgroundColor: riskColor === '#20b26c' ? '#e6f4ea' : 
+                                riskColor === '#FFB900' ? '#fffbe6' : '#fce8e6',
+                borderLeft: `3px solid ${riskColor}`,
+                color: riskColor,
+                fontWeight: 500,
+                fontSize: '0.85rem',
+                padding: '6px 12px',
+                marginBottom: compact ? '8px' : '12px',
+                borderRadius: '0px',
+            }}>
+                Risk Assessment: {riskResult || 'Pending'}
+            </div>
 
+            {/* Assessment Details Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: compact ? '1fr 1fr' : 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: compact ? '6px' : '8px',
+                backgroundColor: 'rgba(0,0,0,0.02)',
+                padding: compact ? '6px' : '8px',
+                borderRadius: '0px'
+            }}>
                 {/* Risk Score */}
-                {riskAssessment.RiskScore && (
-                    <div style={{
-                        backgroundColor: '#F3F2F1',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        borderLeft: `3px solid ${riskColor.color}`
-                    }}>
-                        <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                            <Text variant="small" styles={{ root: { fontWeight: 600 } }}>
-                                Risk Score: {riskAssessment.RiskScore}
-                            </Text>
-                            {riskAssessment.TransactionRiskLevel && (
-                                <Text variant="small" styles={{ root: { color: '#666', fontStyle: 'italic' } }}>
-                                    Transaction: {riskAssessment.TransactionRiskLevel}
-                                </Text>
-                            )}
-                        </Stack>
+                {assessment?.RiskScore && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Risk Score
+                        </div>
+                        <div style={{
+                            fontSize: compact ? '0.75rem' : '0.8rem',
+                            fontWeight: 600,
+                            color: riskColor,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: riskColor
+                            }} />
+                            {assessment.RiskScore}
+                        </div>
                     </div>
                 )}
 
-                {/* Key Risk Factors */}
-                <Stack tokens={{ childrenGap: 6 }}>
-                    <Text variant="small" styles={{ root: { fontWeight: 600, color: '#444' } }}>
-                        Assessment Categories
-                    </Text>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '8px'
-                    }}>
-                        {riskAssessment.ClientType && (
-                            <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                <strong>Client:</strong> {riskAssessment.ClientType}
-                            </div>
-                        )}
-                        {riskAssessment.DestinationOfFunds && (
-                            <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                <strong>Destination:</strong> {riskAssessment.DestinationOfFunds}
-                            </div>
-                        )}
-                        {riskAssessment.FundsType && (
-                            <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                <strong>Funds:</strong> {riskAssessment.FundsType}
-                            </div>
-                        )}
-                        {riskAssessment.ValueOfInstruction && (
-                            <div style={{ fontSize: '0.75rem', color: '#666' }}>
-                                <strong>Value:</strong> {riskAssessment.ValueOfInstruction}
-                            </div>
-                        )}
+                {/* Assessor */}
+                {assessment?.RiskAssessor && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Assessor
+                        </div>
+                        <div style={{ 
+                            fontSize: compact ? '0.75rem' : '0.8rem', 
+                            fontWeight: 600 
+                        }}>
+                            {assessment.RiskAssessor}
+                        </div>
                     </div>
-                </Stack>
+                )}
 
-                {/* Compliance Checks */}
-                <Stack tokens={{ childrenGap: 4 }}>
-                    <Text variant="small" styles={{ root: { fontWeight: 600, color: '#444' } }}>
-                        Compliance Checks
-                    </Text>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: '4px'
-                    }}>
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon 
-                                iconName={riskAssessment.ClientRiskFactorsConsidered ? "CheckMark" : "Cancel"} 
-                                styles={{ 
-                                    root: { 
-                                        fontSize: 10, 
-                                        color: riskAssessment.ClientRiskFactorsConsidered ? '#107C10' : '#D83B01' 
-                                    } 
-                                }} 
-                            />
-                            <Text variant="xSmall" styles={{ root: { color: '#666' } }}>
-                                Client Risk
-                            </Text>
-                        </Stack>
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon 
-                                iconName={riskAssessment.TransactionRiskFactorsConsidered ? "CheckMark" : "Cancel"} 
-                                styles={{ 
-                                    root: { 
-                                        fontSize: 10, 
-                                        color: riskAssessment.TransactionRiskFactorsConsidered ? '#107C10' : '#D83B01' 
-                                    } 
-                                }} 
-                            />
-                            <Text variant="xSmall" styles={{ root: { color: '#666' } }}>
-                                Transaction Risk
-                            </Text>
-                        </Stack>
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon 
-                                iconName={riskAssessment.FirmWideAMLPolicyConsidered ? "CheckMark" : "Cancel"} 
-                                styles={{ 
-                                    root: { 
-                                        fontSize: 10, 
-                                        color: riskAssessment.FirmWideAMLPolicyConsidered ? '#107C10' : '#D83B01' 
-                                    } 
-                                }} 
-                            />
-                            <Text variant="xSmall" styles={{ root: { color: '#666' } }}>
-                                AML Policy
-                            </Text>
-                        </Stack>
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                            <Icon 
-                                iconName={riskAssessment.FirmWideSanctionsRiskConsidered ? "CheckMark" : "Cancel"} 
-                                styles={{ 
-                                    root: { 
-                                        fontSize: 10, 
-                                        color: riskAssessment.FirmWideSanctionsRiskConsidered ? '#107C10' : '#D83B01' 
-                                    } 
-                                }} 
-                            />
-                            <Text variant="xSmall" styles={{ root: { color: '#666' } }}>
-                                Sanctions Risk
-                            </Text>
-                        </Stack>
+                {/* Assessment Date */}
+                {assessment?.ComplianceDate && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Assessed
+                        </div>
+                        <div style={{ 
+                            fontSize: compact ? '0.75rem' : '0.8rem', 
+                            fontWeight: 600 
+                        }}>
+                            {format(new Date(assessment.ComplianceDate), 'd MMM yyyy')}
+                        </div>
                     </div>
-                </Stack>
-            </Stack>
+                )}
+
+                {/* AML Rating */}
+                {assessment?.AMLRating && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            AML Rating
+                        </div>
+                        <div style={{ 
+                            fontSize: compact ? '0.75rem' : '0.8rem', 
+                            fontWeight: 600 
+                        }}>
+                            {assessment.AMLRating}
+                        </div>
+                    </div>
+                )}
+
+                {/* Sanctions Check */}
+                {assessment?.SanctionsCheck !== undefined && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Sanctions
+                        </div>
+                        <div style={{ 
+                            fontSize: compact ? '0.75rem' : '0.8rem', 
+                            fontWeight: 600,
+                            color: assessment.SanctionsCheck ? '#d13438' : '#20b26c'
+                        }}>
+                            {assessment.SanctionsCheck ? 'Flagged' : 'Clear'}
+                        </div>
+                    </div>
+                )}
+
+                {/* PEP Check */}
+                {assessment?.PEPCheck !== undefined && (
+                    <div>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            PEP Check
+                        </div>
+                        <div style={{ 
+                            fontSize: compact ? '0.75rem' : '0.8rem', 
+                            fontWeight: 600,
+                            color: assessment.PEPCheck ? '#d13438' : '#20b26c'
+                        }}>
+                            {assessment.PEPCheck ? 'Flagged' : 'Clear'}
+                        </div>
+                    </div>
+                )}
+
+                {/* Source of Wealth */}
+                {assessment?.SourceOfWealth && !compact && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Source of Wealth
+                        </div>
+                        <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 400,
+                            wordBreak: 'break-word'
+                        }}>
+                            {assessment.SourceOfWealth}
+                        </div>
+                    </div>
+                )}
+
+                {/* Notes */}
+                {assessment?.Notes && !compact && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ 
+                            fontSize: '0.7rem', 
+                            color: '#666', 
+                            marginBottom: '2px' 
+                        }}>
+                            Notes
+                        </div>
+                        <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 400,
+                            wordBreak: 'break-word',
+                            maxHeight: '60px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }}>
+                            {assessment.Notes}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Risk Factors Summary */}
+            {!compact && (assessment?.RiskFactors || assessment?.RiskJustification) && (
+                <div style={{
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #e1e4e8',
+                    borderRadius: '0px',
+                    padding: '8px 12px',
+                    marginTop: '8px',
+                    position: 'relative'
+                }}>
+                    <div style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '8px',
+                        backgroundColor: colours.light.sectionBackground,
+                        padding: '0 4px',
+                        fontSize: '0.75rem',
+                        color: '#8b949e',
+                        fontWeight: 500
+                    }}>
+                        Risk Factors
+                    </div>
+                    <div style={{ 
+                        fontSize: '0.85rem',
+                        maxHeight: '80px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}>
+                        {assessment.RiskFactors || assessment.RiskJustification}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

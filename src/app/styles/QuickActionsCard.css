@@ -141,6 +141,15 @@
     border: none;
   }
   
+  .quickActionCard.selected .icon-outline {
+    opacity: 0;
+  }
+  
+  .quickActionCard.selected .icon-filled {
+    opacity: 1;
+    color: var(--helix-cta, #D65541);
+  }
+  
   .quickActionCard.vertical {
     flex-direction: column;
     justify-content: center;

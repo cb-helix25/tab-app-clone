@@ -342,6 +342,7 @@ const quickActionOrder: Record<string, number> = {
   'Request ID': 8,
   'Open a Matter': 9,
   'Request Annual Leave': 10,
+  'Unclaimed Enquiries': 11,
 };
 
 //////////////////////
@@ -354,6 +355,7 @@ const quickActions: QuickLink[] = [
   { title: 'Save Telephone Note', icon: 'Comment' },
   { title: 'Request Annual Leave', icon: 'Calendar' },
   { title: 'Book Space', icon: 'Room' },
+  { title: 'Unclaimed Enquiries', icon: 'Warning' },
 ];
 
 //////////////////////
@@ -2498,6 +2500,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           </Suspense>
         );
         break;
+      case 'Unclaimed Enquiries':
+        sessionStorage.setItem('openUnclaimedEnquiries', 'true');
+        window.dispatchEvent(new CustomEvent('navigateToUnclaimedEnquiries'));
+        return;
       default:
         content = <div>No form available.</div>;
         break;
@@ -2587,6 +2593,9 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         if (action.title === 'Confirm Attendance') {
           return currentUserConfirmed;
         }
+        if (action.title === 'Unclaimed Enquiries') {
+          return ['LZ', 'JW', 'AC'].includes(userInitials);
+        }
         if (action.title === 'Request Annual Leave') {
           return true;
         }
@@ -2602,7 +2611,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
     );
     return actions;
-  }, [currentUserConfirmed]);
+  }, [currentUserConfirmed, userInitials]);
 
   useEffect(() => {
     setContent(

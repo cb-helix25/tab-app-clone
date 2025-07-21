@@ -1,71 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-// invisible change 2.1
-//
-import { format, isSameYear, differenceInYears, differenceInMonths, differenceInWeeks, differenceInDays, isToday, isYesterday, isThisWeek, formatDistanceToNow } from 'date-fns';
+import React from 'react';
+import { format } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
-import {
-    FaIdBadge,
-    FaRegIdBadge,
-    FaFileAlt,
-    FaRegFileAlt,
-    FaFolder,
-    FaRegFolder,
-    FaCheckCircle,
-    FaClock,
-    FaTimesCircle,
-    FaExclamationTriangle,
-    FaUser,
-    FaUsers,
-} from 'react-icons/fa';
-import { MdAssessment, MdOutlineAssessment, MdOutlineWarningAmber } from 'react-icons/md';
+import { FaUser, FaUsers } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
-import { componentTokens } from '../../app/styles/componentTokens';
 import { ClientInfo } from './JointClientCard';
-import '../../app/styles/InstructionCard.css';
-import '../../app/styles/InstructionDashboard.css';
-
-// Utility to format date difference as human-friendly string
-function formatTimelineDate(dateStr: string, timeStr?: string) {
-    if (!dateStr) return '';
-    let date: Date;
-    if (dateStr.length > 10) {
-        date = new Date(dateStr); // already has time
-    } else if (timeStr) {
-        date = new Date(`${dateStr}T${timeStr}`);
-    } else {
-        date = new Date(dateStr);
-    }
-    const now = new Date();
-    if (isToday(date)) {
-        return `today at ${format(date, 'HH:mm')}`;
-    }
-    if (isYesterday(date)) {
-        return `yesterday at ${format(date, 'HH:mm')}`;
-    }
-    if (isThisWeek(date, { weekStartsOn: 1 })) {
-        return `on ${format(date, 'EEEE')} at ${format(date, 'HH:mm')}`;
-    }
-    const years = differenceInYears(now, date);
-    if (years > 0) {
-        const months = differenceInMonths(now, date) % 12;
-        return `${years} year${years > 1 ? 's' : ''}${months ? `, ${months} month${months > 1 ? 's' : ''}` : ''} ago`;
-    }
-    const months = differenceInMonths(now, date);
-    if (months > 0) {
-        const weeks = differenceInWeeks(now, date) % 4;
-        return `${months} month${months > 1 ? 's' : ''}${weeks ? `, ${weeks} week${weeks > 1 ? 's' : ''}` : ''} ago`;
-    }
-    const weeks = differenceInWeeks(now, date);
-    if (weeks > 0) {
-        const days = differenceInDays(now, date) % 7;
-        return `${weeks} week${weeks > 1 ? 's' : ''}${days ? `, ${days} day${days > 1 ? 's' : ''}` : ''} ago`;
-    }
-    const days = differenceInDays(now, date);
-    if (days > 0) {
-        return `${days} day${days > 1 ? 's' : ''} ago`;
-    }
-    return formatDistanceToNow(date, { addSuffix: true });
-}  
 
 interface InstructionInfo {
     InstructionRef: string;
@@ -74,66 +12,21 @@ interface InstructionInfo {
     LastName?: string;
     CompanyName?: string;
     Email?: string;
-    HelixContact?: string;
+    Phone?: string;
     SubmissionDate?: string;
     ClientType?: string;
-    Title?: string;
-    Nationality?: string;
-    NationalityAlpha2?: string;
-    DOB?: string;
-    Gender?: string;
-    Phone?: string;
     PassportNumber?: string;
     DriversLicenseNumber?: string;
-    IdType?: string;
-    HouseNumber?: string;
-    Street?: string;
-    City?: string;
-    County?: string;
-    Postcode?: string;
-    Country?: string;
-    CountryCode?: string;
-    CompanyNumber?: string;
-    CompanyHouseNumber?: string;
-    CompanyStreet?: string;
-    CompanyCity?: string;
-    CompanyCounty?: string;
-    CompanyPostcode?: string;
-    CompanyCountry?: string;
-    CompanyCountryCode?: string;
-    PaymentMethod?: string;
     PaymentResult?: string;
-    PaymentAmount?: number;
-    PaymentProduct?: string;
-    PaymentTimestamp?: string;
-    AliasId?: string;
-    OrderId?: string;
-    SHASign?: string;
-    Notes?: string;
-    ClientId?: number;
-    RelatedClientId?: number;
-    MatterId?: number;
+    [key: string]: any;
 }
 
 interface DealInfo {
     InstructionRef?: string;
     ServiceDescription?: string;
     Amount?: number;
-    AreaOfWork?: string;
-    PitchedBy?: string;
     IsMultiClient?: boolean;
     jointClients?: ClientInfo[];
-    // Add all possible deal fields for type safety
-    PitchedDate?: string;
-    PitchedTime?: string;
-    CloseDate?: string;
-    CloseTime?: string;
-    PitchValidUntil?: string;
-    ProspectId?: number;
-    Passcode?: string;
-    LeadClientId?: number;
-    LeadClientEmail?: string;
-    Status?: string;
     [key: string]: any;
 }
 
@@ -144,9 +37,11 @@ interface InstructionCardProps {
     clients?: ClientInfo[];
     prospectId?: number;
     risk?: {
-        MatterId: string; RiskAssessmentResult?: string; RiskScore?: number 
-} | null;
-    eid?: { EIDStatus?: string } | null;
+        MatterId: string;
+        RiskAssessmentResult?: string;
+        RiskScore?: number;
+    } | null;
+    eid?: { EIDStatus?: string; EIDOverallResult?: string } | null;
     eids?: any[];
     compliance?: any | null;
     documentCount?: number;
@@ -159,15 +54,6 @@ interface InstructionCardProps {
     onSelect?: () => void;
     onProofOfIdClick?: (ref: string) => void;
 }
-
-// Icons used for the bottom navigation as well as the global actions
-// Use outline/filled pairs so we can swap the icon on hover
-const iconMap = {
-    eid: { outline: FaRegIdBadge, filled: FaIdBadge },
-    risk: { outline: MdOutlineAssessment, filled: MdAssessment },
-    matter: { outline: FaRegFolder, filled: FaFolder },
-    ccl: { outline: FaRegFileAlt, filled: FaFileAlt },
-};
 
 const InstructionCard: React.FC<InstructionCardProps> = ({
     instruction,
@@ -191,89 +77,28 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 }) => {
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
-    const isInitialised = stage === 'initialised';
 
-    const [collapsed, setCollapsed] = useState(!expanded);
-    const [showClientDetails, setShowClientDetails] = useState(false);
-    const [hovered, setHovered] = React.useState<string | null>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const [maxHeight, setMaxHeight] = useState<string>('0px');
+    // Get client name
+    const firstName = instruction.FirstName || '';
+    const lastName = instruction.LastName || '';
+    const fullName = firstName && lastName 
+        ? `${firstName} ${lastName}`
+        : firstName || lastName || instruction.CompanyName || '';
 
-    useEffect(() => {
-        setCollapsed(!expanded);
-    }, [expanded]);
+    // Determine if multi-client
+    const isMultiClient = (deal && (deal.IsMultiClient || (deal.jointClients && deal.jointClients.length > 1)))
+        || (instruction.ClientType && instruction.ClientType.toLowerCase().includes('joint'));
 
-    useEffect(() => {
-        const node = contentRef.current;
-        if (node) {
-            if (collapsed) {
-                setMaxHeight('0px');
-            } else {
-                setMaxHeight(`${node.scrollHeight}px`);
-            }
-        }
-    }, [collapsed]);
-
-    const cardClass = mergeStyles('instructionCard', collapsed && 'collapsed', {
-        backgroundColor: colours.light.sectionBackground,
-        padding: componentTokens.card.base.padding,
-        boxShadow: componentTokens.card.base.boxShadow,
-        color: colours.light.text,
-        height: 'auto',
-        borderTop: 'none', // Exclude top border since header handles it
-        borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
-        borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
-        borderBottom: selected ? '2px solid #3690CE' : '2px solid transparent',
-        opacity: 1,
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease',
-        selectors: {
-            ':hover': {
-                boxShadow: componentTokens.card.hover.boxShadow,
-                transform: componentTokens.card.hover.transform,
-            },
-        },
-    });
-
-    const style: React.CSSProperties = { '--animation-delay': `${animationDelay}s` } as React.CSSProperties;
-    const formatValue = (key: string, value: any) => {
-        if (value === null || value === undefined) return '';
-        const dateKeys = ['SubmissionDate', 'LastUpdated', 'DOB', 'PaymentTimestamp'];
-        if (dateKeys.includes(key) && typeof value === 'string') {
-            try {
-                return format(new Date(value), 'd MMM yyyy');
-            } catch {
-                return value;
-            }
-        }
-        if (typeof value === 'object') {
-            try {
-                return JSON.stringify(value);
-            } catch {
-                return String(value);
-            }
-        }
-        return String(value);
-    };
-
-    const proofOfIdComplete = Boolean(
-        instruction.PassportNumber || instruction.DriversLicenseNumber
-    );
-    const paymentStatusRaw = instruction.PaymentResult?.toLowerCase();
-    const paymentComplete = paymentStatusRaw === 'successful';
-    const paymentFailed = paymentStatusRaw === 'failed';
+    // Get status information
+    const proofOfIdComplete = Boolean(instruction.PassportNumber || instruction.DriversLicenseNumber);
+    const paymentComplete = instruction.PaymentResult?.toLowerCase() === 'successful';
+    const paymentFailed = instruction.PaymentResult?.toLowerCase() === 'failed';
     const documentsComplete = (documents?.length ?? documentCount ?? 0) > 0;
+
     const eidStatus = (eid?.EIDStatus || '').toLowerCase();
     const eidResult = (eid as any)?.EIDOverallResult?.toLowerCase();
-    const complianceStatus = (compliance as any)?.Status ?? '-';
-    const dealOpen = (deals ?? []).some((d: any) => d.Status?.toLowerCase() !== 'closed');
-    const dealMissing = (deals ?? []).length === 0;
-    const leadName = instruction
-        ? (instruction.FirstName || instruction.LastName)
-            ? `${instruction.FirstName ?? ''} ${instruction.LastName ?? ''}`.trim()
-            : instruction.CompanyName ?? clients?.find(c => c.Lead)?.ClientEmail ?? ''
-        : deal?.ServiceDescription ?? '';
-
     const eidPassed = eidResult === 'passed' || eidResult === 'pass';
+    
     let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
     if (!eid || eidStatus === 'pending') {
         verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
@@ -282,1023 +107,365 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     } else {
         verifyIdStatus = 'review';
     }
-    const idStatus = verifyIdStatus === 'complete'
-        ? 'verified'
-        : verifyIdStatus === 'review'
-            ? 'review'
-            : verifyIdStatus === 'received'
-                ? 'received'
-                : 'pending';
+
     const riskResultRaw = risk?.MatterId === instruction.InstructionRef ? (risk as any)?.RiskAssessmentResult?.toString().toLowerCase() : undefined;
     const riskStatus = riskResultRaw
         ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw)
             ? 'complete'
             : 'flagged'
         : 'pending';
-    const riskAssessed = riskStatus !== 'pending';
-    const openMatterReady =
-        !dealOpen &&
-        paymentComplete &&
-        documentsComplete &&
-        verifyIdStatus === 'complete' &&
-        riskStatus === 'complete';
-    const openMatterStatus: 'pending' | 'ready' | 'complete' =
-        dealOpen ? 'complete' : openMatterReady ? 'ready' : 'pending';
-    // Allow opening a new matter directly from the card even if some
-    // prerequisite checks are outstanding. The navigator already shows
-    // the relevant warnings so we no longer disable the action here.
-    const openDisabled = false;
 
-    const verifyIdLabel = verifyIdStatus === 'complete'
-        ? 'ID Verified'
-        : verifyIdStatus === 'review'
-            ? 'Revffiew ID'
-            : 'Verify an ID';
-    const verifyTabStatus = verifyIdStatus === 'pending' && proofOfIdComplete
-        ? 'ready'
-        : verifyIdStatus;
+    // Format submission date
+    const formattedDate = instruction.SubmissionDate
+        ? format(new Date(instruction.SubmissionDate), 'd MMM yyyy')
+        : undefined;
 
-
-    const [activeTab, setActiveTab] = useState<'eid' | 'risk' | 'matter' | 'ccl' | null>(null);
-    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-    const tabsRef = useRef<HTMLDivElement>(null);
-    const [compact, setCompact] = useState(true);
-
-    // Reposition masonry grid when the expanded status section changes
-    useEffect(() => {
-        if (!collapsed) {
-            onToggle?.();
-        }
-    }, [selectedStatus, collapsed, onToggle]);
-
-    const JsonCopyButton: React.FC<{ data: any }> = ({ data }) => {
-      const [copied, setCopied] = useState(false);
-      const [pressed, setPressed] = useState(false);
-
-      const baseStyle: React.CSSProperties = {
-        background: '#f8f9fa',
-        border: '1px solid #e1dfdd',
-        borderRadius: 6,
-        padding: 4,
-        fontSize: 12,
-        color: '#3690CE',
+    const cardClass = mergeStyles('instructionCard', {
+        backgroundColor: colours.light.sectionBackground,
+        borderRadius: '0px',
+        padding: '16px',
+        color: colours.light.text,
         cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 0.2s ease',
-        minHeight: 0,
-        minWidth: 0,
-        width: 28,
-        height: 28,
         position: 'relative',
-      };
+        border: selected 
+            ? '2px solid #3690CE' 
+            : isCompleted 
+                ? '0.25px solid #20b26c' 
+                : '1px solid #e1e4e8',
+        boxShadow: selected
+            ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
+            : isCompleted 
+                ? 'inset 0 0 2px #20b26c15, 0 2px 8px rgba(0,0,0,0.08)'
+                : '0 2px 8px rgba(0,0,0,0.08)',
+        opacity: isCompleted ? 0.6 : 1,
+        transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
+        selectors: {
+            ':hover': {
+                boxShadow: selected
+                    ? '0 0 0 1px #3690CE30, 0 6px 20px rgba(54, 144, 206, 0.2)'
+                    : '0 4px 16px rgba(0,0,0,0.12)',
+                transform: 'translateY(-1px)',
+            },
+        },
+    });
 
-      const pressedStyle: React.CSSProperties = pressed
-        ? { background: '#e7f1ff', borderColor: '#3690CE', transform: 'scale(0.95)' }
-        : {};
+    const style: React.CSSProperties = {
+        '--animation-delay': `${animationDelay}s`,
+    } as React.CSSProperties;
 
-      return (
-        <div style={{ marginLeft: 0, alignSelf: 'flex-start' }}>
-          <button
-            onMouseDown={() => setPressed(true)}
-            onMouseUp={() => setPressed(false)}
-            onMouseLeave={() => setPressed(false)}
-            onClick={e => {
-              e.stopPropagation();
-              navigator.clipboard
-                .writeText(JSON.stringify(data, null, 2))
-                .then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                })
-                .catch(err => console.error(err));
-            }}
-            style={{ ...baseStyle, ...pressedStyle }}
-            tabIndex={0}
-            aria-label={copied ? 'Copied!' : 'Copy Raw Data'}
-          >
-            <i
-              className="ms-Icon ms-Icon--Code"
-              style={{ fontSize: 16, color: copied ? '#20b26c' : '#3690CE' }}
-            />
-            {copied && (
-              <i
-                className="ms-Icon ms-Icon--CheckMark"
-                style={{
-                  position: 'absolute',
-                  right: -2,
-                  top: -2,
-                  fontSize: 10,
-                  color: '#20b26c',
-                }}
-              />
-            )}
-          </button>
-        </div>
-      );
+    const handleCardClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onSelect) {
+            // Let the parent component handle the selection/unselection logic
+            onSelect();
+        } else if (onToggle) {
+            onToggle();
+        }
     };
 
-    useLayoutEffect(() => {
-        function updateCompact() {
-            const el = tabsRef.current;
-            if (!el) return;
-            const width = el.offsetWidth;
-            const needed = 4 * 90 + 3 * 8; // four tabs, min width plus gap
-            setCompact(width < needed);
-        }
-        updateCompact();
-        window.addEventListener('resize', updateCompact);
-        return () => window.removeEventListener('resize', updateCompact);
-    }, []);
-
-    const isPoid = stage === 'poid';
-
-  const serviceElement = deal && (deal.ServiceDescription || typeof deal.Amount === 'number') ? (
-    <div style={{ fontWeight: 600, fontSize: 16, color: '#061733', flex: 1 }}>
-      {deal.ServiceDescription}
-      {typeof deal.Amount === 'number' && (
-        <span style={{ fontWeight: 500, color: '#3690CE', fontSize: 15 }}>
-          {' · £'}{deal.Amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      )}
-    </div>
-  ) : null;
-
-  const bannerElement = deal && (deal.PitchedDate || deal.PitchedTime) ? (() => {
-    const status = (deal.Status || '').toLowerCase();
-    const pitchedDateObj = deal.PitchedDate ? new Date(`${deal.PitchedDate}T${deal.PitchedTime || '00:00:00'}`) : null;
-    const closedDateObj = deal.CloseDate ? new Date(`${deal.CloseDate}T${deal.CloseTime || '00:00:00'}`) : null;
-    const expiryDateObj = deal.PitchValidUntil ? new Date(deal.PitchValidUntil) : null;
-    function getDurationBanner(start: Date, end: Date, closed: boolean) {
-      let diff = end.getTime() - start.getTime();
-      if (diff <= 0) return closed ? 'Closed' : 'Expired';
-      const msPerHour = 1000 * 60 * 60;
-      const msPerDay = msPerHour * 24;
-      const msPerWeek = msPerDay * 7;
-      const msPerMonth = msPerDay * 30.44;
-      const years = Math.floor(diff / (msPerMonth * 12));
-      diff -= years * msPerMonth * 12;
-      const months = Math.floor(diff / msPerMonth);
-      diff -= months * msPerMonth;
-      const weeks = Math.floor(diff / msPerWeek);
-      diff -= weeks * msPerWeek;
-      const days = Math.floor(diff / msPerDay);
-      diff -= days * msPerDay;
-      const hours = Math.floor(diff / msPerHour);
-      const parts = [] as string[];
-      if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-      if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-      if (weeks > 0) parts.push(`${weeks} week${weeks > 1 ? 's' : ''}`);
-      if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-      if (hours > 0 && parts.length === 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
-      if (parts.length === 0) parts.push('<1 hour');
-      return closed ? `Closed in ${parts.join(' / ')}` : `Expires in ${parts.join(' / ')}`;
-    }
-    let banner = '';
-    if (pitchedDateObj && closedDateObj) {
-      banner = getDurationBanner(pitchedDateObj, closedDateObj, true);
-    } else if (pitchedDateObj && expiryDateObj) {
-      banner = getDurationBanner(pitchedDateObj, expiryDateObj, false);
-    }
-    if (!banner) return null;
     return (
-      <div style={{
-        width: '100%',
-        background: closedDateObj ? '#e6f4ea' : '#fffbe6',
-        borderLeft: closedDateObj ? '3px solid #107C10' : '3px solid #FFB900',
-        color: closedDateObj ? '#107C10' : '#b88600',
-        fontWeight: 500,
-        fontSize: '0.95rem',
-        padding: '6px 12px',
-        margin: '8px 0 8px 0',
-        borderRadius: 4,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        {banner}
-      </div>
-    );
-  })() : null;
-
-    // Status row logic: only show ID, Pay, Docs (Deal is now in its own container)
-    const statusData = [
-        { key: 'id', label: 'Proof of ID', status: idStatus },
-        ...(!dealMissing ? [
-            {
-                key: 'pay',
-                label: 'Pay',
-                status: paymentComplete ? 'complete' : paymentFailed ? 'failed' : 'pending',
-            },
-            { key: 'docs', label: 'Docs', status: documentsComplete ? 'complete' : 'pending' },
-        ] : [])
-    ];
-    // Wrap all returned JSX in a single fragment
-    return (
-        <div 
-            className="instruction-card-container"
-            style={{
-                display: 'block',
-                breakInside: 'avoid',
-                pageBreakInside: 'avoid',
-                transform: `translateY(${animationDelay * 50}px)`,
-                opacity: 0,
-                animation: `instructionFadeIn 0.8s ease-out forwards`,
-                animationDelay: `${animationDelay}s`,
-            }}
-        >
-            <>
-                <header
-                    className={`instruction-header${collapsed ? ' collapsed' : ' open'}`}
-                    style={{
-                        ...(collapsed
-                            ? { backgroundColor: colours.darkBlue, color: '#fff' }
-                            : { backgroundColor: '#f4f4f6', color: colours.light.text } // Use grey for open header
-                        ),
-                        borderTopLeftRadius: 8,
-                        borderTopRightRadius: 8,
-                        borderBottomLeftRadius: 0,
-                        borderBottomRightRadius: 0,
-                        marginBottom: 0,
-                        borderTop: selected ? '2px solid #3690CE' : '2px solid transparent',
-                        borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
-                        borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
-                        borderBottom: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0 16px',
-                        minHeight: 48,
-                    }}
-                    onClick={() => {
-                        const newState = !collapsed;
-                        setCollapsed(newState);
-                        setShowClientDetails(!newState); // show details when expanded, hide when collapsed
-                        if (newState) setSelectedStatus(null);
-                        onToggle?.();
-                        onSelect?.(); // Select this instruction
-                    }}
-                >
-                    <span
-                        className="header-title"
-                        style={{
-                            fontWeight: 600,
-                            fontSize: 18,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            color: collapsed ? '#fff' : colours.light.text,
-                        }}
-                    >
-                        {/* Multi/single client icon to the left of name */}
-                        <span style={{ display: 'flex', alignItems: 'center', marginRight: 4 }}>
-                          {(() => {
-                            // Use same logic as tags: multi if deal?.IsMultiClient or (deal?.jointClients?.length > 1)
-                            const isMulti = (deal && (deal.IsMultiClient || (deal.jointClients && deal.jointClients.length > 1)))
-                              || (instruction.ClientType && instruction.ClientType.toLowerCase().includes('joint'));
-                            return isMulti ? (
-                              <FaUsers title="Joint Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
-                            ) : (
-                              <FaUser title="Single Client" style={{ fontSize: 18, color: collapsed ? '#fff' : '#888' }} />
-                            );
-                          })()}
-                        </span>
-                        <span
-                            className="header-name"
-                            style={{
-                                color: collapsed ? '#fff' : colours.light.text,
-                                fontWeight: 600,
-                                fontSize: 18,
-                                letterSpacing: 0.1,
-                                alignSelf: 'center',
-                            }}
-                        >
-                            {leadName}
-                        </span>
-                        <span
-                            className="header-pipe"
-                            style={{
-                                display: 'inline-block',
-                                width: 1,
-                                height: 20,
-                                background: collapsed ? 'rgba(255,255,255,0.35)' : '#b0b0b0',
-                                margin: '0 12px',
-                                verticalAlign: 'middle',
-                                alignSelf: 'center',
-                            }}
-                        />
-                        <span
-                            className="header-instruction-ref"
-                            style={{
-                                fontWeight: 400,
-                                color: collapsed ? 'rgba(255,255,255,0.7)' : '#888',
-                                fontSize: 16,
-                                letterSpacing: 0.2,
-                                alignSelf: 'center',
-                            }}
-                        >
-                            {instruction.InstructionRef || '—'}
-                        </span>
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {selected && (
-                            <span
-                                className="header-selected-label"
-                                style={{
-                                    marginLeft: 0,
-                                    padding: '2px 8px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 600,
-                                    backgroundColor: collapsed ? 'rgba(255,255,255,0.2)' : '#3690CE',
-                                    color: '#fff',
-                                    borderRadius: '12px',
-                                    alignSelf: 'center',
-                                    border: collapsed ? 'none' : '1px solid #3690CE',
-                                }}
-                            >
-                                SELECTED
-                            </span>
-                        )}
-                        <span
-                            className="plusminus-icon"
-                            aria-hidden="true"
-                            style={{
-                                marginLeft: 16,
-                                fontSize: 22,
-                                fontWeight: 700,
-                                color: collapsed ? '#fff' : colours.light.text,
-                                transition: 'color 0.2s',
-                                userSelect: 'none',
-                                lineHeight: 1,
-                            }}
-                        >
-                            {collapsed ? '+' : '−'}
-                        </span>
-                    </span>
-                </header>
-
-          {/* Amalgamated Deal/Email/Phone Container - now visually part of the card, inside the card border */}
-          <div style={{
-                    width: '100%',
-                    display: 'flex',
-                    justifyContent: 'flex-start',
-                    alignItems: 'stretch',
-                    margin: 0,
-                    padding: 0,
-                    borderLeft: selected ? '2px solid #3690CE' : '2px solid transparent',
-                    borderRight: selected ? '2px solid #3690CE' : '2px solid transparent',
-                    borderTop: 'none',
-                    borderBottom: 'none',
-                    borderRadius: '0 0 0 0',
-                    background: 'transparent',
-                    position: 'relative',
-                    zIndex: 1
-                  }}>
-                    <div className="client-details-contact-bigbtn static" style={{
-                        background: '#fff',
-                        border: '1.5px solid #e1dfdd',
-                        boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                        padding: '12px 16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        minWidth: 0,
-                        width: '100%',
-                        borderRadius: 0,
-                        margin: 0,
-                        borderLeft: 'none',
-                        borderRight: 'none',
-                        borderTop: 'none',
-                        borderBottom: 'none',
-                        boxSizing: 'border-box',
-                    }}>
-              {bannerElement}
-              {serviceElement}
-              <div
-                ref={contentRef}
-                style={{
-                  maxHeight,
-                  overflow: 'hidden',
-                  transition: 'max-height 0.5s ease',
-                  width: '100%',
-                }}
-              >
-                {/* --- TAGS ROW --- */}
+        <div className={cardClass} style={style} onClick={handleCardClick} ref={innerRef}>
+            {/* Selection Indicator */}
+            {selected && (
                 <div style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  minHeight: 28,
-                  marginBottom: '8px',
-                  position: 'relative',
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#3690CE',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    zIndex: 10,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
-                          {/* Tags row, will wrap before JSON icon */}
-                          <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 8,
-                            alignItems: 'center',
-                            minHeight: 28,
-                            flex: '1 1 0%',
-                            marginRight: deal ? 36 : 0, // leave space for JSON icon
-                            boxSizing: 'border-box',
-                          }}>
-                            {dealMissing ? (
-                              <>
-                                <div style={{
-                                  backgroundColor: '#fffbe6',
-                                  border: '1px solid #ffe58f',
-                                  borderRadius: '12px',
-                                  padding: '4px 8px',
-                                  fontSize: '11px',
-                                  fontWeight: 500,
-                                  color: '#b88600',
-                                  alignSelf: 'flex-start',
-                                  display: 'inline-block',
-                                  whiteSpace: 'nowrap',
-                                  height: 28,
-                                  lineHeight: '20px',
-                                  alignItems: 'center',
-                                }}>
-                                  No Pitch Found
-                                </div>
-                                <div style={{
-                                  backgroundColor: '#e8f4fd',
-                                  border: '1px solid #b3d9f7',
-                                  borderRadius: '12px',
-                                  padding: '4px 8px',
-                                  fontSize: '11px',
-                                  fontWeight: 500,
-                                  color: '#1a73e8',
-                                  alignSelf: 'flex-start',
-                                  display: 'inline-block',
-                                  whiteSpace: 'nowrap',
-                                  height: 28,
-                                  lineHeight: '20px',
-                                  alignItems: 'center',
-                                  marginLeft: 8
-                                }}>
-                                  No Pitch Found
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                {deal?.PitchedBy && (
-                                  <div style={{
-                                    backgroundColor: '#e8f4fd',
-                                    border: '1px solid #b3d9f7',
-                                    borderRadius: '12px',
-                                    padding: '4px 8px',
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: '#1a73e8',
-                                    alignSelf: 'flex-start',
-                                    display: 'inline-block',
-                                    whiteSpace: 'nowrap',
-                                    height: 28,
-                                    lineHeight: '20px',
-                                    alignItems: 'center',
-                                  }}>
-                                    Pitched by {deal?.PitchedBy}
-                                  </div>
-                                )}
-                                {deal && typeof deal.IsMultiClient !== 'undefined' && (
-                                  deal.IsMultiClient ? (
-                                    (() => {
-                                      const allSubmitted = deal.jointClients && deal.jointClients.length > 0 && deal.jointClients.every(jc => jc.HasSubmitted);
-                                      const somePending = deal.jointClients && deal.jointClients.length > 0 && deal.jointClients.some(jc => !jc.HasSubmitted);
-                                      const dotColor = allSubmitted ? '#22c55e' : (somePending ? '#FFB900' : '#bdbdbd');
-                                      return (
-                                        <div
-                                          style={{
-                                            backgroundColor: '#e8f4fd',
-                                            border: '1px solid #b3d9f7',
-                                            borderRadius: '12px',
-                                            padding: '4px 8px',
-                                            fontSize: '11px',
-                                            fontWeight: 500,
-                                            color: '#1a73e8',
-                                            alignSelf: 'flex-start',
-                                            display: 'inline-block',
-                                            whiteSpace: 'nowrap',
-                                            position: 'relative',
-                                            cursor: 'pointer',
-                                            height: 28,
-                                            lineHeight: '20px',
-                                            alignItems: 'center',
-                                          }}
-                                          onMouseEnter={e => {
-                                            if (!deal.jointClients || deal.jointClients.length === 0) return;
-                                            const pop = document.createElement('div');
-                                            pop.className = 'joint-client-popover';
-                                            pop.style.position = 'absolute';
-                                            pop.style.top = '110%';
-                                            pop.style.left = '0';
-                                            pop.style.background = '#fff';
-                                            pop.style.border = '1px solid #b3d9f7';
-                                            pop.style.borderRadius = '8px';
-                                            pop.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
-                                            pop.style.padding = '10px 16px';
-                                            pop.style.zIndex = '1000';
-                                            pop.style.whiteSpace = 'nowrap';
-                                            pop.innerHTML = deal.jointClients.map(jc =>
-                                              `<div style='margin-bottom:4px;'><span style='font-weight:600;color:#1e293b;'>${jc.ClientEmail}</span> <span style='color:${jc.HasSubmitted ? '#22c55e' : '#f59e42'};font-weight:500;margin-left:8px;'>${jc.HasSubmitted ? 'Submitted' : 'Pending'}</span></div>`
-                                            ).join('');
-                                            e.currentTarget.appendChild(pop);
-                                          }}
-                                          onMouseLeave={e => {
-                                            const pop = e.currentTarget.querySelector('.joint-client-popover');
-                                            if (pop) pop.remove();
-                                          }}
-                                        >
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{
-                                              display: 'inline-block',
-                                              width: 9,
-                                              height: 9,
-                                              borderRadius: '50%',
-                                              background: dotColor,
-                                              marginRight: 5,
-                                              border: '1.5px solid #fff',
-                                              boxShadow: '0 0 0 1px #b3d9f7',
-                                            }} />
-                                            Joint Client
-                                          </span>
-                                        </div>
-                                      );
-                                    })()
-                                  ) : (
-                                    <div style={{
-                                      backgroundColor: '#e8f4fd',
-                                      border: '1px solid #b3d9f7',
-                                      borderRadius: '12px',
-                                      padding: '4px 8px',
-                                      fontSize: '11px',
-                                      fontWeight: 500,
-                                      color: '#1a73e8',
-                                      alignSelf: 'flex-start',
-                                      display: 'inline-block',
-                                      whiteSpace: 'nowrap',
-                                      height: 28,
-                                      lineHeight: '20px',
-                                      alignItems: 'center',
-                                    }}>
-                                      Primary Client
-                                    </div>
-                                  )
-                                )}
-                              </>
-                            )}
-                          </div>
-                          {/* JSON icon absolutely right, vertically centered, on same row as tags */}
-                          {deal && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: 0,
-                                height: 28,
-                                display: 'flex',
-                                alignItems: 'center',
-                                zIndex: 2,
-                              }}
-                            >
-                              <JsonCopyButton data={deal} />
-                            </div>
-                          )}
-                        </div>
-                        {/* --- SERVICE DESCRIPTION & AMOUNT --- */}
-                        {/* Email and Phone banner (side by side, icon in box, input box to right) */}
-                        <div style={{
-                          marginTop: 10,
-                          display: 'flex',
-                          flexDirection: 'row',
-                          gap: 16,
-                          width: '100%',
-                          alignItems: 'stretch',
-                        }}>
-                          {/* Email */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            flex: 1,
-                            minWidth: 0,
-                            background: '#f8f9fa',
-                            border: '1.5px solid #e1dfdd',
-                            borderRadius: 6,
-                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                            height: 38,
-                            overflow: 'hidden',
-                          }}>
-                            <div style={{
-                              background: '#fff',
-                              borderRight: '1.5px solid #e1dfdd',
-                              height: '100%',
-                              width: 38,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
-                                <polyline points="4,6 12,13 20,6" fill="none" stroke="#3690CE" strokeWidth="1.5"/>
-                              </svg>
-                            </div>
-                            <input
-                              type="text"
-                              value={instruction.Email || ''}
-                              readOnly
-                              style={{
-                                border: 'none',
-                                outline: 'none',
-                                background: 'transparent',
-                                fontSize: 15,
-                                color: '#061733',
-                                padding: '0 12px',
-                                width: '100%',
-                                minWidth: 0,
-                                fontWeight: 500,
-                                height: '100%',
-                                cursor: 'default',
-                              }}
-                              tabIndex={-1}
-                            />
-                          </div>
-                          {/* Phone */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            flex: 1,
-                            minWidth: 0,
-                            background: '#f8f9fa',
-                            border: '1.5px solid #e1dfdd',
-                            borderRadius: 6,
-                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                            height: 38,
-                            overflow: 'hidden',
-                          }}>
-                            <div style={{
-                              background: '#fff',
-                              borderRight: '1.5px solid #e1dfdd',
-                              height: '100%',
-                              width: 38,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#3690CE"/></svg>
-                            </div>
-                            <input
-                              type="text"
-                              value={instruction.Phone || ''}
-                              readOnly
-                              style={{
-                                border: 'none',
-                                outline: 'none',
-                                background: 'transparent',
-                                fontSize: 15,
-                                color: '#061733',
-                                padding: '0 12px',
-                                width: '100%',
-                                minWidth: 0,
-                                fontWeight: 500,
-                                height: '100%',
-                                cursor: 'default',
-                              }}
-                              tabIndex={-1}
-                            />
-                          </div>
-                        </div>
-                    </div>
+                    ✓
+                </div>
+            )}
+
+            {/* Client Name Header */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '1rem',
+                fontWeight: 600,
+                color: '#24292f',
+                marginBottom: '8px',
+                borderBottom: '1px solid rgba(0,0,0,0.1)',
+                paddingBottom: '6px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {isMultiClient ? (
+                        <FaUsers style={{ fontSize: '14px', color: '#666' }} />
+                    ) : (
+                        <FaUser style={{ fontSize: '14px', color: '#666' }} />
+                    )}
+                    <span>{fullName || 'Client Name'}</span>
+                </div>
+                {instruction.InstructionRef && (
+                    <span style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 400,
+                        color: '#666',
+                        fontFamily: 'monospace'
+                    }}>
+                        {instruction.InstructionRef}
+                    </span>
+                )}
             </div>
-          </div>
-            </>
-            <div
-                className={cardClass}
-                style={{
-                    ...style,
-                    borderTopLeftRadius: 0,
-                    borderTopRightRadius: 0,
-                    borderBottomLeftRadius: 8,
-                    borderBottomRightRadius: 8,
-                    marginTop: 0,
-                    borderTop: 'none',
-                    marginBottom: 0,
-                    boxShadow: 'none',
-                    padding: 0, // Remove all padding from the card container
-                }}
-                ref={innerRef}
-            >
-                {/* Status boxes always visible */}
-                <div className="instruction-grid-4x2" style={{
-                    marginTop: 0,
-                    marginBottom: 0,
-                    transition: 'margin-top 0.3s',
-                    padding: '16px 16px', // match horizontal padding to banner/email/phone
+
+            {/* Stage/Status Banner */}
+            {instruction.Stage && (
+                <div style={{
+                    backgroundColor: isCompleted ? '#e6f4ea' : stage === 'initialised' ? '#e8f4fd' : '#fffbe6',
+                    borderLeft: `3px solid ${isCompleted ? '#20b26c' : stage === 'initialised' ? '#3690CE' : '#FFB900'}`,
+                    color: isCompleted ? '#20b26c' : stage === 'initialised' ? '#1a73e8' : '#b88600',
+                    fontWeight: 500,
+                    fontSize: '0.85rem',
+                    padding: '6px 12px',
+                    marginBottom: '12px',
+                    borderRadius: '0px',
                 }}>
-                    <div className="interactive-status status-row" style={{gap: 4, padding: 0, margin: 0, marginTop: 0}}>
-                        {statusData.map((d, i) => {
-                            const status = (d.status ?? '').toString().toLowerCase();
-                            let icon = null;
-                            // Special case for Docs: show grey tick if 0, green if >0
-                            if (d.key === 'docs') {
-                                const docsCount = documents?.length ?? documentCount ?? 0;
-                                if (docsCount > 0) {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <polyline
-                                                points="6,13 11,18 18,7"
-                                                fill="none"
-                                                stroke="#20b26c"
-                                                strokeWidth="2.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                    );
-                                } else {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <polyline
-                                                points="6,13 11,18 18,7"
-                                                fill="none"
-                                                stroke="#bdbdbd"
-                                                strokeWidth="2.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                    );
-                                }
-                            } else if (d.key === 'deal' && status === 'missing') {
-                                // Grey cross for missing deal
-                                icon = (
-                                    <svg viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="11" fill="#fff" />
-                                        <line x1="7" y1="7" x2="17" y2="17" stroke="#bdbdbd" strokeWidth="2.5" strokeLinecap="round" />
-                                        <line x1="17" y1="7" x2="7" y2="17" stroke="#bdbdbd" strokeWidth="2.5" strokeLinecap="round" />
-                                    </svg>
-                                );
-                            } else if (d.status) {
-                                if (["complete", "closed", "verified", "approved"].includes(status)) {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <polyline
-                                                points="6,13 11,18 18,7"
-                                                fill="none"
-                                                stroke="#20b26c"
-                                                strokeWidth="2.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                    );
-                                } else if (status === "failed") {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <line x1="7" y1="7" x2="17" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
-                                            <line x1="17" y1="7" x2="7" y2="17" stroke="#e74c3c" strokeWidth="2.5" strokeLinecap="round" />
-                                        </svg>
-                                    );
-                                } else if (status === "review") {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <line x1="7" y1="7" x2="17" y2="17" stroke="#bfa100" strokeWidth="2.5" strokeLinecap="round" />
-                                            <line x1="17" y1="7" x2="7" y2="17" stroke="#bfa100" strokeWidth="2.5" strokeLinecap="round" />
-                                        </svg>
-                                    );
-                                } else if (status === "flagged") {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <polygon points="12,7 15,16 9,16" fill="#bfa100" />
-                                        </svg>
-                                    );
-                                } else {
-                                    icon = (
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="12" r="11" fill="#fff" />
-                                            <circle cx="12" cy="12" r="4" fill="#bdbdbd" />
-                                        </svg>
-                                    );
-                                }
-                            }
-                            const isSelected = selectedStatus === d.key;
-                            // Use green for completed, red for failed, blue for selected, helix grey otherwise
-                            const ctaRed = '#e74c3c';
-                            const ctaRedFill = '#fdeaea';
-                            const blue = '#3690CE';
-                            const green = '#20b26c';
-                            const greenFill = '#e6f7ef';
-                            const helixGrey = '#e0e0e0';
-                            const helixGreyFill = '#f4f4f6';
-                            const hoverFill = '#e3f0fc';
-                            let border = `1px solid ${helixGrey}`;
-                            let background = helixGreyFill;
-                            if (status === "failed") {
-                                border = `1px solid ${ctaRed}`;
-                                background = ctaRedFill;
-                            } else if (status === "review") {
-                                border = '1px solid #bfa100';
-                                background = '#fffbe6';
-                            } else if (["complete", "closed", "verified", "approved"].includes(status)) {
-                                border = `1px solid ${green}`;
-                                background = greenFill;
-                            }
-                            if (isSelected) {
-                                border = `1px solid ${blue}`;
-                                background = hoverFill;
-                            }
-    // ...existing code...
-    return (
-                                <div
-                                    key={d.key}
-                                    className={`status-item ${d.key}${isSelected ? ' active' : ''}`}
-                                    onClick={() => {
-                                        if (d.key === 'id' && onProofOfIdClick) {
-                                            onProofOfIdClick(instruction.InstructionRef);
-                                            return;
-                                        }
-                                      if (collapsed) {
-                                        setCollapsed(false);
-                                        setShowClientDetails(true);
-                                        onToggle?.();
-                                        onSelect?.();
-                                      }
-                                        if (isSelected) {
-                                            setSelectedStatus(null);
-                                        } else {
-                                            setSelectedStatus(d.key);
-                                        }
-                                    }}
-                                    style={{
-                                        border,
-                                        background,
-                                        borderRadius: 0,
-                                        transition: 'background 0.2s, border 0.2s',
-                                        boxShadow: 'none',
-                                        cursor: 'pointer',
-                                        margin: 0,
-                                        padding: '4px 8px 4px 8px',
-                                        minWidth: 0,
-                                    }}
-                                >
-                                    <span className="status-label">{d.label}</span>
-                                    <span className={`status-value ${status}`}>{icon}</span>
-                                </div>
-                            );
-                        })}
+                    Stage: {instruction.Stage}
+                </div>
+            )}
+
+            {/* Service Description from Deal */}
+            {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
+                <div style={{
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #e1e4e8',
+                    borderRadius: '0px',
+                    padding: '8px 12px',
+                    marginBottom: '12px',
+                    position: 'relative'
+                }}>
+                    <div style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        left: '8px',
+                        backgroundColor: colours.light.sectionBackground,
+                        padding: '0 4px',
+                        fontSize: '0.75rem',
+                        color: '#8b949e',
+                        fontWeight: 500
+                    }}>
+                        Service & Fee
                     </div>
-                    {/* Details for status boxes (now between status and actions) */}
-                    {!collapsed && selectedStatus && (
-                        <div className="status-details-below">
-                            <div className="instruction-details">
-                                {selectedStatus === 'deal' && (
-                                    <div className="client-details-contact-bigrow" style={{marginBottom: 0}}>
-                                        {(deals && deals.length > 0 ? deals : deal ? [deal] : []).map((d, idx) => (
-                                            <div className="client-details-contact-bigbtn static" key={idx} style={{background: '#fff', border: '2px solid #e1dfdd', boxShadow: '0 1px 2px rgba(6,23,51,0.04)', padding: '12px 18px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, flex: 1, marginRight: deals && deals.length > 1 && idx < deals.length - 1 ? 12 : 0}}>
-                                                {/* Main fields */}
-                                                {d.ServiceDescription && (
-                                                    <div style={{fontWeight: 600, fontSize: 16, color: '#061733', marginBottom: 4}}>{d.ServiceDescription}</div>
-                                                )}
-                                                {typeof d.Amount === 'number' && (
-                                                    <div style={{fontSize: 15, color: '#3690CE', marginBottom: 2}}>
-                                                        £{d.Amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                                    </div>
-                                                )}
-                                                {d.AreaOfWork && (
-                                                    <div style={{fontSize: 14, color: '#888', marginBottom: 4}}>{d.AreaOfWork}</div>
-                                                )}
-                                                {/* All other fields */}
-                                                <div style={{marginTop: 6, fontSize: 13, color: '#444'}}>
-                                                    {Object.entries(d).filter(([k]) => !['ServiceDescription','Amount','AreaOfWork'].includes(k)).map(([k, v]) => (
-                                                        <div key={k}><strong>{k}:</strong> {formatValue(k, v)}</div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {selectedStatus === 'id' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">ID Details</div>
-                                        <ul className="detail-list">
-                                            {Object.entries(instruction)
-                                                .filter(([k, v]) => !['Email', 'Phone'].includes(k) && (['string', 'number', 'boolean'].includes(typeof v) || v === null))
-                                                .map(([k, v]) => (
-                                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                                ))}
-                                            {(eids && eids.length > 0
-                                                ? eids
-                                                : eid
-                                                    ? [eid]
-                                                    : []
-                                            ).map((e, idx) => (
-                                                <React.Fragment key={idx}>
-                                                    {eids && eids.length > 1 && (
-                                                        <li><em>ID Verification {idx + 1}</em></li>
-                                                    )}
-                                                     {Object.entries(e).map(([k, v]) => (
-                                                        <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                                     ))}
-                                                </React.Fragment>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {selectedStatus === 'pay' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">Payment</div>
-                                        <ul className="detail-list">
-                                            {Object.entries(instruction)
-                                                .filter(([k]) =>
-                                                    k.startsWith('Payment') || ['AliasId', 'OrderId', 'SHASign'].includes(k)
-                                                )
-                                                .map(([k, v]) => (
-                                                    <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                                ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {selectedStatus === 'docs' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">Documents</div>
-                                        <ul className="detail-list">
-                                            <li><strong>Documents Uploaded:</strong> {documents?.length ?? documentCount ?? 0}</li>
-                                            {documents?.map((d, idx) => (
-                                                <React.Fragment key={idx}>
-                                                    {documents.length > 1 && (
-                                                        <li><em>Document {idx + 1}</em></li>
-                                                    )}
-                                                    {Object.entries(d).map(([k, v]) => (
-                                                        <li key={`${idx}-${k}`}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                                    ))}
-                                                </React.Fragment>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {selectedStatus === 'eid' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">Verify an ID</div>
-                                        <ul className="detail-list">
-                                             {eid && Object.entries(eid).map(([k,v]) => (
-                                                <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                             ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                {selectedStatus === 'risk' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">Assess Risk</div>
-                                        <ul className="detail-list">
-                                             {risk && Object.entries(risk).map(([k, v]) => {
-                                                 // Add assessment date & time and expiry for risk assessments
-                                                 if (k === 'ComplianceDate' && v) {
-                                                     const complianceDate = new Date(v);
-                                                     const expiryDate = new Date(complianceDate);
-                                                     expiryDate.setMonth(expiryDate.getMonth() + 6);
-                                                     return (
-                                                         <React.Fragment key={k}>
-                                                             <li><strong>Assessment Date & Time:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</li>
-                                                             <li><strong>Compliance Date:</strong> {formatValue(k, v)}</li>
-                                                             <li><strong>Assessment Expiry:</strong> {expiryDate.toLocaleDateString('en-GB')}</li>
-                                                         </React.Fragment>
-                                                     );
-                                                 }
-                                                 return <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>;
-                                             })}
-                                             {risk && !risk.hasOwnProperty('ComplianceDate') && (
-                                                 <li><strong>Assessment Date & Time:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</li>
-                                             )}
-                                        </ul>
-                                    </div>
-                                )}
-                                {selectedStatus === 'comp' && (
-                                    <div className="detail-group open">
-                                        <div className="detail-summary">Compliance</div>
-                                        <ul className="detail-list">
-                                             {compliance && Object.entries(compliance).map(([k,v]) => (
-                                                <li key={k}><strong>{k}:</strong> {formatValue(k, v)}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
+                    <div style={{ marginBottom: '4px', fontSize: '0.9rem' }}>
+                        {deal.ServiceDescription || 'Legal Service'}
+                    </div>
+                    {typeof deal.Amount === 'number' && (
+                        <div style={{ 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600, 
+                            color: '#3690CE',
+                            fontFamily: 'Raleway'
+                        }}>
+                            £{deal.Amount.toLocaleString()}
                         </div>
                     )}
-
                 </div>
+            )}
+
+            {/* Contact Information */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                marginBottom: '12px'
+            }}>
+                {instruction.Email && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: '#f8f9fa',
+                        border: '1px solid #e1e4e8',
+                        borderRadius: '0px',
+                        height: '36px',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            backgroundColor: '#fff',
+                            borderRight: '1px solid #e1e4e8',
+                            height: '100%',
+                            width: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/>
+                                <polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/>
+                            </svg>
+                        </div>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            color: '#333',
+                            padding: '0 8px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}>
+                            {instruction.Email}
+                        </div>
+                    </div>
+                )}
+
+                {instruction.Phone && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: '#f8f9fa',
+                        border: '1px solid #e1e4e8',
+                        borderRadius: '0px',
+                        height: '36px',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            backgroundColor: '#fff',
+                            borderRight: '1px solid #e1e4e8',
+                            height: '100%',
+                            width: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/>
+                            </svg>
+                        </div>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            color: '#333',
+                            padding: '0 8px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}>
+                            {instruction.Phone}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Quick Summary Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+                gap: '8px',
+                backgroundColor: 'rgba(0,0,0,0.02)',
+                padding: '8px',
+                borderRadius: '0px'
+            }}>
+                {/* ID Status */}
+                <div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>ID Verification</div>
+                    <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: verifyIdStatus === 'complete' ? '#20b26c' : 
+                               verifyIdStatus === 'review' ? '#FFB900' :
+                               verifyIdStatus === 'received' ? '#3690CE' : '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: verifyIdStatus === 'complete' ? '#20b26c' : 
+                                           verifyIdStatus === 'review' ? '#FFB900' :
+                                           verifyIdStatus === 'received' ? '#3690CE' : '#ccc'
+                        }} />
+                        {verifyIdStatus === 'complete' ? 'Verified' : 
+                         verifyIdStatus === 'review' ? 'Review' :
+                         verifyIdStatus === 'received' ? 'Received' : 'Pending'}
+                    </div>
+                </div>
+
+                {/* Payment Status */}
+                <div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Payment</div>
+                    <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#ccc'
+                        }} />
+                        {paymentComplete ? 'Complete' : paymentFailed ? 'Failed' : 'Pending'}
+                    </div>
+                </div>
+
+                {/* Documents Status */}
+                <div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Documents</div>
+                    <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: documentsComplete ? '#20b26c' : '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: documentsComplete ? '#20b26c' : '#ccc'
+                        }} />
+                        {documentsComplete ? `${documents?.length ?? documentCount} Files` : 'Pending'}
+                    </div>
+                </div>
+
+                {/* Risk Assessment */}
+                <div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Risk</div>
+                    <div style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: riskStatus === 'complete' ? '#20b26c' : 
+                               riskStatus === 'flagged' ? '#FFB900' : '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <span style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: riskStatus === 'complete' ? '#20b26c' : 
+                                           riskStatus === 'flagged' ? '#FFB900' : '#ccc'
+                        }} />
+                        {riskStatus === 'complete' ? 'Approved' : 
+                         riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
+                    </div>
+                </div>
+
+                {formattedDate && (
+                    <div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Submitted</div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{formattedDate}</div>
+                    </div>
+                )}
             </div>
         </div>
     );
-}
+};
 
 export default InstructionCard;

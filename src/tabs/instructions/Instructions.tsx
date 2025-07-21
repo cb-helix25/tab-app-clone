@@ -42,7 +42,8 @@ import InstructionBlockEditor from "./components/InstructionBlockEditor";
 import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
 import "../../app/styles/InstructionsBanner.css";
 // invisible change 2.2
-import DraftCCLPage from "./ccl/DraftCCLPage";
+import DocumentEditorPage from "./DocumentEditorPage";
+import DocumentsV3 from "./DocumentsV3";
 import localUserData from "../../localData/localUserData.json";
 
 interface InstructionsProps {
@@ -101,8 +102,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   
   const [activePivot, setActivePivot] = useState<string>("overview");
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
+  const [selectedDealRef, setSelectedDealRef] = useState<string | null>(null);
+  const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(false);
   const currentUser: UserData | undefined = userData?.[0] || (localUserData as UserData[])[0];
-  const showDraftPivot = true; // Allow all users to see Draft CCL
+  const showDraftPivot = true; // Allow all users to see Document editor
 
   // Clear selection when leaving overview tab
   useEffect(() => {
@@ -114,6 +117,13 @@ const Instructions: React.FC<InstructionsProps> = ({
   useEffect(() => {
     if (activePivot !== "risk") {
       setRiskFilterRef(null);
+    }
+  }, [activePivot]);
+
+  useEffect(() => {
+    if (activePivot !== "deals-clients") {
+      setSelectedDealRef(null);
+      setShowOnlyMyDeals(false);
     }
   }, [activePivot]);
 
@@ -350,6 +360,110 @@ const Instructions: React.FC<InstructionsProps> = ({
               }
             `}</style>
           </div>
+        ) : selectedDealRef ? (
+          <div className={detailNavStyle(isDarkMode)}>
+            <div 
+              className="nav-back-button"
+              onClick={() => setSelectedDealRef(null)}
+              style={{
+                background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+                border: '1px solid #e1dfdd',
+                borderRadius: '0',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                marginRight: 8,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e7f1ff';
+                e.currentTarget.style.border = '1px solid #3690CE';
+                e.currentTarget.style.width = '120px';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
+                e.currentTarget.style.border = '1px solid #e1dfdd';
+                e.currentTarget.style.width = '32px';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+              }}
+              title="Back to Deals"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setSelectedDealRef(null);
+                }
+              }}
+            >
+              {/* ChevronLeft Icon */}
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 16 16" 
+                fill="none"
+                style={{
+                  transition: 'color 0.3s, opacity 0.3s',
+                  color: isDarkMode ? '#ffffff' : '#666666',
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <path 
+                  d="M10 12L6 8L10 4" 
+                  stroke="currentColor" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              
+              {/* Expandable Text */}
+              <span 
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#3690CE',
+                  opacity: 0,
+                  transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+                className="back-text"
+              >
+                Back to Deals
+              </span>
+            </div>
+            
+            <span style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: isDarkMode ? colours.dark.text : colours.light.text,
+              marginLeft: '8px'
+            }}>
+              Deal: {selectedDealRef}
+            </span>
+            
+            <style>{`
+              .nav-back-button:hover .back-text {
+                opacity: 1 !important;
+              }
+              .nav-back-button:hover svg {
+                opacity: 0 !important;
+              }
+            `}</style>
+          </div>
         ) : (
           <>
             {/* Quick Actions Bar with Pivot Navigation */}
@@ -381,29 +495,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                 onClick={() => setActivePivot("risk")}
                 iconColor={activePivot === "risk" ? colours.cta : colours.greyText}
                 orientation="row"
-              />
-              {showDraftPivot && (
-                <QuickActionsCard
-                  title="CCL"
-                  icon="Edit"
-                  isDarkMode={isDarkMode}
-                  selected={activePivot === "draft-ccl"}
-                  onClick={() => setActivePivot("draft-ccl")}
-                  iconColor={activePivot === "draft-ccl" ? colours.cta : colours.greyText}
-                  orientation="row"
-                />
-              )}
-              <QuickActionsCard
-                title="Editor"
-                icon="Edit"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "demo"}
-                onClick={() => !isProduction && setActivePivot("demo")}
-                iconColor={activePivot === "demo" ? colours.cta : colours.greyText}
-                orientation="row"
-                disabled={isProduction}
-              />
-            </div>
+              />            </div>
           </>
         )}
       </>,
@@ -419,6 +511,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     showEIDPage,
     selectedInstruction,
     hasActiveMatter,
+    selectedDealRef,
   ]);
 
   const containerStyle = mergeStyles({
@@ -598,8 +691,18 @@ const Instructions: React.FC<InstructionsProps> = ({
           ...d,
           firstName: p.instructions?.[0]?.FirstName,
           jointClients: [
-            ...(p.jointClients ?? p.joinedClients ?? []),
+            // Only include prospect-level joint clients that match this deal's DealId
+            ...(p.jointClients ?? p.joinedClients ?? []).filter(jc => jc.DealId === d.DealId),
+            // Include deal-level joint clients
             ...(d.jointClients ?? []),
+          ],
+          documents: [
+            // Include prospect-level documents that match this deal's DealId
+            ...(p.documents ?? []).filter(doc => doc.DealId === d.DealId),
+            // Include deal-level documents
+            ...(d.documents ?? []),
+            // Include instruction-level documents if deal has an instruction
+            ...(d.instruction?.documents ?? []),
           ],
         })),
       ),
@@ -627,15 +730,31 @@ const Instructions: React.FC<InstructionsProps> = ({
           map[key] = entry;
         }
       });
-      [...(p.jointClients ?? p.joinedClients ?? []), ...deals.flatMap((d) => d.jointClients ?? [])].forEach((jc) => {
+      // Process joint clients - combine prospect-level and deal-level, but filter prospect-level by DealId
+      const allJointClients = [
+        // Prospect-level joint clients (filter by DealId)
+        ...(p.jointClients ?? p.joinedClients ?? []),
+        // Deal-level joint clients  
+        ...deals.flatMap((d) => d.jointClients ?? [])
+      ];
+      
+      allJointClients.forEach((jc) => {
         const key = jc.ClientEmail;
         const entry = map[key] || {
           ClientEmail: jc.ClientEmail,
           HasSubmitted: jc.HasSubmitted,
           Lead: false,
           deals: [] as DealSummary[],
+          // Only include specific fields we want to display
+          DealJointClientId: jc.DealJointClientId,
+          DealId: jc.DealId,
+          SubmissionDateTime: jc.SubmissionDateTime,
         };
+        // Update only the fields we want
         entry.HasSubmitted = jc.HasSubmitted;
+        entry.DealJointClientId = jc.DealJointClientId;
+        entry.DealId = jc.DealId;
+        entry.SubmissionDateTime = jc.SubmissionDateTime;
         const deal = deals.find((dd) => dd.DealId === jc.DealId);
         if (deal) {
           (entry.deals as DealSummary[]).push({
@@ -1119,16 +1238,20 @@ const Instructions: React.FC<InstructionsProps> = ({
 
 
   function handleOpenInstruction(ref: string): void {
-    throw new Error("Function not implemented.");
+    // Filter to show only this deal and expand it to full width
+    if (activePivot === "deals-clients") {
+      setSelectedDealRef(ref);
+    } else {
+      // Navigate to the risk compliance view for this specific instruction
+      setRiskFilterRef(ref);
+      setActivePivot('risk');
+    }
   }
 
   return (
     <>
     <section className="page-section">
       <Stack tokens={dashboardTokens} className={containerStyle}>
-        <div className="disclaimer animate-disclaimer">
-          <p>Note: This module is visible only to Alex (AC), Jonathan (JW), Luke (LZ), Kanchel (KW), Billy (BL), Richard (RC), and Josh (JWH).</p>
-        </div>
         <div className={sectionContainerStyle(isDarkMode)}>
           {activePivot === "overview" && (
               <div className={overviewGridStyle} ref={overviewGridRef}>
@@ -1152,7 +1275,14 @@ const Instructions: React.FC<InstructionsProps> = ({
                         documentCount={item.documentCount ?? 0}
                         animationDelay={animationDelay}
                         selected={selectedInstruction?.InstructionRef === item.instruction.InstructionRef}
-                        onSelect={() => setSelectedInstruction(item.instruction)}
+                        onSelect={() => {
+                          // Toggle selection: if already selected, unselect; otherwise select
+                          if (selectedInstruction?.InstructionRef === item.instruction.InstructionRef) {
+                            setSelectedInstruction(null);
+                          } else {
+                            setSelectedInstruction(item.instruction);
+                          }
+                        }}
                         onToggle={handleCardToggle}
                         onProofOfIdClick={() =>
                           handleOpenRiskCompliance(item.instruction.InstructionRef)
@@ -1172,6 +1302,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                       <DealCard
                         deal={deal}
                         animationDelay={animationDelay}
+                        teamData={teamData}
+                        userInitials={userInitials}
                       />
                     </div>
                 );
@@ -1180,53 +1312,22 @@ const Instructions: React.FC<InstructionsProps> = ({
           )}
           {activePivot === "deals-clients" && (
             <div>
-              {/* Deals Section */}
-              <Text
-                variant="mediumPlus"
-                styles={{ root: { fontWeight: 600, marginBottom: 16 } }}
-              >
-                Deals
-              </Text>
+              {/* Deals Section - Joint clients appear as pins within each deal card */}
               <DealsPivot
                 deals={deals}
                 handleOpenInstruction={handleOpenInstruction}
+                selectedDealRef={selectedDealRef}
+                onClearSelection={() => setSelectedDealRef(null)}
+                showOnlyMyDeals={showOnlyMyDeals}
+                onToggleMyDeals={() => setShowOnlyMyDeals(!showOnlyMyDeals)}
+                currentUser={currentUser}
+                teamData={teamData || []}
+                userInitials={userInitials || ''}
               />
-              
-              {/* Clients Section */}
-              <Text
-                variant="mediumPlus"
-                styles={{ root: { fontWeight: 600, marginTop: 32, marginBottom: 16 } }}
-              >
-                Clients
-              </Text>
-              <div className={gridContainerStyle}>
-                {clients.map((c, idx) => {
-                  const row = Math.floor(idx / 4);
-                  const col = idx % 4;
-                  const animationDelay = row * 0.2 + col * 0.1;
-                  // Gather all instructions for lookup by email
-                  const allInstructions = instructionData.flatMap(p => p.instructions ?? []);
-                  return (
-                    <JointClientCard
-                      key={idx}
-                      client={c}
-                      animationDelay={animationDelay}
-                      onOpenInstruction={handleOpenInstruction}
-                      allInstructions={allInstructions}
-                    />
-                  );
-                })}
-              </div>
             </div>
           )}
           {activePivot === "risk" && (
             <>
-              <Text
-                variant="mediumPlus"
-                styles={{ root: { fontWeight: 600, marginBottom: 8 } }}
-              >
-                Risk &amp; Compliance
-              </Text>
               <div className={gridContainerStyle}>
                 {groupedRiskComplianceData.length === 0 && (
                   <Text>No risk data available.</Text>
@@ -1249,28 +1350,24 @@ const Instructions: React.FC<InstructionsProps> = ({
               </div>
             </>
           )}
-          {activePivot === "draft-ccl" && (
-            <DraftCCLPage matterId={selectedInstruction?.InstructionRef} />
+          {activePivot === "documents" && (
+            <DocumentEditorPage 
+              matterId={selectedInstruction?.InstructionRef} 
+              instruction={selectedInstruction}
+              instructions={instructionData}
+            />
           )}
-          {activePivot === "demo" && (
-            <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-              <h2 style={{ color: colours.darkBlue, marginBottom: '16px' }}>
-                Instructions Editor
-              </h2>
-              <p style={{ color: colours.greyText, marginBottom: '24px' }}>
-                Create professional instruction content using templates and placeholders
-              </p>
-              <InstructionBlockEditor 
-                value=""
-                onChange={(value) => console.log('Editor content:', value)}
-              />
-            </div>
+          {activePivot === "documents2" && (
+            <DocumentsV3
+              selectedInstructionProp={selectedInstruction}
+              instructions={instructionData}
+            />
           )}
         </div>
         {/* Global Action Area - always visible, enhanced when instruction selected */}
         {activePivot === "overview" && !showNewMatterPage && !showRiskPage && !showEIDPage && (
           <div 
-            className="global-action-area"
+            className={`global-action-area${selectedInstruction ? ' expanded' : ''}`}
             style={{
               opacity: 1, // Always visible
               transform: 'translateY(0)',
@@ -1279,7 +1376,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             }}
           >
             <button
-              className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}`}
+              className={`global-action-btn${verifyButtonDisabled ? ' completed' : verifyButtonReview ? ' review' : ''}${selectedInstruction ? ' selected' : ''}`}
               onClick={handleGlobalEIDCheck}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
@@ -1315,8 +1412,8 @@ const Instructions: React.FC<InstructionsProps> = ({
                     : undefined,
                 }}
               >
-                <FaRegIdBadge className="icon-outline" />
-                <FaIdBadge className="icon-filled" />
+                <FaIdBadge className="icon-outline" />
+                <FaRegIdBadge className="icon-filled" />
               </span>
               <span
                 className="global-action-label"
@@ -1334,7 +1431,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               </span>
             </button>
             <button
-              className="global-action-btn"
+              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
               onClick={handleGlobalRiskAssessment}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
@@ -1350,8 +1447,8 @@ const Instructions: React.FC<InstructionsProps> = ({
               <span className="global-action-icon icon-hover" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
               }}>
-                <MdOutlineAssessment className="icon-outline" />
-                <MdAssessment className="icon-filled" />
+                <MdAssessment className="icon-outline" />
+                <MdOutlineAssessment className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
@@ -1360,7 +1457,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               </span>
             </button>
             <button
-              className="global-action-btn"
+              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
               onClick={handleGlobalOpenMatter}
               onMouseDown={e => e.currentTarget.classList.add('pressed')}
               onMouseUp={e => e.currentTarget.classList.remove('pressed')}
@@ -1377,8 +1474,8 @@ const Instructions: React.FC<InstructionsProps> = ({
               <span className="global-action-icon icon-hover" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
               }}>
-                <FaRegFolder className="icon-outline" />
-                <FaFolder className="icon-filled" />
+                <FaFolder className="icon-outline" />
+                <FaRegFolder className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
@@ -1399,6 +1496,32 @@ const Instructions: React.FC<InstructionsProps> = ({
                   zIndex: 10,
                 }} />
               )}
+            </button>
+            <button
+              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
+              onClick={() => setActivePivot("documents2")}
+              onMouseDown={e => e.currentTarget.classList.add('pressed')}
+              onMouseUp={e => e.currentTarget.classList.remove('pressed')}
+              onMouseLeave={e => e.currentTarget.classList.remove('pressed')}
+              style={{
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                opacity: 1,
+                transform: 'translateY(0)',
+                transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
+                pointerEvents: 'auto',
+              }}
+            >
+              <span className="global-action-icon icon-hover" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                <FaFileAlt className="icon-outline" />
+                <FaRegFileAlt className="icon-filled" />
+              </span>
+              <span className="global-action-label" style={{
+                color: selectedInstruction ? '#3690CE' : undefined,
+              }}>
+                Draft CCL
+              </span>
             </button>
           </div>
         )}
@@ -1436,23 +1559,170 @@ const Instructions: React.FC<InstructionsProps> = ({
 interface DealsPivotProps {
   deals: any[];
   handleOpenInstruction: (ref: string) => void;
+  selectedDealRef?: string | null;
+  onClearSelection?: () => void;
+  showOnlyMyDeals?: boolean;
+  onToggleMyDeals?: () => void;
+  currentUser?: any;
+  teamData: any[];
+  userInitials: string;
 }
 
-const DealsPivot: React.FC<DealsPivotProps> = ({ deals, handleOpenInstruction }) => {
+const DealsPivot: React.FC<DealsPivotProps> = ({ 
+  deals, 
+  handleOpenInstruction, 
+  selectedDealRef, 
+  onClearSelection,
+  showOnlyMyDeals = false,
+  onToggleMyDeals,
+  currentUser,
+  teamData,
+  userInitials
+}) => {
   const [openFollowUpIdx, setOpenFollowUpIdx] = useState<number | null>(null);
   const [followUpContent, setFollowUpContent] = useState<string>("");
+  const [showClosedDeals, setShowClosedDeals] = useState<boolean>(false);
+  
+  const filteredDeals = useMemo(() => {
+    let dealsToShow = deals;
+    
+    // If a specific deal is selected, show only that deal
+    if (selectedDealRef) {
+      dealsToShow = deals.filter(deal => deal.InstructionRef === selectedDealRef);
+    } else {
+      // Apply "my deals" filter if enabled
+      if (showOnlyMyDeals && currentUser) {
+        // Filter deals that belong to the current user (you may need to adjust this logic based on your data structure)
+        dealsToShow = deals.filter(deal => 
+          deal.Email === currentUser.Email || 
+          deal.Lead === currentUser.Email ||
+          deal.assignedTo === currentUser.Email
+        );
+      }
+      
+      // Apply the closed deals filter
+      if (!showClosedDeals) {
+        dealsToShow = dealsToShow.filter(deal => String(deal.Status).toLowerCase() !== 'closed');
+      }
+    }
+    
+    return dealsToShow;
+  }, [deals, showClosedDeals, selectedDealRef, showOnlyMyDeals, currentUser]);
+  
+  const closedDealsCount = deals.filter(deal => String(deal.Status).toLowerCase() === 'closed').length;
+  const openDealsCount = deals.length - closedDealsCount;
+  
   const gridContainerStyle = mergeStyles({
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+    gridTemplateColumns: selectedDealRef ? "1fr" : "repeat(auto-fit, minmax(350px, 1fr))",
     gap: "16px",
-    maxWidth: "1200px",
+    maxWidth: selectedDealRef ? "100%" : "1200px",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",
   });
+  
   return (
-    <div className={gridContainerStyle}>
-      {deals.map((deal, idx) => {
+    <div>
+      {/* Toggle Controls */}
+      {!selectedDealRef && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          marginBottom: '16px',
+          padding: '8px 12px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '6px',
+          border: '1px solid #e1dfdd'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#666' }}>
+              {showClosedDeals ? `All Deals (${deals.length})` : `Open Deals (${openDealsCount})`}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Show Everyone's/Mine Toggle */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              fontSize: '0.85rem'
+            }}>
+              <span style={{ color: '#666' }}>
+                {showOnlyMyDeals ? 'Show Mine' : 'Show Everyone\'s'}
+              </span>
+              <div
+                onClick={onToggleMyDeals}
+                style={{
+                  width: '36px',
+                  height: '20px',
+                  borderRadius: '10px',
+                  backgroundColor: showOnlyMyDeals ? '#0078d4' : '#d1d1d1',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                }}
+              >
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    backgroundColor: 'white',
+                    position: 'absolute',
+                    top: '2px',
+                    left: showOnlyMyDeals ? '18px' : '2px',
+                    transition: 'left 0.2s ease',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Show Closed Deals Toggle */}
+            {closedDealsCount > 0 && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                fontSize: '0.85rem'
+              }}>
+                <span style={{ color: '#666' }}>Show closed deals ({closedDealsCount})</span>
+                <div
+                  onClick={() => setShowClosedDeals(!showClosedDeals)}
+                  style={{
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
+                    backgroundColor: showClosedDeals ? '#0078d4' : '#d1d1d1',
+                    position: 'relative',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white',
+                      position: 'absolute',
+                      top: '2px',
+                      left: showClosedDeals ? '18px' : '2px',
+                      transition: 'left 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div className={gridContainerStyle}>
+        {filteredDeals.map((deal, idx) => {
         const row = Math.floor(idx / 4);
         const col = idx % 4;
         const animationDelay = row * 0.2 + col * 0.1;
@@ -1463,6 +1733,9 @@ const DealsPivot: React.FC<DealsPivotProps> = ({ deals, handleOpenInstruction })
             <DealCard
               deal={deal}
               animationDelay={animationDelay}
+              teamData={teamData}
+              userInitials={userInitials}
+              isSingleView={!!selectedDealRef}
               onFollowUp={
                 isClosed
                   ? undefined
@@ -1513,6 +1786,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({ deals, handleOpenInstruction })
           </div>
         );
       })}
+    </div>
     </div>
   );
 };

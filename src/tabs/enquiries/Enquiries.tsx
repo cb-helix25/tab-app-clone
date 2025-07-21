@@ -34,6 +34,7 @@ import PitchBuilder from './PitchBuilder';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
+import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
@@ -162,6 +163,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [showAll, setShowAll] = useState<boolean>(false);
   const [activeMainTab, setActiveMainTab] = useState<string>('Claimed');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
+  const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
   const [convertedEnquiriesList, setConvertedEnquiriesList] = useState<Enquiry[]>([]);
   const [convertedPoidDataList, setConvertedPoidDataList] = useState<POID[]>([]);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
@@ -184,6 +186,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       setActiveMainTab('');
     }
   }, [activeMainTab]);
+
+  useEffect(() => {
+    const flag = sessionStorage.getItem('openUnclaimedEnquiries');
+    if (flag === 'true') {
+      setShowUnclaimedBoard(true);
+      sessionStorage.removeItem('openUnclaimedEnquiries');
+    }
+  }, []);
+
+  const toggleUnclaimedBoard = useCallback(() => {
+    setShowUnclaimedBoard((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     if (localEnquiries.length > 0) {
@@ -213,6 +227,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       return dateA.getTime() - dateB.getTime();
     });
   }, [localEnquiries]);
+
+  const unclaimedEnquiries = useMemo(
+    () =>
+      localEnquiries.filter(
+        (e) => e.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
+      ),
+    [localEnquiries]
+  );
 
   const sortedValidEnquiries = useMemo(() => {
     return sortedEnquiries.filter(
@@ -533,6 +555,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           activeState={activeMainTab}
           setActiveState={handleSetActiveState}
           toggleDashboard={toggleDashboard}
+          toggleUnclaimed={toggleUnclaimedBoard}
+          unclaimedActive={showUnclaimedBoard}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           isSearchActive={isSearchActive}
@@ -816,12 +840,20 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     <div className={containerStyle(isDarkMode)}>
       <div className={mergeStyles({ width: '100%' })}></div>
 
-      {!selectedEnquiry && !selectedArea && !activeMainTab && (
-        <Stack
-          tokens={{ childrenGap: 20 }}
-          styles={{
-            root: {
-              backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#fff',
+      {showUnclaimedBoard ? (
+        <UnclaimedEnquiries
+          enquiries={unclaimedEnquiries}
+          onSelect={handleSelectEnquiry}
+        />
+      ) : (
+        !selectedEnquiry &&
+        !selectedArea &&
+        !activeMainTab && (
+          <Stack
+            tokens={{ childrenGap: 20 }}
+            styles={{
+              root: {
+                backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#fff',
               padding: '30px',
               borderRadius: '12px',
               boxShadow: isDarkMode
@@ -935,6 +967,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             )}
           </Stack>
         </Stack>
+        )
       )}
 
       <div
@@ -1117,17 +1150,28 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         ) : (
           <>
             {filteredEnquiries.length === 0 ? (
-              <Text
-                variant="medium"
-                styles={{
-                  root: {
-                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                    fontFamily: 'Raleway, sans-serif',
-                  },
-                }}
-              >
-                No results found matching your criteria.
-              </Text>
+              <Stack tokens={{ childrenGap: 8 }} horizontalAlign="center">
+                <Text
+                  variant="medium"
+                  styles={{
+                    root: {
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      fontFamily: 'Raleway, sans-serif',
+                    },
+                  }}
+                >
+                  No results found matching your criteria.
+                </Text>
+                <DefaultButton
+                  text="Clear Filters"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedArea(null);
+                    setActiveMainTab('Claimed');
+                  }}
+                  styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
+                />
+              </Stack>
             ) : (
               <>
                 <div

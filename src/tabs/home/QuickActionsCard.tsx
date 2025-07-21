@@ -26,7 +26,27 @@ import {
   FaShieldAlt,
   FaRegHandshake,
   FaHandshake,
+  FaRegCheckCircle,
+  FaCheckCircle,
+  FaRegFileAlt,
+  FaFileAlt,
+  FaRegFile,
+  FaFile,
+  FaRegPlusSquare,
+  FaPlusSquare,
+  FaRegStickyNote,
+  FaStickyNote,
+  FaTimes,
+  FaCheck,
+  FaPlus,
+  FaDownload,
 } from 'react-icons/fa';
+import {
+  AiOutlineCheck,
+  AiOutlineClose,
+  AiOutlinePlus,
+  AiOutlineDownload,
+} from 'react-icons/ai';
 import {
   MdOutlineWarning,
   MdWarning,
@@ -55,12 +75,15 @@ import AnimatedPulsingDot from '../../components/AnimatedPulsingDot';
 
 const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Accept: { outline: FaRegCheckSquare, filled: FaCheckSquare },
+  CheckCircle: { outline: FaRegCheckCircle, filled: FaCheckCircle },
   Checklist: { outline: FaRegListAlt, filled: FaListAlt },
   Comment: { outline: FaRegCommentDots, filled: FaCommentDots },
   Calendar: { outline: FaRegCalendarAlt, filled: FaCalendarAlt },
   Room: { outline: MdOutlineMeetingRoom, filled: MdMeetingRoom },
   Warning: { outline: MdOutlineWarning, filled: MdWarning },
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
+  Document: { outline: FaRegFile, filled: FaFile },
+  FileTemplate: { outline: FaRegFileAlt, filled: FaFileAlt },
   // Use a real folder icon for Finalise Matter (was FaRegFileAlt/FaFileAlt, which is a file/contract icon)
   OpenFile: { outline: FaRegFolder, filled: FaFolder },
   IdCheck: { outline: FaRegIdBadge, filled: FaIdBadge },
@@ -77,6 +100,12 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Shield: { outline: FaShieldAlt, filled: FaShieldAlt },
   Settings: { outline: FaCogs, filled: FaCogs },
   Edit: { outline: FaRegEdit, filled: FaEdit },
+  EditCreate: { outline: FaRegStickyNote, filled: FaStickyNote },
+  // Lightweight action icons - using thinner Ant Design icons
+  LightCheck: { outline: AiOutlineCheck, filled: AiOutlineCheck },
+  LightCancel: { outline: AiOutlineClose, filled: AiOutlineClose },
+  LightAdd: { outline: AiOutlinePlus, filled: AiOutlinePlus },
+  LightDownload: { outline: AiOutlineDownload, filled: AiOutlineDownload },
 };
 
 interface QuickActionsCardProps {

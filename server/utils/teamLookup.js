@@ -1,3 +1,5 @@
+console.log('SQL_CONNECTION_STRING:', process.env.SQL_CONNECTION_STRING);
+
 const sql = require('mssql');
 async function getClioId(initials) {
     const pool = await sql.connect(process.env.SQL_CONNECTION_STRING);
