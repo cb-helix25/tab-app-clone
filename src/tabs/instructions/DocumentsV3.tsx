@@ -6,6 +6,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { colours } from '../../app/styles/colours';
 import { Icon } from '@fluentui/react/lib/Icon';
+import localUserData from '../../localData/localUserData.json';
 
 const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}}
 
@@ -468,13 +469,41 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     useEffect(() => {
         if (selectedInstruction) {
             const updatedFields = { ...templateFields };
-            if (selectedInstruction.title) {
+
+            // Client name (individual or company)
+            if (!updatedFields.insert_clients_name) {
+                const first = (selectedInstruction as any).FirstName || '';
+                const last = (selectedInstruction as any).LastName || '';
+                const prefix = (selectedInstruction as any).Title ? `${(selectedInstruction as any).Title} ` : '';
+                const company = (selectedInstruction as any).CompanyName || '';
+                const name = (first || last)
+                    ? `${prefix}${first} ${last}`.trim()
+                    : company;
+                if (name) updatedFields.insert_clients_name = name;
+            }
+
+            if (selectedInstruction.title && !updatedFields.matter) {
                 updatedFields.matter = selectedInstruction.title;
+            }
+            if (selectedInstruction.title && !updatedFields.insert_heading_eg_matter_description) {
                 updatedFields.insert_heading_eg_matter_description = `RE: ${selectedInstruction.title}`;
             }
-            if (selectedInstruction.description) {
+            if (selectedInstruction.description && !updatedFields.insert_current_position_and_scope_of_retainer) {
                 updatedFields.insert_current_position_and_scope_of_retainer = selectedInstruction.description;
             }
+
+            if ((selectedInstruction as any).Email && !updatedFields.email) {
+                updatedFields.email = (selectedInstruction as any).Email;
+            }
+
+            const currentUser = (localUserData as any[])[0] || {};
+            if (!updatedFields.name_of_person_handling_matter && currentUser['Full Name']) {
+                updatedFields.name_of_person_handling_matter = currentUser['Full Name'];
+            }
+            if (!updatedFields.status && currentUser.Role) {
+                updatedFields.status = currentUser.Role;
+            }
+
             setTemplateFields(updatedFields);
         }
     }, [selectedInstruction]);

@@ -132,7 +132,7 @@ const DocumentEditorPage: React.FC<DocumentEditorPageProps> = ({
                 ...prev,
                 email: {
                     ...prev.email,
-                    to: inst.Client?.Email || inst.Email || '',
+                    to: inst.Client?.Email || '',
                     subject: `CCL – ${inst.InstructionRef}`
                 }
             }));
@@ -146,30 +146,6 @@ const DocumentEditorPage: React.FC<DocumentEditorPageProps> = ({
                 .map(i => ({ key: i.InstructionRef, text: i.InstructionRef, ...i })) as (IDropdownOption & any)[],
         [instructions]
     );
-
-    // Prefill CCL fields from selected instruction
-    useEffect(() => {
-        const inst = instruction || allInstructions.find(i => i.key === selectedRef);
-        if (inst) {
-            const fullName = inst.FirstName && inst.LastName
-                ? `${inst.FirstName} ${inst.LastName}`
-                : inst.clientName || inst.ClientName || inst.CompanyName;
-            const matter = inst.matter || inst.ServiceDescription;
-            setDocumentData(prev => ({
-                ...prev,
-                cclFields: {
-                    ...prev.cclFields,
-                    insert_clients_name: prev.cclFields.insert_clients_name || fullName || '',
-                    matter: prev.cclFields.matter || matter || '',
-                    insert_heading_eg_matter_description:
-                        prev.cclFields.insert_heading_eg_matter_description || (matter ? `RE: ${matter}` : ''),
-                    email: prev.cclFields.email || inst.Email || '',
-                    insert_current_position_and_scope_of_retainer:
-                        prev.cclFields.insert_current_position_and_scope_of_retainer || inst.description || ''
-                }
-            }));
-        }
-    }, [selectedRef, instruction, allInstructions]);
 
     const handleSave = async () => {
         if (!matterId) return;
