@@ -809,20 +809,6 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                             </div>
                                         )}
                                     </div>
-                                    
-                                    {leadClient.idVerification.Notes && (
-                                        <div style={{ marginTop: '8px' }}>
-                                            <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
-                                            <div style={{ 
-                                                color: '#24292f', 
-                                                fontSize: '0.7rem',
-                                                marginTop: '2px',
-                                                fontStyle: 'italic'
-                                            }}>
-                                                {leadClient.idVerification.Notes}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -967,20 +953,6 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                        
-                                        {client.idVerification.Notes && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
-                                                <div style={{ 
-                                                    color: '#24292f', 
-                                                    fontSize: '0.7rem',
-                                                    marginTop: '2px',
-                                                    fontStyle: 'italic'
-                                                }}>
-                                                    {client.idVerification.Notes}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>

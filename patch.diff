@@ -1,216 +1,663 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index dd138f3df95f3b4e4f2bd2125168b2ec330a5a13..b7525643062b6959201b6f9050fedcf18d996e8f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1,33 +1,34 @@
- import React, { useState, useEffect } from 'react';
- import { Stack, TextField, Toggle, Dropdown, MessageBar, MessageBarType } from '@fluentui/react';
- import { Panel } from '@fluentui/react/lib/Panel';
- import { InstructionData } from '../../app/functionality/types';
- import { useTheme } from '../../app/functionality/ThemeContext';
- import QuickActionsCard from '../home/QuickActionsCard';
+diff --git a/src/tabs/instructions/RiskComplianceCard.tsx b/src/tabs/instructions/RiskComplianceCard.tsx
+index 6d7b188b18abc6ebc5dc3a834051aaf8051a62c6..16ca8667d3ce8b53807705f17a4d6192c375a36b 100644
+--- a/src/tabs/instructions/RiskComplianceCard.tsx
++++ b/src/tabs/instructions/RiskComplianceCard.tsx
+@@ -1,46 +1,47 @@
+ import React from 'react';
+ import { format } from 'date-fns';
+ import { mergeStyles } from '@fluentui/react';
+-import { 
+-  FaShieldAlt, 
+-  FaUser, 
+-  FaUsers, 
+-  FaFileAlt, 
+-  FaDownload, 
+-  FaCalendarAlt, 
++import {
++  FaShieldAlt,
++  FaUser,
++  FaUsers,
++  FaFileAlt,
++  FaDownload,
++  FaCalendarAlt,
+   FaClipboardList,
+   FaFilePdf,
+   FaFileWord,
+   FaFileExcel,
+   FaFilePowerpoint,
+   FaFileArchive,
+   FaFileImage,
+   FaFileAudio,
+   FaFileVideo,
+   FaFileUpload,
+-  FaLink
++  FaLink,
++  FaMapMarkerAlt
+ } from 'react-icons/fa';
  import { colours } from '../../app/styles/colours';
- import { Icon } from '@fluentui/react/lib/Icon';
-+import localUserData from '../../localData/localUserData.json';
+ import { ClientInfo } from './JointClientCard';
  
- const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}}
+ // File type icon mapping
+ const iconMap: Record<string, JSX.Element> = {
+   pdf: <FaFilePdf style={{ fontSize: '20px' }} />,
+   doc: <FaFileWord style={{ fontSize: '20px' }} />,
+   docx: <FaFileWord style={{ fontSize: '20px' }} />,
+   xls: <FaFileExcel style={{ fontSize: '20px' }} />,
+   xlsx: <FaFileExcel style={{ fontSize: '20px' }} />,
+   ppt: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+   pptx: <FaFilePowerpoint style={{ fontSize: '20px' }} />,
+   txt: <FaFileAlt style={{ fontSize: '20px' }} />,
+   zip: <FaFileArchive style={{ fontSize: '20px' }} />,
+   rar: <FaFileArchive style={{ fontSize: '20px' }} />,
+   jpg: <FaFileImage style={{ fontSize: '20px' }} />,
+   jpeg: <FaFileImage style={{ fontSize: '20px' }} />,
+   png: <FaFileImage style={{ fontSize: '20px' }} />,
+   mp3: <FaFileAudio style={{ fontSize: '20px' }} />,
+   mp4: <FaFileVideo style={{ fontSize: '20px' }} />,
+ };
  
- {{insert_heading_eg_matter_description}}
+ // Get file type-specific icon
+ const getFileIcon = (filename?: string): JSX.Element => {
+diff --git a/src/tabs/instructions/RiskComplianceCard.tsx b/src/tabs/instructions/RiskComplianceCard.tsx
+index 6d7b188b18abc6ebc5dc3a834051aaf8051a62c6..16ca8667d3ce8b53807705f17a4d6192c375a36b 100644
+--- a/src/tabs/instructions/RiskComplianceCard.tsx
++++ b/src/tabs/instructions/RiskComplianceCard.tsx
+@@ -124,50 +125,89 @@ const getRiskColor = (riskLevel: string) => {
+         return '#FFB900';
+     }
+     if (level?.includes('high') || level === 'fail' || level === 'rejected') {
+         return '#d13438';
+     }
+     return '#666';
+ };
  
- Thank you for your instructions to act on your behalf in connection with {{matter}}. This Engagement Letter and the attached Terms of Business explain the basis on which we will be acting for you—together they form the contract between us.
- 
- Please contact me if you have any difficulty understanding this Engagement Letter or other information we may provide, eg if anything in this letter is unclear or you require information to be provided in larger text, another format or a different language.
- 
- Contact details and supervision
- 
- The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are:
- 
- Telephone number: [Insert telephone number]
- Email address: [Insert email address]
- Postal address: [Insert postal address]
- 
- The best way to contact {{name_of_handler}} is {{email}}.
- 
- If {{handler}} is not available, the following members of staff may be able to deal with any queries you have:
- 
- {{names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries}}
- 
- The person with overall responsibility for supervising your matter is {{name}}, who is a Partner.
- 
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index dd138f3df95f3b4e4f2bd2125168b2ec330a5a13..b7525643062b6959201b6f9050fedcf18d996e8f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -446,57 +447,85 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
-                 return Object.values(templateFields).some(val => val.trim() !== '') ? 100 : 0;
-             case 3:
-                 return documentContent.trim() !== '' ? 100 : 0;
-             default:
-                 return 0;
-         }
-     };
+ const getVerificationStatus = (verifications: any[]) => {
+     if (!verifications || verifications.length === 0) return 'pending';
      
-     const getEditorStepCompletion = (step: number): number => {
-         switch (step) {
-             case 1:
-                 return documentContent.trim() !== '' ? 100 : 0;
-             case 2:
-                 return Object.values(templateFields).filter(val => val.trim() !== '').length >= 3 ? 100 : 0;
-             case 3:
-                 return Object.values(templateFields).every(val => val.trim() !== '') ? 100 : 0;
-             default:
-                 return 0;
-         }
-     };
+     const hasCompleted = verifications.some(v => 
+         v.EIDOverallResult?.toLowerCase() === 'passed' || 
+         v.EIDOverallResult?.toLowerCase() === 'pass'
+     );
      
-     // Initialize template fields when instruction/matter data is available
-     useEffect(() => {
-         if (selectedInstruction) {
-             const updatedFields = { ...templateFields };
--            if (selectedInstruction.title) {
-+
-+            // Client name (individual or company)
-+            if (!updatedFields.insert_clients_name) {
-+                const first = (selectedInstruction as any).FirstName || '';
-+                const last = (selectedInstruction as any).LastName || '';
-+                const prefix = (selectedInstruction as any).Title ? `${(selectedInstruction as any).Title} ` : '';
-+                const company = (selectedInstruction as any).CompanyName || '';
-+                const name = (first || last)
-+                    ? `${prefix}${first} ${last}`.trim()
-+                    : company;
-+                if (name) updatedFields.insert_clients_name = name;
-+            }
-+
-+            if (selectedInstruction.title && !updatedFields.matter) {
-                 updatedFields.matter = selectedInstruction.title;
-+            }
-+            if (selectedInstruction.title && !updatedFields.insert_heading_eg_matter_description) {
-                 updatedFields.insert_heading_eg_matter_description = `RE: ${selectedInstruction.title}`;
-             }
--            if (selectedInstruction.description) {
-+            if (selectedInstruction.description && !updatedFields.insert_current_position_and_scope_of_retainer) {
-                 updatedFields.insert_current_position_and_scope_of_retainer = selectedInstruction.description;
-             }
-+
-+            if ((selectedInstruction as any).Email && !updatedFields.email) {
-+                updatedFields.email = (selectedInstruction as any).Email;
-+            }
-+
-+            const currentUser = (localUserData as any[])[0] || {};
-+            if (!updatedFields.name_of_person_handling_matter && currentUser['Full Name']) {
-+                updatedFields.name_of_person_handling_matter = currentUser['Full Name'];
-+            }
-+            if (!updatedFields.status && currentUser.Role) {
-+                updatedFields.status = currentUser.Role;
-+            }
-+
-             setTemplateFields(updatedFields);
-         }
-     }, [selectedInstruction]);
+     if (hasCompleted) return 'complete';
      
-     // Handle template selection
-     const handleTemplateSelect = (template: 'ccl' | 'custom') => {
-         if (selectedTemplate === template) {
-             // Unselect if already selected
-             setSelectedTemplate(null);
-             setDocumentContent('');
-         } else {
-             // Select template
-             setSelectedTemplate(template);
-             setDocumentContent(MESSAGE_TEMPLATES[template]);
-         }
-     };
+     const hasStarted = verifications.some(v => 
+         v.EIDStatus && v.EIDStatus.toLowerCase() !== 'pending'
+     );
+     
+     return hasStarted ? 'in-progress' : 'pending';
+ };
  
-     // Preset system functions
-     const handleFieldClick = (fieldName: string, event: React.MouseEvent) => {
-         const rect = (event.target as HTMLElement).getBoundingClientRect();
-         setPresetField(fieldName);
-         setPresetPosition({ 
-             x: rect.left + rect.width / 2, 
-             y: rect.bottom + 8 
-         });
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index dd138f3df95f3b4e4f2bd2125168b2ec330a5a13..b7525643062b6959201b6f9050fedcf18d996e8f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -675,77 +704,77 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
-                 parts.push(
-                     <input
-                         key={match.index}
-                         type="text"
-                         value=""
-                         placeholder={placeholderText}
-                         onChange={(e) => {
-                             setTemplateFields(prev => ({
-                                 ...prev,
-                                 [variableName]: e.target.value
-                             }));
-                         }}
-                         onClick={(e) => handleFieldClick(variableName, e)}
-                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                         onMouseLeave={handleFieldHoverLeave}
-                         style={{
-                             backgroundColor: '#fff3cd',
-                             color: '#856404',
-                             padding: '4px 8px',
-                             borderRadius: '4px',
-                             fontWeight: 500,
-                             border: '2px dashed #ffeaa7',
-                             outline: 'none',
-                             fontFamily: 'Raleway, sans-serif',
-                             fontSize: '14px',
--                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 120) + 'px',
--                            minWidth: '120px',
-+                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 80) + 'px',
-+                            minWidth: '80px',
-                             maxWidth: '600px',
-                             display: 'inline-block',
-                             margin: '2px',
-                             fontStyle: 'italic',
-                             transition: 'all 0.2s ease'
-                         }}
-                         onFocus={(e) => {
-                             e.target.style.backgroundColor = '#ffeaa7';
-                             e.target.style.borderStyle = 'solid';
-                             e.target.style.transform = 'scale(1.05)';
-                             e.target.style.fontStyle = 'normal';
-                         }}
-                         onBlur={(e) => {
-                             e.target.style.backgroundColor = '#fff3cd';
-                             e.target.style.borderStyle = 'dashed';
-                             e.target.style.transform = 'scale(1)';
-                             e.target.style.fontStyle = 'italic';
-                         }}
-                         onInput={(e) => {
-                             // Dynamic width adjustment as user types
-                             const target = e.target as HTMLInputElement;
-                             const textWidth = target.value.length > 0 
-                                 ? measureTextWidth(target.value, 14)
-                                 : measureTextWidth(placeholderText, 14);
--                            const newWidth = Math.max(textWidth + 20, target.value.length > 0 ? 80 : 120);
-+                            const newWidth = Math.max(textWidth + 20, 80);
-                             target.style.width = newWidth + 'px';
-                         }}
-                     />
-                 );
-             }
-             
-             lastIndex = match.index + match[0].length;
-         }
++const getVerificationColor = (result: string) => {
++    const level = result?.toLowerCase();
++    if (level === 'passed' || level === 'pass' || level === 'approved') {
++        return { background: '#e6f4ea', text: '#107C10', border: '#107C10' };
++    }
++    if (level === 'review' || level === 'pending') {
++        return { background: '#fffbe6', text: '#b88600', border: '#FFB900' };
++    }
++    if (level === 'failed' || level === 'fail' || level === 'rejected') {
++        return { background: '#fde7e9', text: '#d13438', border: '#d13438' };
++    }
++    return { background: '#f4f4f6', text: '#666', border: '#e1dfdd' };
++};
++
++function getExpiryCountdown(expiryDateString: string | undefined): string | null {
++    if (!expiryDateString) return null;
++    const expiryDate = new Date(expiryDateString);
++    if (isNaN(expiryDate.getTime())) return null;
++    const expiryMidnight = new Date(expiryDate);
++    expiryMidnight.setDate(expiryMidnight.getDate() + 1);
++    expiryMidnight.setHours(0, 0, 0, 0);
++    const now = new Date();
++    let diff = expiryMidnight.getTime() - now.getTime();
++    if (diff <= 0) return 'expired';
++    const msPerHour = 1000 * 60 * 60;
++    const msPerDay = msPerHour * 24;
++    const months = Math.floor(diff / (msPerDay * 30));
++    diff -= months * msPerDay * 30;
++    const days = Math.floor(diff / msPerDay);
++    diff -= days * msPerDay;
++    const hours = Math.floor(diff / msPerHour);
++    let parts = [] as string[];
++    if (months > 0) parts.push(`${months}m`);
++    if (days > 0) parts.push(`${days}d`);
++    if (hours > 0) parts.push(`${hours}h`);
++    if (parts.length === 0) parts.push('<1h');
++    return `expires in ${parts.join(' ')}`;
++}
++
+ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
+     data,
+     animationDelay = 0,
+     onOpenInstruction,
+     selected = false,
+     onSelect,
+     expanded = false,
+ }) => {
+     const primaryRisk = data.riskAssessments[0];
+     const leadClient = data.clients?.find(c => c.Lead) || data.clients?.[0];
+     const jointClients = data.clients?.filter(c => !c.Lead) || [];
+     const isMultiClient = data.clients && data.clients.length > 1;
+     
+     // Get risk status (instruction level - one assessment for all clients)
+     const riskResult = primaryRisk?.RiskAssessmentResult;
+     const riskStatus = riskResult ? 
+         ['low', 'low risk', 'pass', 'approved'].includes(riskResult.toLowerCase()) ? 'approved' :
+         ['medium'].includes(riskResult.toLowerCase()) ? 'review' : 'flagged'
+         : 'pending';
+     
+     // Get individual client verification statuses from enhanced client data
+     const getClientVerificationStatus = (client: any) => {
+         if (!client) return 'pending';
          
-         // Add any remaining editable text
-         if (lastIndex < content.length) {
-             const textSegment = content.substring(lastIndex);
-             parts.push(
-                 <span
-                     key={`text-${lastIndex}`}
-                     contentEditable
-                     suppressContentEditableWarning={true}
-                     onBlur={(e) => {
-                         const newText = e.target.textContent || '';
-                         const beforeText = content.substring(0, lastIndex);
-                         const newContent = beforeText + newText;
-                         setDocumentContent(newContent);
-                     }}
-                     style={{
-                         outline: 'none',
+         // Use the idVerification data attached to the client object
+diff --git a/src/tabs/instructions/RiskComplianceCard.tsx b/src/tabs/instructions/RiskComplianceCard.tsx
+index 6d7b188b18abc6ebc5dc3a834051aaf8051a62c6..16ca8667d3ce8b53807705f17a4d6192c375a36b 100644
+--- a/src/tabs/instructions/RiskComplianceCard.tsx
++++ b/src/tabs/instructions/RiskComplianceCard.tsx
+@@ -693,318 +733,306 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
+                                            leadClient.ClientEmail?.split('@')[0] || 'Client'}
+                                 </span>
+                             </div>
+                             <div style={{
+                                 fontSize: '0.8rem',
+                                 fontWeight: 600,
+                                 color: getClientVerificationStatus(leadClient) === 'complete' ? '#20b26c' :
+                                        getClientVerificationStatus(leadClient) === 'in-progress' ? '#3690CE' : '#666',
+                                 display: 'flex',
+                                 alignItems: 'center',
+                                 gap: '4px',
+                                 marginLeft: '20px'
+                             }}>
+                                 <span style={{
+                                     width: '8px',
+                                     height: '8px',
+                                     borderRadius: '50%',
+                                     backgroundColor: getClientVerificationStatus(leadClient) === 'complete' ? '#20b26c' :
+                                                    getClientVerificationStatus(leadClient) === 'in-progress' ? '#3690CE' : '#ccc'
+                                 }} />
+                                 ID Verification: {getClientVerificationStatus(leadClient) === 'complete' ? 'Verified' :
+                                                  getClientVerificationStatus(leadClient) === 'in-progress' ? 'In Progress' : 'Pending'}
+                             </div>
+                             
+                             {/* Expanded ID Verification Details for Lead Client */}
+-                            {expanded && leadClient.idVerification && (
+-                                <div style={{
+-                                    marginLeft: '20px',
+-                                    marginTop: '8px',
+-                                    padding: '12px',
+-                                    backgroundColor: 'rgba(54, 144, 206, 0.05)',
+-                                    borderRadius: '4px',
+-                                    border: '1px solid rgba(54, 144, 206, 0.15)'
+-                                }}>
+-                                    <div style={{
+-                                        fontSize: '0.75rem',
+-                                        fontWeight: 600,
+-                                        color: '#3690CE',
+-                                        marginBottom: '8px'
+-                                    }}>
+-                                        ID Verification Details
+-                                    </div>
+-                                    
++                            {expanded && leadClient.idVerification && (() => {
++                                const checkResult = leadClient.idVerification.EIDOverallResult || leadClient.idVerification.CheckResult;
++                                const pepResult = leadClient.idVerification.PEPAndSanctionsCheckResult;
++                                const addressResult = leadClient.idVerification.AddressVerificationResult;
++                                const checkId = leadClient.idVerification.EIDCheckId;
++                                const checkExpiry = leadClient.idVerification.CheckExpiry;
++                                const verificationColors = getVerificationColor(checkResult || '');
++                                const pepColors = getVerificationColor(pepResult || '');
++                                const addressColors = getVerificationColor(addressResult || '');
++                                return (
+                                     <div style={{
+-                                        display: 'grid',
+-                                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+-                                        gap: '8px',
+-                                        fontSize: '0.7rem'
++                                        marginLeft: '20px',
++                                        marginTop: '8px',
++                                        padding: '12px',
++                                        backgroundColor: 'rgba(54, 144, 206, 0.05)',
++                                        borderRadius: '4px',
++                                        border: '1px solid rgba(54, 144, 206, 0.15)'
+                                     }}>
+-                                        {leadClient.idVerification.EIDOverallResult && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Overall Result:</span>
+-                                                <div style={{ 
+-                                                    color: leadClient.idVerification.EIDOverallResult.toLowerCase() === 'passed' ? '#20b26c' : '#d13438',
+-                                                    fontWeight: 600,
+-                                                    fontSize: '0.75rem'
+-                                                }}>
+-                                                    {leadClient.idVerification.EIDOverallResult}
+-                                                </div>
+-                                            </div>
+-                                        )}
+-                                        
+-                                        {leadClient.idVerification.DocumentType && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
+-                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+-                                                    {leadClient.idVerification.DocumentType}
+-                                                </div>
+-                                            </div>
+-                                        )}
+-                                        
+-                                        {leadClient.idVerification.CheckDate && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
+-                                                <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+-                                                    {format(new Date(leadClient.idVerification.CheckDate), 'd MMM yyyy')}
+-                                                </div>
++                                        <div style={{
++                                            fontSize: '0.75rem',
++                                            fontWeight: 600,
++                                            color: '#3690CE',
++                                            marginBottom: '8px'
++                                        }}>
++                                            ID Verification Details
++                                        </div>
++
++                                        {checkResult && (
++                                            <div style={{
++                                                padding: '2px 8px',
++                                                borderRadius: 0,
++                                                backgroundColor: verificationColors.background,
++                                                color: verificationColors.text,
++                                                border: `1px solid ${verificationColors.border}40`,
++                                                fontSize: '0.75rem',
++                                                fontWeight: 600,
++                                                display: 'inline-block',
++                                                marginBottom: '8px'
++                                            }}>
++                                                {checkResult}
+                                             </div>
+                                         )}
+-                                        
+-                                        {leadClient.idVerification.FraudScore && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
+-                                                <div style={{ 
+-                                                    color: parseInt(leadClient.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
+-                                                    fontWeight: 600,
+-                                                    fontSize: '0.75rem'
+-                                                }}>
+-                                                    {leadClient.idVerification.FraudScore}%
+-                                                </div>
++
++                                        {(pepResult || addressResult) && (
++                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
++                                                {pepResult && (
++                                                    <div style={{
++                                                        padding: '2px 6px',
++                                                        backgroundColor: pepColors.background,
++                                                        color: pepColors.text,
++                                                        border: `1px solid ${pepColors.border}30`,
++                                                        fontSize: '0.7rem',
++                                                        fontWeight: 500,
++                                                        display: 'flex',
++                                                        alignItems: 'center',
++                                                        gap: 4
++                                                    }}>
++                                                        <FaShieldAlt style={{ fontSize: '10px' }} />
++                                                        PEP: {pepResult}
++                                                    </div>
++                                                )}
++                                                {addressResult && (
++                                                    <div style={{
++                                                        padding: '2px 6px',
++                                                        backgroundColor: addressColors.background,
++                                                        color: addressColors.text,
++                                                        border: `1px solid ${addressColors.border}30`,
++                                                        fontSize: '0.7rem',
++                                                        fontWeight: 500,
++                                                        display: 'flex',
++                                                        alignItems: 'center',
++                                                        gap: 4
++                                                    }}>
++                                                        <FaMapMarkerAlt style={{ fontSize: '10px' }} />
++                                                        Address: {addressResult}
++                                                    </div>
++                                                )}
+                                             </div>
+                                         )}
+-                                        
+-                                        {leadClient.idVerification.AuthenticityScore && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
+-                                                <div style={{ 
+-                                                    color: parseInt(leadClient.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
+-                                                    fontWeight: 600,
+-                                                    fontSize: '0.75rem'
+-                                                }}>
+-                                                    {leadClient.idVerification.AuthenticityScore}%
+-                                                </div>
++
++                                        {checkId && (
++                                            <div style={{
++                                                color: '#aaa',
++                                                fontFamily: 'Raleway, sans-serif',
++                                                fontSize: '0.65rem',
++                                                letterSpacing: '0.5px',
++                                                marginBottom: '4px'
++                                            }}>
++                                                #{checkId}
+                                             </div>
+                                         )}
+-                                        
+-                                        {leadClient.idVerification.QualityScore && (
+-                                            <div>
+-                                                <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
+-                                                <div style={{ 
+-                                                    color: parseInt(leadClient.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
+-                                                    fontWeight: 600,
+-                                                    fontSize: '0.75rem'
+-                                                }}>
+-                                                    {leadClient.idVerification.QualityScore}%
+-                                                </div>
++
++                                        {checkExpiry && (
++                                            <div style={{
++                                                color: getExpiryCountdown(checkExpiry) === 'expired' ? '#d13438' : '#888',
++                                                fontStyle: 'italic',
++                                                fontSize: '0.7rem'
++                                            }}>
++                                                {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
+                                             </div>
+                                         )}
+                                     </div>
+-                                    
+-                                    {leadClient.idVerification.Notes && (
+-                                        <div style={{ marginTop: '8px' }}>
+-                                            <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
+-                                            <div style={{ 
+-                                                color: '#24292f', 
+-                                                fontSize: '0.7rem',
+-                                                marginTop: '2px',
+-                                                fontStyle: 'italic'
+-                                            }}>
+-                                                {leadClient.idVerification.Notes}
+-                                            </div>
+-                                        </div>
+-                                    )}
+-                                </div>
+-                            )}
++                                );
++                            })()}
+                         </div>
+                     )}
+ 
+                     {/* Joint Clients */}
+                     {jointClients.map((client, index) => {
+                         const clientVerificationStatus = getClientVerificationStatus(client);
+                         return (
+                             <div key={index} style={{
+                                 marginBottom: index < jointClients.length - 1 ? '6px' : '0'
+                             }}>
+                                 <div style={{
+                                     display: 'flex',
+                                     alignItems: 'center',
+                                     gap: '8px',
+                                     marginBottom: '4px'
+                                 }}>
+                                     <FaUser style={{ fontSize: '12px', color: '#666' }} />
+                                     <span style={{ 
+                                         fontSize: '0.85rem', 
+                                         fontWeight: 500
+                                     }}>
+                                         Joint: {`${client.FirstName || ''} ${client.LastName || ''}`.trim() || 
+                                                client.CompanyName || 
+                                                client.ClientEmail?.split('@')[0] || 'Client'}
+                                     </span>
+                                 </div>
+                                 <div style={{
+                                     fontSize: '0.8rem',
+                                     fontWeight: 600,
+                                     color: clientVerificationStatus === 'complete' ? '#20b26c' :
+                                            clientVerificationStatus === 'in-progress' ? '#3690CE' : '#666',
+                                     display: 'flex',
+                                     alignItems: 'center',
+                                     gap: '4px',
+                                     marginLeft: '20px'
+                                 }}>
+                                     <span style={{
+                                         width: '8px',
+                                         height: '8px',
+                                         borderRadius: '50%',
+                                         backgroundColor: clientVerificationStatus === 'complete' ? '#20b26c' :
+                                                        clientVerificationStatus === 'in-progress' ? '#3690CE' : '#ccc'
+                                     }} />
+                                     ID Verification: {clientVerificationStatus === 'complete' ? 'Verified' :
+                                                      clientVerificationStatus === 'in-progress' ? 'In Progress' : 'Pending'}
+                                 </div>
+                                 
+                                 {/* Expanded ID Verification Details for Joint Client */}
+-                                {expanded && client.idVerification && (
+-                                    <div style={{
+-                                        marginLeft: '20px',
+-                                        marginTop: '8px',
+-                                        padding: '12px',
+-                                        backgroundColor: 'rgba(102, 102, 102, 0.05)',
+-                                        borderRadius: '4px',
+-                                        border: '1px solid rgba(102, 102, 102, 0.15)'
+-                                    }}>
++                                {expanded && client.idVerification && (() => {
++                                    const checkResult = client.idVerification.EIDOverallResult || client.idVerification.CheckResult;
++                                    const pepResult = client.idVerification.PEPAndSanctionsCheckResult;
++                                    const addressResult = client.idVerification.AddressVerificationResult;
++                                    const checkId = client.idVerification.EIDCheckId;
++                                    const checkExpiry = client.idVerification.CheckExpiry;
++                                    const verificationColors = getVerificationColor(checkResult || '');
++                                    const pepColors = getVerificationColor(pepResult || '');
++                                    const addressColors = getVerificationColor(addressResult || '');
++                                    return (
+                                         <div style={{
+-                                            fontSize: '0.75rem',
+-                                            fontWeight: 600,
+-                                            color: '#666',
+-                                            marginBottom: '8px'
++                                            marginLeft: '20px',
++                                            marginTop: '8px',
++                                            padding: '12px',
++                                            backgroundColor: 'rgba(102, 102, 102, 0.05)',
++                                            borderRadius: '4px',
++                                            border: '1px solid rgba(102, 102, 102, 0.15)'
+                                         }}>
+-                                            ID Verification Details
+-                                        </div>
+-                                        
+-                                        <div style={{
+-                                            display: 'grid',
+-                                            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+-                                            gap: '8px',
+-                                            fontSize: '0.7rem'
+-                                        }}>
+-                                            {client.idVerification.EIDOverallResult && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Overall Result:</span>
+-                                                    <div style={{ 
+-                                                        color: client.idVerification.EIDOverallResult.toLowerCase() === 'passed' ? '#20b26c' : '#d13438',
+-                                                        fontWeight: 600,
+-                                                        fontSize: '0.75rem'
+-                                                    }}>
+-                                                        {client.idVerification.EIDOverallResult}
+-                                                    </div>
+-                                                </div>
+-                                            )}
+-                                            
+-                                            {client.idVerification.DocumentType && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Document Type:</span>
+-                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+-                                                        {client.idVerification.DocumentType}
+-                                                    </div>
+-                                                </div>
+-                                            )}
+-                                            
+-                                            {client.idVerification.CheckDate && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Check Date:</span>
+-                                                    <div style={{ color: '#24292f', fontWeight: 500, fontSize: '0.75rem' }}>
+-                                                        {format(new Date(client.idVerification.CheckDate), 'd MMM yyyy')}
+-                                                    </div>
++                                            <div style={{
++                                                fontSize: '0.75rem',
++                                                fontWeight: 600,
++                                                color: '#666',
++                                                marginBottom: '8px'
++                                            }}>
++                                                ID Verification Details
++                                            </div>
++
++                                            {checkResult && (
++                                                <div style={{
++                                                    padding: '2px 8px',
++                                                    borderRadius: 0,
++                                                    backgroundColor: verificationColors.background,
++                                                    color: verificationColors.text,
++                                                    border: `1px solid ${verificationColors.border}40`,
++                                                    fontSize: '0.75rem',
++                                                    fontWeight: 600,
++                                                    display: 'inline-block',
++                                                    marginBottom: '8px'
++                                                }}>
++                                                    {checkResult}
+                                                 </div>
+                                             )}
+-                                            
+-                                            {client.idVerification.FraudScore && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Fraud Score:</span>
+-                                                    <div style={{ 
+-                                                        color: parseInt(client.idVerification.FraudScore) > 50 ? '#d13438' : '#20b26c',
+-                                                        fontWeight: 600,
+-                                                        fontSize: '0.75rem'
+-                                                    }}>
+-                                                        {client.idVerification.FraudScore}%
+-                                                    </div>
++
++                                            {(pepResult || addressResult) && (
++                                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
++                                                    {pepResult && (
++                                                        <div style={{
++                                                            padding: '2px 6px',
++                                                            backgroundColor: pepColors.background,
++                                                            color: pepColors.text,
++                                                            border: `1px solid ${pepColors.border}30`,
++                                                            fontSize: '0.7rem',
++                                                            fontWeight: 500,
++                                                            display: 'flex',
++                                                            alignItems: 'center',
++                                                            gap: 4
++                                                        }}>
++                                                            <FaShieldAlt style={{ fontSize: '10px' }} />
++                                                            PEP: {pepResult}
++                                                        </div>
++                                                    )}
++                                                    {addressResult && (
++                                                        <div style={{
++                                                            padding: '2px 6px',
++                                                            backgroundColor: addressColors.background,
++                                                            color: addressColors.text,
++                                                            border: `1px solid ${addressColors.border}30`,
++                                                            fontSize: '0.7rem',
++                                                            fontWeight: 500,
++                                                            display: 'flex',
++                                                            alignItems: 'center',
++                                                            gap: 4
++                                                        }}>
++                                                            <FaMapMarkerAlt style={{ fontSize: '10px' }} />
++                                                            Address: {addressResult}
++                                                        </div>
++                                                    )}
+                                                 </div>
+                                             )}
+-                                            
+-                                            {client.idVerification.AuthenticityScore && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Authenticity:</span>
+-                                                    <div style={{ 
+-                                                        color: parseInt(client.idVerification.AuthenticityScore) > 50 ? '#20b26c' : '#d13438',
+-                                                        fontWeight: 600,
+-                                                        fontSize: '0.75rem'
+-                                                    }}>
+-                                                        {client.idVerification.AuthenticityScore}%
+-                                                    </div>
++
++                                            {checkId && (
++                                                <div style={{
++                                                    color: '#aaa',
++                                                    fontFamily: 'Raleway, sans-serif',
++                                                    fontSize: '0.65rem',
++                                                    letterSpacing: '0.5px',
++                                                    marginBottom: '4px'
++                                                }}>
++                                                    #{checkId}
+                                                 </div>
+                                             )}
+-                                            
+-                                            {client.idVerification.QualityScore && (
+-                                                <div>
+-                                                    <span style={{ color: '#666', fontWeight: 500 }}>Quality Score:</span>
+-                                                    <div style={{ 
+-                                                        color: parseInt(client.idVerification.QualityScore) > 50 ? '#20b26c' : '#d13438',
+-                                                        fontWeight: 600,
+-                                                        fontSize: '0.75rem'
+-                                                    }}>
+-                                                        {client.idVerification.QualityScore}%
+-                                                    </div>
++
++                                            {checkExpiry && (
++                                                <div style={{
++                                                    color: getExpiryCountdown(checkExpiry) === 'expired' ? '#d13438' : '#888',
++                                                    fontStyle: 'italic',
++                                                    fontSize: '0.7rem'
++                                                }}>
++                                                    {getExpiryCountdown(checkExpiry) ? `Expires ${getExpiryCountdown(checkExpiry)}` : `Verified until ${new Date(checkExpiry).toLocaleDateString()}`}
+                                                 </div>
+                                             )}
+                                         </div>
+-                                        
+-                                        {client.idVerification.Notes && (
+-                                            <div style={{ marginTop: '8px' }}>
+-                                                <span style={{ color: '#666', fontWeight: 500, fontSize: '0.7rem' }}>Notes:</span>
+-                                                <div style={{ 
+-                                                    color: '#24292f', 
+-                                                    fontSize: '0.7rem',
+-                                                    marginTop: '2px',
+-                                                    fontStyle: 'italic'
+-                                                }}>
+-                                                    {client.idVerification.Notes}
+-                                                </div>
+-                                            </div>
+-                                        )}
+-                                    </div>
+-                                )}
++                                    );
++                                })()}
+                             </div>
+                         );
+                     })}
+                 </div>
+             )}
+ 
+             {/* Documents Section - shown when expanded */}
+             {expanded && data.allData && (
+                 <div style={{
+                     marginTop: '16px',
+                     padding: '16px',
+                     backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                     borderRadius: '4px',
+                     border: '1px solid rgba(54, 144, 206, 0.1)'
+                 }}>
+                     <div style={{
+                         fontSize: '0.8rem',
+                         fontWeight: 600,
+                         color: '#3690CE',
+                         marginBottom: '12px',
+                         display: 'flex',
+                         alignItems: 'center',
+                         gap: '6px'
+                     }}>
+                         � Compliance Documents
