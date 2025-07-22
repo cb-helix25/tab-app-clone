@@ -112,6 +112,8 @@ export interface Enquiry {
 
 // Define the structure for Matter
 export interface Matter {
+  MatterID?: string;
+  InstructionRef?: string;
   DisplayNumber: string;
   OpenDate: string;
   MonthYear: string;
@@ -506,6 +508,11 @@ export interface InstructionData {
    */
   electronicIDChecks: any[];
   idVerifications?: any[];
+  
+  /**
+   * Matter information embedded within the instruction data.
+   */
+  matter?: any;
 }
 
 export interface CCLJson {

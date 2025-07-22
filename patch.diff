@@ -1,85 +1,273 @@
-diff --git a/src/localData/localMatters.json b/src/localData/localMatters.json
-index 2b18f788246768626f1e4d24014fb6a61fa01a11..139ecdfadd5a17669706af829ea71440e2d9bdbc 100644
---- a/src/localData/localMatters.json
-+++ b/src/localData/localMatters.json
-@@ -1,26 +1,56 @@
- [
--  {
--    "MatterID": "a1a1a1a1-a1a1-4a1a-a1a1-a1a1a1a1a1a1",
--    "InstructionRef": "HLX-10003-10003",
--    "Status": "MatterRequest",
--    "OpenDate": "2025-07-20",
--    "OpenTime": "10:00:00",
--    "CloseDate": null,
--    "ClientID": null,
--    "RelatedClientID": null,
--    "DisplayNumber": null,
--    "ClientName": "Bob Bennett",
--    "ClientType": "Individual",
--    "Description": "Instruction from lead and 2 joint clients.",
--    "PracticeArea": "Adjudication Advice & Dispute",
--    "ApproxValue": "£4,000",
--    "ResponsibleSolicitor": "Lukasz Zemanek",
--    "OriginatingSolicitor": "Lukasz Zemanek",
--    "SupervisingPartner": "Lukasz Zemanek",
--    "Source": "referral",
--    "Referrer": null,
--    "method_of_contact": "email",
--    "OpponentID": "B6403F65-BFA9-429D-AE33-0064D0606690",
--    "OpponentSolicitorID": "CF8B9143-B101-4FF3-8534-00ADD484773C"
--  }
-+    {
-+        "DisplayNumber": "MTR-001",
-+        "OpenDate": "2025-06-10",
-+        "MonthYear": "Jun 2025",
-+        "YearMonthNumeric": 202506,
-+        "ClientID": "C001",
-+        "ClientName": "Client One",
-+        "ClientPhone": "1234567890",
-+        "ClientEmail": "client1@example.com",
-+        "Status": "Open",
-+        "UniqueID": 1,
-+        "Description": "Sample matter description one.",
-+        "PracticeArea": "Commercial",
-+        "Source": "Referral",
-+        "Referrer": "Referrer One",
-+        "ResponsibleSolicitor": "Alex Cook",
-+        "OriginatingSolicitor": "Alex Cook",
-+        "SupervisingPartner": "Partner A",
-+        "Opponent": "Opponent A",
-+        "OpponentSolicitor": "Opponent Solicitor A",
-+        "CloseDate": "",
-+        "ApproxValue": "10000",
-+        "mod_stamp": "2025-06-10T12:00:00Z",
-+        "method_of_contact": "Email",
-+        "CCL_date": null,
-+        "Rating": "Good"
-+    },
-+    {
-+        "DisplayNumber": "MTR-002",
-+        "OpenDate": "2025-06-15",
-+        "MonthYear": "Jun 2025",
-+        "YearMonthNumeric": 202506,
-+        "ClientID": "C002",
-+        "ClientName": "Client Two",
-+        "ClientPhone": "0987654321",
-+        "ClientEmail": "client2@example.com",
-+        "Status": "Open",
-+        "UniqueID": 2,
-+        "Description": "Sample matter description two.",
-+        "PracticeArea": "Property",
-+        "Source": "Website",
-+        "Referrer": "",
-+        "ResponsibleSolicitor": "Alex Cook",
-+        "OriginatingSolicitor": "Alex Cook",
-+        "SupervisingPartner": "Partner B",
-+        "Opponent": "Opponent B",
-+        "OpponentSolicitor": "Opponent Solicitor B",
-+        "CloseDate": "",
-+        "ApproxValue": "5000",
-+        "mod_stamp": "2025-06-15T09:00:00Z",
-+        "method_of_contact": "Phone",
-+        "CCL_date": null,
-+        "Rating": "Neutral"
-+    }
- ]
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index e5181fa9f6b1b63c2b12675601249b59b3585fc6..9464d79e6b3e4238cd2ffa50a511aca70b212763 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -10,82 +10,84 @@ import {
+   DialogType,
+   DialogFooter,
+   DefaultButton,
+ } from "@fluentui/react";
+ import {
+   FaIdBadge,
+   FaRegIdBadge,
+   FaFileAlt,
+   FaRegFileAlt,
+   FaFolder,
+   FaRegFolder,
+   FaCheckCircle,
+ } from 'react-icons/fa';
+ import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment, MdOutlineAssessment } from 'react-icons/md';
+ import { FaShieldAlt } from 'react-icons/fa';
+ import QuickActionsCard from "../home/QuickActionsCard";
+ import { useTheme } from "../../app/functionality/ThemeContext";
+ import { useNavigator } from "../../app/functionality/NavigatorContext";
+ import { colours } from "../../app/styles/colours";
+ import { dashboardTokens } from "./componentTokens";
+ import InstructionCard from "./InstructionCard";
+ import DealCard from "./DealCard";
+ import RiskComplianceCard from "./RiskComplianceCard";
+ import JointClientCard, { ClientInfo } from "./JointClientCard";
+ import type { DealSummary } from "./JointClientCard";
+-import { InstructionData, POID, TeamData, UserData } from "../../app/functionality/types";
++import { InstructionData, POID, TeamData, UserData, Matter } from "../../app/functionality/types";
+ import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
+ import localInstructionData from "../../localData/localInstructionData.json";
+ import localInstructionCards from "../../localData/localInstructionCards.json";
+ import localIdVerifications from "../../localData/localIdVerifications.json";
+ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
+ import RiskAssessmentPage from "./RiskAssessmentPage";
+ import EIDCheckPage from "./EIDCheckPage";
+ import InstructionEditor from "./components/InstructionEditor";
+ import InstructionBlockEditor from "./components/InstructionBlockEditor";
+ import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
+ import "../../app/styles/InstructionsBanner.css";
+ // invisible change 2.2
+ import DocumentEditorPage from "./DocumentEditorPage";
+ import DocumentsV3 from "./DocumentsV3";
+ import localUserData from "../../localData/localUserData.json";
+ 
+ interface InstructionsProps {
+   userInitials: string;
+   poidData: POID[];
+   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
+   teamData?: TeamData[] | null;
+   userData?: UserData[] | null;
++  matters?: Matter[];
+   hasActiveMatter?: boolean;
+   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
+ }
+ const Instructions: React.FC<InstructionsProps> = ({
+   userInitials,
+   poidData,
+   setPoidData,
+   teamData,
+   userData,
++  matters = [],
+   hasActiveMatter = false,
+   setIsInMatterOpeningWorkflow,
+ }) => {
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
+   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
+   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
+   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
+   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
+   const [selectedInstruction, setSelectedInstruction] = useState<any | null>(
+     null,
+   );
+   const [pendingInstructionRef, setPendingInstructionRef] = useState<string>('');
+   const [isResumeDialogOpen, setIsResumeDialogOpen] = useState(false);
+   const overviewGridRef = useRef<HTMLDivElement | null>(null);
+   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
+   const [forceNewMatter, setForceNewMatter] = useState(false);
+ 
+   // Notify parent when matter opening workflow state changes
+   useEffect(() => {
+     if (setIsInMatterOpeningWorkflow) {
+       setIsInMatterOpeningWorkflow(showNewMatterPage);
+     }
+   }, [showNewMatterPage, setIsInMatterOpeningWorkflow]);
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index e5181fa9f6b1b63c2b12675601249b59b3585fc6..9464d79e6b3e4238cd2ffa50a511aca70b212763 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -786,72 +788,81 @@ const Instructions: React.FC<InstructionsProps> = ({
+               selectedInstruction.InstructionRef,
+           ) || null
+         : null,
+     [selectedInstruction, overviewItems],
+   );
+ 
+   const poidResult =
+     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
+   const poidPassed = poidResult === "passed" || poidResult === "approved";
+   const verificationFound = !!selectedOverviewItem?.eid;
+   const verifyButtonReview = verificationFound && !poidPassed;
+   const verifyButtonDisabled = verificationFound && poidPassed;
+   const verifyButtonLabel = verificationFound
+     ? poidPassed
+       ? "ID Verified"
+       : "Review ID"
+     : "Verify ID";
+ 
+   const riskResult =
+     selectedOverviewItem?.risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
+   const riskButtonDisabled = !!riskResult;
+   
+   // Payment status logic
+   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
+   const paymentCompleted = paymentResult === "successful";
++
++  const matterLinked = useMemo(() => {
++    if (!selectedInstruction) return false;
++    return matters.some(
++      (m) =>
++        m.InstructionRef === selectedInstruction.InstructionRef &&
++        m.Status?.toLowerCase() !== 'matterrequest'
++    );
++  }, [matters, selectedInstruction]);
+   
+   // Open Matter button should be enabled when:
+   // 1. Both ID is verified AND payment is complete (normal flow), OR
+   // 2. There's a matter opening in progress (so user can continue)
+   const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
+   
+   // Determine which button should pulse to indicate next ready action
+   const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | null => {
+     if (!selectedInstruction) return null;
+     
+     // Priority 1: If ID needs verification or review, verify button should pulse
+     if (!verifyButtonDisabled) {
+       return 'verify';
+     }
+     
+     // Priority 2: If risk needs assessment, risk button should pulse
+     if (!riskButtonDisabled) {
+       return 'risk';
+     }
+     
+     // Priority 3: If matter can be opened, matter button should pulse
+-    if (canOpenMatter) {
++    if (canOpenMatter && !matterLinked) {
+       return 'matter';
+     }
+     
+     return null;
+   };
+   
+   const nextReadyAction = getNextReadyAction();
+   
+   const disableOtherActions = false; // Enable all actions regardless of selection
+ 
+   const unlinkedDeals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).filter((d) => !d.InstructionRef),
+       ),
+     [instructionData],
+   );
+ 
+   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+ 
+   const deals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).map((d) => ({
+           ...d,
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index e5181fa9f6b1b63c2b12675601249b59b3585fc6..9464d79e6b3e4238cd2ffa50a511aca70b212763 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -1823,81 +1834,88 @@ const Instructions: React.FC<InstructionsProps> = ({
+                   : selectedInstruction
+                   ? '#3690CE'
+                   : undefined,
+               }}>
+                 {riskButtonDisabled ? <FaCheckCircle /> : (
+                   <>
+                     <MdAssessment className="icon-outline" />
+                     <MdOutlineAssessment className="icon-filled" />
+                   </>
+                 )}
+               </span>
+               <span className="global-action-label" style={{
+                 color: riskButtonDisabled
+                   ? '#6b8e6b'
+                   : selectedInstruction
+                   ? '#3690CE'
+                   : undefined,
+                 textDecoration: riskButtonDisabled ? 'line-through' : 'none',
+                 textDecorationColor: riskButtonDisabled ? '#6b8e6b' : undefined,
+                 textDecorationThickness: riskButtonDisabled ? '1px' : undefined,
+               }}>
+                 Assess Risk
+               </span>
+             </button>
+             <button
+-              className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
++              className={`global-action-btn${matterLinked ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
+               onClick={canOpenMatter ? handleGlobalOpenMatter : undefined}
+               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
+               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+               style={{
+                 borderColor: selectedInstruction ? '#3690CE' : undefined,
+                 opacity: canOpenMatter ? 1 : 0.5,
+                 transform: 'translateY(0)',
+                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
+                 position: 'relative',
+                 pointerEvents: canOpenMatter ? 'auto' : 'none',
+                 cursor: canOpenMatter ? 'pointer' : 'not-allowed',
+                 backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
+               }}
+               title={
+                 !canOpenMatter
+                   ? `${!poidPassed ? "ID verification" : ""} ${
+                       !poidPassed && !paymentCompleted ? " and " : ""
+                     } ${!paymentCompleted ? "payment" : ""} required to open matter`
+                   : ""
+               }
+             >
+               <span className="global-action-icon icon-hover" style={{
+                 color: selectedInstruction ? '#3690CE' : undefined,
+               }}>
+-                <FaFolder className="icon-outline" />
+-                <FaRegFolder className="icon-filled" />
++                {matterLinked ? (
++                  <FaCheckCircle />
++                ) : (
++                  <>
++                    <FaFolder className="icon-outline" />
++                    <FaRegFolder className="icon-filled" />
++                  </>
++                )}
+               </span>
+               <span className="global-action-label" style={{
+                 color: selectedInstruction ? '#3690CE' : undefined,
++                textDecoration: matterLinked ? 'line-through' : 'none',
+               }}>
+                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
+               </span>
+               {/* Pulsing dot indicator - only show when no instruction selected and has active matter */}
+               {!selectedInstruction && hasActiveMatter && !showNewMatterPage && (
+                 <div style={{
+                   position: 'absolute',
+                   top: '8px',
+                   right: '8px',
+                   width: '8px',
+                   height: '8px',
+                   borderRadius: '50%',
+                   backgroundColor: '#D65541',
+                   animation: 'pulse 2s infinite',
+                   zIndex: 10,
+                 }} />
+               )}
+             </button>
+             <button
+               className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
+               onClick={canOpenMatter ? () => setActivePivot("documents2") : undefined}
+               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
+               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
+               style={{

@@ -164,6 +164,8 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
 
   const mapData = (items: any[]): Matter[] => {
     return items.map((item) => ({
+      MatterID: item["MatterID"] || item["Matter ID"] || "",
+      InstructionRef: item["InstructionRef"] || item["Instruction Ref"] || "",
       DisplayNumber: item["Display Number"] || "",
       OpenDate: item["Open Date"] || "",
       MonthYear: item["MonthYear"] || "",

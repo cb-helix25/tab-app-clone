@@ -32,7 +32,7 @@ import DealCard from "./DealCard";
 import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import type { DealSummary } from "./JointClientCard";
-import { InstructionData, POID, TeamData, UserData } from "../../app/functionality/types";
+import { InstructionData, POID, TeamData, UserData, Matter } from "../../app/functionality/types";
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
 import localInstructionData from "../../localData/localInstructionData.json";
 import localInstructionCards from "../../localData/localInstructionCards.json";
@@ -55,6 +55,7 @@ interface InstructionsProps {
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
   userData?: UserData[] | null;
+  matters?: Matter[];
   hasActiveMatter?: boolean;
   setIsInMatterOpeningWorkflow?: (inWorkflow: boolean) => void;
 }
@@ -64,6 +65,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   setPoidData,
   teamData,
   userData,
+  matters = [],
   hasActiveMatter = false,
   setIsInMatterOpeningWorkflow,
 }) => {
@@ -808,6 +810,12 @@ const Instructions: React.FC<InstructionsProps> = ({
   // Payment status logic
   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
   const paymentCompleted = paymentResult === "successful";
+
+  const matterLinked = useMemo(() => {
+    if (!selectedInstruction) return false;
+    // Check if the selected instruction has any embedded matter (regardless of status)
+    return !!selectedInstruction.matter;
+  }, [selectedInstruction]);
   
   // Open Matter button should be enabled when:
   // 1. Both ID is verified AND payment is complete (normal flow), OR
@@ -829,7 +837,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
     
     // Priority 3: If matter can be opened, matter button should pulse
-    if (canOpenMatter) {
+    if (canOpenMatter && !matterLinked) {
       return 'matter';
     }
     
@@ -1845,7 +1853,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               </span>
             </button>
             <button
-              className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
+              className={`global-action-btn${matterLinked ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
               onClick={canOpenMatter ? handleGlobalOpenMatter : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
@@ -1871,11 +1879,18 @@ const Instructions: React.FC<InstructionsProps> = ({
               <span className="global-action-icon icon-hover" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
               }}>
-                <FaFolder className="icon-outline" />
-                <FaRegFolder className="icon-filled" />
+                {matterLinked ? (
+                  <FaCheckCircle />
+                ) : (
+                  <>
+                    <FaFolder className="icon-outline" />
+                    <FaRegFolder className="icon-filled" />
+                  </>
+                )}
               </span>
               <span className="global-action-label" style={{
                 color: selectedInstruction ? '#3690CE' : undefined,
+                textDecoration: matterLinked ? 'line-through' : 'none',
               }}>
                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
               </span>

@@ -276,6 +276,7 @@ const App: React.FC<AppProps> = ({
             setPoidData={setPoidData}
             teamData={teamData}
             userData={userData}
+            matters={allMattersFromHome || []}
             hasActiveMatter={hasActiveMatter}
             setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow}
           />

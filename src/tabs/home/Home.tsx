@@ -68,6 +68,7 @@ import { hasActiveMatterOpening } from '../../app/functionality/matterOpeningUti
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
+import localInstructionData from '../../localData/localInstructionData.json';
 import localTransactions from '../../localData/localTransactions.json';
 import localOutstandingBalances from '../../localData/localOutstandingBalances.json';
 import localWipClio from '../../localData/localWipClio.json';
@@ -960,6 +961,22 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
+  // Load instruction data
+  useEffect(() => {
+    if (useLocalData) {
+      const transformedData: InstructionData[] = (localInstructionData as any).map((item: any) => ({
+        prospectId: item.prospectId,
+        deals: item.deals || [],
+        instructions: item.instructions || [],
+        documents: item.documents || [],
+        riskAssessment: item.riskAssessment || null,
+        idVerification: item.idVerification || null,
+        matter: item.matter || null
+      }));
+      setInstructionData(transformedData);
+    }
+  }, [useLocalData]);
+
   // Populate current user details once user data is available
   useEffect(() => {
     if (userData && userData[0]) {
@@ -1851,7 +1868,8 @@ const officeAttendanceButtonText = currentUserConfirmed
       });
   }, [attendanceTeam, attendanceRecords]);
 
-  const normalizeName = (name: string): string => {
+  const normalizeName = (name: string | null | undefined): string => {
+    if (!name) return '';
     let normalized = name.trim().toLowerCase();
     if (normalized === "bianca odonnell") {
       normalized = "bianca o'donnell";
@@ -1970,7 +1988,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     const userInitials = userData?.[0]?.Initials?.trim().toLowerCase() || '';
   
     // Helper function to normalize names
-    const normalizeName = (name: string): string => {
+    const normalizeName = (name: string | null | undefined): string => {
+      if (!name) return '';
       let normalized = name.trim().toLowerCase();
       if (normalized === "bianca odonnell") {
         normalized = "bianca o'donnell";
