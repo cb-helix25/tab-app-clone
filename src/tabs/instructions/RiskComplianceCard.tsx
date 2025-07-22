@@ -320,21 +320,20 @@ const RiskComplianceCard: React.FC<RiskComplianceCardProps> = ({
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FaShieldAlt style={{ fontSize: '14px', color: '#666' }} />
+                    <span style={{
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        fontFamily: 'monospace'
+                    }}>
+                        {data.instructionRef || 'No Ref'}
+                    </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>{instructionTitle}</span>
                     {isMultiClient && (
                         <FaUsers style={{ fontSize: '12px', color: '#666', marginLeft: '4px' }} />
                     )}
                 </div>
-                {data.instructionRef && (
-                    <span style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 400,
-                        color: '#666',
-                        fontFamily: 'monospace'
-                    }}>
-                        {data.instructionRef}
-                    </span>
-                )}
             </div>
 
             {/* Service Description */}

@@ -15,10 +15,10 @@ export async function getInstructionDataHandler(
 
     // Safely read query params via URLSearchParams API
     const initials =
-        req.query.get("initials") || req.query.get("userInitials");
-    if (!initials) {
-        return { status: 400, body: "Missing initials query parameter" };
-    }
+        req.query.get("initials") || req.query.get("userInitials") || undefined;
+    const prospectId = req.query.get("prospectId") || undefined;
+    const instructionRef = req.query.get("instructionRef") || undefined;
+    const dealId = req.query.get("dealId") || undefined;
 
     // Build the URL to the real Instructions function
     const baseUrl =
@@ -45,9 +45,13 @@ export async function getInstructionDataHandler(
         }
     }
 
-    const url = `${baseUrl}?code=${code}&initials=${encodeURIComponent(
-        initials
-    )}`;
+    const params = new URLSearchParams({ code });
+    if (initials) params.append("initials", initials);
+    if (prospectId) params.append("prospectId", prospectId);
+    if (instructionRef) params.append("instructionRef", instructionRef);
+    if (dealId) params.append("dealId", dealId);
+
+    const url = `${baseUrl}?${params.toString()}`;
 
     try {
         const response = await fetch(url);

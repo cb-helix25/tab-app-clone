@@ -99,6 +99,10 @@ const Instructions: React.FC<InstructionsProps> = ({
       // Open matter opening if not already open
       if (!showNewMatterPage) {
         setShowNewMatterPage(true);
+        // Scroll to top when opening matter page from navigation
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
       }
     }
   }, []); // Only run on mount
@@ -805,8 +809,10 @@ const Instructions: React.FC<InstructionsProps> = ({
   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
   const paymentCompleted = paymentResult === "successful";
   
-  // Open Matter button should only be enabled when both ID is verified AND payment is complete
-  const canOpenMatter = poidPassed && paymentCompleted;
+  // Open Matter button should be enabled when:
+  // 1. Both ID is verified AND payment is complete (normal flow), OR
+  // 2. There's a matter opening in progress (so user can continue)
+  const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
   
   const disableOtherActions = false; // Enable all actions regardless of selection
 
@@ -1351,6 +1357,10 @@ const Instructions: React.FC<InstructionsProps> = ({
       setPendingInstructionRef('');
       setForceNewMatter(false);
       setShowNewMatterPage(true);
+      // Scroll to top when opening matter for selected instruction
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
     }
   };
 
@@ -1498,6 +1508,10 @@ const Instructions: React.FC<InstructionsProps> = ({
     setForceNewMatter(true);
     setShowNewMatterPage(true);
     setIsResumeDialogOpen(false);
+    // Scroll to top when starting new matter
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
     // Force a small delay to ensure localStorage is cleared before component mounts
     setTimeout(() => {
       setForceNewMatter(false);
@@ -1913,6 +1927,10 @@ const Instructions: React.FC<InstructionsProps> = ({
               setSelectedInstruction(pendingInstruction);
               setForceNewMatter(false);
               setShowNewMatterPage(true);
+              // Scroll to top when resuming matter opening
+              setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }, 100);
             }}
             text="Resume"
           />

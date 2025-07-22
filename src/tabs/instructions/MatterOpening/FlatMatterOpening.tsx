@@ -1011,12 +1011,28 @@ const handleClearAll = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 8,
-                        margin: '-20px -20px 0 -20px'
+                        gap: 12,
+                        margin: '-20px -20px 0 -20px',
+                        flexWrap: 'wrap',
+                        minHeight: '60px'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 8, 
+                            flex: '1 1 auto',
+                            minWidth: 0, // Allow shrinking
+                            overflow: 'hidden' 
+                        }}>
                             {/* Navigation breadcrumbs */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 6, 
+                                fontSize: 14,
+                                flexWrap: 'wrap',
+                                rowGap: 4
+                            }}>
                                 <button 
                                     onClick={handleBackToClients}
                                     style={{ 
@@ -1026,12 +1042,15 @@ const handleClearAll = () => {
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 8,
-                                        padding: '8px 12px',
+                                        gap: 6,
+                                        padding: '6px 10px',
                                         borderRadius: 6,
                                         transition: 'all 0.2s ease',
                                         fontWeight: currentStep === 0 ? 600 : 400,
-                                        backgroundColor: currentStep === 0 ? '#e3f0fc' : 'transparent'
+                                        backgroundColor: currentStep === 0 ? '#e3f0fc' : 'transparent',
+                                        fontSize: '13px',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
                                     }}
                                 >
                                     {clientsStepComplete && currentStep !== 0 ? (
@@ -1062,8 +1081,9 @@ const handleClearAll = () => {
                                 <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 2,
-                                    margin: '0 4px'
+                                    gap: 1,
+                                    margin: '0 2px',
+                                    flexShrink: 0
                                 }}>
                                     <div style={{ 
                                         width: '4px', 
@@ -1108,12 +1128,15 @@ const handleClearAll = () => {
                                         cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 8,
-                                        padding: '8px 12px',
+                                        gap: 6,
+                                        padding: '6px 10px',
                                         borderRadius: 6,
                                         transition: 'all 0.2s ease',
                                         fontWeight: currentStep === 1 ? 600 : 400,
-                                        backgroundColor: currentStep === 1 ? '#e3f0fc' : 'transparent'
+                                        backgroundColor: currentStep === 1 ? '#e3f0fc' : 'transparent',
+                                        fontSize: '13px',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
                                     }}
                                 >
                                     {currentStep === 2 ? (
@@ -1144,8 +1167,9 @@ const handleClearAll = () => {
                                 <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 2,
-                                    margin: '0 4px'
+                                    gap: 1,
+                                    margin: '0 2px',
+                                    flexShrink: 0
                                 }}>
                                     <div style={{ 
                                         width: '4px', 
@@ -1184,12 +1208,15 @@ const handleClearAll = () => {
                                     color: currentStep === 2 ? '#3690CE' : '#666',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 8,
-                                    padding: '8px 12px',
+                                    gap: 6,
+                                    padding: '6px 10px',
                                     borderRadius: 6,
                                     fontWeight: currentStep === 2 ? 600 : 400,
                                     backgroundColor: currentStep === 2 ? '#e3f0fc' : 'transparent',
-                                    transition: 'all 0.2s ease'
+                                    transition: 'all 0.2s ease',
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0
                                 }}>
                                     {summaryConfirmed ? (
                                         <div className="completion-tick visible" style={{ 
@@ -1224,7 +1251,8 @@ const handleClearAll = () => {
                         <div style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
-                            gap: 8
+                            gap: 8,
+                            flexShrink: 0
                         }}>
                             {/* POID search - only in step 0 with POID selection AND client type selected */}
                             {currentStep === 0 && showPoidSelection && pendingClientType && (
@@ -1375,6 +1403,36 @@ const handleClearAll = () => {
                         /* Smooth exit animation when controls disappear */
                         .search-controls-exit {
                             animation: cascadeSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                        }
+                        
+                        /* Responsive header breakpoints */
+                        @media (max-width: 900px) {
+                            .persistent-header {
+                                flex-wrap: wrap !important;
+                                padding: 12px 16px !important;
+                            }
+                            .persistent-header > div:first-child {
+                                order: 1;
+                                width: 100%;
+                                margin-bottom: 8px;
+                            }
+                            .persistent-header > div:last-child {
+                                order: 2;
+                                width: 100%;
+                                justify-content: flex-end;
+                            }
+                        }
+                        
+                        @media (max-width: 600px) {
+                            .persistent-header button {
+                                font-size: 12px !important;
+                                padding: 4px 8px !important;
+                                gap: 4px !important;
+                            }
+                            .persistent-header button svg,
+                            .persistent-header button i {
+                                font-size: 12px !important;
+                            }
                         }
                     `}</style>
 

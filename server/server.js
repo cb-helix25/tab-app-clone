@@ -32,6 +32,7 @@ app.use(express.json());
 app.use('/api/refresh', refreshRouter);
 app.use('/api/matter-requests', matterRequestsRouter);
 app.use('/api/opponents', opponentsRouter);
+app.use('/api/risk-assessments', riskAssessmentsRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/ccl', cclRouter);

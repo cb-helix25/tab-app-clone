@@ -15,7 +15,8 @@ import {
   FaFileImage,
   FaFileAudio,
   FaFileVideo,
-  FaFileUpload
+  FaFileUpload,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
@@ -197,12 +198,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         border: selected 
             ? '2px solid #3690CE' 
             : isCompleted 
-                ? '0.25px solid #20b26c' 
+                ? '0.25px solid #0ea5e9' 
                 : '1px solid #e1e4e8',
         boxShadow: selected
             ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
             : isCompleted 
-                ? 'inset 0 0 2px #20b26c15, 0 2px 8px rgba(0,0,0,0.08)'
+                ? 'inset 0 0 2px rgba(14, 165, 233, 0.15), 0 2px 8px rgba(0,0,0,0.08)'
                 : '0 2px 8px rgba(0,0,0,0.08)',
         opacity: isCompleted ? 0.6 : 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
@@ -232,28 +233,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style} onClick={handleCardClick} ref={innerRef}>
-            {/* Selection Indicator */}
-            {selected && (
-                <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: '#3690CE',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    zIndex: 10,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}>
-                    ✓
-                </div>
-            )}
+
 
             {/* Client Name Header */}
             <div style={{
@@ -269,9 +249,15 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {isMultiClient ? (
-                        <FaUsers style={{ fontSize: '14px', color: '#666' }} />
+                        <FaUsers style={{ 
+                            fontSize: '14px', 
+                            color: selected ? '#3690CE' : '#666' 
+                        }} />
                     ) : (
-                        <FaUser style={{ fontSize: '14px', color: '#666' }} />
+                        <FaUser style={{ 
+                            fontSize: '14px', 
+                            color: selected ? '#3690CE' : '#666' 
+                        }} />
                     )}
                     <span>{fullName || 'Client Name'}</span>
                 </div>
@@ -290,16 +276,32 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             {/* Stage/Status Banner */}
             {instruction.Stage && (
                 <div style={{
-                    backgroundColor: isCompleted ? '#e6f4ea' : stage === 'initialised' ? '#e8f4fd' : '#fffbe6',
-                    borderLeft: `3px solid ${isCompleted ? '#20b26c' : stage === 'initialised' ? '#3690CE' : '#FFB900'}`,
-                    color: isCompleted ? '#20b26c' : stage === 'initialised' ? '#3690CE' : '#b88600',
-                    fontWeight: 500,
+                    backgroundColor: isCompleted ? '#f0f9ff' : '#f8f9fa',
+                    borderLeft: `4px solid ${isCompleted ? '#0ea5e9' : '#6b7280'}`,
+                    color: isCompleted ? '#0284c7' : '#4b5563',
+                    fontWeight: 600,
                     fontSize: '0.85rem',
-                    padding: '6px 12px',
+                    padding: '8px 16px',
                     marginBottom: '12px',
                     borderRadius: '0px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: isCompleted ? '1px solid rgba(14, 165, 233, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
                 }}>
-                    Stage: {instruction.Stage}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaInfoCircle style={{ fontSize: '14px', opacity: 0.7 }} />
+                        <span>{isCompleted ? 'Pending matter opening' : `Stage: ${instruction.Stage}`}</span>
+                    </div>
+                    {formattedDate && (
+                        <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 400,
+                            opacity: 0.8
+                        }}>
+                            {stage === 'initialised' ? 'Initialised:' : 'Submitted:'} {formattedDate}
+                        </span>
+                    )}
                 </div>
             )}
 
@@ -523,13 +525,6 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                          riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
                     </div>
                 </div>
-
-                {formattedDate && (
-                    <div>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Submitted</div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{formattedDate}</div>
-                    </div>
-                )}
             </div>
 
             {/* Expanded Documents Section */}
