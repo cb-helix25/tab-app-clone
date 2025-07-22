@@ -1,113 +1,63 @@
-diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
-index 688448895cd6fd84a714f28efe058e33ca81b28b..58367b5f07663b0b800aa25d8fa697cd8d137cd7 100644
---- a/src/tabs/instructions/RiskAssessmentPage.tsx
-+++ b/src/tabs/instructions/RiskAssessmentPage.tsx
-@@ -1,45 +1,47 @@
- import React, { useState } from 'react';
- // invisible change 2.1
- //
- import { Stack, Dialog, DialogType, DialogFooter, DefaultButton, PrimaryButton } from '@fluentui/react';
- import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
+diff --git a/src/tabs/instructions/DocumentsV2.tsx b/src/tabs/instructions/DocumentsV2.tsx
+index bfc234707ce440b0d89beccf30acabb6750f0f77..b5449ec87f3f863856424131d09eefc7a24ec4f4 100644
+--- a/src/tabs/instructions/DocumentsV2.tsx
++++ b/src/tabs/instructions/DocumentsV2.tsx
+@@ -1,54 +1,54 @@
+ import React, { useState, useEffect } from 'react';
+ import { Stack, TextField, PrimaryButton, DefaultButton, Label, MessageBar, MessageBarType, Toggle, Panel, Icon, Dropdown, IDropdownOption } from '@fluentui/react';
+ import { FaRegFile, FaFile, FaRegFileAlt, FaFileAlt } from 'react-icons/fa';
+ import { InstructionData, UserData } from '../../app/functionality/types';
+ import { schema as cclSchema, tokens as cclTokens } from '../../app/functionality/cclSchema';
+ import localUserData from '../../localData/localUserData.json';
  import { dashboardTokens } from './componentTokens';
- import '../../app/styles/NewMatters.css';
+ import QuickActionsCard from '../home/QuickActionsCard';
+ import { useTheme } from '../../app/functionality/ThemeContext';
+ import { colours } from '../../app/styles/colours';
+ import { mergeStyles } from '@fluentui/react';
  import '../../app/styles/MatterOpeningCard.css';
- import '../../app/styles/RiskAssessmentPage.css';
- import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
  
- interface RiskAssessmentPageProps {
-     onBack: () => void;
-     instructionRef?: string;
-     riskAssessor?: string;
-     /** Existing risk assessment data to display when available */
-     existingRisk?: any | null;
-+    /** Callback when risk assessment is successfully submitted */
-+    onSave?: (risk: any) => void;
- }
+ // Default CCL template content
+ const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}} 
  
--const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
-+const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk, onSave }) => {
-     const [riskCore, setRiskCore] = useState<RiskCore>({
-         clientType: existingRisk?.ClientType ?? '',
-         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
-         destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
-         destinationOfFundsValue: existingRisk?.DestinationOfFunds_Value ?? 0,
-         fundsType: existingRisk?.FundsType ?? '',
-         fundsTypeValue: existingRisk?.FundsType_Value ?? 0,
-         clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
-         clientIntroducedValue: existingRisk?.HowWasClientIntroduced_Value ?? 0,
-         limitation: existingRisk?.Limitation ?? '',
-         limitationValue: existingRisk?.Limitation_Value ?? 0,
-         sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
-         sourceOfFundsValue: existingRisk?.SourceOfFunds_Value ?? 0,
-         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
-         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
-     });
-     const [limitationDate, setLimitationDate] = useState<Date | undefined>();
-     const [limitationDateTbc, setLimitationDateTbc] = useState(false);
-     const [complianceDate, setComplianceDate] = useState<Date | undefined>(
-         existingRisk?.ComplianceDate ? new Date(existingRisk.ComplianceDate) : new Date(),
-     );
-     const [consideredClientRisk, setConsideredClientRisk] = useState<
-         boolean | undefined
-     >(existingRisk?.ClientRiskFactorsConsidered !== undefined
-         ? !!existingRisk?.ClientRiskFactorsConsidered
-diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
-index 688448895cd6fd84a714f28efe058e33ca81b28b..58367b5f07663b0b800aa25d8fa697cd8d137cd7 100644
---- a/src/tabs/instructions/RiskAssessmentPage.tsx
-+++ b/src/tabs/instructions/RiskAssessmentPage.tsx
-@@ -184,51 +186,54 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
-                 ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
-                 TransactionRiskLevel: transactionRiskLevel,
-                 ClientRiskFactorsConsidered: consideredClientRisk,
-                 TransactionRiskFactorsConsidered: consideredTransactionRisk,
-                 FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
-                 FirmWideAMLPolicyConsidered: consideredFirmWideAML,
-                 RiskScore: riskScore,
-                 RiskScoreIncrementBy: riskScore,
-                 RiskAssessmentResult: riskResult,
-             };
+ {{insert_heading_eg_matter_description}} 
  
-             console.log('📋 Submitting risk assessment:', payload);
+ Thank you for your instructions to act on your behalf in connection with {{matter}}. This Engagement Letter and the attached Terms of Business explain the basis on which we will be acting for you—together they form the contract between us. 
  
-             const response = await fetch('/api/risk-assessments', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-             });
+ Please contact me if you have any difficulty understanding this Engagement Letter or other information we may provide, eg if anything in this letter is unclear or you require information to be provided in larger text, another format or a different language. 
  
-             if (!response.ok) {
-                 throw new Error(`API call failed: ${response.status}`);
-             }
+ Contact details and supervision 
  
-             const responseData = await response.text();
-             console.log('✅ Risk assessment submitted successfully:', responseData);
--            
-+
-+            // Notify parent of new risk assessment so it can refresh UI
-+            onSave?.(payload);
-+
-             // Show success message (you could add a toast notification here)
-             alert('Risk assessment submitted successfully!');
-             
-         } catch (err) {
-             console.error('❌ Risk assessment submit failed', err);
-             alert('Failed to submit risk assessment. Please try again.');
-         }
-         
-         onBack();
-     };
+-The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are: 
++The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are:
  
-     return (
-         <Stack tokens={dashboardTokens} className="workflow-container">
-             <div className="workflow-main matter-opening-card risk-full-width">
-                 {/* Header with breadcrumb-style progress - exactly like Matter Opening */}
-                 <div style={{ 
-                     display: 'flex', 
-                     justifyContent: 'space-between', 
-                     alignItems: 'center', 
-                     padding: '16px 24px', 
-                     borderBottom: '1px solid #e1dfdd',
-                     background: '#fff',
-                     margin: '-20px -20px 0 -20px'
-                 }}>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 600 }}>
+-Telephone number: [Insert telephone number] 
+-Email address: [Insert email address] 
+-Postal address: [Insert postal address] 
++Telephone number: {{fee_earner_phone}}
++Email address: {{fee_earner_email}}
++Postal address: {{fee_earner_postal_address}}
+ 
+ The best way to contact {{name_of_person_handling_matter}} is {{email}}. 
+ 
+ If {{name_of_person_handling_matter}} is not available, the following members of staff may be able to deal with any queries you have: 
+ 
+ {{names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries}} 
+ 
+ The person with overall responsibility for supervising your matter is {{name}}, who is a Partner. 
+ 
+ Scope of services 
+ 
+ {{insert_current_position_and_scope_of_retainer}} ("Initial Scope") 
+ 
+ We will provide legal advice and services to you with reasonable care and skill. However, the nature of many types of legal work means that it is not possible to guarantee a particular outcome. 
+ 
+ Our Terms of Business sets out general limitations on the scope of our services. Your matter may involve issues for which you need tax advice. We cannot and do not give advice on taxation and you should seek the advice of a suitably qualified tax expert. Where your case needs expert evidence then you will need to identify, with us, a suitably qualified expert to give an opinion. Any expert fees will be your responsibility. 
+ 
+ Next steps 
+ 
+ The next steps in your matter are {{next_steps}}. 
+ 
+ We expect this will take {{realistic_timescale}}. This is an estimate only. We will tell you if it is necessary to revise this timescale. 
+ 
+ Legal costs 
+ 

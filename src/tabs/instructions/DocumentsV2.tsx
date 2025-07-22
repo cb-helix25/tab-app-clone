@@ -22,11 +22,11 @@ Please contact me if you have any difficulty understanding this Engagement Lette
 
 Contact details and supervision 
 
-The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are: 
+The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are:
 
-Telephone number: [Insert telephone number] 
-Email address: [Insert email address] 
-Postal address: [Insert postal address] 
+Telephone number: {{fee_earner_phone}}
+Email address: {{fee_earner_email}}
+Postal address: {{fee_earner_postal_address}}
 
 The best way to contact {{name_of_person_handling_matter}} is {{email}}. 
 

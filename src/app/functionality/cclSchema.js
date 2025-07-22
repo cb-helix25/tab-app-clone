@@ -26,6 +26,11 @@ const schema = {
     contact_details_for_marketing_opt_out: '',
     link_to_preference_centre: '',
     may_will: '',
+    handler: '',
+    name_of_handler: '',
+    fee_earner_phone: '',
+    fee_earner_email: '',
+    fee_earner_postal_address: '',
     explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement: '',
     instructions_link: ''
 };

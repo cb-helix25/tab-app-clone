@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { generateWordFromJson } = require('../utils/wordGenerator.js');
+const { getSecret } = require('../utils/getSecret');
 const {
     tokens: cclTokens
 } = require(path.join(process.cwd(), 'src', 'app', 'functionality', 'cclSchema.js'));
@@ -61,6 +62,9 @@ async function mergeMatterFields(matterId, payload) {
     const feeUser = findUserByName(flat.team_assignments?.fee_earner);
     flat.status = feeUser?.Role || '';
     flat.email = feeUser?.Email || '';
+    flat.fee_earner_email = feeUser?.Email || '';
+    flat.fee_earner_phone = feeUser?.Phone || '';
+    flat.fee_earner_postal_address = feeUser?.Address || '';
 
     const helpers = [
         flat.team_assignments?.fee_earner,
@@ -99,6 +103,41 @@ fs.mkdirSync(CCL_DIR, { recursive: true });
 const filePath = (id) => path.join(CCL_DIR, `${id}.docx`);
 const jsonPath = (id) => path.join(CCL_DIR, `${id}.json`);
 
+async function saveDraftToDb(matterId, json) {
+    const baseUrl =
+        process.env.CCL_DRAFT_FUNC_BASE_URL ||
+        'https://instructions-vnet-functions.azurewebsites.net/api/recordCclDraft';
+    let code = process.env.CCL_DRAFT_FUNC_CODE;
+    if (!code) {
+        const secretName = process.env.CCL_DRAFT_FUNC_CODE_SECRET || 'recordCclDraft-code';
+        code = await getSecret(secretName);
+    }
+    const url = `${baseUrl}?code=${code}`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matterId, draftJson: json })
+    });
+}
+
+async function fetchDraftFromDb(matterId) {
+    const baseUrl =
+        process.env.FETCH_CCL_DRAFT_FUNC_BASE_URL ||
+        'https://instructions-vnet-functions.azurewebsites.net/api/fetchCclDraft';
+    let code = process.env.FETCH_CCL_DRAFT_FUNC_CODE;
+    if (!code) {
+        const secretName = process.env.FETCH_CCL_DRAFT_FUNC_CODE_SECRET || 'fetchCclDraft-code';
+        code = await getSecret(secretName);
+    }
+    const url = `${baseUrl}?code=${code}&matterId=${encodeURIComponent(matterId)}`;
+    const resp = await fetch(url);
+    if (resp.ok) {
+        const d = await resp.json();
+        return d.draftJson || null;
+    }
+    return null;
+}
+
 router.post('/', async (req, res) => {
     const { matterId, draftJson } = req.body || {};
     if (!matterId || typeof draftJson !== 'object') {
@@ -106,6 +145,7 @@ router.post('/', async (req, res) => {
     }
     try {
         const merged = await mergeMatterFields(matterId, draftJson);
+        await saveDraftToDb(matterId, merged);
         await generateWordFromJson(merged, filePath(matterId));
         fs.writeFileSync(jsonPath(matterId), JSON.stringify(merged, null, 2));
         res.json({ ok: true, url: `/ccls/${matterId}.docx` });
@@ -123,6 +163,7 @@ router.patch('/:matterId', async (req, res) => {
     }
     try {
         const merged = await mergeMatterFields(matterId, draftJson);
+        await saveDraftToDb(matterId, merged);
         await generateWordFromJson(merged, filePath(matterId));
         fs.writeFileSync(jsonPath(matterId), JSON.stringify(merged, null, 2));
         res.json({ ok: true, url: `/ccls/${matterId}.docx` });
@@ -132,13 +173,14 @@ router.patch('/:matterId', async (req, res) => {
     }
 });
 
-router.get('/:matterId', (req, res) => {
+router.get('/:matterId', async (req, res) => {
     const { matterId } = req.params;
     const fp = filePath(matterId);
     const exists = fs.existsSync(fp);
     let json;
     try {
-        if (fs.existsSync(jsonPath(matterId))) {
+        json = await fetchDraftFromDb(matterId);
+        if (!json && fs.existsSync(jsonPath(matterId))) {
             json = JSON.parse(fs.readFileSync(jsonPath(matterId), 'utf-8'));
         }
     } catch { }

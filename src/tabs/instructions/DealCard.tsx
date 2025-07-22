@@ -516,7 +516,10 @@ const DealCard: React.FC<DealCardProps> = ({
                 paddingBottom: '6px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FaPoundSign style={{ fontSize: '14px', color: '#666' }} />
+                    <FaPoundSign style={{ 
+                        fontSize: '14px', 
+                        color: isClosed ? colours.green : '#666' 
+                    }} />
                     <span>{fullName || 'Client Name'}</span>
                 </div>
                 {deal.InstructionRef && (
