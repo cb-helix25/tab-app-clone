@@ -118,7 +118,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       }),
     );
 
-    setSelectedInstruction(prev => {
+    setSelectedInstruction((prev: any) => {
       if (!prev || prev.InstructionRef !== risk.InstructionRef) return prev;
       const instRiskKey = prev.riskAssessments
         ? 'riskAssessments'
