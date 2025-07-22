@@ -85,6 +85,56 @@ const Instructions: React.FC<InstructionsProps> = ({
   const [pendingInstruction, setPendingInstruction] = useState<any | null>(null);
   const [forceNewMatter, setForceNewMatter] = useState(false);
 
+  const handleRiskAssessmentSave = (risk: any) => {
+    setInstructionData(prev =>
+      prev.map(prospect => {
+        const updatedProspect = { ...prospect } as any;
+        const riskKey = updatedProspect.riskAssessments
+          ? 'riskAssessments'
+          : updatedProspect.compliance
+          ? 'compliance'
+          : 'riskAssessments';
+
+        updatedProspect[riskKey] = Array.isArray(updatedProspect[riskKey])
+          ? updatedProspect[riskKey].filter((r: any) => r.InstructionRef !== risk.InstructionRef)
+          : [];
+        updatedProspect[riskKey].push(risk);
+
+        updatedProspect.instructions = (updatedProspect.instructions || []).map((inst: any) => {
+          if (inst.InstructionRef === risk.InstructionRef) {
+            const instRiskKey = inst.riskAssessments
+              ? 'riskAssessments'
+              : inst.compliance
+              ? 'compliance'
+              : 'riskAssessments';
+            inst[instRiskKey] = Array.isArray(inst[instRiskKey])
+              ? inst[instRiskKey].filter((r: any) => r.InstructionRef !== risk.InstructionRef)
+              : [];
+            inst[instRiskKey].push(risk);
+          }
+          return inst;
+        });
+        return updatedProspect;
+      }),
+    );
+
+    setSelectedInstruction(prev => {
+      if (!prev || prev.InstructionRef !== risk.InstructionRef) return prev;
+      const instRiskKey = prev.riskAssessments
+        ? 'riskAssessments'
+        : prev.compliance
+        ? 'compliance'
+        : 'riskAssessments';
+      const arr = Array.isArray(prev[instRiskKey])
+        ? prev[instRiskKey].filter((r: any) => r.InstructionRef !== risk.InstructionRef)
+        : [];
+      arr.push(risk);
+      return { ...prev, [instRiskKey]: arr } as any;
+    });
+
+    setSelectedRisk(risk);
+  };
+
   // Notify parent when matter opening workflow state changes
   useEffect(() => {
     if (setIsInMatterOpeningWorkflow) {
@@ -216,9 +266,8 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   useEffect(() => {
     async function fetchData() {
-      // During the pilot we always pull Lukasz's instructions so everyone
-      // sees populated data regardless of their own initials. Once testing is
-      // complete we'll request each user's own data.
+      // Previously we fetched instructions for a specific fee earner by initials.
+      // We now retrieve all instructions and filter client-side when necessary.
       const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
       const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
 
@@ -251,23 +300,38 @@ const Instructions: React.FC<InstructionsProps> = ({
       }
 
       try {
-        const url = `${baseUrl}/${path}?code=${code}&initials=${targetInitials}`;
+        // Request all instruction data; we'll filter client-side
+        const url = `${baseUrl}/${path}?code=${code}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          setInstructionData(Array.isArray(data) ? data : [data]);
+          const all = Array.isArray(data) ? data : [data];
+          // Narrow down to the current user's instructions to preserve existing
+          // behaviour while still retrieving the full data set.
+          const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
+            const instructions = (prospect.instructions ?? []).filter(
+              (inst: any) => inst.HelixContact === targetInitials,
+            );
+            if (instructions.length > 0) {
+              const refSet = new Set(
+                instructions.map((i: any) => i.InstructionRef),
+              );
+              acc.push({
+                ...prospect,
+                instructions,
+                deals: (prospect.deals ?? []).filter((d: any) =>
+                  refSet.has(d.InstructionRef),
+                ),
+              });
+            }
+            return acc;
+          }, []);
+          setInstructionData(filtered);
         } else {
-          console.error(
-            "Failed to fetch instructions for user",
-            targetInitials,
-          );
+          console.error("Failed to fetch instructions");
         }
       } catch (err) {
-        console.error(
-          "Error fetching instructions for user",
-          targetInitials,
-          err,
-        );
+        console.error("Error fetching instructions", err);
       }
     }
     fetchData();
@@ -848,8 +912,19 @@ const Instructions: React.FC<InstructionsProps> = ({
   const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
   
   // Determine which button should pulse to indicate next ready action
-  const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | null => {
+  const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | 'ccl' | null => {
     if (!selectedInstruction) return null;
+    
+    // Check if the selected instruction has an associated matter
+    const hasAssociatedMatter = selectedInstruction && (
+      selectedInstruction.MatterId || 
+      (selectedInstruction as any).matters?.length > 0
+    );
+    
+    // If instruction has a matter, prioritize CCL button
+    if (hasAssociatedMatter) {
+      return 'ccl';
+    }
     
     // Priority 1: If ID needs verification or review, verify button should pulse
     if (!verifyButtonDisabled) {
@@ -1619,6 +1694,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             setShowRiskPage(false);
             setSelectedRisk(null);
           }}
+          onSave={handleRiskAssessmentSave}
           instructionRef={selectedInstruction?.InstructionRef}
           riskAssessor={userInitials}
           existingRisk={selectedRisk ?? selectedInstruction?.riskAssessments?.[0] ?? null}
@@ -1943,13 +2019,13 @@ const Instructions: React.FC<InstructionsProps> = ({
               )}
             </button>
             <button
-              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
+              className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
               onClick={canOpenMatter ? () => setActivePivot("documents2") : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
+                borderColor: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
                 opacity: canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
@@ -1966,13 +2042,13 @@ const Instructions: React.FC<InstructionsProps> = ({
               }
             >
               <span className="global-action-icon icon-hover" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
               }}>
                 <FaFileAlt className="icon-outline" />
                 <FaRegFileAlt className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: selectedInstruction ? '#3690CE' : undefined,
+                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
               }}>
                 Draft CCL
               </span>

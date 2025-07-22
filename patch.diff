@@ -1,75 +1,113 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 9124f7ef0c67b67860ee384d764ffa85271656b0..e0cf19aad3e56ddbf4bf79fd31a74ebcacb8fc38 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -722,58 +722,69 @@ const Instructions: React.FC<InstructionsProps> = ({
-         const riskSource = [
-           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
-           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
-         ];
-         dealsForInst.forEach((d) => {
-           if (d.instruction) {
-             riskSource.push(...(d.instruction.riskAssessments ?? []));
-             riskSource.push(...(d.instruction.compliance ?? []));
-           }
-         });
-         const eidSource = [
-           ...(prospect.electronicIDChecks ?? []),
-           ...(prospect.idVerifications ?? []),
-           ...((inst as any).electronicIDChecks ?? []),
-           ...((inst as any).idVerifications ?? []),
-           ...dealsForInst.flatMap((d) => [
-             ...(d.instruction?.electronicIDChecks ?? []),
-             ...(d.instruction?.idVerifications ?? []),
-           ]),
-         ];
-         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
-         const eids = eidSource.filter(
-           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
-         );
-         const eid = eids[0];
--        const docs = [
-+        const rawDocs = [
-           ...(prospect.documents ?? []),
-           ...((inst as any).documents ?? []),
-           ...dealsForInst.flatMap((d) => [
-             ...(d.documents ?? []),
-             ...(d.instruction?.documents ?? []),
-           ]),
-         ];
-+        const docsMap: Record<string, any> = {};
-+        rawDocs.forEach((doc) => {
-+          const key =
-+            doc.DocumentId !== undefined
-+              ? String(doc.DocumentId)
-+              : `${doc.FileName ?? ''}-${doc.UploadedAt ?? ''}`;
-+          if (!docsMap[key]) {
-+            docsMap[key] = doc;
-+          }
-+        });
-+        const docs = Object.values(docsMap);
-         return {
-           instruction: inst,
-           deal,
-           deals: dealsForInst,
-           clients: clientsForInst,
-           risk,
-           eid,
-           eids,
-           documents: docs,
-           prospectId: prospect.prospectId,
-           documentCount: docs ? docs.length : 0,
-         };
-       });
+diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
+index 688448895cd6fd84a714f28efe058e33ca81b28b..58367b5f07663b0b800aa25d8fa697cd8d137cd7 100644
+--- a/src/tabs/instructions/RiskAssessmentPage.tsx
++++ b/src/tabs/instructions/RiskAssessmentPage.tsx
+@@ -1,45 +1,47 @@
+ import React, { useState } from 'react';
+ // invisible change 2.1
+ //
+ import { Stack, Dialog, DialogType, DialogFooter, DefaultButton, PrimaryButton } from '@fluentui/react';
+ import RiskAssessment, { RiskCore } from '../../components/RiskAssessment';
+ import { dashboardTokens } from './componentTokens';
+ import '../../app/styles/NewMatters.css';
+ import '../../app/styles/MatterOpeningCard.css';
+ import '../../app/styles/RiskAssessmentPage.css';
+ import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
  
-       return instructionItems;
-     });
+ interface RiskAssessmentPageProps {
+     onBack: () => void;
+     instructionRef?: string;
+     riskAssessor?: string;
+     /** Existing risk assessment data to display when available */
+     existingRisk?: any | null;
++    /** Callback when risk assessment is successfully submitted */
++    onSave?: (risk: any) => void;
+ }
  
-     const unique: Record<string, typeof items[number]> = {};
-     items.forEach((item) => {
-       const ref = item.instruction?.InstructionRef as string | undefined;
-       if (ref && !unique[ref]) {
-         unique[ref] = item;
-       }
+-const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
++const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk, onSave }) => {
+     const [riskCore, setRiskCore] = useState<RiskCore>({
+         clientType: existingRisk?.ClientType ?? '',
+         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
+         destinationOfFunds: existingRisk?.DestinationOfFunds ?? '',
+         destinationOfFundsValue: existingRisk?.DestinationOfFunds_Value ?? 0,
+         fundsType: existingRisk?.FundsType ?? '',
+         fundsTypeValue: existingRisk?.FundsType_Value ?? 0,
+         clientIntroduced: existingRisk?.HowWasClientIntroduced ?? '',
+         clientIntroducedValue: existingRisk?.HowWasClientIntroduced_Value ?? 0,
+         limitation: existingRisk?.Limitation ?? '',
+         limitationValue: existingRisk?.Limitation_Value ?? 0,
+         sourceOfFunds: existingRisk?.SourceOfFunds ?? '',
+         sourceOfFundsValue: existingRisk?.SourceOfFunds_Value ?? 0,
+         valueOfInstruction: existingRisk?.ValueOfInstruction ?? '',
+         valueOfInstructionValue: existingRisk?.ValueOfInstruction_Value ?? 0,
      });
-     return Object.values(unique);
+     const [limitationDate, setLimitationDate] = useState<Date | undefined>();
+     const [limitationDateTbc, setLimitationDateTbc] = useState(false);
+     const [complianceDate, setComplianceDate] = useState<Date | undefined>(
+         existingRisk?.ComplianceDate ? new Date(existingRisk.ComplianceDate) : new Date(),
+     );
+     const [consideredClientRisk, setConsideredClientRisk] = useState<
+         boolean | undefined
+     >(existingRisk?.ClientRiskFactorsConsidered !== undefined
+         ? !!existingRisk?.ClientRiskFactorsConsidered
+diff --git a/src/tabs/instructions/RiskAssessmentPage.tsx b/src/tabs/instructions/RiskAssessmentPage.tsx
+index 688448895cd6fd84a714f28efe058e33ca81b28b..58367b5f07663b0b800aa25d8fa697cd8d137cd7 100644
+--- a/src/tabs/instructions/RiskAssessmentPage.tsx
++++ b/src/tabs/instructions/RiskAssessmentPage.tsx
+@@ -184,51 +186,54 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
+                 ValueOfInstruction_Value: riskCore.valueOfInstructionValue,
+                 TransactionRiskLevel: transactionRiskLevel,
+                 ClientRiskFactorsConsidered: consideredClientRisk,
+                 TransactionRiskFactorsConsidered: consideredTransactionRisk,
+                 FirmWideSanctionsRiskConsidered: consideredFirmWideSanctions,
+                 FirmWideAMLPolicyConsidered: consideredFirmWideAML,
+                 RiskScore: riskScore,
+                 RiskScoreIncrementBy: riskScore,
+                 RiskAssessmentResult: riskResult,
+             };
+ 
+             console.log('📋 Submitting risk assessment:', payload);
+ 
+             const response = await fetch('/api/risk-assessments', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+             });
+ 
+             if (!response.ok) {
+                 throw new Error(`API call failed: ${response.status}`);
+             }
+ 
+             const responseData = await response.text();
+             console.log('✅ Risk assessment submitted successfully:', responseData);
+-            
++
++            // Notify parent of new risk assessment so it can refresh UI
++            onSave?.(payload);
++
+             // Show success message (you could add a toast notification here)
+             alert('Risk assessment submitted successfully!');
+             
+         } catch (err) {
+             console.error('❌ Risk assessment submit failed', err);
+             alert('Failed to submit risk assessment. Please try again.');
+         }
+         
+         onBack();
+     };
+ 
+     return (
+         <Stack tokens={dashboardTokens} className="workflow-container">
+             <div className="workflow-main matter-opening-card risk-full-width">
+                 {/* Header with breadcrumb-style progress - exactly like Matter Opening */}
+                 <div style={{ 
+                     display: 'flex', 
+                     justifyContent: 'space-between', 
+                     alignItems: 'center', 
+                     padding: '16px 24px', 
+                     borderBottom: '1px solid #e1dfdd',
+                     background: '#fff',
+                     margin: '-20px -20px 0 -20px'
+                 }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 600 }}>

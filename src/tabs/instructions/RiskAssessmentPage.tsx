@@ -15,9 +15,11 @@ interface RiskAssessmentPageProps {
     riskAssessor?: string;
     /** Existing risk assessment data to display when available */
     existingRisk?: any | null;
+    /** Callback when risk assessment is successfully submitted */
+    onSave?: (risk: any) => void;
 }
 
-const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk }) => {
+const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instructionRef, riskAssessor, existingRisk, onSave }) => {
     const [riskCore, setRiskCore] = useState<RiskCore>({
         clientType: existingRisk?.ClientType ?? '',
         clientTypeValue: existingRisk?.ClientType_Value ?? 0,
@@ -206,7 +208,10 @@ const RiskAssessmentPage: React.FC<RiskAssessmentPageProps> = ({ onBack, instruc
 
             const responseData = await response.text();
             console.log('✅ Risk assessment submitted successfully:', responseData);
-            
+
+            // Notify parent of new risk assessment so it can refresh UI
+            onSave?.(payload);
+
             // Show success message (you could add a toast notification here)
             alert('Risk assessment submitted successfully!');
             
