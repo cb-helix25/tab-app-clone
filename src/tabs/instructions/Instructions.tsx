@@ -1873,14 +1873,22 @@ const Instructions: React.FC<InstructionsProps> = ({
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: selectedInstruction ? '#3690CE' : undefined,
-                opacity: canOpenMatter ? 1 : 0.5,
+                borderColor: matterLinked
+                  ? '#d4ddd4'
+                  : selectedInstruction 
+                  ? '#3690CE' 
+                  : undefined,
+                backgroundColor: matterLinked
+                  ? '#f8faf8'
+                  : canOpenMatter 
+                  ? undefined 
+                  : '#f5f5f5',
+                opacity: matterLinked ? 0.75 : canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
                 pointerEvents: canOpenMatter ? 'auto' : 'none',
                 cursor: canOpenMatter ? 'pointer' : 'not-allowed',
-                backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
               }}
               title={
                 !canOpenMatter

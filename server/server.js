@@ -10,6 +10,7 @@ const matterRequestsRouter = require('./routes/matterRequests');
 const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
+const riskAssessmentsRouter = require('./routes/riskAssessments');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
