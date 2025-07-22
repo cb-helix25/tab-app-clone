@@ -961,24 +961,60 @@ const Instructions: React.FC<InstructionsProps> = ({
   const deals = useMemo(
     () =>
       instructionData.flatMap((p) =>
-        (p.deals ?? []).map((d) => ({
-          ...d,
-          firstName: p.instructions?.[0]?.FirstName,
-          jointClients: [
-            // Only include prospect-level joint clients that match this deal's DealId
-            ...(p.jointClients ?? p.joinedClients ?? []).filter(jc => jc.DealId === d.DealId),
-            // Include deal-level joint clients
-            ...(d.jointClients ?? []),
-          ],
-          documents: [
-            // Include prospect-level documents that match this deal's DealId
-            ...(p.documents ?? []).filter(doc => doc.DealId === d.DealId),
-            // Include deal-level documents
-            ...(d.documents ?? []),
-            // Include instruction-level documents if deal has an instruction
-            ...(d.instruction?.documents ?? []),
-          ],
-        })),
+        (p.deals ?? []).map((d) => {
+          // Attempt to derive lead client name from available data
+          let firstName = '';
+          let lastName = '';
+
+          if (d.LeadClientEmail) {
+            const emailLc = d.LeadClientEmail.toLowerCase();
+
+            // Look in instruction-level data for a matching client
+            const matchingInstruction = (p.instructions ?? []).find((inst: any) =>
+              inst.Email?.toLowerCase() === emailLc
+            );
+
+            if (matchingInstruction) {
+              firstName = matchingInstruction.FirstName || '';
+              lastName = matchingInstruction.LastName || '';
+            } else {
+              // Fall back to joint client records
+              const jointSources = [
+                ...(p.jointClients ?? p.joinedClients ?? []),
+                ...(d.jointClients ?? []),
+              ];
+              const jointClient = jointSources.find((jc: any) =>
+                jc.ClientEmail?.toLowerCase() === emailLc
+              );
+
+              if (jointClient) {
+                firstName = jointClient.FirstName || jointClient.Name?.split(' ')[0] || '';
+                lastName =
+                  jointClient.LastName || jointClient.Name?.split(' ').slice(1).join(' ') || '';
+              }
+            }
+          }
+
+          return {
+            ...d,
+            firstName,
+            lastName,
+            jointClients: [
+              // Only include prospect-level joint clients that match this deal's DealId
+              ...(p.jointClients ?? p.joinedClients ?? []).filter((jc) => jc.DealId === d.DealId),
+              // Include deal-level joint clients
+              ...(d.jointClients ?? []),
+            ],
+            documents: [
+              // Include prospect-level documents that match this deal's DealId
+              ...(p.documents ?? []).filter((doc) => doc.DealId === d.DealId),
+              // Include deal-level documents
+              ...(d.documents ?? []),
+              // Include instruction-level documents if deal has an instruction
+              ...(d.instruction?.documents ?? []),
+            ],
+          };
+        })
       ),
     [instructionData],
   );

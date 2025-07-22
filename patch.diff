@@ -1,63 +1,127 @@
-diff --git a/src/tabs/instructions/DocumentsV2.tsx b/src/tabs/instructions/DocumentsV2.tsx
-index bfc234707ce440b0d89beccf30acabb6750f0f77..b5449ec87f3f863856424131d09eefc7a24ec4f4 100644
---- a/src/tabs/instructions/DocumentsV2.tsx
-+++ b/src/tabs/instructions/DocumentsV2.tsx
-@@ -1,54 +1,54 @@
- import React, { useState, useEffect } from 'react';
- import { Stack, TextField, PrimaryButton, DefaultButton, Label, MessageBar, MessageBarType, Toggle, Panel, Icon, Dropdown, IDropdownOption } from '@fluentui/react';
- import { FaRegFile, FaFile, FaRegFileAlt, FaFileAlt } from 'react-icons/fa';
- import { InstructionData, UserData } from '../../app/functionality/types';
- import { schema as cclSchema, tokens as cclTokens } from '../../app/functionality/cclSchema';
- import localUserData from '../../localData/localUserData.json';
- import { dashboardTokens } from './componentTokens';
- import QuickActionsCard from '../home/QuickActionsCard';
- import { useTheme } from '../../app/functionality/ThemeContext';
- import { colours } from '../../app/styles/colours';
- import { mergeStyles } from '@fluentui/react';
- import '../../app/styles/MatterOpeningCard.css';
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 694608f73361c501cf91c3dcebdc20a17b385bf4..6a37a25a0d050741549dc22a641ed8990cc07fa2 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -939,68 +939,104 @@ const Instructions: React.FC<InstructionsProps> = ({
+     // Priority 3: If matter can be opened, matter button should pulse
+     if (canOpenMatter && !matterLinked) {
+       return 'matter';
+     }
+     
+     return null;
+   };
+   
+   const nextReadyAction = getNextReadyAction();
+   
+   const disableOtherActions = false; // Enable all actions regardless of selection
  
- // Default CCL template content
- const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}} 
+   const unlinkedDeals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+         (p.deals ?? []).filter((d) => !d.InstructionRef),
+       ),
+     [instructionData],
+   );
  
- {{insert_heading_eg_matter_description}} 
+   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
  
- Thank you for your instructions to act on your behalf in connection with {{matter}}. This Engagement Letter and the attached Terms of Business explain the basis on which we will be acting for you—together they form the contract between us. 
- 
- Please contact me if you have any difficulty understanding this Engagement Letter or other information we may provide, eg if anything in this letter is unclear or you require information to be provided in larger text, another format or a different language. 
- 
- Contact details and supervision 
- 
--The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are: 
-+The person dealing with your matter is {{name_of_person_handling_matter}}, who is a {{status}}. Their contact details are:
- 
--Telephone number: [Insert telephone number] 
--Email address: [Insert email address] 
--Postal address: [Insert postal address] 
-+Telephone number: {{fee_earner_phone}}
-+Email address: {{fee_earner_email}}
-+Postal address: {{fee_earner_postal_address}}
- 
- The best way to contact {{name_of_person_handling_matter}} is {{email}}. 
- 
- If {{name_of_person_handling_matter}} is not available, the following members of staff may be able to deal with any queries you have: 
- 
- {{names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries}} 
- 
- The person with overall responsibility for supervising your matter is {{name}}, who is a Partner. 
- 
- Scope of services 
- 
- {{insert_current_position_and_scope_of_retainer}} ("Initial Scope") 
- 
- We will provide legal advice and services to you with reasonable care and skill. However, the nature of many types of legal work means that it is not possible to guarantee a particular outcome. 
- 
- Our Terms of Business sets out general limitations on the scope of our services. Your matter may involve issues for which you need tax advice. We cannot and do not give advice on taxation and you should seek the advice of a suitably qualified tax expert. Where your case needs expert evidence then you will need to identify, with us, a suitably qualified expert to give an opinion. Any expert fees will be your responsibility. 
- 
- Next steps 
- 
- The next steps in your matter are {{next_steps}}. 
- 
- We expect this will take {{realistic_timescale}}. This is an estimate only. We will tell you if it is necessary to revise this timescale. 
- 
- Legal costs 
- 
+   const deals = useMemo(
+     () =>
+       instructionData.flatMap((p) =>
+-        (p.deals ?? []).map((d) => ({
+-          ...d,
+-          firstName: p.instructions?.[0]?.FirstName,
+-          jointClients: [
+-            // Only include prospect-level joint clients that match this deal's DealId
+-            ...(p.jointClients ?? p.joinedClients ?? []).filter(jc => jc.DealId === d.DealId),
+-            // Include deal-level joint clients
+-            ...(d.jointClients ?? []),
+-          ],
+-          documents: [
+-            // Include prospect-level documents that match this deal's DealId
+-            ...(p.documents ?? []).filter(doc => doc.DealId === d.DealId),
+-            // Include deal-level documents
+-            ...(d.documents ?? []),
+-            // Include instruction-level documents if deal has an instruction
+-            ...(d.instruction?.documents ?? []),
+-          ],
+-        })),
++        (p.deals ?? []).map((d) => {
++          // Attempt to derive lead client name from available data
++          let firstName = '';
++          let lastName = '';
++
++          if (d.LeadClientEmail) {
++            const emailLc = d.LeadClientEmail.toLowerCase();
++
++            // Look in instruction-level data for a matching client
++            const matchingInstruction = (p.instructions ?? []).find((inst: any) =>
++              inst.Email?.toLowerCase() === emailLc
++            );
++
++            if (matchingInstruction) {
++              firstName = matchingInstruction.FirstName || '';
++              lastName = matchingInstruction.LastName || '';
++            } else {
++              // Fall back to joint client records
++              const jointSources = [
++                ...(p.jointClients ?? p.joinedClients ?? []),
++                ...(d.jointClients ?? []),
++              ];
++              const jointClient = jointSources.find((jc: any) =>
++                jc.ClientEmail?.toLowerCase() === emailLc
++              );
++
++              if (jointClient) {
++                firstName = jointClient.FirstName || jointClient.Name?.split(' ')[0] || '';
++                lastName =
++                  jointClient.LastName || jointClient.Name?.split(' ').slice(1).join(' ') || '';
++              }
++            }
++          }
++
++          return {
++            ...d,
++            firstName,
++            lastName,
++            jointClients: [
++              // Only include prospect-level joint clients that match this deal's DealId
++              ...(p.jointClients ?? p.joinedClients ?? []).filter((jc) => jc.DealId === d.DealId),
++              // Include deal-level joint clients
++              ...(d.jointClients ?? []),
++            ],
++            documents: [
++              // Include prospect-level documents that match this deal's DealId
++              ...(p.documents ?? []).filter((doc) => doc.DealId === d.DealId),
++              // Include deal-level documents
++              ...(d.documents ?? []),
++              // Include instruction-level documents if deal has an instruction
++              ...(d.instruction?.documents ?? []),
++            ],
++          };
++        })
+       ),
+     [instructionData],
+   );
+   const clients: ClientInfo[] = useMemo(() => {
+     const map: Record<string, ClientInfo> = {};
+     instructionData.forEach((p) => {
+       const deals = p.deals ?? [];
+       deals.forEach((d) => {
+         if (d.LeadClientEmail) {
+           const key = d.LeadClientEmail;
+           const entry = map[key] || {
+             ClientEmail: key,
+             Lead: true,
+             deals: [] as DealSummary[],
+           };
+           entry.Lead = true;
+           (entry.deals as DealSummary[]).push({
+             DealId: d.DealId,
+             InstructionRef: d.InstructionRef,
+             ServiceDescription: d.ServiceDescription,
+             Status: d.Status,
+           });
+           map[key] = entry;
+         }
+       });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Stack, PrimaryButton } from '@fluentui/react';
+import { Stack, PrimaryButton, Toggle } from '@fluentui/react';
 import { useParams } from 'react-router-dom';
 import DraftCCLEditor from './DraftCCLEditor';
 import { schema as cclSchema } from '../../../app/functionality/cclSchema';
@@ -31,6 +31,7 @@ const DraftCCLPage = ({ matterId: propMatterId }: { matterId?: string }) => {
     const [url, setUrl] = useState('');
     const [saving, setSaving] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [isFieldsOnlyView, setIsFieldsOnlyView] = useState(false);
 
     const currentUser = (localUserData || [])[0];
     const canGenerate = currentUser?.Role === 'Partner';
@@ -80,11 +81,26 @@ const DraftCCLPage = ({ matterId: propMatterId }: { matterId?: string }) => {
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
-                <div className="step-header">
+                <div className="step-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <h3 className="step-title">Client Care Letter</h3>
+                    <Toggle
+                        label="Fields Only"
+                        inlineLabel
+                        checked={isFieldsOnlyView}
+                        onChange={(_, checked) => setIsFieldsOnlyView(!!checked)}
+                        onText="Fields"
+                        offText="Editor"
+                        styles={{
+                            label: { fontSize: '14px', fontWeight: '500', marginRight: '8px' }
+                        }}
+                    />
                 </div>
                 <div className="step-content">
-                    <DraftCCLEditor value={draftJson} onChange={(v) => setDraftJson(v)} />
+                    <DraftCCLEditor 
+                        value={draftJson} 
+                        onChange={(v) => setDraftJson(v)} 
+                        fieldsOnlyView={isFieldsOnlyView}
+                    />
                     <div style={{ marginTop: 16 }}>
                         <PrimaryButton text="Save Draft" onClick={handleSave} disabled={saving || generating} />
                         {canGenerate && (

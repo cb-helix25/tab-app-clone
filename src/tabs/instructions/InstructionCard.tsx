@@ -146,6 +146,12 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     const stage = instruction.Stage?.toLowerCase();
     const isCompleted = stage === 'completed';
 
+    // Check if the instruction has an associated matter
+    const hasAssociatedMatter = instruction && (
+        instruction.MatterId || 
+        (instruction as any).matters?.length > 0
+    );
+
     // Get client name
     const firstName = instruction.FirstName || '';
     const lastName = instruction.LastName || '';
@@ -291,7 +297,7 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaInfoCircle style={{ fontSize: '14px', opacity: 0.7 }} />
-                        <span>{isCompleted ? 'Pending matter opening' : `Stage: ${instruction.Stage}`}</span>
+                        <span>{isCompleted ? (hasAssociatedMatter ? 'Pending CCL Draft' : 'Pending matter opening') : `Stage: ${instruction.Stage}`}</span>
                     </div>
                     {formattedDate && (
                         <span style={{
