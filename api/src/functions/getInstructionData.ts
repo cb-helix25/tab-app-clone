@@ -45,7 +45,7 @@ export async function getInstructionDataHandler(
         }
     }
 
-    const params = new URLSearchParams({ code });
+    const params = new URLSearchParams({ code: code ?? "" });
     if (initials) params.append("initials", initials);
     if (prospectId) params.append("prospectId", prospectId);
     if (instructionRef) params.append("instructionRef", instructionRef);
