@@ -815,19 +815,8 @@ const Instructions: React.FC<InstructionsProps> = ({
   const canOpenMatter = (poidPassed && paymentCompleted) || hasActiveMatterOpening();
   
   // Determine which button should pulse to indicate next ready action
-  const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | 'ccl' | null => {
+  const getNextReadyAction = (): 'verify' | 'risk' | 'matter' | null => {
     if (!selectedInstruction) return null;
-    
-    // Check if the selected instruction has an associated matter
-    const hasAssociatedMatter = selectedInstruction && (
-      selectedInstruction.MatterId || 
-      (selectedInstruction as any).matters?.length > 0
-    );
-    
-    // If instruction has a matter, prioritize CCL button
-    if (hasAssociatedMatter) {
-      return 'ccl';
-    }
     
     // Priority 1: If ID needs verification or review, verify button should pulse
     if (!verifyButtonDisabled) {
@@ -1856,28 +1845,20 @@ const Instructions: React.FC<InstructionsProps> = ({
               </span>
             </button>
             <button
-              className={`global-action-btn${canOpenMatter && selectedInstruction ? ' completed' : ''}${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
+              className={`global-action-btn${selectedInstruction ? ' selected' : ''}${nextReadyAction === 'matter' ? ' next-action-pulse' : ''}`}
               onClick={canOpenMatter ? handleGlobalOpenMatter : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: canOpenMatter && selectedInstruction
-                  ? '#3690CE'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-                backgroundColor: canOpenMatter && selectedInstruction
-                  ? '#f8faf8'
-                  : canOpenMatter
-                  ? undefined
-                  : '#f5f5f5',
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
                 opacity: canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s, border-color 0.2s ease',
                 position: 'relative',
                 pointerEvents: canOpenMatter ? 'auto' : 'none',
                 cursor: canOpenMatter ? 'pointer' : 'not-allowed',
+                backgroundColor: canOpenMatter ? undefined : '#f5f5f5',
               }}
               title={
                 !canOpenMatter
@@ -1888,28 +1869,13 @@ const Instructions: React.FC<InstructionsProps> = ({
               }
             >
               <span className="global-action-icon icon-hover" style={{
-                color: canOpenMatter && selectedInstruction
-                  ? '#6b8e6b'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
-                {canOpenMatter && selectedInstruction ? <FaCheckCircle /> : (
-                  <>
-                    <FaFolder className="icon-outline" />
-                    <FaRegFolder className="icon-filled" />
-                  </>
-                )}
+                <FaFolder className="icon-outline" />
+                <FaRegFolder className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: canOpenMatter && selectedInstruction
-                  ? '#6b8e6b'
-                  : selectedInstruction
-                  ? '#3690CE'
-                  : undefined,
-                textDecoration: canOpenMatter && selectedInstruction ? 'line-through' : 'none',
-                textDecorationColor: canOpenMatter && selectedInstruction ? '#6b8e6b' : undefined,
-                textDecorationThickness: canOpenMatter && selectedInstruction ? '1px' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 {selectedInstruction ? 'Open Matter' : 'New Matter'}
               </span>
@@ -1929,13 +1895,13 @@ const Instructions: React.FC<InstructionsProps> = ({
               )}
             </button>
             <button
-              className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
+              className={`global-action-btn${selectedInstruction ? ' selected' : ''}`}
               onClick={canOpenMatter ? () => setActivePivot("documents2") : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               style={{
-                borderColor: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
+                borderColor: selectedInstruction ? '#3690CE' : undefined,
                 opacity: canOpenMatter ? 1 : 0.5,
                 transform: 'translateY(0)',
                 transition: 'opacity 0.3s ease 0.4s, transform 0.3s ease 0.4s, border-color 0.2s ease',
@@ -1952,13 +1918,13 @@ const Instructions: React.FC<InstructionsProps> = ({
               }
             >
               <span className="global-action-icon icon-hover" style={{
-                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 <FaFileAlt className="icon-outline" />
                 <FaRegFileAlt className="icon-filled" />
               </span>
               <span className="global-action-label" style={{
-                color: (selectedInstruction || nextReadyAction === 'ccl') ? '#3690CE' : undefined,
+                color: selectedInstruction ? '#3690CE' : undefined,
               }}>
                 Draft CCL
               </span>
