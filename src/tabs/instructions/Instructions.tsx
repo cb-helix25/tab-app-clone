@@ -813,9 +813,23 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const matterLinked = useMemo(() => {
     if (!selectedInstruction) return false;
-    // Check if the selected instruction has any embedded matter (regardless of status)
-    return !!selectedInstruction.matter;
-  }, [selectedInstruction]);
+    
+    // Find the prospect that contains this instruction
+    const prospect = instructionData.find(p => 
+      p.instructions?.some((inst: any) => inst.InstructionRef === selectedInstruction.InstructionRef)
+    );
+    
+    if (!prospect) return false;
+    
+    // Check if this prospect has any matters that correspond to this instruction
+    // This could be based on InstructionRef or MatterId
+    const hasMatter = prospect.matters?.some((matter: any) => 
+      matter.InstructionRef === selectedInstruction.InstructionRef ||
+      (selectedInstruction.MatterId && matter.MatterID === selectedInstruction.MatterId)
+    );
+    
+    return !!hasMatter;
+  }, [selectedInstruction, instructionData]);
   
   // Open Matter button should be enabled when:
   // 1. Both ID is verified AND payment is complete (normal flow), OR

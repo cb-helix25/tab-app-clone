@@ -513,6 +513,11 @@ export interface InstructionData {
    * Matter information embedded within the instruction data.
    */
   matter?: any;
+  
+  /**
+   * Array of matters associated with this prospect.
+   */
+  matters?: any[];
 }
 
 export interface CCLJson {
