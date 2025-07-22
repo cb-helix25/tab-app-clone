@@ -1,127 +1,98 @@
-diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
-index 694608f73361c501cf91c3dcebdc20a17b385bf4..6a37a25a0d050741549dc22a641ed8990cc07fa2 100644
---- a/src/tabs/instructions/Instructions.tsx
-+++ b/src/tabs/instructions/Instructions.tsx
-@@ -939,68 +939,104 @@ const Instructions: React.FC<InstructionsProps> = ({
-     // Priority 3: If matter can be opened, matter button should pulse
-     if (canOpenMatter && !matterLinked) {
-       return 'matter';
+diff --git a/src/app/functionality/BespokePanel.tsx b/src/app/functionality/BespokePanel.tsx
+index be16de00618d81c23398151a5d521cd0034c2da0..4dc2e69b66132afcda354f9cc982bf26fb7baaff 100644
+--- a/src/app/functionality/BespokePanel.tsx
++++ b/src/app/functionality/BespokePanel.tsx
+@@ -3,82 +3,91 @@
+ 
+ import React, { ReactNode, useEffect, useRef, useState } from 'react';
+ import { IconButton, Text } from '@fluentui/react';
+ import { mergeStyles } from '@fluentui/react';
+ import '../../app/styles/bespokePanel.css'; // Ensure the path is correct
+ 
+ interface BespokePanelProps {
+   isOpen: boolean;
+   onClose: () => void;
+   title: string;
+   children: ReactNode;
+   width?: string; // Optional: for dynamic width
+   offsetTop?: number; // Optional: offset from top to avoid overlapping nav
+ }
+ 
+ const getOverlayStyle = (offsetTop: number) =>
+   mergeStyles({
+     position: 'fixed',
+     top: offsetTop,
+     left: 0,
+     width: '100vw',
+     height: `calc(100vh - ${offsetTop}px)`,
+     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+     display: 'flex',
+     justifyContent: 'flex-end', // Align panel to the right
+-    zIndex: 1000,
++    // Place below navigation components (z-index 900+) but above page content
++    zIndex: 850,
+     transition: 'opacity 0.3s ease',
+   });
+ 
+ const getPanelStyle = (width: string, closing: boolean) =>
+   mergeStyles({
+     backgroundColor: '#fff',
+     width: width || '1600px', // Default width doubled
+     maxWidth: '100%', // Responsive
+     height: '100%',
+     boxShadow: '-2px 0 8px rgba(0,0,0,0.3)',
+     display: 'flex',
+     flexDirection: 'column',
+     animation: closing ? 'slideOut 0.3s forwards' : 'slideIn 0.3s forwards',
+     position: 'relative',
+   });
+ 
+ const headerStyle = mergeStyles({
+   padding: '16px 24px',
+   borderBottom: '1px solid #e1e1e1',
+   display: 'flex',
+   justifyContent: 'space-between',
+   alignItems: 'center',
+ });
+ 
+ const contentStyle = mergeStyles({
+   padding: '20px',
+   overflowY: 'auto',
+   flexGrow: 1,
+ });
+ 
+-const BespokePanel: React.FC<BespokePanelProps> = ({ isOpen, onClose, title, children, width, offsetTop = 0 }) => {
++// Default offsetTop keeps the panel below the top navigation and pivot
++const BespokePanel: React.FC<BespokePanelProps> = ({
++  isOpen,
++  onClose,
++  title,
++  children,
++  width,
++  offsetTop = 96,
++}) => {
+   const panelRef = useRef<HTMLDivElement>(null);
+   const [closing, setClosing] = useState<boolean>(false);
+ 
+   useEffect(() => {
+     if (isOpen && panelRef.current) {
+       panelRef.current.focus();
      }
-     
-     return null;
+   }, [isOpen]);
+ 
+   const handleClose = () => {
+     setClosing(true);
+     // Wait for the animation to finish before calling onClose
+     setTimeout(() => {
+       setClosing(false);
+       onClose();
+     }, 300); // Duration should match the CSS animation duration
    };
-   
-   const nextReadyAction = getNextReadyAction();
-   
-   const disableOtherActions = false; // Enable all actions regardless of selection
  
-   const unlinkedDeals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
-         (p.deals ?? []).filter((d) => !d.InstructionRef),
-       ),
-     [instructionData],
-   );
+   if (!isOpen && !closing) return null;
  
-   const instructionRefs = useRef<Record<string, HTMLDivElement | null>>({});
- 
-   const deals = useMemo(
-     () =>
-       instructionData.flatMap((p) =>
--        (p.deals ?? []).map((d) => ({
--          ...d,
--          firstName: p.instructions?.[0]?.FirstName,
--          jointClients: [
--            // Only include prospect-level joint clients that match this deal's DealId
--            ...(p.jointClients ?? p.joinedClients ?? []).filter(jc => jc.DealId === d.DealId),
--            // Include deal-level joint clients
--            ...(d.jointClients ?? []),
--          ],
--          documents: [
--            // Include prospect-level documents that match this deal's DealId
--            ...(p.documents ?? []).filter(doc => doc.DealId === d.DealId),
--            // Include deal-level documents
--            ...(d.documents ?? []),
--            // Include instruction-level documents if deal has an instruction
--            ...(d.instruction?.documents ?? []),
--          ],
--        })),
-+        (p.deals ?? []).map((d) => {
-+          // Attempt to derive lead client name from available data
-+          let firstName = '';
-+          let lastName = '';
-+
-+          if (d.LeadClientEmail) {
-+            const emailLc = d.LeadClientEmail.toLowerCase();
-+
-+            // Look in instruction-level data for a matching client
-+            const matchingInstruction = (p.instructions ?? []).find((inst: any) =>
-+              inst.Email?.toLowerCase() === emailLc
-+            );
-+
-+            if (matchingInstruction) {
-+              firstName = matchingInstruction.FirstName || '';
-+              lastName = matchingInstruction.LastName || '';
-+            } else {
-+              // Fall back to joint client records
-+              const jointSources = [
-+                ...(p.jointClients ?? p.joinedClients ?? []),
-+                ...(d.jointClients ?? []),
-+              ];
-+              const jointClient = jointSources.find((jc: any) =>
-+                jc.ClientEmail?.toLowerCase() === emailLc
-+              );
-+
-+              if (jointClient) {
-+                firstName = jointClient.FirstName || jointClient.Name?.split(' ')[0] || '';
-+                lastName =
-+                  jointClient.LastName || jointClient.Name?.split(' ').slice(1).join(' ') || '';
-+              }
-+            }
-+          }
-+
-+          return {
-+            ...d,
-+            firstName,
-+            lastName,
-+            jointClients: [
-+              // Only include prospect-level joint clients that match this deal's DealId
-+              ...(p.jointClients ?? p.joinedClients ?? []).filter((jc) => jc.DealId === d.DealId),
-+              // Include deal-level joint clients
-+              ...(d.jointClients ?? []),
-+            ],
-+            documents: [
-+              // Include prospect-level documents that match this deal's DealId
-+              ...(p.documents ?? []).filter((doc) => doc.DealId === d.DealId),
-+              // Include deal-level documents
-+              ...(d.documents ?? []),
-+              // Include instruction-level documents if deal has an instruction
-+              ...(d.instruction?.documents ?? []),
-+            ],
-+          };
-+        })
-       ),
-     [instructionData],
-   );
-   const clients: ClientInfo[] = useMemo(() => {
-     const map: Record<string, ClientInfo> = {};
-     instructionData.forEach((p) => {
-       const deals = p.deals ?? [];
-       deals.forEach((d) => {
-         if (d.LeadClientEmail) {
-           const key = d.LeadClientEmail;
-           const entry = map[key] || {
-             ClientEmail: key,
-             Lead: true,
-             deals: [] as DealSummary[],
-           };
-           entry.Lead = true;
-           (entry.deals as DealSummary[]).push({
-             DealId: d.DealId,
-             InstructionRef: d.InstructionRef,
-             ServiceDescription: d.ServiceDescription,
-             Status: d.Status,
-           });
-           map[key] = entry;
-         }
-       });
+   return (
+     <div className={getOverlayStyle(offsetTop)} onClick={handleClose} aria-modal="true" role="dialog">
+       <div
+         className={getPanelStyle(width || '1600px', closing)}
+         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the panel

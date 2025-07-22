@@ -78,22 +78,31 @@ const DraftCCLPage = ({ matterId: propMatterId }: { matterId?: string }) => {
         setGenerating(false);
     };
 
+    console.log('DraftCCLPage render - isFieldsOnlyView:', isFieldsOnlyView);
+
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
-                <div className="step-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="step-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8f9fa', padding: '16px', borderRadius: '4px' }}>
                     <h3 className="step-title">Client Care Letter</h3>
-                    <Toggle
-                        label="Fields Only"
-                        inlineLabel
-                        checked={isFieldsOnlyView}
-                        onChange={(_, checked) => setIsFieldsOnlyView(!!checked)}
-                        onText="Fields"
-                        offText="Editor"
-                        styles={{
-                            label: { fontSize: '14px', fontWeight: '500', marginRight: '8px' }
-                        }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '14px', color: '#666' }}>View Mode:</span>
+                        <Toggle
+                            label="Fields Only"
+                            inlineLabel
+                            checked={isFieldsOnlyView}
+                            onChange={(_, checked) => {
+                                console.log('Toggle changed:', checked);
+                                setIsFieldsOnlyView(!!checked);
+                            }}
+                            onText="Fields"
+                            offText="Editor"
+                            styles={{
+                                label: { fontSize: '14px', fontWeight: '500' },
+                                root: { minWidth: '120px' }
+                            }}
+                        />
+                    </div>
                 </div>
                 <div className="step-content">
                     <DraftCCLEditor 

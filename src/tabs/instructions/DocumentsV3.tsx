@@ -315,6 +315,7 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     // Hover tooltip state
     const [hoveredField, setHoveredField] = useState<string | null>(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+    const [isFieldsOnlyView, setIsFieldsOnlyView] = useState(false);
 
     // Field display names for hover tooltips
     const FIELD_DISPLAY_NAMES = {
@@ -802,6 +803,277 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
         }
         
         return parts.length > 0 ? parts : content;
+    };
+
+    // Function to render fields-only view with context sentences
+    const renderFieldsOnlyView = () => {
+        // All 44 placeholders from the actual CCL template
+        const actualFields = [
+            'insert_clients_name',
+            'insert_heading_eg_matter_description', 
+            'matter',
+            'name_of_person_handling_matter',
+            'status',
+            'insert_telephone_number',
+            'insert_email_address',
+            'insert_postal_address',
+            'name_of_handler',
+            'email',
+            'handler',
+            'names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries',
+            'name',
+            'insert_current_position_and_scope_of_retainer',
+            'next_steps',
+            'realistic_timescale',
+            'we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible',
+            'next_stage',
+            'figure_or_range',
+            'describe_disbursement_1',
+            'insert_estimated_amount_of_disbursement_1',
+            'vat_chargeable_1',
+            'describe_disbursement_2',
+            'insert_estimated_amount_of_disbursement_2',
+            'vat_chargeable_2',
+            'describe_disbursement_3',
+            'insert_estimated_amount_of_disbursement_3',
+            'vat_chargeable_3',
+            'estimate',
+            'in_total_including_vat_or_for_the_next_steps_in_your_matter',
+            'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees',
+            'identify_the_other_party_eg_your_opponents',
+            'figure',
+            'matter_number',
+            'and_or_intervals_eg_every_three_months',
+            'contact_details_for_marketing_opt_out',
+            'link_to_preference_centre',
+            'may_will',
+            'instructions_link',
+            'insert_next_step_you_would_like_client_to_take',
+            'state_why_this_step_is_important',
+            'state_amount',
+            'describe_first_document_or_information_you_need_from_your_client',
+            'describe_second_document_or_information_you_need_from_your_client',
+            'describe_third_document_or_information_you_need_from_your_client',
+            'explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement'
+        ];
+        
+        // Field contexts for better user understanding based on actual template
+        const fieldContexts: Record<string, { before: string; after: string }> = {
+            'insert_clients_name': {
+                before: 'Dear',
+                after: '[heading] Thank you for your instructions'
+            },
+            'insert_heading_eg_matter_description': {
+                before: 'Dear [Client Name]',
+                after: 'Thank you for your instructions to act'
+            },
+            'matter': {
+                before: 'Thank you for your instructions to act on your behalf in connection with',
+                after: '. This Engagement Letter and the attached Terms'
+            },
+            'name_of_person_handling_matter': {
+                before: 'The person dealing with your matter is',
+                after: ', who is a [status]'
+            },
+            'status': {
+                before: 'The person dealing with your matter is [name], who is a',
+                after: '. Their contact details are:'
+            },
+            'insert_telephone_number': {
+                before: 'Telephone number',
+                after: 'Email address'
+            },
+            'insert_email_address': {
+                before: '[Insert telephone number] Email address',
+                after: 'Postal address'
+            },
+            'insert_postal_address': {
+                before: '[Insert email address] Postal address',
+                after: 'The best way to contact'
+            },
+            'name_of_handler': {
+                before: 'The best way to contact',
+                after: 'is [email]'
+            },
+            'email': {
+                before: 'The best way to contact [handler] is',
+                after: '. If [handler] is not available'
+            },
+            'handler': {
+                before: 'If',
+                after: 'is not available, the following members'
+            },
+            'names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries': {
+                before: 'If [handler] is not available, the following members of staff may be able to deal with any queries you have:',
+                after: 'The person with overall responsibility'
+            },
+            'name': {
+                before: 'The person with overall responsibility for supervising your matter is',
+                after: ', who is a Partner.'
+            },
+            'insert_current_position_and_scope_of_retainer': {
+                before: 'Scope of services',
+                after: '("Initial Scope") We will provide legal advice'
+            },
+            'next_steps': {
+                before: 'The next steps in your matter are',
+                after: '. We expect this will take'
+            },
+            'realistic_timescale': {
+                before: 'We expect this will take',
+                after: '. This is an estimate only'
+            },
+            'we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible': {
+                before: 'or',
+                after: '. The next stage in your matter is'
+            },
+            'next_stage': {
+                before: 'The next stage in your matter is',
+                after: 'and we estimate that our charges'
+            },
+            'figure_or_range': {
+                before: 'we estimate that our charges up to the completion of that stage will be in the region of £',
+                after: '. We reserve the right to increase'
+            },
+            'estimate': {
+                before: 'We cannot give an exact figure for your disbursements, but this is likely to be in the region of £',
+                after: '[total description] including'
+            },
+            'in_total_including_vat_or_for_the_next_steps_in_your_matter': {
+                before: 'but this is likely to be in the region of £[estimate]',
+                after: 'including [examples]'
+            },
+            'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees': {
+                before: '[total description] including',
+                after: '. Costs you may have to pay'
+            },
+            'identify_the_other_party_eg_your_opponents': {
+                before: 'There is a risk that you may have to pay',
+                after: 'costs in this matter'
+            },
+            'figure': {
+                before: 'Please provide us with £',
+                after: 'on account of costs'
+            },
+            'matter_number': {
+                before: 'Please use the reference <<',
+                after: '>> We work with money'
+            },
+            'and_or_intervals_eg_every_three_months': {
+                before: 'We have agreed to provide you with an update on the amount of costs when appropriate as the matter progresses',
+                after: '. Risk analysis'
+            },
+            'contact_details_for_marketing_opt_out': {
+                before: '—contacting us at',
+                after: '; —using the \'unsubscribe\' link'
+            },
+            'link_to_preference_centre': {
+                before: '—updating your marketing preferences on our',
+                after: '. Prevention of money laundering'
+            },
+            'may_will': {
+                before: 'Your matter',
+                after: 'involve court proceedings'
+            },
+            'instructions_link': {
+                before: 'The \'Instructions for Cancellation\' notice at',
+                after: 'explains: —how to cancel'
+            },
+            'insert_next_step_you_would_like_client_to_take': {
+                before: '☐',
+                after: '[State why this step is important]'
+            },
+            'state_why_this_step_is_important': {
+                before: '[Insert next step you would like client to take]',
+                after: '☐ Provide a payment on account'
+            },
+            'state_amount': {
+                before: '☐ Provide a payment on account of costs and disbursements of £',
+                after: 'If we do not receive a payment'
+            },
+            'describe_first_document_or_information_you_need_from_your_client': {
+                before: '☐ Provide the following documents [and information] to allow me to take the next steps in your matter:',
+                after: '[describe second document]'
+            },
+            'describe_second_document_or_information_you_need_from_your_client': {
+                before: '[describe first document or information you need from your client]',
+                after: '[describe third document]'
+            },
+            'describe_third_document_or_information_you_need_from_your_client': {
+                before: '[describe second document or information you need from your client]',
+                after: 'Without these documents there may be a delay'
+            },
+            'explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement': {
+                before: 'Referral and fee sharing arrangement',
+                after: 'Right to cancel'
+            }
+        };
+
+        return (
+            <div>
+                {actualFields.map(field => {
+                    const context = fieldContexts[field];
+                    // Try to get value from templateFields, fallback to empty string
+                    const fieldValue = templateFields[field] || templateFields[`{{${field}}}`] || templateFields[`[${field}]`] || '';
+                    
+                    // Format field label
+                    const formatFieldLabel = (key: string): string => {
+                        return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    };
+                    
+                    return (
+                        <div key={field} style={{ 
+                            marginBottom: '24px',
+                            padding: '16px',
+                            backgroundColor: '#F4F4F6',
+                            border: '1px solid #CCCCCC',
+                            borderLeft: '4px solid #3690CE'
+                        }}>
+                            {context && (
+                                <div style={{
+                                    fontSize: '13px',
+                                    color: '#666',
+                                    marginBottom: '8px',
+                                    fontStyle: 'italic',
+                                    lineHeight: '1.4'
+                                }}>
+                                    <span style={{ opacity: 0.7 }}>
+                                        "{context.before} "
+                                    </span>
+                                    <span style={{ 
+                                        backgroundColor: '#d6e8ff', 
+                                        padding: '2px 6px', 
+                                        fontWeight: 600,
+                                        color: '#061733'
+                                    }}>
+                                        [{formatFieldLabel(field)}]
+                                    </span>
+                                    <span style={{ opacity: 0.7 }}>
+                                        " {context.after}"
+                                    </span>
+                                </div>
+                            )}
+                            
+                            <TextField
+                                label={formatFieldLabel(field)}
+                                value={fieldValue}
+                                onChange={(_, newValue) => {
+                                    setTemplateFields(prev => ({
+                                        ...prev,
+                                        [field]: newValue || ''
+                                    }));
+                                }}
+                                multiline={field.length > 30}
+                                placeholder={`Enter ${formatFieldLabel(field).toLowerCase()}...`}
+                                styles={{ 
+                                    root: { marginTop: context ? 8 : 0 }
+                                }}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
     // Function to render template content with editable text and placeholders
@@ -1347,24 +1619,80 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
                                 flex: '1', 
                                 minWidth: '0'
                             }}>
-                                <div style={questionBannerStyle}>
-                                    Interactive Template Editor
+                                <div style={{
+                                    ...questionBannerStyle,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span>Interactive Template Editor</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+                                        <button
+                                            onClick={() => setIsFieldsOnlyView(false)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                border: '1px solid #CCCCCC',
+                                                backgroundColor: !isFieldsOnlyView ? '#3690CE' : '#FFFFFF',
+                                                color: !isFieldsOnlyView ? '#FFFFFF' : '#061733',
+                                                fontSize: '14px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                outline: 'none',
+                                                transition: 'all 0.2s ease',
+                                                borderRight: 'none',
+                                                minWidth: '80px'
+                                            }}
+                                        >
+                                            Editor
+                                        </button>
+                                        <button
+                                            onClick={() => setIsFieldsOnlyView(true)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                border: '1px solid #CCCCCC',
+                                                backgroundColor: isFieldsOnlyView ? '#3690CE' : '#FFFFFF',
+                                                color: isFieldsOnlyView ? '#FFFFFF' : '#061733',
+                                                fontSize: '14px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                outline: 'none',
+                                                transition: 'all 0.2s ease',
+                                                minWidth: '80px'
+                                            }}
+                                        >
+                                            Fields
+                                        </button>
+                                    </div>
                                 </div>
                                 
-                                <div style={{ 
-                                    border: '1px solid #e1e5e9',
-                                    borderRadius: '4px',
-                                    padding: '16px',
-                                    minHeight: '300px',
-                                    fontFamily: 'Raleway, sans-serif',
-                                    fontSize: '14px',
-                                    lineHeight: '1.6',
-                                    whiteSpace: 'pre-wrap',
-                                    backgroundColor: '#fff',
-                                    cursor: 'text'
-                                }}>
-                                    {renderEditableTemplateContent(documentContent)}
-                                </div>
+                                {isFieldsOnlyView ? (
+                                    <div style={{ 
+                                        border: '1px solid #e1e5e9',
+                                        borderRadius: '4px',
+                                        padding: '16px',
+                                        minHeight: '300px',
+                                        fontFamily: 'Raleway, sans-serif',
+                                        fontSize: '14px',
+                                        backgroundColor: '#fff'
+                                    }}>
+                                        {renderFieldsOnlyView()}
+                                    </div>
+                                ) : (
+                                    <div style={{ 
+                                        border: '1px solid #e1e5e9',
+                                        borderRadius: '4px',
+                                        padding: '16px',
+                                        minHeight: '300px',
+                                        fontFamily: 'Raleway, sans-serif',
+                                        fontSize: '14px',
+                                        lineHeight: '1.6',
+                                        whiteSpace: 'pre-wrap',
+                                        backgroundColor: '#fff',
+                                        cursor: 'text'
+                                    }}>
+                                        {renderEditableTemplateContent(documentContent)}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
