@@ -744,7 +744,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
         );
         const eid = eids[0];
-        const docs = [
+        const rawDocs = [
           ...(prospect.documents ?? []),
           ...((inst as any).documents ?? []),
           ...dealsForInst.flatMap((d) => [
@@ -752,6 +752,17 @@ const Instructions: React.FC<InstructionsProps> = ({
             ...(d.instruction?.documents ?? []),
           ]),
         ];
+        const docsMap: Record<string, any> = {};
+        rawDocs.forEach((doc) => {
+          const key =
+            doc.DocumentId !== undefined
+              ? String(doc.DocumentId)
+              : `${doc.FileName ?? ''}-${doc.UploadedAt ?? ''}`;
+          if (!docsMap[key]) {
+            docsMap[key] = doc;
+          }
+        });
+        const docs = Object.values(docsMap);
         return {
           instruction: inst,
           deal,

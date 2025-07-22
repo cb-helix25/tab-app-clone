@@ -1,356 +1,75 @@
-diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
-index f75e829b9accf5eaabe7d0aa8c60bd9fc29c5af9..875f5089fda8e52cca464d1bc770a0773f933511 100644
---- a/src/localData/localInstructionData.json
-+++ b/src/localData/localInstructionData.json
-@@ -308,75 +308,51 @@
-         "IdType": "passport",
-         "HouseNumber": "10",
-         "Street": "Sample Street",
-         "City": "London",
-         "County": "Greater London",
-         "Postcode": "SW1A 1AA",
-         "Country": "United Kingdom",
-         "CountryCode": "GB",
-         "CompanyName": null,
-         "CompanyNumber": null,
-         "CompanyHouseNumber": null,
-         "CompanyStreet": null,
-         "CompanyCity": null,
-         "CompanyCounty": null,
-         "CompanyPostcode": null,
-         "CompanyCountry": null,
-         "CompanyCountryCode": null,
-         "Notes": "Client confirmed ID and payment details by phone.",
-         "PaymentMethod": "card",
-         "PaymentResult": "successful",
-         "PaymentAmount": 4000,
-         "PaymentProduct": "Adjudication Advice & Dispute",
-         "AliasId": "HLX10003ALIAS",
-         "OrderId": "ORD10003",
-         "SHASign": "9F23ABCD78234FD90AA12B345CDEF67890ABC123",
--        "PaymentTimestamp": "2025-07-15T14:22:00",
--        "matter": {
--          "MatterID": "a1a1a1a1-a1a1-4a1a-a1a1-a1a1a1a1a1a1",
--          "InstructionRef": "HLX-10003-10003",
--          "Status": "Open",
--          "OpenDate": "2025-07-20T00:00:00",
--          "OpenTime": "10:00:00",
--          "CloseDate": null,
--          "ClientID": null,
--          "RelatedClientID": null,
--          "DisplayNumber": null,
--          "ClientName": "Bob Bennett",
--          "ClientType": "Individual",
--          "Description": "Instruction from lead and 2 joint clients.",
--          "PracticeArea": "Adjudication Advice & Dispute",
--          "ApproxValue": "£4,000",
--          "ResponsibleSolicitor": "Lukasz Zemanek",
--          "OriginatingSolicitor": "Lukasz Zemanek",
--          "SupervisingPartner": "Lukasz Zemanek",
--          "Source": "referral",
--          "Referrer": null,
--          "method_of_contact": "email",
--          "OpponentID": "b6403f65-bfa9-429d-ae33-0064d0606690",
--          "OpponentSolicitorID": "cf8b9143-b101-4ff3-8534-00add484773c"
--        }
-+        "PaymentTimestamp": "2025-07-15T14:22:00"
+diff --git a/src/tabs/instructions/Instructions.tsx b/src/tabs/instructions/Instructions.tsx
+index 9124f7ef0c67b67860ee384d764ffa85271656b0..e0cf19aad3e56ddbf4bf79fd31a74ebcacb8fc38 100644
+--- a/src/tabs/instructions/Instructions.tsx
++++ b/src/tabs/instructions/Instructions.tsx
+@@ -722,58 +722,69 @@ const Instructions: React.FC<InstructionsProps> = ({
+         const riskSource = [
+           ...(prospect.riskAssessments ?? prospect.compliance ?? []),
+           ...((inst as any).riskAssessments ?? (inst as any).compliance ?? []),
+         ];
+         dealsForInst.forEach((d) => {
+           if (d.instruction) {
+             riskSource.push(...(d.instruction.riskAssessments ?? []));
+             riskSource.push(...(d.instruction.compliance ?? []));
+           }
+         });
+         const eidSource = [
+           ...(prospect.electronicIDChecks ?? []),
+           ...(prospect.idVerifications ?? []),
+           ...((inst as any).electronicIDChecks ?? []),
+           ...((inst as any).idVerifications ?? []),
+           ...dealsForInst.flatMap((d) => [
+             ...(d.instruction?.electronicIDChecks ?? []),
+             ...(d.instruction?.idVerifications ?? []),
+           ]),
+         ];
+         const risk = riskSource.find((r) => r.MatterId === inst.InstructionRef);
+         const eids = eidSource.filter(
+           (e) => (e.MatterId ?? e.InstructionRef) === inst.InstructionRef,
+         );
+         const eid = eids[0];
+-        const docs = [
++        const rawDocs = [
+           ...(prospect.documents ?? []),
+           ...((inst as any).documents ?? []),
+           ...dealsForInst.flatMap((d) => [
+             ...(d.documents ?? []),
+             ...(d.instruction?.documents ?? []),
+           ]),
+         ];
++        const docsMap: Record<string, any> = {};
++        rawDocs.forEach((doc) => {
++          const key =
++            doc.DocumentId !== undefined
++              ? String(doc.DocumentId)
++              : `${doc.FileName ?? ''}-${doc.UploadedAt ?? ''}`;
++          if (!docsMap[key]) {
++            docsMap[key] = doc;
++          }
++        });
++        const docs = Object.values(docsMap);
+         return {
+           instruction: inst,
+           deal,
+           deals: dealsForInst,
+           clients: clientsForInst,
+           risk,
+           eid,
+           eids,
+           documents: docs,
+           prospectId: prospect.prospectId,
+           documentCount: docs ? docs.length : 0,
+         };
+       });
+ 
+       return instructionItems;
+     });
+ 
+     const unique: Record<string, typeof items[number]> = {};
+     items.forEach((item) => {
+       const ref = item.instruction?.InstructionRef as string | undefined;
+       if (ref && !unique[ref]) {
+         unique[ref] = item;
        }
-     ],
-     "documents": [
-       {
-         "DocumentId": 900031,
-         "InstructionRef": "HLX-10003-10003",
-         "DocumentType": null,
-         "FileName": "evidence1.pdf",
-         "BlobUrl": "https://example.com/evidence1.pdf",
-         "FileSizeBytes": 258900,
-         "UploadedBy": null,
-         "UploadedAt": "2025-07-16T10:00:00",
-         "Notes": null
-       }
-     ],
-     "riskAssessments": [
-       {
-         "MatterId": "HLX-10003-10003",
-         "InstructionRef": "HLX-10003-10003",
-         "RiskAssessor": "LZ",
-         "ComplianceDate": "2025-07-21",
-         "ComplianceExpiry": "2026-07-21",
-         "ClientType": "Individual",
-         "ClientType_Value": 1,
-         "DestinationOfFunds": "UK bank account",
-diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
-index f75e829b9accf5eaabe7d0aa8c60bd9fc29c5af9..875f5089fda8e52cca464d1bc770a0773f933511 100644
---- a/src/localData/localInstructionData.json
-+++ b/src/localData/localInstructionData.json
-@@ -638,75 +614,51 @@
-         "IdType": "driving_licence",
-         "HouseNumber": "15",
-         "Street": "Boundary Lane",
-         "City": "Leeds",
-         "County": "West Yorkshire",
-         "Postcode": "LS1 4BC",
-         "Country": "United Kingdom",
-         "CountryCode": "GB",
-         "CompanyName": null,
-         "CompanyNumber": null,
-         "CompanyHouseNumber": null,
-         "CompanyStreet": null,
-         "CompanyCity": null,
-         "CompanyCounty": null,
-         "CompanyPostcode": null,
-         "CompanyCountry": null,
-         "CompanyCountryCode": null,
-         "Notes": null,
-         "PaymentMethod": "card",
-         "PaymentResult": "successful",
-         "PaymentAmount": 3500,
-         "PaymentProduct": "Property Boundary Dispute",
-         "AliasId": null,
-         "OrderId": null,
-         "SHASign": null,
--        "PaymentTimestamp": "2025-07-19T11:50:00",
--        "matter": {
--          "MatterID": "m5m5m5m5-m5m5-5m5m-m5m5-m5m5m5m5m5m5",
--          "InstructionRef": "HLX-10005-10005",
--          "Status": "Closed",
--          "OpenDate": null,
--          "OpenTime": null,
--          "CloseDate": null,
--          "ClientID": null,
--          "RelatedClientID": null,
--          "DisplayNumber": null,
--          "ClientName": null,
--          "ClientType": null,
--          "Description": "Boundary dispute resolution between neighbouring properties",
--          "PracticeArea": null,
--          "ApproxValue": null,
--          "ResponsibleSolicitor": null,
--          "OriginatingSolicitor": null,
--          "SupervisingPartner": null,
--          "Source": null,
--          "Referrer": null,
--          "method_of_contact": null,
--          "OpponentID": null,
--          "OpponentSolicitorID": null
--        }
-+        "PaymentTimestamp": "2025-07-19T11:50:00"
-       }
-     ],
-     "documents": [
-       {
-         "DocumentId": 900051,
-         "InstructionRef": "HLX-10005-10005",
-         "DocumentType": "property_deed",
-         "FileName": "property_deeds.pdf",
-         "BlobUrl": "https://example.com/property_deeds.pdf",
-         "FileSizeBytes": 567890,
-         "UploadedBy": "david.property@home.co.uk",
-         "UploadedAt": "2025-07-19T12:00:00",
-         "Notes": "Property title deeds and land registry documents"
-       },
-       {
-         "DocumentId": 900052,
-         "InstructionRef": "HLX-10005-10005",
-         "DocumentType": "survey_report",
-         "FileName": "boundary_survey.pdf",
-         "BlobUrl": "https://example.com/boundary_survey.pdf",
-         "FileSizeBytes": 1234567,
-         "UploadedBy": "marie.property@home.co.uk",
-         "UploadedAt": "2025-07-20T10:15:00",
-         "Notes": "Professional boundary survey report"
-       },
-diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
-index f75e829b9accf5eaabe7d0aa8c60bd9fc29c5af9..875f5089fda8e52cca464d1bc770a0773f933511 100644
---- a/src/localData/localInstructionData.json
-+++ b/src/localData/localInstructionData.json
-@@ -828,75 +780,51 @@
-         "IdType": null,
-         "HouseNumber": "100",
-         "Street": "Industrial Park",
-         "City": "Birmingham",
-         "County": "West Midlands",
-         "Postcode": "B12 9XY",
-         "Country": "United Kingdom",
-         "CountryCode": "GB",
-         "CompanyName": "Manufacturing Excellence Ltd",
-         "CompanyNumber": "08765432",
-         "CompanyHouseNumber": "08765432",
-         "CompanyStreet": "Industrial Park",
-         "CompanyCity": "Birmingham",
-         "CompanyCounty": "West Midlands",
-         "CompanyPostcode": "B12 9XY",
-         "CompanyCountry": "United Kingdom",
-         "CompanyCountryCode": "GB",
-         "Notes": "High-value corporate restructuring matter",
-         "PaymentMethod": "card",
-         "PaymentResult": "successful",
-         "PaymentAmount": 12000,
-         "PaymentProduct": "Corporate Restructuring Advisory",
-         "AliasId": null,
-         "OrderId": null,
-         "SHASign": null,
--        "PaymentTimestamp": "2025-07-16T16:20:00",
--        "matter": {
--          "MatterID": "c6c6c6c6-c6c6-6c6c-c6c6-c6c6c6c6c6c6",
--          "InstructionRef": "HLX-10006-10006",
--          "Status": "Closed",
--          "OpenDate": null,
--          "OpenTime": null,
--          "CloseDate": null,
--          "ClientID": null,
--          "RelatedClientID": null,
--          "DisplayNumber": null,
--          "ClientName": null,
--          "ClientType": null,
--          "Description": "Corporate restructuring and governance advisory services",
--          "PracticeArea": null,
--          "ApproxValue": null,
--          "ResponsibleSolicitor": null,
--          "OriginatingSolicitor": null,
--          "SupervisingPartner": null,
--          "Source": null,
--          "Referrer": null,
--          "method_of_contact": null,
--          "OpponentID": null,
--          "OpponentSolicitorID": null
--        }
-+        "PaymentTimestamp": "2025-07-16T16:20:00"
-       }
-     ],
-     "documents": [
-       {
-         "DocumentId": 900061,
-         "InstructionRef": "HLX-10006-10006",
-         "DocumentType": "company_accounts",
-         "FileName": "annual_accounts_2024.pdf",
-         "BlobUrl": "https://example.com/annual_accounts_2024.pdf",
-         "FileSizeBytes": 2345678,
-         "UploadedBy": "cfo@manufacturing.co.uk",
-         "UploadedAt": "2025-07-17T10:00:00",
-         "Notes": "Audited annual accounts for 2024"
-       },
-       {
-         "DocumentId": 900062,
-         "InstructionRef": "HLX-10006-10006",
-         "DocumentType": "memorandum_articles",
-         "FileName": "memorandum_and_articles.pdf",
-         "BlobUrl": "https://example.com/memorandum_and_articles.pdf",
-         "FileSizeBytes": 345678,
-         "UploadedBy": "legal@manufacturing.co.uk",
-         "UploadedAt": "2025-07-17T11:00:00",
-         "Notes": "Current memorandum and articles of association"
-       }
-diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
-index f75e829b9accf5eaabe7d0aa8c60bd9fc29c5af9..875f5089fda8e52cca464d1bc770a0773f933511 100644
---- a/src/localData/localInstructionData.json
-+++ b/src/localData/localInstructionData.json
-@@ -1040,75 +968,51 @@
-         "IdType": null,
-         "HouseNumber": null,
-         "Street": null,
-         "City": null,
-         "County": null,
-         "Postcode": null,
-         "Country": null,
-         "CountryCode": null,
-         "CompanyName": "Global Trader International Ltd",
-         "CompanyNumber": "12345678",
-         "CompanyHouseNumber": "12345678",
-         "CompanyStreet": "Commerce House, Trade Street",
-         "CompanyCity": "London",
-         "CompanyCounty": "Greater London",
-         "CompanyPostcode": "EC1A 1BB",
-         "CompanyCountry": "United Kingdom",
-         "CompanyCountryCode": "GB",
-         "Notes": "High-value international litigation matter - requires enhanced due diligence",
-         "PaymentMethod": "card",
-         "PaymentResult": "successful",
-         "PaymentAmount": 25000,
-         "PaymentProduct": "International Commercial Litigation",
-         "AliasId": null,
-         "OrderId": null,
-         "SHASign": null,
--        "PaymentTimestamp": "2025-07-21T09:20:00",
--        "matter": {
--          "MatterID": "h8h8h8h8-h8h8-8h8h-h8h8-h8h8h8h8h8h8",
--          "InstructionRef": "HLX-10008-10008",
--          "Status": "Closed",
--          "OpenDate": null,
--          "OpenTime": null,
--          "CloseDate": null,
--          "ClientID": null,
--          "RelatedClientID": null,
--          "DisplayNumber": null,
--          "ClientName": null,
--          "ClientType": null,
--          "Description": "International contract breach litigation - high stakes commercial dispute",
--          "PracticeArea": null,
--          "ApproxValue": null,
--          "ResponsibleSolicitor": null,
--          "OriginatingSolicitor": null,
--          "SupervisingPartner": null,
--          "Source": null,
--          "Referrer": null,
--          "method_of_contact": null,
--          "OpponentID": null,
--          "OpponentSolicitorID": null
--        }
-+        "PaymentTimestamp": "2025-07-21T09:20:00"
-       }
-     ],
-     "documents": [
-       {
-         "DocumentId": 900081,
-         "InstructionRef": "HLX-10008-10008",
-         "DocumentType": "contract",
-         "FileName": "international_supply_agreement.pdf",
-         "BlobUrl": "https://example.com/international_supply_agreement.pdf",
-         "FileSizeBytes": 4567890,
-         "UploadedBy": "legal.director@globaltrader.com",
-         "UploadedAt": "2025-07-21T10:15:00",
-         "Notes": "Original supply agreement subject to dispute"
-       },
-       {
-         "DocumentId": 900082,
-         "InstructionRef": "HLX-10008-10008",
-         "DocumentType": "correspondence",
-         "FileName": "breach_notices.pdf",
-         "BlobUrl": "https://example.com/breach_notices.pdf",
-         "FileSizeBytes": 789012,
-         "UploadedBy": "legal.director@globaltrader.com",
-         "UploadedAt": "2025-07-21T10:20:00",
-         "Notes": "Formal breach notices and correspondence"
-       },
-diff --git a/src/localData/localInstructionData.json b/src/localData/localInstructionData.json
-index f75e829b9accf5eaabe7d0aa8c60bd9fc29c5af9..875f5089fda8e52cca464d1bc770a0773f933511 100644
---- a/src/localData/localInstructionData.json
-+++ b/src/localData/localInstructionData.json
-@@ -1364,26 +1268,26 @@
-         "CompanyNumber": null,
-         "CompanyHouseNumber": null,
-         "CompanyStreet": null,
-         "CompanyCity": null,
-         "CompanyCounty": null,
-         "CompanyPostcode": null,
-         "CompanyCountry": null,
-         "CompanyCountryCode": null,
-         "Notes": "Joint client for construction dispute",
-         "PaymentMethod": null,
-         "PaymentResult": null,
-         "PaymentAmount": null,
-         "PaymentProduct": null,
-         "AliasId": null,
-         "OrderId": null,
-         "SHASign": null,
-         "PaymentTimestamp": null
-       }
-     ],
-     "documents": [],
-     "riskAssessments": [],
-     "electronicIDChecks": [],
-     "idVerifications": [],
-     "compliance": []
-   }
--]
-+]
+     });
+     return Object.values(unique);
