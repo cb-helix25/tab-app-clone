@@ -186,39 +186,7 @@ Action required by you | Additional information
 [describe second document or information you need from your client]
 [describe third document or information you need from your client]
 
-Please contact me if you have any queries or concerns about your matter, this Engagement Letter or the attached Terms of Business. 
-
-{{insert_current_position_and_scope_of_retainer}} ("Initial Scope") 
-
-We will provide legal advice and services to you with reasonable care and skill. However, the nature of many types of legal work means that it is not possible to guarantee a particular outcome. 
-
-Our Terms of Business sets out general limitations on the scope of our services. Your matter may involve issues for which you need tax advice. We cannot and do not give advice on taxation and you should seek the advice of a suitably qualified tax expert. Where your case needs expert evidence then you will need to identify, with us, a suitably qualified expert to give an opinion. Any expert fees will be your responsibility. 
-
-Next steps 
-
-The next steps in your matter are {{next_steps}}. 
-
-The likely timescale for completion of your matter is {{realistic_timescale}}. 
-
-We will send you a final bill at the end of your matter which will cover our charges from the date of the last interim bill and any unbilled disbursements. You have the right to challenge any interim bill or the final bill by applying to the court to assess the bill under the Solicitors Act 1974. The usual time limit for applying to the court for an assessment is one month from the date of delivery of the interim or final bill. Please be aware that the time limit runs from the date of each individual bill. 
-
-Electronic signatures 
-
-If you agree to the terms of this Engagement Letter, please sign and return one copy of this letter to us. You can do this by email. Electronic signatures are legally binding and we will accept them, including a signature on a printed copy of this letter which is then scanned and emailed to us. 
-
-Yours sincerely 
-
-{{name_of_person_handling_matter}}
-{{status}}
-For and on behalf of {{name_of_firm}}
-
-I agree to the terms of this Engagement Letter. 
-
-Signed: _________________________ 
-
-Print name: _________________________ 
-
-Date: _________________________`;
+Please contact me if you have any queries or concerns about your matter, this Engagement Letter or the attached Terms of Business.`;
 
 const MESSAGE_TEMPLATES = {
     ccl: DEFAULT_CCL_TEMPLATE,
@@ -1096,6 +1064,280 @@ Description | Amount | VAT chargeable
                         )}
                     </div>
                 );
+            } else if (variableName === 'disbursements_section_choice') {
+                // Disbursements section with choice between table and estimate
+                parts.push(
+                    <div
+                        key={match.index}
+                        style={{
+                            backgroundColor: '#f3f9ff',
+                            border: `1px solid ${colours.blue}`,
+                            borderRadius: 0,
+                            padding: '16px',
+                            margin: '8px 0',
+                            display: 'block',
+                            width: '100%'
+                        }}
+                    >
+                        {showDisbursementsChoice ? (
+                            <>
+                                <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    color: colours.blue,
+                                    marginBottom: '12px',
+                                    letterSpacing: 0.1,
+                                    textTransform: 'none'
+                                }}>
+                                    Choose disbursements format:
+                                </div>
+                                {/* Option 1: Table format */}
+                                <div
+                                    onClick={() => {
+                                        setDisbursementsChoice('table');
+                                        setShowDisbursementsChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        marginBottom: '8px',
+                                        border: `1px solid ${disbursementsChoice === 'table' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: disbursementsChoice === 'table' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>Detailed table format</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when you can provide specific disbursement details
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Option 2: Estimate format */}
+                                <div
+                                    onClick={() => {
+                                        setDisbursementsChoice('estimate');
+                                        setShowDisbursementsChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        border: `1px solid ${disbursementsChoice === 'estimate' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: disbursementsChoice === 'estimate' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>Simple estimate</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when you only have an approximate estimate
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Show the selected content */}
+                                {disbursementsChoice === 'table' ? (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        Based on the information you have provided, we expect to incur the following disbursements:
+                                        <br /><br />
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                                            <thead>
+                                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Description</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Amount (£)</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>VAT</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Notes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_1_description || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_description: e.target.value }))}
+                                                            placeholder="Description"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_1_amount || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_amount: e.target.value }))}
+                                                            placeholder="Amount"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_1_vat || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_vat: e.target.value }))}
+                                                            placeholder="VAT"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_1_notes || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_notes: e.target.value }))}
+                                                            placeholder="Notes"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_2_description || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_description: e.target.value }))}
+                                                            placeholder="Description"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_2_amount || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_amount: e.target.value }))}
+                                                            placeholder="Amount"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_2_vat || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_vat: e.target.value }))}
+                                                            placeholder="VAT"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_2_notes || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_notes: e.target.value }))}
+                                                            placeholder="Notes"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_3_description || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_description: e.target.value }))}
+                                                            placeholder="Description"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_3_amount || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_amount: e.target.value }))}
+                                                            placeholder="Amount"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_3_vat || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_vat: e.target.value }))}
+                                                            placeholder="VAT"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
+                                                        <input
+                                                            value={templateFields.disbursement_3_notes || ''}
+                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_notes: e.target.value }))}
+                                                            placeholder="Notes"
+                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        We cannot give an exact figure for your disbursements, but this is likely to be in the region of £
+                                        <input
+                                            value={templateFields.simple_disbursements_estimate || ''}
+                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, simple_disbursements_estimate: e.target.value }))}
+                                            placeholder="estimate amount"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '80px',
+                                                width: `${Math.max(80, (templateFields.simple_disbursements_estimate || 'estimate amount').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />{' '}
+                                        <input
+                                            value={templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || ''}
+                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, in_total_including_vat_or_for_the_next_steps_in_your_matter: e.target.value }))}
+                                            placeholder="in total including VAT"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '150px',
+                                                width: `${Math.max(150, (templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || 'in total including VAT').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />{' '}including{' '}
+                                        <input
+                                            value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
+                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value }))}
+                                            placeholder="examples of what estimate includes"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '200px',
+                                                width: `${Math.max(200, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'examples of what estimate includes').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />.
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                    <button
+                                        onClick={() => setShowDisbursementsChoice(true)}
+                                        style={{
+                                            background: 'none',
+                                            border: '1px solid #0078d4',
+                                            color: '#0078d4',
+                                            padding: '4px 8px',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            borderRadius: '2px'
+                                        }}
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                );
             } else {
                 const fieldValue = templateFields[variableName];
             
@@ -1114,8 +1356,8 @@ Description | Amount | VAT chargeable
                             color: '#20b26c',
                             padding: '2px 4px',
                             fontWeight: 500,
-                            border: '1px solid #20b26c',
-                            outline: 'none',
+                            outline: '1px solid #20b26c',
+                            outlineOffset: '0px',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
                             display: 'inline',
@@ -1126,9 +1368,7 @@ Description | Amount | VAT chargeable
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             whiteSpace: 'pre-wrap',
-                            // Create continuous block across wrapped lines
-                            boxDecorationBreak: 'slice',
-                            WebkitBoxDecorationBreak: 'slice'
+                            // Keep placeholder outline intact across wrapped lines
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#d4edda';
@@ -1164,8 +1404,8 @@ Description | Amount | VAT chargeable
                             color: '#0078d4',
                             padding: '2px 4px',
                             fontWeight: 500,
-                            border: '1px dashed #0078d4',
-                            outline: 'none',
+                            outline: '1px dashed #0078d4',
+                            outlineOffset: '0px',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
                             display: 'inline',
@@ -1176,13 +1416,11 @@ Description | Amount | VAT chargeable
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             whiteSpace: 'pre-wrap',
-                            // Create continuous block across wrapped lines
-                            boxDecorationBreak: 'slice',
-                            WebkitBoxDecorationBreak: 'slice'
+                            // Keep placeholder outline intact across wrapped lines
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#e6f3ff';
-                            e.target.style.borderStyle = 'solid';
+                            e.target.style.outlineStyle = 'solid';
                             e.target.style.transform = 'scale(1.05)';
                         }}
                         onBlur={(e) => {
@@ -1192,7 +1430,7 @@ Description | Amount | VAT chargeable
                                 [variableName]: newValue
                             }));
                             e.target.style.backgroundColor = '#f0f8ff';
-                            e.target.style.borderStyle = 'dashed';
+                            e.target.style.outlineStyle = 'dashed';
                             e.target.style.transform = 'scale(1)';
                         }}
                     >
