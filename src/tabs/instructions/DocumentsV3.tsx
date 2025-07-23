@@ -1356,19 +1356,22 @@ Description | Amount | VAT chargeable
                             color: '#20b26c',
                             padding: '2px 4px',
                             fontWeight: 500,
-                            outline: '1px solid #20b26c',
-                            outlineOffset: '0px',
+                            border: '1px solid #20b26c',
+                            outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
-                            display: 'inline',
+                            display: 'inline-block',
                             minWidth: '20px',
                             cursor: 'text',
                             borderRadius: '2px',
                             transition: 'all 0.2s ease',
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            whiteSpace: 'pre-wrap',
-                            // Keep placeholder outline intact across wrapped lines
+                            wordBreak: 'break-word',
+                            whiteSpace: 'normal',
+                            maxWidth: '100%',
+                            boxSizing: 'border-box',
+                            // Ensure border flows seamlessly when text wraps
+                            boxDecorationBreak: 'slice',
+                            WebkitBoxDecorationBreak: 'slice'
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#d4edda';
@@ -1404,23 +1407,25 @@ Description | Amount | VAT chargeable
                             color: '#0078d4',
                             padding: '2px 4px',
                             fontWeight: 500,
-                            outline: '1px dashed #0078d4',
-                            outlineOffset: '0px',
+                            border: '1px dashed #0078d4',
+                            outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
-                            display: 'inline',
+                            display: 'inline-block',
                             minWidth: '20px',
                             cursor: 'text',
                             borderRadius: '2px',
                             transition: 'all 0.2s ease',
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            whiteSpace: 'pre-wrap',
-                            // Keep placeholder outline intact across wrapped lines
+                            wordBreak: 'break-word',
+                            whiteSpace: 'normal',
+                            maxWidth: '100%',
+                            boxSizing: 'border-box',
+                            boxDecorationBreak: 'slice',
+                            WebkitBoxDecorationBreak: 'slice'
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#e6f3ff';
-                            e.target.style.outlineStyle = 'solid';
+                            e.target.style.borderStyle = 'solid';
                             e.target.style.transform = 'scale(1.05)';
                         }}
                         onBlur={(e) => {
@@ -1430,7 +1435,7 @@ Description | Amount | VAT chargeable
                                 [variableName]: newValue
                             }));
                             e.target.style.backgroundColor = '#f0f8ff';
-                            e.target.style.outlineStyle = 'dashed';
+                            e.target.style.borderStyle = 'dashed';
                             e.target.style.transform = 'scale(1)';
                         }}
                     >

@@ -1,12 +1,8 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c3731aa0f5fdd9051e217899c65bd694377ed4d7..c61e5871b5b5f50b0ce3774944171e253a44f375 100644
+index c3731aa0f5fdd9051e217899c65bd694377ed4d7..1549c4ce93bcddb78cc0fba5c52894096d9f1a08 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1092,129 +1092,125 @@ Description | Amount | VAT chargeable
-                                         Change
-                                     </button>
-                                 </div>
-                             </>
+@@ -1096,109 +1096,110 @@ Description | Amount | VAT chargeable
                          )}
                      </div>
                  );
@@ -28,24 +24,27 @@ index c3731aa0f5fdd9051e217899c65bd694377ed4d7..c61e5871b5b5f50b0ce3774944171e25
                              color: '#20b26c',
                              padding: '2px 4px',
                              fontWeight: 500,
--                            border: '1px solid #20b26c',
--                            outline: 'none',
-+                            outline: '1px solid #20b26c',
-+                            outlineOffset: '0px',
+                             border: '1px solid #20b26c',
+                             outline: 'none',
                              fontFamily: 'Raleway, sans-serif',
                              fontSize: '14px',
-                             display: 'inline',
+-                            display: 'inline',
++                            display: 'inline-block',
                              minWidth: '20px',
                              cursor: 'text',
                              borderRadius: '2px',
                              transition: 'all 0.2s ease',
-                             wordWrap: 'break-word',
-                             overflowWrap: 'break-word',
-                             whiteSpace: 'pre-wrap',
+-                            wordWrap: 'break-word',
+-                            overflowWrap: 'break-word',
+-                            whiteSpace: 'pre-wrap',
 -                            // Create continuous block across wrapped lines
--                            boxDecorationBreak: 'slice',
--                            WebkitBoxDecorationBreak: 'slice'
-+                            // Keep placeholder outline intact across wrapped lines
++                            wordBreak: 'break-word',
++                            whiteSpace: 'normal',
++                            maxWidth: '100%',
++                            boxSizing: 'border-box',
++                            // Ensure border flows seamlessly when text wraps
+                             boxDecorationBreak: 'slice',
+                             WebkitBoxDecorationBreak: 'slice'
                          }}
                          onFocus={(e) => {
                              e.target.style.backgroundColor = '#d4edda';
@@ -81,29 +80,30 @@ index c3731aa0f5fdd9051e217899c65bd694377ed4d7..c61e5871b5b5f50b0ce3774944171e25
                              color: '#0078d4',
                              padding: '2px 4px',
                              fontWeight: 500,
--                            border: '1px dashed #0078d4',
--                            outline: 'none',
-+                            outline: '1px dashed #0078d4',
-+                            outlineOffset: '0px',
+                             border: '1px dashed #0078d4',
+                             outline: 'none',
                              fontFamily: 'Raleway, sans-serif',
                              fontSize: '14px',
-                             display: 'inline',
+-                            display: 'inline',
++                            display: 'inline-block',
                              minWidth: '20px',
                              cursor: 'text',
                              borderRadius: '2px',
                              transition: 'all 0.2s ease',
-                             wordWrap: 'break-word',
-                             overflowWrap: 'break-word',
-                             whiteSpace: 'pre-wrap',
+-                            wordWrap: 'break-word',
+-                            overflowWrap: 'break-word',
+-                            whiteSpace: 'pre-wrap',
 -                            // Create continuous block across wrapped lines
--                            boxDecorationBreak: 'slice',
--                            WebkitBoxDecorationBreak: 'slice'
-+                            // Keep placeholder outline intact across wrapped lines
++                            wordBreak: 'break-word',
++                            whiteSpace: 'normal',
++                            maxWidth: '100%',
++                            boxSizing: 'border-box',
+                             boxDecorationBreak: 'slice',
+                             WebkitBoxDecorationBreak: 'slice'
                          }}
                          onFocus={(e) => {
                              e.target.style.backgroundColor = '#e6f3ff';
--                            e.target.style.borderStyle = 'solid';
-+                            e.target.style.outlineStyle = 'solid';
+                             e.target.style.borderStyle = 'solid';
                              e.target.style.transform = 'scale(1.05)';
                          }}
                          onBlur={(e) => {
@@ -113,8 +113,7 @@ index c3731aa0f5fdd9051e217899c65bd694377ed4d7..c61e5871b5b5f50b0ce3774944171e25
                                  [variableName]: newValue
                              }));
                              e.target.style.backgroundColor = '#f0f8ff';
--                            e.target.style.borderStyle = 'dashed';
-+                            e.target.style.outlineStyle = 'dashed';
+                             e.target.style.borderStyle = 'dashed';
                              e.target.style.transform = 'scale(1)';
                          }}
                      >
@@ -124,19 +123,3 @@ index c3731aa0f5fdd9051e217899c65bd694377ed4d7..c61e5871b5b5f50b0ce3774944171e25
              }
              }
              
-             lastIndex = match.index + match[0].length;
-         }
-         
-         // Add any remaining editable text
-         if (lastIndex < content.length) {
-             const segmentStart = lastIndex;
-             const segmentEnd = content.length;
-             const textSegment = content.substring(segmentStart);
-             
-             // Format text segment to make numbered headings bold
-             const formatTextSegment = (text: string) => {
-                 const lines = text.split('\n');
-                 return lines.map((line, index) => {
-                     // Check if line starts with number followed by space and text (e.g., "1 Contact details")
-                     // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
-                     const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
