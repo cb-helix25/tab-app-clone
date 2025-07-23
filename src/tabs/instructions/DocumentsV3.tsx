@@ -1375,7 +1375,6 @@ Description | Amount | VAT chargeable
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#d4edda';
-                            e.target.style.transform = 'scale(1.02)';
                         }}
                         onBlur={(e) => {
                             const newValue = e.target.textContent || '';
@@ -1384,7 +1383,6 @@ Description | Amount | VAT chargeable
                                 [variableName]: newValue
                             }));
                             e.target.style.backgroundColor = '#e8f5e8';
-                            e.target.style.transform = 'scale(1)';
                         }}
                     >
                         {fieldValue}
@@ -1426,7 +1424,6 @@ Description | Amount | VAT chargeable
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#e6f3ff';
                             e.target.style.borderStyle = 'solid';
-                            e.target.style.transform = 'scale(1.05)';
                         }}
                         onBlur={(e) => {
                             const newValue = e.target.textContent || '';
@@ -1436,7 +1433,6 @@ Description | Amount | VAT chargeable
                             }));
                             e.target.style.backgroundColor = '#f0f8ff';
                             e.target.style.borderStyle = 'dashed';
-                            e.target.style.transform = 'scale(1)';
                         }}
                     >
                         {placeholderText}
