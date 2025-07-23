@@ -1114,7 +1114,7 @@ Description | Amount | VAT chargeable
                             color: '#20b26c',
                             padding: '2px 4px',
                             fontWeight: 500,
-                            border: '1px dashed #20b26c',
+                            border: '1px solid #20b26c',
                             outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
@@ -1125,7 +1125,10 @@ Description | Amount | VAT chargeable
                             transition: 'all 0.2s ease',
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
+                            // Create continuous block across wrapped lines
+                            boxDecorationBreak: 'slice',
+                            WebkitBoxDecorationBreak: 'slice'
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#d4edda';
@@ -1172,7 +1175,10 @@ Description | Amount | VAT chargeable
                             transition: 'all 0.2s ease',
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
+                            // Create continuous block across wrapped lines
+                            boxDecorationBreak: 'slice',
+                            WebkitBoxDecorationBreak: 'slice'
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = '#e6f3ff';
