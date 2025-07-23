@@ -58,19 +58,7 @@ There are three main elements to the legal costs of any matter:
 
 4.1 Our charges
 
-Our fees are calculated on the basis of an hourly rate. My rate is £395 per hour. Other Partners/senior solicitors are charged at £395, Associate solicitors at £325, Solicitors at £285 and trainees and paralegals are charged at £195. All hourly rates will be subject to the addition of VAT.
-
-Short incoming and outgoing letters, messages, emails and routine phone calls are charged at 1/10 of an hour. All other work is timed in six minute units and charged at the relevant hourly rate. Please note that lots of small emails or telephone calls may unnecessarily increase the costs to you.
-
-I estimate the cost of the Initial Scope with be £xxx plus VAT.
-
-or
-
-{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}. The next stage in your matter is {{next_stage}} and we estimate that our charges up to the completion of that stage will be in the region of £{{figure_or_range}}.
-
-We reserve the right to increase the hourly rates if the work done is particularly complex or urgent, or the nature of your instructions require us to work outside normal office hours. If this happens, we will notify you in advance and agree an appropriate rate.
-
-We will review our hourly rates on a periodic basis. This is usually done annually each January. We will give you advance notice of any change to our hourly rates.
+{{charges_section_choice}}
 
 4.2 Disbursements (expenses)
 
@@ -299,6 +287,12 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     // Show/hide estimate examples input (for estimate format)
     const [showEstimateExamples, setShowEstimateExamples] = useState(false);
     
+    // Choice for charges section (4.1)
+    const [chargesChoice, setChargesChoice] = useState<'hourly_rate' | 'no_estimate'>('hourly_rate');
+    const [showChargesChoice, setShowChargesChoice] = useState(true);
+    const [showCostsChoice, setShowCostsChoice] = useState(true);
+    const [showDisbursementsChoice, setShowDisbursementsChoice] = useState(true);
+    
     // Responsive design state
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     
@@ -330,8 +324,8 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
         next_stage: "Next Milestone",
         figure: "Payment Amount",
         figure_or_range: "Cost Estimate",
-        estimate: "Disbursement Estimate",
         we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: "No Estimate Reason",
+        estimate: "Disbursement Estimate",
         in_total_including_vat_or_for_the_next_steps_in_your_matter: "Estimate Scope",
         give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: "Estimate Includes",
         identify_the_other_party_eg_your_opponents: "Opposing Party",
@@ -398,6 +392,34 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
             "Attend the scheduled meeting",
             "Review the draft contract",
             "Complete the client questionnaire"
+        ],
+        next_stage: [
+            "document review",
+            "contract negotiation",
+            "completion",
+            "exchange of contracts",
+            "due diligence"
+        ],
+        figure: [
+            "500",
+            "1,000",
+            "1,500",
+            "2,500",
+            "3,000"
+        ],
+        figure_or_range: [
+            "2,000-3,000",
+            "5,000-7,500", 
+            "1,500-2,500",
+            "3,000-5,000",
+            "10,000-15,000"
+        ],
+        we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: [
+            "the scope of work is unclear at this stage",
+            "it depends on the complexity of negotiations",
+            "the matter involves multiple unknown variables",
+            "we need more information about your requirements",
+            "the timeline and scope may change significantly"
         ],
         identify_the_other_party_eg_your_opponents: [
             "the seller",
@@ -620,6 +642,21 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
         
         content = content.replace(/\{\{costs_section_choice\}\}/g, costsText);
         
+        // Handle charges section choice
+        const chargesText = chargesChoice === 'hourly_rate' 
+            ? `Our fees are calculated on the basis of an hourly rate. My rate is £395 per hour. Other Partners/senior solicitors are charged at £395, Associate solicitors at £325, Solicitors at £285 and trainees and paralegals are charged at £195. All hourly rates will be subject to the addition of VAT.
+
+Short incoming and outgoing letters, messages, emails and routine phone calls are charged at 1/10 of an hour. All other work is timed in six minute units and charged at the relevant hourly rate. Please note that lots of small emails or telephone calls may unnecessarily increase the costs to you.
+
+I estimate the cost of the Initial Scope with be £${templateFields.figure || '{{figure}}'} plus VAT.`
+            : `We cannot give an estimate of our overall charges in this matter because ${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}'}. The next stage in your matter is ${templateFields.next_stage || '{{next_stage}}'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '{{figure_or_range}}'}.
+
+We reserve the right to increase the hourly rates if the work done is particularly complex or urgent, or the nature of your instructions require us to work outside normal office hours. If this happens, we will notify you in advance and agree an appropriate rate.
+
+We will review our hourly rates on a periodic basis. This is usually done annually each January. We will give you advance notice of any change to our hourly rates.`;
+        
+        content = content.replace(/\{\{charges_section_choice\}\}/g, chargesText);
+        
         // Handle disbursements section choice
         const disbursementsText = disbursementsChoice === 'table' 
             ? `Based on the information you have provided, we expect to incur the following disbursements:
@@ -738,370 +775,334 @@ Description | Amount | VAT chargeable
             // Add the interactive inline editor for placeholders
             const variableName = match[1].trim();
             
-            // Special handling for costs_section_choice
-            if (variableName === 'costs_section_choice') {
+            // Special handling for charges_section_choice
+            if (variableName === 'charges_section_choice') {
                 parts.push(
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: costsChoice === 'risk_costs' ? '#f3f9ff' : '#fff',
-                            border: `2px solid ${costsChoice === 'risk_costs' ? colours.blue : colours.cta}`,
+                            backgroundColor: '#f3f9ff',
+                            border: `1px solid ${colours.blue}`,
                             borderRadius: 0,
                             padding: '16px',
                             margin: '8px 0',
-                            display: 'inline-block',
-                            minWidth: '400px'
+                            display: 'block',
+                            width: '100%'
                         }}
                     >
-                        <div style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: costsChoice === 'risk_costs' ? colours.blue : colours.cta,
-                            marginBottom: '12px',
-                            letterSpacing: 0.1,
-                            textTransform: 'none'
-                        }}>
-                            Choose one option:
-                        </div>
-                        
-                        {/* Option 1: No costs expected */}
-                        <div
-                            onClick={() => setCostsChoice('no_costs')}
-                            style={{
-                                padding: '12px',
-                                marginBottom: '8px',
-                                border: '2px solid #d0d0d7',
-                                borderRadius: '4px',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'flex-start',
-                                gap: '8px'
-                            }}>
+                        {showChargesChoice ? (
+                            <>
                                 <div style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    borderRadius: '50%',
-                                    border: '2px solid #0078d4',
-                                    backgroundColor: costsChoice === 'no_costs' ? '#0078d4' : 'transparent',
-                                    marginTop: '2px',
-                                    flexShrink: 0
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    color: colours.blue,
+                                    marginBottom: '12px',
+                                    letterSpacing: 0.1,
+                                    textTransform: 'none'
                                 }}>
-                                    {costsChoice === 'no_costs' && (
-                                        <div style={{
-                                            width: '6px',
-                                            height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'white',
-                                            margin: '3px auto'
-                                        }} />
-                                    )}
+                                    Choose charges format:
                                 </div>
-                                <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
-                                    We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter.
+                                {/* Option 1: Hourly rate format */}
+                                <div
+                                    onClick={() => {
+                                        setChargesChoice('hourly_rate');
+                                        setShowChargesChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        marginBottom: '8px',
+                                        border: `1px solid ${chargesChoice === 'hourly_rate' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: chargesChoice === 'hourly_rate' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>Hourly rate structure</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when you can provide detailed hourly rates and initial estimate
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        {/* Option 2: Risk of costs with inline field */}
-                        <div
-                            onClick={() => setCostsChoice('risk_costs')}
-                            style={{
-                                padding: '12px',
-                                border: '2px solid #d0d0d7',
-                                borderRadius: '4px',
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'flex-start',
-                                gap: '8px'
-                            }}>
-                                <div style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    borderRadius: '50%',
-                                    border: '2px solid #0078d4',
-                                    backgroundColor: costsChoice === 'risk_costs' ? '#0078d4' : 'transparent',
-                                    marginTop: '2px',
-                                    flexShrink: 0
-                                }}>
-                                    {costsChoice === 'risk_costs' && (
-                                        <div style={{
-                                            width: '6px',
-                                            height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'white',
-                                            margin: '3px auto'
-                                        }} />
-                                    )}
+                                {/* Option 2: No estimate format */}
+                                <div
+                                    onClick={() => {
+                                        setChargesChoice('no_estimate');
+                                        setShowChargesChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        border: `1px solid ${chargesChoice === 'no_estimate' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: chargesChoice === 'no_estimate' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>No overall estimate</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when overall scope is unclear but you can estimate next stage
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: '14px', lineHeight: '1.4', flex: 1 }}>
-                                    There is a risk that you may have to pay{' '}
-                                    <input
-                                        value={templateFields.identify_the_other_party_eg_your_opponents || ''}
-                                        onChange={(e) => {
-                                            setTemplateFields(prev => ({
-                                                ...prev,
-                                                identify_the_other_party_eg_your_opponents: e.target.value || ''
-                                            }));
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        placeholder="other party"
+                            </>
+                        ) : (
+                            <>
+                                {/* Only show the selected text, no label */}
+                                {chargesChoice === 'hourly_rate' ? (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        Our fees are calculated on the basis of an hourly rate. My rate is £395 per hour. Other Partners/senior solicitors are charged at £395, Associate solicitors at £325, Solicitors at £285 and trainees and paralegals are charged at £195. All hourly rates will be subject to the addition of VAT.<br /><br />
+                                        Short incoming and outgoing letters, messages, emails and routine phone calls are charged at 1/10 of an hour. All other work is timed in six minute units and charged at the relevant hourly rate. Please note that lots of small emails or telephone calls may unnecessarily increase the costs to you.<br /><br />
+                                        I estimate the cost of the Initial Scope with be £
+                                        <input
+                                            value={templateFields.figure || ''}
+                                            onChange={(e) => {
+                                                setTemplateFields(prev => ({
+                                                    ...prev,
+                                                    figure: e.target.value || ''
+                                                }));
+                                            }}
+                                            placeholder="amount"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '60px',
+                                                width: `${Math.max(60, (templateFields.figure || 'amount').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        /> plus VAT.
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        We cannot give an estimate of our overall charges in this matter because{' '}
+                                        <input
+                                            value={templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || ''}
+                                            onChange={(e) => {
+                                                setTemplateFields(prev => ({
+                                                    ...prev,
+                                                    we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: e.target.value || ''
+                                                }));
+                                            }}
+                                            placeholder="reason why estimate is not possible"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '200px',
+                                                width: `${Math.max(200, (templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || 'reason why estimate is not possible').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />. The next stage in your matter is{' '}
+                                        <input
+                                            value={templateFields.next_stage || ''}
+                                            onChange={(e) => {
+                                                setTemplateFields(prev => ({
+                                                    ...prev,
+                                                    next_stage: e.target.value || ''
+                                                }));
+                                            }}
+                                            placeholder="next stage"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '100px',
+                                                width: `${Math.max(100, (templateFields.next_stage || 'next stage').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />{' '}and we estimate that our charges up to the completion of that stage will be in the region of £
+                                        <input
+                                            value={templateFields.figure_or_range || ''}
+                                            onChange={(e) => {
+                                                setTemplateFields(prev => ({
+                                                    ...prev,
+                                                    figure_or_range: e.target.value || ''
+                                                }));
+                                            }}
+                                            placeholder="figure or range"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '80px',
+                                                width: `${Math.max(80, (templateFields.figure_or_range || 'figure or range').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />.<br /><br />
+                                        We reserve the right to increase the hourly rates if the work done is particularly complex or urgent, or the nature of your instructions require us to work outside normal office hours. If this happens, we will notify you in advance and agree an appropriate rate.<br /><br />
+                                        We will review our hourly rates on a periodic basis. This is usually done annually each January. We will give you advance notice of any change to our hourly rates.
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                    <button
+                                        onClick={() => setShowChargesChoice(true)}
                                         style={{
-                                            fontSize: '14px',
-                                            padding: '2px 6px',
+                                            background: 'none',
                                             border: '1px solid #0078d4',
-                                            borderRadius: '2px',
-                                            backgroundColor: '#fff',
-                                            outline: 'none',
-                                            minWidth: '100px',
-                                            width: `${Math.max(100, (templateFields.identify_the_other_party_eg_your_opponents || 'other party').length * 8 + 20)}px`,
-                                            transition: 'width 0.2s ease',
-                                            margin: '0',
-                                            verticalAlign: 'baseline'
+                                            color: '#0078d4',
+                                            padding: '4px 8px',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            borderRadius: '2px'
                                         }}
-                                    />{' '}
-                                    costs in this matter. This is explained in section 5, Funding and billing below.
+                                    >
+                                        Change
+                                    </button>
                                 </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
                 );
-            } else if (variableName === 'disbursements_section_choice') {
+            } else if (variableName === 'costs_section_choice') {
+                // Both 'no_costs' and 'risk_costs' are considered answered (blue highlight for both)
                 parts.push(
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: disbursementsChoice === 'estimate' ? '#f3f9ff' : '#fff',
-                            border: `2px solid ${disbursementsChoice === 'estimate' ? colours.blue : colours.cta}`,
+                            backgroundColor: '#f3f9ff',
+                            border: `1px solid ${colours.blue}`,
                             borderRadius: 0,
                             padding: '16px',
                             margin: '8px 0',
-                            display: 'inline-block',
-                            minWidth: '400px'
+                            display: 'block',
+                            width: '100%'
                         }}
                     >
-                        <div style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: disbursementsChoice === 'estimate' ? colours.blue : colours.cta,
-                            marginBottom: '12px',
-                            letterSpacing: 0.1,
-                            textTransform: 'none'
-                        }}>
-                            Choose disbursements format:
-                        </div>
-                        
-                        {/* Option 1: Table format */}
-                        <div
-                            onClick={() => setDisbursementsChoice('table')}
-                            style={{
-                                padding: '12px',
-                                marginBottom: '8px',
-                                border: '2px solid #d0d0d7',
-                                borderRadius: 0,
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'flex-start',
-                                gap: '8px'
-                            }}>
+                        {showCostsChoice ? (
+                            <>
                                 <div style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    borderRadius: '50%',
-                                    border: '2px solid #0078d4',
-                                    backgroundColor: disbursementsChoice === 'table' ? '#0078d4' : 'transparent',
-                                    marginTop: '2px',
-                                    flexShrink: 0
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    color: colours.blue,
+                                    marginBottom: '12px',
+                                    letterSpacing: 0.1,
+                                    textTransform: 'none'
                                 }}>
-                                    {disbursementsChoice === 'table' && (
-                                        <div style={{
-                                            width: '6px',
-                                            height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'white',
-                                            margin: '3px auto'
-                                        }} />
-                                    )}
+                                    Choose one option:
                                 </div>
-                                <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
-                                    <strong>Table format</strong><br />
-                                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                        Use when client has provided disbursement information
+                                {/* Option 1: No costs expected */}
+                                <div
+                                    onClick={() => {
+                                        setCostsChoice('no_costs');
+                                        setShowCostsChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        marginBottom: '8px',
+                                        border: `1px solid ${costsChoice === 'no_costs' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: costsChoice === 'no_costs' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>No costs expected</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when matter is non-litigious
+                                        </div>
                                     </div>
-                                    Based on the information you have provided, we expect to incur the following disbursements:<br />
-                                    Description | Amount | VAT chargeable<br />
-                                    [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Option 2: Estimate format */}
-                        <div
-                            onClick={() => setDisbursementsChoice('estimate')}
-                            style={{
-                                padding: '12px',
-                                border: '2px solid #d0d0d7',
-                                borderRadius: 0,
-                                backgroundColor: '#fff',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'flex-start',
-                                gap: '8px'
-                            }}>
-                                <div style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    borderRadius: '50%',
-                                    border: '2px solid #0078d4',
-                                    backgroundColor: disbursementsChoice === 'estimate' ? '#0078d4' : 'transparent',
-                                    marginTop: '2px',
-                                    flexShrink: 0
-                                }}>
-                                    {disbursementsChoice === 'estimate' && (
-                                        <div style={{
-                                            width: '6px',
-                                            height: '6px',
-                                            borderRadius: '50%',
-                                            backgroundColor: 'white',
-                                            margin: '3px auto'
-                                        }} />
-                                    )}
-                                </div>
-                                <div style={{ fontSize: '14px', lineHeight: '1.4', flex: 1 }}>
-                                    <strong>Estimate format</strong><br />
-                                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                        Use when you cannot provide specific disbursement details
+                                {/* Option 2: Risk of costs with inline field */}
+                                <div
+                                    onClick={() => {
+                                        setCostsChoice('risk_costs');
+                                        setShowCostsChoice(false);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        border: `1px solid ${costsChoice === 'risk_costs' ? '#0078d4' : '#d0d0d7'}`,
+                                        borderRadius: 0,
+                                        backgroundColor: costsChoice === 'risk_costs' ? '#f0f8ff' : '#fff',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        <strong>Risk of costs</strong><br />
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            Use when there's potential litigation or dispute
+                                        </div>
                                     </div>
-                                    We cannot give an exact figure for your disbursements, but this is likely to be in the region of £
-                                    <input
-                                        value={templateFields.estimate || ''}
-                                        onChange={(e) => {
-                                            setTemplateFields(prev => ({
-                                                ...prev,
-                                                estimate: e.target.value || ''
-                                            }));
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        placeholder="amount"
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Only show the selected text, no label */}
+                                {costsChoice === 'no_costs' ? (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter.
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                        There is a risk that you may have to pay{' '}
+                                        <input
+                                            value={templateFields.identify_the_other_party_eg_your_opponents || ''}
+                                            onChange={(e) => {
+                                                setTemplateFields(prev => ({
+                                                    ...prev,
+                                                    identify_the_other_party_eg_your_opponents: e.target.value || ''
+                                                }));
+                                            }}
+                                            placeholder="other party"
+                                            style={{
+                                                fontSize: '14px',
+                                                padding: '1px 4px',
+                                                border: '1px solid #0078d4',
+                                                borderRadius: '2px',
+                                                backgroundColor: '#fff',
+                                                outline: 'none',
+                                                minWidth: '100px',
+                                                width: `${Math.max(100, (templateFields.identify_the_other_party_eg_your_opponents || 'other party').length * 8 + 15)}px`,
+                                                transition: 'width 0.2s ease',
+                                                margin: '0 2px',
+                                                verticalAlign: 'baseline'
+                                            }}
+                                        />{' '}
+                                        costs in this matter. This is explained in section 5, Funding and billing below.
+                                    </div>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                    <button
+                                        onClick={() => setShowCostsChoice(true)}
                                         style={{
-                                            fontSize: '14px',
-                                            padding: '1px 4px',
+                                            background: 'none',
                                             border: '1px solid #0078d4',
-                                            borderRadius: '2px',
-                                            backgroundColor: '#fff',
-                                            outline: 'none',
-                                            minWidth: '60px',
-                                            width: `${Math.max(60, (templateFields.estimate || 'amount').length * 8 + 15)}px`,
-                                            transition: 'width 0.2s ease',
-                                            margin: '0 2px',
-                                            verticalAlign: 'baseline'
+                                            color: '#0078d4',
+                                            padding: '4px 8px',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            borderRadius: '2px'
                                         }}
-                                    /> {showEstimateExamples ? 'for the next steps in your matter including' : 'in total including VAT'}
-                                    {showEstimateExamples ? (
-                                        <>
-                                            {' '}
-                                            <input
-                                                value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
-                                                onChange={(e) => {
-                                                    setTemplateFields(prev => ({
-                                                        ...prev,
-                                                        give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value || ''
-                                                    }));
-                                                }}
-                                                onClick={(e) => e.stopPropagation()}
-                                                placeholder="court fees and search fees"
-                                                style={{
-                                                    fontSize: '14px',
-                                                    padding: '1px 4px',
-                                                    border: '1px solid #0078d4',
-                                                    borderRadius: '2px',
-                                                    backgroundColor: '#fff',
-                                                    outline: 'none',
-                                                    minWidth: '150px',
-                                                    width: `${Math.max(150, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'court fees and search fees').length * 8 + 15)}px`,
-                                                    transition: 'width 0.2s ease',
-                                                    margin: '0 2px',
-                                                    verticalAlign: 'baseline'
-                                                }}
-                                            />
-                                            .
-                                            <button
-                                                type="button"
-                                                aria-label="Remove examples"
-                                                onClick={() => setShowEstimateExamples(false)}
-                                                style={{
-                                                    border: 'none',
-                                                    background: 'none',
-                                                    color: '#d13438',
-                                                    fontSize: 22,
-                                                    fontWeight: 400,
-                                                    cursor: 'pointer',
-                                                    marginLeft: 8,
-                                                    marginRight: 12,
-                                                    padding: 0,
-                                                    height: '1.2em',
-                                                    width: '1.2em',
-                                                    lineHeight: '1.2em',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    borderRadius: 0,
-                                                    backgroundColor: 'rgba(255,255,255,0.25)',
-                                                    boxSizing: 'border-box',
-                                                    transition: 'background-color 0.2s, color 0.2s',
-                                                }}
-                                                onMouseOver={e => {
-                                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.35)';
-                                                }}
-                                                onMouseOut={e => {
-                                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)';
-                                                }}
-                                            >
-                                                <span style={{
-                                                    display: 'inline-block',
-                                                    height: '1em',
-                                                    lineHeight: '1em',
-                                                    fontWeight: 400,
-                                                    fontSize: '1.1em',
-                                                    fontFamily: 'monospace',
-                                                    userSelect: 'none',
-                                                    pointerEvents: 'none',
-                                                }}>×</span>
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            .
-                                            <button
-                                                type="button"
-                                                style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', border: '1px solid #0078d4', background: '#f3f9ff', color: '#0078d4', cursor: 'pointer', borderRadius: 0 }}
-                                                onClick={() => setShowEstimateExamples(true)}
-                                            >
-                                                Add examples
-                                            </button>
-                                        </>
-                                    )}
+                                    >
+                                        Change
+                                    </button>
                                 </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
                 );
             } else {
@@ -1157,8 +1158,8 @@ Description | Amount | VAT chargeable
                     />
                 );
             } else {
-                // Variable is empty - show as inline input placeholder
-                const placeholderText = `Enter ${variableName.replace(/_/g, ' ')}`;
+                // Variable is empty - show as inline input placeholder (remove 'Enter ')
+                const placeholderText = variableName.replace(/_/g, ' ');
                 parts.push(
                     <input
                         key={match.index}
@@ -1178,7 +1179,7 @@ Description | Amount | VAT chargeable
                             backgroundColor: '#fff3cd',
                             color: '#856404',
                             padding: '4px 8px',
-                            borderRadius: '4px',
+                            // borderRadius removed for square corners
                             fontWeight: 500,
                             border: '2px dashed #ffeaa7',
                             outline: 'none',

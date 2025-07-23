@@ -1,5 +1,5 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
 @@ -40,55 +40,51 @@ We will provide legal advice and services to you with reasonable care and skill.
@@ -33,7 +33,7 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
 -or
 -
 -{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}. The next stage in your matter is {{next_stage}} and we estimate that our charges up to the completion of that stage will be in the region of £{{figure_or_range}}.
-+{{estimate_section_choice}}
++{{charges_section_choice}}
  
  We reserve the right to increase the hourly rates if the work done is particularly complex or urgent, or the nature of your instructions require us to work outside normal office hours. If this happens, we will notify you in advance and agree an appropriate rate.
  
@@ -60,14 +60,10 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
  6 Payment on account of costs
  
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -264,92 +260,100 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
-     const [hasSelectedInstruction, setHasSelectedInstruction] = useState<boolean>(!!selectedInstructionProp);
-     const [userHasInteracted, setUserHasInteracted] = useState<boolean>(!!selectedInstructionProp);
-     const [selectedTemplate, setSelectedTemplate] = useState<'ccl' | 'custom' | null>(initialTemplate ?? null);
-     const [instructionSearchTerm, setInstructionSearchTerm] = useState<string>('');
+@@ -268,53 +264,59 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
  
      // Step 2: Editor & Template Fields
      const [documentContent, setDocumentContent] = useState('');
@@ -89,25 +85,24 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
          insert_current_position_and_scope_of_retainer: '',
          next_steps: '',
          realistic_timescale: '',
--        identify_the_other_party_eg_your_opponents: ''
-+        identify_the_other_party_eg_your_opponents: '',
-+        estimated_cost: '',
-+        we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: '',
-+        next_stage: '',
-+        figure_or_range: ''
+         identify_the_other_party_eg_your_opponents: ''
      });
      const [activeField, setActiveField] = useState<string | null>(null);
      const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
++
++    // Track whether OR-style sections have been answered
++    const [touchedSections, setTouchedSections] = useState<Record<string, boolean>>({});
      
      // Choice for costs section (4.3)
      const [costsChoice, setCostsChoice] = useState<'no_costs' | 'risk_costs'>('no_costs');
--    
 +
++    // Choice for charges section (4.1)
++    const [chargesChoice, setChargesChoice] = useState<'estimate' | 'no_estimate'>('estimate');
+     
      // Choice for disbursements section (4.2)
      const [disbursementsChoice, setDisbursementsChoice] = useState<'table' | 'estimate'>('table');
-+
-+    // Choice for estimate section (4.1)
-+    const [estimateChoice, setEstimateChoice] = useState<'estimate' | 'no_estimate'>('estimate');
+     // Show/hide estimate examples input (for estimate format)
+     const [showEstimateExamples, setShowEstimateExamples] = useState(false);
      
      // Responsive design state
      const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -128,115 +123,47 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
      const FIELD_DISPLAY_NAMES = {
          insert_clients_name: "Client Name",
          insert_heading_eg_matter_description: "Matter Heading",
-         matter: "Matter Type",
-         name_of_person_handling_matter: "Handler Name",
-         status: "Handler Status",
-         name_of_handler: "Handler Short Name",
-         handler: "Handler Reference",
-         email: "Contact Method",
-         insert_current_position_and_scope_of_retainer: "Scope of Work",
-         next_steps: "Next Actions",
-         realistic_timescale: "Timeline",
-         next_stage: "Next Milestone",
-         figure: "Payment Amount",
-         figure_or_range: "Cost Estimate",
-+        estimated_cost: "Estimated Cost",
-         estimate: "Disbursement Estimate",
-         we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: "No Estimate Reason",
-         in_total_including_vat_or_for_the_next_steps_in_your_matter: "Estimate Scope",
-         give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: "Estimate Includes",
-         identify_the_other_party_eg_your_opponents: "Opposing Party",
-         may_will: "Litigation Likelihood",
-         and_or_intervals_eg_every_three_months: "Cost Update Frequency",
-         contact_details_for_marketing_opt_out: "Marketing Contact",
-         link_to_preference_centre: "Preference Centre URL",
-         explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement: "Referral Arrangement",
-         instructions_link: "Cancellation Instructions URL",
-         name: "Supervisor Name",
-         names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries: "Support Staff",
-         name_of_firm: "Firm Name",
-         // New disbursement fields
-         simple_disbursements_estimate: "Simple Estimate Amount",
-         detailed_disbursements_examples: "Detailed Examples",
-         detailed_disbursements_total: "Detailed Total",
-         disbursement_1_description: "Disbursement 1 Description",
-         disbursement_1_amount: "Disbursement 1 Amount",
-         disbursement_1_vat: "Disbursement 1 VAT",
-         disbursement_1_notes: "Disbursement 1 Notes",
-         disbursement_2_description: "Disbursement 2 Description",
-         disbursement_2_amount: "Disbursement 2 Amount",
-         disbursement_2_vat: "Disbursement 2 VAT",
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -393,50 +397,57 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
-         next_steps: [
-             "Review and sign the attached documents",
-             "Provide requested documentation",
-             "Attend the scheduled meeting",
-             "Review the draft contract",
-             "Complete the client questionnaire"
-         ],
-         identify_the_other_party_eg_your_opponents: [
-             "the seller",
-             "the buyer",
-             "the landlord",
-             "the tenant",
-             "the opposing party",
-             "the defendant",
-             "the claimant",
-             "the other party's",
-             "your opponent's"
-         ],
-         estimate: [
-             "500",
-             "1000",
-             "1500",
-             "2000",
-             "3000"
-         ],
-+        estimated_cost: [
-+            "500",
-+            "1000",
-+            "1500",
-+            "2000",
-+            "3000"
-+        ],
-         in_total_including_vat_or_for_the_next_steps_in_your_matter: [
-             "in total including VAT",
-             "for the next steps in your matter",
-             "including VAT and expenses",
-             "total estimate including all costs"
-         ],
-         give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: [
-             "court fees and search fees",
-             "accountants report and valuation",
-             "Land Registry fees and searches",
-             "expert witness fees and reports",
-             "administrative costs and postage"
-         ]
+@@ -569,78 +571,96 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
+     // Preset system functions
+     const handleFieldClick = (fieldName: string, event: React.MouseEvent) => {
+         const rect = (event.target as HTMLElement).getBoundingClientRect();
+         setPresetField(fieldName);
+         setPresetPosition({ 
+             x: rect.left + rect.width / 2, 
+             y: rect.bottom + 8 
+         });
+         setShowPresets(true);
      };
      
-     // Responsive design effect
-     useEffect(() => {
-         let timeoutId: NodeJS.Timeout;
-         
-         const handleResize = () => {
-             clearTimeout(timeoutId);
-             timeoutId = setTimeout(() => {
-                 setWindowWidth(window.innerWidth);
-             }, 100); // Debounce resize events
-         };
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -588,50 +599,57 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
+     const handlePresetSelect = (preset: string) => {
+         if (presetField) {
+             const updatedFields = { ...templateFields, [presetField]: preset };
+             setTemplateFields(updatedFields);
+             setTouchedFields(prev => ({ ...prev, [presetField]: true }));
+         }
+         setShowPresets(false);
+         setPresetField(null);
+     };
+     
      const closePresets = () => {
          setShowPresets(false);
          setPresetField(null);
      };
++
++    // Record choice selection for OR-style sections
++    const handleDisbursementsChoiceSelect = (choice: 'table' | 'estimate') => {
++        setDisbursementsChoice(choice);
++        setTouchedSections(prev => ({ ...prev, disbursements_section_choice: true }));
++    };
++
++    const handleChargesChoiceSelect = (choice: 'estimate' | 'no_estimate') => {
++        setChargesChoice(choice);
++        setTouchedSections(prev => ({ ...prev, charges_section_choice: true }));
++    };
      
      // Handle field hover for tooltips
      const handleFieldHover = (fieldKey: string, event: React.MouseEvent) => {
@@ -258,20 +185,22 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
          if (!documentContent) return documentContent;
          
          let content = documentContent;
-+
-+        // Handle estimate section choice
-+        const estimateText = estimateChoice === 'estimate'
-+            ? `I estimate the cost of the Initial Scope will be £${templateFields.estimated_cost || 'xxx'} plus VAT.`
-+            : `${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}'}. The next stage in your matter is ${templateFields.next_stage || '{{next_stage}}'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '{{figure_or_range}}'}.`;
-+
-+        content = content.replace(/\{\{estimate_section_choice\}\}/g, estimateText);
          
          // Handle costs section choice
-         const costsText = costsChoice === 'no_costs' 
+-        const costsText = costsChoice === 'no_costs' 
++        const costsText = costsChoice === 'no_costs'
              ? "We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter."
              : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
-         
+-        
++
          content = content.replace(/\{\{costs_section_choice\}\}/g, costsText);
++
++        // Handle charges section choice
++        const chargesText = chargesChoice === 'estimate'
++            ? 'I estimate the cost of the Initial Scope with be £xxx plus VAT.'
++            : `${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}'}. The next stage in your matter is ${templateFields.next_stage || '{{next_stage}}'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '{{figure_or_range}}'}.`;
++
++        content = content.replace(/\{\{charges_section_choice\}\}/g, chargesText);
          
          // Handle disbursements section choice
          const disbursementsText = disbursementsChoice === 'table' 
@@ -290,126 +219,273 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
              if (value && value.trim()) {
                  const placeholder = `{{${key}}}`;
                  content = content.replace(new RegExp(placeholder, 'g'), value);
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1253,50 +1271,51 @@ Description | Amount | VAT chargeable
+             }
+         });
+         
+         return content;
      };
+     
+     // Function to render content with highlighted template variables
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -853,127 +873,248 @@ Description | Amount | VAT chargeable
+                                                 identify_the_other_party_eg_your_opponents: e.target.value || ''
+                                             }));
+                                         }}
+                                         onClick={(e) => e.stopPropagation()}
+                                         placeholder="other party"
+                                         style={{
+                                             fontSize: '14px',
+                                             padding: '2px 6px',
+                                             border: '1px solid #0078d4',
+                                             borderRadius: '2px',
+                                             backgroundColor: '#fff',
+                                             outline: 'none',
+                                             minWidth: '100px',
+                                             width: `${Math.max(100, (templateFields.identify_the_other_party_eg_your_opponents || 'other party').length * 8 + 20)}px`,
+                                             transition: 'width 0.2s ease',
+                                             margin: '0',
+                                             verticalAlign: 'baseline'
+                                         }}
+                                     />{' '}
+                                     costs in this matter. This is explained in section 5, Funding and billing below.
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                 );
++            } else if (variableName === 'charges_section_choice') {
++                parts.push(
++                    <div
++                        key={match.index}
++                        style={{
++                            backgroundColor: chargesChoice === 'no_estimate' ? '#f3f9ff' : '#fff',
++                            border: `2px solid ${chargesChoice === 'no_estimate' ? colours.blue : colours.cta}`,
++                            borderRadius: 0,
++                            padding: '16px',
++                            margin: '8px 0',
++                            display: 'inline-block',
++                            minWidth: '400px'
++                        }}
++                    >
++                        <div style={{
++                            fontSize: '13px',
++                            fontWeight: 600,
++                            color: chargesChoice === 'no_estimate' ? colours.blue : colours.cta,
++                            marginBottom: '12px',
++                            letterSpacing: 0.1,
++                            textTransform: 'none'
++                        }}>
++                            Choose charges statement:
++                        </div>
++
++                        {/* Option 1: Provide estimate */}
++                        <div
++                            onClick={() => handleChargesChoiceSelect('estimate')}
++                            style={{
++                                padding: '12px',
++                                marginBottom: '8px',
++                                border: '2px solid #d0d0d7',
++                                borderRadius: 0,
++                                backgroundColor: '#fff',
++                                cursor: 'pointer',
++                                transition: 'all 0.2s ease'
++                            }}
++                        >
++                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
++                                <div style={{
++                                    width: '16px',
++                                    height: '16px',
++                                    borderRadius: '50%',
++                                    border: '2px solid #0078d4',
++                                    backgroundColor: chargesChoice === 'estimate' ? '#0078d4' : 'transparent',
++                                    marginTop: '2px',
++                                    flexShrink: 0
++                                }}>
++                                    {chargesChoice === 'estimate' && (
++                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'white', margin: '3px auto' }} />
++                                    )}
++                                </div>
++                                <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
++                                    I estimate the cost of the Initial Scope will be £xxx plus VAT.
++                                </div>
++                            </div>
++                        </div>
++
++                        {/* Option 2: Cannot estimate */}
++                        <div
++                            onClick={() => handleChargesChoiceSelect('no_estimate')}
++                            style={{
++                                padding: '12px',
++                                border: '2px solid #d0d0d7',
++                                borderRadius: 0,
++                                backgroundColor: '#fff',
++                                cursor: 'pointer',
++                                transition: 'all 0.2s ease'
++                            }}
++                        >
++                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
++                                <div style={{
++                                    width: '16px',
++                                    height: '16px',
++                                    borderRadius: '50%',
++                                    border: '2px solid #0078d4',
++                                    backgroundColor: chargesChoice === 'no_estimate' ? '#0078d4' : 'transparent',
++                                    marginTop: '2px',
++                                    flexShrink: 0
++                                }}>
++                                    {chargesChoice === 'no_estimate' && (
++                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'white', margin: '3px auto' }} />
++                                    )}
++                                </div>
++                                <div style={{ fontSize: '14px', lineHeight: '1.4', flex: 1 }}>
++                                    <input
++                                        value={templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || ''}
++                                        onChange={(e) => {
++                                            setTemplateFields(prev => ({
++                                                ...prev,
++                                                we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: e.target.value || ''
++                                            }));
++                                        }}
++                                        onClick={(e) => e.stopPropagation()}
++                                        placeholder="reason"
++                                        style={{ fontSize: '14px', padding: '1px 4px', border: '1px solid #0078d4', borderRadius: '2px', backgroundColor: '#fff', outline: 'none', minWidth: '100px', margin: '0 2px', verticalAlign: 'baseline' }}
++                                    />. The next stage in your matter is
++                                    {' '}
++                                    <input
++                                        value={templateFields.next_stage || ''}
++                                        onChange={(e) => {
++                                            setTemplateFields(prev => ({ ...prev, next_stage: e.target.value || '' }));
++                                        }}
++                                        onClick={(e) => e.stopPropagation()}
++                                        placeholder="next stage"
++                                        style={{ fontSize: '14px', padding: '1px 4px', border: '1px solid #0078d4', borderRadius: '2px', backgroundColor: '#fff', outline: 'none', minWidth: '100px', margin: '0 2px', verticalAlign: 'baseline' }}
++                                    /> and we estimate that our charges up to the completion of that stage will be in the region of £
++                                    <input
++                                        value={templateFields.figure_or_range || ''}
++                                        onChange={(e) => {
++                                            setTemplateFields(prev => ({ ...prev, figure_or_range: e.target.value || '' }));
++                                        }}
++                                        onClick={(e) => e.stopPropagation()}
++                                        placeholder="amount"
++                                        style={{ fontSize: '14px', padding: '1px 4px', border: '1px solid #0078d4', borderRadius: '2px', backgroundColor: '#fff', outline: 'none', minWidth: '80px', margin: '0 2px', verticalAlign: 'baseline' }}
++                                    />.
++                                </div>
++                            </div>
++                        </div>
++                    </div>
++                );
+             } else if (variableName === 'disbursements_section_choice') {
+                 parts.push(
+                     <div
+                         key={match.index}
+                         style={{
+                             backgroundColor: disbursementsChoice === 'estimate' ? '#f3f9ff' : '#fff',
+                             border: `2px solid ${disbursementsChoice === 'estimate' ? colours.blue : colours.cta}`,
+                             borderRadius: 0,
+                             padding: '16px',
+                             margin: '8px 0',
+                             display: 'inline-block',
+                             minWidth: '400px'
+                         }}
+                     >
+                         <div style={{
+                             fontSize: '13px',
+                             fontWeight: 600,
+                             color: disbursementsChoice === 'estimate' ? colours.blue : colours.cta,
+                             marginBottom: '12px',
+                             letterSpacing: 0.1,
+                             textTransform: 'none'
+                         }}>
+                             Choose disbursements format:
+                         </div>
+                         
+                         {/* Option 1: Table format */}
+                         <div
+-                            onClick={() => setDisbursementsChoice('table')}
++                            onClick={() => handleDisbursementsChoiceSelect('table')}
+                             style={{
+                                 padding: '12px',
+                                 marginBottom: '8px',
+                                 border: '2px solid #d0d0d7',
+                                 borderRadius: 0,
+                                 backgroundColor: '#fff',
+                                 cursor: 'pointer',
+                                 transition: 'all 0.2s ease'
+                             }}
+                         >
+                             <div style={{ 
+                                 display: 'flex', 
+                                 alignItems: 'flex-start',
+                                 gap: '8px'
+                             }}>
+                                 <div style={{
+                                     width: '16px',
+                                     height: '16px',
+                                     borderRadius: '50%',
+                                     border: '2px solid #0078d4',
+                                     backgroundColor: disbursementsChoice === 'table' ? '#0078d4' : 'transparent',
+                                     marginTop: '2px',
+                                     flexShrink: 0
+                                 }}>
+                                     {disbursementsChoice === 'table' && (
+                                         <div style={{
+                                             width: '6px',
+                                             height: '6px',
+                                             borderRadius: '50%',
+                                             backgroundColor: 'white',
+                                             margin: '3px auto'
+                                         }} />
+                                     )}
+                                 </div>
+                                 <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                                     <strong>Table format</strong><br />
+                                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                         Use when client has provided disbursement information
+                                     </div>
+                                     Based on the information you have provided, we expect to incur the following disbursements:<br />
+                                     Description | Amount | VAT chargeable<br />
+                                     [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
+                                 </div>
+                             </div>
+                         </div>
  
-     // Function to render fields-only view with context sentences
-     const renderFieldsOnlyView = () => {
-         // All 44 placeholders from the actual CCL template
-         const actualFields = [
-             'insert_clients_name',
-             'insert_heading_eg_matter_description', 
-             'matter',
-             'name_of_person_handling_matter',
-             'status',
-             'insert_telephone_number',
-             'insert_email_address',
-             'insert_postal_address',
-             'name_of_handler',
-             'email',
-             'handler',
-             'names_and_contact_details_of_other_members_of_staff_who_can_help_with_queries',
-             'name',
-             'insert_current_position_and_scope_of_retainer',
-             'next_steps',
-             'realistic_timescale',
-             'we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible',
-             'next_stage',
-             'figure_or_range',
-+            'estimated_cost',
-             'describe_disbursement_1',
-             'insert_estimated_amount_of_disbursement_1',
-             'vat_chargeable_1',
-             'describe_disbursement_2',
-             'insert_estimated_amount_of_disbursement_2',
-             'vat_chargeable_2',
-             'describe_disbursement_3',
-             'insert_estimated_amount_of_disbursement_3',
-             'vat_chargeable_3',
-             'estimate',
-             'in_total_including_vat_or_for_the_next_steps_in_your_matter',
-             'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees',
-             'identify_the_other_party_eg_your_opponents',
-             'figure',
-             'matter_number',
-             'and_or_intervals_eg_every_three_months',
-             'contact_details_for_marketing_opt_out',
-             'link_to_preference_centre',
-             'may_will',
-             'instructions_link',
-             'insert_next_step_you_would_like_client_to_take',
-             'state_why_this_step_is_important',
-             'state_amount',
-             'describe_first_document_or_information_you_need_from_your_client',
-             'describe_second_document_or_information_you_need_from_your_client',
+                         {/* Option 2: Estimate format */}
+                         <div
+-                            onClick={() => setDisbursementsChoice('estimate')}
++                            onClick={() => handleDisbursementsChoiceSelect('estimate')}
+                             style={{
+                                 padding: '12px',
+                                 border: '2px solid #d0d0d7',
+                                 borderRadius: 0,
+                                 backgroundColor: '#fff',
+                                 cursor: 'pointer',
+                                 transition: 'all 0.2s ease'
+                             }}
+                         >
+                             <div style={{ 
+                                 display: 'flex', 
+                                 alignItems: 'flex-start',
+                                 gap: '8px'
+                             }}>
+                                 <div style={{
+                                     width: '16px',
+                                     height: '16px',
+                                     borderRadius: '50%',
+                                     border: '2px solid #0078d4',
+                                     backgroundColor: disbursementsChoice === 'estimate' ? '#0078d4' : 'transparent',
+                                     marginTop: '2px',
+                                     flexShrink: 0
+                                 }}>
+                                     {disbursementsChoice === 'estimate' && (
+                                         <div style={{
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1360,50 +1379,54 @@ Description | Amount | VAT chargeable
-             },
-             'insert_current_position_and_scope_of_retainer': {
-                 before: 'Scope of services',
-                 after: '("Initial Scope") We will provide legal advice'
-             },
-             'next_steps': {
-                 before: 'The next steps in your matter are',
-                 after: '. We expect this will take'
-             },
-             'realistic_timescale': {
-                 before: 'We expect this will take',
-                 after: '. This is an estimate only'
-             },
-             'we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible': {
-                 before: 'or',
-                 after: '. The next stage in your matter is'
-             },
-             'next_stage': {
-                 before: 'The next stage in your matter is',
-                 after: 'and we estimate that our charges'
-             },
-             'figure_or_range': {
-                 before: 'we estimate that our charges up to the completion of that stage will be in the region of £',
-                 after: '. We reserve the right to increase'
-             },
-+            'estimated_cost': {
-+                before: 'I estimate the cost of the Initial Scope with be £',
-+                after: ' plus VAT'
-+            },
-             'estimate': {
-                 before: 'We cannot give an exact figure for your disbursements, but this is likely to be in the region of £',
-                 after: '[total description] including'
-             },
-             'in_total_including_vat_or_for_the_next_steps_in_your_matter': {
-                 before: 'but this is likely to be in the region of £[estimate]',
-                 after: 'including [examples]'
-             },
-             'give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees': {
-                 before: '[total description] including',
-                 after: '. Costs you may have to pay'
-             },
-             'identify_the_other_party_eg_your_opponents': {
-                 before: 'There is a risk that you may have to pay',
-                 after: 'costs in this matter'
-             },
-             'figure': {
-                 before: 'Please provide us with £',
-                 after: 'on account of costs'
-             },
-             'matter_number': {
-                 before: 'Please use the reference <<',
-                 after: '>> We work with money'
-             },
-             'and_or_intervals_eg_every_three_months': {
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1436,52 +1459,159 @@ Description | Amount | VAT chargeable
+@@ -1478,50 +1619,136 @@ Description | Amount | VAT chargeable
              },
              'state_amount': {
                  before: '☐ Provide a payment on account of costs and disbursements of £',
@@ -435,22 +511,22 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
  
          return (
              <div>
-+                {/* Special section for estimate choice */}
++                {/* Special section for charges choice */}
 +                <div style={{
 +                    marginBottom: '24px',
 +                    padding: '16px',
-+                    backgroundColor: '#F0F8FF',
-+                    border: '1px solid #87CEEB',
-+                    borderLeft: '4px solid #0078d4',
++                    backgroundColor: '#E6FFF9',
++                    border: '1px solid #3AAFA9',
++                    borderLeft: '4px solid #2B7A78',
 +                    borderRadius: '4px'
 +                }}>
 +                    <div style={{
 +                        fontSize: '16px',
 +                        fontWeight: '600',
-+                        color: '#0078d4',
++                        color: '#2B7A78',
 +                        marginBottom: '12px'
 +                    }}>
-+                        Section 4.1: Estimate Choice
++                        Section 4.1: Charges Statement
 +                    </div>
 +                    <div style={{
 +                        fontSize: '13px',
@@ -459,25 +535,25 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
 +                        fontStyle: 'italic',
 +                        lineHeight: '1.4'
 +                    }}>
-+                        Choose how to present the estimate for our charges:
++                        Choose how to present the overall charges information:
 +                    </div>
 +
 +                    <Dropdown
-+                        label="Cost Estimate"
-+                        selectedKey={estimateChoice}
++                        label="Overall Charges"
++                        selectedKey={chargesChoice}
 +                        onChange={(_, option) => {
 +                            if (option) {
-+                                setEstimateChoice(option.key as 'estimate' | 'no_estimate');
++                                handleChargesChoiceSelect(option.key as 'estimate' | 'no_estimate');
 +                            }
 +                        }}
 +                        options={[
 +                            {
 +                                key: 'estimate',
-+                                text: 'Provide estimate amount'
++                                text: 'Provide initial scope estimate'
 +                            },
 +                            {
 +                                key: 'no_estimate',
-+                                text: 'Cannot provide estimate'
++                                text: 'Cannot provide overall estimate'
 +                            }
 +                        ]}
 +                        styles={{
@@ -485,26 +561,7 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
 +                        }}
 +                    />
 +
-+                    {estimateChoice === 'estimate' && (
-+                        <div style={{ marginTop: '16px' }}>
-+                            <TextField
-+                                label="Estimated Cost (£)"
-+                                value={templateFields.estimated_cost}
-+                                onChange={(_, newValue) => {
-+                                    setTemplateFields(prev => ({
-+                                        ...prev,
-+                                        estimated_cost: newValue || ''
-+                                    }));
-+                                }}
-+                                placeholder="e.g., 1000"
-+                                styles={{
-+                                    root: { marginTop: 8 }
-+                                }}
-+                            />
-+                        </div>
-+                    )}
-+
-+                    {estimateChoice === 'no_estimate' && (
++                    {chargesChoice === 'no_estimate' && (
 +                        <div style={{ marginTop: '16px' }}>
 +                            <TextField
 +                                label="Reason estimate not possible"
@@ -515,36 +572,33 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
 +                                        we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible: newValue || ''
 +                                    }));
 +                                }}
++                                placeholder="e.g., matter too early to estimate"
 +                                styles={{ root: { marginBottom: 12 } }}
 +                            />
 +                            <TextField
 +                                label="Next Stage"
 +                                value={templateFields.next_stage}
 +                                onChange={(_, newValue) => {
-+                                    setTemplateFields(prev => ({
-+                                        ...prev,
-+                                        next_stage: newValue || ''
-+                                    }));
++                                    setTemplateFields(prev => ({ ...prev, next_stage: newValue || '' }));
 +                                }}
++                                placeholder="e.g., file proceedings"
 +                                styles={{ root: { marginBottom: 12 } }}
 +                            />
 +                            <TextField
-+                                label="Cost Estimate (£)"
++                                label="Figure or Range"
 +                                value={templateFields.figure_or_range}
 +                                onChange={(_, newValue) => {
-+                                    setTemplateFields(prev => ({
-+                                        ...prev,
-+                                        figure_or_range: newValue || ''
-+                                    }));
++                                    setTemplateFields(prev => ({ ...prev, figure_or_range: newValue || '' }));
 +                                }}
++                                placeholder="e.g., 1,000 - 2,000"
++                                styles={{ root: { marginBottom: 12 } }}
 +                            />
 +                        </div>
 +                    )}
 +                </div>
 +
                  {/* Special section for costs choice */}
--                <div style={{ 
-+                <div style={{
+                 <div style={{ 
                      marginBottom: '24px',
                      padding: '16px',
                      backgroundColor: '#FFF9E6',
@@ -568,15 +622,68 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
                          lineHeight: '1.4'
                      }}>
                          Choose which statement applies to your matter regarding costs that may need to be paid to another party:
-                     </div>
-                     
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25cac25f69e 100644
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1698,50 +1828,57 @@ Description | Amount | VAT chargeable
-         // Always render in template mode with inline editing
-         return (
+@@ -1580,51 +1807,51 @@ Description | Amount | VAT chargeable
+                     borderRadius: '4px'
+                 }}>
+                     <div style={{
+                         fontSize: '16px',
+                         fontWeight: '600',
+                         color: '#0078d4',
+                         marginBottom: '12px'
+                     }}>
+                         Section 4.2: Disbursements Format
+                     </div>
+                     <div style={{
+                         fontSize: '13px',
+                         color: '#666',
+                         marginBottom: '12px',
+                         fontStyle: 'italic',
+                         lineHeight: '1.4'
+                     }}>
+                         Choose how to present the disbursements information:
+                     </div>
+                     
+                     <Dropdown
+                         label="Disbursements Format"
+                         selectedKey={disbursementsChoice}
+                         onChange={(_, option) => {
+                             if (option) {
+-                                setDisbursementsChoice(option.key as 'table' | 'estimate');
++                                handleDisbursementsChoiceSelect(option.key as 'table' | 'estimate');
+                             }
+                         }}
+                         options={[
+                             { 
+                                 key: 'table', 
+                                 text: 'Table format (client provided info)' 
+                             },
+                             { 
+                                 key: 'estimate', 
+                                 text: 'Estimate format (cannot provide exact figures)' 
+                             }
+                         ]}
+                         styles={{
+                             root: { marginTop: '8px' }
+                         }}
+                     />
+                     
+                     {disbursementsChoice === 'estimate' && (
+                         <div style={{ marginTop: '16px' }}>
+                             <TextField
+                                 label="Estimated Amount (£)"
+                                 value={templateFields.estimate}
+                                 onChange={(_, newValue) => {
+                                     setTemplateFields(prev => ({
+                                         ...prev,
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 59d66ba6b16e5edb8ecfec98f65fb2ce0bef6347..e9a6e3465e2aa8203c5937569ebabcec4f5eeea5 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -1742,55 +1969,62 @@ Description | Amount | VAT chargeable
              <div style={{ 
                  width: '100%', 
                  height: '100%',
@@ -600,20 +707,22 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
          if (!content) return 'No content to preview...';
          
          let processedContent = content;
-+
-+        // Handle estimate section choice
-+        const previewEstimateText = estimateChoice === 'estimate'
-+            ? `I estimate the cost of the Initial Scope will be £${templateFields.estimated_cost || 'xxx'} plus VAT.`
-+            : `${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}'}. The next stage in your matter is ${templateFields.next_stage || '{{next_stage}}'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '{{figure_or_range}}'}.`;
-+
-+        processedContent = processedContent.replace(/\{\{estimate_section_choice\}\}/g, previewEstimateText);
          
          // Handle costs section choice
-         const costsText = costsChoice === 'no_costs' 
+-        const costsText = costsChoice === 'no_costs' 
++        const costsText = costsChoice === 'no_costs'
              ? "We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter."
              : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
-         
+-        
++
          processedContent = processedContent.replace(/\{\{costs_section_choice\}\}/g, costsText);
++
++        // Handle charges section choice
++        const chargesText = chargesChoice === 'estimate'
++            ? 'I estimate the cost of the Initial Scope with be £xxx plus VAT.'
++            : `${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '[Reason]'}. The next stage in your matter is ${templateFields.next_stage || '[Next stage]'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '[Figure or range]'}.`;
++
++        processedContent = processedContent.replace(/\{\{charges_section_choice\}\}/g, chargesText);
          
          // Handle disbursements section choice
          const disbursementsText = disbursementsChoice === 'table' 
@@ -632,3 +741,10 @@ index c6c39a315d837e76059504e68f692e0986decb89..f8a06ee271782b35060f9b8d0a63d25c
                  const placeholder = `{{${key}}}`;
                  processedContent = processedContent.replace(new RegExp(placeholder, 'g'), value);
              }
+         });
+         
+         // Split content into lines and format numbered headings
+         const lines = processedContent.split('\n');
+         const formattedLines = lines.map(line => {
+             // Check if line starts with number followed by space and text (e.g., "1 Contact details")
+             // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
