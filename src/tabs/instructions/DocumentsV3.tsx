@@ -757,15 +757,6 @@ Description | Amount | VAT chargeable
                             borderRadius: '2px',
                             transition: 'background-color 0.2s ease'
                         }}
-                        onMouseEnter={(e) => {
-                            (e.target as HTMLElement).style.backgroundColor = '#f0f0f0';
-                        }}
-                        onMouseLeave={(e) => {
-                            (e.target as HTMLElement).style.backgroundColor = 'transparent';
-                        }}
-                        onFocus={(e) => {
-                            (e.target as HTMLElement).style.backgroundColor = '#e8f4f8';
-                        }}
                     >
                         {formatTextSegment(textSegment)}
                     </span>
@@ -1111,110 +1102,96 @@ Description | Amount | VAT chargeable
             if (fieldValue && fieldValue.trim()) {
                 // Variable has a value - show as inline editable text
                 parts.push(
-                    <input
+                    <span
                         key={match.index}
-                        type="text"
-                        value={fieldValue}
-                        onChange={(e) => {
-                            setTemplateFields(prev => ({
-                                ...prev,
-                                [variableName]: e.target.value
-                            }));
-                        }}
+                        contentEditable
+                        suppressContentEditableWarning={true}
                         onClick={(e) => handleFieldClick(variableName, e)}
                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
                         onMouseLeave={handleFieldHoverLeave}
                         style={{
-                            backgroundColor: '#d4edda',
-                            color: '#155724',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
+                            backgroundColor: '#e8f5e8',
+                            color: '#20b26c',
+                            padding: '2px 4px',
                             fontWeight: 500,
-                            border: '1px solid #c3e6cb',
+                            border: '1px dashed #20b26c',
                             outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
-                            width: Math.max(measureTextWidth(fieldValue, 14) + 20, 80) + 'px',
-                            minWidth: '80px',
-                            maxWidth: '600px',
-                            display: 'inline-block',
-                            margin: '2px',
-                            transition: 'all 0.2s ease'
+                            display: 'inline',
+                            minWidth: '20px',
+                            cursor: 'text',
+                            borderRadius: '2px',
+                            transition: 'all 0.2s ease',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'pre-wrap'
                         }}
                         onFocus={(e) => {
-                            e.target.style.backgroundColor = '#c3e6cb';
+                            e.target.style.backgroundColor = '#d4edda';
                             e.target.style.transform = 'scale(1.02)';
                         }}
                         onBlur={(e) => {
-                            e.target.style.backgroundColor = '#d4edda';
+                            const newValue = e.target.textContent || '';
+                            setTemplateFields(prev => ({
+                                ...prev,
+                                [variableName]: newValue
+                            }));
+                            e.target.style.backgroundColor = '#e8f5e8';
                             e.target.style.transform = 'scale(1)';
                         }}
-                        onInput={(e) => {
-                            // Dynamic width adjustment as user types
-                            const target = e.target as HTMLInputElement;
-                            const textWidth = measureTextWidth(target.value, 14);
-                            target.style.width = Math.max(textWidth + 20, 80) + 'px';
-                        }}
-                    />
+                    >
+                        {fieldValue}
+                    </span>
                 );
             } else {
                 // Variable is empty - show as inline input placeholder (remove 'Enter ')
                 const placeholderText = variableName.replace(/_/g, ' ');
                 parts.push(
-                    <input
+                    <span
                         key={match.index}
-                        type="text"
-                        value=""
-                        placeholder={placeholderText}
-                        onChange={(e) => {
-                            setTemplateFields(prev => ({
-                                ...prev,
-                                [variableName]: e.target.value
-                            }));
-                        }}
+                        contentEditable
+                        suppressContentEditableWarning={true}
+                        data-placeholder={placeholderText}
                         onClick={(e) => handleFieldClick(variableName, e)}
                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
                         onMouseLeave={handleFieldHoverLeave}
                         style={{
-                            backgroundColor: '#fff3cd',
-                            color: '#856404',
-                            padding: '4px 8px',
-                            // borderRadius removed for square corners
+                            backgroundColor: '#f0f8ff',
+                            color: '#0078d4',
+                            padding: '2px 4px',
                             fontWeight: 500,
-                            border: '2px dashed #ffeaa7',
+                            border: '1px dashed #0078d4',
                             outline: 'none',
                             fontFamily: 'Raleway, sans-serif',
                             fontSize: '14px',
-                            width: Math.max(measureTextWidth(placeholderText, 14) + 20, 80) + 'px',
-                            minWidth: '80px',
-                            maxWidth: '600px',
-                            display: 'inline-block',
-                            margin: '2px',
-                            fontStyle: 'italic',
-                            transition: 'all 0.2s ease'
+                            display: 'inline',
+                            minWidth: '20px',
+                            cursor: 'text',
+                            borderRadius: '2px',
+                            transition: 'all 0.2s ease',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'pre-wrap'
                         }}
                         onFocus={(e) => {
-                            e.target.style.backgroundColor = '#ffeaa7';
+                            e.target.style.backgroundColor = '#e6f3ff';
                             e.target.style.borderStyle = 'solid';
                             e.target.style.transform = 'scale(1.05)';
-                            e.target.style.fontStyle = 'normal';
                         }}
                         onBlur={(e) => {
-                            e.target.style.backgroundColor = '#fff3cd';
+                            const newValue = e.target.textContent || '';
+                            setTemplateFields(prev => ({
+                                ...prev,
+                                [variableName]: newValue
+                            }));
+                            e.target.style.backgroundColor = '#f0f8ff';
                             e.target.style.borderStyle = 'dashed';
                             e.target.style.transform = 'scale(1)';
-                            e.target.style.fontStyle = 'italic';
                         }}
-                        onInput={(e) => {
-                            // Dynamic width adjustment as user types
-                            const target = e.target as HTMLInputElement;
-                            const textWidth = target.value.length > 0 
-                                ? measureTextWidth(target.value, 14)
-                                : measureTextWidth(placeholderText, 14);
-                            const newWidth = Math.max(textWidth + 20, 80);
-                            target.style.width = newWidth + 'px';
-                        }}
-                    />
+                    >
+                        {placeholderText}
+                    </span>
                 );
             }
             }
@@ -1276,15 +1253,6 @@ Description | Amount | VAT chargeable
                         padding: '2px',
                         borderRadius: '2px',
                         transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                        (e.target as HTMLElement).style.backgroundColor = '#f0f0f0';
-                    }}
-                    onMouseLeave={(e) => {
-                        (e.target as HTMLElement).style.backgroundColor = 'transparent';
-                    }}
-                    onFocus={(e) => {
-                        (e.target as HTMLElement).style.backgroundColor = '#e8f4f8';
                     }}
                 >
                     {formatTextSegment(textSegment)}
