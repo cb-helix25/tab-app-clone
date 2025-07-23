@@ -296,6 +296,8 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     
     // Choice for disbursements section (4.2)
     const [disbursementsChoice, setDisbursementsChoice] = useState<'table' | 'estimate'>('table');
+    // Show/hide estimate examples input (for estimate format)
+    const [showEstimateExamples, setShowEstimateExamples] = useState(false);
     
     // Responsive design state
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -742,9 +744,9 @@ Description | Amount | VAT chargeable
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: '#FFF9E6',
-                            border: '2px solid #FF8C00',
-                            borderRadius: '8px',
+                            backgroundColor: costsChoice === 'risk_costs' ? '#f3f9ff' : '#fff',
+                            border: `2px solid ${costsChoice === 'risk_costs' ? colours.blue : colours.cta}`,
+                            borderRadius: 0,
                             padding: '16px',
                             margin: '8px 0',
                             display: 'inline-block',
@@ -752,10 +754,12 @@ Description | Amount | VAT chargeable
                         }}
                     >
                         <div style={{
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#CC6600',
-                            marginBottom: '12px'
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: costsChoice === 'risk_costs' ? colours.blue : colours.cta,
+                            marginBottom: '12px',
+                            letterSpacing: 0.1,
+                            textTransform: 'none'
                         }}>
                             Choose one option:
                         </div>
@@ -766,9 +770,9 @@ Description | Amount | VAT chargeable
                             style={{
                                 padding: '12px',
                                 marginBottom: '8px',
-                                border: costsChoice === 'no_costs' ? '2px solid #0078d4' : '1px solid #ccc',
+                                border: '2px solid #d0d0d7',
                                 borderRadius: '4px',
-                                backgroundColor: costsChoice === 'no_costs' ? '#f3f9ff' : '#fff',
+                                backgroundColor: '#fff',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                             }}
@@ -808,9 +812,9 @@ Description | Amount | VAT chargeable
                             onClick={() => setCostsChoice('risk_costs')}
                             style={{
                                 padding: '12px',
-                                border: costsChoice === 'risk_costs' ? '2px solid #0078d4' : '1px solid #ccc',
+                                border: '2px solid #d0d0d7',
                                 borderRadius: '4px',
-                                backgroundColor: costsChoice === 'risk_costs' ? '#f3f9ff' : '#fff',
+                                backgroundColor: '#fff',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                             }}
@@ -876,9 +880,9 @@ Description | Amount | VAT chargeable
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: '#F0F8FF',
-                            border: '2px solid #0078d4',
-                            borderRadius: '8px',
+                            backgroundColor: disbursementsChoice === 'estimate' ? '#f3f9ff' : '#fff',
+                            border: `2px solid ${disbursementsChoice === 'estimate' ? colours.blue : colours.cta}`,
+                            borderRadius: 0,
                             padding: '16px',
                             margin: '8px 0',
                             display: 'inline-block',
@@ -886,10 +890,12 @@ Description | Amount | VAT chargeable
                         }}
                     >
                         <div style={{
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: '#0078d4',
-                            marginBottom: '12px'
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: disbursementsChoice === 'estimate' ? colours.blue : colours.cta,
+                            marginBottom: '12px',
+                            letterSpacing: 0.1,
+                            textTransform: 'none'
                         }}>
                             Choose disbursements format:
                         </div>
@@ -900,9 +906,9 @@ Description | Amount | VAT chargeable
                             style={{
                                 padding: '12px',
                                 marginBottom: '8px',
-                                border: disbursementsChoice === 'table' ? '2px solid #0078d4' : '1px solid #ccc',
-                                borderRadius: '4px',
-                                backgroundColor: disbursementsChoice === 'table' ? '#f3f9ff' : '#fff',
+                                border: '2px solid #d0d0d7',
+                                borderRadius: 0,
+                                backgroundColor: '#fff',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                             }}
@@ -948,9 +954,9 @@ Description | Amount | VAT chargeable
                             onClick={() => setDisbursementsChoice('estimate')}
                             style={{
                                 padding: '12px',
-                                border: disbursementsChoice === 'estimate' ? '2px solid #0078d4' : '1px solid #ccc',
-                                borderRadius: '4px',
-                                backgroundColor: disbursementsChoice === 'estimate' ? '#f3f9ff' : '#fff',
+                                border: '2px solid #d0d0d7',
+                                borderRadius: 0,
+                                backgroundColor: '#fff',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease'
                             }}
@@ -1008,55 +1014,91 @@ Description | Amount | VAT chargeable
                                             margin: '0 2px',
                                             verticalAlign: 'baseline'
                                         }}
-                                    />
-                                    <input
-                                        value={templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || ''}
-                                        onChange={(e) => {
-                                            setTemplateFields(prev => ({
-                                                ...prev,
-                                                in_total_including_vat_or_for_the_next_steps_in_your_matter: e.target.value || ''
-                                            }));
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        placeholder="in total including VAT"
-                                        style={{
-                                            fontSize: '14px',
-                                            padding: '1px 4px',
-                                            border: '1px solid #0078d4',
-                                            borderRadius: '2px',
-                                            backgroundColor: '#fff',
-                                            outline: 'none',
-                                            minWidth: '120px',
-                                            width: `${Math.max(120, (templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || 'in total including VAT').length * 8 + 15)}px`,
-                                            transition: 'width 0.2s ease',
-                                            margin: '0 2px',
-                                            verticalAlign: 'baseline'
-                                        }}
-                                    /> including 
-                                    <input
-                                        value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
-                                        onChange={(e) => {
-                                            setTemplateFields(prev => ({
-                                                ...prev,
-                                                give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value || ''
-                                            }));
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        placeholder="court fees and search fees"
-                                        style={{
-                                            fontSize: '14px',
-                                            padding: '1px 4px',
-                                            border: '1px solid #0078d4',
-                                            borderRadius: '2px',
-                                            backgroundColor: '#fff',
-                                            outline: 'none',
-                                            minWidth: '150px',
-                                            width: `${Math.max(150, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'court fees and search fees').length * 8 + 15)}px`,
-                                            transition: 'width 0.2s ease',
-                                            margin: '0 2px',
-                                            verticalAlign: 'baseline'
-                                        }}
-                                    />.
+                                    /> {showEstimateExamples ? 'for the next steps in your matter including' : 'in total including VAT'}
+                                    {showEstimateExamples ? (
+                                        <>
+                                            {' '}
+                                            <input
+                                                value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
+                                                onChange={(e) => {
+                                                    setTemplateFields(prev => ({
+                                                        ...prev,
+                                                        give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value || ''
+                                                    }));
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                placeholder="court fees and search fees"
+                                                style={{
+                                                    fontSize: '14px',
+                                                    padding: '1px 4px',
+                                                    border: '1px solid #0078d4',
+                                                    borderRadius: '2px',
+                                                    backgroundColor: '#fff',
+                                                    outline: 'none',
+                                                    minWidth: '150px',
+                                                    width: `${Math.max(150, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'court fees and search fees').length * 8 + 15)}px`,
+                                                    transition: 'width 0.2s ease',
+                                                    margin: '0 2px',
+                                                    verticalAlign: 'baseline'
+                                                }}
+                                            />
+                                            .
+                                            <button
+                                                type="button"
+                                                aria-label="Remove examples"
+                                                onClick={() => setShowEstimateExamples(false)}
+                                                style={{
+                                                    border: 'none',
+                                                    background: 'none',
+                                                    color: '#d13438',
+                                                    fontSize: 22,
+                                                    fontWeight: 400,
+                                                    cursor: 'pointer',
+                                                    marginLeft: 8,
+                                                    marginRight: 12,
+                                                    padding: 0,
+                                                    height: '1.2em',
+                                                    width: '1.2em',
+                                                    lineHeight: '1.2em',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    borderRadius: 0,
+                                                    backgroundColor: 'rgba(255,255,255,0.25)',
+                                                    boxSizing: 'border-box',
+                                                    transition: 'background-color 0.2s, color 0.2s',
+                                                }}
+                                                onMouseOver={e => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.35)';
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)';
+                                                }}
+                                            >
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    height: '1em',
+                                                    lineHeight: '1em',
+                                                    fontWeight: 400,
+                                                    fontSize: '1.1em',
+                                                    fontFamily: 'monospace',
+                                                    userSelect: 'none',
+                                                    pointerEvents: 'none',
+                                                }}>×</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            .
+                                            <button
+                                                type="button"
+                                                style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', border: '1px solid #0078d4', background: '#f3f9ff', color: '#0078d4', cursor: 'pointer', borderRadius: 0 }}
+                                                onClick={() => setShowEstimateExamples(true)}
+                                            >
+                                                Add examples
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
