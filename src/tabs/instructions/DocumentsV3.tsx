@@ -8,6 +8,45 @@ import { colours } from '../../app/styles/colours';
 import { Icon } from '@fluentui/react/lib/Icon';
 import localUserData from '../../localData/localUserData.json';
 
+// CSS for unified placeholder molding
+const placeholderStyles = `
+<style>
+.placeholder-segment {
+    border-top: 1px solid transparent !important;
+    border-bottom: 1px solid transparent !important;
+}
+
+.placeholder-segment:first-of-type {
+    border-top: 1px solid #20b26c !important;
+}
+
+.placeholder-segment:last-of-type {
+    border-bottom: 1px solid #20b26c !important;
+}
+
+.placeholder-segment-empty {
+    border-top: 1px solid transparent !important;
+    border-bottom: 1px solid transparent !important;
+}
+
+.placeholder-segment-empty:first-of-type {
+    border-top: 1px dashed #0078d4 !important;
+}
+
+.placeholder-segment-empty:last-of-type {
+    border-bottom: 1px dashed #0078d4 !important;
+}
+</style>
+`;
+
+// Inject styles into document head
+if (typeof document !== 'undefined' && !document.getElementById('placeholder-molding-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'placeholder-molding-styles';
+    styleElement.innerHTML = placeholderStyles.replace('<style>', '').replace('</style>', '');
+    document.head.appendChild(styleElement);
+}
+
 const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}}
 
 {{insert_heading_eg_matter_description}}
@@ -128,13 +167,13 @@ Unfortunately if the report is unsuccessful i.e. if you have only recently moved
 
 Your matter {{may_will}} involve court proceedings. All solicitors have a professional duty to uphold the rule of law and the proper administration of justice. We must comply with our duties to the court, even where this conflicts with our obligations to you. This means that we must not:
 
-• attempt to deceive or knowingly or recklessly mislead the court
+—attempt to deceive or knowingly or recklessly mislead the court
 
-• be complicit in another person deceiving or misleading the court
+—be complicit in another person deceiving or misleading the court
 
-• place ourselves in contempt of court
+—place ourselves in contempt of court
 
-• make or offer payments to witnesses who depend on their evidence or the outcome of the case
+—make or offer payments to witnesses who depend on their evidence or the outcome of the case
 
 We must also comply with court orders that put obligations on us and ensure that evidence relating to sensitive issues is not misused.
 
@@ -176,15 +215,15 @@ The action list below explains what you need to do next.
 
 Action required by you | Additional information
 ☐ Sign and return one copy of the Terms of Business below | If you don't sign but continue to give us instructions you will be deemed to have accepted the terms in this letter and the Terms of Business
-☐ [Insert next step you would like client to take] | [State why this step is important]
-☐ Provide a payment on account of costs and disbursements of £[state amount] | If we do not receive a payment on account of costs and disbursements, there may be a delay in starting work on your behalf
+☐ {{insert_next_step_you_would_like_client_to_take}} | {{state_why_this_step_is_important}}
+☐ Provide a payment on account of costs and disbursements of £{{state_amount}} | If we do not receive a payment on account of costs and disbursements, there may be a delay in starting work on your behalf
 ☐ If you would like us to start work during the 14-day cancellation period, sign and return the attached 'Request to start work during the cancellation period' form | This form is attached to this Engagement Letter
 ☐ Alternatively, if wish to cancel your contract with us, tell us within 14 days | You can simply inform us of your decision to cancel by letter, telephone or e-mail
 ☐ Provide the following documents [and information] to allow me to take the next steps in your matter: | Without these documents there may be a delay in your matter.
 
-[describe first document or information you need from your client]
-[describe second document or information you need from your client]
-[describe third document or information you need from your client]
+{{describe_first_document_or_information_you_need_from_your_client}}
+{{describe_second_document_or_information_you_need_from_your_client}}
+{{describe_third_document_or_information_you_need_from_your_client}}
 
 Please contact me if you have any queries or concerns about your matter, this Engagement Letter or the attached Terms of Business.`;
 
@@ -248,15 +287,17 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
     
     // Choice for costs section (4.3)
-    const [costsChoice, setCostsChoice] = useState<'no_costs' | 'risk_costs'>('no_costs');
+    const [costsChoice, setCostsChoice] = useState<'no_costs' | 'risk_costs' | null>(null);
     
     // Choice for disbursements section (4.2)
-    const [disbursementsChoice, setDisbursementsChoice] = useState<'table' | 'estimate'>('table');
+    const [disbursementsChoice, setDisbursementsChoice] = useState<'table' | 'estimate' | null>(null);
     // Show/hide estimate examples input (for estimate format)
     const [showEstimateExamples, setShowEstimateExamples] = useState(false);
+    // Number of disbursement rows to display
+    const [disbursementRowCount, setDisbursementRowCount] = useState(1);
     
     // Choice for charges section (4.1)
-    const [chargesChoice, setChargesChoice] = useState<'hourly_rate' | 'no_estimate'>('hourly_rate');
+    const [chargesChoice, setChargesChoice] = useState<'hourly_rate' | 'no_estimate' | null>(null);
     const [showChargesChoice, setShowChargesChoice] = useState(true);
     const [showCostsChoice, setShowCostsChoice] = useState(true);
     const [showDisbursementsChoice, setShowDisbursementsChoice] = useState(true);
@@ -275,6 +316,25 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     const [hoveredField, setHoveredField] = useState<string | null>(null);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
     const [isFieldsOnlyView, setIsFieldsOnlyView] = useState(false);
+
+    // Handle click outside to close dropdowns
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Element;
+            if (!target.closest('.examples-dropdown')) {
+                // Just close the dropdown without affecting React state
+                const dropdown = document.getElementById('examples-dropdown');
+                if (dropdown) {
+                    dropdown.style.display = 'none';
+                }
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []); // Empty dependency array - this effect runs once and stays active
 
     // Field display names for hover tooltips
     const FIELD_DISPLAY_NAMES = {
@@ -321,7 +381,14 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
         disbursement_3_description: "Disbursement 3 Description",
         disbursement_3_amount: "Disbursement 3 Amount",
         disbursement_3_vat: "Disbursement 3 VAT",
-        disbursement_3_notes: "Disbursement 3 Notes"
+        disbursement_3_notes: "Disbursement 3 Notes",
+        insert_next_step_you_would_like_client_to_take: "Next Step for Client",
+        state_why_this_step_is_important: "Step Importance",
+        state_amount: "Payment Amount",
+        describe_first_document_or_information_you_need_from_your_client: "First Document Required",
+        describe_second_document_or_information_you_need_from_your_client: "Second Document Required",
+        describe_third_document_or_information_you_need_from_your_client: "Third Document Required",
+        matter_number: "Matter Reference Number"
     };
 
     // Preset data for template fields
@@ -419,6 +486,48 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
             "Land Registry fees and searches",
             "expert witness fees and reports",
             "administrative costs and postage"
+        ],
+        insert_next_step_you_would_like_client_to_take: [
+            "telephone me to discuss this letter and the next steps in your matter",
+            "review and sign the enclosed documentation",
+            "provide the requested information and documents",
+            "attend the scheduled meeting or consultation",
+            "confirm your instructions and preferred approach"
+        ],
+        state_why_this_step_is_important: [
+            "This will help us understand your priorities and proceed efficiently",
+            "This is required to move forward with your matter",
+            "Without this, there may be delays in progressing your case",
+            "This will ensure we are acting in accordance with your wishes",
+            "This step is necessary to comply with legal requirements"
+        ],
+        state_amount: [
+            "500",
+            "1,000",
+            "1,500",
+            "2,000",
+            "2,500"
+        ],
+        describe_first_document_or_information_you_need_from_your_client: [
+            "Copy of your passport or driving licence",
+            "Recent utility bill confirming your address",
+            "Contract or agreement relating to this matter",
+            "Correspondence from the other party",
+            "Financial statements or accounts"
+        ],
+        describe_second_document_or_information_you_need_from_your_client: [
+            "Bank statements for the last 3 months",
+            "Proof of income or employment",
+            "Insurance policy documents",
+            "Previous legal correspondence",
+            "Property deeds or title documents"
+        ],
+        describe_third_document_or_information_you_need_from_your_client: [
+            "Details of any previous legal proceedings",
+            "Contact details for relevant third parties",
+            "Company registration documents (if applicable)",
+            "Power of attorney (if acting for someone else)",
+            "Any other relevant documentation"
         ]
     };
     
@@ -629,10 +738,33 @@ We will review our hourly rates on a periodic basis. This is usually done annual
         const disbursementsText = disbursementsChoice === 'table' 
             ? `Based on the information you have provided, we expect to incur the following disbursements:
 
-Description | Amount | VAT chargeable
+Disbursement | Amount | VAT chargeable
 [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
 [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
-            : `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.estimate || '{{estimate}}'} ${templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || '{{in_total_including_vat_or_for_the_next_steps_in_your_matter}}'} including ${templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '{{give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees}}'}.`;
+            : !showEstimateExamples 
+                ? `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '{{estimate}}'} in total including VAT.`
+                : (() => {
+                    // Format the examples with proper "and" syntax
+                    const rawExamples = templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '{{give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees}}';
+                    let formattedExamples = rawExamples;
+                    
+                    // If it's not a placeholder, format it properly
+                    if (rawExamples && !rawExamples.startsWith('{{')) {
+                        const selected = [];
+                        if (rawExamples.includes('court fees')) selected.push('court fees');
+                        if (rawExamples.includes('accountants report')) selected.push('accountants report');
+                        
+                        if (selected.length === 0) {
+                            formattedExamples = rawExamples; // Use raw text if no standard options detected
+                        } else if (selected.length === 1) {
+                            formattedExamples = selected[0];
+                        } else {
+                            formattedExamples = selected.slice(0, -1).join(', ') + ' and ' + selected[selected.length - 1];
+                        }
+                    }
+                    
+                    return `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '{{estimate}}'} for the next steps in your matter including ${formattedExamples}.`;
+                })();
         
         content = content.replace(/\{\{disbursements_section_choice\}\}/g, disbursementsText);
         
@@ -676,20 +808,257 @@ Description | Amount | VAT chargeable
                 const segmentEnd = match.index;
                 const textSegment = content.substring(segmentStart, segmentEnd);
                 
-                // Format text segment to make numbered headings bold
                 const formatTextSegment = (text: string) => {
                     const lines = text.split('\n');
+                    
+                    // Check if this text contains table-like content (Action points section)
+                    const hasTableContent = lines.some(line => 
+                        line.includes('Action required by you | Additional information') ||
+                        (line.includes('☐') && line.includes('|'))
+                    );
+                    
+                    if (hasTableContent) {
+                        // Handle table formatting for Action points section
+                        const tableElements: JSX.Element[] = [];
+                        let tableRows: JSX.Element[] = [];
+                        let isInTable = false;
+                        
+                        lines.forEach((line, index) => {
+                            const lineKey = `${segmentStart}-line-${index}`;
+                            
+                            if (line.includes('Action required by you | Additional information')) {
+                                // Table header - start collecting rows
+                                isInTable = true;
+                                tableRows = [];
+                            } else if (line.includes('☐') && line.includes('|') && isInTable) {
+                                // Table row
+                                const [actionPart, infoPart] = line.split('|').map(part => part.trim());
+                                tableRows.push(
+                                    <tr key={lineKey}>
+                                        <td style={{ 
+                                            border: '1px solid #ccc',
+                                            padding: '12px',
+                                            verticalAlign: 'top',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {actionPart}
+                                        </td>
+                                        <td style={{ 
+                                            border: '1px solid #ccc',
+                                            padding: '12px',
+                                            verticalAlign: 'top',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {infoPart}
+                                        </td>
+                                    </tr>
+                                );
+                            } else {
+                                // End of table or regular line
+                                if (isInTable && tableRows.length > 0) {
+                                    // Add the completed table
+                                    tableElements.push(
+                                        <div key={`table-${index}`} style={{ 
+                                            display: 'block',
+                                            marginTop: '16px',
+                                            marginBottom: '16px',
+                                            width: '100%'
+                                        }}>
+                                            <table style={{ 
+                                                width: '100%', 
+                                                borderCollapse: 'collapse',
+                                                border: '1px solid #ccc',
+                                                fontSize: '14px'
+                                            }}>
+                                                <thead>
+                                                    <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                        <th style={{ 
+                                                            border: '1px solid #ccc',
+                                                            padding: '12px',
+                                                            textAlign: 'left',
+                                                            fontWeight: 'bold',
+                                                            width: '50%'
+                                                        }}>
+                                                            Action required by you
+                                                        </th>
+                                                        <th style={{ 
+                                                            border: '1px solid #ccc',
+                                                            padding: '12px',
+                                                            textAlign: 'left',
+                                                            fontWeight: 'bold',
+                                                            width: '50%'
+                                                        }}>
+                                                            Additional information
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {tableRows}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                    isInTable = false;
+                                    tableRows = [];
+                                }
+                                
+                                // Regular text formatting
+                                const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
+                                const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+                                const bulletPointMatch = line.match(/^—(.+)$/);
+                                
+                                if (numberedHeadingMatch || standaloneHeadingMatch) {
+                                    tableElements.push(
+                                        <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
+                                            {line}
+                                            {index < lines.length - 1 ? '\n' : ''}
+                                        </span>
+                                    );
+                                } else if (bulletPointMatch) {
+                                    const bulletContent = bulletPointMatch[1];
+                                    const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                                    
+                                    tableElements.push(
+                                        <span key={lineKey} style={{ 
+                                            display: 'block', 
+                                            marginLeft: '16px',
+                                            textIndent: '-16px',
+                                            paddingLeft: '16px',
+                                            lineHeight: '1.5'
+                                        }}>
+                                            <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                            <span style={{ display: 'inline' }}>
+                                                {sectionRefMatch ? (
+                                                    <>
+                                                        <span>{sectionRefMatch[1]}</span>
+                                                        <span style={{ 
+                                                            color: '#6c757d', 
+                                                            fontSize: '13px', 
+                                                            fontStyle: 'italic',
+                                                            opacity: 0.8 
+                                                        }}>
+                                                            {sectionRefMatch[2]}
+                                                        </span>
+                                                        <span>{sectionRefMatch[3]}</span>
+                                                    </>
+                                                ) : (
+                                                    <span>{bulletContent}</span>
+                                                )}
+                                            </span>
+                                            {index < lines.length - 1 ? '\n' : ''}
+                                        </span>
+                                    );
+                                } else if (line.trim() !== '') {
+                                    tableElements.push(
+                                        <span key={lineKey}>
+                                            {line}
+                                            {index < lines.length - 1 ? '\n' : ''}
+                                        </span>
+                                    );
+                                } else {
+                                    tableElements.push(<br key={lineKey} />);
+                                }
+                            }
+                        });
+                        
+                        // Add any remaining table if we ended while in table mode
+                        if (isInTable && tableRows.length > 0) {
+                            tableElements.push(
+                                <div key={`table-end`} style={{ 
+                                    display: 'block',
+                                    marginTop: '16px',
+                                    marginBottom: '16px',
+                                    width: '100%'
+                                }}>
+                                    <table style={{ 
+                                        width: '100%', 
+                                        borderCollapse: 'collapse',
+                                        border: '1px solid #ccc',
+                                        fontSize: '14px'
+                                    }}>
+                                        <thead>
+                                            <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                <th style={{ 
+                                                    border: '1px solid #ccc',
+                                                    padding: '12px',
+                                                    textAlign: 'left',
+                                                    fontWeight: 'bold',
+                                                    width: '50%'
+                                                }}>
+                                                    Action required by you
+                                                </th>
+                                                <th style={{ 
+                                                    border: '1px solid #ccc',
+                                                    padding: '12px',
+                                                    textAlign: 'left',
+                                                    fontWeight: 'bold',
+                                                    width: '50%'
+                                                }}>
+                                                    Additional information
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tableRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        }
+                        
+                        return tableElements;
+                    }
+                    
+                    // Regular text formatting (non-table content)
                     return lines.map((line, index) => {
                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
                         const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
                         const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+                        // Check if line starts with — (bullet point)
+                        const bulletPointMatch = line.match(/^—(.+)$/);
                         const lineKey = `${segmentStart}-line-${index}`;
                         
                         if (numberedHeadingMatch || standaloneHeadingMatch) {
                             return (
                                 <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
                                     {line}
+                                    {index < lines.length - 1 ? '\n' : ''}
+                                </span>
+                            );
+                        } else if (bulletPointMatch) {
+                            // Handle bullet points with red bullets and styled section references
+                            const bulletContent = bulletPointMatch[1];
+                            // Check for section references like "(see section 4.1 below)"
+                            const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                            
+                            return (
+                                <span key={lineKey} style={{ 
+                                    display: 'block', 
+                                    marginLeft: '16px',
+                                    textIndent: '-16px',
+                                    paddingLeft: '16px',
+                                    lineHeight: '1.5'
+                                }}>
+                                    <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                    <span style={{ display: 'inline' }}>
+                                        {sectionRefMatch ? (
+                                            <>
+                                                <span>{sectionRefMatch[1]}</span>
+                                                <span style={{ 
+                                                    color: '#6c757d', 
+                                                    fontSize: '13px', 
+                                                    fontStyle: 'italic',
+                                                    opacity: 0.8 
+                                                }}>
+                                                    {sectionRefMatch[2]}
+                                                </span>
+                                                <span>{sectionRefMatch[3]}</span>
+                                            </>
+                                        ) : (
+                                            <span>{bulletContent}</span>
+                                        )}
+                                    </span>
                                     {index < lines.length - 1 ? '\n' : ''}
                                 </span>
                             );
@@ -709,7 +1078,26 @@ Description | Amount | VAT chargeable
                         contentEditable
                         suppressContentEditableWarning={true}
                         onBlur={(e) => {
-                            const newText = e.target.textContent || '';
+                            let newText = e.target.textContent || '';
+                            
+                            // Preserve bullet formatting - ensure lines that had bullets still have em dashes
+                            const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
+                            const newLines = newText.split('\n');
+                            
+                            // Restore em dashes for lines that should be bullets
+                            const restoredLines = newLines.map((newLine, index) => {
+                                const originalLine = originalLines[index];
+                                if (originalLine && originalLine.match(/^—/)) {
+                                    // This was originally a bullet line
+                                    if (!newLine.match(/^—/)) {
+                                        // If the em dash was lost, restore it
+                                        return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
+                                    }
+                                }
+                                return newLine;
+                            });
+                            
+                            newText = restoredLines.join('\n');
                             const beforeText = content.substring(0, segmentStart);
                             const afterText = content.substring(segmentEnd);
                             const newContent = beforeText + newText + afterText;
@@ -740,11 +1128,11 @@ Description | Amount | VAT chargeable
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: '#f3f9ff',
-                            border: `1px solid ${colours.blue}`,
+                            backgroundColor: showChargesChoice ? '#f3f9ff' : '#e8f5e8',
+                            border: showChargesChoice ? `1px solid ${colours.blue}` : '1px solid #20b26c',
                             borderRadius: 0,
-                            padding: '16px',
-                            margin: '8px 0',
+                            padding: '8px',
+                            margin: '2px 0',
                             display: 'block',
                             width: '100%'
                         }}
@@ -755,7 +1143,7 @@ Description | Amount | VAT chargeable
                                     fontSize: '13px',
                                     fontWeight: 600,
                                     color: colours.blue,
-                                    marginBottom: '12px',
+                                    marginBottom: '6px',
                                     letterSpacing: 0.1,
                                     textTransform: 'none'
                                 }}>
@@ -768,8 +1156,8 @@ Description | Amount | VAT chargeable
                                         setShowChargesChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
-                                        marginBottom: '8px',
+                                        padding: '8px',
+                                        marginBottom: '4px',
                                         border: `1px solid ${chargesChoice === 'hourly_rate' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: chargesChoice === 'hourly_rate' ? '#f0f8ff' : '#fff',
@@ -791,7 +1179,7 @@ Description | Amount | VAT chargeable
                                         setShowChargesChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
+                                        padding: '8px',
                                         border: `1px solid ${chargesChoice === 'no_estimate' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: chargesChoice === 'no_estimate' ? '#f0f8ff' : '#fff',
@@ -925,7 +1313,7 @@ Description | Amount | VAT chargeable
                                             padding: '4px 8px',
                                             fontSize: '12px',
                                             cursor: 'pointer',
-                                            borderRadius: '2px'
+                                            borderRadius: '0'
                                         }}
                                     >
                                         Change
@@ -936,16 +1324,16 @@ Description | Amount | VAT chargeable
                     </div>
                 );
             } else if (variableName === 'costs_section_choice') {
-                // Both 'no_costs' and 'risk_costs' are considered answered (blue highlight for both)
+                // Both 'no_costs' and 'risk_costs' are considered answered (green highlight when answered)
                 parts.push(
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: '#f3f9ff',
-                            border: `1px solid ${colours.blue}`,
+                            backgroundColor: showCostsChoice ? '#f3f9ff' : '#e8f5e8',
+                            border: showCostsChoice ? `1px solid ${colours.blue}` : '1px solid #20b26c',
                             borderRadius: 0,
-                            padding: '16px',
-                            margin: '8px 0',
+                            padding: '8px',
+                            margin: '2px 0',
                             display: 'block',
                             width: '100%'
                         }}
@@ -956,7 +1344,7 @@ Description | Amount | VAT chargeable
                                     fontSize: '13px',
                                     fontWeight: 600,
                                     color: colours.blue,
-                                    marginBottom: '12px',
+                                    marginBottom: '6px',
                                     letterSpacing: 0.1,
                                     textTransform: 'none'
                                 }}>
@@ -969,8 +1357,8 @@ Description | Amount | VAT chargeable
                                         setShowCostsChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
-                                        marginBottom: '8px',
+                                        padding: '8px',
+                                        marginBottom: '4px',
                                         border: `1px solid ${costsChoice === 'no_costs' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: costsChoice === 'no_costs' ? '#f0f8ff' : '#fff',
@@ -992,7 +1380,7 @@ Description | Amount | VAT chargeable
                                         setShowCostsChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
+                                        padding: '8px',
                                         border: `1px solid ${costsChoice === 'risk_costs' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: costsChoice === 'risk_costs' ? '#f0f8ff' : '#fff',
@@ -1054,7 +1442,7 @@ Description | Amount | VAT chargeable
                                             padding: '4px 8px',
                                             fontSize: '12px',
                                             cursor: 'pointer',
-                                            borderRadius: '2px'
+                                            borderRadius: '0'
                                         }}
                                     >
                                         Change
@@ -1070,11 +1458,11 @@ Description | Amount | VAT chargeable
                     <div
                         key={match.index}
                         style={{
-                            backgroundColor: '#f3f9ff',
-                            border: `1px solid ${colours.blue}`,
+                            backgroundColor: showDisbursementsChoice ? '#f3f9ff' : '#e8f5e8',
+                            border: `1px solid ${showDisbursementsChoice ? colours.blue : '#20b26c'}`,
                             borderRadius: 0,
-                            padding: '16px',
-                            margin: '8px 0',
+                            padding: '8px',
+                            margin: '2px 0',
                             display: 'block',
                             width: '100%'
                         }}
@@ -1085,7 +1473,7 @@ Description | Amount | VAT chargeable
                                     fontSize: '13px',
                                     fontWeight: 600,
                                     color: colours.blue,
-                                    marginBottom: '12px',
+                                    marginBottom: '6px',
                                     letterSpacing: 0.1,
                                     textTransform: 'none'
                                 }}>
@@ -1098,8 +1486,8 @@ Description | Amount | VAT chargeable
                                         setShowDisbursementsChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
-                                        marginBottom: '8px',
+                                        padding: '8px',
+                                        marginBottom: '4px',
                                         border: `1px solid ${disbursementsChoice === 'table' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: disbursementsChoice === 'table' ? '#f0f8ff' : '#fff',
@@ -1121,7 +1509,7 @@ Description | Amount | VAT chargeable
                                         setShowDisbursementsChoice(false);
                                     }}
                                     style={{
-                                        padding: '12px',
+                                        padding: '8px',
                                         border: `1px solid ${disbursementsChoice === 'estimate' ? '#0078d4' : '#d0d0d7'}`,
                                         borderRadius: 0,
                                         backgroundColor: disbursementsChoice === 'estimate' ? '#f0f8ff' : '#fff',
@@ -1147,117 +1535,176 @@ Description | Amount | VAT chargeable
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                                             <thead>
                                                 <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Description</th>
-                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Amount (£)</th>
-                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>VAT</th>
-                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left' }}>Notes</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left', width: '50%' }}>Disbursement</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left', width: '25%' }}>Amount (£)</th>
+                                                    <th style={{ border: '1px solid #dee2e6', padding: '8px', textAlign: 'left', width: '25%' }}>VAT</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_1_description || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_description: e.target.value }))}
-                                                            placeholder="Description"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_1_amount || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_amount: e.target.value }))}
-                                                            placeholder="Amount"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_1_vat || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_vat: e.target.value }))}
-                                                            placeholder="VAT"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_1_notes || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_1_notes: e.target.value }))}
-                                                            placeholder="Notes"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_2_description || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_description: e.target.value }))}
-                                                            placeholder="Description"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_2_amount || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_amount: e.target.value }))}
-                                                            placeholder="Amount"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_2_vat || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_vat: e.target.value }))}
-                                                            placeholder="VAT"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_2_notes || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_2_notes: e.target.value }))}
-                                                            placeholder="Notes"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_3_description || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_description: e.target.value }))}
-                                                            placeholder="Description"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_3_amount || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_amount: e.target.value }))}
-                                                            placeholder="Amount"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_3_vat || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_vat: e.target.value }))}
-                                                            placeholder="VAT"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ border: '1px solid #dee2e6', padding: '8px' }}>
-                                                        <input
-                                                            value={templateFields.disbursement_3_notes || ''}
-                                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, disbursement_3_notes: e.target.value }))}
-                                                            placeholder="Notes"
-                                                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px' }}
-                                                        />
-                                                    </td>
-                                                </tr>
+                                                {Array.from({ length: disbursementRowCount }, (_, index) => {
+                                                    const rowNumber = index + 1;
+                                                    return (
+                                                        <tr key={rowNumber}>
+                                                            <td style={{ border: '1px solid #dee2e6', padding: '8px', backgroundColor: 'white' }}>
+                                                                <select
+                                                                    value={templateFields[`disbursement_${rowNumber}_description`] || ''}
+                                                                    onChange={(e) => setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_description`]: e.target.value }))}
+                                                                    style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', backgroundColor: 'white' }}
+                                                                >
+                                                                    <option value="">--</option>
+                                                                    <option value="General Disbursement">General Disbursement</option>
+                                                                    <option value="Court Fee">Court Fee</option>
+                                                                    <option value="Accountants Report">Accountants Report</option>
+                                                                </select>
+                                                            </td>
+                                                            <td style={{ border: '1px solid #dee2e6', padding: '8px', backgroundColor: 'white' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <input
+                                                                        value={templateFields[`disbursement_${rowNumber}_amount`] || ''}
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value.replace(/[£,]/g, '');
+                                                                            setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_amount`]: value }));
+                                                                        }}
+                                                                        onBlur={(e) => {
+                                                                            const value = e.target.value.replace(/[£,]/g, '');
+                                                                            const numericValue = parseFloat(value);
+                                                                            if (!isNaN(numericValue) && numericValue > 0) {
+                                                                                const formatted = `£${numericValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                                setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_amount`]: formatted }));
+                                                                            }
+                                                                        }}
+                                                                        onFocus={(e) => {
+                                                                            const value = e.target.value.replace(/[£,]/g, '');
+                                                                            setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_amount`]: value }));
+                                                                        }}
+                                                                        placeholder="--"
+                                                                        style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', backgroundColor: 'white' }}
+                                                                    />
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const currentValue = parseFloat((templateFields[`disbursement_${rowNumber}_amount`] || '0').replace(/[£,]/g, ''));
+                                                                                const newValue = (isNaN(currentValue) ? 0 : currentValue) + 50;
+                                                                                const formatted = `£${newValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                                setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_amount`]: formatted }));
+                                                                            }}
+                                                                            style={{
+                                                                                width: '18px',
+                                                                                height: '12px',
+                                                                                border: '1px solid #ccc',
+                                                                                backgroundColor: '#f8f9fa',
+                                                                                fontSize: '10px',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                borderRadius: 0
+                                                                            }}
+                                                                        >
+                                                                            +
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const currentValue = parseFloat((templateFields[`disbursement_${rowNumber}_amount`] || '0').replace(/[£,]/g, ''));
+                                                                                const newValue = Math.max(0, (isNaN(currentValue) ? 0 : currentValue) - 50);
+                                                                                const formatted = newValue === 0 ? '' : `£${newValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                                setTemplateFields(prev => ({ ...prev, [`disbursement_${rowNumber}_amount`]: formatted }));
+                                                                            }}
+                                                                            style={{
+                                                                                width: '18px',
+                                                                                height: '12px',
+                                                                                border: '1px solid #ccc',
+                                                                                backgroundColor: '#f8f9fa',
+                                                                                fontSize: '10px',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                borderRadius: 0
+                                                                            }}
+                                                                        >
+                                                                            -
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ border: '1px solid #dee2e6', padding: '8px', backgroundColor: 'white' }}>
+                                                                <input
+                                                                    value={(() => {
+                                                                        const amount = parseFloat((templateFields[`disbursement_${rowNumber}_amount`] || '').replace(/[£,]/g, ''));
+                                                                        return isNaN(amount) || amount === 0 ? '--' : `£${(amount * 0.2).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                    })()}
+                                                                    readOnly
+                                                                    placeholder="--"
+                                                                    style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', backgroundColor: 'white', color: '#666' }}
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
+                                        <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => setDisbursementRowCount(prev => prev + 1)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    border: `1px solid ${colours.blue}`,
+                                                    borderRadius: 0,
+                                                    backgroundColor: 'white',
+                                                    color: colours.blue,
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseOver={(e) => {
+                                                    e.currentTarget.style.backgroundColor = colours.blue;
+                                                    e.currentTarget.style.color = 'white';
+                                                }}
+                                                onMouseOut={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'white';
+                                                    e.currentTarget.style.color = colours.blue;
+                                                }}
+                                            >
+                                                + Add Row
+                                            </button>
+                                            {disbursementRowCount > 1 && (
+                                                <button
+                                                    onClick={() => {
+                                                        // Remove the last row's data from templateFields
+                                                        setTemplateFields(prev => {
+                                                            const updated = { ...prev };
+                                                            delete updated[`disbursement_${disbursementRowCount}_description`];
+                                                            delete updated[`disbursement_${disbursementRowCount}_amount`];
+                                                            delete updated[`disbursement_${disbursementRowCount}_vat`];
+                                                            return updated;
+                                                        });
+                                                        // Decrease row count
+                                                        setDisbursementRowCount(prev => prev - 1);
+                                                    }}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        border: `1px solid ${colours.blue}`,
+                                                        borderRadius: 0,
+                                                        backgroundColor: 'white',
+                                                        color: colours.blue,
+                                                        fontSize: '12px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.backgroundColor = colours.blue;
+                                                        e.currentTarget.style.color = 'white';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'white';
+                                                        e.currentTarget.style.color = colours.blue;
+                                                    }}
+                                                >
+                                                    - Remove Row
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
@@ -1280,55 +1727,214 @@ Description | Amount | VAT chargeable
                                                 verticalAlign: 'baseline'
                                             }}
                                         />{' '}
-                                        <input
-                                            value={templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || ''}
-                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, in_total_including_vat_or_for_the_next_steps_in_your_matter: e.target.value }))}
-                                            placeholder="in total including VAT"
-                                            style={{
-                                                fontSize: '14px',
-                                                padding: '1px 4px',
-                                                border: '1px solid #0078d4',
-                                                borderRadius: '2px',
-                                                backgroundColor: '#fff',
-                                                outline: 'none',
-                                                minWidth: '150px',
-                                                width: `${Math.max(150, (templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || 'in total including VAT').length * 8 + 15)}px`,
-                                                transition: 'width 0.2s ease',
-                                                margin: '0 2px',
-                                                verticalAlign: 'baseline'
-                                            }}
-                                        />{' '}including{' '}
-                                        <input
-                                            value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
-                                            onChange={(e) => setTemplateFields(prev => ({ ...prev, give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value }))}
-                                            placeholder="examples of what estimate includes"
-                                            style={{
-                                                fontSize: '14px',
-                                                padding: '1px 4px',
-                                                border: '1px solid #0078d4',
-                                                borderRadius: '2px',
-                                                backgroundColor: '#fff',
-                                                outline: 'none',
-                                                minWidth: '200px',
-                                                width: `${Math.max(200, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'examples of what estimate includes').length * 8 + 15)}px`,
-                                                transition: 'width 0.2s ease',
-                                                margin: '0 2px',
-                                                verticalAlign: 'baseline'
-                                            }}
-                                        />.
+                                        {!showEstimateExamples ? (
+                                            <>
+                                                in total including VAT.
+                                                <button
+                                                    onClick={() => setShowEstimateExamples(!showEstimateExamples)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#0078d4',
+                                                        padding: '2px 4px',
+                                                        fontSize: '11px',
+                                                        cursor: 'pointer',
+                                                        textDecoration: 'none',
+                                                        transition: 'color 0.2s ease',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px',
+                                                        marginLeft: '4px',
+                                                        verticalAlign: 'baseline'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.color = '#106ebe';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.color = '#0078d4';
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '10px', lineHeight: 1 }}>+</span>
+                                                    Examples
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                for the next steps in your matter including{' '}
+                                                <div style={{ display: 'inline-block', position: 'relative' }} className="examples-dropdown">
+                                                    <input
+                                                        value={templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || ''}
+                                                        onChange={(e) => {
+                                                            setTemplateFields(prev => ({ 
+                                                                ...prev, 
+                                                                give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: e.target.value 
+                                                            }));
+                                                        }}
+                                                        placeholder="examples of what your estimate includes"
+                                                        style={{
+                                                            fontSize: '14px',
+                                                            padding: '1px 24px 1px 4px',
+                                                            border: '1px solid #0078d4',
+                                                            borderRadius: '2px',
+                                                            backgroundColor: '#fff',
+                                                            outline: 'none',
+                                                            minWidth: '150px',
+                                                            width: `${Math.max(150, (templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || 'examples of what your estimate includes').length * 8 + 35)}px`,
+                                                            margin: '0 2px',
+                                                            verticalAlign: 'baseline',
+                                                            cursor: 'text',
+                                                            display: 'inline-block',
+                                                            transition: 'width 0.2s ease'
+                                                        }}
+                                                    />
+                                                    <span 
+                                                        onClick={() => {
+                                                            const dropdown = document.getElementById('examples-dropdown');
+                                                            if (dropdown) {
+                                                                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+                                                            }
+                                                        }}
+                                                        style={{ 
+                                                            position: 'absolute',
+                                                            right: '6px',
+                                                            top: '50%',
+                                                            transform: 'translateY(-50%)',
+                                                            color: '#999',
+                                                            fontSize: '12px',
+                                                            cursor: 'pointer',
+                                                            userSelect: 'none',
+                                                            fontWeight: 'normal'
+                                                        }}
+                                                    >
+                                                        ▾
+                                                    </span>
+                                                    <div
+                                                        id="examples-dropdown"
+                                                        style={{
+                                                            display: 'none',
+                                                            position: 'absolute',
+                                                            top: '100%',
+                                                            left: '0',
+                                                            backgroundColor: 'white',
+                                                            border: '1px solid #0078d4',
+                                                            borderRadius: '2px',
+                                                            zIndex: 1000,
+                                                            minWidth: '200px',
+                                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <div style={{ padding: '8px' }}>
+                                                            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', cursor: 'pointer' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={(templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '').includes('court fees')}
+                                                                    onChange={(e) => {
+                                                                        const currentValue = templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '';
+                                                                        let newValue = currentValue;
+                                                                        
+                                                                        if (e.target.checked) {
+                                                                            // Add court fees
+                                                                            const parts = [];
+                                                                            if (currentValue.includes('accountants report')) parts.push('accountants report');
+                                                                            parts.push('court fees');
+                                                                            newValue = parts.join(' and ');
+                                                                        } else {
+                                                                            // Remove court fees
+                                                                            newValue = currentValue.replace(/court fees/g, '').replace(/ and /g, ' ').replace(/^ and | and $/g, '').trim();
+                                                                            if (newValue.includes('accountants report')) {
+                                                                                newValue = 'accountants report';
+                                                                            }
+                                                                        }
+                                                                        
+                                                                        setTemplateFields(prev => ({ ...prev, give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: newValue }));
+                                                                    }}
+                                                                    style={{ marginRight: '8px' }}
+                                                                />
+                                                                Court fees
+                                                            </label>
+                                                            <label style={{ display: 'block', fontSize: '14px', cursor: 'pointer' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={(templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '').includes('accountants report')}
+                                                                    onChange={(e) => {
+                                                                        const currentValue = templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '';
+                                                                        let newValue = currentValue;
+                                                                        
+                                                                        if (e.target.checked) {
+                                                                            // Add accountants report
+                                                                            const parts = [];
+                                                                            parts.push('accountants report');
+                                                                            if (currentValue.includes('court fees')) parts.push('court fees');
+                                                                            newValue = parts.join(' and ');
+                                                                        } else {
+                                                                            // Remove accountants report
+                                                                            newValue = currentValue.replace(/accountants report/g, '').replace(/ and /g, ' ').replace(/^ and | and $/g, '').trim();
+                                                                            if (newValue.includes('court fees')) {
+                                                                                newValue = 'court fees';
+                                                                            }
+                                                                        }
+                                                                        
+                                                                        setTemplateFields(prev => ({ ...prev, give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees: newValue }));
+                                                                    }}
+                                                                    style={{ marginRight: '8px' }}
+                                                                />
+                                                                Accountants report
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>.
+                                                <button
+                                                    onClick={() => setShowEstimateExamples(!showEstimateExamples)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: '#dc3545',
+                                                        padding: '2px 4px',
+                                                        fontSize: '11px',
+                                                        cursor: 'pointer',
+                                                        textDecoration: 'none',
+                                                        transition: 'color 0.2s ease',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px',
+                                                        marginLeft: '4px',
+                                                        verticalAlign: 'baseline'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.color = '#b02a37';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.color = '#dc3545';
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '10px', lineHeight: 1 }}>✕</span>
+                                                    Remove
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 )}
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginTop: 8 }}>
                                     <button
                                         onClick={() => setShowDisbursementsChoice(true)}
                                         style={{
-                                            background: 'none',
-                                            border: '1px solid #0078d4',
-                                            color: '#0078d4',
+                                            backgroundColor: '#f8f9fa',
+                                            border: '1px solid #dee2e6',
+                                            color: '#6c757d',
                                             padding: '4px 8px',
                                             fontSize: '12px',
                                             cursor: 'pointer',
-                                            borderRadius: '2px'
+                                            borderRadius: 0,
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#e9ecef';
+                                            e.currentTarget.style.borderColor = '#adb5bd';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                            e.currentTarget.style.borderColor = '#dee2e6';
                                         }}
                                     >
                                         Change
@@ -1340,104 +1946,251 @@ Description | Amount | VAT chargeable
                 );
             } else {
                 const fieldValue = templateFields[variableName];
+                
+                // Detect if this template variable is part of a bullet point
+                const beforeMatch = content.substring(0, match.index);
+                const afterMatch = content.substring(match.index + match[0].length);
+                const isInBullet = beforeMatch.includes('—') && 
+                                 !beforeMatch.split('—').pop()!.includes('\n');
             
             if (fieldValue && fieldValue.trim()) {
                 // Variable has a value - show as inline editable text
-                parts.push(
-                    <span
-                        key={match.index}
-                        contentEditable
-                        suppressContentEditableWarning={true}
-                        onClick={(e) => handleFieldClick(variableName, e)}
-                        onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                        onMouseLeave={handleFieldHoverLeave}
-                        style={{
-                            backgroundColor: '#e8f5e8',
-                            color: '#20b26c',
-                            padding: '2px 4px',
-                            fontWeight: 500,
-                            border: '1px solid #20b26c',
-                            outline: 'none',
-                            fontFamily: 'Raleway, sans-serif',
-                            fontSize: '14px',
-                            display: 'inline-block',
-                            minWidth: '20px',
-                            cursor: 'text',
-                            borderRadius: '2px',
-                            transition: 'all 0.2s ease',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                            maxWidth: '100%',
-                            boxSizing: 'border-box',
-                            // Ensure border flows seamlessly when text wraps
-                            boxDecorationBreak: 'slice',
-                            WebkitBoxDecorationBreak: 'slice'
-                        }}
-                        onFocus={(e) => {
-                            e.target.style.backgroundColor = '#d4edda';
-                        }}
-                        onBlur={(e) => {
-                            const newValue = e.target.textContent || '';
-                            setTemplateFields(prev => ({
-                                ...prev,
-                                [variableName]: newValue
-                            }));
-                            e.target.style.backgroundColor = '#e8f5e8';
-                        }}
-                    >
-                        {fieldValue}
-                    </span>
-                );
+                if (isInBullet) {
+                    // Special handling for filled placeholders within bullets - render with bullet alignment
+                    parts.push(
+                        <div
+                            key={match.index}
+                            style={{
+                                display: 'block',
+                                marginLeft: '16px',
+                                textIndent: '-16px',
+                                paddingLeft: '16px',
+                                lineHeight: '1.5'
+                            }}
+                        >
+                            <span
+                                contentEditable
+                                suppressContentEditableWarning={true}
+                                onClick={(e) => handleFieldClick(variableName, e)}
+                                onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                                onMouseLeave={handleFieldHoverLeave}
+                                style={{
+                                    backgroundColor: '#e8f5e8',
+                                    color: '#20b26c',
+                                    padding: '2px 4px',
+                                    fontWeight: 500,
+                                    outline: 'none',
+                                    fontFamily: 'Raleway, sans-serif',
+                                    fontSize: '14px',
+                                    display: 'inline',
+                                    cursor: 'text',
+                                    transition: 'all 0.2s ease',
+                                    wordBreak: 'break-word',
+                                    whiteSpace: 'pre-wrap',
+                                    boxSizing: 'border-box',
+                                    marginTop: '-1px',
+                                    marginBottom: '-1px',
+                                    borderLeft: '1px solid #20b26c',
+                                    borderRight: '1px solid #20b26c',
+                                    position: 'relative',
+                                    boxDecorationBreak: 'slice',
+                                    WebkitBoxDecorationBreak: 'slice',
+                                    marginLeft: '16px' // Align with bullet content
+                                }}
+                                className="placeholder-segment"
+                                onFocus={(e) => {
+                                    e.target.style.backgroundColor = '#d4edda';
+                                }}
+                                onBlur={(e) => {
+                                    const newValue = e.target.textContent || '';
+                                    setTemplateFields(prev => ({
+                                        ...prev,
+                                        [variableName]: newValue
+                                    }));
+                                    e.target.style.backgroundColor = '#e8f5e8';
+                                }}
+                            >
+                                {fieldValue}
+                            </span>
+                        </div>
+                    );
+                } else {
+                    parts.push(
+                        <span
+                            key={match.index}
+                            contentEditable
+                            suppressContentEditableWarning={true}
+                            onClick={(e) => handleFieldClick(variableName, e)}
+                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                            onMouseLeave={handleFieldHoverLeave}
+                            style={{
+                                backgroundColor: '#e8f5e8',
+                                color: '#20b26c',
+                                padding: '2px 4px',
+                                fontWeight: 500,
+                                outline: 'none',
+                                fontFamily: 'Raleway, sans-serif',
+                                fontSize: '14px',
+                                display: 'inline',
+                                cursor: 'text',
+                                transition: 'all 0.2s ease',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                                boxSizing: 'border-box',
+                                // Use negative margins to overlap and create unified shape
+                                marginTop: '-1px',
+                                marginBottom: '-1px',
+                                // Border only on left and right, let top/bottom merge
+                                borderLeft: '1px solid #20b26c',
+                                borderRight: '1px solid #20b26c',
+                                // Add top/bottom borders via pseudo-elements for first/last lines
+                                position: 'relative',
+                                // Use slice mode for continuous background
+                                boxDecorationBreak: 'slice',
+                                WebkitBoxDecorationBreak: 'slice'
+                            }}
+                            // Add CSS class for border management
+                            className="placeholder-segment"
+                            onFocus={(e) => {
+                                e.target.style.backgroundColor = '#d4edda';
+                            }}
+                            onBlur={(e) => {
+                                const newValue = e.target.textContent || '';
+                                setTemplateFields(prev => ({
+                                    ...prev,
+                                    [variableName]: newValue
+                                }));
+                                e.target.style.backgroundColor = '#e8f5e8';
+                            }}
+                        >
+                            {fieldValue}
+                        </span>
+                    );
+                }
             } else {
-                // Variable is empty - show as inline input placeholder (remove 'Enter ')
+                // Variable is empty - show as inline input placeholder
                 const placeholderText = variableName.replace(/_/g, ' ');
-                parts.push(
-                    <span
-                        key={match.index}
-                        contentEditable
-                        suppressContentEditableWarning={true}
-                        data-placeholder={placeholderText}
-                        onClick={(e) => handleFieldClick(variableName, e)}
-                        onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                        onMouseLeave={handleFieldHoverLeave}
-                        style={{
-                            backgroundColor: '#f0f8ff',
-                            color: '#0078d4',
-                            padding: '2px 4px',
-                            fontWeight: 500,
-                            border: '1px dashed #0078d4',
-                            outline: 'none',
-                            fontFamily: 'Raleway, sans-serif',
-                            fontSize: '14px',
-                            display: 'inline-block',
-                            minWidth: '20px',
-                            cursor: 'text',
-                            borderRadius: '2px',
-                            transition: 'all 0.2s ease',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'normal',
-                            maxWidth: '100%',
-                            boxSizing: 'border-box',
-                            boxDecorationBreak: 'slice',
-                            WebkitBoxDecorationBreak: 'slice'
-                        }}
-                        onFocus={(e) => {
-                            e.target.style.backgroundColor = '#e6f3ff';
-                            e.target.style.borderStyle = 'solid';
-                        }}
-                        onBlur={(e) => {
-                            const newValue = e.target.textContent || '';
-                            setTemplateFields(prev => ({
-                                ...prev,
-                                [variableName]: newValue
-                            }));
-                            e.target.style.backgroundColor = '#f0f8ff';
-                            e.target.style.borderStyle = 'dashed';
-                        }}
-                    >
-                        {placeholderText}
-                    </span>
-                );
+                
+                if (isInBullet) {
+                    // Special handling for placeholders within bullets - render with bullet alignment
+                    parts.push(
+                        <div
+                            key={match.index}
+                            style={{
+                                display: 'block',
+                                marginLeft: '16px',
+                                textIndent: '-16px',
+                                paddingLeft: '16px',
+                                lineHeight: '1.5'
+                            }}
+                        >
+                            <span
+                                contentEditable
+                                suppressContentEditableWarning={true}
+                                data-placeholder={placeholderText}
+                                onClick={(e) => handleFieldClick(variableName, e)}
+                                onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                                onMouseLeave={handleFieldHoverLeave}
+                                style={{
+                                    backgroundColor: '#f0f8ff',
+                                    color: '#0078d4',
+                                    padding: '2px 4px',
+                                    fontWeight: 500,
+                                    outline: 'none',
+                                    fontFamily: 'Raleway, sans-serif',
+                                    fontSize: '14px',
+                                    display: 'inline',
+                                    minWidth: '20px',
+                                    cursor: 'text',
+                                    transition: 'all 0.2s ease',
+                                    wordBreak: 'break-word',
+                                    whiteSpace: 'pre-wrap',
+                                    boxSizing: 'border-box',
+                                    marginTop: '-1px',
+                                    marginBottom: '-1px',
+                                    borderLeft: '1px dashed #0078d4',
+                                    borderRight: '1px dashed #0078d4',
+                                    position: 'relative',
+                                    boxDecorationBreak: 'slice',
+                                    WebkitBoxDecorationBreak: 'slice',
+                                    marginLeft: '16px' // Align with bullet content
+                                }}
+                                className="placeholder-segment-empty"
+                                onFocus={(e) => {
+                                    e.target.style.backgroundColor = '#e6f3ff';
+                                    e.target.style.borderStyle = 'solid';
+                                }}
+                                onBlur={(e) => {
+                                    const newValue = e.target.textContent || '';
+                                    setTemplateFields(prev => ({
+                                        ...prev,
+                                        [variableName]: newValue
+                                    }));
+                                    e.target.style.backgroundColor = '#f0f8ff';
+                                    e.target.style.borderStyle = 'dashed';
+                                }}
+                            >
+                                {placeholderText}
+                            </span>
+                        </div>
+                    );
+                } else {
+                    parts.push(
+                        <span
+                            key={match.index}
+                            contentEditable
+                            suppressContentEditableWarning={true}
+                            data-placeholder={placeholderText}
+                            onClick={(e) => handleFieldClick(variableName, e)}
+                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                            onMouseLeave={handleFieldHoverLeave}
+                            style={{
+                                backgroundColor: '#f0f8ff',
+                                color: '#0078d4',
+                                padding: '2px 4px',
+                                fontWeight: 500,
+                                outline: 'none',
+                                fontFamily: 'Raleway, sans-serif',
+                                fontSize: '14px',
+                                display: 'inline',
+                                minWidth: '20px',
+                                cursor: 'text',
+                                transition: 'all 0.2s ease',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                                boxSizing: 'border-box',
+                                // Use negative margins to overlap and create unified shape
+                                marginTop: '-1px',
+                                marginBottom: '-1px',
+                                // Border only on left and right, let top/bottom merge
+                                borderLeft: '1px dashed #0078d4',
+                                borderRight: '1px dashed #0078d4',
+                                // Add top/bottom borders via pseudo-elements for first/last lines
+                                position: 'relative',
+                                // Use slice mode for continuous background
+                                boxDecorationBreak: 'slice',
+                                WebkitBoxDecorationBreak: 'slice'
+                            }}
+                            // Add CSS class for border management
+                            className="placeholder-segment-empty"
+                            onFocus={(e) => {
+                                e.target.style.backgroundColor = '#e6f3ff';
+                                e.target.style.borderStyle = 'solid';
+                            }}
+                            onBlur={(e) => {
+                                const newValue = e.target.textContent || '';
+                                setTemplateFields(prev => ({
+                                    ...prev,
+                                    [variableName]: newValue
+                                }));
+                                e.target.style.backgroundColor = '#f0f8ff';
+                                e.target.style.borderStyle = 'dashed';
+                            }}
+                        >
+                            {placeholderText}
+                        </span>
+                    );
+                }
             }
             }
             
@@ -1458,12 +2211,50 @@ Description | Amount | VAT chargeable
                     // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
                     const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
                     const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+                    // Check if line starts with — (bullet point)
+                    const bulletPointMatch = line.match(/^—(.+)$/);
                     const lineKey = `${segmentStart}-line-${index}`;
                     
                     if (numberedHeadingMatch || standaloneHeadingMatch) {
                         return (
                             <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
                                 {line}
+                                {index < lines.length - 1 ? '\n' : ''}
+                            </span>
+                        );
+                    } else if (bulletPointMatch) {
+                        // Handle bullet points with red bullets and styled section references
+                        const bulletContent = bulletPointMatch[1];
+                        // Check for section references like "(see section 4.1 below)"
+                        const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                        
+                        return (
+                            <span key={lineKey} style={{ 
+                                display: 'block', 
+                                marginLeft: '16px',
+                                textIndent: '-16px',
+                                paddingLeft: '16px',
+                                lineHeight: '1.5'
+                            }}>
+                                <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                <span style={{ display: 'inline' }}>
+                                    {sectionRefMatch ? (
+                                        <>
+                                            <span>{sectionRefMatch[1]}</span>
+                                            <span style={{ 
+                                                color: '#6c757d', 
+                                                fontSize: '13px', 
+                                                fontStyle: 'italic',
+                                                opacity: 0.8 
+                                            }}>
+                                                {sectionRefMatch[2]}
+                                            </span>
+                                            <span>{sectionRefMatch[3]}</span>
+                                        </>
+                                    ) : (
+                                        <span>{bulletContent}</span>
+                                    )}
+                                </span>
                                 {index < lines.length - 1 ? '\n' : ''}
                             </span>
                         );
@@ -1474,7 +2265,7 @@ Description | Amount | VAT chargeable
                             {index < lines.length - 1 ? '\n' : ''}
                         </span>
                     );
-                });
+                }).filter(Boolean); // Remove null entries
             };
             
             parts.push(
@@ -1483,7 +2274,26 @@ Description | Amount | VAT chargeable
                     contentEditable
                     suppressContentEditableWarning={true}
                     onBlur={(e) => {
-                        const newText = e.target.textContent || '';
+                        let newText = e.target.textContent || '';
+                        
+                        // Preserve bullet formatting - ensure lines that had bullets still have em dashes
+                        const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
+                        const newLines = newText.split('\n');
+                        
+                        // Restore em dashes for lines that should be bullets
+                        const restoredLines = newLines.map((newLine, index) => {
+                            const originalLine = originalLines[index];
+                            if (originalLine && originalLine.match(/^—/)) {
+                                // This was originally a bullet line
+                                if (!newLine.match(/^—/)) {
+                                    // If the em dash was lost, restore it
+                                    return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
+                                }
+                            }
+                            return newLine;
+                        });
+                        
+                        newText = restoredLines.join('\n');
                         const beforeText = content.substring(0, segmentStart);
                         const afterText = content.substring(segmentEnd);
                         const newContent = beforeText + newText + afterText;
@@ -1959,7 +2769,7 @@ Description | Amount | VAT chargeable
                 overflow: 'auto',
                 fontFamily: 'Raleway, sans-serif',
                 fontSize: '14px',
-                lineHeight: '1.6',
+                lineHeight: '1.3',
                 whiteSpace: 'pre-wrap',
                 padding: '8px',
                 minHeight: '100%',
@@ -1988,10 +2798,12 @@ Description | Amount | VAT chargeable
         const disbursementsText = disbursementsChoice === 'table' 
             ? `Based on the information you have provided, we expect to incur the following disbursements:
 
-Description | Amount | VAT chargeable
+Disbursement | Amount | VAT chargeable
 [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
 [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
-            : `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.estimate || '[Estimate]'} ${templateFields.in_total_including_vat_or_for_the_next_steps_in_your_matter || '[Description]'} including ${templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '[Examples]'}.`;
+            : !showEstimateExamples 
+                ? `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} in total including VAT.`
+                : `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} for the next steps in your matter including ${templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '[Examples]'}.`;
         
         processedContent = processedContent.replace(/\{\{disbursements_section_choice\}\}/g, disbursementsText);
         
@@ -2010,10 +2822,42 @@ Description | Amount | VAT chargeable
             // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+            // Check if line starts with — (bullet point)
+            const bulletPointMatch = line.match(/^—(.+)$/);
+            
             if (numberedHeadingMatch || standaloneHeadingMatch) {
                 return (
                     <div key={line} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
                         {line}
+                    </div>
+                );
+            } else if (bulletPointMatch) {
+                // Handle bullet points with red bullets and styled section references
+                const bulletContent = bulletPointMatch[1];
+                // Check for section references like "(see section 4.1 below)"
+                const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                
+                return (
+                    <div key={line} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
+                        <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
+                        <span style={{ flex: 1 }}>
+                            {sectionRefMatch ? (
+                                <>
+                                    <span>{sectionRefMatch[1]}</span>
+                                    <span style={{ 
+                                        color: '#6c757d', 
+                                        fontSize: '13px', 
+                                        fontStyle: 'italic',
+                                        opacity: 0.8 
+                                    }}>
+                                        {sectionRefMatch[2]}
+                                    </span>
+                                    <span>{sectionRefMatch[3]}</span>
+                                </>
+                            ) : (
+                                <span>{bulletContent}</span>
+                            )}
+                        </span>
                     </div>
                 );
             }
@@ -2591,7 +3435,7 @@ Description | Amount | VAT chargeable
                                         minHeight: '300px',
                                         fontFamily: 'Raleway, sans-serif',
                                         fontSize: '14px',
-                                        lineHeight: '1.6',
+                                        lineHeight: '1.3',
                                         whiteSpace: 'pre-wrap',
                                         backgroundColor: '#fff',
                                         cursor: 'text'

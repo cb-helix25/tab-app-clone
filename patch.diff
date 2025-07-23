@@ -1,8 +1,23 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac95dc2fbd 100644
+index cf31752af919c8a2623802c19d850748f5df2722..e7d976d8ac8f9a6d6929eb410d01be4ee82e6517 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1353,112 +1353,108 @@ Description | Amount | VAT chargeable
+@@ -1338,100 +1338,102 @@ Description | Amount | VAT chargeable
+                         )}
+                     </div>
+                 );
+             } else {
+                 const fieldValue = templateFields[variableName];
+             
+             if (fieldValue && fieldValue.trim()) {
+                 // Variable has a value - show as inline editable text
+                 parts.push(
+                     <span
+                         key={match.index}
+                         contentEditable
+                         suppressContentEditableWarning={true}
+                         onClick={(e) => handleFieldClick(variableName, e)}
+                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
                          onMouseLeave={handleFieldHoverLeave}
                          style={{
                              backgroundColor: '#e8f5e8',
@@ -13,7 +28,9 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                              outline: 'none',
                              fontFamily: 'Raleway, sans-serif',
                              fontSize: '14px',
-                             display: 'inline-block',
+-                            display: 'inline',
++                            display: 'inline-flex',
++                            flexWrap: 'wrap',
                              minWidth: '20px',
                              cursor: 'text',
                              borderRadius: '2px',
@@ -28,7 +45,6 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                          }}
                          onFocus={(e) => {
                              e.target.style.backgroundColor = '#d4edda';
--                            e.target.style.transform = 'scale(1.02)';
                          }}
                          onBlur={(e) => {
                              const newValue = e.target.textContent || '';
@@ -37,7 +53,6 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                                  [variableName]: newValue
                              }));
                              e.target.style.backgroundColor = '#e8f5e8';
--                            e.target.style.transform = 'scale(1)';
                          }}
                      >
                          {fieldValue}
@@ -64,7 +79,9 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                              outline: 'none',
                              fontFamily: 'Raleway, sans-serif',
                              fontSize: '14px',
-                             display: 'inline-block',
+-                            display: 'inline',
++                            display: 'inline-flex',
++                            flexWrap: 'wrap',
                              minWidth: '20px',
                              cursor: 'text',
                              borderRadius: '2px',
@@ -79,7 +96,6 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                          onFocus={(e) => {
                              e.target.style.backgroundColor = '#e6f3ff';
                              e.target.style.borderStyle = 'solid';
--                            e.target.style.transform = 'scale(1.05)';
                          }}
                          onBlur={(e) => {
                              const newValue = e.target.textContent || '';
@@ -89,29 +105,5 @@ index e3ddf48ed4f7000d31c0121de167d4245d0e3dd9..f0965949d190885d59df49fb7069fbac
                              }));
                              e.target.style.backgroundColor = '#f0f8ff';
                              e.target.style.borderStyle = 'dashed';
--                            e.target.style.transform = 'scale(1)';
                          }}
                      >
-                         {placeholderText}
-                     </span>
-                 );
-             }
-             }
-             
-             lastIndex = match.index + match[0].length;
-         }
-         
-         // Add any remaining editable text
-         if (lastIndex < content.length) {
-             const segmentStart = lastIndex;
-             const segmentEnd = content.length;
-             const textSegment = content.substring(segmentStart);
-             
-             // Format text segment to make numbered headings bold
-             const formatTextSegment = (text: string) => {
-                 const lines = text.split('\n');
-                 return lines.map((line, index) => {
-                     // Check if line starts with number followed by space and text (e.g., "1 Contact details")
-                     // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
-                     const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-                     const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
