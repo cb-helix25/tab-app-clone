@@ -22,7 +22,7 @@ interface Step1Props {
     goToNextStep: () => void;
 }
 
-const Step1: React.FC<Step1Props> = (props) => {
+const TemplateSelectionStep: React.FC<Step1Props> = (props) => {
     const {
         currentStep,
         isInstructionBasedMode,
@@ -386,4 +386,4 @@ const Step1: React.FC<Step1Props> = (props) => {
     );
 };
 
-export default Step1;
+export default TemplateSelectionStep;

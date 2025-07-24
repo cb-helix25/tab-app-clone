@@ -7,9 +7,10 @@ import QuickActionsCard from '../home/QuickActionsCard';
 import { colours } from '../../app/styles/colours';
 import { Icon } from '@fluentui/react/lib/Icon';
 import localUserData from '../../localData/localUserData.json';
-import Step1 from './ccl/Step1';
-import Step2 from './ccl/Step2';
-import Step3 from './ccl/Step3';
+import TemplateSelectionStep from './ccl/TemplateSelectionStep';
+import TemplateEditorStep from './ccl/TemplateEditorStep';
+import PreviewActionsStep from './ccl/PreviewActionsStep';
+import PresetPanel from './ccl/PresetPanel';
 
 // CSS for unified placeholder molding
 const placeholderStyles = `
@@ -811,15 +812,15 @@ Disbursement | Amount | VAT chargeable
                 const segmentEnd = match.index;
                 const textSegment = content.substring(segmentStart, segmentEnd);
                 
-                const formatTextSegment = (text: string) => {
+                const formatTextSegment = (text: string): { nodes: React.ReactNode[]; isTable: boolean } => {
                     const lines = text.split('\n');
-                    
+
                     // Check if this text contains table-like content (Action points section)
-                    const hasTableContent = lines.some(line => 
+                    const hasTableContent = lines.some(line =>
                         line.includes('Action required by you | Additional information') ||
                         (line.includes('☐') && line.includes('|'))
                     );
-                    
+
                     if (hasTableContent) {
                         // Handle table formatting for Action points section
                         const tableElements: JSX.Element[] = [];
@@ -1009,11 +1010,11 @@ Disbursement | Amount | VAT chargeable
                             );
                         }
                         
-                        return tableElements;
+                        return { nodes: tableElements, isTable: true };
                     }
-                    
+
                     // Regular text formatting (non-table content)
-                    return lines.map((line, index) => {
+                    const formattedLines = lines.map((line, index) => {
                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
                         const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
@@ -1073,20 +1074,23 @@ Disbursement | Amount | VAT chargeable
                             </span>
                         );
                     });
+                    return { nodes: formattedLines, isTable: false };
                 };
                 
+                const { nodes, isTable } = formatTextSegment(textSegment);
                 parts.push(
-                    <span
+                    <div
                         key={`text-${segmentStart}`}
-                        contentEditable
+                        contentEditable={!isTable}
                         suppressContentEditableWarning={true}
                         onBlur={(e) => {
+                            if (isTable) return;
                             let newText = e.target.textContent || '';
-                            
+
                             // Preserve bullet formatting - ensure lines that had bullets still have em dashes
                             const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
                             const newLines = newText.split('\n');
-                            
+
                             // Restore em dashes for lines that should be bullets
                             const restoredLines = newLines.map((newLine, index) => {
                                 const originalLine = originalLines[index];
@@ -1099,7 +1103,7 @@ Disbursement | Amount | VAT chargeable
                                 }
                                 return newLine;
                             });
-                            
+
                             newText = restoredLines.join('\n');
                             const beforeText = content.substring(0, segmentStart);
                             const afterText = content.substring(segmentEnd);
@@ -1109,16 +1113,16 @@ Disbursement | Amount | VAT chargeable
                         style={{
                             outline: 'none',
                             minHeight: '1em',
-                            display: 'inline',
+                            display: isTable ? 'block' : 'inline',
                             whiteSpace: 'pre-wrap',
-                            cursor: 'text',
+                            cursor: isTable ? 'default' : 'text',
                             padding: '2px',
                             borderRadius: '2px',
                             transition: 'background-color 0.2s ease'
                         }}
                     >
-                        {formatTextSegment(textSegment)}
-                    </span>
+                        {nodes}
+                    </div>
                 );
             }
             
@@ -3002,141 +3006,22 @@ Disbursement | Amount | VAT chargeable
         alignItems: 'center',
         marginTop: 24
     };
-    
-    
-    
-    // Add preset panel that shows globally
-    const presetPanel = showPresets && presetField && (
-        <>
-            {/* Backdrop */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                    zIndex: 1000
-                }}
-                onClick={closePresets}
-            />
-            
-            {/* Preset Panel */}
-            <div
-                style={{
-                    position: 'fixed',
-                    left: Math.min(presetPosition.x - 150, window.innerWidth - 320),
-                    top: Math.min(presetPosition.y, window.innerHeight - 300),
-                    width: '300px',
-                    maxHeight: '280px',
-                    backgroundColor: '#fff',
-                    border: '1px solid #e1e5e9',
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-                    zIndex: 1001,
-                    overflow: 'hidden'
-                }}
-            >
-                {/* Header */}
-                <div style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #e1e5e9',
-                    backgroundColor: '#f8f9fa',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
-                        Choose Preset for {presetField?.replace(/_/g, ' ')}
-                    </div>
-                    <button
-                        onClick={closePresets}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '16px',
-                            cursor: 'pointer',
-                            color: '#666',
-                            padding: '2px'
-                        }}
-                    >
-                        ×
-                    </button>
-                </div>
-                
-                {/* Preset Options */}
-                <div style={{
-                    maxHeight: '220px',
-                    overflowY: 'auto',
-                    padding: '8px'
-                }}>
-                    {(FIELD_PRESETS[presetField as keyof typeof FIELD_PRESETS] || []).map((preset, index) => (
-                        <div
-                            key={index}
-                            onClick={() => handlePresetSelect(preset)}
-                            style={{
-                                padding: '8px 12px',
-                                cursor: 'pointer',
-                                borderRadius: '4px',
-                                fontSize: '13px',
-                                color: '#333',
-                                backgroundColor: 'transparent',
-                                border: '1px solid #e1e5e9',
-                                margin: '4px 0',
-                                transition: 'all 0.2s ease',
-                                lineHeight: '1.3'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                e.currentTarget.style.borderColor = colours.cta;
-                                e.currentTarget.style.color = colours.cta;
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = '#e1e5e9';
-                                e.currentTarget.style.color = '#333';
-                            }}
-                        >
-                            {preset}
-                        </div>
-                    ))}
-                    
-                    {/* Custom input option */}
-                    <div
-                        onClick={closePresets}
-                        style={{
-                            padding: '10px 12px',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            fontSize: '13px',
-                            color: '#666',
-                            backgroundColor: 'transparent',
-                            border: '1px dashed #ccc',
-                            transition: 'all 0.2s ease',
-                            margin: '8px 0 2px 0',
-                            textAlign: 'center',
-                            fontStyle: 'italic'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8f9fa';
-                            e.currentTarget.style.borderColor = '#999';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.borderColor = '#ccc';
-                        }}
-                    >
-                        Type my own...
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+
+
+    const presetPanel = showPresets && presetField ? (
+        <PresetPanel
+            presetField={presetField}
+            presetPosition={presetPosition}
+            fieldPresets={FIELD_PRESETS}
+            colours={colours}
+            closePresets={closePresets}
+            handlePresetSelect={handlePresetSelect}
+        />
+    ) : null;
 
     return (
         <>
-            <Step1
+            <TemplateSelectionStep
                 currentStep={currentStep}
                 isInstructionBasedMode={isInstructionBasedMode}
                 questionBannerStyle={questionBannerStyle}
@@ -3156,7 +3041,7 @@ Disbursement | Amount | VAT chargeable
                 canProceedToStep2={canProceedToStep2}
                 goToNextStep={goToNextStep}
             />
-            <Step2
+            <TemplateEditorStep
                 currentStep={currentStep}
                 questionBannerStyle={questionBannerStyle}
                 renderFieldsOnlyView={renderFieldsOnlyView}
@@ -3169,7 +3054,7 @@ Disbursement | Amount | VAT chargeable
                 canProceedToStep3={canProceedToStep3}
                 goToNextStep={goToNextStep}
             />
-            <Step3
+            <PreviewActionsStep
                 currentStep={currentStep}
                 questionBannerStyle={questionBannerStyle}
                 renderTemplateContentForPreview={renderTemplateContentForPreview}
