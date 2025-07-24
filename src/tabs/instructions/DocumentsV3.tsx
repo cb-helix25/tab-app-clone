@@ -11,45 +11,11 @@ import TemplateSelectionStep from './ccl/TemplateSelectionStep';
 import TemplateEditorStep from './ccl/TemplateEditorStep';
 import PreviewActionsStep from './ccl/PreviewActionsStep';
 import PresetPanel from './ccl/PresetPanel';
-
-// CSS for unified placeholder molding
-const placeholderStyles = `
-<style>
-.placeholder-segment {
-    border-top: 1px solid transparent !important;
-    border-bottom: 1px solid transparent !important;
-}
-
-.placeholder-segment:first-of-type {
-    border-top: 1px solid #20b26c !important;
-}
-
-.placeholder-segment:last-of-type {
-    border-bottom: 1px solid #20b26c !important;
-}
-
-.placeholder-segment-empty {
-    border-top: 1px solid transparent !important;
-    border-bottom: 1px solid transparent !important;
-}
-
-.placeholder-segment-empty:first-of-type {
-    border-top: 1px dashed #0078d4 !important;
-}
-
-.placeholder-segment-empty:last-of-type {
-    border-bottom: 1px dashed #0078d4 !important;
-}
-</style>
-`;
+import HoverTooltip from './ccl/HoverTooltip';
+import { injectPlaceholderStyles } from './ccl/placeholderStyles';
 
 // Inject styles into document head
-if (typeof document !== 'undefined' && !document.getElementById('placeholder-molding-styles')) {
-    const styleElement = document.createElement('style');
-    styleElement.id = 'placeholder-molding-styles';
-    styleElement.innerHTML = placeholderStyles.replace('<style>', '').replace('</style>', '');
-    document.head.appendChild(styleElement);
-}
+injectPlaceholderStyles();
 
 const DEFAULT_CCL_TEMPLATE = `Dear {{insert_clients_name}}
 
@@ -804,6 +770,9 @@ Disbursement | Amount | VAT chargeable
         const parts = [];
         let lastIndex = 0;
         let match: RegExpExecArray | null;
+        let globalTableState = false; // Track table state across segments
+        let globalTableRows: JSX.Element[] = []; // Share table rows across segments
+        let tableSegments: React.ReactNode[] = []; // Collect all table-related content
         
         while ((match = templateVariableRegex.exec(content)) !== null) {
             // Add editable text before the variable
@@ -812,7 +781,7 @@ Disbursement | Amount | VAT chargeable
                 const segmentEnd = match.index;
                 const textSegment = content.substring(segmentStart, segmentEnd);
                 
-                const formatTextSegment = (text: string): { nodes: React.ReactNode[]; isTable: boolean } => {
+                const formatTextSegment = (text: string, segmentIndex: number, isTableContext: boolean = false): { nodes: React.ReactNode[]; isTable: boolean; tableRows?: JSX.Element[] } => {
                     const lines = text.split('\n');
 
                     // Check if this text contains table-like content (Action points section)
@@ -821,11 +790,15 @@ Disbursement | Amount | VAT chargeable
                         (line.includes('☐') && line.includes('|'))
                     );
 
-                    if (hasTableContent) {
+                    // Continue table mode from previous segments or start new table
+                    const shouldProcessAsTable = hasTableContent || isTableContext;
+
+                    if (shouldProcessAsTable) {
                         // Handle table formatting for Action points section
                         const tableElements: JSX.Element[] = [];
                         let tableRows: JSX.Element[] = [];
-                        let isInTable = false;
+                        let isInTable = isTableContext;
+                        let tableStarted = false;
                         
                         lines.forEach((line, index) => {
                             const lineKey = `${segmentStart}-line-${index}`;
@@ -833,33 +806,128 @@ Disbursement | Amount | VAT chargeable
                             if (line.includes('Action required by you | Additional information')) {
                                 // Table header - start collecting rows
                                 isInTable = true;
+                                tableStarted = true;
                                 tableRows = [];
-                            } else if (line.includes('☐') && line.includes('|') && isInTable) {
-                                // Table row
-                                const [actionPart, infoPart] = line.split('|').map(part => part.trim());
-                                tableRows.push(
-                                    <tr key={lineKey}>
-                                        <td style={{ 
-                                            border: '1px solid #ccc',
-                                            padding: '12px',
-                                            verticalAlign: 'top',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            {actionPart}
-                                        </td>
-                                        <td style={{ 
-                                            border: '1px solid #ccc',
-                                            padding: '12px',
-                                            verticalAlign: 'top',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            {infoPart}
-                                        </td>
-                                    </tr>
-                                );
+                            } else if ((isInTable || isTableContext) && (line.includes('☐') || line.trim().startsWith('☐'))) {
+                                // Table row - any line with ☐ when we're in table mode or continuing from previous segment
+                                let actionPart = '';
+                                let infoPart = '';
+                                
+                                if (line.includes('|')) {
+                                    // Line has pipe separator
+                                    [actionPart, infoPart] = line.split('|').map(part => part.trim());
+                                } else {
+                                    // Line has no pipe separator, treat entire line as action part
+                                    actionPart = line.trim();
+                                    infoPart = '';
+                                }
+                                
+                                // Skip if this is just a checkbox with no meaningful content
+                                // This happens when template variables split the line and we get just "☐ "
+                                if (actionPart.trim() === '☐' || actionPart.trim().length <= 2) {
+                                    // Don't create a table row for empty checkbox segments
+                                    isInTable = true; // Keep table mode active
+                                    return;
+                                }
+                                
+                                // Make sure we're in table mode
+                                if (!isInTable) {
+                                    isInTable = true;
+                                    tableStarted = true;
+                                }
+                                
+                                // Check if this is the documents row that needs additional content
+                                const isDocumentsRow = actionPart.includes('Provide the following documents');
+                                
+                                if (isDocumentsRow) {
+                                    // Look ahead for template fields that should be part of this row
+                                    let additionalContent = '';
+                                    let nextIndex = index + 1;
+                                    
+                                    // Skip empty lines and collect template variables for document descriptions
+                                    while (nextIndex < lines.length) {
+                                        const nextLine = lines[nextIndex];
+                                        if (nextLine.trim() === '') {
+                                            nextIndex++;
+                                            continue;
+                                        }
+                                        
+                                        // Check if it's a document description template field
+                                        if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
+                                            if (additionalContent) additionalContent += '\n\n';
+                                            additionalContent += nextLine;
+                                            // Mark this line as processed by setting it to empty
+                                            lines[nextIndex] = '';
+                                            nextIndex++;
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                    
+                                    tableRows.push(
+                                        <tr key={lineKey}>
+                                            <td style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                verticalAlign: 'top',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                <div>{actionPart}</div>
+                                                {additionalContent && (
+                                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                                                        {additionalContent.split('\n\n').map((item, idx) => (
+                                                            <div key={idx} style={{ marginBottom: '4px' }}>
+                                                                {item.trim()}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                verticalAlign: 'top',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {infoPart}
+                                            </td>
+                                        </tr>
+                                    );
+                                } else {
+                                    tableRows.push(
+                                        <tr key={lineKey}>
+                                            <td style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                verticalAlign: 'top',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {actionPart}
+                                            </td>
+                                            <td style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                verticalAlign: 'top',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {infoPart}
+                                            </td>
+                                        </tr>
+                                    );
+                                }
                             } else {
+                                // Check if this line indicates the end of the table
+                                // End table only when we hit a clear end marker
+                                const shouldEndTable = line.trim() !== '' && 
+                                                     !line.includes('{{describe_') &&
+                                                     !line.includes('Action required by you') &&
+                                                     line.trim() !== 'Additional information' &&
+                                                     (line.includes('Please contact me') || 
+                                                      line.includes('Yours sincerely') ||
+                                                      line.match(/^\d+(?:\.\d+)*\s+/)); // Numbered sections
+                                
                                 // End of table or regular line
-                                if (isInTable && tableRows.length > 0) {
+                                if (isInTable && shouldEndTable && tableRows.length > 0) {
                                     // Add the completed table
                                     tableElements.push(
                                         <div key={`table-${index}`} style={{ 
@@ -904,6 +972,15 @@ Disbursement | Amount | VAT chargeable
                                     );
                                     isInTable = false;
                                     tableRows = [];
+                                }
+                                
+                                // Skip lines that should not be processed as regular text when in table mode
+                                if (isInTable && (line.trim() === '' || 
+                                                line.includes('{{describe_') ||
+                                                line.includes('Action required by you') ||
+                                                line.trim() === 'Additional information')) {
+                                    // Skip empty lines, template variables, and table headers that are part of table processing
+                                    return;
                                 }
                                 
                                 // Regular text formatting
@@ -965,52 +1042,13 @@ Disbursement | Amount | VAT chargeable
                             }
                         });
                         
-                        // Add any remaining table if we ended while in table mode
-                        if (isInTable && tableRows.length > 0) {
-                            tableElements.push(
-                                <div key={`table-end`} style={{ 
-                                    display: 'block',
-                                    marginTop: '16px',
-                                    marginBottom: '16px',
-                                    width: '100%'
-                                }}>
-                                    <table style={{ 
-                                        width: '100%', 
-                                        borderCollapse: 'collapse',
-                                        border: '1px solid #ccc',
-                                        fontSize: '14px'
-                                    }}>
-                                        <thead>
-                                            <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                                <th style={{ 
-                                                    border: '1px solid #ccc',
-                                                    padding: '12px',
-                                                    textAlign: 'left',
-                                                    fontWeight: 'bold',
-                                                    width: '50%'
-                                                }}>
-                                                    Action required by you
-                                                </th>
-                                                <th style={{ 
-                                                    border: '1px solid #ccc',
-                                                    padding: '12px',
-                                                    textAlign: 'left',
-                                                    fontWeight: 'bold',
-                                                    width: '50%'
-                                                }}>
-                                                    Additional information
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {tableRows}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            );
+                        // Don't create table elements in individual segments
+                        // Just return the raw content and let the calling code handle table creation
+                        if (tableRows.length > 0) {
+                            return { nodes: [], isTable: true, tableRows: tableRows };
+                        } else {
+                            return { nodes: tableElements, isTable: isInTable || tableStarted, tableRows: tableRows };
                         }
-                        
-                        return { nodes: tableElements, isTable: true };
                     }
 
                     // Regular text formatting (non-table content)
@@ -1077,7 +1115,76 @@ Disbursement | Amount | VAT chargeable
                     return { nodes: formattedLines, isTable: false };
                 };
                 
-                const { nodes, isTable } = formatTextSegment(textSegment);
+                const { nodes, isTable, tableRows: segmentTableRows } = formatTextSegment(textSegment, parts.length, globalTableState);
+                
+                // Update global table state and collect table rows
+                if (isTable && !globalTableState) {
+                    // Starting a new table
+                    globalTableState = true;
+                    globalTableRows = [];
+                } 
+                
+                if (isTable && segmentTableRows && segmentTableRows.length > 0) {
+                    // Add rows from this segment to global collection
+                    globalTableRows.push(...segmentTableRows);
+                    // Add any non-table content from this segment
+                    if (nodes.length > 0) {
+                        tableSegments.push(...nodes);
+                    }
+                } else if (globalTableState && !isTable) {
+                    // Table ended in this segment, create the complete table
+                    if (globalTableRows.length > 0) {
+                        parts.push(
+                            <div key={`complete-table-${parts.length}`} style={{ 
+                                display: 'block',
+                                marginTop: '16px',
+                                marginBottom: '16px',
+                                width: '100%'
+                            }}>
+                                <table style={{ 
+                                    width: '100%', 
+                                    borderCollapse: 'collapse',
+                                    border: '1px solid #ccc',
+                                    fontSize: '14px'
+                                }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                            <th style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                textAlign: 'left',
+                                                fontWeight: 'bold',
+                                                width: '50%'
+                                            }}>
+                                                Action required by you
+                                            </th>
+                                            <th style={{ 
+                                                border: '1px solid #ccc',
+                                                padding: '12px',
+                                                textAlign: 'left',
+                                                fontWeight: 'bold',
+                                                width: '50%'
+                                            }}>
+                                                Additional information
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {globalTableRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                    }
+                    globalTableState = false;
+                    globalTableRows = [];
+                    tableSegments = [];
+                    // Add the current segment's nodes
+                    parts.push(...nodes);
+                } else if (!globalTableState) {
+                    // Regular content, not part of table
+                    parts.push(...nodes);
+                }
                 parts.push(
                     <div
                         key={`text-${segmentStart}`}
@@ -2204,121 +2311,48 @@ Disbursement | Amount | VAT chargeable
             lastIndex = match.index + match[0].length;
         }
         
-        // Add any remaining editable text
-        if (lastIndex < content.length) {
-            const segmentStart = lastIndex;
-            const segmentEnd = content.length;
-            const textSegment = content.substring(segmentStart);
-            
-            // Format text segment to make numbered headings bold
-            const formatTextSegment = (text: string) => {
-                const lines = text.split('\n');
-                return lines.map((line, index) => {
-                    // Check if line starts with number followed by space and text (e.g., "1 Contact details")
-                    // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
-                    const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-                    const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-                    // Check if line starts with — (bullet point)
-                    const bulletPointMatch = line.match(/^—(.+)$/);
-                    const lineKey = `${segmentStart}-line-${index}`;
-                    
-                    if (numberedHeadingMatch || standaloneHeadingMatch) {
-                        return (
-                            <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
-                                {line}
-                                {index < lines.length - 1 ? '\n' : ''}
-                            </span>
-                        );
-                    } else if (bulletPointMatch) {
-                        // Handle bullet points with red bullets and styled section references
-                        const bulletContent = bulletPointMatch[1];
-                        // Check for section references like "(see section 4.1 below)"
-                        const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                        
-                        return (
-                            <span key={lineKey} style={{ 
-                                display: 'block', 
-                                marginLeft: '16px',
-                                textIndent: '-16px',
-                                paddingLeft: '16px',
-                                lineHeight: '1.5'
-                            }}>
-                                <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                <span style={{ display: 'inline' }}>
-                                    {sectionRefMatch ? (
-                                        <>
-                                            <span>{sectionRefMatch[1]}</span>
-                                            <span style={{ 
-                                                color: '#6c757d', 
-                                                fontSize: '13px', 
-                                                fontStyle: 'italic',
-                                                opacity: 0.8 
-                                            }}>
-                                                {sectionRefMatch[2]}
-                                            </span>
-                                            <span>{sectionRefMatch[3]}</span>
-                                        </>
-                                    ) : (
-                                        <span>{bulletContent}</span>
-                                    )}
-                                </span>
-                                {index < lines.length - 1 ? '\n' : ''}
-                            </span>
-                        );
-                    }
-                    return (
-                        <span key={lineKey}>
-                            {line}
-                            {index < lines.length - 1 ? '\n' : ''}
-                        </span>
-                    );
-                }).filter(Boolean); // Remove null entries
-            };
-            
+        // Handle any remaining table at the end
+        if (globalTableState && globalTableRows.length > 0) {
             parts.push(
-                <span
-                    key={`text-${segmentStart}`}
-                    contentEditable
-                    suppressContentEditableWarning={true}
-                    onBlur={(e) => {
-                        let newText = e.target.textContent || '';
-                        
-                        // Preserve bullet formatting - ensure lines that had bullets still have em dashes
-                        const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
-                        const newLines = newText.split('\n');
-                        
-                        // Restore em dashes for lines that should be bullets
-                        const restoredLines = newLines.map((newLine, index) => {
-                            const originalLine = originalLines[index];
-                            if (originalLine && originalLine.match(/^—/)) {
-                                // This was originally a bullet line
-                                if (!newLine.match(/^—/)) {
-                                    // If the em dash was lost, restore it
-                                    return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
-                                }
-                            }
-                            return newLine;
-                        });
-                        
-                        newText = restoredLines.join('\n');
-                        const beforeText = content.substring(0, segmentStart);
-                        const afterText = content.substring(segmentEnd);
-                        const newContent = beforeText + newText + afterText;
-                        setDocumentContent(newContent);
-                    }}
-                    style={{
-                        outline: 'none',
-                        minHeight: '1em',
-                        display: 'inline',
-                        whiteSpace: 'pre-wrap',
-                        cursor: 'text',
-                        padding: '2px',
-                        borderRadius: '2px',
-                        transition: 'background-color 0.2s ease'
-                    }}
-                >
-                    {formatTextSegment(textSegment)}
-                </span>
+                <div key={`final-table`} style={{ 
+                    display: 'block',
+                    marginTop: '16px',
+                    marginBottom: '16px',
+                    width: '100%'
+                }}>
+                    <table style={{ 
+                        width: '100%', 
+                        borderCollapse: 'collapse',
+                        border: '1px solid #ccc',
+                        fontSize: '14px'
+                    }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                <th style={{ 
+                                    border: '1px solid #ccc',
+                                    padding: '12px',
+                                    textAlign: 'left',
+                                    fontWeight: 'bold',
+                                    width: '50%'
+                                }}>
+                                    Action required by you
+                                </th>
+                                <th style={{ 
+                                    border: '1px solid #ccc',
+                                    padding: '12px',
+                                    textAlign: 'left',
+                                    fontWeight: 'bold',
+                                    width: '50%'
+                                }}>
+                                    Additional information
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {globalTableRows}
+                        </tbody>
+                    </table>
+                </div>
             );
         }
         
@@ -2981,24 +3015,6 @@ Disbursement | Amount | VAT chargeable
         justifyContent: 'center'
     };
     
-    // Tooltip styles
-    const tooltipStyle = {
-        position: 'fixed' as const,
-        top: tooltipPosition.y,
-        left: tooltipPosition.x,
-        transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        color: 'white',
-        padding: '6px 12px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        fontWeight: '500',
-        zIndex: 10000,
-        pointerEvents: 'none' as const,
-        whiteSpace: 'nowrap' as const,
-        opacity: hoveredField ? 1 : 0,
-        transition: 'opacity 0.2s ease'
-    };
     
     const navigationStyle = {
         display: 'flex',
@@ -3008,16 +3024,6 @@ Disbursement | Amount | VAT chargeable
     };
 
 
-    const presetPanel = showPresets && presetField ? (
-        <PresetPanel
-            presetField={presetField}
-            presetPosition={presetPosition}
-            fieldPresets={FIELD_PRESETS}
-            colours={colours}
-            closePresets={closePresets}
-            handlePresetSelect={handlePresetSelect}
-        />
-    ) : null;
 
     return (
         <>
@@ -3071,14 +3077,21 @@ Disbursement | Amount | VAT chargeable
             />
 
             {/* Render preset panel */}
-            {presetPanel}
+            <PresetPanel
+                show={showPresets && !!presetField}
+                field={presetField}
+                position={presetPosition}
+                presets={FIELD_PRESETS}
+                onSelect={handlePresetSelect}
+                onClose={closePresets}
+            />
 
             {/* Hover tooltip */}
-            {hoveredField && (
-                <div style={tooltipStyle}>
-                    {FIELD_DISPLAY_NAMES[hoveredField as keyof typeof FIELD_DISPLAY_NAMES] || hoveredField}
-                </div>
-            )}
+            <HoverTooltip
+                hoveredField={hoveredField}
+                position={tooltipPosition}
+                displayNames={FIELD_DISPLAY_NAMES}
+            />
         </>
     );
 };

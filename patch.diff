@@ -1,315 +1,272 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 22cf541c165d9802aac1d7d9061feda07325959b..b6425aba70be14d0f28972aba6c4163df794525d 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -773,108 +773,114 @@ Disbursement | Amount | VAT chargeable
-         
-         // Replace other template fields
-         Object.keys(templateFields).forEach(key => {
-             const value = templateFields[key];
-             if (value && value.trim()) {
-                 const placeholder = `{{${key}}}`;
-                 content = content.replace(new RegExp(placeholder, 'g'), value);
-             }
-         });
-         
-         return content;
-     };
-     
-     // Function to render content with highlighted template variables
-     // Helper function to measure text width
-     const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'Raleway, sans-serif'): number => {
-         const canvas = document.createElement('canvas');
-         const context = canvas.getContext('2d');
-         if (context) {
-             context.font = `${fontSize}px ${fontFamily}`;
-             return context.measureText(text).width;
-         }
-         return text.length * 8; // Fallback
-     };
+diff --git a/src/tabs/instructions/ccl/PresetPanel.tsx b/src/tabs/instructions/ccl/PresetPanel.tsx
+index d95faabc811374e3a4858d21afb2a415ad7083cd..988cc66639387e7c9b12019d21f7d46b082a9efa 100644
+--- a/src/tabs/instructions/ccl/PresetPanel.tsx
++++ b/src/tabs/instructions/ccl/PresetPanel.tsx
+@@ -1,147 +1,149 @@
+ import React from 'react';
++import { colours } from '../../../app/styles/colours';
  
--    const renderTemplateContentWithHighlights = (content: string) => {
-+    const renderTemplateContentWithHighlights = (content: string, disableTable: boolean = false) => {
-         if (!content) return 'No content to preview...';
-         
-         // Find all template variables in the content
-         const templateVariableRegex = /\{\{([^}]+)\}\}/g;
-         const parts = [];
-         let lastIndex = 0;
-         let match: RegExpExecArray | null;
-         
-         while ((match = templateVariableRegex.exec(content)) !== null) {
-             // Add editable text before the variable
-             if (match.index > lastIndex) {
-                 const segmentStart = lastIndex;
-                 const segmentEnd = match.index;
-                 const textSegment = content.substring(segmentStart, segmentEnd);
--                
-+                const nextNewlineIndex = content.indexOf('\n', segmentStart);
-+                const fullLine = content.substring(
-+                    segmentStart,
-+                    nextNewlineIndex === -1 ? content.length : nextNewlineIndex
-+                );
-+
-                 const formatTextSegment = (text: string) => {
-                     const lines = text.split('\n');
--                    
-+
-                     // Check if this text contains table-like content (Action points section)
--                    const hasTableContent = lines.some(line => 
--                        line.includes('Action required by you | Additional information') ||
--                        (line.includes('☐') && line.includes('|'))
-+                    const hasTableContent = !disableTable && (
-+                        fullLine.includes('Action required by you | Additional information') ||
-+                        (fullLine.includes('☐') && fullLine.includes('|'))
-                     );
-                     
-                     if (hasTableContent) {
-                         // Handle table formatting for Action points section
-                         const tableElements: JSX.Element[] = [];
-                         let tableRows: JSX.Element[] = [];
-                         let isInTable = false;
-                         
-                         lines.forEach((line, index) => {
-                             const lineKey = `${segmentStart}-line-${index}`;
--                            
--                            if (line.includes('Action required by you | Additional information')) {
-+                            const actualLine = index === 0 ? fullLine : line;
-+
-+                            if (actualLine.includes('Action required by you | Additional information')) {
-                                 // Table header - start collecting rows
-                                 isInTable = true;
-                                 tableRows = [];
--                            } else if (line.includes('☐') && line.includes('|') && isInTable) {
-+                            } else if (actualLine.includes('☐') && actualLine.includes('|') && isInTable) {
-                                 // Table row
--                                const [actionPart, infoPart] = line.split('|').map(part => part.trim());
-+                                const [actionPart, infoPart] = actualLine.split('|').map(part => part.trim());
-                                 tableRows.push(
-                                     <tr key={lineKey}>
--                                        <td style={{ 
-+                                        <td style={{
-                                             border: '1px solid #ccc',
-                                             padding: '12px',
-                                             verticalAlign: 'top',
-                                             lineHeight: '1.4'
-                                         }}>
--                                            {actionPart}
-+                                            {renderTemplateContentWithHighlights(actionPart, true)}
-                                         </td>
--                                        <td style={{ 
-+                                        <td style={{
-                                             border: '1px solid #ccc',
-                                             padding: '12px',
-                                             verticalAlign: 'top',
-                                             lineHeight: '1.4'
-                                         }}>
--                                            {infoPart}
-+                                            {renderTemplateContentWithHighlights(infoPart, true)}
-                                         </td>
-                                     </tr>
-                                 );
-                             } else {
-                                 // End of table or regular line
-                                 if (isInTable && tableRows.length > 0) {
-                                     // Add the completed table
-                                     tableElements.push(
-                                         <div key={`table-${index}`} style={{ 
-                                             display: 'block',
-                                             marginTop: '16px',
-                                             marginBottom: '16px',
-                                             width: '100%'
-                                         }}>
-                                             <table style={{ 
-                                                 width: '100%', 
-                                                 borderCollapse: 'collapse',
-                                                 border: '1px solid #ccc',
-                                                 fontSize: '14px'
-                                             }}>
-                                                 <thead>
-                                                     <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                                         <th style={{ 
-                                                             border: '1px solid #ccc',
-                                                             padding: '12px',
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 22cf541c165d9802aac1d7d9061feda07325959b..b6425aba70be14d0f28972aba6c4163df794525d 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -884,99 +890,99 @@ Disbursement | Amount | VAT chargeable
-                                                         }}>
-                                                             Action required by you
-                                                         </th>
-                                                         <th style={{ 
-                                                             border: '1px solid #ccc',
-                                                             padding: '12px',
-                                                             textAlign: 'left',
-                                                             fontWeight: 'bold',
-                                                             width: '50%'
-                                                         }}>
-                                                             Additional information
-                                                         </th>
-                                                     </tr>
-                                                 </thead>
-                                                 <tbody>
-                                                     {tableRows}
-                                                 </tbody>
-                                             </table>
-                                         </div>
-                                     );
-                                     isInTable = false;
-                                     tableRows = [];
-                                 }
-                                 
-                                 // Regular text formatting
--                                const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
--                                const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
--                                const bulletPointMatch = line.match(/^—(.+)$/);
-+                                const numberedHeadingMatch = actualLine.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-+                                const standaloneHeadingMatch = actualLine.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-+                                const bulletPointMatch = actualLine.match(/^—(.+)$/);
-                                 
-                                 if (numberedHeadingMatch || standaloneHeadingMatch) {
-                                     tableElements.push(
-                                         <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
--                                            {line}
-+                                            {renderTemplateContentWithHighlights(actualLine, true)}
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else if (bulletPointMatch) {
-                                     const bulletContent = bulletPointMatch[1];
-                                     const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                                     
-                                     tableElements.push(
-                                         <span key={lineKey} style={{ 
-                                             display: 'block', 
-                                             marginLeft: '16px',
-                                             textIndent: '-16px',
-                                             paddingLeft: '16px',
-                                             lineHeight: '1.5'
-                                         }}>
-                                             <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                             <span style={{ display: 'inline' }}>
-                                                 {sectionRefMatch ? (
-                                                     <>
-                                                         <span>{sectionRefMatch[1]}</span>
-                                                         <span style={{ 
-                                                             color: '#6c757d', 
-                                                             fontSize: '13px', 
-                                                             fontStyle: 'italic',
-                                                             opacity: 0.8 
-                                                         }}>
-                                                             {sectionRefMatch[2]}
-                                                         </span>
-                                                         <span>{sectionRefMatch[3]}</span>
-                                                     </>
-                                                 ) : (
-                                                     <span>{bulletContent}</span>
-                                                 )}
-                                             </span>
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
--                                } else if (line.trim() !== '') {
-+                                } else if (actualLine.trim() !== '') {
-                                     tableElements.push(
-                                         <span key={lineKey}>
--                                            {line}
-+                                            {renderTemplateContentWithHighlights(actualLine, true)}
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else {
-                                     tableElements.push(<br key={lineKey} />);
-                                 }
-                             }
-                         });
-                         
-                         // Add any remaining table if we ended while in table mode
-                         if (isInTable && tableRows.length > 0) {
-                             tableElements.push(
-                                 <div key={`table-end`} style={{ 
-                                     display: 'block',
-                                     marginTop: '16px',
-                                     marginBottom: '16px',
-                                     width: '100%'
-                                 }}>
-                                     <table style={{ 
-                                         width: '100%', 
-                                         borderCollapse: 'collapse',
-                                         border: '1px solid #ccc',
-                                         fontSize: '14px'
-                                     }}>
-                                         <thead>
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 22cf541c165d9802aac1d7d9061feda07325959b..b6425aba70be14d0f28972aba6c4163df794525d 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1037,62 +1043,62 @@ Disbursement | Amount | VAT chargeable
-                             
-                             return (
-                                 <span key={lineKey} style={{ 
-                                     display: 'block', 
-                                     marginLeft: '16px',
-                                     textIndent: '-16px',
-                                     paddingLeft: '16px',
-                                     lineHeight: '1.5'
-                                 }}>
-                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                     <span style={{ display: 'inline' }}>
-                                         {sectionRefMatch ? (
-                                             <>
-                                                 <span>{sectionRefMatch[1]}</span>
-                                                 <span style={{ 
-                                                     color: '#6c757d', 
-                                                     fontSize: '13px', 
-                                                     fontStyle: 'italic',
-                                                     opacity: 0.8 
-                                                 }}>
-                                                     {sectionRefMatch[2]}
-                                                 </span>
-                                                 <span>{sectionRefMatch[3]}</span>
-                                             </>
-                                         ) : (
--                                            <span>{bulletContent}</span>
-+                                            <span>{renderTemplateContentWithHighlights(bulletContent, true)}</span>
-                                         )}
-                                     </span>
-                                     {index < lines.length - 1 ? '\n' : ''}
-                                 </span>
-                             );
-                         }
-                         return (
--                            <span key={lineKey}>
--                                {line}
--                                {index < lines.length - 1 ? '\n' : ''}
--                            </span>
-+                                        <span key={lineKey}>
-+                                            {renderTemplateContentWithHighlights(actualLine, true)}
-+                                            {index < lines.length - 1 ? '\n' : ''}
-+                                        </span>
-                         );
-                     });
-                 };
-                 
-                 parts.push(
-                     <span
-                         key={`text-${segmentStart}`}
-                         contentEditable
-                         suppressContentEditableWarning={true}
-                         onBlur={(e) => {
-                             let newText = e.target.textContent || '';
-                             
-                             // Preserve bullet formatting - ensure lines that had bullets still have em dashes
-                             const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
-                             const newLines = newText.split('\n');
-                             
-                             // Restore em dashes for lines that should be bullets
-                             const restoredLines = newLines.map((newLine, index) => {
-                                 const originalLine = originalLines[index];
-                                 if (originalLine && originalLine.match(/^—/)) {
-                                     // This was originally a bullet line
-                                     if (!newLine.match(/^—/)) {
-                                         // If the em dash was lost, restore it
-                                         return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
-                                     }
+ interface PresetPanelProps {
+-    presetField: string;
+-    presetPosition: { x: number; y: number };
+-    fieldPresets: Record<string, string[]>;
+-    colours: any;
+-    closePresets: () => void;
+-    handlePresetSelect: (preset: string) => void;
++    show: boolean;
++    field: string | null;
++    position: { x: number; y: number };
++    presets: Record<string, string[]>;
++    onSelect: (preset: string) => void;
++    onClose: () => void;
+ }
+ 
+ const PresetPanel: React.FC<PresetPanelProps> = ({
+-    presetField,
+-    presetPosition,
+-    fieldPresets,
+-    colours,
+-    closePresets,
+-    handlePresetSelect
+-}) => (
+-    <>
+-        {/* Backdrop */}
+-        <div
+-            style={{
+-                position: 'fixed',
+-                top: 0,
+-                left: 0,
+-                right: 0,
+-                bottom: 0,
+-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+-                zIndex: 1000
+-            }}
+-            onClick={closePresets}
+-        />
++    show,
++    field,
++    position,
++    presets,
++    onSelect,
++    onClose
++}) => {
++    if (!show || !field) return null;
+ 
+-        {/* Preset Panel */}
+-        <div
+-            style={{
+-                position: 'fixed',
+-                left: Math.min(presetPosition.x - 150, window.innerWidth - 320),
+-                top: Math.min(presetPosition.y, window.innerHeight - 300),
+-                width: '300px',
+-                maxHeight: '280px',
+-                backgroundColor: '#fff',
+-                border: '1px solid #e1e5e9',
+-                borderRadius: '8px',
+-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+-                zIndex: 1001,
+-                overflow: 'hidden'
+-            }}
+-        >
+-            {/* Header */}
+-            <div style={{
+-                padding: '12px 16px',
+-                borderBottom: '1px solid #e1e5e9',
+-                backgroundColor: '#f8f9fa',
+-                display: 'flex',
+-                justifyContent: 'space-between',
+-                alignItems: 'center'
+-            }}>
+-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
+-                    Choose Preset for {presetField?.replace(/_/g, ' ')}
++    const options = presets[field] || [];
++    return (
++        <>
++            <div
++                style={{
++                    position: 'fixed',
++                    top: 0,
++                    left: 0,
++                    right: 0,
++                    bottom: 0,
++                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
++                    zIndex: 1000
++                }}
++                onClick={onClose}
++            />
++            <div
++                style={{
++                    position: 'fixed',
++                    left: Math.min(position.x - 150, window.innerWidth - 320),
++                    top: Math.min(position.y, window.innerHeight - 300),
++                    width: '300px',
++                    maxHeight: '280px',
++                    backgroundColor: '#fff',
++                    border: '1px solid #e1e5e9',
++                    borderRadius: '8px',
++                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
++                    zIndex: 1001,
++                    overflow: 'hidden'
++                }}
++            >
++                <div
++                    style={{
++                        padding: '12px 16px',
++                        borderBottom: '1px solid #e1e5e9',
++                        backgroundColor: '#f8f9fa',
++                        display: 'flex',
++                        justifyContent: 'space-between',
++                        alignItems: 'center'
++                    }}
++                >
++                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
++                        Choose Preset for {field.replace(/_/g, ' ')}
++                    </div>
++                    <button
++                        onClick={onClose}
++                        style={{
++                            background: 'none',
++                            border: 'none',
++                            fontSize: '16px',
++                            cursor: 'pointer',
++                            color: '#666',
++                            padding: '2px'
++                        }}
++                    >
++                        ×
++                    </button>
+                 </div>
+-                <button
+-                    onClick={closePresets}
++                <div
+                     style={{
+-                        background: 'none',
+-                        border: 'none',
+-                        fontSize: '16px',
+-                        cursor: 'pointer',
+-                        color: '#666',
+-                        padding: '2px'
++                        maxHeight: '220px',
++                        overflowY: 'auto',
++                        padding: '8px'
+                     }}
+                 >
+-                    ×
+-                </button>
+-            </div>
+-
+-            {/* Preset Options */}
+-            <div style={{
+-                maxHeight: '220px',
+-                overflowY: 'auto',
+-                padding: '8px'
+-            }}>
+-                {(fieldPresets[presetField as keyof typeof fieldPresets] || []).map((preset, index) => (
++                    {options.map((preset, index) => (
++                        <div
++                            key={index}
++                            onClick={() => onSelect(preset)}
++                            style={{
++                                padding: '8px 12px',
++                                cursor: 'pointer',
++                                borderRadius: '4px',
++                                fontSize: '13px',
++                                color: '#333',
++                                backgroundColor: 'transparent',
++                                border: '1px solid #e1e5e9',
++                                margin: '4px 0',
++                                transition: 'all 0.2s ease',
++                                lineHeight: '1.3'
++                            }}
++                            onMouseEnter={e => {
++                                (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa';
++                                (e.currentTarget as HTMLElement).style.borderColor = colours.cta;
++                                (e.currentTarget as HTMLElement).style.color = colours.cta;
++                            }}
++                            onMouseLeave={e => {
++                                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
++                                (e.currentTarget as HTMLElement).style.borderColor = '#e1e5e9';
++                                (e.currentTarget as HTMLElement).style.color = '#333';
++                            }}
++                        >
++                            {preset}
++                        </div>
++                    ))}
+                     <div
+-                        key={index}
+-                        onClick={() => handlePresetSelect(preset)}
++                        onClick={onClose}
+                         style={{
+-                            padding: '8px 12px',
++                            padding: '10px 12px',
+                             cursor: 'pointer',
+                             borderRadius: '4px',
+                             fontSize: '13px',
+-                            color: '#333',
++                            color: '#666',
+                             backgroundColor: 'transparent',
+-                            border: '1px solid #e1e5e9',
+-                            margin: '4px 0',
++                            border: '1px dashed #ccc',
+                             transition: 'all 0.2s ease',
+-                            lineHeight: '1.3'
++                            margin: '8px 0 2px 0',
++                            textAlign: 'center',
++                            fontStyle: 'italic'
+                         }}
+                         onMouseEnter={e => {
+-                            e.currentTarget.style.backgroundColor = '#f8f9fa';
+-                            e.currentTarget.style.borderColor = colours.cta;
+-                            e.currentTarget.style.color = colours.cta;
++                            (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa';
++                            (e.currentTarget as HTMLElement).style.borderColor = '#999';
+                         }}
+                         onMouseLeave={e => {
+-                            e.currentTarget.style.backgroundColor = 'transparent';
+-                            e.currentTarget.style.borderColor = '#e1e5e9';
+-                            e.currentTarget.style.color = '#333';
++                            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
++                            (e.currentTarget as HTMLElement).style.borderColor = '#ccc';
+                         }}
+                     >
+-                        {preset}
++                        Type my own...
+                     </div>
+-                ))}
+-
+-                {/* Custom input option */}
+-                <div
+-                    onClick={closePresets}
+-                    style={{
+-                        padding: '10px 12px',
+-                        cursor: 'pointer',
+-                        borderRadius: '4px',
+-                        fontSize: '13px',
+-                        color: '#666',
+-                        backgroundColor: 'transparent',
+-                        border: '1px dashed #ccc',
+-                        transition: 'all 0.2s ease',
+-                        margin: '8px 0 2px 0',
+-                        textAlign: 'center',
+-                        fontStyle: 'italic'
+-                    }}
+-                    onMouseEnter={e => {
+-                        e.currentTarget.style.backgroundColor = '#f8f9fa';
+-                        e.currentTarget.style.borderColor = '#999';
+-                    }}
+-                    onMouseLeave={e => {
+-                        e.currentTarget.style.backgroundColor = 'transparent';
+-                        e.currentTarget.style.borderColor = '#ccc';
+-                    }}
+-                >
+-                    Type my own...
+                 </div>
+             </div>
+-        </div>
+-    </>
+-);
++        </>
++    );
++};
+ 
+ export default PresetPanel;
