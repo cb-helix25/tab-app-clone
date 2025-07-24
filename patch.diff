@@ -1,109 +1,1364 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index cf31752af919c8a2623802c19d850748f5df2722..e7d976d8ac8f9a6d6929eb410d01be4ee82e6517 100644
+index 6fb05bb211d5112b2e48a735a9fb5943aa1391b1..704d14075fb0de3ddb84adc9c1ddaacf8f859f9f 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1338,100 +1338,102 @@ Description | Amount | VAT chargeable
-                         )}
-                     </div>
-                 );
-             } else {
-                 const fieldValue = templateFields[variableName];
+@@ -1,34 +1,37 @@
+ import React, { useState, useEffect } from 'react';
+ import { Stack, TextField, Toggle, Dropdown, MessageBar, MessageBarType } from '@fluentui/react';
+ import { Panel } from '@fluentui/react/lib/Panel';
+ import { InstructionData } from '../../app/functionality/types';
+ import { useTheme } from '../../app/functionality/ThemeContext';
+ import QuickActionsCard from '../home/QuickActionsCard';
+ import { colours } from '../../app/styles/colours';
+ import { Icon } from '@fluentui/react/lib/Icon';
+ import localUserData from '../../localData/localUserData.json';
++import Step1 from './CCL/Step1';
++import Step2 from './CCL/Step2';
++import Step3 from './CCL/Step3';
+ 
+ // CSS for unified placeholder molding
+ const placeholderStyles = `
+ <style>
+ .placeholder-segment {
+     border-top: 1px solid transparent !important;
+     border-bottom: 1px solid transparent !important;
+ }
+ 
+ .placeholder-segment:first-of-type {
+     border-top: 1px solid #20b26c !important;
+ }
+ 
+ .placeholder-segment:last-of-type {
+     border-bottom: 1px solid #20b26c !important;
+ }
+ 
+ .placeholder-segment-empty {
+     border-top: 1px solid transparent !important;
+     border-bottom: 1px solid transparent !important;
+ }
+ 
+ .placeholder-segment-empty:first-of-type {
+     border-top: 1px dashed #0078d4 !important;
+ }
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 6fb05bb211d5112b2e48a735a9fb5943aa1391b1..704d14075fb0de3ddb84adc9c1ddaacf8f859f9f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -2978,1045 +2981,51 @@ Disbursement | Amount | VAT chargeable
+     const tooltipStyle = {
+         position: 'fixed' as const,
+         top: tooltipPosition.y,
+         left: tooltipPosition.x,
+         transform: 'translateX(-50%)',
+         backgroundColor: 'rgba(0, 0, 0, 0.8)',
+         color: 'white',
+         padding: '6px 12px',
+         borderRadius: '4px',
+         fontSize: '12px',
+         fontWeight: '500',
+         zIndex: 10000,
+         pointerEvents: 'none' as const,
+         whiteSpace: 'nowrap' as const,
+         opacity: hoveredField ? 1 : 0,
+         transition: 'opacity 0.2s ease'
+     };
+     
+     const navigationStyle = {
+         display: 'flex',
+         justifyContent: 'space-between',
+         alignItems: 'center',
+         marginTop: 24
+     };
+     
+-    // Step 1: Instruction & Template Selection Page
+-    if (currentStep === 1) {
+-        return (
+-            <div>
+-                <div className="matter-opening-card">
+-                    <Stack tokens={{ childrenGap: 20 }}>
+-                    <div>
+-                        {/* Instruction Selection */}
+-                        {!isInstructionBasedMode && (
+-                            <div style={{ marginBottom: '24px' }}>
+-                                <div style={questionBannerStyle}>
+-                                    Select Instruction
+-                                </div>
+-                                
+-                                {/* Search input */}
+-                                <div style={{ marginTop: '12px', marginBottom: '16px' }}>
+-                                    <input
+-                                        type="text"
+-                                        placeholder="Search instructions..."
+-                                        value={instructionSearchTerm}
+-                                        onChange={(e) => setInstructionSearchTerm(e.target.value)}
+-                                        style={{
+-                                            width: '100%',
+-                                            padding: '8px 12px',
+-                                            border: '1px solid #e1dfdd',
+-                                            borderRadius: '4px',
+-                                            fontSize: '14px',
+-                                            outline: 'none',
+-                                            transition: 'border-color 0.2s ease'
+-                                        }}
+-                                        onFocus={(e) => e.target.style.borderColor = '#3690CE'}
+-                                        onBlur={(e) => e.target.style.borderColor = '#e1dfdd'}
+-                                    />
+-                                </div>
+-                                
+-                                <div style={{
+-                                    display: 'grid',
+-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+-                                    gap: '12px'
+-                                }}>
+-                                    {/* Instruction options */}
+-                                    {filteredInstructions.length === 0 ? (
+-                                        <div style={{
+-                                            gridColumn: '1 / -1',
+-                                            textAlign: 'center',
+-                                            padding: '32px',
+-                                            color: '#666',
+-                                            fontSize: '14px'
+-                                        }}>
+-                                            {instructionSearchTerm.trim() ? 
+-                                                `No instructions found matching "${instructionSearchTerm}"` : 
+-                                                'No instructions available'
+-                                            }
+-                                        </div>
+-                                    ) : (
+-                                        filteredInstructions.map((inst) => {
+-                                        const instId = inst.id || inst.prospectId;
+-                                        const selectedId = selectedInstruction?.id || selectedInstruction?.prospectId;
+-                                        const isSelected = userHasInteracted && selectedId === instId;
+-                                        
+-                                        return (
+-                                        <div
+-                                            key={instId}
+-                                            style={{
+-                                                padding: '16px',
+-                                                border: isSelected ? `1px solid ${colours.highlight}` : '1px solid #e0e0e0',
+-                                                borderRadius: '0',
+-                                                backgroundColor: isSelected ? `${colours.highlight}22` : '#fff',
+-                                                cursor: 'pointer',
+-                                                transition: 'all 0.2s ease',
+-                                                position: 'relative'
+-                                            }}
+-                                            onClick={() => {
+-                                                if (isSelected) {
+-                                                    // Unselect if already selected - reset to initial state
+-                                                    setSelectedInstruction(null);
+-                                                    setHasSelectedInstruction(false);
+-                                                    setUserHasInteracted(false);
+-                                                } else {
+-                                                    // Select instruction
+-                                                    setSelectedInstruction(inst);
+-                                                    setHasSelectedInstruction(true);
+-                                                    setUserHasInteracted(true);
+-                                                }
+-                                            }}
+-                                            onMouseEnter={(e) => {
+-                                                if (!isSelected) {
+-                                                    e.currentTarget.style.borderColor = colours.highlight;
+-                                                    e.currentTarget.style.backgroundColor = '#f7fafc';
+-                                                }
+-                                            }}
+-                                            onMouseLeave={(e) => {
+-                                                if (!isSelected) {
+-                                                    e.currentTarget.style.borderColor = '#e0e0e0';
+-                                                    e.currentTarget.style.backgroundColor = '#fff';
+-                                                }
+-                                            }}
+-                                        >
+-                                            <div style={{
+-                                                fontSize: '16px',
+-                                                fontWeight: 600,
+-                                                color: '#061733',
+-                                                marginBottom: '4px'
+-                                            }}>
+-                                                {inst.title || (inst.prospectId ? `Instruction ${inst.prospectId}` : 'Untitled Instruction')}
+-                                            </div>
+-                                            {inst.deals?.[0]?.ServiceDescription && (
+-                                                <div style={{
+-                                                    fontSize: '14px',
+-                                                    color: '#3690CE',
+-                                                    marginBottom: '4px'
+-                                                }}>
+-                                                    {inst.deals[0].ServiceDescription}
+-                                                </div>
+-                                            )}
+-                                            {inst.description && (
+-                                                <div style={{
+-                                                    fontSize: '13px',
+-                                                    color: '#666'
+-                                                }}>
+-                                                    {inst.description}
+-                                                </div>
+-                                            )}
+-                                            {isSelected && (
+-                                                <div style={{
+-                                                    position: 'absolute',
+-                                                    top: '12px',
+-                                                    right: '12px',
+-                                                    width: '20px',
+-                                                    height: '20px',
+-                                                    borderRadius: '50%',
+-                                                    backgroundColor: '#3690CE',
+-                                                    display: 'flex',
+-                                                    alignItems: 'center',
+-                                                    justifyContent: 'center'
+-                                                }}>
+-                                                    <Icon iconName="Accept" style={{ color: '#fff', fontSize: '12px' }} />
+-                                                </div>
+-                                            )}
+-                                        </div>
+-                                        );
+-                                    })
+-                                    )}
+-                                </div>
+-                            </div>
+-                        )}
+-                        
+-                        {/* Template Selection */}
+-                        <div>
+-                            <div style={questionBannerStyle}>
+-                                Choose Your Template
+-                            </div>
+-                            <div style={{
+-                                display: 'grid',
+-                                gridTemplateColumns: 'repeat(2, 1fr)',
+-                                gap: '8px',
+-                                width: '100%',
+-                                marginTop: '0'
+-                            }}>
+-                                <div 
+-                                    style={{
+-                                        padding: '12px 16px',
+-                                        textAlign: 'center',
+-                                        cursor: 'pointer',
+-                                        userSelect: 'none',
+-                                        fontSize: '14px',
+-                                        fontWeight: '500',
+-                                        transition: 'all 0.2s ease',
+-                                        border: `1px solid ${selectedTemplate === 'ccl' ? colours.highlight : '#e0e0e0'}`,
+-                                        background: selectedTemplate === 'ccl' ? `${colours.highlight}22` : '#fff',
+-                                        color: selectedTemplate === 'ccl' ? colours.highlight : '#4a5568',
+-                                        display: 'flex',
+-                                        flexDirection: 'column',
+-                                        alignItems: 'center',
+-                                        justifyContent: 'center',
+-                                        minHeight: '80px',
+-                                        position: 'relative',
+-                                        borderRadius: '0',
+-                                        boxShadow: selectedTemplate === 'ccl' ? `0 2px 8px ${colours.highlight}20` : 'none'
+-                                    }}
+-                                    onClick={() => handleTemplateSelect('ccl')}
+-                                    onMouseEnter={(e) => {
+-                                        if (selectedTemplate !== 'ccl') {
+-                                            e.currentTarget.style.background = '#f7fafc';
+-                                            e.currentTarget.style.borderColor = colours.highlight;
+-                                        }
+-                                    }}
+-                                    onMouseLeave={(e) => {
+-                                        if (selectedTemplate !== 'ccl') {
+-                                            e.currentTarget.style.background = '#fff';
+-                                            e.currentTarget.style.borderColor = '#e0e0e0';
+-                                        }
+-                                    }}
+-                                >
+-                                    <Icon iconName="FileText" style={{ marginBottom: '8px', fontSize: '20px', color: selectedTemplate === 'ccl' ? colours.highlight : '#4a5568' }} />
+-                                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>Client Care Letter</div>
+-                                    <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', lineHeight: '1.3' }}>
+-                                        Standard engagement letter with placeholders
+-                                    </div>
+-                                </div>
+-                                
+-                                <div 
+-                                    style={{
+-                                        padding: '12px 16px',
+-                                        textAlign: 'center',
+-                                        cursor: 'pointer',
+-                                        userSelect: 'none',
+-                                        fontSize: '14px',
+-                                        fontWeight: '500',
+-                                        transition: 'all 0.2s ease',
+-                                        border: `1px solid ${selectedTemplate === 'custom' ? colours.highlight : '#e0e0e0'}`,
+-                                        background: selectedTemplate === 'custom' ? `${colours.highlight}22` : '#fff',
+-                                        color: selectedTemplate === 'custom' ? colours.highlight : '#4a5568',
+-                                        display: 'flex',
+-                                        flexDirection: 'column',
+-                                        alignItems: 'center',
+-                                        justifyContent: 'center',
+-                                        minHeight: '80px',
+-                                        position: 'relative',
+-                                        borderRadius: '0',
+-                                        boxShadow: selectedTemplate === 'custom' ? `0 2px 8px ${colours.highlight}20` : 'none'
+-                                    }}
+-                                    onClick={() => handleTemplateSelect('custom')}
+-                                    onMouseEnter={(e) => {
+-                                        if (selectedTemplate !== 'custom') {
+-                                            e.currentTarget.style.background = '#f7fafc';
+-                                            e.currentTarget.style.borderColor = colours.highlight;
+-                                        }
+-                                    }}
+-                                    onMouseLeave={(e) => {
+-                                        if (selectedTemplate !== 'custom') {
+-                                            e.currentTarget.style.background = '#fff';
+-                                            e.currentTarget.style.borderColor = '#e0e0e0';
+-                                        }
+-                                    }}
+-                                >
+-                                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>+ Custom Document</div>
+-                                    <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', lineHeight: '1.3' }}>
+-                                        Start with a blank document
+-                                    </div>
+-                                </div>
+-                            </div>
+-                        </div>
+-                    </div>
+-                </Stack>
+-                
+-                <div style={navigationStyle}>
+-                        <div></div>
+-                        <div
+-                            className="nav-button forward-button"
+-                            onClick={canProceedToStep2 ? goToNextStep : undefined}
+-                            aria-disabled={!canProceedToStep2}
+-                            tabIndex={canProceedToStep2 ? 0 : -1}
+-                            style={{
+-                                background: '#f4f4f6',
+-                                border: '2px solid #e1dfdd',
+-                                borderRadius: '0px',
+-                                width: '48px',
+-                                height: '48px',
+-                                display: 'flex',
+-                                alignItems: 'center',
+-                                justifyContent: 'center',
+-                                cursor: canProceedToStep2 ? 'pointer' : 'not-allowed',
+-                                opacity: canProceedToStep2 ? 1 : 0.5,
+-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+-                                position: 'relative',
+-                                overflow: 'hidden',
+-                                pointerEvents: canProceedToStep2 ? 'auto' : 'none',
+-                            }}
+-                            onMouseEnter={canProceedToStep2 ? (e) => {
+-                                e.currentTarget.style.background = '#ffefed';
+-                                e.currentTarget.style.border = '2px solid #D65541';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '180px';
+-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+-                            } : undefined}
+-                            onMouseLeave={canProceedToStep2 ? (e) => {
+-                                e.currentTarget.style.background = '#f4f4f6';
+-                                e.currentTarget.style.border = '2px solid #e1dfdd';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '48px';
+-                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+-                            } : undefined}
+-                        >
+-                            {/* Arrow Icon */}
+-                            <svg 
+-                                width="18" 
+-                                height="18" 
+-                                viewBox="0 0 24 24" 
+-                                fill="none"
+-                                style={{
+-                                    transition: 'color 0.3s, opacity 0.3s',
+-                                    color: canProceedToStep2 ? '#D65541' : '#999',
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%)',
+-                                }}
+-                            >
+-                                <path 
+-                                    d="M5 12h14M12 5l7 7-7 7" 
+-                                    stroke="currentColor" 
+-                                    strokeWidth="2" 
+-                                    strokeLinecap="round" 
+-                                    strokeLinejoin="round"
+-                                />
+-                            </svg>
+-
+-                            {/* Expandable Text */}
+-                            <span
+-                                style={{
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%)',
+-                                    fontSize: '14px',
+-                                    fontWeight: 600,
+-                                    color: '#D65541',
+-                                    opacity: 0,
+-                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                    whiteSpace: 'nowrap',
+-                                }}
+-                                className="nav-text"
+-                            >
+-                                Continue to Editor
+-                            </span>
+-                        </div>
+-                        <style>{`
+-                            .nav-button:hover .nav-text {
+-                                opacity: 1 !important;
+-                            }
+-                            .nav-button:hover svg {
+-                                opacity: 0 !important;
+-                            }
+-                        `}</style>
+-                </div>
+-            </div>
+-            </div>
+-        );
+-    }
+     
+-    // Step 2: Editor & Template Fields Page
+-    if (currentStep === 2) {
+-        return (
+-            <div className="matter-opening-card" style={{
+-                opacity: 1,
+-                animation: 'fadeIn 0.3s ease-out'
+-            }}>
+-                <style>
+-                    {`
+-                        @keyframes fadeIn {
+-                            from { opacity: 0; transform: translateY(10px); }
+-                            to { opacity: 1; transform: translateY(0); }
+-                        }
+-                    `}
+-                </style>
+-                <Stack tokens={{ childrenGap: 20 }}>
+-                    <div>
+-                        <div style={{ 
+-                            display: 'flex', 
+-                            gap: '20px', 
+-                            flexDirection: 'row'
+-                        }}>
+-                            {/* Interactive Template Editor Section */}
+-                            <div style={{ 
+-                                flex: '1', 
+-                                minWidth: '0'
+-                            }}>
+-                                <div style={{
+-                                    ...questionBannerStyle,
+-                                    display: 'flex',
+-                                    justifyContent: 'space-between',
+-                                    alignItems: 'center'
+-                                }}>
+-                                    <span>Interactive Template Editor</span>
+-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+-                                        <button
+-                                            onClick={() => setIsFieldsOnlyView(false)}
+-                                            style={{
+-                                                padding: '8px 16px',
+-                                                border: '1px solid #CCCCCC',
+-                                                backgroundColor: !isFieldsOnlyView ? '#3690CE' : '#FFFFFF',
+-                                                color: !isFieldsOnlyView ? '#FFFFFF' : '#061733',
+-                                                fontSize: '14px',
+-                                                fontWeight: '500',
+-                                                cursor: 'pointer',
+-                                                outline: 'none',
+-                                                transition: 'all 0.2s ease',
+-                                                borderRight: 'none',
+-                                                minWidth: '80px'
+-                                            }}
+-                                        >
+-                                            Editor
+-                                        </button>
+-                                        <button
+-                                            onClick={() => setIsFieldsOnlyView(true)}
+-                                            style={{
+-                                                padding: '8px 16px',
+-                                                border: '1px solid #CCCCCC',
+-                                                backgroundColor: isFieldsOnlyView ? '#3690CE' : '#FFFFFF',
+-                                                color: isFieldsOnlyView ? '#FFFFFF' : '#061733',
+-                                                fontSize: '14px',
+-                                                fontWeight: '500',
+-                                                cursor: 'pointer',
+-                                                outline: 'none',
+-                                                transition: 'all 0.2s ease',
+-                                                minWidth: '80px'
+-                                            }}
+-                                        >
+-                                            Fields
+-                                        </button>
+-                                    </div>
+-                                </div>
+-                                
+-                                {isFieldsOnlyView ? (
+-                                    <div style={{ 
+-                                        border: '1px solid #e1e5e9',
+-                                        borderRadius: '4px',
+-                                        padding: '16px',
+-                                        minHeight: '300px',
+-                                        fontFamily: 'Raleway, sans-serif',
+-                                        fontSize: '14px',
+-                                        backgroundColor: '#fff'
+-                                    }}>
+-                                        {renderFieldsOnlyView()}
+-                                    </div>
+-                                ) : (
+-                                    <div style={{ 
+-                                        border: '1px solid #e1e5e9',
+-                                        borderRadius: '4px',
+-                                        padding: '16px',
+-                                        minHeight: '300px',
+-                                        fontFamily: 'Raleway, sans-serif',
+-                                        fontSize: '14px',
+-                                        lineHeight: '1.3',
+-                                        whiteSpace: 'pre-wrap',
+-                                        backgroundColor: '#fff',
+-                                        cursor: 'text'
+-                                    }}>
+-                                        {renderEditableTemplateContent(documentContent)}
+-                                    </div>
+-                                )}
+-                            </div>
+-                        </div>
+-                    </div>
+-                </Stack>
+-                
+-                {/* Navigation Below Content */}
+-                <div style={navigationStyle}>
+-                    <div
+-                        className="nav-button back-button"
+-                        onClick={goToPreviousStep}
+-                        tabIndex={0}
+-                        style={{
+-                            background: '#f4f4f6',
+-                            border: '2px solid #e1dfdd',
+-                            borderRadius: '0px',
+-                            width: '48px',
+-                            height: '48px',
+-                            display: 'flex',
+-                            alignItems: 'center',
+-                            justifyContent: 'center',
+-                            cursor: 'pointer',
+-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+-                            position: 'relative',
+-                            overflow: 'hidden',
+-                        }}
+-                        onMouseEnter={(e) => {
+-                            e.currentTarget.style.background = '#ffefed';
+-                            e.currentTarget.style.border = '2px solid #D65541';
+-                            e.currentTarget.style.borderRadius = '0px';
+-                            e.currentTarget.style.width = '140px';
+-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+-                        }}
+-                        onMouseLeave={(e) => {
+-                            e.currentTarget.style.background = '#f4f4f6';
+-                            e.currentTarget.style.border = '2px solid #e1dfdd';
+-                            e.currentTarget.style.borderRadius = '0px';
+-                            e.currentTarget.style.width = '48px';
+-                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+-                        }}
+-                    >
+-                        {/* Arrow Icon */}
+-                        <svg 
+-                            width="18" 
+-                            height="18" 
+-                            viewBox="0 0 24 24" 
+-                            fill="none"
+-                            style={{
+-                                transition: 'color 0.3s, opacity 0.3s',
+-                                color: '#D65541',
+-                                position: 'absolute',
+-                                left: '50%',
+-                                top: '50%',
+-                                transform: 'translate(-50%, -50%) rotate(180deg)',
+-                            }}
+-                        >
+-                            <path 
+-                                d="M5 12h14M12 5l7 7-7 7" 
+-                                stroke="currentColor" 
+-                                strokeWidth="2" 
+-                                strokeLinecap="round" 
+-                                strokeLinejoin="round"
+-                            />
+-                        </svg>
+-
+-                        {/* Expandable Text */}
+-                        <span
+-                            style={{
+-                                position: 'absolute',
+-                                left: '50%',
+-                                top: '50%',
+-                                transform: 'translate(-50%, -50%)',
+-                                fontSize: '14px',
+-                                fontWeight: 600,
+-                                color: '#D65541',
+-                                opacity: 0,
+-                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                whiteSpace: 'nowrap',
+-                            }}
+-                            className="nav-text"
+-                        >
+-                            Back to Selection
+-                        </span>
+-                    </div>
+-                    <div
+-                        className="nav-button forward-button"
+-                        onClick={canProceedToStep3 ? goToNextStep : undefined}
+-                        aria-disabled={!canProceedToStep3}
+-                        tabIndex={canProceedToStep3 ? 0 : -1}
+-                        style={{
+-                            background: '#f4f4f6',
+-                            border: '2px solid #e1dfdd',
+-                            borderRadius: '0px',
+-                            width: '48px',
+-                            height: '48px',
+-                            display: 'flex',
+-                            alignItems: 'center',
+-                            justifyContent: 'center',
+-                            cursor: canProceedToStep3 ? 'pointer' : 'not-allowed',
+-                            opacity: canProceedToStep3 ? 1 : 0.5,
+-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                            boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+-                            position: 'relative',
+-                            overflow: 'hidden',
+-                            pointerEvents: canProceedToStep3 ? 'auto' : 'none',
+-                        }}
+-                        onMouseEnter={canProceedToStep3 ? (e) => {
+-                            e.currentTarget.style.background = '#ffefed';
+-                            e.currentTarget.style.border = '2px solid #D65541';
+-                            e.currentTarget.style.borderRadius = '0px';
+-                            e.currentTarget.style.width = '160px';
+-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+-                        } : undefined}
+-                        onMouseLeave={canProceedToStep3 ? (e) => {
+-                            e.currentTarget.style.background = '#f4f4f6';
+-                            e.currentTarget.style.border = '2px solid #e1dfdd';
+-                            e.currentTarget.style.borderRadius = '0px';
+-                            e.currentTarget.style.width = '48px';
+-                            e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+-                        } : undefined}
+-                    >
+-                        {/* Arrow Icon */}
+-                        <svg 
+-                            width="18" 
+-                            height="18" 
+-                            viewBox="0 0 24 24" 
+-                            fill="none"
+-                            style={{
+-                                transition: 'color 0.3s, opacity 0.3s',
+-                                color: canProceedToStep3 ? '#D65541' : '#999',
+-                                position: 'absolute',
+-                                left: '50%',
+-                                top: '50%',
+-                                transform: 'translate(-50%, -50%)',
+-                            }}
+-                        >
+-                            <path 
+-                                d="M5 12h14M12 5l7 7-7 7" 
+-                                stroke="currentColor" 
+-                                strokeWidth="2" 
+-                                strokeLinecap="round" 
+-                                strokeLinejoin="round"
+-                            />
+-                        </svg>
+-
+-                        {/* Expandable Text */}
+-                        <span
+-                            style={{
+-                                position: 'absolute',
+-                                left: '50%',
+-                                top: '50%',
+-                                transform: 'translate(-50%, -50%)',
+-                                fontSize: '14px',
+-                                fontWeight: 600,
+-                                color: '#D65541',
+-                                opacity: 0,
+-                                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                whiteSpace: 'nowrap',
+-                            }}
+-                            className="nav-text"
+-                        >
+-                            Continue to Preview
+-                        </span>
+-                    </div>
+-                </div>
+-            </div>
+-        );
+-    }
+-    
+-    // Step 3: Preview & Actions Page
+-    if (currentStep === 3) {
+-        return (
+-            <div className="matter-opening-card" style={{
+-                opacity: 1,
+-                animation: 'fadeIn 0.3s ease-out'
+-            }}>
+-                <style>
+-                    {`
+-                        @keyframes fadeIn {
+-                            from { opacity: 0; transform: translateY(10px); }
+-                            to { opacity: 1; transform: translateY(0); }
+-                        }
+-                    `}
+-                </style>
+-                <Stack tokens={{ childrenGap: 20 }}>
+-                    {/* Message Bar */}
+-                    {message && (
+-                        <MessageBar
+-                            messageBarType={message.type}
+-                            onDismiss={() => setMessage(null)}
+-                            styles={{ root: { marginBottom: '20px' } }}
+-                        >
+-                            {message.text}
+-                        </MessageBar>
+-                    )}
+-                    
+-                    <div>
+-                        <h2 style={{ margin: '0 0 16px 0', fontSize: '24px', fontWeight: 600 }}>
+-                            Step 3: Preview & Actions
+-                        </h2>
+-                        <p style={{ marginBottom: '24px', color: '#666' }}>
+-                            Review your document and choose your delivery method.
+-                        </p>
+-                        
+-                        <div style={{ 
+-                            display: 'flex', 
+-                            gap: '20px', 
+-                            minHeight: '500px',
+-                            flexDirection: windowWidth < 1200 ? 'column' : 'row'
+-                        }}>
+-                            {/* Document Preview */}
+-                            <div style={{ 
+-                                flex: '1', 
+-                                minWidth: '0'
+-                            }}>
+-                                <div style={questionBannerStyle}>
+-                                    Final Document Preview
+-                                </div>
+-                                <div style={{ 
+-                                    border: '1px solid #e1e5e9',
+-                                    borderRadius: '4px',
+-                                    padding: '20px',
+-                                    backgroundColor: '#f8f9fa',
+-                                    height: windowWidth < 1200 ? '300px' : '450px',
+-                                    overflow: 'auto',
+-                                    fontFamily: 'Raleway, sans-serif',
+-                                    fontSize: '14px',
+-                                    lineHeight: '1.6',
+-                                    whiteSpace: 'pre-wrap'
+-                                }}>
+-                                    {renderTemplateContentForPreview(documentContent)}
+-                                </div>
+-                            </div>
+-                            
+-                            {/* Actions Panel */}
+-                            <div style={{ 
+-                                width: windowWidth < 1200 ? '100%' : '350px', 
+-                                flexShrink: windowWidth < 1200 ? 1 : 0,
+-                                minWidth: windowWidth < 1200 ? '100%' : '300px'
+-                            }}>
+-                                <div style={questionBannerStyle}>
+-                                    Actions & Delivery
+-                                </div>
+-                                <div style={{ 
+-                                    border: '1px solid #e1e5e9', 
+-                                    borderRadius: '4px', 
+-                                    padding: '20px',
+-                                    backgroundColor: '#fff',
+-                                    height: windowWidth < 1200 ? '300px' : '450px'
+-                                }}>
+-                                    <Stack tokens={{ childrenGap: 16 }}>
+-                                        <div
+-                                            className="action-button"
+-                                            onClick={() => setMessage({ type: MessageBarType.success, text: 'Email functionality coming soon!' })}
+-                                            style={{
+-                                                background: '#D65541',
+-                                                color: 'white',
+-                                                border: 'none',
+-                                                borderRadius: '0px',
+-                                                width: '100%',
+-                                                padding: '12px 16px',
+-                                                display: 'flex',
+-                                                alignItems: 'center',
+-                                                justifyContent: 'center',
+-                                                gap: '8px',
+-                                                cursor: 'pointer',
+-                                                transition: 'all 0.2s ease',
+-                                                fontSize: '14px',
+-                                                fontWeight: 600,
+-                                            }}
+-                                            onMouseEnter={(e) => {
+-                                                e.currentTarget.style.background = '#B54533';
+-                                            }}
+-                                            onMouseLeave={(e) => {
+-                                                e.currentTarget.style.background = '#D65541';
+-                                            }}
+-                                        >
+-                                            <Icon iconName="Mail" />
+-                                            Send via Email
+-                                        </div>
+-                                        
+-                                        <div
+-                                            className="action-button"
+-                                            onClick={() => setMessage({ type: MessageBarType.info, text: 'PDF download coming soon!' })}
+-                                            style={{
+-                                                background: '#f4f4f6',
+-                                                color: '#333',
+-                                                border: '1px solid #e1dfdd',
+-                                                borderRadius: '0px',
+-                                                width: '100%',
+-                                                padding: '12px 16px',
+-                                                display: 'flex',
+-                                                alignItems: 'center',
+-                                                justifyContent: 'center',
+-                                                gap: '8px',
+-                                                cursor: 'pointer',
+-                                                transition: 'all 0.2s ease',
+-                                                fontSize: '14px',
+-                                                fontWeight: 600,
+-                                            }}
+-                                            onMouseEnter={(e) => {
+-                                                e.currentTarget.style.background = '#e6e6e8';
+-                                            }}
+-                                            onMouseLeave={(e) => {
+-                                                e.currentTarget.style.background = '#f4f4f6';
+-                                            }}
+-                                        >
+-                                            <Icon iconName="Download" />
+-                                            Download PDF
+-                                        </div>
+-                                        
+-                                        <div
+-                                            className="action-button"
+-                                            onClick={() => setMessage({ type: MessageBarType.success, text: 'Draft saved successfully!' })}
+-                                            style={{
+-                                                background: '#f4f4f6',
+-                                                color: '#333',
+-                                                border: '1px solid #e1dfdd',
+-                                                borderRadius: '0px',
+-                                                width: '100%',
+-                                                padding: '12px 16px',
+-                                                display: 'flex',
+-                                                alignItems: 'center',
+-                                                justifyContent: 'center',
+-                                                gap: '8px',
+-                                                cursor: 'pointer',
+-                                                transition: 'all 0.2s ease',
+-                                                fontSize: '14px',
+-                                                fontWeight: 600,
+-                                            }}
+-                                            onMouseEnter={(e) => {
+-                                                e.currentTarget.style.background = '#e6e6e8';
+-                                            }}
+-                                            onMouseLeave={(e) => {
+-                                                e.currentTarget.style.background = '#f4f4f6';
+-                                            }}
+-                                        >
+-                                            <Icon iconName="Save" />
+-                                            Save as Draft
+-                                        </div>
+-                                        
+-                                        <div
+-                                            className="action-button"
+-                                            onClick={() => {
+-                                                navigator.clipboard.writeText(generateTemplateContent());
+-                                                setMessage({ type: MessageBarType.success, text: 'Document copied to clipboard!' });
+-                                            }}
+-                                            style={{
+-                                                background: '#f4f4f6',
+-                                                color: '#333',
+-                                                border: '1px solid #e1dfdd',
+-                                                borderRadius: '0px',
+-                                                width: '100%',
+-                                                padding: '12px 16px',
+-                                                display: 'flex',
+-                                                alignItems: 'center',
+-                                                justifyContent: 'center',
+-                                                gap: '8px',
+-                                                cursor: 'pointer',
+-                                                transition: 'all 0.2s ease',
+-                                                fontSize: '14px',
+-                                                fontWeight: 600,
+-                                            }}
+-                                            onMouseEnter={(e) => {
+-                                                e.currentTarget.style.background = '#e6e6e8';
+-                                            }}
+-                                            onMouseLeave={(e) => {
+-                                                e.currentTarget.style.background = '#f4f4f6';
+-                                            }}
+-                                        >
+-                                            <Icon iconName="Copy" />
+-                                            Copy to Clipboard
+-                                        </div>
+-                                        
+-                                        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+-                                            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Document Summary</h4>
+-                                            <p style={{ margin: '0', fontSize: '12px', color: '#666' }}>
+-                                                Template: {selectedTemplate === 'ccl' ? 'Client Care Letter' : 'Custom Document'}
+-                                            </p>
+-                                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+-                                                Word count: {generateTemplateContent().split(/\s+/).filter(word => word.length > 0).length}
+-                                            </p>
+-                                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+-                                                Fields filled: {Object.values(templateFields).filter(v => v.trim() !== '').length}/{Object.keys(templateFields).length}
+-                                            </p>
+-                                        </div>
+-                                    </Stack>
+-                                </div>
+-                            </div>
+-                        </div>
+-                    </div>
+-                    
+-                    <div style={navigationStyle}>
+-                        <div
+-                            className="nav-button back-button"
+-                            onClick={goToPreviousStep}
+-                            tabIndex={0}
+-                            style={{
+-                                background: '#f4f4f6',
+-                                border: '2px solid #e1dfdd',
+-                                borderRadius: '0px',
+-                                width: '48px',
+-                                height: '48px',
+-                                display: 'flex',
+-                                alignItems: 'center',
+-                                justifyContent: 'center',
+-                                cursor: 'pointer',
+-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+-                                position: 'relative',
+-                                overflow: 'hidden',
+-                            }}
+-                            onMouseEnter={(e) => {
+-                                e.currentTarget.style.background = '#ffefed';
+-                                e.currentTarget.style.border = '2px solid #D65541';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '120px';
+-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+-                            }}
+-                            onMouseLeave={(e) => {
+-                                e.currentTarget.style.background = '#f4f4f6';
+-                                e.currentTarget.style.border = '2px solid #e1dfdd';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '48px';
+-                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+-                            }}
+-                        >
+-                            {/* Arrow Icon */}
+-                            <svg 
+-                                width="18" 
+-                                height="18" 
+-                                viewBox="0 0 24 24" 
+-                                fill="none"
+-                                style={{
+-                                    transition: 'color 0.3s, opacity 0.3s',
+-                                    color: '#D65541',
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%) rotate(180deg)',
+-                                }}
+-                            >
+-                                <path 
+-                                    d="M5 12h14M12 5l7 7-7 7" 
+-                                    stroke="currentColor" 
+-                                    strokeWidth="2" 
+-                                    strokeLinecap="round" 
+-                                    strokeLinejoin="round"
+-                                />
+-                            </svg>
+-
+-                            {/* Expandable Text */}
+-                            <span
+-                                style={{
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%)',
+-                                    fontSize: '14px',
+-                                    fontWeight: 600,
+-                                    color: '#D65541',
+-                                    opacity: 0,
+-                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                    whiteSpace: 'nowrap',
+-                                }}
+-                                className="nav-text"
+-                            >
+-                                Back to Editor
+-                            </span>
+-                        </div>
+-                        <div
+-                            className="nav-button complete-button"
+-                            onClick={() => setMessage({ type: MessageBarType.success, text: 'Document completed successfully!' })}
+-                            tabIndex={0}
+-                            style={{
+-                                background: '#f4f4f6',
+-                                border: '2px solid #e1dfdd',
+-                                borderRadius: '0px',
+-                                width: '48px',
+-                                height: '48px',
+-                                display: 'flex',
+-                                alignItems: 'center',
+-                                justifyContent: 'center',
+-                                cursor: 'pointer',
+-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+-                                position: 'relative',
+-                                overflow: 'hidden',
+-                            }}
+-                            onMouseEnter={(e) => {
+-                                e.currentTarget.style.background = '#ffefed';
+-                                e.currentTarget.style.border = '2px solid #D65541';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '160px';
+-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(214,85,65,0.08)';
+-                            }}
+-                            onMouseLeave={(e) => {
+-                                e.currentTarget.style.background = '#f4f4f6';
+-                                e.currentTarget.style.border = '2px solid #e1dfdd';
+-                                e.currentTarget.style.borderRadius = '0px';
+-                                e.currentTarget.style.width = '48px';
+-                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(6,23,51,0.04)';
+-                            }}
+-                        >
+-                            {/* Checkmark Icon */}
+-                            <svg 
+-                                width="18" 
+-                                height="18" 
+-                                viewBox="0 0 24 24" 
+-                                fill="none"
+-                                style={{
+-                                    transition: 'color 0.3s, opacity 0.3s',
+-                                    color: '#D65541',
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%)',
+-                                }}
+-                            >
+-                                <path 
+-                                    d="M20 6L9 17l-5-5" 
+-                                    stroke="currentColor" 
+-                                    strokeWidth="2" 
+-                                    strokeLinecap="round" 
+-                                    strokeLinejoin="round"
+-                                />
+-                            </svg>
+-
+-                            {/* Expandable Text */}
+-                            <span
+-                                style={{
+-                                    position: 'absolute',
+-                                    left: '50%',
+-                                    top: '50%',
+-                                    transform: 'translate(-50%, -50%)',
+-                                    fontSize: '14px',
+-                                    fontWeight: 600,
+-                                    color: '#D65541',
+-                                    opacity: 0,
+-                                    transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+-                                    whiteSpace: 'nowrap',
+-                                }}
+-                                className="nav-text"
+-                            >
+-                                Complete Document
+-                            </span>
+-                        </div>
+-                    </div>
+-                </Stack>
+-            </div>
+-        );
+-    }
+     
+     // Add preset panel that shows globally
+     const presetPanel = showPresets && presetField && (
+         <>
+             {/* Backdrop */}
+             <div
+                 style={{
+                     position: 'fixed',
+                     top: 0,
+                     left: 0,
+                     right: 0,
+                     bottom: 0,
+                     backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                     zIndex: 1000
+                 }}
+                 onClick={closePresets}
+             />
              
-             if (fieldValue && fieldValue.trim()) {
-                 // Variable has a value - show as inline editable text
-                 parts.push(
-                     <span
-                         key={match.index}
-                         contentEditable
-                         suppressContentEditableWarning={true}
-                         onClick={(e) => handleFieldClick(variableName, e)}
-                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                         onMouseLeave={handleFieldHoverLeave}
-                         style={{
-                             backgroundColor: '#e8f5e8',
-                             color: '#20b26c',
-                             padding: '2px 4px',
-                             fontWeight: 500,
-                             border: '1px solid #20b26c',
-                             outline: 'none',
-                             fontFamily: 'Raleway, sans-serif',
-                             fontSize: '14px',
--                            display: 'inline',
-+                            display: 'inline-flex',
-+                            flexWrap: 'wrap',
-                             minWidth: '20px',
-                             cursor: 'text',
-                             borderRadius: '2px',
+             {/* Preset Panel */}
+             <div
+                 style={{
+                     position: 'fixed',
+                     left: Math.min(presetPosition.x - 150, window.innerWidth - 320),
+                     top: Math.min(presetPosition.y, window.innerHeight - 300),
+                     width: '300px',
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 6fb05bb211d5112b2e48a735a9fb5943aa1391b1..704d14075fb0de3ddb84adc9c1ddaacf8f859f9f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -4105,218 +3114,88 @@ Disbursement | Amount | VAT chargeable
+                             backgroundColor: 'transparent',
+                             border: '1px dashed #ccc',
                              transition: 'all 0.2s ease',
-                             wordBreak: 'break-word',
-                             whiteSpace: 'normal',
-                             maxWidth: '100%',
-                             boxSizing: 'border-box',
-                             // Ensure border flows seamlessly when text wraps
-                             boxDecorationBreak: 'slice',
-                             WebkitBoxDecorationBreak: 'slice'
+                             margin: '8px 0 2px 0',
+                             textAlign: 'center',
+                             fontStyle: 'italic'
                          }}
-                         onFocus={(e) => {
-                             e.target.style.backgroundColor = '#d4edda';
+                         onMouseEnter={(e) => {
+                             e.currentTarget.style.backgroundColor = '#f8f9fa';
+                             e.currentTarget.style.borderColor = '#999';
                          }}
-                         onBlur={(e) => {
-                             const newValue = e.target.textContent || '';
-                             setTemplateFields(prev => ({
-                                 ...prev,
-                                 [variableName]: newValue
-                             }));
-                             e.target.style.backgroundColor = '#e8f5e8';
+                         onMouseLeave={(e) => {
+                             e.currentTarget.style.backgroundColor = 'transparent';
+                             e.currentTarget.style.borderColor = '#ccc';
                          }}
                      >
-                         {fieldValue}
-                     </span>
-                 );
-             } else {
-                 // Variable is empty - show as inline input placeholder (remove 'Enter ')
-                 const placeholderText = variableName.replace(/_/g, ' ');
-                 parts.push(
-                     <span
-                         key={match.index}
-                         contentEditable
-                         suppressContentEditableWarning={true}
-                         data-placeholder={placeholderText}
-                         onClick={(e) => handleFieldClick(variableName, e)}
-                         onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                         onMouseLeave={handleFieldHoverLeave}
-                         style={{
-                             backgroundColor: '#f0f8ff',
-                             color: '#0078d4',
-                             padding: '2px 4px',
-                             fontWeight: 500,
-                             border: '1px dashed #0078d4',
-                             outline: 'none',
-                             fontFamily: 'Raleway, sans-serif',
-                             fontSize: '14px',
--                            display: 'inline',
-+                            display: 'inline-flex',
-+                            flexWrap: 'wrap',
-                             minWidth: '20px',
-                             cursor: 'text',
-                             borderRadius: '2px',
-                             transition: 'all 0.2s ease',
-                             wordBreak: 'break-word',
-                             whiteSpace: 'normal',
-                             maxWidth: '100%',
-                             boxSizing: 'border-box',
-                             boxDecorationBreak: 'slice',
-                             WebkitBoxDecorationBreak: 'slice'
-                         }}
-                         onFocus={(e) => {
-                             e.target.style.backgroundColor = '#e6f3ff';
-                             e.target.style.borderStyle = 'solid';
-                         }}
-                         onBlur={(e) => {
-                             const newValue = e.target.textContent || '';
-                             setTemplateFields(prev => ({
-                                 ...prev,
-                                 [variableName]: newValue
-                             }));
-                             e.target.style.backgroundColor = '#f0f8ff';
-                             e.target.style.borderStyle = 'dashed';
-                         }}
-                     >
+                         Type my own...
+                     </div>
+                 </div>
+             </div>
+         </>
+     );
+ 
+     return (
+         <>
+-            {/* Render the appropriate step */}
+-            {currentStep === 1 && (
+-                <div className="matter-opening-card">
+-                    <Stack tokens={{ childrenGap: 20 }}>
+-                        <div>
+-                            <div style={{ 
+-                                display: 'flex', 
+-                                gap: '20px', 
+-                                minHeight: '600px',
+-                                flexDirection: 'row'
+-                            }}>
+-                                <div style={{ flex: 1 }}>
+-                                    <div style={questionBannerStyle}>
+-                                        Template Selection
+-                                    </div>
+-                                    <div style={{ 
+-                                        display: 'grid', 
+-                                        gridTemplateColumns: '1fr 1fr', 
+-                                        gap: '16px',
+-                                        paddingTop: '16px'
+-                                    }}>
+-                                        {/* CCL Template */}
+-                                        <div
+-                                            style={{
+-                                                ...templateCardStyle,
+-                                                border: selectedTemplate === 'ccl' ? `2px solid ${colours.cta}` : '2px solid #e1e5e9',
+-                                                backgroundColor: selectedTemplate === 'ccl' ? '#f8f9fa' : '#fff'
+-                                            }}
+-                                            onClick={() => handleTemplateSelect('ccl')}
+-                                        >
+-                                            <Icon iconName="FileTemplate" style={{ fontSize: '48px', color: colours.cta, marginBottom: '16px' }} />
+-                                            <div style={{ fontWeight: 600, fontSize: '18px', color: colours.darkBlue, marginBottom: '8px' }}>
+-                                                Client Care Letter
+-                                            </div>
+-                                            <div style={{ color: colours.greyText, fontSize: '14px' }}>
+-                                                Professional engagement letter template with all standard clauses
+-                                            </div>
+-                                        </div>
+-                                        
+-                                        {/* Custom Template */}
+-                                        <div
+-                                            style={{
+-                                                ...templateCardStyle,
+-                                                border: selectedTemplate === 'custom' ? `2px solid ${colours.cta}` : '2px solid #e1e5e9',
+-                                                backgroundColor: selectedTemplate === 'custom' ? '#f8f9fa' : '#fff'
+-                                            }}
+-                                            onClick={() => handleTemplateSelect('custom')}
+-                                        >
+-                                            <Icon iconName="Edit" style={{ fontSize: '48px', color: colours.cta, marginBottom: '16px' }} />
+-                                            <div style={{ fontWeight: 600, fontSize: '18px', color: colours.darkBlue, marginBottom: '8px' }}>
+-                                                Custom Document
+-                                            </div>
+-                                            <div style={{ color: colours.greyText, fontSize: '14px' }}>
+-                                                Start with a blank document and create your own
+-                                            </div>
+-                                        </div>
+-                                    </div>
+-                                </div>
+-                            </div>
+-                        </div>
+-                    </Stack>
+-                </div>
+-            )}
+-            
+-            {currentStep === 2 && (
+-                <div className="matter-opening-card">
+-                    <Stack tokens={{ childrenGap: 20 }}>
+-                        <div>
+-                            <div style={{ 
+-                                display: 'flex', 
+-                                gap: '20px', 
+-                                minHeight: '600px',
+-                                flexDirection: 'row'
+-                            }}>
+-                                <div style={{ flex: 1 }}>
+-                                    <div style={questionBannerStyle}>
+-                                        Interactive Template Editor
+-                                    </div>
+-                                    
+-                                    <div style={{ 
+-                                        border: '1px solid #e1e5e9',
+-                                        borderRadius: '4px',
+-                                        padding: '16px',
+-                                        height: '500px',
+-                                        overflow: 'auto',
+-                                        fontFamily: 'Raleway, sans-serif',
+-                                        fontSize: '14px',
+-                                        lineHeight: '1.6',
+-                                        whiteSpace: 'pre-wrap',
+-                                        backgroundColor: '#fff',
+-                                        cursor: 'text'
+-                                    }}>
+-                                        {renderTemplateContentForPreview(documentContent)}
+-                                    </div>
+-                                </div>
+-                            </div>
+-                        </div>
+-                    </Stack>
+-                </div>
+-            )}
++            <Step1
++                currentStep={currentStep}
++                isInstructionBasedMode={isInstructionBasedMode}
++                questionBannerStyle={questionBannerStyle}
++                instructionSearchTerm={instructionSearchTerm}
++                setInstructionSearchTerm={setInstructionSearchTerm}
++                filteredInstructions={filteredInstructions}
++                selectedInstruction={selectedInstruction}
++                userHasInteracted={userHasInteracted}
++                setSelectedInstruction={setSelectedInstruction}
++                setHasSelectedInstruction={setHasSelectedInstruction}
++                setUserHasInteracted={setUserHasInteracted}
++                selectedTemplate={selectedTemplate}
++                handleTemplateSelect={handleTemplateSelect}
++                templateCardStyle={templateCardStyle}
++                colours={colours}
++                navigationStyle={navigationStyle}
++                canProceedToStep2={canProceedToStep2}
++                goToNextStep={goToNextStep}
++            />
++            <Step2
++                currentStep={currentStep}
++                questionBannerStyle={questionBannerStyle}
++                renderFieldsOnlyView={renderFieldsOnlyView}
++                renderEditableTemplateContent={renderEditableTemplateContent}
++                documentContent={documentContent}
++                isFieldsOnlyView={isFieldsOnlyView}
++                setIsFieldsOnlyView={setIsFieldsOnlyView}
++                navigationStyle={navigationStyle}
++                goToPreviousStep={goToPreviousStep}
++                canProceedToStep3={canProceedToStep3}
++                goToNextStep={goToNextStep}
++            />
++            <Step3
++                currentStep={currentStep}
++                questionBannerStyle={questionBannerStyle}
++                renderTemplateContentForPreview={renderTemplateContentForPreview}
++                documentContent={documentContent}
++                windowWidth={windowWidth}
++                message={message}
++                setMessage={setMessage}
++                generateTemplateContent={generateTemplateContent}
++                templateFields={templateFields}
++                selectedTemplate={selectedTemplate}
++                navigationStyle={navigationStyle}
++                goToPreviousStep={goToPreviousStep}
++                goToNextStep={goToNextStep}
++            />
+ 
+-            {currentStep === 3 && (
+-                <div className="matter-opening-card">
+-                    <Stack tokens={{ childrenGap: 20 }}>
+-                        <div>
+-                            <div style={questionBannerStyle}>
+-                                Preview & Actions
+-                            </div>
+-                            <div style={{ 
+-                                border: '1px solid #e1e5e9', 
+-                                borderRadius: '4px',
+-                                padding: '16px',
+-                                backgroundColor: '#ffffff',
+-                                overflowY: 'auto',
+-                                maxHeight: '400px',
+-                                whiteSpace: 'pre-wrap',
+-                                fontFamily: 'Raleway, sans-serif',
+-                                fontSize: '14px',
+-                                lineHeight: '1.5',
+-                                marginBottom: '20px'
+-                            }}>
+-                                {renderTemplateContentForPreview(documentContent)}
+-                            </div>
+-                            
+-                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+-                                <div
+-                                    className="action-button"
+-                                    onClick={() => setMessage({ type: MessageBarType.success, text: 'Document saved successfully!' })}
+-                                    style={{
+-                                        background: '#20b26c',
+-                                        color: 'white',
+-                                        border: 'none',
+-                                        borderRadius: '0px',
+-                                        padding: '12px 24px',
+-                                        cursor: 'pointer',
+-                                        transition: 'all 0.2s ease',
+-                                        fontSize: '14px',
+-                                        fontWeight: 600,
+-                                    }}
+-                                    onMouseEnter={(e) => {
+-                                        e.currentTarget.style.background = '#1a9959';
+-                                    }}
+-                                    onMouseLeave={(e) => {
+-                                        e.currentTarget.style.background = '#20b26c';
+-                                    }}
+-                                >
+-                                    Save Document
+-                                </div>
+-                                <div
+-                                    className="action-button"
+-                                    onClick={() => setMessage({ type: MessageBarType.success, text: 'Document completed successfully!' })}
+-                                    style={{
+-                                        background: '#D65541',
+-                                        color: 'white',
+-                                        border: 'none',
+-                                        borderRadius: '0px',
+-                                        padding: '12px 24px',
+-                                        cursor: 'pointer',
+-                                        transition: 'all 0.2s ease',
+-                                        fontSize: '14px',
+-                                        fontWeight: 600,
+-                                    }}
+-                                    onMouseEnter={(e) => {
+-                                        e.currentTarget.style.background = '#B54533';
+-                                    }}
+-                                    onMouseLeave={(e) => {
+-                                        e.currentTarget.style.background = '#D65541';
+-                                    }}
+-                                >
+-                                    Complete
+-                                </div>
+-                            </div>
+-                        </div>
+-                    </Stack>
+-                </div>
+-            )}
+-            
+             {/* Render preset panel */}
+             {presetPanel}
+-            
++
+             {/* Hover tooltip */}
+             {hoveredField && (
+                 <div style={tooltipStyle}>
+                     {FIELD_DISPLAY_NAMES[hoveredField as keyof typeof FIELD_DISPLAY_NAMES] || hoveredField}
+                 </div>
+             )}
+         </>
+     );
+-    
+-    return null;
+ };
+ 
+ export default DocumentsV3;
