@@ -1,338 +1,134 @@
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -5,51 +5,50 @@ import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton }
- import MinimalSearchBox from './MinimalSearchBox';
- import { POID, TeamData, UserData, InstructionData } from '../../../app/functionality/types';
- import ClientDetails from '../ClientDetails';
- import ClientHub from '../ClientHub';
- import StepWrapper from './StepWrapper';
- import '../../../app/styles/NewMatters.css';
- import '../../../app/styles/MatterOpeningCard.css';
- import {
-     practiceAreasByArea,
-     getGroupColor,
-     partnerOptions as defaultPartners,
- } from './config';
- import localTeamDataJson from '../../../localData/team-sql-data.json';
- import localUserData from '../../../localData/localUserData.json';
+diff --git a/src/tabs/instructions/MatterOpening/ReviewStep.tsx b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+index eca5eb058d493b00cdcc4e5f65dd82e817b5ecc6..26e95af687f3960955b72085bafe4e192ab86127 100644
+--- a/src/tabs/instructions/MatterOpening/ReviewStep.tsx
++++ b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+@@ -22,90 +22,92 @@ interface ReviewStepProps {
+     referrerName: string;
+     opponentName: string;
+     opponentEmail: string;
+     opponentSolicitorName: string;
+     opponentSolicitorCompany: string;
+     opponentSolicitorEmail: string;
+     opponentHouseNumber: string;
+     opponentStreet: string;
+     opponentCity: string;
+     opponentCounty: string;
+     opponentPostcode: string;
+     opponentCountry: string;
+     solicitorHouseNumber: string;
+     solicitorStreet: string;
+     solicitorCity: string;
+     solicitorCounty: string;
+     solicitorPostcode: string;
+     solicitorCountry: string;
+     noConflict: boolean;
+     userInitials: string;
+     userData?: UserData[] | null;
+     onBuild?: () => void;
+     clientAsOnFile: string;
+     phone: string; // <-- New required prop
+     instructionRef?: string;
++    onDraftCclNow?: (matterId: string) => void;
+ }
  
- import ClientInfoStep from './ClientInfoStep';
- import PoidSelectionStep from './PoidSelectionStep';
- import AreaOfWorkStep from './AreaOfWorkStep';
- import PracticeAreaStep from './PracticeAreaStep';
- import DescriptionStep from './DescriptionStep';
- import FolderStructureStep from './FolderStructureStep';
- import ValueAndSourceStep from './ValueAndSourceStep';
- import SourceStep from './SourceStep';
- import OpponentDetailsStep from './OpponentDetailsStep';
- import ModernMultiSelect from './ModernMultiSelect';
--import DocumentsV3 from '../DocumentsV3';
- 
- import { CompletionProvider } from './CompletionContext';
- import ProcessingSection, { ProcessingStep } from './ProcessingSection';
- import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
- import idVerifications from '../../../localData/localIdVerifications.json';
- import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
- import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
- 
- // Local implementation of useDraftedState for draft persistence
- function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-     const storageKey = `matterOpeningDraft_${key}`;
-     const [state, setState] = useState<T>(() => {
-         try {
-             const item = localStorage.getItem(storageKey);
-             if (!item) return initialValue;
-             const parsed = JSON.parse(item);
-             // Special handling for selectedDate: convert string to Date
-             if (key === 'selectedDate') {
-                 if (parsed === null) return null as any;
-                 if (typeof parsed === 'string' || typeof parsed === 'number') {
-                     const d = new Date(parsed);
-                     return isNaN(d.getTime()) ? initialValue : (d as any);
-                 }
-             }
-             return parsed;
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -92,51 +91,54 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
-     poidData,
-     setPoidData,
-     teamData,
+ const ReviewStep: React.FC<ReviewStepProps> = ({
+     clientInformation,
+     selectedDate,
+     supervisingPartner,
+     originatingSolicitor,
+     clientType,
+     selectedPoidIds,
+     areaOfWork,
+     practiceArea,
+     description,
+     folderStructure,
+     disputeValue,
+     source,
+     referrerName,
+     opponentName,
+     opponentEmail,
+     opponentSolicitorName,
+     opponentSolicitorCompany,
+     opponentSolicitorEmail,
+     opponentHouseNumber,
+     opponentStreet,
+     opponentCity,
+     opponentCounty,
+     opponentPostcode,
+     opponentCountry,
+     solicitorHouseNumber,
+     solicitorStreet,
+     solicitorCity,
+     solicitorCounty,
+     solicitorPostcode,
+     solicitorCountry,
+     noConflict,
      userInitials,
      userData,
-     instructionRef = '',
-     clientId: initialClientId = '',
-     feeEarner,
-     stage = 'New Matter',
-     matterRef,
-     hideClientSections = false,
-     initialClientType = '',
-     preselectedPoidIds = [],
-     instructionPhone,
+     onBuild,
+     clientAsOnFile,
+     phone, // <-- destructured here
+     instructionRef,
++    onDraftCclNow,
  }) => {
-     const idExpiry = useMemo(() => {
-         const d = new Date();
-         d.setDate(d.getDate() + 30);
-         return d.toLocaleDateString('en-GB');
-     }, []); // invisible change
+     const [detailsConfirmed, setDetailsConfirmed] = useState(false);
+     const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
+     const [edited, setEdited] = useState(false);
+     const { summaryComplete } = useCompletion();
  
-     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
-     const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
-     useEffect(() => {
-         registerClientIdCallback(setClientId);
--        registerMatterIdCallback(setMatterIdState);
-+        registerMatterIdCallback((id) => {
-+            setMatterIdState(id);
-+            setOpenedMatterId(id);
-+        });
-         return () => {
-             registerClientIdCallback(null);
-             registerMatterIdCallback(null);
-         };
-     }, []);
+     const formData = useMemo(
+         () => ({
+             clientInformation,
+             selectedDate: selectedDate?.toISOString() ?? null,
+             supervisingPartner,
+             originatingSolicitor,
+             clientType,
+             selectedPoidIds,
+             areaOfWork,
+             practiceArea,
+             description,
+             folderStructure,
+             disputeValue,
+             source,
+             referrerName,
+             opponentName,
+             opponentEmail,
+             opponentSolicitorName,
+             opponentSolicitorCompany,
+diff --git a/src/tabs/instructions/MatterOpening/ReviewStep.tsx b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+index eca5eb058d493b00cdcc4e5f65dd82e817b5ecc6..26e95af687f3960955b72085bafe4e192ab86127 100644
+--- a/src/tabs/instructions/MatterOpening/ReviewStep.tsx
++++ b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
+@@ -379,31 +381,32 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
+         }
+     }, [formData, snapshot, summaryComplete]);
  
-     const showPoidSelection = !instructionRef;
-     const defaultPoidData: POID[] = useMemo(() => {
-         const mapped = (poidData && poidData.length > 0
-             ? poidData
-             : (idVerifications as any[]).map((v) => ({
-                   poid_id: String(v.InternalId),
-                   first: v.FirstName,
-                   last: v.LastName,
-                   email: v.Email,
-                   best_number: (v as any).Phone || '',
-                   nationality: v.Nationality,
-                   nationality_iso: v.NationalityAlpha2,
-                   date_of_birth: v.DOB,
-                   passport_number: v.PassportNumber,
-                   drivers_license_number: v.DriversLicenseNumber,
-                   house_building_number: v.HouseNumber,
-                   street: v.Street,
-                   city: v.City,
-                   county: v.County,
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -312,50 +314,51 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
-     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
-     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
-     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
-     // Solicitor fields
-     const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
-     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
-     const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
-     const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
-     const [solicitorHouseNumber, setSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', '');
-     const [solicitorStreet, setSolicitorStreet] = useDraftedState<string>('solicitorStreet', '');
-     const [solicitorCity, setSolicitorCity] = useDraftedState<string>('solicitorCity', '');
-     const [solicitorCounty, setSolicitorCounty] = useDraftedState<string>('solicitorCounty', '');
-     const [solicitorPostcode, setSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', '');
-     const [solicitorCountry, setSolicitorCountry] = useDraftedState<string>('solicitorCountry', '');
-     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
- 
-     // Summary review confirmation state
-     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
- 
-     // Processing state for matter submission
-     const [isProcessing, setIsProcessing] = useState(false);
-     const [processingOpen, setProcessingOpen] = useState(false);
-     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
-     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
-     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
-+    const [openedMatterId, setOpenedMatterId] = useState<string | null>(null);
- 
-     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
-     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
-     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
-     const poidGridRef = useRef<HTMLDivElement | null>(null);
-     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
- 
-     const filteredPoidData = effectivePoidData.filter((poid) => {
-         const term = poidSearchTerm.toLowerCase();
-         return (
-             poid.poid_id.toLowerCase().includes(term) ||
-             (poid.first && poid.first.toLowerCase().includes(term)) ||
-             (poid.last && poid.last.toLowerCase().includes(term))
-         );
-     });
- 
-     useEffect(() => {
-         const observer = new IntersectionObserver(
-             (entries) => {
-                 if (entries[0].isIntersecting) {
-                     setVisiblePoidCount((prev) => Math.min(prev + 12, filteredPoidData.length));
-                 }
-             },
-             { rootMargin: '200px' }
-         );
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -975,57 +978,69 @@ const handleClearAll = () => {
-         setOpponentPostcode('');
-         setOpponentCountry('');
-         setOpponentHasCompany(false);
-         setOpponentCompanyName('');
-         setOpponentCompanyNumber('');
-         setSolicitorTitle('');
-         setSolicitorFirst('');
-         setSolicitorLast('');
-         setSolicitorPhone('');
-         setSolicitorHouseNumber('');
-         setSolicitorStreet('');
-         setSolicitorCity('');
-         setSolicitorCounty('');
-         setSolicitorPostcode('');
-         setSolicitorCountry('');
-         setSolicitorCompanyNumber('');
-         setSummaryConfirmed(false); // Reset summary confirmation
-         setActivePoid(null);
-         setCurrentStep(0); // This will reset the review dots
-         setPoidSearchTerm('');
-         
-         // Clear all localStorage draft data
-         clearMatterOpeningDraft();
+     const handleConfirmed = () => {
+         setSnapshot(formData);
+         setDetailsConfirmed(false);
+         onBuild?.();
      };
  
--    // Show CCL prompt only on the review step, when summary is confirmed and not processing
--    const showCclPrompt = currentStep === 2 && summaryConfirmed && !isProcessing;
-+    // Determine if all processing steps completed successfully
-+    const allProcessingSucceeded = processingSteps.length > 0 && processingSteps.every(s => s.status === 'success');
-+
-+    // Show CCL prompt only once processing has finished with success
-+    const showCclPrompt = currentStep === 2 && summaryConfirmed && allProcessingSucceeded;
- 
-     // State for CCL draft choice and generating status
-     const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | undefined>(undefined);
-     const [cclGenerating, setCclGenerating] = useState(false);
- 
-+    const handleDraftChoice = (choice: 'yes' | 'no') => {
-+        setDraftChoice(choice);
-+        if (choice === 'yes' && openedMatterId) {
-+            window.location.assign(getDraftCclPath(openedMatterId));
-+        }
-+    };
-+
-+    const showProcessingSection = processingSteps.some(s => s.status !== 'pending');
-+
-     // Render the horizontal sliding carousel
      return (
-         <CompletionProvider>
-             <Stack className="workflow-container">
-                 {/* Main Container */}
-                 <div className="workflow-main matter-opening-card">
-                     {/* Persistent Header */}
-                     <div className="persistent-header" style={{
-                         padding: '16px 24px',
-                         borderBottom: '1px solid #e1e5e9',
-                         background: '#fff',
-                         position: 'sticky',
-                         top: 0,
-                         zIndex: 10,
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'space-between',
-                         gap: 12,
-                         margin: '-20px -20px 0 -20px',
-                         flexWrap: 'wrap',
-                         minHeight: '60px'
-                     }}>
-                         <div style={{ 
-                             display: 'flex', 
-                             alignItems: 'center', 
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -2361,80 +2376,76 @@ const handleClearAll = () => {
-                                             {noConflict ? 'No conflicts confirmed' : 'Conflict check required'}
-                                         </span>
-                                     </div>
+         <div style={{ position: 'relative' }}>
+             {summaryComplete && <SummaryCompleteOverlay />}
+             <SummaryReview
+                 proofContent={proofSummary}
+                 detailsConfirmed={detailsConfirmed}
+                 setDetailsConfirmed={setDetailsConfirmed}
+                 edited={edited}
+             />
+             <ReviewConfirm
+                 detailsConfirmed={detailsConfirmed}
+                 formData={formData}
+                 userInitials={userInitials}
+                 userData={userData}
+                 onConfirmed={handleConfirmed}
+                 instructionRef={instructionRef}
++                onDraftCclNow={onDraftCclNow}
+             />
+         </div>
+     );
+ };
  
-                                     {/* Confirmation required banner */}
-                                     {!summaryConfirmed && (
-                                         <div style={{ 
-                                             marginTop: 16,
-                                             padding: 12,
-                                             background: '#fef2f2',
-                                             border: '1px solid #D65541',
-                                             borderRadius: 0,
-                                             display: 'flex',
-                                             alignItems: 'center',
-                                             gap: 8
-                                         }}>
-                                             <i className="ms-Icon ms-Icon--Touch" 
-                                                style={{ fontSize: 14, color: '#D65541' }} />
-                                             <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
-                                                 Click anywhere in this box to confirm these details are accurate
-                                             </span>
-                                         </div>
-                                     )}
-                                 </div>
- 
-+                                {showProcessingSection && (
-+                                    <ProcessingSection open={true} steps={processingSteps} logs={processingLogs} />
-+                                )}
-+
-                                 {!processingOpen && showCclPrompt && (
-                                     <div style={{ marginTop: 24 }}>
-                                         <ModernMultiSelect
-                                             label="Draft the CCL now?"
-                                             options={[
-                                                 { key: 'yes', text: 'Yes, draft now' },
-                                                 { key: 'no', text: 'Not now' }
-                                             ]}
-                                             selectedValue={draftChoice ?? null}
--                                            onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
-+                                            onSelectionChange={(val) => handleDraftChoice(val as 'yes' | 'no')}
-                                             variant="binary"
-                                         />
-                                         {cclGenerating && (
-                                             <div style={{ marginTop: 8 }}>
-                                                 Generating CCL...
-                                             </div>
-                                         )}
-                                         {generatedCclUrl && (
-                                             <div style={{ marginTop: 8 }}>
-                                                 <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
-                                             </div>
-                                         )}
--                                        {draftChoice === 'yes' && (
--                                            <div style={{ marginTop: 16 }}>
--                                                <DocumentsV3
--                                                    initialTemplate="ccl"
--                                                    selectedInstructionProp={instructionRef ? ({ InstructionRef: instructionRef } as any) : undefined}
--                                                />
--                                            </div>
--                                        )}
-                                     </div>
-                                 )}
- 
-                                 {/* Navigation buttons for review step */}
-                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                                     {/* Back button with smooth expansion */}
-                                     <div 
-                                         className="nav-button back-button"
-                                         onClick={handleBackToForm}
-                                         style={{
-                                             background: '#f4f4f6',
-                                             border: '2px solid #e1dfdd',
-                                             borderRadius: '0px',
-                                             width: '48px',
-                                             height: '48px',
-                                             display: 'flex',
-                                             alignItems: 'center',
-                                             justifyContent: 'center',
-                                             cursor: 'pointer',
-                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                             position: 'relative',
-                                             overflow: 'hidden',
-                                         }}
-                                         onMouseEnter={(e) => {
+ export default ReviewStep;

@@ -17,6 +17,8 @@ interface ReviewConfirmProps {
     onConfirmed?: () => void;
     /** Optional instruction reference so DocumentsV3 can load context */
     instructionRef?: string;
+    /** Callback to open the draft CCL editor within the app */
+    onDraftCclNow?: (matterId: string) => void;
 }
 
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
@@ -41,7 +43,7 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed, instructionRef }) => {
+const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed, instructionRef, onDraftCclNow }) => {
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
     const [processing, setProcessing] = useState(false);
@@ -94,7 +96,11 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const handleDraftChoice = (choice: 'yes' | 'no') => {
         setDraftChoice(choice);
         if (choice === 'yes' && openedMatterId) {
-            window.location.assign(getDraftCclPath(openedMatterId));
+            if (onDraftCclNow) {
+                onDraftCclNow(openedMatterId);
+            } else {
+                window.location.assign(getDraftCclPath(openedMatterId));
+            }
         }
     };
 

@@ -85,6 +85,11 @@ interface FlatMatterOpeningProps {
     initialClientType?: string;
     preselectedPoidIds?: string[];
     instructionPhone?: string;
+    /**
+     * Optional callback triggered when the user chooses to draft the CCL
+     * immediately after opening the matter.
+     */
+    onDraftCclNow?: (matterId: string) => void;
 }
 
 const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
@@ -103,6 +108,7 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     initialClientType = '',
     preselectedPoidIds = [],
     instructionPhone,
+    onDraftCclNow,
 }) => {
     const idExpiry = useMemo(() => {
         const d = new Date();
@@ -1014,7 +1020,11 @@ const handleClearAll = () => {
     const handleDraftChoice = (choice: 'yes' | 'no') => {
         setDraftChoice(choice);
         if (choice === 'yes' && openedMatterId) {
-            window.location.assign(getDraftCclPath(openedMatterId));
+            if (onDraftCclNow) {
+                onDraftCclNow(openedMatterId);
+            } else {
+                window.location.assign(getDraftCclPath(openedMatterId));
+            }
         }
     };
 

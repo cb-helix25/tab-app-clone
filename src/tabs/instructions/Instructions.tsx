@@ -1552,6 +1552,14 @@ const Instructions: React.FC<InstructionsProps> = ({
     setActivePivot('risk');
   };
 
+  const handleDraftCclNow = () => {
+    setShowNewMatterPage(false);
+    setActivePivot('documents2');
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+  };
+
 
   // Always open CCL template for global Draft CCL action
   const handleOpenDraftCcl = (ref: string) => {
@@ -1717,6 +1725,7 @@ const Instructions: React.FC<InstructionsProps> = ({
           initialClientType={selectedInstruction?.ClientType}
           preselectedPoidIds={preselectedPoidIds}
           instructionPhone={selectedInstruction?.Phone}
+          onDraftCclNow={handleDraftCclNow}
         />
       </Stack>
     );
