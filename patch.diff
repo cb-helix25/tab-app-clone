@@ -1,298 +1,317 @@
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -4,54 +4,55 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisibl
- import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
- import MinimalSearchBox from './MinimalSearchBox';
- import { POID, TeamData, UserData } from '../../../app/functionality/types';
- import ClientDetails from '../ClientDetails';
- import ClientHub from '../ClientHub';
- import StepWrapper from './StepWrapper';
- import '../../../app/styles/NewMatters.css';
- import '../../../app/styles/MatterOpeningCard.css';
- import {
-     practiceAreasByArea,
-     getGroupColor,
-     partnerOptions as defaultPartners,
- } from './config';
- import localTeamDataJson from '../../../localData/team-sql-data.json';
- import localUserData from '../../../localData/localUserData.json';
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -405,57 +405,84 @@ const quickLinksStyle = (isDarkMode: boolean) =>
+     zIndex: 999,
+     borderTopLeftRadius: 0,
+     borderTopRightRadius: 0,
+   });
  
- import ClientInfoStep from './ClientInfoStep';
- import PoidSelectionStep from './PoidSelectionStep';
- import AreaOfWorkStep from './AreaOfWorkStep';
- import PracticeAreaStep from './PracticeAreaStep';
- import DescriptionStep from './DescriptionStep';
- import FolderStructureStep from './FolderStructureStep';
- import ValueAndSourceStep from './ValueAndSourceStep';
- import SourceStep from './SourceStep';
- import OpponentDetailsStep from './OpponentDetailsStep';
-+import ModernMultiSelect from './ModernMultiSelect';
+ const tableAnimationStyle = mergeStyles({
+   animation: 'fadeIn 0.5s ease-in-out',
+ });
  
- import { CompletionProvider } from './CompletionContext';
- import ProcessingSection, { ProcessingStep } from './ProcessingSection';
--import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
-+import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback, generateDraftCclAction } from './processingActions';
- import idVerifications from '../../../localData/localIdVerifications.json';
- import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
- import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
+ const calculateAnimationDelay = (row: number, col: number) => (row + col) * 0.1;
  
- // Local implementation of useDraftedState for draft persistence
- function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-     const storageKey = `matterOpeningDraft_${key}`;
-     const [state, setState] = useState<T>(() => {
-         try {
-             const item = localStorage.getItem(storageKey);
-             if (!item) return initialValue;
-             const parsed = JSON.parse(item);
-             // Special handling for selectedDate: convert string to Date
-             if (key === 'selectedDate') {
-                 if (parsed === null) return null as any;
-                 if (typeof parsed === 'string' || typeof parsed === 'number') {
-                     const d = new Date(parsed);
-                     return isNaN(d.getTime()) ? initialValue : (d as any);
-                 }
-             }
-             return parsed;
-         } catch {
-             return initialValue;
-         }
-     });
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -310,66 +311,96 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
-     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
-     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
-     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
-     // Solicitor fields
-     const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
-     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
-     const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
-     const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
-     const [solicitorHouseNumber, setSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', '');
-     const [solicitorStreet, setSolicitorStreet] = useDraftedState<string>('solicitorStreet', '');
-     const [solicitorCity, setSolicitorCity] = useDraftedState<string>('solicitorCity', '');
-     const [solicitorCounty, setSolicitorCounty] = useDraftedState<string>('solicitorCounty', '');
-     const [solicitorPostcode, setSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', '');
-     const [solicitorCountry, setSolicitorCountry] = useDraftedState<string>('solicitorCountry', '');
-     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
+ const versionStyle = mergeStyles({
+   textAlign: 'center',
+   fontSize: '14px',
+   color: '#888',
+   marginTop: '40px',
+ });
  
-     // Summary review confirmation state
-     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+ const subLabelStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     fontWeight: '600',
+     fontSize: '16px',
+     color: isDarkMode ? colours.dark.text : colours.light.text,
+   });
  
-     // Processing state for matter submission
-     const [isProcessing, setIsProcessing] = useState(false);
-     const [processingOpen, setProcessingOpen] = useState(false);
-     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
-     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
-     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
-+    const [showCclPrompt, setShowCclPrompt] = useState(false);
-+    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
-+    const [cclGenerating, setCclGenerating] = useState(false);
- 
-     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
-     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
-     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
-     const poidGridRef = useRef<HTMLDivElement | null>(null);
-     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
- 
-     const filteredPoidData = effectivePoidData.filter((poid) => {
-         const term = poidSearchTerm.toLowerCase();
-         return (
-             poid.poid_id.toLowerCase().includes(term) ||
-             (poid.first && poid.first.toLowerCase().includes(term)) ||
-             (poid.last && poid.last.toLowerCase().includes(term))
-         );
-     });
- 
-+    useEffect(() => {
-+        const run = async () => {
-+            if (showCclPrompt && draftChoice === 'yes' && !generatedCclUrl && !cclGenerating) {
-+                setCclGenerating(true);
-+                try {
-+                    const result = await generateDraftCclAction.run(generateSampleJson(), userInitials, userData);
-+                    if (typeof result === 'object' && result.url) {
-+                        setGeneratedCclUrl(result.url);
-+                        setProcessingLogs(prev => [...prev, '✓ Draft CCL created']);
-+                    }
-+                } catch (err) {
-+                    console.error('Draft CCL generation failed', err);
-+                    setProcessingLogs(prev => [...prev, '❌ Draft CCL generation failed']);
-+                } finally {
-+                    setCclGenerating(false);
-+                }
-+            }
-+        };
-+        run();
-+    }, [showCclPrompt, draftChoice]);
++const actionsMetricsContainerStyle = mergeStyles({
++  backgroundColor: '#ffffff',
++  padding: '16px',
++  borderRadius: 0,
++  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
++  marginBottom: '24px',
++  '@media (max-width: 600px)': { padding: '12px' },
++});
 +
-+    useEffect(() => {
-+        if (draftChoice === 'no') {
-+            setShowCclPrompt(false);
-+        }
-+    }, [draftChoice]);
+ const favouritesGridStyle = mergeStyles({
+   display: 'grid',
+   gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+   gap: '16px',
+   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
+ });
+ 
++const metricsGridThree = mergeStyles({
++  display: 'grid',
++  gridTemplateColumns: 'repeat(3, 1fr)',
++  gap: '16px',
++  width: '100%',
++  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
++  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
++});
 +
-     useEffect(() => {
-         const observer = new IntersectionObserver(
-             (entries) => {
-                 if (entries[0].isIntersecting) {
-                     setVisiblePoidCount((prev) => Math.min(prev + 12, filteredPoidData.length));
-                 }
-             },
-             { rootMargin: '200px' }
-         );
-         if (poidGridRef.current) observer.observe(poidGridRef.current);
-         return () => observer.disconnect();
-     }, [filteredPoidData]);
- 
-     const handlePoidClick = (poid: POID) => {
-         const isCompany = !!(poid.company_name || poid.company_number);
-         
-         if (selectedPoidIds.includes(poid.poid_id)) {
-             // Remove selection
-             setSelectedPoidIds((prev: string[]) => prev.filter((id: string) => id !== poid.poid_id));
-             if (activePoid && activePoid.poid_id === poid.poid_id) {
-                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
-                 setActivePoid(remaining || null);
-             }
-         } else {
-             // Add selection based on client type rules
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -898,50 +929,51 @@ const handleClearAll = () => {
-         return count;
-     };
- 
-     // Process matter opening steps defined in processingActions
-     const simulateProcessing = async () => {
-         setIsProcessing(true);
-         setProcessingOpen(true);
-         setProcessingLogs([]);
-         setProcessingSteps(initialSteps);
-         let url = '';
- 
-         try {
-             for (let i = 0; i < processingActions.length; i++) {
-                 const action = processingActions[i];
-                 const result = await action.run(generateSampleJson(), userInitials, userData);
-                 const message = typeof result === 'string' ? result : result.message;
-                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
-                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
-                 if (typeof result === 'object' && result.url) {
-                     url = result.url;
-                 }
-             }
- 
-             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
-             completeMatterOpening();
-+            setShowCclPrompt(true);
-         } catch (error) {
-             console.error('Error during processing:', error);
-             const msg = error instanceof Error ? error.message : 'Unknown error';
-             setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
-             setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
-         } finally {
-             setTimeout(() => setIsProcessing(false), 2000);
-         }
-         setGeneratedCclUrl(url);
-         return { url };
-     };
- 
-     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
- 
-     // Clear all selections and inputs
-     const doClearAll = () => {
-         // Close the confirmation dialog if open
-         setIsClearDialogOpen(false);
- 
-         // Clear all the React state
-         setSelectedDate(null);
-         setTeamMember(defaultTeamMember);
-         setSupervisingPartner('');
-         setOriginatingSolicitor(defaultTeamMember);
-         setClientType(initialClientType || '');
-diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
---- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-+++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
-@@ -2362,50 +2394,75 @@ const handleClearAll = () => {
-                                             borderRadius: 0,
-                                             display: 'flex',
-                                             alignItems: 'center',
-                                             gap: 8
-                                         }}>
-                                             <i className="ms-Icon ms-Icon--Touch" 
-                                                style={{ fontSize: 14, color: '#D65541' }} />
-                                             <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
-                                                 Click anywhere in this box to confirm these details are accurate
-                                             </span>
-                                         </div>
-                                     )}
-                                 </div>
- 
-                                 {/* Processing Section - Shows when processing is active */}
-                                 {processingOpen && (
-                                     <div style={{ marginTop: 24 }}>
-                                         <ProcessingSection
-                                             steps={processingSteps}
-                                             logs={processingLogs}
-                                             open={processingOpen}
-                                         />
-                                     </div>
-                                 )}
- 
-+                                {!processingOpen && showCclPrompt && (
-+                                    <div style={{ marginTop: 24 }}>
-+                                        <ModernMultiSelect
-+                                            label="Draft the CCL now?"
-+                                            options={[
-+                                                { key: 'yes', text: 'Yes, draft now' },
-+                                                { key: 'no', text: 'Not now' }
-+                                            ]}
-+                                            selectedValue={draftChoice}
-+                                            onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
-+                                            variant="binary"
-+                                        />
-+                                        {cclGenerating && (
-+                                            <div style={{ marginTop: 8 }}>
-+                                                Generating CCL...
-+                                            </div>
-+                                        )}
-+                                        {generatedCclUrl && (
-+                                            <div style={{ marginTop: 8 }}>
-+                                                <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
-+                                            </div>
-+                                        )}
-+                                    </div>
-+                                )}
++const metricsGridTwo = mergeStyles({
++  display: 'grid',
++  gridTemplateColumns: 'repeat(2, 1fr)',
++  gap: '16px',
++  width: '100%',
++  marginTop: '16px',
++  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
++});
 +
-                                 {/* Navigation buttons for review step */}
-                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                                     {/* Back button with smooth expansion */}
-                                     <div 
-                                         className="nav-button back-button"
-                                         onClick={handleBackToForm}
-                                         style={{
-                                             background: '#f4f4f6',
-                                             border: '2px solid #e1dfdd',
-                                             borderRadius: '0px',
-                                             width: '48px',
-                                             height: '48px',
-                                             display: 'flex',
-                                             alignItems: 'center',
-                                             justifyContent: 'center',
-                                             cursor: 'pointer',
-                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                                             position: 'relative',
-                                             overflow: 'hidden',
-                                         }}
-                                         onMouseEnter={(e) => {
-                                             e.currentTarget.style.background = '#ffefed';
-                                             e.currentTarget.style.border = '2px solid #D65541';
-                                             e.currentTarget.style.borderRadius = '0px';
+ const peopleGridStyle = mergeStyles({
+   display: 'grid',
+   paddingLeft: '80px',
+   gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+   gap: '16px',
+   alignItems: 'center',
+   width: '100%',
+ });
+ 
+ const sectionContainerStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+     padding: '16px',
+     borderRadius: 0,
+     boxShadow: isDarkMode
+       ? `0 4px 12px ${colours.dark.border}`
+       : `0 4px 12px ${colours.light.border}`,
+     position: 'relative',
+     width: '100%',
+   });
+ 
+ 
+ //////////////////////
+ // TabLabel Component
+ //////////////////////
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2815,123 +2842,100 @@ const noActionsClass = mergeStyles({
+   // Style for the animated tick icon container
+   const noActionsIconClass = mergeStyles({
+     width: '24px',
+     height: '24px',
+     borderRadius: '50%',
+     background: colours.highlight,
+     color: '#fff',
+     display: 'flex',
+     alignItems: 'center',
+     justifyContent: 'center',
+     fontSize: '12px',
+     animation: `${tickPopKeyframes} 0.3s ease`,
+   });
+ 
+ // Extract mattersOpenedCount and compute conversion rate with two decimals
+ const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
+ const conversionRate = enquiriesMonthToDate
+   ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
+   : 0;
+   
+   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
+   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
+   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
+ 
+   return (
+-    <section className="page-section">
++    <section className="page-section responsive-container">
+       {showFocusOverlay && (
+         <div
+           className={mergeStyles({
+             position: 'fixed',
+             top: 0,
+             left: 0,
+             width: '100%',
+             height: '100%',
+             backgroundColor: 'rgba(0,0,0,0.4)',
+             zIndex: 800,
+             pointerEvents: 'auto',
+             animation: `${fadeInKeyframes} 0.3s ease`,
+           })}
+         />
+       )}
+       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
+ 
+ 
+       {/* Actions & Metrics Container */}
+-      <div
+-        style={{
+-          backgroundColor: '#ffffff',
+-          padding: '16px',
+-          borderRadius: 0,
+-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+-          marginBottom: '24px',
+-        }}
+-      >
++      <div className={actionsMetricsContainerStyle}>
+ 
+         {/* Metrics Section */}
+         {/* Time Metrics Section */}
+         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
+-            <div
+-              style={{
+-                display: 'grid',
+-                gridTemplateColumns: 'repeat(3, 1fr)',
+-                gap: '16px',
+-                width: '100%'
+-              }}
+-            >
++            <div className={metricsGridThree}>
+               {timeMetrics.slice(0, 3).map((metric, index) => (
+                 <MetricCard
+                   key={metric.title}
+                   title={metric.title}
+                   {...(metric.isMoneyOnly
+                     ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                     : metric.isTimeMoney
+                       ? {
+                         money: metric.money,
+                         hours: metric.hours,
+                         prevMoney: metric.prevMoney,
+                         prevHours: metric.prevHours,
+                         isTimeMoney: metric.isTimeMoney,
+                         showDial: metric.showDial,
+                         dialTarget: metric.dialTarget,
+                       }
+                       : { count: metric.count, prevCount: metric.prevCount })}
+                   isDarkMode={isDarkMode}
+                   animationDelay={index * 0.1}
+                 />
+               ))}
+             </div>
+ 
+-            <div
+-              style={{
+-                display: 'grid',
+-                gridTemplateColumns: 'repeat(2, 1fr)',
+-                gap: '16px',
+-                width: '100%',
+-                marginTop: '16px'
+-              }}
+-            >
++            <div className={metricsGridTwo}>
+               {timeMetrics.slice(3).map((metric, index) => {
+                 if (metric.title === 'Outstanding Office Balances') {
+                   return (
+                     <div
+                       key={metric.title}
+                       onClick={() => setIsOutstandingPanelOpen(true)}
+                       style={{ cursor: 'pointer' }}
+                     >
+                       <MetricCard
+                         title={metric.title}
+                         {...(metric.isMoneyOnly
+                           ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                           : metric.isTimeMoney
+                             ? {
+                               money: metric.money,
+                               hours: metric.hours,
+                               prevMoney: metric.prevMoney,
+                               prevHours: metric.prevHours,
+                               isTimeMoney: metric.isTimeMoney,
+                               showDial: metric.showDial,
+                               dialTarget: metric.dialTarget,
+                             }
+                             : { count: metric.count, prevCount: metric.prevCount })}
+                         isDarkMode={isDarkMode}
+                         animationDelay={index * 0.1}
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -2945,89 +2949,74 @@ const conversionRate = enquiriesMonthToDate
+                   key={metric.title}
+                   title={metric.title}
+                   {...(metric.isMoneyOnly
+                     ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                     : metric.isTimeMoney
+                     ? {
+                         money: metric.money,
+                         hours: metric.hours,
+                         prevMoney: metric.prevMoney,
+                         prevHours: metric.prevHours,
+                         isTimeMoney: metric.isTimeMoney,
+                         showDial: metric.showDial,
+                         dialTarget: metric.dialTarget,
+                       }
+                     : { count: metric.count, prevCount: metric.prevCount })}
+                   isDarkMode={isDarkMode}
+                   animationDelay={index * 0.1}
+                 />
+                 );
+               })}
+ 
+           </div>
+         </CollapsibleSection>
+         {/* Conversion Metrics Section */}
+         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
+-              <div
+-              style={{
+-                  display: 'grid',
+-                gridTemplateColumns: 'repeat(3, 1fr)',
+-                  gap: '16px',
+-                  width: '100%'
+-                }}
+-              >
++              <div className={metricsGridThree}>
+                 {enquiryMetrics.slice(0, 3).map((metric, index) => (
+                   <MetricCard
+                     key={metric.title}
+                     title={metric.title}
+                     {...(metric.isMoneyOnly
+                       ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
+                       : metric.isTimeMoney
+                         ? {
+                           money: metric.money,
+                           hours: metric.hours,
+                           prevMoney: metric.prevMoney,
+                           prevHours: metric.prevHours,
+                           isTimeMoney: metric.isTimeMoney,
+                         }
+                         : { count: metric.count, prevCount: metric.prevCount })}
+                     isDarkMode={isDarkMode}
+                     animationDelay={index * 0.1}
+                   />
+                 ))}
+               </div>
+ 
+ 
+-              <div
+-                style={{
+-                  display: 'grid',
+-                  gridTemplateColumns: 'repeat(2, 1fr)',
+-                  gap: '16px',
+-                  width: '100%',
+-                  marginTop: '16px'
+-                }}
+-              >
++              <div className={metricsGridTwo}>
+               {/* Matters Opened metric without dial (basic count) */}
+               <MetricCard
+                 key={enquiryMetrics[3].title}
+                 title={enquiryMetrics[3].title}
+                 {...(enquiryMetrics[3].isMoneyOnly
+                   ? { money: enquiryMetrics[3].money, prevMoney: enquiryMetrics[3].prevMoney, isMoneyOnly: enquiryMetrics[3].isMoneyOnly }
+                   : enquiryMetrics[3].isTimeMoney
+                   ? {
+                       money: enquiryMetrics[3].money,
+                       hours: enquiryMetrics[3].hours,
+                       prevMoney: enquiryMetrics[3].prevMoney,
+                       prevHours: enquiryMetrics[3].prevHours,
+                       isTimeMoney: enquiryMetrics[3].isTimeMoney,
+                     }
+                   : { count: enquiryMetrics[3].count, prevCount: enquiryMetrics[3].prevCount })}
+                 isDarkMode={isDarkMode}
+                 animationDelay={0}
+                 // No dial props passed so this card just shows the count
+               />
+ 
+               {/* Conversion Rate metric */}
+               <MetricCard
+                 key="Conversion Rate"
+                 title="Conversion Rate"
+                 {...{

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisibl
 // invisible change 2.2
 import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
 import MinimalSearchBox from './MinimalSearchBox';
-import { POID, TeamData, UserData } from '../../../app/functionality/types';
+import { POID, TeamData, UserData, InstructionData } from '../../../app/functionality/types';
 import ClientDetails from '../ClientDetails';
 import ClientHub from '../ClientHub';
 import StepWrapper from './StepWrapper';
@@ -27,10 +27,11 @@ import ValueAndSourceStep from './ValueAndSourceStep';
 import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
 import ModernMultiSelect from './ModernMultiSelect';
+import DocumentsV3 from '../DocumentsV3';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
-import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback, generateDraftCclAction } from './processingActions';
+import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -333,9 +334,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
-    const [showCclPrompt, setShowCclPrompt] = useState(false);
-    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
-    const [cclGenerating, setCclGenerating] = useState(false);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
@@ -351,33 +349,6 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             (poid.last && poid.last.toLowerCase().includes(term))
         );
     });
-
-    useEffect(() => {
-        const run = async () => {
-            if (showCclPrompt && draftChoice === 'yes' && !generatedCclUrl && !cclGenerating) {
-                setCclGenerating(true);
-                try {
-                    const result = await generateDraftCclAction.run(generateSampleJson(), userInitials, userData);
-                    if (typeof result === 'object' && result.url) {
-                        setGeneratedCclUrl(result.url);
-                        setProcessingLogs(prev => [...prev, '✓ Draft CCL created']);
-                    }
-                } catch (err) {
-                    console.error('Draft CCL generation failed', err);
-                    setProcessingLogs(prev => [...prev, '❌ Draft CCL generation failed']);
-                } finally {
-                    setCclGenerating(false);
-                }
-            }
-        };
-        run();
-    }, [showCclPrompt, draftChoice]);
-
-    useEffect(() => {
-        if (draftChoice === 'no') {
-            setShowCclPrompt(false);
-        }
-    }, [draftChoice]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -951,7 +922,6 @@ const handleClearAll = () => {
 
             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
             completeMatterOpening();
-            setShowCclPrompt(true);
         } catch (error) {
             console.error('Error during processing:', error);
             const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -959,6 +929,7 @@ const handleClearAll = () => {
             setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
         } finally {
             setTimeout(() => setIsProcessing(false), 2000);
+            setProcessingOpen(false);
         }
         setGeneratedCclUrl(url);
         return { url };
@@ -1025,6 +996,13 @@ const handleClearAll = () => {
         // Clear all localStorage draft data
         clearMatterOpeningDraft();
     };
+
+    // Show CCL prompt only on the review step, when summary is confirmed and not processing
+    const showCclPrompt = currentStep === 2 && summaryConfirmed && !isProcessing;
+
+    // State for CCL draft choice and generating status
+    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | undefined>(undefined);
+    const [cclGenerating, setCclGenerating] = useState(false);
 
     // Render the horizontal sliding carousel
     return (
@@ -2405,17 +2383,6 @@ const handleClearAll = () => {
                                     )}
                                 </div>
 
-                                {/* Processing Section - Shows when processing is active */}
-                                {processingOpen && (
-                                    <div style={{ marginTop: 24 }}>
-                                        <ProcessingSection
-                                            steps={processingSteps}
-                                            logs={processingLogs}
-                                            open={processingOpen}
-                                        />
-                                    </div>
-                                )}
-
                                 {!processingOpen && showCclPrompt && (
                                     <div style={{ marginTop: 24 }}>
                                         <ModernMultiSelect
@@ -2424,7 +2391,7 @@ const handleClearAll = () => {
                                                 { key: 'yes', text: 'Yes, draft now' },
                                                 { key: 'no', text: 'Not now' }
                                             ]}
-                                            selectedValue={draftChoice}
+                                            selectedValue={draftChoice ?? null}
                                             onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
                                             variant="binary"
                                         />
@@ -2436,6 +2403,14 @@ const handleClearAll = () => {
                                         {generatedCclUrl && (
                                             <div style={{ marginTop: 8 }}>
                                                 <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
+                                            </div>
+                                        )}
+                                        {draftChoice === 'yes' && (
+                                            <div style={{ marginTop: 16 }}>
+                                                <DocumentsV3
+                                                    initialTemplate="ccl"
+                                                    selectedInstructionProp={instructionRef ? ({ InstructionRef: instructionRef } as any) : undefined}
+                                                />
                                             </div>
                                         )}
                                     </div>

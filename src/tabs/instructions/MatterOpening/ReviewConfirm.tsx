@@ -16,6 +16,8 @@ interface ReviewConfirmProps {
     userInitials: string;
     userData?: UserData[] | null;
     onConfirmed?: () => void;
+    /** Optional instruction reference so DocumentsV3 can load context */
+    instructionRef?: string;
 }
 
 const AccordionSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
@@ -40,7 +42,7 @@ const AccordionSection: React.FC<{ title: string; children: React.ReactNode; def
     );
 };
 
-const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed }) => {
+const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formData, userInitials, userData, onConfirmed, instructionRef }) => {
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
     const [processing, setProcessing] = useState(false);
@@ -112,6 +114,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             console.error('❌ Matter submit failed', err);
         } finally {
             setProcessing(false);
+            setProcessingOpen(false);
         }
     };
 
@@ -146,7 +149,10 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             )}
             {draftChoice === 'yes' && (
                 <div style={{ marginTop: 16 }}>
-                    <DocumentsV3 initialTemplate="ccl" />
+                    <DocumentsV3
+                        initialTemplate="ccl"
+                        selectedInstructionProp={instructionRef ? ({ InstructionRef: instructionRef } as any) : undefined}
+                    />
                 </div>
             )}
             {cclUrl && (

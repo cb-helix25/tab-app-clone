@@ -43,6 +43,7 @@ interface ReviewStepProps {
     onBuild?: () => void;
     clientAsOnFile: string;
     phone: string; // <-- New required prop
+    instructionRef?: string;
 }
 
 const ReviewStep: React.FC<ReviewStepProps> = ({
@@ -82,6 +83,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
     onBuild,
     clientAsOnFile,
     phone, // <-- destructured here
+    instructionRef,
 }) => {
     const [detailsConfirmed, setDetailsConfirmed] = useState(false);
     const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
@@ -398,6 +400,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
                 userInitials={userInitials}
                 userData={userData}
                 onConfirmed={handleConfirmed}
+                instructionRef={instructionRef}
             />
         </div>
     );

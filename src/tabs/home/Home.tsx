@@ -427,11 +427,38 @@ const subLabelStyle = (isDarkMode: boolean) =>
     color: isDarkMode ? colours.dark.text : colours.light.text,
   });
 
+const actionsMetricsContainerStyle = mergeStyles({
+  backgroundColor: '#ffffff',
+  padding: '16px',
+  borderRadius: 0,
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+  marginBottom: '24px',
+  '@media (max-width: 600px)': { padding: '12px' },
+});
+
 const favouritesGridStyle = mergeStyles({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
   gap: '16px',
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
+});
+
+const metricsGridThree = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: '16px',
+  width: '100%',
+  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
+});
+
+const metricsGridTwo = mergeStyles({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, 1fr)',
+  gap: '16px',
+  width: '100%',
+  marginTop: '16px',
+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
 });
 
 const peopleGridStyle = mergeStyles({
@@ -2837,7 +2864,7 @@ const conversionRate = enquiriesMonthToDate
   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
 
   return (
-    <section className="page-section">
+    <section className="page-section responsive-container">
       {showFocusOverlay && (
         <div
           className={mergeStyles({
@@ -2857,27 +2884,12 @@ const conversionRate = enquiriesMonthToDate
 
 
       {/* Actions & Metrics Container */}
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          padding: '16px',
-          borderRadius: 0,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-          marginBottom: '24px',
-        }}
-      >
+      <div className={actionsMetricsContainerStyle}>
 
         {/* Metrics Section */}
         {/* Time Metrics Section */}
         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '16px',
-                width: '100%'
-              }}
-            >
+            <div className={metricsGridThree}>
               {timeMetrics.slice(0, 3).map((metric, index) => (
                 <MetricCard
                   key={metric.title}
@@ -2901,15 +2913,7 @@ const conversionRate = enquiriesMonthToDate
               ))}
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '16px',
-                width: '100%',
-                marginTop: '16px'
-              }}
-            >
+            <div className={metricsGridTwo}>
               {timeMetrics.slice(3).map((metric, index) => {
                 if (metric.title === 'Outstanding Office Balances') {
                   return (
@@ -2967,14 +2971,7 @@ const conversionRate = enquiriesMonthToDate
         </CollapsibleSection>
         {/* Conversion Metrics Section */}
         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
-              <div
-              style={{
-                  display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '16px',
-                  width: '100%'
-                }}
-              >
+              <div className={metricsGridThree}>
                 {enquiryMetrics.slice(0, 3).map((metric, index) => (
                   <MetricCard
                     key={metric.title}
@@ -2997,15 +2994,7 @@ const conversionRate = enquiriesMonthToDate
               </div>
 
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '16px',
-                  width: '100%',
-                  marginTop: '16px'
-                }}
-              >
+              <div className={metricsGridTwo}>
               {/* Matters Opened metric without dial (basic count) */}
               <MetricCard
                 key={enquiryMetrics[3].title}

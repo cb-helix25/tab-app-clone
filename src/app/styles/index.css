@@ -64,6 +64,12 @@ body {
   padding: 16px;
 }
 
+@media (max-width: 600px) {
+  .page-section {
+    padding: 8px;
+  }
+}
+
 /* basic table styling for instruction data */
 .simple-table {
   width: 100%;
