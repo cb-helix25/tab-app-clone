@@ -1,835 +1,338 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -571,50 +571,51 @@ Disbursement | Amount | VAT chargeable
-         return content;
-     };
-     
-     // Function to render content with highlighted template variables
-     // Helper function to measure text width
-     const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'Raleway, sans-serif'): number => {
-         const canvas = document.createElement('canvas');
-         const context = canvas.getContext('2d');
-         if (context) {
-             context.font = `${fontSize}px ${fontFamily}`;
-             return context.measureText(text).width;
-         }
-         return text.length * 8; // Fallback
-     };
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -5,51 +5,50 @@ import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton }
+ import MinimalSearchBox from './MinimalSearchBox';
+ import { POID, TeamData, UserData, InstructionData } from '../../../app/functionality/types';
+ import ClientDetails from '../ClientDetails';
+ import ClientHub from '../ClientHub';
+ import StepWrapper from './StepWrapper';
+ import '../../../app/styles/NewMatters.css';
+ import '../../../app/styles/MatterOpeningCard.css';
+ import {
+     practiceAreasByArea,
+     getGroupColor,
+     partnerOptions as defaultPartners,
+ } from './config';
+ import localTeamDataJson from '../../../localData/team-sql-data.json';
+ import localUserData from '../../../localData/localUserData.json';
  
-     const renderTemplateContentWithHighlights = (content: string) => {
-         if (!content) return 'No content to preview...';
-         
-         // Find all template variables in the content
-         const templateVariableRegex = /\{\{([^}]+)\}\}/g;
-         const parts = [];
-         let lastIndex = 0;
-         let match: RegExpExecArray | null;
-         let globalTableState = false; // Track table state across segments
-         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
-+        let persistentIndent = false; // Maintain section indentation across segments
-         
-         const consumedPlaceholders = new Set<string>();
-         while ((match = templateVariableRegex.exec(content)) !== null) {
-             // Add editable text before the variable
-             if (match.index > lastIndex) {
-                 const segmentStart = lastIndex;
-                 const segmentEnd = match.index;
-                 const textSegment = content.substring(segmentStart, segmentEnd);
-                 
-                 const formatTextSegment = (text: string, segmentIndex: number, isTableContext: boolean = false): { nodes: React.ReactNode[]; isTable: boolean; tableRows?: JSX.Element[] } => {
-                     const lines = text.split('\n');
+ import ClientInfoStep from './ClientInfoStep';
+ import PoidSelectionStep from './PoidSelectionStep';
+ import AreaOfWorkStep from './AreaOfWorkStep';
+ import PracticeAreaStep from './PracticeAreaStep';
+ import DescriptionStep from './DescriptionStep';
+ import FolderStructureStep from './FolderStructureStep';
+ import ValueAndSourceStep from './ValueAndSourceStep';
+ import SourceStep from './SourceStep';
+ import OpponentDetailsStep from './OpponentDetailsStep';
+ import ModernMultiSelect from './ModernMultiSelect';
+-import DocumentsV3 from '../DocumentsV3';
  
-                     // Check if this text contains table-like content (Action points section)
-                     const hasTableContent = lines.some(line =>
-                         line.includes('Action required by you | Additional information') ||
-                         (line.includes('☐') && line.includes('|'))
-                     );
+ import { CompletionProvider } from './CompletionContext';
+ import ProcessingSection, { ProcessingStep } from './ProcessingSection';
+ import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
+ import idVerifications from '../../../localData/localIdVerifications.json';
+ import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
+ import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
  
-                     // Continue table mode from previous segments or start new table
-                     const shouldProcessAsTable = hasTableContent || isTableContext;
- 
-                     if (shouldProcessAsTable) {
-                         // Handle table formatting for Action points section
-                         const tableElements: JSX.Element[] = [];
-                         let tableRows: JSX.Element[] = [];
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -799,216 +800,214 @@ Disbursement | Amount | VAT chargeable
-                                     tableRows = [];
-                                 }
-                                 
-                                 // Skip lines that should not be processed as regular text when in table mode
-                                 if (isInTable && (line.trim() === '' || 
-                                                 line.includes('{{describe_') ||
-                                                 line.includes('Action required by you') ||
-                                                 line.trim() === 'Additional information')) {
-                                     // Skip empty lines, template variables, and table headers that are part of table processing
-                                     return;
-                                 }
-                                 
-                                 // Regular text formatting
-                                 const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-                                 const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-                                 const bulletPointMatch = line.match(/^—(.+)$/);
- 
-                                 if (numberedHeadingMatch) {
-                                     const number = numberedHeadingMatch[1];
-                                     const headingText = numberedHeadingMatch[2];
-                                     tableElements.push(
-                                         <span
-                                             key={lineKey}
-                                             style={{
-                                                 display: 'block',
--                                                marginLeft: '16px',
--                                                textIndent: '-16px',
--                                                paddingLeft: '16px',
--                                                lineHeight: '1.5',
--                                                fontWeight: 'bold'
-+                                            marginLeft: '16px',
-+                                            textIndent: '-16px',
-+                                            lineHeight: '1.5',
-+                                            fontWeight: 'bold'
-                                             }}
-                                         >
-                                             <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
-                                             <span>{headingText}</span>
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else if (standaloneHeadingMatch) {
-                                     tableElements.push(
-                                         <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
-                                             {line}
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else if (bulletPointMatch) {
-                                     const bulletContent = bulletPointMatch[1];
-                                     const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                                     
-                                     tableElements.push(
-                                         <span key={lineKey} style={{ 
-                                             display: 'block', 
-                                             marginLeft: '16px',
-                                             textIndent: '-16px',
--                                            paddingLeft: '16px',
-                                             lineHeight: '1.5'
-                                         }}>
-                                             <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                             <span style={{ display: 'inline' }}>
-                                                 {sectionRefMatch ? (
-                                                     <>
-                                                         <span>{sectionRefMatch[1]}</span>
-                                                         <span style={{ 
-                                                             color: '#6c757d', 
-                                                             fontSize: '13px', 
-                                                             fontStyle: 'italic',
-                                                             opacity: 0.8 
-                                                         }}>
-                                                             {sectionRefMatch[2]}
-                                                         </span>
-                                                         <span>{sectionRefMatch[3]}</span>
-                                                     </>
-                                                 ) : (
-                                                     <span>{bulletContent}</span>
-                                                 )}
-                                             </span>
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else if (line.trim() !== '') {
-                                     tableElements.push(
-                                         <span key={lineKey}>
-                                             {line}
-                                             {index < lines.length - 1 ? '\n' : ''}
-                                         </span>
-                                     );
-                                 } else {
-                                     tableElements.push(<br key={lineKey} />);
-                                 }
-                             }
-                         });
-                         
-                         // Don't create table elements in individual segments
-                         // Just return the raw content and let the calling code handle table creation
-                         if (tableRows.length > 0) {
-                             // Return any text collected before the table header
-                             // alongside the gathered table rows
-                             return { nodes: tableElements, isTable: true, tableRows: tableRows };
-                         } else {
-                             return { nodes: tableElements, isTable: isInTable || tableStarted, tableRows: tableRows };
-                         }
-                     }
- 
-                     // Regular text formatting (non-table content)
--                    let previousWasNumberedHeading = false;
-+                    let inSection = persistentIndent;
-                     const formattedLines = lines.map((line, index) => {
-                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
-                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
-                         const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-                         const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-                         // Check if line starts with — (bullet point)
-                         const bulletPointMatch = line.match(/^—(.+)$/);
-                         const lineKey = `${segmentStart}-line-${index}`;
-                         
-                         if (numberedHeadingMatch) {
-                             const number = numberedHeadingMatch[1];
-                             const headingText = numberedHeadingMatch[2];
--                            previousWasNumberedHeading = true;
-+                            inSection = true;
-+                            persistentIndent = true;
-                             return (
-                                 <span
-                                     key={lineKey}
-                                     style={{
-                                         display: 'block',
-                                         marginLeft: '16px',
-                                         textIndent: '-16px',
--                                        paddingLeft: '16px',
-                                         lineHeight: '1.5',
-                                         fontWeight: 'bold'
-                                     }}
-                                 >
-                                     <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
-                                     <span>{headingText}</span>
-                                     {index < lines.length - 1 ? '\n' : ''}
-                                 </span>
-                             );
-                         } else if (standaloneHeadingMatch) {
--                            previousWasNumberedHeading = false;
-+                            inSection = true;
-+                            persistentIndent = true;
-                             return (
-                                 <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
-                                     {line}
-                                     {index < lines.length - 1 ? '\n' : ''}
-                                 </span>
-                             );
-                         } else if (bulletPointMatch) {
--                            previousWasNumberedHeading = false;
-                             // Handle bullet points with red bullets and styled section references
-                             const bulletContent = bulletPointMatch[1];
-                             // Check for section references like "(see section 4.1 below)"
-                             const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                             
-                             return (
-                                 <span key={lineKey} style={{ 
-                                     display: 'block', 
-                                     marginLeft: '16px',
-                                     textIndent: '-16px',
--                                    paddingLeft: '16px',
-                                     lineHeight: '1.5'
-                                 }}>
-                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                     <span style={{ display: 'inline' }}>
-                                         {sectionRefMatch ? (
-                                             <>
-                                                 <span>{sectionRefMatch[1]}</span>
-                                                 <span style={{ 
-                                                     color: '#6c757d', 
-                                                     fontSize: '13px', 
-                                                     fontStyle: 'italic',
-                                                     opacity: 0.8 
-                                                 }}>
-                                                     {sectionRefMatch[2]}
-                                                 </span>
-                                                 <span>{sectionRefMatch[3]}</span>
-                                             </>
-                                         ) : (
-                                             <span>{bulletContent}</span>
-                                         )}
-                                     </span>
-                                     {index < lines.length - 1 ? '\n' : ''}
-                                 </span>
-                             );
-                         }
--                        const style: React.CSSProperties | undefined = previousWasNumberedHeading
-+                        const style: React.CSSProperties | undefined = inSection
-                             ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
-                             : undefined;
--                        previousWasNumberedHeading = false;
-+                        // Keep inSection state until a new heading is encountered
-                         return (
-                             <span key={lineKey} style={style}>
-                                 {line}
-                                 {index < lines.length - 1 ? '\n' : ''}
-                             </span>
-                         );
-                     });
-+                    persistentIndent = inSection;
-                     return { nodes: formattedLines, isTable: false };
-                 };
-                 
-                 const { nodes, isTable, tableRows: segmentTableRows } = formatTextSegment(textSegment, parts.length, globalTableState);
-                 
-                 // Update global table state and collect table rows
-                 if (isTable && !globalTableState) {
-                     // Starting a new table
-                     globalTableState = true;
-                     globalTableRows = [];
-                 } 
-                 
-                 if (isTable && segmentTableRows && segmentTableRows.length > 0) {
-                     // Add rows from this segment to global collection
-                     globalTableRows.push(...segmentTableRows);
-                 } else if (globalTableState && !isTable) {
-                     // Table ended in this segment, create the complete table
-                     if (globalTableRows.length > 0) {
-                         parts.push(
-                             <div key={`complete-table-${parts.length}`} style={{ 
-                                 display: 'block',
-                                 marginTop: '16px',
-                                 marginBottom: '16px',
-                                 width: '100%'
-                             }}>
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1917,181 +1916,184 @@ Disbursement | Amount | VAT chargeable
-                                             borderRadius: 0,
-                                             transition: 'all 0.2s ease'
-                                         }}
-                                         onMouseOver={(e) => {
-                                             e.currentTarget.style.backgroundColor = '#e9ecef';
-                                             e.currentTarget.style.borderColor = '#adb5bd';
-                                         }}
-                                         onMouseOut={(e) => {
-                                             e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                             e.currentTarget.style.borderColor = '#dee2e6';
-                                         }}
-                                     >
-                                         Change
-                                     </button>
-                                 </div>
-                             </>
-                         )}
-                     </div>
-                 );
-             } else {
-                 const fieldValue = templateFields[variableName];
-                 
-                 // Detect if this template variable is part of a bullet point
-                 const beforeMatch = content.substring(0, match.index);
-                 const afterMatch = content.substring(match.index + match[0].length);
--                const isInBullet = beforeMatch.includes('—') && 
-+                const isInBullet = beforeMatch.includes('—') &&
-                                  !beforeMatch.split('—').pop()!.includes('\n');
-+                const isLineStart = match.index === 0 || content[match.index - 1] === '\n';
-             
-             if (fieldValue && fieldValue.trim()) {
-                 // Variable has a value - show as inline editable text
-                 if (isInBullet) {
-                     // Special handling for filled placeholders within bullets - render with bullet alignment
-                     parts.push(
-                         <div
-                             key={match.index}
-                             style={{
-                                 display: 'block',
-                                 marginLeft: '16px',
-                                 textIndent: '-16px',
--                                paddingLeft: '16px',
-                                 lineHeight: '1.5'
-                             }}
-                         >
-                             <span
-                                 contentEditable
-                                 suppressContentEditableWarning={true}
-                                 onClick={(e) => handleFieldClick(variableName, e)}
-                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                                 onMouseLeave={handleFieldHoverLeave}
-                                 style={{
-                                     backgroundColor: '#e8f5e8',
-                                     color: '#20b26c',
-                                     padding: '2px 4px',
-                                     fontWeight: 500,
-                                     outline: 'none',
-                                     fontFamily: 'Raleway, sans-serif',
-                                     fontSize: '14px',
-                                     display: 'inline',
-                                     cursor: 'text',
-                                     transition: 'all 0.2s ease',
-                                     wordBreak: 'break-word',
-                                     whiteSpace: 'pre-wrap',
-                                     boxSizing: 'border-box',
-                                     marginTop: '-1px',
-                                     marginBottom: '-1px',
-                                     borderLeft: '1px solid #20b26c',
-                                     borderRight: '1px solid #20b26c',
-                                     position: 'relative',
-                                     boxDecorationBreak: 'slice',
-                                     WebkitBoxDecorationBreak: 'slice',
-                                     marginLeft: '16px' // Align with bullet content
-                                 }}
-                                 className="placeholder-segment"
-                                 onFocus={(e) => {
-                                     e.target.style.backgroundColor = '#d4edda';
-                                 }}
-                                 onBlur={(e) => {
-                                     const newValue = e.target.textContent || '';
-                                     setTemplateFields(prev => ({
-                                         ...prev,
-                                         [variableName]: newValue
-                                     }));
-                                     e.target.style.backgroundColor = '#e8f5e8';
-                                 }}
-                             >
-                                 {fieldValue}
-                             </span>
-                         </div>
-                     );
-                 } else {
--                    parts.push(
-+                    const placeholderNode = (
-                         <span
-                             key={match.index}
-                             contentEditable
-                             suppressContentEditableWarning={true}
-                             onClick={(e) => handleFieldClick(variableName, e)}
-                             onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                             onMouseLeave={handleFieldHoverLeave}
-                             style={{
-                                 backgroundColor: '#e8f5e8',
-                                 color: '#20b26c',
-                                 padding: '2px 4px',
-                                 fontWeight: 500,
-                                 outline: 'none',
-                                 fontFamily: 'Raleway, sans-serif',
-                                 fontSize: '14px',
-                                 display: 'inline',
-                                 cursor: 'text',
-                                 transition: 'all 0.2s ease',
-                                 wordBreak: 'break-word',
-                                 whiteSpace: 'pre-wrap',
-                                 boxSizing: 'border-box',
-                                 // Use negative margins to overlap and create unified shape
-                                 marginTop: '-1px',
-                                 marginBottom: '-1px',
-                                 // Border only on left and right, let top/bottom merge
-                                 borderLeft: '1px solid #20b26c',
-                                 borderRight: '1px solid #20b26c',
-                                 // Add top/bottom borders via pseudo-elements for first/last lines
-                                 position: 'relative',
-                                 // Use slice mode for continuous background
-                                 boxDecorationBreak: 'slice',
-                                 WebkitBoxDecorationBreak: 'slice'
-                             }}
--                            // Add CSS class for border management
-                             className="placeholder-segment"
-                             onFocus={(e) => {
-                                 e.target.style.backgroundColor = '#d4edda';
-                             }}
-                             onBlur={(e) => {
-                                 const newValue = e.target.textContent || '';
-                                 setTemplateFields(prev => ({
-                                     ...prev,
-                                     [variableName]: newValue
-                                 }));
-                                 e.target.style.backgroundColor = '#e8f5e8';
-                             }}
-                         >
-                             {fieldValue}
-                         </span>
-                     );
-+                    if (isLineStart && persistentIndent) {
-+                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-+                    } else {
-+                        parts.push(placeholderNode);
-+                    }
-                 }
-             } else {
-                 // Variable is empty - show as inline input placeholder
-                 const placeholderText = variableName.replace(/_/g, ' ');
-                 
-                 if (isInBullet) {
-                     // Special handling for placeholders within bullets - render with bullet alignment
-                     parts.push(
-                         <div
-                             key={match.index}
-                             style={{
-                                 display: 'block',
-                                 marginLeft: '16px',
-                                 textIndent: '-16px',
--                                paddingLeft: '16px',
-                                 lineHeight: '1.5'
-                             }}
-                         >
-                             <span
-                                 contentEditable
-                                 suppressContentEditableWarning={true}
-                                 data-placeholder={placeholderText}
-                                 onClick={(e) => handleFieldClick(variableName, e)}
-                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                                 onMouseLeave={handleFieldHoverLeave}
-                                 style={{
-                                     backgroundColor: '#f0f8ff',
-                                     color: '#0078d4',
-                                     padding: '2px 4px',
-                                     fontWeight: 500,
-                                     outline: 'none',
-                                     fontFamily: 'Raleway, sans-serif',
-                                     fontSize: '14px',
-                                     display: 'inline',
-                                     minWidth: '20px',
-                                     cursor: 'text',
-                                     transition: 'all 0.2s ease',
-                                     wordBreak: 'break-word',
-                                     whiteSpace: 'pre-wrap',
-                                     boxSizing: 'border-box',
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -2102,105 +2104,109 @@ Disbursement | Amount | VAT chargeable
-                                     position: 'relative',
-                                     boxDecorationBreak: 'slice',
-                                     WebkitBoxDecorationBreak: 'slice',
-                                     marginLeft: '16px' // Align with bullet content
-                                 }}
-                                 className="placeholder-segment-empty"
-                                 onFocus={(e) => {
-                                     e.target.style.backgroundColor = '#e6f3ff';
-                                     e.target.style.borderStyle = 'solid';
-                                 }}
-                                 onBlur={(e) => {
-                                     const newValue = e.target.textContent || '';
-                                     setTemplateFields(prev => ({
-                                         ...prev,
-                                         [variableName]: newValue
-                                     }));
-                                     e.target.style.backgroundColor = '#f0f8ff';
-                                     e.target.style.borderStyle = 'dashed';
-                                 }}
-                             >
-                                 {placeholderText}
-                             </span>
-                         </div>
-                     );
-                 } else {
--                    parts.push(
-+                    const placeholderNode = (
-                         <span
-                             key={match.index}
-                             contentEditable
-                             suppressContentEditableWarning={true}
-                             data-placeholder={placeholderText}
-                             onClick={(e) => handleFieldClick(variableName, e)}
-                             onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                             onMouseLeave={handleFieldHoverLeave}
-                             style={{
-                                 backgroundColor: '#f0f8ff',
-                                 color: '#0078d4',
-                                 padding: '2px 4px',
-                                 fontWeight: 500,
-                                 outline: 'none',
-                                 fontFamily: 'Raleway, sans-serif',
-                                 fontSize: '14px',
-                                 display: 'inline',
-                                 minWidth: '20px',
-                                 cursor: 'text',
-                                 transition: 'all 0.2s ease',
-                                 wordBreak: 'break-word',
-                                 whiteSpace: 'pre-wrap',
-                                 boxSizing: 'border-box',
-                                 // Use negative margins to overlap and create unified shape
-                                 marginTop: '-1px',
-                                 marginBottom: '-1px',
-                                 // Border only on left and right, let top/bottom merge
-                                 borderLeft: '1px dashed #0078d4',
-                                 borderRight: '1px dashed #0078d4',
-                                 // Add top/bottom borders via pseudo-elements for first/last lines
-                                 position: 'relative',
-                                 // Use slice mode for continuous background
-                                 boxDecorationBreak: 'slice',
-                                 WebkitBoxDecorationBreak: 'slice'
-                             }}
--                            // Add CSS class for border management
-                             className="placeholder-segment-empty"
-                             onFocus={(e) => {
-                                 e.target.style.backgroundColor = '#e6f3ff';
-                                 e.target.style.borderStyle = 'solid';
-                             }}
-                             onBlur={(e) => {
-                                 const newValue = e.target.textContent || '';
-                                 setTemplateFields(prev => ({
-                                     ...prev,
-                                     [variableName]: newValue
-                                 }));
-                                 e.target.style.backgroundColor = '#f0f8ff';
-                                 e.target.style.borderStyle = 'dashed';
-                             }}
-                         >
-                             {placeholderText}
-                         </span>
-                     );
-+                    if (isLineStart && persistentIndent) {
-+                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-+                    } else {
-+                        parts.push(placeholderNode);
-+                    }
+ // Local implementation of useDraftedState for draft persistence
+ function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+     const storageKey = `matterOpeningDraft_${key}`;
+     const [state, setState] = useState<T>(() => {
+         try {
+             const item = localStorage.getItem(storageKey);
+             if (!item) return initialValue;
+             const parsed = JSON.parse(item);
+             // Special handling for selectedDate: convert string to Date
+             if (key === 'selectedDate') {
+                 if (parsed === null) return null as any;
+                 if (typeof parsed === 'string' || typeof parsed === 'number') {
+                     const d = new Date(parsed);
+                     return isNaN(d.getTime()) ? initialValue : (d as any);
                  }
              }
-             }
-             
-             lastIndex = match.index + match[0].length;
-         }
+             return parsed;
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -92,51 +91,54 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+     poidData,
+     setPoidData,
+     teamData,
+     userInitials,
+     userData,
+     instructionRef = '',
+     clientId: initialClientId = '',
+     feeEarner,
+     stage = 'New Matter',
+     matterRef,
+     hideClientSections = false,
+     initialClientType = '',
+     preselectedPoidIds = [],
+     instructionPhone,
+ }) => {
+     const idExpiry = useMemo(() => {
+         const d = new Date();
+         d.setDate(d.getDate() + 30);
+         return d.toLocaleDateString('en-GB');
+     }, []); // invisible change
+ 
+     const [clientId, setClientId] = useState<string | null>(initialClientId || null);
+     const [matterIdState, setMatterIdState] = useState<string | null>(matterRef || null);
+     useEffect(() => {
+         registerClientIdCallback(setClientId);
+-        registerMatterIdCallback(setMatterIdState);
++        registerMatterIdCallback((id) => {
++            setMatterIdState(id);
++            setOpenedMatterId(id);
++        });
+         return () => {
+             registerClientIdCallback(null);
+             registerMatterIdCallback(null);
+         };
+     }, []);
+ 
+     const showPoidSelection = !instructionRef;
+     const defaultPoidData: POID[] = useMemo(() => {
+         const mapped = (poidData && poidData.length > 0
+             ? poidData
+             : (idVerifications as any[]).map((v) => ({
+                   poid_id: String(v.InternalId),
+                   first: v.FirstName,
+                   last: v.LastName,
+                   email: v.Email,
+                   best_number: (v as any).Phone || '',
+                   nationality: v.Nationality,
+                   nationality_iso: v.NationalityAlpha2,
+                   date_of_birth: v.DOB,
+                   passport_number: v.PassportNumber,
+                   drivers_license_number: v.DriversLicenseNumber,
+                   house_building_number: v.HouseNumber,
+                   street: v.Street,
+                   city: v.City,
+                   county: v.County,
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -312,50 +314,51 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
+     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
+     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
+     // Solicitor fields
+     const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
+     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
+     const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
+     const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
+     const [solicitorHouseNumber, setSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', '');
+     const [solicitorStreet, setSolicitorStreet] = useDraftedState<string>('solicitorStreet', '');
+     const [solicitorCity, setSolicitorCity] = useDraftedState<string>('solicitorCity', '');
+     const [solicitorCounty, setSolicitorCounty] = useDraftedState<string>('solicitorCounty', '');
+     const [solicitorPostcode, setSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', '');
+     const [solicitorCountry, setSolicitorCountry] = useDraftedState<string>('solicitorCountry', '');
+     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
+ 
+     // Summary review confirmation state
+     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+ 
+     // Processing state for matter submission
+     const [isProcessing, setIsProcessing] = useState(false);
+     const [processingOpen, setProcessingOpen] = useState(false);
+     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
+     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
+     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
++    const [openedMatterId, setOpenedMatterId] = useState<string | null>(null);
+ 
+     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
+     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
+     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
+     const poidGridRef = useRef<HTMLDivElement | null>(null);
+     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
+ 
+     const filteredPoidData = effectivePoidData.filter((poid) => {
+         const term = poidSearchTerm.toLowerCase();
+         return (
+             poid.poid_id.toLowerCase().includes(term) ||
+             (poid.first && poid.first.toLowerCase().includes(term)) ||
+             (poid.last && poid.last.toLowerCase().includes(term))
+         );
+     });
+ 
+     useEffect(() => {
+         const observer = new IntersectionObserver(
+             (entries) => {
+                 if (entries[0].isIntersecting) {
+                     setVisiblePoidCount((prev) => Math.min(prev + 12, filteredPoidData.length));
+                 }
+             },
+             { rootMargin: '200px' }
+         );
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -975,57 +978,69 @@ const handleClearAll = () => {
+         setOpponentPostcode('');
+         setOpponentCountry('');
+         setOpponentHasCompany(false);
+         setOpponentCompanyName('');
+         setOpponentCompanyNumber('');
+         setSolicitorTitle('');
+         setSolicitorFirst('');
+         setSolicitorLast('');
+         setSolicitorPhone('');
+         setSolicitorHouseNumber('');
+         setSolicitorStreet('');
+         setSolicitorCity('');
+         setSolicitorCounty('');
+         setSolicitorPostcode('');
+         setSolicitorCountry('');
+         setSolicitorCompanyNumber('');
+         setSummaryConfirmed(false); // Reset summary confirmation
+         setActivePoid(null);
+         setCurrentStep(0); // This will reset the review dots
+         setPoidSearchTerm('');
          
-         // Handle any remaining table at the end
-         if (globalTableState && globalTableRows.length > 0) {
-             parts.push(
-                 <div key={`final-table`} style={{ 
-                     display: 'block',
-                     marginTop: '16px',
-                     marginBottom: '16px',
-                     width: '100%'
-                 }}>
-                     <table style={{ 
-                         width: '100%', 
-                         borderCollapse: 'collapse',
-                         border: '1px solid #ccc',
-                         fontSize: '14px'
+         // Clear all localStorage draft data
+         clearMatterOpeningDraft();
+     };
+ 
+-    // Show CCL prompt only on the review step, when summary is confirmed and not processing
+-    const showCclPrompt = currentStep === 2 && summaryConfirmed && !isProcessing;
++    // Determine if all processing steps completed successfully
++    const allProcessingSucceeded = processingSteps.length > 0 && processingSteps.every(s => s.status === 'success');
++
++    // Show CCL prompt only once processing has finished with success
++    const showCclPrompt = currentStep === 2 && summaryConfirmed && allProcessingSucceeded;
+ 
+     // State for CCL draft choice and generating status
+     const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | undefined>(undefined);
+     const [cclGenerating, setCclGenerating] = useState(false);
+ 
++    const handleDraftChoice = (choice: 'yes' | 'no') => {
++        setDraftChoice(choice);
++        if (choice === 'yes' && openedMatterId) {
++            window.location.assign(getDraftCclPath(openedMatterId));
++        }
++    };
++
++    const showProcessingSection = processingSteps.some(s => s.status !== 'pending');
++
+     // Render the horizontal sliding carousel
+     return (
+         <CompletionProvider>
+             <Stack className="workflow-container">
+                 {/* Main Container */}
+                 <div className="workflow-main matter-opening-card">
+                     {/* Persistent Header */}
+                     <div className="persistent-header" style={{
+                         padding: '16px 24px',
+                         borderBottom: '1px solid #e1e5e9',
+                         background: '#fff',
+                         position: 'sticky',
+                         top: 0,
+                         zIndex: 10,
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'space-between',
+                         gap: 12,
+                         margin: '-20px -20px 0 -20px',
+                         flexWrap: 'wrap',
+                         minHeight: '60px'
                      }}>
-                         <thead>
-                             <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                 <th style={{ 
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -2709,121 +2715,200 @@ Disbursement | Amount | VAT chargeable
-             : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
-         
-         processedContent = processedContent.replace(/\{\{costs_section_choice\}\}/g, costsText);
-         
-         // Handle disbursements section choice
-         const disbursementsText = disbursementsChoice === 'table' 
-             ? `Based on the information you have provided, we expect to incur the following disbursements:
+                         <div style={{ 
+                             display: 'flex', 
+                             alignItems: 'center', 
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index f714d6982f2045c17ead8cce3c7be349d45a8a37..8a0f938f643024d73bac3502c76972e32320f21a 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -2361,80 +2376,76 @@ const handleClearAll = () => {
+                                             {noConflict ? 'No conflicts confirmed' : 'Conflict check required'}
+                                         </span>
+                                     </div>
  
- Disbursement | Amount | VAT chargeable
- [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
- [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
-             : !showEstimateExamples 
-                 ? `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} in total including VAT.`
-                 : `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} for the next steps in your matter including ${templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '[Examples]'}.`;
-         
-         processedContent = processedContent.replace(/\{\{disbursements_section_choice\}\}/g, disbursementsText);
-         
-         // Replace placeholders with actual values for final rendering
-         Object.entries(templateFields).forEach(([key, value]) => {
-             if (value) {
-                 const placeholder = `{{${key}}}`;
-                 processedContent = processedContent.replace(new RegExp(placeholder, 'g'), value);
-             }
-         });
-         
--        // Split content into lines and format numbered headings
-+        // Split content into lines and format numbered headings and tables
-         const lines = processedContent.split('\n');
--        const formattedLines = lines.map(line => {
--            // Check if line starts with number followed by space and text (e.g., "1 Contact details")
--            // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
-+        const elements: React.ReactNode[] = [];
-+        let inTable = false;
-+        let tableRows: JSX.Element[] = [];
-+        let indentSection = false;
-+
-+        const pushTable = () => {
-+            if (tableRows.length > 0) {
-+                elements.push(
-+                    <div key={`table-${elements.length}`} style={{ display: 'block', marginTop: '16px', marginBottom: '16px', width: '100%' }}>
-+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc', fontSize: '14px' }}>
-+                            <thead>
-+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
-+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Action required by you</th>
-+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Additional information</th>
-+                                </tr>
-+                            </thead>
-+                            <tbody>{tableRows}</tbody>
-+                        </table>
-+                    </div>
-+                );
-+                tableRows = [];
-+            }
-+        };
-+
-+        for (let i = 0; i < lines.length; i++) {
-+            let line = lines[i];
-+
-+            if (line.includes('Action required by you | Additional information')) {
-+                inTable = true;
-+                tableRows = [];
-+                continue;
-+            }
-+
-+            if (inTable) {
-+                if (line.includes('☐') || line.trim().startsWith('☐')) {
-+                    let actionPart = '';
-+                    let infoPart = '';
-+                    if (line.includes('|')) {
-+                        [actionPart, infoPart] = line.split('|').map(part => part.trim());
-+                    } else {
-+                        actionPart = line.trim();
-+                        infoPart = '';
-+                    }
-+
-+                    const isDocumentsRow = actionPart.includes('Provide the following documents');
-+                    const additionalItems: string[] = [];
-+
-+                    if (isDocumentsRow) {
-+                        let next = i + 1;
-+                        while (next < lines.length) {
-+                            const nextLine = lines[next];
-+                            if (nextLine.trim() === '') { next++; continue; }
-+                            if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
-+                                additionalItems.push(nextLine.trim());
-+                                lines[next] = '';
-+                                next++;
-+                                i = next - 1;
-+                            } else {
-+                                break;
-+                            }
-+                        }
-+                    }
-+
-+                    tableRows.push(
-+                        <tr key={`row-${i}`}>
-+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
-+                                <div>{actionPart}</div>
-+                                {additionalItems.length > 0 && (
-+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
-+                                        {additionalItems.map((item, idx) => (
-+                                            <div key={idx} style={{ marginBottom: '4px' }}>{item}</div>
-+                                        ))}
-+                                    </div>
+                                     {/* Confirmation required banner */}
+                                     {!summaryConfirmed && (
+                                         <div style={{ 
+                                             marginTop: 16,
+                                             padding: 12,
+                                             background: '#fef2f2',
+                                             border: '1px solid #D65541',
+                                             borderRadius: 0,
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             gap: 8
+                                         }}>
+                                             <i className="ms-Icon ms-Icon--Touch" 
+                                                style={{ fontSize: 14, color: '#D65541' }} />
+                                             <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
+                                                 Click anywhere in this box to confirm these details are accurate
+                                             </span>
+                                         </div>
+                                     )}
+                                 </div>
+ 
++                                {showProcessingSection && (
++                                    <ProcessingSection open={true} steps={processingSteps} logs={processingLogs} />
 +                                )}
-+                            </td>
-+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>{infoPart}</td>
-+                        </tr>
-+                    );
-+                    continue;
-+                } else if (line.trim() === '' || line.includes('{{describe_')) {
-+                    continue;
-+                } else {
-+                    pushTable();
-+                    inTable = false;
-+                    // fall through to process this line normally
-+                }
-+            }
 +
-             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
--            // Check if line starts with — (bullet point)
-             const bulletPointMatch = line.match(/^—(.+)$/);
--            
-+
-             if (numberedHeadingMatch) {
-                 const number = numberedHeadingMatch[1];
-                 const headingText = numberedHeadingMatch[2];
--                return (
-+                indentSection = true;
-+                elements.push(
-                     <div
--                        key={line}
-+                        key={i}
-                         style={{
-                             display: 'flex',
-                             alignItems: 'flex-start',
-                             marginTop: '16px',
-                             marginBottom: '8px',
-                             marginLeft: '16px',
-                             textIndent: '-16px',
--                            paddingLeft: '16px',
--                            fontWeight: 'bold'
-+                        fontWeight: 'bold'
-                         }}
-                     >
-                         <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
-                         <span>{headingText}</span>
-                     </div>
-                 );
-             } else if (standaloneHeadingMatch) {
--                return (
--                    <div key={line} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
--                        {line}
--                    </div>
-+                indentSection = true;
-+                elements.push(
-+                    <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>{line}</div>
-                 );
-             } else if (bulletPointMatch) {
--                // Handle bullet points with red bullets and styled section references
-                 const bulletContent = bulletPointMatch[1];
--                // Check for section references like "(see section 4.1 below)"
-                 const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
--                
--                return (
--                    <div key={line} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
-+                elements.push(
-+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
-                         <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
-                         <span style={{ flex: 1 }}>
-                             {sectionRefMatch ? (
-                                 <>
-                                     <span>{sectionRefMatch[1]}</span>
--                                    <span style={{ 
--                                        color: '#6c757d', 
--                                        fontSize: '13px', 
--                                        fontStyle: 'italic',
--                                        opacity: 0.8 
--                                    }}>
--                                        {sectionRefMatch[2]}
--                                    </span>
-+                                    <span style={{ color: '#6c757d', fontSize: '13px', fontStyle: 'italic', opacity: 0.8 }}>{sectionRefMatch[2]}</span>
-                                     <span>{sectionRefMatch[3]}</span>
-                                 </>
-                             ) : (
-                                 <span>{bulletContent}</span>
-                             )}
-                         </span>
-                     </div>
-                 );
-+            } else {
-+                const style: React.CSSProperties | undefined = indentSection ? { marginLeft: '16px' } : undefined;
-+                elements.push(<div key={i} style={style}>{line}</div>);
-             }
--            return <div key={line}>{line}</div>;
--        });
--        
--        return <div style={{ whiteSpace: 'pre-wrap' }}>{formattedLines}</div>;
-+        }
-+
-+        if (inTable) {
-+            pushTable();
-+        }
-+
-+        return <div style={{ whiteSpace: 'pre-wrap' }}>{elements}</div>;
-     };
-     
-     // Navigation functions
-     const goToNextStep = () => {
-         if (currentStep < 3) {
-             setCurrentStep(currentStep + 1);
-         }
-     };
-     
-     const goToPreviousStep = () => {
-         if (currentStep > 1) {
-             setCurrentStep(currentStep - 1);
-         }
-     };
-     
-     const goToStep = (step: number) => {
-         setCurrentStep(step);
-     };
-     
-     // Field styling functions - match DocumentsV2 exactly
-     const answeredFieldStyle = {
-         background: "#3690CE22",
-         color: "#061733",
-         border: "none",
-         borderRadius: 0,
+                                 {!processingOpen && showCclPrompt && (
+                                     <div style={{ marginTop: 24 }}>
+                                         <ModernMultiSelect
+                                             label="Draft the CCL now?"
+                                             options={[
+                                                 { key: 'yes', text: 'Yes, draft now' },
+                                                 { key: 'no', text: 'Not now' }
+                                             ]}
+                                             selectedValue={draftChoice ?? null}
+-                                            onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
++                                            onSelectionChange={(val) => handleDraftChoice(val as 'yes' | 'no')}
+                                             variant="binary"
+                                         />
+                                         {cclGenerating && (
+                                             <div style={{ marginTop: 8 }}>
+                                                 Generating CCL...
+                                             </div>
+                                         )}
+                                         {generatedCclUrl && (
+                                             <div style={{ marginTop: 8 }}>
+                                                 <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
+                                             </div>
+                                         )}
+-                                        {draftChoice === 'yes' && (
+-                                            <div style={{ marginTop: 16 }}>
+-                                                <DocumentsV3
+-                                                    initialTemplate="ccl"
+-                                                    selectedInstructionProp={instructionRef ? ({ InstructionRef: instructionRef } as any) : undefined}
+-                                                />
+-                                            </div>
+-                                        )}
+                                     </div>
+                                 )}
+ 
+                                 {/* Navigation buttons for review step */}
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+                                     {/* Back button with smooth expansion */}
+                                     <div 
+                                         className="nav-button back-button"
+                                         onClick={handleBackToForm}
+                                         style={{
+                                             background: '#f4f4f6',
+                                             border: '2px solid #e1dfdd',
+                                             borderRadius: '0px',
+                                             width: '48px',
+                                             height: '48px',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             justifyContent: 'center',
+                                             cursor: 'pointer',
+                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                             position: 'relative',
+                                             overflow: 'hidden',
+                                         }}
+                                         onMouseEnter={(e) => {
