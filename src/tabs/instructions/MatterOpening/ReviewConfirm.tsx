@@ -1,10 +1,10 @@
 //
-import React, { useState } from 'react'; // invisible change
+import React, { useState, useEffect } from 'react'; // invisible change
 // invisible change 2.2
 import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
-import { processingActions, initialSteps } from './processingActions';
+import { processingActions, initialSteps, generateDraftCclAction } from './processingActions';
 import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
 import { UserData } from '../../../app/functionality/types';
 import ModernMultiSelect from './ModernMultiSelect';
@@ -50,6 +50,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [cclUrl, setCclUrl] = useState<string>('');
     const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
+    const [generatingCcl, setGeneratingCcl] = useState(false);
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
@@ -60,6 +61,27 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
     };
+
+    useEffect(() => {
+        const run = async () => {
+            if (draftChoice === 'yes' && summaryComplete && !cclUrl && !generatingCcl) {
+                setGeneratingCcl(true);
+                try {
+                    const result = await generateDraftCclAction.run(formData, userInitials, userData);
+                    if (typeof result === 'object' && result.url) {
+                        setCclUrl(result.url);
+                        showToast('Draft CCL generated', 'success');
+                    }
+                } catch (err) {
+                    console.error('Draft CCL generation failed', err);
+                    showToast('Draft CCL generation failed', 'error');
+                } finally {
+                    setGeneratingCcl(false);
+                }
+            }
+        };
+        run();
+    }, [draftChoice, summaryComplete]);
 
     const handleSubmit = async () => {
         setProcessing(true);
@@ -75,10 +97,6 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                 const result = await action.run(formData, userInitials, userData);
                 const message = typeof result === 'string' ? result : result.message;
                 updateStep(currentIndex, 'success', message);
-                if (action.label === 'Generate Draft CCL' && typeof result === 'object' && result.url) {
-                    setCclUrl(result.url);
-                    showToast('Draft CCL generated', 'success');
-                }
             }
 
             setSummaryComplete(true);

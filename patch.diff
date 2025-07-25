@@ -1,185 +1,57 @@
-diff --git a/server/routes/clioMatters.js b/server/routes/clioMatters.js
-index 4083d596ad509f1dabff67f937d83ed91c49abc5..9c2e74047a726f1ef5a3a279c629f74f8d8463d2 100644
---- a/server/routes/clioMatters.js
-+++ b/server/routes/clioMatters.js
-@@ -1,108 +1,167 @@
- const express = require('express');
- const { getSecret } = require('../utils/getSecret');
- const fs = require('fs');
- const path = require('path');
- const teamLookup = require('../utils/teamLookup');
-+const createOrUpdate = require('../utils/createOrUpdate');
- 
- const { PRACTICE_AREAS } = require('../utils/clioConstants');
- 
- // Hard-coded picklist option mappings
- const ND_OPTIONS = {
-     "Adjudication": 187069,
-     "Residential Possession": 187072,
-     "Employment": 187075,
-     "Default": 187078
- };
- const VALUE_OPTIONS = {
-     "Less than £10k": 244802,
-     "£10k - £500k": 244805,
-     "£501k - £1m": 244808,
-     "£1m - £5m": 244811,
-     "£5m - £20m": 244814,
-     "Over £20m": 244817
- };
- 
- 
- let riskData = [];
- const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
- if (fs.existsSync(riskPath)) {
-     try {
-         riskData = JSON.parse(fs.readFileSync(riskPath, 'utf-8'));
-     } catch (err) {
-         console.warn('Invalid risk data JSON:', err);
-     }
- }
- 
- function getRiskResult(ref) {
-     if (!ref) return null;
-     const entry = riskData.find(r => (r.InstructionRef || '').toLowerCase() === ref.toLowerCase());
-     return entry ? entry.RiskAssessmentResult : null;
- }
- 
-+function mapPerson(client, instructionRef) {
-+    const address = client.address || {};
-+    const verification = client.verification || {};
-+    const checkResult = verification.check_result || client.check_result;
-+    const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
-+    const tillerId =
-+        verification.check_id || client.check_id || client.EIDCheckId || client.checkId || null;
-+    const expiry =
-+        verification.check_expiry ||
-+        client.check_expiry ||
-+        client.CheckExpiry ||
-+        client.checkExpiry;
-+
-+    const phone =
-+        client.best_number ||
-+        client.phone ||
-+        client.phone_number ||
-+        client.phoneNumber ||
-+        client.Phone ||
-+        null;
-+
-+    return {
-+        type: 'Person',
-+        first_name: client.first_name || client.first || '',
-+        last_name: client.last_name || client.last || '',
-+        prefix: client.prefix || null,
-+        date_of_birth: client.date_of_birth || null,
-+        email_addresses: [
-+            {
-+                name: 'Home',
-+                address: client.email || client.Email || '',
-+                default_email: true
-+            }
-+        ],
-+        phone_numbers: phone ? [{ name: 'Home', number: phone, default_number: true }] : [],
-+        addresses: [
-+            {
-+                name: 'Home',
-+                street: `${address.house_number || ''} ${address.street || ''}`.trim(),
-+                city: address.city || '',
-+                province: address.county || '',
-+                postal_code: address.post_code || '',
-+                country: address.country || ''
-+            }
-+        ],
-+        company: {
-+            name: client.company_details?.name || null
-+        },
-+        custom_field_values: (() => {
-+            const cfs = [];
-+            if (instructionRef) {
-+                cfs.push({ value: instructionRef, custom_field: { id: 380728 } });
-+            }
-+            if (expiry) {
-+                cfs.push({ value: expiry, custom_field: { id: 235702 } });
-+            }
-+            cfs.push({ value: idType, custom_field: { id: 235699 } });
-+            if (tillerId) {
-+                cfs.push({ value: tillerId, custom_field: { id: 286228 } });
-+            }
-+            return cfs;
-+        })()
-+    };
-+}
-+
- const router = express.Router();
- router.post('/', async (req, res) => {
-     const { formData, initials } = req.body || {};
-     if (!formData || !initials) return res.status(400).json({ error: 'Missing data' });
-     try {
-         // 1. Refresh token
-         const cid = await getSecret(`${initials}-clio-v1-clientid`);
-         const cs = await getSecret(`${initials}-clio-v1-clientsecret`);
-         const rt = await getSecret(`${initials}-clio-v1-refreshtoken`);
-         const tv = `https://eu.app.clio.com/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
-         const tr = await fetch(tv, { method: 'POST' });
-         if (!tr.ok) throw new Error(await tr.text());
-         const { access_token } = await tr.json();
-         const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${access_token}` };
- 
-         // 2. Extract matter data
-         const md = formData.matter_details;
-         const { instruction_ref, description, date_created, client_type, practice_area, folder_structure, dispute_value } = md;
- 
-         // 3. Build custom fields
-         const cf = [
-             { value: formData.team_assignments.supervising_partner, custom_field: { id: 232574 } },
-             ND_OPTIONS[folder_structure] && { value: ND_OPTIONS[folder_structure], custom_field: { id: 299746 } },
-             VALUE_OPTIONS[dispute_value] && { value: VALUE_OPTIONS[dispute_value], custom_field: { id: 378566 } },
-             { value: instruction_ref, custom_field: { id: 380722 } }
-         ].filter(Boolean);
- 
--        // 4. Lookup client contact
-+        // 4. Upsert client contact
-         const first = formData.client_information[0];
--        if (!first || !first.email) {
--            throw new Error('Missing client email for contact lookup');
--        }
--        const pr = await fetch(
--            `https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`,
--            { headers }
--        );
--        if (!pr.ok) throw new Error('Contact lookup failed');
--        const pdata = await pr.json();
--        const pid = pdata?.data?.length ? pdata.data[0].id : null;
--        if (!pid) {
--            throw new Error(`Contact not found for ${first.email}`);
-+        if (!first) {
-+            throw new Error('Missing client details for contact');
-         }
-+        const contactPayload = mapPerson(first, instruction_ref);
-+        const contactResult = await createOrUpdate(contactPayload, headers);
-+        const pid = contactResult.data.id;
- 
-         // 5. Build matter payload
-         const responsibleId = await teamLookup.getClioId(initials);
-         const originatingInitials = formData.team_assignments.originating_solicitor_initials;
-         const originatingId  = await teamLookup.getClioId(originatingInitials);
- 
-         if (!responsibleId) {
-             console.error(`No Clio ID for ${initials}`);
-             throw new Error('No Clio ID for ' + initials);
-         }
-         if (!originatingId) {
-             console.error(`No Clio ID for ${originatingInitials}`);
-             throw new Error('No Clio ID for ' + originatingInitials);
-         }
-         const payload = {
-             data: {
-                 billable: true,
-                 client: { id: pid },
-                 client_reference: instruction_ref,
-                 description,
-                 practice_area: { id: PRACTICE_AREAS[practice_area] },
-                 responsible_attorney: { id: responsibleId },
-                 originating_attorney: { id: originatingId },
-                 status: 'Open',
-                 risk_result: getRiskResult(instruction_ref),
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 7a880fbecace9cd85a20d2639d92b8869bf7ded1..fe957763017084c9ae95e87fd73ed169c2266401 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -2361,51 +2361,51 @@ Disbursement | Amount | VAT chargeable
+                 before: 'Please provide us with £',
+                 after: 'on account of costs'
+             },
+             'matter_number': {
+                 before: 'Please use the reference <<',
+                 after: '>> We work with money'
+             },
+             'and_or_intervals_eg_every_three_months': {
+                 before: 'We have agreed to provide you with an update on the amount of costs when appropriate as the matter progresses',
+                 after: '. Risk analysis'
+             },
+             'contact_details_for_marketing_opt_out': {
+                 before: '—contacting us at',
+                 after: '; —using the \'unsubscribe\' link'
+             },
+             'link_to_preference_centre': {
+                 before: '—updating your marketing preferences on our',
+                 after: '. Prevention of money laundering'
+             },
+             'may_will': {
+                 before: 'Your matter',
+                 after: 'involve court proceedings'
+             },
+             'instructions_link': {
+                 before: 'The \'Instructions for Cancellation\' notice at',
+-                after: 'explains: —how to cancel'
++                after: 'explains:'
+             },
+             'insert_next_step_you_would_like_client_to_take': {
+                 before: '☐',
+                 after: '[State why this step is important]'
+             },
+             'state_why_this_step_is_important': {
+                 before: '[Insert next step you would like client to take]',
+                 after: '☐ Provide a payment on account'
+             },
+             'state_amount': {
+                 before: '☐ Provide a payment on account of costs and disbursements of £',
+                 after: 'If we do not receive a payment'
+             },
+             'describe_first_document_or_information_you_need_from_your_client': {
+                 before: '☐ Provide the following documents [and information] to allow me to take the next steps in your matter:',
+                 after: '[describe second document]'
+             },
+             'describe_second_document_or_information_you_need_from_your_client': {
+                 before: '[describe first document or information you need from your client]',
+                 after: '[describe third document]'
+             },
+             'describe_third_document_or_information_you_need_from_your_client': {
+                 before: '[describe second document or information you need from your client]',
+                 after: 'Without these documents there may be a delay'
+             },

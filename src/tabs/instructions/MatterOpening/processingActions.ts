@@ -270,23 +270,24 @@ export const processingActions: ProcessingAction[] = [
         }
     },
     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-    { label: 'Databases Updated', run: async () => 'Done' },
-    {
-        label: 'Generate Draft CCL',
-        icon: cclIcon,
-        run: async (formData, userInitials) => {
-            const id = matterId || formData.matter_details.matter_ref;
-            const resp = await fetch('/api/ccl', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ matterId: id, draftJson: formData })
-            });
-            if (!resp.ok) throw new Error('CCL generation failed');
-            const { url } = await resp.json();
-            return { message: 'Draft CCL created', url };
-        }
-    }
+    { label: 'Databases Updated', run: async () => 'Done' }
 ];
+
+export const generateDraftCclAction: ProcessingAction = {
+    label: 'Generate Draft CCL',
+    icon: cclIcon,
+    run: async (formData, _initials) => {
+        const id = matterId || formData.matter_details.matter_ref;
+        const resp = await fetch('/api/ccl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matterId: id, draftJson: formData })
+        });
+        if (!resp.ok) throw new Error('CCL generation failed');
+        const { url } = await resp.json();
+        return { message: 'Draft CCL created', url };
+    }
+};
 // invisible change 2.2
 
 export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
