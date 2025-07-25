@@ -21,6 +21,8 @@ import { colours } from '../../app/styles/colours';
 import BespokeForm from '../../CustomForms/BespokeForms';
 import { UserData } from '../../app/functionality/types';
 import { format } from 'date-fns';
+import { isInTeams } from '../../app/functionality/isInTeams';
+import localRoadmap from '../../localData/localRoadmap.json';
 import '../../app/styles/Roadmap.css';
 
 // Define the properties for the Roadmap component
@@ -47,6 +49,10 @@ interface GroupedRoadmap {
 // Caching variables to store fetched roadmap data and errors
 let cachedRoadmapData: RoadmapEntry[] | null = null;
 let cachedRoadmapError: string | null = null;
+
+const inTeams = isInTeams();
+const useLocalData =
+  process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
 
 /**
  * Normalize status strings to standardized labels.
@@ -588,6 +594,11 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
       setRoadmapData(cachedRoadmapData);
       setRoadmapError(cachedRoadmapError);
       setIsLoadingRoadmap(false);
+    } else if (useLocalData) {
+      const localData = localRoadmap as RoadmapEntry[];
+      setRoadmapData(localData);
+      cachedRoadmapData = localData;
+      setIsLoadingRoadmap(false);
     } else {
       const fetchRoadmap = async () => {
         try {
@@ -624,7 +635,7 @@ const Roadmap: React.FC<RoadmapProps> = ({ userData }) => {
 
       fetchRoadmap();
     }
-  }, []);
+  }, [useLocalData]);
 
   /**
    * Group roadmap entries by their normalized status.

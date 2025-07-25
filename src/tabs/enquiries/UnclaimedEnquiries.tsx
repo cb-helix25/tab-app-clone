@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack, Text } from '@fluentui/react';
 import { Enquiry } from '../../app/functionality/types';
-import EnquiryCard from './EnquiryCard';
+import EnquiryCardV2 from './EnquiryCardV2';
 
 interface UnclaimedEnquiriesProps {
     enquiries: Enquiry[];
@@ -27,7 +27,7 @@ const UnclaimedEnquiries: React.FC<UnclaimedEnquiriesProps> = ({ enquiries, onSe
             styles={{ root: { padding: '20px' } }}
         >
             {enquiries.map((enquiry, index) => (
-                <EnquiryCard
+                <EnquiryCardV2
                     key={`${enquiry.ID}-${index}`}
                     enquiry={enquiry}
                     onSelect={onSelect}

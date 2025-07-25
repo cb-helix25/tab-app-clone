@@ -1,272 +1,185 @@
-diff --git a/src/tabs/instructions/ccl/PresetPanel.tsx b/src/tabs/instructions/ccl/PresetPanel.tsx
-index d95faabc811374e3a4858d21afb2a415ad7083cd..988cc66639387e7c9b12019d21f7d46b082a9efa 100644
---- a/src/tabs/instructions/ccl/PresetPanel.tsx
-+++ b/src/tabs/instructions/ccl/PresetPanel.tsx
-@@ -1,147 +1,149 @@
- import React from 'react';
-+import { colours } from '../../../app/styles/colours';
+diff --git a/server/routes/clioMatters.js b/server/routes/clioMatters.js
+index 4083d596ad509f1dabff67f937d83ed91c49abc5..9c2e74047a726f1ef5a3a279c629f74f8d8463d2 100644
+--- a/server/routes/clioMatters.js
++++ b/server/routes/clioMatters.js
+@@ -1,108 +1,167 @@
+ const express = require('express');
+ const { getSecret } = require('../utils/getSecret');
+ const fs = require('fs');
+ const path = require('path');
+ const teamLookup = require('../utils/teamLookup');
++const createOrUpdate = require('../utils/createOrUpdate');
  
- interface PresetPanelProps {
--    presetField: string;
--    presetPosition: { x: number; y: number };
--    fieldPresets: Record<string, string[]>;
--    colours: any;
--    closePresets: () => void;
--    handlePresetSelect: (preset: string) => void;
-+    show: boolean;
-+    field: string | null;
-+    position: { x: number; y: number };
-+    presets: Record<string, string[]>;
-+    onSelect: (preset: string) => void;
-+    onClose: () => void;
+ const { PRACTICE_AREAS } = require('../utils/clioConstants');
+ 
+ // Hard-coded picklist option mappings
+ const ND_OPTIONS = {
+     "Adjudication": 187069,
+     "Residential Possession": 187072,
+     "Employment": 187075,
+     "Default": 187078
+ };
+ const VALUE_OPTIONS = {
+     "Less than £10k": 244802,
+     "£10k - £500k": 244805,
+     "£501k - £1m": 244808,
+     "£1m - £5m": 244811,
+     "£5m - £20m": 244814,
+     "Over £20m": 244817
+ };
+ 
+ 
+ let riskData = [];
+ const riskPath = path.join(__dirname, '..', '..', 'src', 'localData', 'localRiskAssessments.json');
+ if (fs.existsSync(riskPath)) {
+     try {
+         riskData = JSON.parse(fs.readFileSync(riskPath, 'utf-8'));
+     } catch (err) {
+         console.warn('Invalid risk data JSON:', err);
+     }
  }
  
- const PresetPanel: React.FC<PresetPanelProps> = ({
--    presetField,
--    presetPosition,
--    fieldPresets,
--    colours,
--    closePresets,
--    handlePresetSelect
--}) => (
--    <>
--        {/* Backdrop */}
--        <div
--            style={{
--                position: 'fixed',
--                top: 0,
--                left: 0,
--                right: 0,
--                bottom: 0,
--                backgroundColor: 'rgba(0, 0, 0, 0.1)',
--                zIndex: 1000
--            }}
--            onClick={closePresets}
--        />
-+    show,
-+    field,
-+    position,
-+    presets,
-+    onSelect,
-+    onClose
-+}) => {
-+    if (!show || !field) return null;
+ function getRiskResult(ref) {
+     if (!ref) return null;
+     const entry = riskData.find(r => (r.InstructionRef || '').toLowerCase() === ref.toLowerCase());
+     return entry ? entry.RiskAssessmentResult : null;
+ }
  
--        {/* Preset Panel */}
--        <div
--            style={{
--                position: 'fixed',
--                left: Math.min(presetPosition.x - 150, window.innerWidth - 320),
--                top: Math.min(presetPosition.y, window.innerHeight - 300),
--                width: '300px',
--                maxHeight: '280px',
--                backgroundColor: '#fff',
--                border: '1px solid #e1e5e9',
--                borderRadius: '8px',
--                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
--                zIndex: 1001,
--                overflow: 'hidden'
--            }}
--        >
--            {/* Header */}
--            <div style={{
--                padding: '12px 16px',
--                borderBottom: '1px solid #e1e5e9',
--                backgroundColor: '#f8f9fa',
--                display: 'flex',
--                justifyContent: 'space-between',
--                alignItems: 'center'
--            }}>
--                <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
--                    Choose Preset for {presetField?.replace(/_/g, ' ')}
-+    const options = presets[field] || [];
-+    return (
-+        <>
-+            <div
-+                style={{
-+                    position: 'fixed',
-+                    top: 0,
-+                    left: 0,
-+                    right: 0,
-+                    bottom: 0,
-+                    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-+                    zIndex: 1000
-+                }}
-+                onClick={onClose}
-+            />
-+            <div
-+                style={{
-+                    position: 'fixed',
-+                    left: Math.min(position.x - 150, window.innerWidth - 320),
-+                    top: Math.min(position.y, window.innerHeight - 300),
-+                    width: '300px',
-+                    maxHeight: '280px',
-+                    backgroundColor: '#fff',
-+                    border: '1px solid #e1e5e9',
-+                    borderRadius: '8px',
-+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-+                    zIndex: 1001,
-+                    overflow: 'hidden'
-+                }}
-+            >
-+                <div
-+                    style={{
-+                        padding: '12px 16px',
-+                        borderBottom: '1px solid #e1e5e9',
-+                        backgroundColor: '#f8f9fa',
-+                        display: 'flex',
-+                        justifyContent: 'space-between',
-+                        alignItems: 'center'
-+                    }}
-+                >
-+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>
-+                        Choose Preset for {field.replace(/_/g, ' ')}
-+                    </div>
-+                    <button
-+                        onClick={onClose}
-+                        style={{
-+                            background: 'none',
-+                            border: 'none',
-+                            fontSize: '16px',
-+                            cursor: 'pointer',
-+                            color: '#666',
-+                            padding: '2px'
-+                        }}
-+                    >
-+                        ×
-+                    </button>
-                 </div>
--                <button
--                    onClick={closePresets}
-+                <div
-                     style={{
--                        background: 'none',
--                        border: 'none',
--                        fontSize: '16px',
--                        cursor: 'pointer',
--                        color: '#666',
--                        padding: '2px'
-+                        maxHeight: '220px',
-+                        overflowY: 'auto',
-+                        padding: '8px'
-                     }}
-                 >
--                    ×
--                </button>
--            </div>
--
--            {/* Preset Options */}
--            <div style={{
--                maxHeight: '220px',
--                overflowY: 'auto',
--                padding: '8px'
--            }}>
--                {(fieldPresets[presetField as keyof typeof fieldPresets] || []).map((preset, index) => (
-+                    {options.map((preset, index) => (
-+                        <div
-+                            key={index}
-+                            onClick={() => onSelect(preset)}
-+                            style={{
-+                                padding: '8px 12px',
-+                                cursor: 'pointer',
-+                                borderRadius: '4px',
-+                                fontSize: '13px',
-+                                color: '#333',
-+                                backgroundColor: 'transparent',
-+                                border: '1px solid #e1e5e9',
-+                                margin: '4px 0',
-+                                transition: 'all 0.2s ease',
-+                                lineHeight: '1.3'
-+                            }}
-+                            onMouseEnter={e => {
-+                                (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa';
-+                                (e.currentTarget as HTMLElement).style.borderColor = colours.cta;
-+                                (e.currentTarget as HTMLElement).style.color = colours.cta;
-+                            }}
-+                            onMouseLeave={e => {
-+                                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-+                                (e.currentTarget as HTMLElement).style.borderColor = '#e1e5e9';
-+                                (e.currentTarget as HTMLElement).style.color = '#333';
-+                            }}
-+                        >
-+                            {preset}
-+                        </div>
-+                    ))}
-                     <div
--                        key={index}
--                        onClick={() => handlePresetSelect(preset)}
-+                        onClick={onClose}
-                         style={{
--                            padding: '8px 12px',
-+                            padding: '10px 12px',
-                             cursor: 'pointer',
-                             borderRadius: '4px',
-                             fontSize: '13px',
--                            color: '#333',
-+                            color: '#666',
-                             backgroundColor: 'transparent',
--                            border: '1px solid #e1e5e9',
--                            margin: '4px 0',
-+                            border: '1px dashed #ccc',
-                             transition: 'all 0.2s ease',
--                            lineHeight: '1.3'
-+                            margin: '8px 0 2px 0',
-+                            textAlign: 'center',
-+                            fontStyle: 'italic'
-                         }}
-                         onMouseEnter={e => {
--                            e.currentTarget.style.backgroundColor = '#f8f9fa';
--                            e.currentTarget.style.borderColor = colours.cta;
--                            e.currentTarget.style.color = colours.cta;
-+                            (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa';
-+                            (e.currentTarget as HTMLElement).style.borderColor = '#999';
-                         }}
-                         onMouseLeave={e => {
--                            e.currentTarget.style.backgroundColor = 'transparent';
--                            e.currentTarget.style.borderColor = '#e1e5e9';
--                            e.currentTarget.style.color = '#333';
-+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-+                            (e.currentTarget as HTMLElement).style.borderColor = '#ccc';
-                         }}
-                     >
--                        {preset}
-+                        Type my own...
-                     </div>
--                ))}
--
--                {/* Custom input option */}
--                <div
--                    onClick={closePresets}
--                    style={{
--                        padding: '10px 12px',
--                        cursor: 'pointer',
--                        borderRadius: '4px',
--                        fontSize: '13px',
--                        color: '#666',
--                        backgroundColor: 'transparent',
--                        border: '1px dashed #ccc',
--                        transition: 'all 0.2s ease',
--                        margin: '8px 0 2px 0',
--                        textAlign: 'center',
--                        fontStyle: 'italic'
--                    }}
--                    onMouseEnter={e => {
--                        e.currentTarget.style.backgroundColor = '#f8f9fa';
--                        e.currentTarget.style.borderColor = '#999';
--                    }}
--                    onMouseLeave={e => {
--                        e.currentTarget.style.backgroundColor = 'transparent';
--                        e.currentTarget.style.borderColor = '#ccc';
--                    }}
--                >
--                    Type my own...
-                 </div>
-             </div>
--        </div>
--    </>
--);
-+        </>
-+    );
-+};
++function mapPerson(client, instructionRef) {
++    const address = client.address || {};
++    const verification = client.verification || {};
++    const checkResult = verification.check_result || client.check_result;
++    const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
++    const tillerId =
++        verification.check_id || client.check_id || client.EIDCheckId || client.checkId || null;
++    const expiry =
++        verification.check_expiry ||
++        client.check_expiry ||
++        client.CheckExpiry ||
++        client.checkExpiry;
++
++    const phone =
++        client.best_number ||
++        client.phone ||
++        client.phone_number ||
++        client.phoneNumber ||
++        client.Phone ||
++        null;
++
++    return {
++        type: 'Person',
++        first_name: client.first_name || client.first || '',
++        last_name: client.last_name || client.last || '',
++        prefix: client.prefix || null,
++        date_of_birth: client.date_of_birth || null,
++        email_addresses: [
++            {
++                name: 'Home',
++                address: client.email || client.Email || '',
++                default_email: true
++            }
++        ],
++        phone_numbers: phone ? [{ name: 'Home', number: phone, default_number: true }] : [],
++        addresses: [
++            {
++                name: 'Home',
++                street: `${address.house_number || ''} ${address.street || ''}`.trim(),
++                city: address.city || '',
++                province: address.county || '',
++                postal_code: address.post_code || '',
++                country: address.country || ''
++            }
++        ],
++        company: {
++            name: client.company_details?.name || null
++        },
++        custom_field_values: (() => {
++            const cfs = [];
++            if (instructionRef) {
++                cfs.push({ value: instructionRef, custom_field: { id: 380728 } });
++            }
++            if (expiry) {
++                cfs.push({ value: expiry, custom_field: { id: 235702 } });
++            }
++            cfs.push({ value: idType, custom_field: { id: 235699 } });
++            if (tillerId) {
++                cfs.push({ value: tillerId, custom_field: { id: 286228 } });
++            }
++            return cfs;
++        })()
++    };
++}
++
+ const router = express.Router();
+ router.post('/', async (req, res) => {
+     const { formData, initials } = req.body || {};
+     if (!formData || !initials) return res.status(400).json({ error: 'Missing data' });
+     try {
+         // 1. Refresh token
+         const cid = await getSecret(`${initials}-clio-v1-clientid`);
+         const cs = await getSecret(`${initials}-clio-v1-clientsecret`);
+         const rt = await getSecret(`${initials}-clio-v1-refreshtoken`);
+         const tv = `https://eu.app.clio.com/oauth/token?client_id=${cid}&client_secret=${cs}&grant_type=refresh_token&refresh_token=${rt}`;
+         const tr = await fetch(tv, { method: 'POST' });
+         if (!tr.ok) throw new Error(await tr.text());
+         const { access_token } = await tr.json();
+         const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${access_token}` };
  
- export default PresetPanel;
+         // 2. Extract matter data
+         const md = formData.matter_details;
+         const { instruction_ref, description, date_created, client_type, practice_area, folder_structure, dispute_value } = md;
+ 
+         // 3. Build custom fields
+         const cf = [
+             { value: formData.team_assignments.supervising_partner, custom_field: { id: 232574 } },
+             ND_OPTIONS[folder_structure] && { value: ND_OPTIONS[folder_structure], custom_field: { id: 299746 } },
+             VALUE_OPTIONS[dispute_value] && { value: VALUE_OPTIONS[dispute_value], custom_field: { id: 378566 } },
+             { value: instruction_ref, custom_field: { id: 380722 } }
+         ].filter(Boolean);
+ 
+-        // 4. Lookup client contact
++        // 4. Upsert client contact
+         const first = formData.client_information[0];
+-        if (!first || !first.email) {
+-            throw new Error('Missing client email for contact lookup');
+-        }
+-        const pr = await fetch(
+-            `https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`,
+-            { headers }
+-        );
+-        if (!pr.ok) throw new Error('Contact lookup failed');
+-        const pdata = await pr.json();
+-        const pid = pdata?.data?.length ? pdata.data[0].id : null;
+-        if (!pid) {
+-            throw new Error(`Contact not found for ${first.email}`);
++        if (!first) {
++            throw new Error('Missing client details for contact');
+         }
++        const contactPayload = mapPerson(first, instruction_ref);
++        const contactResult = await createOrUpdate(contactPayload, headers);
++        const pid = contactResult.data.id;
+ 
+         // 5. Build matter payload
+         const responsibleId = await teamLookup.getClioId(initials);
+         const originatingInitials = formData.team_assignments.originating_solicitor_initials;
+         const originatingId  = await teamLookup.getClioId(originatingInitials);
+ 
+         if (!responsibleId) {
+             console.error(`No Clio ID for ${initials}`);
+             throw new Error('No Clio ID for ' + initials);
+         }
+         if (!originatingId) {
+             console.error(`No Clio ID for ${originatingInitials}`);
+             throw new Error('No Clio ID for ' + originatingInitials);
+         }
+         const payload = {
+             data: {
+                 billable: true,
+                 client: { id: pid },
+                 client_reference: instruction_ref,
+                 description,
+                 practice_area: { id: PRACTICE_AREAS[practice_area] },
+                 responsible_attorney: { id: responsibleId },
+                 originating_attorney: { id: originatingId },
+                 status: 'Open',
+                 risk_result: getRiskResult(instruction_ref),

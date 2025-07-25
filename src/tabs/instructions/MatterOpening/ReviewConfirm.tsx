@@ -7,6 +7,8 @@ import ProcessingSection, { ProcessingStep, ProcessingStatus } from './Processin
 import { processingActions, initialSteps } from './processingActions';
 import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
 import { UserData } from '../../../app/functionality/types';
+import ModernMultiSelect from './ModernMultiSelect';
+import DocumentsV3 from '../DocumentsV3';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
@@ -47,6 +49,7 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const [logs, setLogs] = useState<string[]>([]);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [cclUrl, setCclUrl] = useState<string>('');
+    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
@@ -108,6 +111,25 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
 
             {(processingOpen || processing || summaryComplete) && (
                 <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
+            )}
+            {summaryComplete && !processing && draftChoice === null && (
+                <div style={{ marginTop: 16 }}>
+                    <ModernMultiSelect
+                        label="Draft the CCL now?"
+                        options={[
+                            { key: 'yes', text: 'Yes, draft now' },
+                            { key: 'no', text: 'Not now' }
+                        ]}
+                        selectedValue={draftChoice}
+                        onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
+                        variant="binary"
+                    />
+                </div>
+            )}
+            {draftChoice === 'yes' && (
+                <div style={{ marginTop: 16 }}>
+                    <DocumentsV3 initialTemplate="ccl" />
+                </div>
             )}
             {cclUrl && (
                 <div style={{ marginTop: 8 }}>

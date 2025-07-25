@@ -3,6 +3,7 @@ const { getSecret } = require('../utils/getSecret');
 const fs = require('fs');
 const path = require('path');
 const teamLookup = require('../utils/teamLookup');
+const createOrUpdate = require('../utils/createOrUpdate');
 
 const { PRACTICE_AREAS } = require('../utils/clioConstants');
 
@@ -39,6 +40,71 @@ function getRiskResult(ref) {
     return entry ? entry.RiskAssessmentResult : null;
 }
 
+function mapPerson(client, instructionRef) {
+    const address = client.address || {};
+    const verification = client.verification || {};
+    const checkResult = verification.check_result || client.check_result;
+    const idType = checkResult === 'DriversLicense' ? 142570 : 142567;
+    const tillerId =
+        verification.check_id || client.check_id || client.EIDCheckId || client.checkId || null;
+    const expiry =
+        verification.check_expiry ||
+        client.check_expiry ||
+        client.CheckExpiry ||
+        client.checkExpiry;
+
+    const phone =
+        client.best_number ||
+        client.phone ||
+        client.phone_number ||
+        client.phoneNumber ||
+        client.Phone ||
+        null;
+
+    return {
+        type: 'Person',
+        first_name: client.first_name || client.first || '',
+        last_name: client.last_name || client.last || '',
+        prefix: client.prefix || null,
+        date_of_birth: client.date_of_birth || null,
+        email_addresses: [
+            {
+                name: 'Home',
+                address: client.email || client.Email || '',
+                default_email: true
+            }
+        ],
+        phone_numbers: phone ? [{ name: 'Home', number: phone, default_number: true }] : [],
+        addresses: [
+            {
+                name: 'Home',
+                street: `${address.house_number || ''} ${address.street || ''}`.trim(),
+                city: address.city || '',
+                province: address.county || '',
+                postal_code: address.post_code || '',
+                country: address.country || ''
+            }
+        ],
+        company: {
+            name: client.company_details?.name || null
+        },
+        custom_field_values: (() => {
+            const cfs = [];
+            if (instructionRef) {
+                cfs.push({ value: instructionRef, custom_field: { id: 380728 } });
+            }
+            if (expiry) {
+                cfs.push({ value: expiry, custom_field: { id: 235702 } });
+            }
+            cfs.push({ value: idType, custom_field: { id: 235699 } });
+            if (tillerId) {
+                cfs.push({ value: tillerId, custom_field: { id: 286228 } });
+            }
+            return cfs;
+        })()
+    };
+}
+
 const router = express.Router();
 router.post('/', async (req, res) => {
     const { formData, initials } = req.body || {};
@@ -66,21 +132,14 @@ router.post('/', async (req, res) => {
             { value: instruction_ref, custom_field: { id: 380722 } }
         ].filter(Boolean);
 
-        // 4. Lookup client contact
+        // 4. Upsert client contact
         const first = formData.client_information[0];
-        if (!first || !first.email) {
-            throw new Error('Missing client email for contact lookup');
+        if (!first) {
+            throw new Error('Missing client details for contact');
         }
-        const pr = await fetch(
-            `https://eu.app.clio.com/api/v4/contacts?query=${encodeURIComponent(first.email)}`,
-            { headers }
-        );
-        if (!pr.ok) throw new Error('Contact lookup failed');
-        const pdata = await pr.json();
-        const pid = pdata?.data?.length ? pdata.data[0].id : null;
-        if (!pid) {
-            throw new Error(`Contact not found for ${first.email}`);
-        }
+        const contactPayload = mapPerson(first, instruction_ref);
+        const contactResult = await createOrUpdate(contactPayload, headers);
+        const pid = contactResult.data.id;
 
         // 5. Build matter payload
         const responsibleId = await teamLookup.getClioId(initials);

@@ -1162,15 +1162,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 >
                   No results found matching your criteria.
                 </Text>
-                <DefaultButton
-                  text="Clear Filters"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedArea(null);
-                    setActiveMainTab('Claimed');
-                  }}
-                  styles={{ root: { fontFamily: 'Raleway, sans-serif' } }}
-                />
               </Stack>
             ) : (
               <>

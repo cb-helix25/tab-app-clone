@@ -285,6 +285,7 @@ const AppWithContext: React.FC = () => {
         console.warn("Using local sample data for development.");
         setTeamsContext({
           userObjectId: "local",
+          userPrincipalName: "lz@helix-law.com",
           theme: "default",
         } as microsoftTeams.Context);
         setUserData(localUserData as UserData[]);
