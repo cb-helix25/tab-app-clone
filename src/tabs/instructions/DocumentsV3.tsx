@@ -974,8 +974,15 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         }
+                        // Inline display avoids forcing placeholders onto a new
+                        // line when they appear immediately after a text
+                        // segment. Newlines are preserved by the surrounding
+                        // container's `white-space: pre-wrap` style, so a block
+                        // display is unnecessary and causes layout issues like
+                        // `Email address:` appearing on a separate line from its
+                        // placeholder.
                         const style: React.CSSProperties | undefined = inSection
-                            ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
+                            ? { marginLeft: '16px', lineHeight: '1.5' }
                             : undefined;
                         // Keep inSection state until a new heading is encountered
                         return (

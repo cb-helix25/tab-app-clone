@@ -1,134 +1,65 @@
-diff --git a/src/tabs/instructions/MatterOpening/ReviewStep.tsx b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-index eca5eb058d493b00cdcc4e5f65dd82e817b5ecc6..26e95af687f3960955b72085bafe4e192ab86127 100644
---- a/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-@@ -22,90 +22,92 @@ interface ReviewStepProps {
-     referrerName: string;
-     opponentName: string;
-     opponentEmail: string;
-     opponentSolicitorName: string;
-     opponentSolicitorCompany: string;
-     opponentSolicitorEmail: string;
-     opponentHouseNumber: string;
-     opponentStreet: string;
-     opponentCity: string;
-     opponentCounty: string;
-     opponentPostcode: string;
-     opponentCountry: string;
-     solicitorHouseNumber: string;
-     solicitorStreet: string;
-     solicitorCity: string;
-     solicitorCounty: string;
-     solicitorPostcode: string;
-     solicitorCountry: string;
-     noConflict: boolean;
-     userInitials: string;
-     userData?: UserData[] | null;
-     onBuild?: () => void;
-     clientAsOnFile: string;
-     phone: string; // <-- New required prop
-     instructionRef?: string;
-+    onDraftCclNow?: (matterId: string) => void;
- }
- 
- const ReviewStep: React.FC<ReviewStepProps> = ({
-     clientInformation,
-     selectedDate,
-     supervisingPartner,
-     originatingSolicitor,
-     clientType,
-     selectedPoidIds,
-     areaOfWork,
-     practiceArea,
-     description,
-     folderStructure,
-     disputeValue,
-     source,
-     referrerName,
-     opponentName,
-     opponentEmail,
-     opponentSolicitorName,
-     opponentSolicitorCompany,
-     opponentSolicitorEmail,
-     opponentHouseNumber,
-     opponentStreet,
-     opponentCity,
-     opponentCounty,
-     opponentPostcode,
-     opponentCountry,
-     solicitorHouseNumber,
-     solicitorStreet,
-     solicitorCity,
-     solicitorCounty,
-     solicitorPostcode,
-     solicitorCountry,
-     noConflict,
-     userInitials,
-     userData,
-     onBuild,
-     clientAsOnFile,
-     phone, // <-- destructured here
-     instructionRef,
-+    onDraftCclNow,
- }) => {
-     const [detailsConfirmed, setDetailsConfirmed] = useState(false);
-     const [snapshot, setSnapshot] = useState<Record<string, any> | null>(null);
-     const [edited, setEdited] = useState(false);
-     const { summaryComplete } = useCompletion();
- 
-     const formData = useMemo(
-         () => ({
-             clientInformation,
-             selectedDate: selectedDate?.toISOString() ?? null,
-             supervisingPartner,
-             originatingSolicitor,
-             clientType,
-             selectedPoidIds,
-             areaOfWork,
-             practiceArea,
-             description,
-             folderStructure,
-             disputeValue,
-             source,
-             referrerName,
-             opponentName,
-             opponentEmail,
-             opponentSolicitorName,
-             opponentSolicitorCompany,
-diff --git a/src/tabs/instructions/MatterOpening/ReviewStep.tsx b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-index eca5eb058d493b00cdcc4e5f65dd82e817b5ecc6..26e95af687f3960955b72085bafe4e192ab86127 100644
---- a/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-+++ b/src/tabs/instructions/MatterOpening/ReviewStep.tsx
-@@ -379,31 +381,32 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
-         }
-     }, [formData, snapshot, summaryComplete]);
- 
-     const handleConfirmed = () => {
-         setSnapshot(formData);
-         setDetailsConfirmed(false);
-         onBuild?.();
-     };
- 
-     return (
-         <div style={{ position: 'relative' }}>
-             {summaryComplete && <SummaryCompleteOverlay />}
-             <SummaryReview
-                 proofContent={proofSummary}
-                 detailsConfirmed={detailsConfirmed}
-                 setDetailsConfirmed={setDetailsConfirmed}
-                 edited={edited}
-             />
-             <ReviewConfirm
-                 detailsConfirmed={detailsConfirmed}
-                 formData={formData}
-                 userInitials={userInitials}
-                 userData={userData}
-                 onConfirmed={handleConfirmed}
-                 instructionRef={instructionRef}
-+                onDraftCclNow={onDraftCclNow}
-             />
-         </div>
-     );
- };
- 
- export default ReviewStep;
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 87a2b74db453347c4ac952fd126139f7afa6cf6f..199ceddc77a989ed1cf8001fc4ac26985211cad0 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -952,52 +952,59 @@ Disbursement | Amount | VAT chargeable
+                                     lineHeight: '1.5'
+                                 }}>
+                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                     <span style={{ display: 'inline' }}>
+                                         {sectionRefMatch ? (
+                                             <>
+                                                 <span>{sectionRefMatch[1]}</span>
+                                                 <span style={{ 
+                                                     color: '#6c757d', 
+                                                     fontSize: '13px', 
+                                                     fontStyle: 'italic',
+                                                     opacity: 0.8 
+                                                 }}>
+                                                     {sectionRefMatch[2]}
+                                                 </span>
+                                                 <span>{sectionRefMatch[3]}</span>
+                                             </>
+                                         ) : (
+                                             <span>{bulletContent}</span>
+                                         )}
+                                     </span>
+                                     {index < lines.length - 1 ? '\n' : ''}
+                                 </span>
+                             );
+                         }
++                        // Inline display avoids forcing placeholders onto a new
++                        // line when they appear immediately after a text
++                        // segment. Newlines are preserved by the surrounding
++                        // container's `white-space: pre-wrap` style, so a block
++                        // display is unnecessary and causes layout issues like
++                        // `Email address:` appearing on a separate line from its
++                        // placeholder.
+                         const style: React.CSSProperties | undefined = inSection
+-                            ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
++                            ? { marginLeft: '16px', lineHeight: '1.5' }
+                             : undefined;
+                         // Keep inSection state until a new heading is encountered
+                         return (
+                             <span key={lineKey} style={style}>
+                                 {line}
+                                 {index < lines.length - 1 ? '\n' : ''}
+                             </span>
+                         );
+                     });
+                     persistentIndent = inSection;
+                     return { nodes: formattedLines, isTable: false };
+                 };
+                 
+                 const { nodes, isTable, tableRows: segmentTableRows } = formatTextSegment(textSegment, parts.length, globalTableState);
+                 
+                 // Update global table state and collect table rows
+                 if (isTable && !globalTableState) {
+                     // Starting a new table
+                     globalTableState = true;
+                     globalTableRows = [];
+                 } 
+                 
+                 if (isTable && segmentTableRows && segmentTableRows.length > 0) {
+                     // Add rows from this segment to global collection
+                     globalTableRows.push(...segmentTableRows);
