@@ -43,10 +43,24 @@ const PlaceholderManager: React.FC<PlaceholderManagerProps> = ({ value, onChange
     if (editingIndex === null) return;
     // Replace the placeholder in value
     let placeholderCount = -1;
-    const newValue = value.replace(PLACEHOLDER_REGEX, (match, p1) => {
+    const newValue = value.replace(PLACEHOLDER_REGEX, (match) => {
       placeholderCount++;
       if (placeholderCount === editingIndex) {
         return `{{${editValue}}}`;
+      }
+      return match;
+    });
+    onChange(newValue);
+    setEditingIndex(null);
+  };
+
+  const deletePlaceholder = () => {
+    if (editingIndex === null) return;
+    let placeholderCount = -1;
+    const newValue = value.replace(PLACEHOLDER_REGEX, (match) => {
+      placeholderCount++;
+      if (placeholderCount === editingIndex) {
+        return '';
       }
       return match;
     });
@@ -69,6 +83,9 @@ const PlaceholderManager: React.FC<PlaceholderManagerProps> = ({ value, onChange
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   inputRef.current?.blur();
+                } else if ((e.key === "Backspace" || e.key === "Delete") && editValue === "") {
+                  e.preventDefault();
+                  deletePlaceholder();
                 }
               }}
             />
@@ -77,6 +94,14 @@ const PlaceholderManager: React.FC<PlaceholderManagerProps> = ({ value, onChange
               key={idx}
               className="placeholder-chip"
               onClick={() => handlePlaceholderClick(idx, part.placeholder || "")}
+              onKeyDown={(e) => {
+                if ((e.key === "Backspace" || e.key === "Delete") && !e.shiftKey) {
+                  e.preventDefault();
+                  setEditingIndex(idx);
+                  setEditValue("");
+                  deletePlaceholder();
+                }
+              }}
               tabIndex={0}
               role="button"
             >

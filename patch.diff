@@ -1,65 +1,105 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 87a2b74db453347c4ac952fd126139f7afa6cf6f..199ceddc77a989ed1cf8001fc4ac26985211cad0 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -952,52 +952,59 @@ Disbursement | Amount | VAT chargeable
-                                     lineHeight: '1.5'
-                                 }}>
-                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
-                                     <span style={{ display: 'inline' }}>
-                                         {sectionRefMatch ? (
-                                             <>
-                                                 <span>{sectionRefMatch[1]}</span>
-                                                 <span style={{ 
-                                                     color: '#6c757d', 
-                                                     fontSize: '13px', 
-                                                     fontStyle: 'italic',
-                                                     opacity: 0.8 
-                                                 }}>
-                                                     {sectionRefMatch[2]}
-                                                 </span>
-                                                 <span>{sectionRefMatch[3]}</span>
-                                             </>
-                                         ) : (
-                                             <span>{bulletContent}</span>
-                                         )}
-                                     </span>
-                                     {index < lines.length - 1 ? '\n' : ''}
-                                 </span>
-                             );
-                         }
-+                        // Inline display avoids forcing placeholders onto a new
-+                        // line when they appear immediately after a text
-+                        // segment. Newlines are preserved by the surrounding
-+                        // container's `white-space: pre-wrap` style, so a block
-+                        // display is unnecessary and causes layout issues like
-+                        // `Email address:` appearing on a separate line from its
-+                        // placeholder.
-                         const style: React.CSSProperties | undefined = inSection
--                            ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
-+                            ? { marginLeft: '16px', lineHeight: '1.5' }
-                             : undefined;
-                         // Keep inSection state until a new heading is encountered
-                         return (
-                             <span key={lineKey} style={style}>
-                                 {line}
-                                 {index < lines.length - 1 ? '\n' : ''}
-                             </span>
-                         );
-                     });
-                     persistentIndent = inSection;
-                     return { nodes: formattedLines, isTable: false };
-                 };
-                 
-                 const { nodes, isTable, tableRows: segmentTableRows } = formatTextSegment(textSegment, parts.length, globalTableState);
-                 
-                 // Update global table state and collect table rows
-                 if (isTable && !globalTableState) {
-                     // Starting a new table
-                     globalTableState = true;
-                     globalTableRows = [];
-                 } 
-                 
-                 if (isTable && segmentTableRows && segmentTableRows.length > 0) {
-                     // Add rows from this segment to global collection
-                     globalTableRows.push(...segmentTableRows);
+diff --git a/src/tabs/instructions/components/PlaceholderManager.tsx b/src/tabs/instructions/components/PlaceholderManager.tsx
+index 9e7ad75b3050c157835166421669130ab715dda1..a693cbfa38f8893df145a2d8dbc5e47ba33e6191 100644
+--- a/src/tabs/instructions/components/PlaceholderManager.tsx
++++ b/src/tabs/instructions/components/PlaceholderManager.tsx
+@@ -21,74 +21,99 @@ const PlaceholderManager: React.FC<PlaceholderManagerProps> = ({ value, onChange
+   while ((match = PLACEHOLDER_REGEX.exec(value))) {
+     if (match.index > lastIndex) {
+       parts.push({ text: value.slice(lastIndex, match.index), isPlaceholder: false });
+     }
+     parts.push({ text: match[0], isPlaceholder: true, placeholder: match[1] });
+     lastIndex = match.index + match[0].length;
+   }
+   if (lastIndex < value.length) {
+     parts.push({ text: value.slice(lastIndex), isPlaceholder: false });
+   }
+ 
+   const handlePlaceholderClick = (idx: number, placeholder: string) => {
+     setEditingIndex(idx);
+     setEditValue(placeholder);
+     setTimeout(() => inputRef.current?.focus(), 0);
+   };
+ 
+   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+     setEditValue(e.target.value);
+   };
+ 
+   const handleEditBlur = () => {
+     if (editingIndex === null) return;
+     // Replace the placeholder in value
+     let placeholderCount = -1;
+-    const newValue = value.replace(PLACEHOLDER_REGEX, (match, p1) => {
++    const newValue = value.replace(PLACEHOLDER_REGEX, (match) => {
+       placeholderCount++;
+       if (placeholderCount === editingIndex) {
+         return `{{${editValue}}}`;
+       }
+       return match;
+     });
+     onChange(newValue);
+     setEditingIndex(null);
+   };
+ 
++  const deletePlaceholder = () => {
++    if (editingIndex === null) return;
++    let placeholderCount = -1;
++    const newValue = value.replace(PLACEHOLDER_REGEX, (match) => {
++      placeholderCount++;
++      if (placeholderCount === editingIndex) {
++        return '';
++      }
++      return match;
++    });
++    onChange(newValue);
++    setEditingIndex(null);
++  };
++
+   return (
+     <div className="placeholder-manager-editor">
+       {parts.map((part, idx) =>
+         part.isPlaceholder ? (
+           editingIndex === idx ? (
+             <input
+               key={idx}
+               ref={inputRef}
+               className="placeholder-input"
+               value={editValue}
+               onChange={handleEditChange}
+               onBlur={handleEditBlur}
+               onKeyDown={(e) => {
+                 if (e.key === "Enter") {
+                   inputRef.current?.blur();
++                } else if ((e.key === "Backspace" || e.key === "Delete") && editValue === "") {
++                  e.preventDefault();
++                  deletePlaceholder();
+                 }
+               }}
+             />
+           ) : (
+             <span
+               key={idx}
+               className="placeholder-chip"
+               onClick={() => handlePlaceholderClick(idx, part.placeholder || "")}
++              onKeyDown={(e) => {
++                if ((e.key === "Backspace" || e.key === "Delete") && !e.shiftKey) {
++                  e.preventDefault();
++                  setEditingIndex(idx);
++                  setEditValue("");
++                  deletePlaceholder();
++                }
++              }}
+               tabIndex={0}
+               role="button"
+             >
+               {part.text}
+             </span>
+           )
+         ) : (
+           <span key={idx}>{part.text}</span>
+         )
+       )}
+     </div>
+   );
+ };
+ 
+ export default PlaceholderManager;
