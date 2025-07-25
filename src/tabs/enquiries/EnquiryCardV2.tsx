@@ -111,21 +111,59 @@ const EnquiryCardV2: React.FC<EnquiryCardV2Props> = ({
         onSelect(enquiry);
     };
 
+    const address = [
+        enquiry.Unit_Building_Name_or_Number,
+        enquiry.Mailing_Street,
+        enquiry.City,
+        enquiry.Mailing_County,
+        enquiry.Postal_Code,
+        enquiry.Country,
+    ].filter(Boolean).join(', ');
+
+    const infoGridItems = [
+        { label: 'Method', value: enquiry.Method_of_Contact },
+        { label: 'Type', value: enquiry.Type_of_Work },
+        { label: 'Area', value: enquiry.Area_of_Work },
+        { label: 'Value', value: enquiry.Value },
+    ];
+
     return (
-        <div className={cardClass} style={style} onClick={handleCardClick} role="button" tabIndex={0}
-            onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCardClick(); }}
+        <div
+            className={cardClass}
+            style={style}
+            onClick={handleCardClick}
+            role="button"
+            tabIndex={0}
+            onKeyPress={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleCardClick();
+            }}
             aria-label={`View details for enquiry ${enquiry.ID}`}
         >
             <Stack className="details" tokens={{ childrenGap: 6 }}>
                 <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                    {`${enquiry.First_Name} ${enquiry.Last_Name}`}
+                    {`${enquiry.Title ? enquiry.Title + ' ' : ''}${enquiry.First_Name} ${enquiry.Last_Name}`}
                     {enquiry.Company ? ` - ${enquiry.Company}` : ''}
                 </Text>
-                {enquiry.Value && (
-                    <Text variant="small" styles={{ root: { color: colours.highlight } }}>
-                        Value: {enquiry.Value}
-                    </Text>
+                {enquiry.Email && (
+                    <Text variant="small">{enquiry.Email}</Text>
                 )}
+                {enquiry.Phone_Number && (
+                    <Text variant="small">{enquiry.Phone_Number}</Text>
+                )}
+                {address && (
+                    <Text variant="small">{address}</Text>
+                )}
+                <div className="infoGrid">
+                    {infoGridItems.map(
+                        (item) =>
+                            item.value && (
+                                <div key={item.label}>
+                                    <span className="label">{item.label}</span>
+                                    <span>{item.value}</span>
+                                </div>
+                            )
+                    )}
+                </div>
                 {enquiry.Initial_first_call_notes && (
                     <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text } }}>
                         {cleanNotes(enquiry.Initial_first_call_notes)}
@@ -159,6 +197,16 @@ const EnquiryCardV2: React.FC<EnquiryCardV2Props> = ({
                         />
                     </TooltipHost>
                 )}
+                <TooltipHost content="Follow Up">
+                    <IconButton
+                        iconProps={{ iconName: 'ReminderTime' }}
+                        ariaLabel="Follow Up"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                        }}
+                        styles={iconButtonStyles(colours.cta)}
+                    />
+                </TooltipHost>
                 <TooltipHost content={enquiry.Rating ? `Rating: ${enquiry.Rating}` : 'Rate Enquiry'}>
                     <RatingIndicator rating={enquiry.Rating} onClick={() => onRate(enquiry.ID)} />
                 </TooltipHost>

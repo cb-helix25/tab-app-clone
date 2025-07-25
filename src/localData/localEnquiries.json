@@ -8,9 +8,22 @@
     "Type_of_Work": "Contract",
     "Method_of_Contact": "Email",
     "Point_of_Contact": "lz@helix-law.com",
+    "Company": "Acme Ltd",
+    "Title": "Mr",
     "First_Name": "Client",
     "Last_Name": "One",
-    "Initial_first_call_notes": "Initial notes."
+    "DOB": "1985-04-12",
+    "Phone_Number": "01234 567890",
+    "Secondary_Phone": "07777 888999",
+    "Unit_Building_Name_or_Number": "12A",
+    "Mailing_Street": "High Street",
+    "Postal_Code": "BN1 1AA",
+    "City": "Brighton",
+    "Mailing_County": "East Sussex",
+    "Country": "UK",
+    "Value": "5000",
+    "Initial_first_call_notes": "Initial notes.",
+    "Web_Form": "Contact Form"
   },
   {
     "ID": "2",
@@ -21,8 +34,16 @@
     "Type_of_Work": "Dispute",
     "Method_of_Contact": "Phone",
     "Point_of_Contact": "lz@helix-law.com",
+    "Company": "Property Corp",
+    "Title": "Mrs",
     "First_Name": "Client",
     "Last_Name": "Two",
+    "Phone_Number": "020 1111 2222",
+    "Unit_Building_Name_or_Number": "22",
+    "Mailing_Street": "Down Road",
+    "Postal_Code": "BR2 2BB",
+    "City": "London",
+    "Country": "UK",
     "Initial_first_call_notes": "Client1 enquiry example."
   },
   {
@@ -36,6 +57,7 @@
     "Point_of_Contact": "lz@helix-law.com",
     "First_Name": "Client",
     "Last_Name": "Three",
+    "Phone_Number": "01333 444555",
     "Initial_first_call_notes": "Previous week enquiry."
   },
   {

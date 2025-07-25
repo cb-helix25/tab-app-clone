@@ -885,7 +885,9 @@ Disbursement | Amount | VAT chargeable
                         // Don't create table elements in individual segments
                         // Just return the raw content and let the calling code handle table creation
                         if (tableRows.length > 0) {
-                            return { nodes: [], isTable: true, tableRows: tableRows };
+                            // Return any text collected before the table header
+                            // alongside the gathered table rows
+                            return { nodes: tableElements, isTable: true, tableRows: tableRows };
                         } else {
                             return { nodes: tableElements, isTable: isInTable || tableStarted, tableRows: tableRows };
                         }

@@ -1,57 +1,298 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 7a880fbecace9cd85a20d2639d92b8869bf7ded1..fe957763017084c9ae95e87fd73ed169c2266401 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -2361,51 +2361,51 @@ Disbursement | Amount | VAT chargeable
-                 before: 'Please provide us with £',
-                 after: 'on account of costs'
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -4,54 +4,55 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'; // invisibl
+ import { Stack, PrimaryButton, Dialog, DialogType, DialogFooter, DefaultButton } from '@fluentui/react';
+ import MinimalSearchBox from './MinimalSearchBox';
+ import { POID, TeamData, UserData } from '../../../app/functionality/types';
+ import ClientDetails from '../ClientDetails';
+ import ClientHub from '../ClientHub';
+ import StepWrapper from './StepWrapper';
+ import '../../../app/styles/NewMatters.css';
+ import '../../../app/styles/MatterOpeningCard.css';
+ import {
+     practiceAreasByArea,
+     getGroupColor,
+     partnerOptions as defaultPartners,
+ } from './config';
+ import localTeamDataJson from '../../../localData/team-sql-data.json';
+ import localUserData from '../../../localData/localUserData.json';
+ 
+ import ClientInfoStep from './ClientInfoStep';
+ import PoidSelectionStep from './PoidSelectionStep';
+ import AreaOfWorkStep from './AreaOfWorkStep';
+ import PracticeAreaStep from './PracticeAreaStep';
+ import DescriptionStep from './DescriptionStep';
+ import FolderStructureStep from './FolderStructureStep';
+ import ValueAndSourceStep from './ValueAndSourceStep';
+ import SourceStep from './SourceStep';
+ import OpponentDetailsStep from './OpponentDetailsStep';
++import ModernMultiSelect from './ModernMultiSelect';
+ 
+ import { CompletionProvider } from './CompletionContext';
+ import ProcessingSection, { ProcessingStep } from './ProcessingSection';
+-import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
++import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback, generateDraftCclAction } from './processingActions';
+ import idVerifications from '../../../localData/localIdVerifications.json';
+ import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
+ import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
+ 
+ // Local implementation of useDraftedState for draft persistence
+ function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+     const storageKey = `matterOpeningDraft_${key}`;
+     const [state, setState] = useState<T>(() => {
+         try {
+             const item = localStorage.getItem(storageKey);
+             if (!item) return initialValue;
+             const parsed = JSON.parse(item);
+             // Special handling for selectedDate: convert string to Date
+             if (key === 'selectedDate') {
+                 if (parsed === null) return null as any;
+                 if (typeof parsed === 'string' || typeof parsed === 'number') {
+                     const d = new Date(parsed);
+                     return isNaN(d.getTime()) ? initialValue : (d as any);
+                 }
+             }
+             return parsed;
+         } catch {
+             return initialValue;
+         }
+     });
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -310,66 +311,96 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
+     const [opponentHasCompany, setOpponentHasCompany] = useDraftedState<boolean>('opponentHasCompany', false);
+     const [opponentCompanyName, setOpponentCompanyName] = useDraftedState<string>('opponentCompanyName', '');
+     const [opponentCompanyNumber, setOpponentCompanyNumber] = useDraftedState<string>('opponentCompanyNumber', '');
+     // Solicitor fields
+     const [solicitorTitle, setSolicitorTitle] = useDraftedState<string>('solicitorTitle', '');
+     const [solicitorFirst, setSolicitorFirst] = useDraftedState<string>('solicitorFirst', '');
+     const [solicitorLast, setSolicitorLast] = useDraftedState<string>('solicitorLast', '');
+     const [solicitorPhone, setSolicitorPhone] = useDraftedState<string>('solicitorPhone', '');
+     const [solicitorHouseNumber, setSolicitorHouseNumber] = useDraftedState<string>('solicitorHouseNumber', '');
+     const [solicitorStreet, setSolicitorStreet] = useDraftedState<string>('solicitorStreet', '');
+     const [solicitorCity, setSolicitorCity] = useDraftedState<string>('solicitorCity', '');
+     const [solicitorCounty, setSolicitorCounty] = useDraftedState<string>('solicitorCounty', '');
+     const [solicitorPostcode, setSolicitorPostcode] = useDraftedState<string>('solicitorPostcode', '');
+     const [solicitorCountry, setSolicitorCountry] = useDraftedState<string>('solicitorCountry', '');
+     const [solicitorCompanyNumber, setSolicitorCompanyNumber] = useDraftedState<string>('solicitorCompanyNumber', '');
+ 
+     // Summary review confirmation state
+     const [summaryConfirmed, setSummaryConfirmed] = useDraftedState<boolean>('summaryConfirmed', false);
+ 
+     // Processing state for matter submission
+     const [isProcessing, setIsProcessing] = useState(false);
+     const [processingOpen, setProcessingOpen] = useState(false);
+     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
+     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
+     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
++    const [showCclPrompt, setShowCclPrompt] = useState(false);
++    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
++    const [cclGenerating, setCclGenerating] = useState(false);
+ 
+     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
+     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
+     const [searchBoxFocused, setSearchBoxFocused] = useState(false);
+     const poidGridRef = useRef<HTMLDivElement | null>(null);
+     const [activePoid, setActivePoid] = useDraftedState<POID | null>('activePoid', null);
+ 
+     const filteredPoidData = effectivePoidData.filter((poid) => {
+         const term = poidSearchTerm.toLowerCase();
+         return (
+             poid.poid_id.toLowerCase().includes(term) ||
+             (poid.first && poid.first.toLowerCase().includes(term)) ||
+             (poid.last && poid.last.toLowerCase().includes(term))
+         );
+     });
+ 
++    useEffect(() => {
++        const run = async () => {
++            if (showCclPrompt && draftChoice === 'yes' && !generatedCclUrl && !cclGenerating) {
++                setCclGenerating(true);
++                try {
++                    const result = await generateDraftCclAction.run(generateSampleJson(), userInitials, userData);
++                    if (typeof result === 'object' && result.url) {
++                        setGeneratedCclUrl(result.url);
++                        setProcessingLogs(prev => [...prev, '✓ Draft CCL created']);
++                    }
++                } catch (err) {
++                    console.error('Draft CCL generation failed', err);
++                    setProcessingLogs(prev => [...prev, '❌ Draft CCL generation failed']);
++                } finally {
++                    setCclGenerating(false);
++                }
++            }
++        };
++        run();
++    }, [showCclPrompt, draftChoice]);
++
++    useEffect(() => {
++        if (draftChoice === 'no') {
++            setShowCclPrompt(false);
++        }
++    }, [draftChoice]);
++
+     useEffect(() => {
+         const observer = new IntersectionObserver(
+             (entries) => {
+                 if (entries[0].isIntersecting) {
+                     setVisiblePoidCount((prev) => Math.min(prev + 12, filteredPoidData.length));
+                 }
              },
-             'matter_number': {
-                 before: 'Please use the reference <<',
-                 after: '>> We work with money'
-             },
-             'and_or_intervals_eg_every_three_months': {
-                 before: 'We have agreed to provide you with an update on the amount of costs when appropriate as the matter progresses',
-                 after: '. Risk analysis'
-             },
-             'contact_details_for_marketing_opt_out': {
-                 before: '—contacting us at',
-                 after: '; —using the \'unsubscribe\' link'
-             },
-             'link_to_preference_centre': {
-                 before: '—updating your marketing preferences on our',
-                 after: '. Prevention of money laundering'
-             },
-             'may_will': {
-                 before: 'Your matter',
-                 after: 'involve court proceedings'
-             },
-             'instructions_link': {
-                 before: 'The \'Instructions for Cancellation\' notice at',
--                after: 'explains: —how to cancel'
-+                after: 'explains:'
-             },
-             'insert_next_step_you_would_like_client_to_take': {
-                 before: '☐',
-                 after: '[State why this step is important]'
-             },
-             'state_why_this_step_is_important': {
-                 before: '[Insert next step you would like client to take]',
-                 after: '☐ Provide a payment on account'
-             },
-             'state_amount': {
-                 before: '☐ Provide a payment on account of costs and disbursements of £',
-                 after: 'If we do not receive a payment'
-             },
-             'describe_first_document_or_information_you_need_from_your_client': {
-                 before: '☐ Provide the following documents [and information] to allow me to take the next steps in your matter:',
-                 after: '[describe second document]'
-             },
-             'describe_second_document_or_information_you_need_from_your_client': {
-                 before: '[describe first document or information you need from your client]',
-                 after: '[describe third document]'
-             },
-             'describe_third_document_or_information_you_need_from_your_client': {
-                 before: '[describe second document or information you need from your client]',
-                 after: 'Without these documents there may be a delay'
-             },
+             { rootMargin: '200px' }
+         );
+         if (poidGridRef.current) observer.observe(poidGridRef.current);
+         return () => observer.disconnect();
+     }, [filteredPoidData]);
+ 
+     const handlePoidClick = (poid: POID) => {
+         const isCompany = !!(poid.company_name || poid.company_number);
+         
+         if (selectedPoidIds.includes(poid.poid_id)) {
+             // Remove selection
+             setSelectedPoidIds((prev: string[]) => prev.filter((id: string) => id !== poid.poid_id));
+             if (activePoid && activePoid.poid_id === poid.poid_id) {
+                 const remaining = effectivePoidData.find((p) => selectedPoidIds.includes(p.poid_id) && p.poid_id !== poid.poid_id);
+                 setActivePoid(remaining || null);
+             }
+         } else {
+             // Add selection based on client type rules
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -898,50 +929,51 @@ const handleClearAll = () => {
+         return count;
+     };
+ 
+     // Process matter opening steps defined in processingActions
+     const simulateProcessing = async () => {
+         setIsProcessing(true);
+         setProcessingOpen(true);
+         setProcessingLogs([]);
+         setProcessingSteps(initialSteps);
+         let url = '';
+ 
+         try {
+             for (let i = 0; i < processingActions.length; i++) {
+                 const action = processingActions[i];
+                 const result = await action.run(generateSampleJson(), userInitials, userData);
+                 const message = typeof result === 'string' ? result : result.message;
+                 setProcessingSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'success', message } : s));
+                 setProcessingLogs(prev => [...prev, `✓ ${message}`]);
+                 if (typeof result === 'object' && result.url) {
+                     url = result.url;
+                 }
+             }
+ 
+             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
+             completeMatterOpening();
++            setShowCclPrompt(true);
+         } catch (error) {
+             console.error('Error during processing:', error);
+             const msg = error instanceof Error ? error.message : 'Unknown error';
+             setProcessingLogs(prev => [...prev, `❌ Error: ${msg}`]);
+             setProcessingSteps(prev => prev.map((s, idx) => idx === 0 ? { ...s, status: 'error' } : s));
+         } finally {
+             setTimeout(() => setIsProcessing(false), 2000);
+         }
+         setGeneratedCclUrl(url);
+         return { url };
+     };
+ 
+     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+ 
+     // Clear all selections and inputs
+     const doClearAll = () => {
+         // Close the confirmation dialog if open
+         setIsClearDialogOpen(false);
+ 
+         // Clear all the React state
+         setSelectedDate(null);
+         setTeamMember(defaultTeamMember);
+         setSupervisingPartner('');
+         setOriginatingSolicitor(defaultTeamMember);
+         setClientType(initialClientType || '');
+diff --git a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+index 72f23acbb218d165fb11c2cfa83e6ac870788a4c..f613708b0821ede5a37edf1df4eeb6dbd17db5df 100644
+--- a/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
++++ b/src/tabs/instructions/MatterOpening/FlatMatterOpening.tsx
+@@ -2362,50 +2394,75 @@ const handleClearAll = () => {
+                                             borderRadius: 0,
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             gap: 8
+                                         }}>
+                                             <i className="ms-Icon ms-Icon--Touch" 
+                                                style={{ fontSize: 14, color: '#D65541' }} />
+                                             <span style={{ fontSize: 13, fontWeight: 500, color: '#D65541' }}>
+                                                 Click anywhere in this box to confirm these details are accurate
+                                             </span>
+                                         </div>
+                                     )}
+                                 </div>
+ 
+                                 {/* Processing Section - Shows when processing is active */}
+                                 {processingOpen && (
+                                     <div style={{ marginTop: 24 }}>
+                                         <ProcessingSection
+                                             steps={processingSteps}
+                                             logs={processingLogs}
+                                             open={processingOpen}
+                                         />
+                                     </div>
+                                 )}
+ 
++                                {!processingOpen && showCclPrompt && (
++                                    <div style={{ marginTop: 24 }}>
++                                        <ModernMultiSelect
++                                            label="Draft the CCL now?"
++                                            options={[
++                                                { key: 'yes', text: 'Yes, draft now' },
++                                                { key: 'no', text: 'Not now' }
++                                            ]}
++                                            selectedValue={draftChoice}
++                                            onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
++                                            variant="binary"
++                                        />
++                                        {cclGenerating && (
++                                            <div style={{ marginTop: 8 }}>
++                                                Generating CCL...
++                                            </div>
++                                        )}
++                                        {generatedCclUrl && (
++                                            <div style={{ marginTop: 8 }}>
++                                                <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
++                                            </div>
++                                        )}
++                                    </div>
++                                )}
++
+                                 {/* Navigation buttons for review step */}
+                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+                                     {/* Back button with smooth expansion */}
+                                     <div 
+                                         className="nav-button back-button"
+                                         onClick={handleBackToForm}
+                                         style={{
+                                             background: '#f4f4f6',
+                                             border: '2px solid #e1dfdd',
+                                             borderRadius: '0px',
+                                             width: '48px',
+                                             height: '48px',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             justifyContent: 'center',
+                                             cursor: 'pointer',
+                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                             boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
+                                             position: 'relative',
+                                             overflow: 'hidden',
+                                         }}
+                                         onMouseEnter={(e) => {
+                                             e.currentTarget.style.background = '#ffefed';
+                                             e.currentTarget.style.border = '2px solid #D65541';
+                                             e.currentTarget.style.borderRadius = '0px';

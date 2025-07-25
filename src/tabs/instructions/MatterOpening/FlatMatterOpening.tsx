@@ -26,10 +26,11 @@ import FolderStructureStep from './FolderStructureStep';
 import ValueAndSourceStep from './ValueAndSourceStep';
 import SourceStep from './SourceStep';
 import OpponentDetailsStep from './OpponentDetailsStep';
+import ModernMultiSelect from './ModernMultiSelect';
 
 import { CompletionProvider } from './CompletionContext';
 import ProcessingSection, { ProcessingStep } from './ProcessingSection';
-import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback } from './processingActions';
+import { processingActions, initialSteps, registerClientIdCallback, registerMatterIdCallback, generateDraftCclAction } from './processingActions';
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
@@ -332,6 +333,9 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
     const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>(initialSteps);
     const [processingLogs, setProcessingLogs] = useState<string[]>([]);
     const [generatedCclUrl, setGeneratedCclUrl] = useState<string>('');
+    const [showCclPrompt, setShowCclPrompt] = useState(false);
+    const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
+    const [cclGenerating, setCclGenerating] = useState(false);
 
     const [visiblePoidCount, setVisiblePoidCount] = useState(12); // UI only, not persisted
     const [poidSearchTerm, setPoidSearchTerm] = useState(''); // UI only, not persisted
@@ -347,6 +351,33 @@ const FlatMatterOpening: React.FC<FlatMatterOpeningProps> = ({
             (poid.last && poid.last.toLowerCase().includes(term))
         );
     });
+
+    useEffect(() => {
+        const run = async () => {
+            if (showCclPrompt && draftChoice === 'yes' && !generatedCclUrl && !cclGenerating) {
+                setCclGenerating(true);
+                try {
+                    const result = await generateDraftCclAction.run(generateSampleJson(), userInitials, userData);
+                    if (typeof result === 'object' && result.url) {
+                        setGeneratedCclUrl(result.url);
+                        setProcessingLogs(prev => [...prev, '✓ Draft CCL created']);
+                    }
+                } catch (err) {
+                    console.error('Draft CCL generation failed', err);
+                    setProcessingLogs(prev => [...prev, '❌ Draft CCL generation failed']);
+                } finally {
+                    setCclGenerating(false);
+                }
+            }
+        };
+        run();
+    }, [showCclPrompt, draftChoice]);
+
+    useEffect(() => {
+        if (draftChoice === 'no') {
+            setShowCclPrompt(false);
+        }
+    }, [draftChoice]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -920,6 +951,7 @@ const handleClearAll = () => {
 
             setProcessingLogs(prev => [...prev, '🎉 Matter opening completed successfully!']);
             completeMatterOpening();
+            setShowCclPrompt(true);
         } catch (error) {
             console.error('Error during processing:', error);
             const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -2381,6 +2413,31 @@ const handleClearAll = () => {
                                             logs={processingLogs}
                                             open={processingOpen}
                                         />
+                                    </div>
+                                )}
+
+                                {!processingOpen && showCclPrompt && (
+                                    <div style={{ marginTop: 24 }}>
+                                        <ModernMultiSelect
+                                            label="Draft the CCL now?"
+                                            options={[
+                                                { key: 'yes', text: 'Yes, draft now' },
+                                                { key: 'no', text: 'Not now' }
+                                            ]}
+                                            selectedValue={draftChoice}
+                                            onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
+                                            variant="binary"
+                                        />
+                                        {cclGenerating && (
+                                            <div style={{ marginTop: 8 }}>
+                                                Generating CCL...
+                                            </div>
+                                        )}
+                                        {generatedCclUrl && (
+                                            <div style={{ marginTop: 8 }}>
+                                                <a href={generatedCclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
