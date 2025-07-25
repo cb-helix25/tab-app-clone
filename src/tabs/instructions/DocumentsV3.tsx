@@ -594,6 +594,7 @@ Disbursement | Amount | VAT chargeable
         let globalTableState = false; // Track table state across segments
         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
         
+        const consumedPlaceholders = new Set<string>();
         while ((match = templateVariableRegex.exec(content)) !== null) {
             // Add editable text before the variable
             if (match.index > lastIndex) {
@@ -671,12 +672,16 @@ Disbursement | Amount | VAT chargeable
                                             nextIndex++;
                                             continue;
                                         }
-                                        
-                                        // Check if it's a document description template field
+
                                         if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
                                             if (additionalContent) additionalContent += '\n\n';
                                             additionalContent += nextLine;
-                                            // Mark this line as processed by setting it to empty
+
+                                            const placeholderMatch = nextLine.match(/\{\{([^}]+)\}\}/);
+                                            if (placeholderMatch) {
+                                                consumedPlaceholders.add(placeholderMatch[1]);
+                                            }
+
                                             lines[nextIndex] = '';
                                             nextIndex++;
                                         } else {
@@ -894,6 +899,7 @@ Disbursement | Amount | VAT chargeable
                     }
 
                     // Regular text formatting (non-table content)
+                    let previousWasNumberedHeading = false;
                     const formattedLines = lines.map((line, index) => {
                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
@@ -906,6 +912,7 @@ Disbursement | Amount | VAT chargeable
                         if (numberedHeadingMatch) {
                             const number = numberedHeadingMatch[1];
                             const headingText = numberedHeadingMatch[2];
+                            previousWasNumberedHeading = true;
                             return (
                                 <span
                                     key={lineKey}
@@ -924,6 +931,7 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         } else if (standaloneHeadingMatch) {
+                            previousWasNumberedHeading = false;
                             return (
                                 <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
                                     {line}
@@ -931,6 +939,7 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         } else if (bulletPointMatch) {
+                            previousWasNumberedHeading = false;
                             // Handle bullet points with red bullets and styled section references
                             const bulletContent = bulletPointMatch[1];
                             // Check for section references like "(see section 4.1 below)"
@@ -967,8 +976,12 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         }
+                        const style: React.CSSProperties | undefined = previousWasNumberedHeading
+                            ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
+                            : undefined;
+                        previousWasNumberedHeading = false;
                         return (
-                            <span key={lineKey}>
+                            <span key={lineKey} style={style}>
                                 {line}
                                 {index < lines.length - 1 ? '\n' : ''}
                             </span>
@@ -1064,8 +1077,11 @@ Disbursement | Amount | VAT chargeable
                                 }
                                 return newLine;
                             });
+                            const spacingFixed = restoredLines.map(line =>
+                                line.replace(/^(\d+(?:\.\d+)*)(\S)/, '$1 $2')
+                            );
 
-                            newText = restoredLines.join('\n');
+                            newText = spacingFixed.join('\n');
                             const beforeText = content.substring(0, segmentStart);
                             const afterText = content.substring(segmentEnd);
                             const newContent = beforeText + newText + afterText;
@@ -1089,6 +1105,11 @@ Disbursement | Amount | VAT chargeable
             
             // Add the interactive inline editor for placeholders
             const variableName = match[1].trim();
+
+            if (consumedPlaceholders.has(variableName)) {
+                lastIndex = match.index + match[0].length;
+                continue;
+            }
             
             // Special handling for charges_section_choice
             if (variableName === 'charges_section_choice') {

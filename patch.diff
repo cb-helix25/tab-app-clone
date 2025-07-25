@@ -1,317 +1,204 @@
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -405,57 +405,84 @@ const quickLinksStyle = (isDarkMode: boolean) =>
-     zIndex: 999,
-     borderTopLeftRadius: 0,
-     borderTopRightRadius: 0,
-   });
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index b7b5b957260c3d2f36289714c8b4ba59774318a2..78ddd3562b5864f9ed811bcdf2b62b85a7fb51ac 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -14,154 +14,165 @@ let asanaSecret = '';
+ let asanaRefreshToken = '';
+ let opponentId = '';
+ let solicitorId = '';
+ let clioContactIds: string[] = [];
+ let clioCompanyId: string | null = null;
+ let clientIdCallback: ((id: string | null) => void) | null = null;
+ let matterId: string | null = null;
+ let matterIdCallback: ((id: string | null) => void) | null = null;
  
- const tableAnimationStyle = mergeStyles({
-   animation: 'fadeIn 0.5s ease-in-out',
- });
+ export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
+     clientIdCallback = cb;
+ }
  
- const calculateAnimationDelay = (row: number, col: number) => (row + col) * 0.1;
+ export function registerMatterIdCallback(cb: ((id: string | null) => void) | null) {
+     matterIdCallback = cb;
+ }
  
- const versionStyle = mergeStyles({
-   textAlign: 'center',
-   fontSize: '14px',
-   color: '#888',
-   marginTop: '40px',
- });
+ export interface ProcessingResult {
+     message: string;
+     url?: string;
+ }
  
- const subLabelStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     fontWeight: '600',
-     fontSize: '16px',
-     color: isDarkMode ? colours.dark.text : colours.light.text,
-   });
+ export interface ProcessingAction {
+     label: string;
+     icon?: string;
++    group?: string;
+     run: (
+         formData: Record<string, any>,
+         userInitials: string,
+         userData?: any[] | null
+     ) => Promise<string | ProcessingResult>;
+ }
  
-+const actionsMetricsContainerStyle = mergeStyles({
-+  backgroundColor: '#ffffff',
-+  padding: '16px',
-+  borderRadius: 0,
-+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-+  marginBottom: '24px',
-+  '@media (max-width: 600px)': { padding: '12px' },
-+});
-+
- const favouritesGridStyle = mergeStyles({
-   display: 'grid',
-   gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-   gap: '16px',
-   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, 1fr)' },
- });
+ export const processingActions: ProcessingAction[] = [
+     {
+         label: 'Retrieve ActiveCampaign Token',
++        group: 'active',
+         icon: activeIcon,
+         run: async () => {
+             const res = await fetch('/api/keys/ac-automations-apitoken');
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             const data = await res.json();
+             acToken = data.value;
+             return 'Token retrieved';
+         }
+     },
+     {
+         label: 'Refresh ActiveCampaign Token',
++        group: 'active',
+         icon: activeIcon,
+         run: async () => {
+             const resp = await fetch('/api/refresh/activecampaign', { method: 'POST' });
+             if (!resp.ok) throw new Error('ActiveCampaign token refresh failed');
+             return 'Token refreshed';
+         }
+     },
+     {
+         label: 'Retrieve Clio Client ID',
++        group: 'clio',
+         icon: clioIcon,
+         run: async (_form, initials) => {
+             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             const data = await res.json();
+             clioClientId = data.value;
+             return 'Client ID retrieved';
+         }
+     },
+     {
+         label: 'Retrieve Clio Client Secret',
++        group: 'clio',
+         icon: clioIcon,
+         run: async (_form, initials) => {
+             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             const data = await res.json();
+             clioClientSecret = data.value;
+             return 'Client Secret retrieved';
+         }
+     },
+     {
+         label: 'Retrieve Clio Refresh Token',
++        group: 'clio',
+         icon: clioIcon,
+         run: async (_form, initials) => {
+             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
+             if (!res.ok) throw new Error('Failed to fetch secret');
+             const data = await res.json();
+             clioRefreshToken = data.value;
+             return 'Refresh Token retrieved';
+         }
+     },
+     {
+         label: 'Refresh Clio Access Token',
++        group: 'clio',
+         icon: clioIcon,
+         run: async (_form, initials) => {
+             const resp = await fetch(`/api/refresh/clio/${initials.toLowerCase()}`, {
+                 method: 'POST'
+             });
+             if (!resp.ok) throw new Error('Clio token refresh failed');
+             return 'Access token refreshed';
+         }
+     },
+     {
+         label: 'Retrieve Asana Client ID',
++        group: 'asana',
+         icon: asanaIcon,
+         run: async (_form, _i, userData) => {
+             const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
+             if (!id) throw new Error('Asana Client ID missing');
+             asanaClientId = id;
+             return 'Client ID retrieved';
+         }
+     },
+     {
+         label: 'Retrieve Asana Secret',
++        group: 'asana',
+         icon: asanaIcon,
+         run: async (_form, _i, userData) => {
+             const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
+             if (!secret) throw new Error('Asana Secret missing');
+             asanaSecret = secret;
+             return 'Secret retrieved';
+         }
+     },
+     {
+         label: 'Retrieve Asana Refresh Token',
++        group: 'asana',
+         icon: asanaIcon,
+         run: async (_form, _i, userData) => {
+             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
+             if (!token) throw new Error('Asana Refresh Token missing');
+             asanaRefreshToken = token;
+             return 'Refresh Token retrieved';
+         }
+     },
+     {
+         label: 'Refresh Asana Access Token',
++        group: 'asana',
+         icon: asanaIcon,
+         run: async () => {
+             const resp = await fetch('/api/refresh/asana', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken })
+             });
+             if (!resp.ok) throw new Error('Asana token refresh failed');
+             return 'Access token refreshed';
+         }
+     },
+     {
+         label: 'Opponent Details Updated',
+         icon: clioIcon,
+         run: async (formData, userInitials) => {
+             const payload = {
+                 opponent: formData.opponent_details?.opponent || null,
+                 solicitor: formData.opponent_details?.solicitor || null,
+                 createdBy: userInitials
+             };
  
-+const metricsGridThree = mergeStyles({
-+  display: 'grid',
-+  gridTemplateColumns: 'repeat(3, 1fr)',
-+  gap: '16px',
-+  width: '100%',
-+  '@media (max-width: 900px)': { gridTemplateColumns: 'repeat(2, 1fr)' },
-+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
-+});
-+
-+const metricsGridTwo = mergeStyles({
-+  display: 'grid',
-+  gridTemplateColumns: 'repeat(2, 1fr)',
-+  gap: '16px',
-+  width: '100%',
-+  marginTop: '16px',
-+  '@media (max-width: 600px)': { gridTemplateColumns: '1fr' },
-+});
-+
- const peopleGridStyle = mergeStyles({
-   display: 'grid',
-   paddingLeft: '80px',
-   gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-   gap: '16px',
-   alignItems: 'center',
-   width: '100%',
- });
+             const resp = await fetch('/api/opponents', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify(payload)
+diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
+index b7b5b957260c3d2f36289714c8b4ba59774318a2..78ddd3562b5864f9ed811bcdf2b62b85a7fb51ac 100644
+--- a/src/tabs/instructions/MatterOpening/processingActions.ts
++++ b/src/tabs/instructions/MatterOpening/processingActions.ts
+@@ -271,27 +282,28 @@ export const processingActions: ProcessingAction[] = [
+     },
+     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+     { label: 'Databases Updated', run: async () => 'Done' }
+ ];
  
- const sectionContainerStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-     padding: '16px',
-     borderRadius: 0,
-     boxShadow: isDarkMode
-       ? `0 4px 12px ${colours.dark.border}`
-       : `0 4px 12px ${colours.light.border}`,
-     position: 'relative',
-     width: '100%',
-   });
+ export const generateDraftCclAction: ProcessingAction = {
+     label: 'Generate Draft CCL',
+     icon: cclIcon,
+     run: async (formData, _initials) => {
+         const id = matterId || formData.matter_details.matter_ref;
+         const resp = await fetch('/api/ccl', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ matterId: id, draftJson: formData })
+         });
+         if (!resp.ok) throw new Error('CCL generation failed');
+         const { url } = await resp.json();
+         return { message: 'Draft CCL created', url };
+     }
+ };
+ // invisible change 2.2
  
- 
- //////////////////////
- // TabLabel Component
- //////////////////////
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2815,123 +2842,100 @@ const noActionsClass = mergeStyles({
-   // Style for the animated tick icon container
-   const noActionsIconClass = mergeStyles({
-     width: '24px',
-     height: '24px',
-     borderRadius: '50%',
-     background: colours.highlight,
-     color: '#fff',
-     display: 'flex',
-     alignItems: 'center',
-     justifyContent: 'center',
-     fontSize: '12px',
-     animation: `${tickPopKeyframes} 0.3s ease`,
-   });
- 
- // Extract mattersOpenedCount and compute conversion rate with two decimals
- const mattersOpenedCount = enquiryMetrics[3]?.count ?? 0;
- const conversionRate = enquiriesMonthToDate
-   ? Number(((mattersOpenedCount / enquiriesMonthToDate) * 100).toFixed(2))
-   : 0;
-   
-   const inHighlight = 'rgba(16,124,16,0.15)'; // subtle green tint
-   const wfhHighlight = 'rgba(54,144,206,0.15)'; // subtle blue tint
-   const outHighlight = 'rgba(214,85,65,0.15)'; // subtle red tint
- 
-   return (
--    <section className="page-section">
-+    <section className="page-section responsive-container">
-       {showFocusOverlay && (
-         <div
-           className={mergeStyles({
-             position: 'fixed',
-             top: 0,
-             left: 0,
-             width: '100%',
-             height: '100%',
-             backgroundColor: 'rgba(0,0,0,0.4)',
-             zIndex: 800,
-             pointerEvents: 'auto',
-             animation: `${fadeInKeyframes} 0.3s ease`,
-           })}
-         />
-       )}
-       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
- 
- 
-       {/* Actions & Metrics Container */}
--      <div
--        style={{
--          backgroundColor: '#ffffff',
--          padding: '16px',
--          borderRadius: 0,
--          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
--          marginBottom: '24px',
--        }}
--      >
-+      <div className={actionsMetricsContainerStyle}>
- 
-         {/* Metrics Section */}
-         {/* Time Metrics Section */}
-         <CollapsibleSection title="Time Metrics" metrics={timeMetrics.map(m => ({ title: m.title }))}>
--            <div
--              style={{
--                display: 'grid',
--                gridTemplateColumns: 'repeat(3, 1fr)',
--                gap: '16px',
--                width: '100%'
--              }}
--            >
-+            <div className={metricsGridThree}>
-               {timeMetrics.slice(0, 3).map((metric, index) => (
-                 <MetricCard
-                   key={metric.title}
-                   title={metric.title}
-                   {...(metric.isMoneyOnly
-                     ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                     : metric.isTimeMoney
-                       ? {
-                         money: metric.money,
-                         hours: metric.hours,
-                         prevMoney: metric.prevMoney,
-                         prevHours: metric.prevHours,
-                         isTimeMoney: metric.isTimeMoney,
-                         showDial: metric.showDial,
-                         dialTarget: metric.dialTarget,
-                       }
-                       : { count: metric.count, prevCount: metric.prevCount })}
-                   isDarkMode={isDarkMode}
-                   animationDelay={index * 0.1}
-                 />
-               ))}
-             </div>
- 
--            <div
--              style={{
--                display: 'grid',
--                gridTemplateColumns: 'repeat(2, 1fr)',
--                gap: '16px',
--                width: '100%',
--                marginTop: '16px'
--              }}
--            >
-+            <div className={metricsGridTwo}>
-               {timeMetrics.slice(3).map((metric, index) => {
-                 if (metric.title === 'Outstanding Office Balances') {
-                   return (
-                     <div
-                       key={metric.title}
-                       onClick={() => setIsOutstandingPanelOpen(true)}
-                       style={{ cursor: 'pointer' }}
-                     >
-                       <MetricCard
-                         title={metric.title}
-                         {...(metric.isMoneyOnly
-                           ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                           : metric.isTimeMoney
-                             ? {
-                               money: metric.money,
-                               hours: metric.hours,
-                               prevMoney: metric.prevMoney,
-                               prevHours: metric.prevHours,
-                               isTimeMoney: metric.isTimeMoney,
-                               showDial: metric.showDial,
-                               dialTarget: metric.dialTarget,
-                             }
-                             : { count: metric.count, prevCount: metric.prevCount })}
-                         isDarkMode={isDarkMode}
-                         animationDelay={index * 0.1}
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 16ab372e3db325533c4117ed693ce591c487c848..6c0b334edcfcda1e17155c421c85926e8a2e6b17 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2945,89 +2949,74 @@ const conversionRate = enquiriesMonthToDate
-                   key={metric.title}
-                   title={metric.title}
-                   {...(metric.isMoneyOnly
-                     ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                     : metric.isTimeMoney
-                     ? {
-                         money: metric.money,
-                         hours: metric.hours,
-                         prevMoney: metric.prevMoney,
-                         prevHours: metric.prevHours,
-                         isTimeMoney: metric.isTimeMoney,
-                         showDial: metric.showDial,
-                         dialTarget: metric.dialTarget,
-                       }
-                     : { count: metric.count, prevCount: metric.prevCount })}
-                   isDarkMode={isDarkMode}
-                   animationDelay={index * 0.1}
-                 />
-                 );
-               })}
- 
-           </div>
-         </CollapsibleSection>
-         {/* Conversion Metrics Section */}
-         <CollapsibleSection title="Conversion Metrics" metrics={enquiryMetrics.map(m => ({ title: m.title }))}>
--              <div
--              style={{
--                  display: 'grid',
--                gridTemplateColumns: 'repeat(3, 1fr)',
--                  gap: '16px',
--                  width: '100%'
--                }}
--              >
-+              <div className={metricsGridThree}>
-                 {enquiryMetrics.slice(0, 3).map((metric, index) => (
-                   <MetricCard
-                     key={metric.title}
-                     title={metric.title}
-                     {...(metric.isMoneyOnly
-                       ? { money: metric.money, prevMoney: metric.prevMoney, isMoneyOnly: metric.isMoneyOnly }
-                       : metric.isTimeMoney
-                         ? {
-                           money: metric.money,
-                           hours: metric.hours,
-                           prevMoney: metric.prevMoney,
-                           prevHours: metric.prevHours,
-                           isTimeMoney: metric.isTimeMoney,
-                         }
-                         : { count: metric.count, prevCount: metric.prevCount })}
-                     isDarkMode={isDarkMode}
-                     animationDelay={index * 0.1}
-                   />
-                 ))}
-               </div>
- 
- 
--              <div
--                style={{
--                  display: 'grid',
--                  gridTemplateColumns: 'repeat(2, 1fr)',
--                  gap: '16px',
--                  width: '100%',
--                  marginTop: '16px'
--                }}
--              >
-+              <div className={metricsGridTwo}>
-               {/* Matters Opened metric without dial (basic count) */}
-               <MetricCard
-                 key={enquiryMetrics[3].title}
-                 title={enquiryMetrics[3].title}
-                 {...(enquiryMetrics[3].isMoneyOnly
-                   ? { money: enquiryMetrics[3].money, prevMoney: enquiryMetrics[3].prevMoney, isMoneyOnly: enquiryMetrics[3].isMoneyOnly }
-                   : enquiryMetrics[3].isTimeMoney
-                   ? {
-                       money: enquiryMetrics[3].money,
-                       hours: enquiryMetrics[3].hours,
-                       prevMoney: enquiryMetrics[3].prevMoney,
-                       prevHours: enquiryMetrics[3].prevHours,
-                       isTimeMoney: enquiryMetrics[3].isTimeMoney,
-                     }
-                   : { count: enquiryMetrics[3].count, prevCount: enquiryMetrics[3].prevCount })}
-                 isDarkMode={isDarkMode}
-                 animationDelay={0}
-                 // No dial props passed so this card just shows the count
-               />
- 
-               {/* Conversion Rate metric */}
-               <MetricCard
-                 key="Conversion Rate"
-                 title="Conversion Rate"
-                 {...{
+ export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
+     label: action.label,
+     status: 'pending',
+-    icon: action.icon
++    icon: action.icon,
++    group: action.group
+ }));
