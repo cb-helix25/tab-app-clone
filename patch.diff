@@ -1,204 +1,835 @@
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index b7b5b957260c3d2f36289714c8b4ba59774318a2..78ddd3562b5864f9ed811bcdf2b62b85a7fb51ac 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -14,154 +14,165 @@ let asanaSecret = '';
- let asanaRefreshToken = '';
- let opponentId = '';
- let solicitorId = '';
- let clioContactIds: string[] = [];
- let clioCompanyId: string | null = null;
- let clientIdCallback: ((id: string | null) => void) | null = null;
- let matterId: string | null = null;
- let matterIdCallback: ((id: string | null) => void) | null = null;
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -571,50 +571,51 @@ Disbursement | Amount | VAT chargeable
+         return content;
+     };
+     
+     // Function to render content with highlighted template variables
+     // Helper function to measure text width
+     const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'Raleway, sans-serif'): number => {
+         const canvas = document.createElement('canvas');
+         const context = canvas.getContext('2d');
+         if (context) {
+             context.font = `${fontSize}px ${fontFamily}`;
+             return context.measureText(text).width;
+         }
+         return text.length * 8; // Fallback
+     };
  
- export function registerClientIdCallback(cb: ((id: string | null) => void) | null) {
-     clientIdCallback = cb;
- }
+     const renderTemplateContentWithHighlights = (content: string) => {
+         if (!content) return 'No content to preview...';
+         
+         // Find all template variables in the content
+         const templateVariableRegex = /\{\{([^}]+)\}\}/g;
+         const parts = [];
+         let lastIndex = 0;
+         let match: RegExpExecArray | null;
+         let globalTableState = false; // Track table state across segments
+         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
++        let persistentIndent = false; // Maintain section indentation across segments
+         
+         const consumedPlaceholders = new Set<string>();
+         while ((match = templateVariableRegex.exec(content)) !== null) {
+             // Add editable text before the variable
+             if (match.index > lastIndex) {
+                 const segmentStart = lastIndex;
+                 const segmentEnd = match.index;
+                 const textSegment = content.substring(segmentStart, segmentEnd);
+                 
+                 const formatTextSegment = (text: string, segmentIndex: number, isTableContext: boolean = false): { nodes: React.ReactNode[]; isTable: boolean; tableRows?: JSX.Element[] } => {
+                     const lines = text.split('\n');
  
- export function registerMatterIdCallback(cb: ((id: string | null) => void) | null) {
-     matterIdCallback = cb;
- }
+                     // Check if this text contains table-like content (Action points section)
+                     const hasTableContent = lines.some(line =>
+                         line.includes('Action required by you | Additional information') ||
+                         (line.includes('☐') && line.includes('|'))
+                     );
  
- export interface ProcessingResult {
-     message: string;
-     url?: string;
- }
+                     // Continue table mode from previous segments or start new table
+                     const shouldProcessAsTable = hasTableContent || isTableContext;
  
- export interface ProcessingAction {
-     label: string;
-     icon?: string;
-+    group?: string;
-     run: (
-         formData: Record<string, any>,
-         userInitials: string,
-         userData?: any[] | null
-     ) => Promise<string | ProcessingResult>;
- }
+                     if (shouldProcessAsTable) {
+                         // Handle table formatting for Action points section
+                         const tableElements: JSX.Element[] = [];
+                         let tableRows: JSX.Element[] = [];
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -799,216 +800,214 @@ Disbursement | Amount | VAT chargeable
+                                     tableRows = [];
+                                 }
+                                 
+                                 // Skip lines that should not be processed as regular text when in table mode
+                                 if (isInTable && (line.trim() === '' || 
+                                                 line.includes('{{describe_') ||
+                                                 line.includes('Action required by you') ||
+                                                 line.trim() === 'Additional information')) {
+                                     // Skip empty lines, template variables, and table headers that are part of table processing
+                                     return;
+                                 }
+                                 
+                                 // Regular text formatting
+                                 const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
+                                 const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+                                 const bulletPointMatch = line.match(/^—(.+)$/);
  
- export const processingActions: ProcessingAction[] = [
-     {
-         label: 'Retrieve ActiveCampaign Token',
-+        group: 'active',
-         icon: activeIcon,
-         run: async () => {
-             const res = await fetch('/api/keys/ac-automations-apitoken');
-             if (!res.ok) throw new Error('Failed to fetch secret');
-             const data = await res.json();
-             acToken = data.value;
-             return 'Token retrieved';
-         }
-     },
-     {
-         label: 'Refresh ActiveCampaign Token',
-+        group: 'active',
-         icon: activeIcon,
-         run: async () => {
-             const resp = await fetch('/api/refresh/activecampaign', { method: 'POST' });
-             if (!resp.ok) throw new Error('ActiveCampaign token refresh failed');
-             return 'Token refreshed';
-         }
-     },
-     {
-         label: 'Retrieve Clio Client ID',
-+        group: 'clio',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientid`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
-             const data = await res.json();
-             clioClientId = data.value;
-             return 'Client ID retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Clio Client Secret',
-+        group: 'clio',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-clientsecret`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
-             const data = await res.json();
-             clioClientSecret = data.value;
-             return 'Client Secret retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Clio Refresh Token',
-+        group: 'clio',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const res = await fetch(`/api/keys/${initials.toLowerCase()}-clio-v1-refreshtoken`);
-             if (!res.ok) throw new Error('Failed to fetch secret');
-             const data = await res.json();
-             clioRefreshToken = data.value;
-             return 'Refresh Token retrieved';
-         }
-     },
-     {
-         label: 'Refresh Clio Access Token',
-+        group: 'clio',
-         icon: clioIcon,
-         run: async (_form, initials) => {
-             const resp = await fetch(`/api/refresh/clio/${initials.toLowerCase()}`, {
-                 method: 'POST'
-             });
-             if (!resp.ok) throw new Error('Clio token refresh failed');
-             return 'Access token refreshed';
-         }
-     },
-     {
-         label: 'Retrieve Asana Client ID',
-+        group: 'asana',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const id = userData?.[0]?.ASANAClientID || userData?.[0]?.ASANAClient_ID;
-             if (!id) throw new Error('Asana Client ID missing');
-             asanaClientId = id;
-             return 'Client ID retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Asana Secret',
-+        group: 'asana',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const secret = userData?.[0]?.ASANASecret || userData?.[0]?.ASANA_Secret;
-             if (!secret) throw new Error('Asana Secret missing');
-             asanaSecret = secret;
-             return 'Secret retrieved';
-         }
-     },
-     {
-         label: 'Retrieve Asana Refresh Token',
-+        group: 'asana',
-         icon: asanaIcon,
-         run: async (_form, _i, userData) => {
-             const token = userData?.[0]?.ASANARefreshToken || userData?.[0]?.ASANARefresh_Token;
-             if (!token) throw new Error('Asana Refresh Token missing');
-             asanaRefreshToken = token;
-             return 'Refresh Token retrieved';
-         }
-     },
-     {
-         label: 'Refresh Asana Access Token',
-+        group: 'asana',
-         icon: asanaIcon,
-         run: async () => {
-             const resp = await fetch('/api/refresh/asana', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ clientId: asanaClientId, clientSecret: asanaSecret, refreshToken: asanaRefreshToken })
-             });
-             if (!resp.ok) throw new Error('Asana token refresh failed');
-             return 'Access token refreshed';
-         }
-     },
-     {
-         label: 'Opponent Details Updated',
-         icon: clioIcon,
-         run: async (formData, userInitials) => {
-             const payload = {
-                 opponent: formData.opponent_details?.opponent || null,
-                 solicitor: formData.opponent_details?.solicitor || null,
-                 createdBy: userInitials
-             };
+                                 if (numberedHeadingMatch) {
+                                     const number = numberedHeadingMatch[1];
+                                     const headingText = numberedHeadingMatch[2];
+                                     tableElements.push(
+                                         <span
+                                             key={lineKey}
+                                             style={{
+                                                 display: 'block',
+-                                                marginLeft: '16px',
+-                                                textIndent: '-16px',
+-                                                paddingLeft: '16px',
+-                                                lineHeight: '1.5',
+-                                                fontWeight: 'bold'
++                                            marginLeft: '16px',
++                                            textIndent: '-16px',
++                                            lineHeight: '1.5',
++                                            fontWeight: 'bold'
+                                             }}
+                                         >
+                                             <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
+                                             <span>{headingText}</span>
+                                             {index < lines.length - 1 ? '\n' : ''}
+                                         </span>
+                                     );
+                                 } else if (standaloneHeadingMatch) {
+                                     tableElements.push(
+                                         <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
+                                             {line}
+                                             {index < lines.length - 1 ? '\n' : ''}
+                                         </span>
+                                     );
+                                 } else if (bulletPointMatch) {
+                                     const bulletContent = bulletPointMatch[1];
+                                     const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                                     
+                                     tableElements.push(
+                                         <span key={lineKey} style={{ 
+                                             display: 'block', 
+                                             marginLeft: '16px',
+                                             textIndent: '-16px',
+-                                            paddingLeft: '16px',
+                                             lineHeight: '1.5'
+                                         }}>
+                                             <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                             <span style={{ display: 'inline' }}>
+                                                 {sectionRefMatch ? (
+                                                     <>
+                                                         <span>{sectionRefMatch[1]}</span>
+                                                         <span style={{ 
+                                                             color: '#6c757d', 
+                                                             fontSize: '13px', 
+                                                             fontStyle: 'italic',
+                                                             opacity: 0.8 
+                                                         }}>
+                                                             {sectionRefMatch[2]}
+                                                         </span>
+                                                         <span>{sectionRefMatch[3]}</span>
+                                                     </>
+                                                 ) : (
+                                                     <span>{bulletContent}</span>
+                                                 )}
+                                             </span>
+                                             {index < lines.length - 1 ? '\n' : ''}
+                                         </span>
+                                     );
+                                 } else if (line.trim() !== '') {
+                                     tableElements.push(
+                                         <span key={lineKey}>
+                                             {line}
+                                             {index < lines.length - 1 ? '\n' : ''}
+                                         </span>
+                                     );
+                                 } else {
+                                     tableElements.push(<br key={lineKey} />);
+                                 }
+                             }
+                         });
+                         
+                         // Don't create table elements in individual segments
+                         // Just return the raw content and let the calling code handle table creation
+                         if (tableRows.length > 0) {
+                             // Return any text collected before the table header
+                             // alongside the gathered table rows
+                             return { nodes: tableElements, isTable: true, tableRows: tableRows };
+                         } else {
+                             return { nodes: tableElements, isTable: isInTable || tableStarted, tableRows: tableRows };
+                         }
+                     }
  
-             const resp = await fetch('/api/opponents', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(payload)
-diff --git a/src/tabs/instructions/MatterOpening/processingActions.ts b/src/tabs/instructions/MatterOpening/processingActions.ts
-index b7b5b957260c3d2f36289714c8b4ba59774318a2..78ddd3562b5864f9ed811bcdf2b62b85a7fb51ac 100644
---- a/src/tabs/instructions/MatterOpening/processingActions.ts
-+++ b/src/tabs/instructions/MatterOpening/processingActions.ts
-@@ -271,27 +282,28 @@ export const processingActions: ProcessingAction[] = [
-     },
-     { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-     { label: 'Databases Updated', run: async () => 'Done' }
- ];
+                     // Regular text formatting (non-table content)
+-                    let previousWasNumberedHeading = false;
++                    let inSection = persistentIndent;
+                     const formattedLines = lines.map((line, index) => {
+                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
+                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
+                         const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
+                         const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+                         // Check if line starts with — (bullet point)
+                         const bulletPointMatch = line.match(/^—(.+)$/);
+                         const lineKey = `${segmentStart}-line-${index}`;
+                         
+                         if (numberedHeadingMatch) {
+                             const number = numberedHeadingMatch[1];
+                             const headingText = numberedHeadingMatch[2];
+-                            previousWasNumberedHeading = true;
++                            inSection = true;
++                            persistentIndent = true;
+                             return (
+                                 <span
+                                     key={lineKey}
+                                     style={{
+                                         display: 'block',
+                                         marginLeft: '16px',
+                                         textIndent: '-16px',
+-                                        paddingLeft: '16px',
+                                         lineHeight: '1.5',
+                                         fontWeight: 'bold'
+                                     }}
+                                 >
+                                     <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
+                                     <span>{headingText}</span>
+                                     {index < lines.length - 1 ? '\n' : ''}
+                                 </span>
+                             );
+                         } else if (standaloneHeadingMatch) {
+-                            previousWasNumberedHeading = false;
++                            inSection = true;
++                            persistentIndent = true;
+                             return (
+                                 <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
+                                     {line}
+                                     {index < lines.length - 1 ? '\n' : ''}
+                                 </span>
+                             );
+                         } else if (bulletPointMatch) {
+-                            previousWasNumberedHeading = false;
+                             // Handle bullet points with red bullets and styled section references
+                             const bulletContent = bulletPointMatch[1];
+                             // Check for section references like "(see section 4.1 below)"
+                             const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+                             
+                             return (
+                                 <span key={lineKey} style={{ 
+                                     display: 'block', 
+                                     marginLeft: '16px',
+                                     textIndent: '-16px',
+-                                    paddingLeft: '16px',
+                                     lineHeight: '1.5'
+                                 }}>
+                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
+                                     <span style={{ display: 'inline' }}>
+                                         {sectionRefMatch ? (
+                                             <>
+                                                 <span>{sectionRefMatch[1]}</span>
+                                                 <span style={{ 
+                                                     color: '#6c757d', 
+                                                     fontSize: '13px', 
+                                                     fontStyle: 'italic',
+                                                     opacity: 0.8 
+                                                 }}>
+                                                     {sectionRefMatch[2]}
+                                                 </span>
+                                                 <span>{sectionRefMatch[3]}</span>
+                                             </>
+                                         ) : (
+                                             <span>{bulletContent}</span>
+                                         )}
+                                     </span>
+                                     {index < lines.length - 1 ? '\n' : ''}
+                                 </span>
+                             );
+                         }
+-                        const style: React.CSSProperties | undefined = previousWasNumberedHeading
++                        const style: React.CSSProperties | undefined = inSection
+                             ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
+                             : undefined;
+-                        previousWasNumberedHeading = false;
++                        // Keep inSection state until a new heading is encountered
+                         return (
+                             <span key={lineKey} style={style}>
+                                 {line}
+                                 {index < lines.length - 1 ? '\n' : ''}
+                             </span>
+                         );
+                     });
++                    persistentIndent = inSection;
+                     return { nodes: formattedLines, isTable: false };
+                 };
+                 
+                 const { nodes, isTable, tableRows: segmentTableRows } = formatTextSegment(textSegment, parts.length, globalTableState);
+                 
+                 // Update global table state and collect table rows
+                 if (isTable && !globalTableState) {
+                     // Starting a new table
+                     globalTableState = true;
+                     globalTableRows = [];
+                 } 
+                 
+                 if (isTable && segmentTableRows && segmentTableRows.length > 0) {
+                     // Add rows from this segment to global collection
+                     globalTableRows.push(...segmentTableRows);
+                 } else if (globalTableState && !isTable) {
+                     // Table ended in this segment, create the complete table
+                     if (globalTableRows.length > 0) {
+                         parts.push(
+                             <div key={`complete-table-${parts.length}`} style={{ 
+                                 display: 'block',
+                                 marginTop: '16px',
+                                 marginBottom: '16px',
+                                 width: '100%'
+                             }}>
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -1917,181 +1916,184 @@ Disbursement | Amount | VAT chargeable
+                                             borderRadius: 0,
+                                             transition: 'all 0.2s ease'
+                                         }}
+                                         onMouseOver={(e) => {
+                                             e.currentTarget.style.backgroundColor = '#e9ecef';
+                                             e.currentTarget.style.borderColor = '#adb5bd';
+                                         }}
+                                         onMouseOut={(e) => {
+                                             e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                             e.currentTarget.style.borderColor = '#dee2e6';
+                                         }}
+                                     >
+                                         Change
+                                     </button>
+                                 </div>
+                             </>
+                         )}
+                     </div>
+                 );
+             } else {
+                 const fieldValue = templateFields[variableName];
+                 
+                 // Detect if this template variable is part of a bullet point
+                 const beforeMatch = content.substring(0, match.index);
+                 const afterMatch = content.substring(match.index + match[0].length);
+-                const isInBullet = beforeMatch.includes('—') && 
++                const isInBullet = beforeMatch.includes('—') &&
+                                  !beforeMatch.split('—').pop()!.includes('\n');
++                const isLineStart = match.index === 0 || content[match.index - 1] === '\n';
+             
+             if (fieldValue && fieldValue.trim()) {
+                 // Variable has a value - show as inline editable text
+                 if (isInBullet) {
+                     // Special handling for filled placeholders within bullets - render with bullet alignment
+                     parts.push(
+                         <div
+                             key={match.index}
+                             style={{
+                                 display: 'block',
+                                 marginLeft: '16px',
+                                 textIndent: '-16px',
+-                                paddingLeft: '16px',
+                                 lineHeight: '1.5'
+                             }}
+                         >
+                             <span
+                                 contentEditable
+                                 suppressContentEditableWarning={true}
+                                 onClick={(e) => handleFieldClick(variableName, e)}
+                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                                 onMouseLeave={handleFieldHoverLeave}
+                                 style={{
+                                     backgroundColor: '#e8f5e8',
+                                     color: '#20b26c',
+                                     padding: '2px 4px',
+                                     fontWeight: 500,
+                                     outline: 'none',
+                                     fontFamily: 'Raleway, sans-serif',
+                                     fontSize: '14px',
+                                     display: 'inline',
+                                     cursor: 'text',
+                                     transition: 'all 0.2s ease',
+                                     wordBreak: 'break-word',
+                                     whiteSpace: 'pre-wrap',
+                                     boxSizing: 'border-box',
+                                     marginTop: '-1px',
+                                     marginBottom: '-1px',
+                                     borderLeft: '1px solid #20b26c',
+                                     borderRight: '1px solid #20b26c',
+                                     position: 'relative',
+                                     boxDecorationBreak: 'slice',
+                                     WebkitBoxDecorationBreak: 'slice',
+                                     marginLeft: '16px' // Align with bullet content
+                                 }}
+                                 className="placeholder-segment"
+                                 onFocus={(e) => {
+                                     e.target.style.backgroundColor = '#d4edda';
+                                 }}
+                                 onBlur={(e) => {
+                                     const newValue = e.target.textContent || '';
+                                     setTemplateFields(prev => ({
+                                         ...prev,
+                                         [variableName]: newValue
+                                     }));
+                                     e.target.style.backgroundColor = '#e8f5e8';
+                                 }}
+                             >
+                                 {fieldValue}
+                             </span>
+                         </div>
+                     );
+                 } else {
+-                    parts.push(
++                    const placeholderNode = (
+                         <span
+                             key={match.index}
+                             contentEditable
+                             suppressContentEditableWarning={true}
+                             onClick={(e) => handleFieldClick(variableName, e)}
+                             onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                             onMouseLeave={handleFieldHoverLeave}
+                             style={{
+                                 backgroundColor: '#e8f5e8',
+                                 color: '#20b26c',
+                                 padding: '2px 4px',
+                                 fontWeight: 500,
+                                 outline: 'none',
+                                 fontFamily: 'Raleway, sans-serif',
+                                 fontSize: '14px',
+                                 display: 'inline',
+                                 cursor: 'text',
+                                 transition: 'all 0.2s ease',
+                                 wordBreak: 'break-word',
+                                 whiteSpace: 'pre-wrap',
+                                 boxSizing: 'border-box',
+                                 // Use negative margins to overlap and create unified shape
+                                 marginTop: '-1px',
+                                 marginBottom: '-1px',
+                                 // Border only on left and right, let top/bottom merge
+                                 borderLeft: '1px solid #20b26c',
+                                 borderRight: '1px solid #20b26c',
+                                 // Add top/bottom borders via pseudo-elements for first/last lines
+                                 position: 'relative',
+                                 // Use slice mode for continuous background
+                                 boxDecorationBreak: 'slice',
+                                 WebkitBoxDecorationBreak: 'slice'
+                             }}
+-                            // Add CSS class for border management
+                             className="placeholder-segment"
+                             onFocus={(e) => {
+                                 e.target.style.backgroundColor = '#d4edda';
+                             }}
+                             onBlur={(e) => {
+                                 const newValue = e.target.textContent || '';
+                                 setTemplateFields(prev => ({
+                                     ...prev,
+                                     [variableName]: newValue
+                                 }));
+                                 e.target.style.backgroundColor = '#e8f5e8';
+                             }}
+                         >
+                             {fieldValue}
+                         </span>
+                     );
++                    if (isLineStart && persistentIndent) {
++                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
++                    } else {
++                        parts.push(placeholderNode);
++                    }
+                 }
+             } else {
+                 // Variable is empty - show as inline input placeholder
+                 const placeholderText = variableName.replace(/_/g, ' ');
+                 
+                 if (isInBullet) {
+                     // Special handling for placeholders within bullets - render with bullet alignment
+                     parts.push(
+                         <div
+                             key={match.index}
+                             style={{
+                                 display: 'block',
+                                 marginLeft: '16px',
+                                 textIndent: '-16px',
+-                                paddingLeft: '16px',
+                                 lineHeight: '1.5'
+                             }}
+                         >
+                             <span
+                                 contentEditable
+                                 suppressContentEditableWarning={true}
+                                 data-placeholder={placeholderText}
+                                 onClick={(e) => handleFieldClick(variableName, e)}
+                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                                 onMouseLeave={handleFieldHoverLeave}
+                                 style={{
+                                     backgroundColor: '#f0f8ff',
+                                     color: '#0078d4',
+                                     padding: '2px 4px',
+                                     fontWeight: 500,
+                                     outline: 'none',
+                                     fontFamily: 'Raleway, sans-serif',
+                                     fontSize: '14px',
+                                     display: 'inline',
+                                     minWidth: '20px',
+                                     cursor: 'text',
+                                     transition: 'all 0.2s ease',
+                                     wordBreak: 'break-word',
+                                     whiteSpace: 'pre-wrap',
+                                     boxSizing: 'border-box',
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -2102,105 +2104,109 @@ Disbursement | Amount | VAT chargeable
+                                     position: 'relative',
+                                     boxDecorationBreak: 'slice',
+                                     WebkitBoxDecorationBreak: 'slice',
+                                     marginLeft: '16px' // Align with bullet content
+                                 }}
+                                 className="placeholder-segment-empty"
+                                 onFocus={(e) => {
+                                     e.target.style.backgroundColor = '#e6f3ff';
+                                     e.target.style.borderStyle = 'solid';
+                                 }}
+                                 onBlur={(e) => {
+                                     const newValue = e.target.textContent || '';
+                                     setTemplateFields(prev => ({
+                                         ...prev,
+                                         [variableName]: newValue
+                                     }));
+                                     e.target.style.backgroundColor = '#f0f8ff';
+                                     e.target.style.borderStyle = 'dashed';
+                                 }}
+                             >
+                                 {placeholderText}
+                             </span>
+                         </div>
+                     );
+                 } else {
+-                    parts.push(
++                    const placeholderNode = (
+                         <span
+                             key={match.index}
+                             contentEditable
+                             suppressContentEditableWarning={true}
+                             data-placeholder={placeholderText}
+                             onClick={(e) => handleFieldClick(variableName, e)}
+                             onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                             onMouseLeave={handleFieldHoverLeave}
+                             style={{
+                                 backgroundColor: '#f0f8ff',
+                                 color: '#0078d4',
+                                 padding: '2px 4px',
+                                 fontWeight: 500,
+                                 outline: 'none',
+                                 fontFamily: 'Raleway, sans-serif',
+                                 fontSize: '14px',
+                                 display: 'inline',
+                                 minWidth: '20px',
+                                 cursor: 'text',
+                                 transition: 'all 0.2s ease',
+                                 wordBreak: 'break-word',
+                                 whiteSpace: 'pre-wrap',
+                                 boxSizing: 'border-box',
+                                 // Use negative margins to overlap and create unified shape
+                                 marginTop: '-1px',
+                                 marginBottom: '-1px',
+                                 // Border only on left and right, let top/bottom merge
+                                 borderLeft: '1px dashed #0078d4',
+                                 borderRight: '1px dashed #0078d4',
+                                 // Add top/bottom borders via pseudo-elements for first/last lines
+                                 position: 'relative',
+                                 // Use slice mode for continuous background
+                                 boxDecorationBreak: 'slice',
+                                 WebkitBoxDecorationBreak: 'slice'
+                             }}
+-                            // Add CSS class for border management
+                             className="placeholder-segment-empty"
+                             onFocus={(e) => {
+                                 e.target.style.backgroundColor = '#e6f3ff';
+                                 e.target.style.borderStyle = 'solid';
+                             }}
+                             onBlur={(e) => {
+                                 const newValue = e.target.textContent || '';
+                                 setTemplateFields(prev => ({
+                                     ...prev,
+                                     [variableName]: newValue
+                                 }));
+                                 e.target.style.backgroundColor = '#f0f8ff';
+                                 e.target.style.borderStyle = 'dashed';
+                             }}
+                         >
+                             {placeholderText}
+                         </span>
+                     );
++                    if (isLineStart && persistentIndent) {
++                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
++                    } else {
++                        parts.push(placeholderNode);
++                    }
+                 }
+             }
+             }
+             
+             lastIndex = match.index + match[0].length;
+         }
+         
+         // Handle any remaining table at the end
+         if (globalTableState && globalTableRows.length > 0) {
+             parts.push(
+                 <div key={`final-table`} style={{ 
+                     display: 'block',
+                     marginTop: '16px',
+                     marginBottom: '16px',
+                     width: '100%'
+                 }}>
+                     <table style={{ 
+                         width: '100%', 
+                         borderCollapse: 'collapse',
+                         border: '1px solid #ccc',
+                         fontSize: '14px'
+                     }}>
+                         <thead>
+                             <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                 <th style={{ 
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index ecb8bf0a4286f15611fd18e13c1c527f3fefaae4..87a2b74db453347c4ac952fd126139f7afa6cf6f 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -2709,121 +2715,200 @@ Disbursement | Amount | VAT chargeable
+             : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
+         
+         processedContent = processedContent.replace(/\{\{costs_section_choice\}\}/g, costsText);
+         
+         // Handle disbursements section choice
+         const disbursementsText = disbursementsChoice === 'table' 
+             ? `Based on the information you have provided, we expect to incur the following disbursements:
  
- export const generateDraftCclAction: ProcessingAction = {
-     label: 'Generate Draft CCL',
-     icon: cclIcon,
-     run: async (formData, _initials) => {
-         const id = matterId || formData.matter_details.matter_ref;
-         const resp = await fetch('/api/ccl', {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ matterId: id, draftJson: formData })
+ Disbursement | Amount | VAT chargeable
+ [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
+ [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
+             : !showEstimateExamples 
+                 ? `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} in total including VAT.`
+                 : `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '[Estimate]'} for the next steps in your matter including ${templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '[Examples]'}.`;
+         
+         processedContent = processedContent.replace(/\{\{disbursements_section_choice\}\}/g, disbursementsText);
+         
+         // Replace placeholders with actual values for final rendering
+         Object.entries(templateFields).forEach(([key, value]) => {
+             if (value) {
+                 const placeholder = `{{${key}}}`;
+                 processedContent = processedContent.replace(new RegExp(placeholder, 'g'), value);
+             }
          });
-         if (!resp.ok) throw new Error('CCL generation failed');
-         const { url } = await resp.json();
-         return { message: 'Draft CCL created', url };
-     }
- };
- // invisible change 2.2
- 
- export const initialSteps: ProcessingStep[] = processingActions.map(action => ({
-     label: action.label,
-     status: 'pending',
--    icon: action.icon
-+    icon: action.icon,
-+    group: action.group
- }));
+         
+-        // Split content into lines and format numbered headings
++        // Split content into lines and format numbered headings and tables
+         const lines = processedContent.split('\n');
+-        const formattedLines = lines.map(line => {
+-            // Check if line starts with number followed by space and text (e.g., "1 Contact details")
+-            // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
++        const elements: React.ReactNode[] = [];
++        let inTable = false;
++        let tableRows: JSX.Element[] = [];
++        let indentSection = false;
++
++        const pushTable = () => {
++            if (tableRows.length > 0) {
++                elements.push(
++                    <div key={`table-${elements.length}`} style={{ display: 'block', marginTop: '16px', marginBottom: '16px', width: '100%' }}>
++                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc', fontSize: '14px' }}>
++                            <thead>
++                                <tr style={{ backgroundColor: '#f8f9fa' }}>
++                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Action required by you</th>
++                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Additional information</th>
++                                </tr>
++                            </thead>
++                            <tbody>{tableRows}</tbody>
++                        </table>
++                    </div>
++                );
++                tableRows = [];
++            }
++        };
++
++        for (let i = 0; i < lines.length; i++) {
++            let line = lines[i];
++
++            if (line.includes('Action required by you | Additional information')) {
++                inTable = true;
++                tableRows = [];
++                continue;
++            }
++
++            if (inTable) {
++                if (line.includes('☐') || line.trim().startsWith('☐')) {
++                    let actionPart = '';
++                    let infoPart = '';
++                    if (line.includes('|')) {
++                        [actionPart, infoPart] = line.split('|').map(part => part.trim());
++                    } else {
++                        actionPart = line.trim();
++                        infoPart = '';
++                    }
++
++                    const isDocumentsRow = actionPart.includes('Provide the following documents');
++                    const additionalItems: string[] = [];
++
++                    if (isDocumentsRow) {
++                        let next = i + 1;
++                        while (next < lines.length) {
++                            const nextLine = lines[next];
++                            if (nextLine.trim() === '') { next++; continue; }
++                            if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
++                                additionalItems.push(nextLine.trim());
++                                lines[next] = '';
++                                next++;
++                                i = next - 1;
++                            } else {
++                                break;
++                            }
++                        }
++                    }
++
++                    tableRows.push(
++                        <tr key={`row-${i}`}>
++                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
++                                <div>{actionPart}</div>
++                                {additionalItems.length > 0 && (
++                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
++                                        {additionalItems.map((item, idx) => (
++                                            <div key={idx} style={{ marginBottom: '4px' }}>{item}</div>
++                                        ))}
++                                    </div>
++                                )}
++                            </td>
++                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>{infoPart}</td>
++                        </tr>
++                    );
++                    continue;
++                } else if (line.trim() === '' || line.includes('{{describe_')) {
++                    continue;
++                } else {
++                    pushTable();
++                    inTable = false;
++                    // fall through to process this line normally
++                }
++            }
++
+             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
+             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+-            // Check if line starts with — (bullet point)
+             const bulletPointMatch = line.match(/^—(.+)$/);
+-            
++
+             if (numberedHeadingMatch) {
+                 const number = numberedHeadingMatch[1];
+                 const headingText = numberedHeadingMatch[2];
+-                return (
++                indentSection = true;
++                elements.push(
+                     <div
+-                        key={line}
++                        key={i}
+                         style={{
+                             display: 'flex',
+                             alignItems: 'flex-start',
+                             marginTop: '16px',
+                             marginBottom: '8px',
+                             marginLeft: '16px',
+                             textIndent: '-16px',
+-                            paddingLeft: '16px',
+-                            fontWeight: 'bold'
++                        fontWeight: 'bold'
+                         }}
+                     >
+                         <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
+                         <span>{headingText}</span>
+                     </div>
+                 );
+             } else if (standaloneHeadingMatch) {
+-                return (
+-                    <div key={line} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
+-                        {line}
+-                    </div>
++                indentSection = true;
++                elements.push(
++                    <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>{line}</div>
+                 );
+             } else if (bulletPointMatch) {
+-                // Handle bullet points with red bullets and styled section references
+                 const bulletContent = bulletPointMatch[1];
+-                // Check for section references like "(see section 4.1 below)"
+                 const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
+-                
+-                return (
+-                    <div key={line} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
++                elements.push(
++                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
+                         <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
+                         <span style={{ flex: 1 }}>
+                             {sectionRefMatch ? (
+                                 <>
+                                     <span>{sectionRefMatch[1]}</span>
+-                                    <span style={{ 
+-                                        color: '#6c757d', 
+-                                        fontSize: '13px', 
+-                                        fontStyle: 'italic',
+-                                        opacity: 0.8 
+-                                    }}>
+-                                        {sectionRefMatch[2]}
+-                                    </span>
++                                    <span style={{ color: '#6c757d', fontSize: '13px', fontStyle: 'italic', opacity: 0.8 }}>{sectionRefMatch[2]}</span>
+                                     <span>{sectionRefMatch[3]}</span>
+                                 </>
+                             ) : (
+                                 <span>{bulletContent}</span>
+                             )}
+                         </span>
+                     </div>
+                 );
++            } else {
++                const style: React.CSSProperties | undefined = indentSection ? { marginLeft: '16px' } : undefined;
++                elements.push(<div key={i} style={style}>{line}</div>);
+             }
+-            return <div key={line}>{line}</div>;
+-        });
+-        
+-        return <div style={{ whiteSpace: 'pre-wrap' }}>{formattedLines}</div>;
++        }
++
++        if (inTable) {
++            pushTable();
++        }
++
++        return <div style={{ whiteSpace: 'pre-wrap' }}>{elements}</div>;
+     };
+     
+     // Navigation functions
+     const goToNextStep = () => {
+         if (currentStep < 3) {
+             setCurrentStep(currentStep + 1);
+         }
+     };
+     
+     const goToPreviousStep = () => {
+         if (currentStep > 1) {
+             setCurrentStep(currentStep - 1);
+         }
+     };
+     
+     const goToStep = (step: number) => {
+         setCurrentStep(step);
+     };
+     
+     // Field styling functions - match DocumentsV2 exactly
+     const answeredFieldStyle = {
+         background: "#3690CE22",
+         color: "#061733",
+         border: "none",
+         borderRadius: 0,

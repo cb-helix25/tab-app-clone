@@ -593,6 +593,7 @@ Disbursement | Amount | VAT chargeable
         let match: RegExpExecArray | null;
         let globalTableState = false; // Track table state across segments
         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
+        let persistentIndent = false; // Maintain section indentation across segments
         
         const consumedPlaceholders = new Set<string>();
         while ((match = templateVariableRegex.exec(content)) !== null) {
@@ -821,11 +822,10 @@ Disbursement | Amount | VAT chargeable
                                             key={lineKey}
                                             style={{
                                                 display: 'block',
-                                                marginLeft: '16px',
-                                                textIndent: '-16px',
-                                                paddingLeft: '16px',
-                                                lineHeight: '1.5',
-                                                fontWeight: 'bold'
+                                            marginLeft: '16px',
+                                            textIndent: '-16px',
+                                            lineHeight: '1.5',
+                                            fontWeight: 'bold'
                                             }}
                                         >
                                             <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
@@ -849,7 +849,6 @@ Disbursement | Amount | VAT chargeable
                                             display: 'block', 
                                             marginLeft: '16px',
                                             textIndent: '-16px',
-                                            paddingLeft: '16px',
                                             lineHeight: '1.5'
                                         }}>
                                             <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
@@ -899,7 +898,7 @@ Disbursement | Amount | VAT chargeable
                     }
 
                     // Regular text formatting (non-table content)
-                    let previousWasNumberedHeading = false;
+                    let inSection = persistentIndent;
                     const formattedLines = lines.map((line, index) => {
                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
@@ -912,7 +911,8 @@ Disbursement | Amount | VAT chargeable
                         if (numberedHeadingMatch) {
                             const number = numberedHeadingMatch[1];
                             const headingText = numberedHeadingMatch[2];
-                            previousWasNumberedHeading = true;
+                            inSection = true;
+                            persistentIndent = true;
                             return (
                                 <span
                                     key={lineKey}
@@ -920,7 +920,6 @@ Disbursement | Amount | VAT chargeable
                                         display: 'block',
                                         marginLeft: '16px',
                                         textIndent: '-16px',
-                                        paddingLeft: '16px',
                                         lineHeight: '1.5',
                                         fontWeight: 'bold'
                                     }}
@@ -931,7 +930,8 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         } else if (standaloneHeadingMatch) {
-                            previousWasNumberedHeading = false;
+                            inSection = true;
+                            persistentIndent = true;
                             return (
                                 <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
                                     {line}
@@ -939,7 +939,6 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         } else if (bulletPointMatch) {
-                            previousWasNumberedHeading = false;
                             // Handle bullet points with red bullets and styled section references
                             const bulletContent = bulletPointMatch[1];
                             // Check for section references like "(see section 4.1 below)"
@@ -950,7 +949,6 @@ Disbursement | Amount | VAT chargeable
                                     display: 'block', 
                                     marginLeft: '16px',
                                     textIndent: '-16px',
-                                    paddingLeft: '16px',
                                     lineHeight: '1.5'
                                 }}>
                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
@@ -976,10 +974,10 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         }
-                        const style: React.CSSProperties | undefined = previousWasNumberedHeading
+                        const style: React.CSSProperties | undefined = inSection
                             ? { display: 'block', marginLeft: '16px', lineHeight: '1.5' }
                             : undefined;
-                        previousWasNumberedHeading = false;
+                        // Keep inSection state until a new heading is encountered
                         return (
                             <span key={lineKey} style={style}>
                                 {line}
@@ -987,6 +985,7 @@ Disbursement | Amount | VAT chargeable
                             </span>
                         );
                     });
+                    persistentIndent = inSection;
                     return { nodes: formattedLines, isTable: false };
                 };
                 
@@ -1939,8 +1938,9 @@ Disbursement | Amount | VAT chargeable
                 // Detect if this template variable is part of a bullet point
                 const beforeMatch = content.substring(0, match.index);
                 const afterMatch = content.substring(match.index + match[0].length);
-                const isInBullet = beforeMatch.includes('—') && 
+                const isInBullet = beforeMatch.includes('—') &&
                                  !beforeMatch.split('—').pop()!.includes('\n');
+                const isLineStart = match.index === 0 || content[match.index - 1] === '\n';
             
             if (fieldValue && fieldValue.trim()) {
                 // Variable has a value - show as inline editable text
@@ -1953,7 +1953,6 @@ Disbursement | Amount | VAT chargeable
                                 display: 'block',
                                 marginLeft: '16px',
                                 textIndent: '-16px',
-                                paddingLeft: '16px',
                                 lineHeight: '1.5'
                             }}
                         >
@@ -2004,7 +2003,7 @@ Disbursement | Amount | VAT chargeable
                         </div>
                     );
                 } else {
-                    parts.push(
+                    const placeholderNode = (
                         <span
                             key={match.index}
                             contentEditable
@@ -2038,7 +2037,6 @@ Disbursement | Amount | VAT chargeable
                                 boxDecorationBreak: 'slice',
                                 WebkitBoxDecorationBreak: 'slice'
                             }}
-                            // Add CSS class for border management
                             className="placeholder-segment"
                             onFocus={(e) => {
                                 e.target.style.backgroundColor = '#d4edda';
@@ -2055,6 +2053,11 @@ Disbursement | Amount | VAT chargeable
                             {fieldValue}
                         </span>
                     );
+                    if (isLineStart && persistentIndent) {
+                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
+                    } else {
+                        parts.push(placeholderNode);
+                    }
                 }
             } else {
                 // Variable is empty - show as inline input placeholder
@@ -2069,7 +2072,6 @@ Disbursement | Amount | VAT chargeable
                                 display: 'block',
                                 marginLeft: '16px',
                                 textIndent: '-16px',
-                                paddingLeft: '16px',
                                 lineHeight: '1.5'
                             }}
                         >
@@ -2124,7 +2126,7 @@ Disbursement | Amount | VAT chargeable
                         </div>
                     );
                 } else {
-                    parts.push(
+                    const placeholderNode = (
                         <span
                             key={match.index}
                             contentEditable
@@ -2160,7 +2162,6 @@ Disbursement | Amount | VAT chargeable
                                 boxDecorationBreak: 'slice',
                                 WebkitBoxDecorationBreak: 'slice'
                             }}
-                            // Add CSS class for border management
                             className="placeholder-segment-empty"
                             onFocus={(e) => {
                                 e.target.style.backgroundColor = '#e6f3ff';
@@ -2179,6 +2180,11 @@ Disbursement | Amount | VAT chargeable
                             {placeholderText}
                         </span>
                     );
+                    if (isLineStart && persistentIndent) {
+                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
+                    } else {
+                        parts.push(placeholderNode);
+                    }
                 }
             }
             }
@@ -2731,22 +2737,107 @@ Disbursement | Amount | VAT chargeable
             }
         });
         
-        // Split content into lines and format numbered headings
+        // Split content into lines and format numbered headings and tables
         const lines = processedContent.split('\n');
-        const formattedLines = lines.map(line => {
-            // Check if line starts with number followed by space and text (e.g., "1 Contact details")
-            // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
+        const elements: React.ReactNode[] = [];
+        let inTable = false;
+        let tableRows: JSX.Element[] = [];
+        let indentSection = false;
+
+        const pushTable = () => {
+            if (tableRows.length > 0) {
+                elements.push(
+                    <div key={`table-${elements.length}`} style={{ display: 'block', marginTop: '16px', marginBottom: '16px', width: '100%' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc', fontSize: '14px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Action required by you</th>
+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Additional information</th>
+                                </tr>
+                            </thead>
+                            <tbody>{tableRows}</tbody>
+                        </table>
+                    </div>
+                );
+                tableRows = [];
+            }
+        };
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+
+            if (line.includes('Action required by you | Additional information')) {
+                inTable = true;
+                tableRows = [];
+                continue;
+            }
+
+            if (inTable) {
+                if (line.includes('☐') || line.trim().startsWith('☐')) {
+                    let actionPart = '';
+                    let infoPart = '';
+                    if (line.includes('|')) {
+                        [actionPart, infoPart] = line.split('|').map(part => part.trim());
+                    } else {
+                        actionPart = line.trim();
+                        infoPart = '';
+                    }
+
+                    const isDocumentsRow = actionPart.includes('Provide the following documents');
+                    const additionalItems: string[] = [];
+
+                    if (isDocumentsRow) {
+                        let next = i + 1;
+                        while (next < lines.length) {
+                            const nextLine = lines[next];
+                            if (nextLine.trim() === '') { next++; continue; }
+                            if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
+                                additionalItems.push(nextLine.trim());
+                                lines[next] = '';
+                                next++;
+                                i = next - 1;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+
+                    tableRows.push(
+                        <tr key={`row-${i}`}>
+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
+                                <div>{actionPart}</div>
+                                {additionalItems.length > 0 && (
+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                                        {additionalItems.map((item, idx) => (
+                                            <div key={idx} style={{ marginBottom: '4px' }}>{item}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </td>
+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>{infoPart}</td>
+                        </tr>
+                    );
+                    continue;
+                } else if (line.trim() === '' || line.includes('{{describe_')) {
+                    continue;
+                } else {
+                    pushTable();
+                    inTable = false;
+                    // fall through to process this line normally
+                }
+            }
+
             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-            // Check if line starts with — (bullet point)
             const bulletPointMatch = line.match(/^—(.+)$/);
-            
+
             if (numberedHeadingMatch) {
                 const number = numberedHeadingMatch[1];
                 const headingText = numberedHeadingMatch[2];
-                return (
+                indentSection = true;
+                elements.push(
                     <div
-                        key={line}
+                        key={i}
                         style={{
                             display: 'flex',
                             alignItems: 'flex-start',
@@ -2754,8 +2845,7 @@ Disbursement | Amount | VAT chargeable
                             marginBottom: '8px',
                             marginLeft: '16px',
                             textIndent: '-16px',
-                            paddingLeft: '16px',
-                            fontWeight: 'bold'
+                        fontWeight: 'bold'
                         }}
                     >
                         <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
@@ -2763,32 +2853,21 @@ Disbursement | Amount | VAT chargeable
                     </div>
                 );
             } else if (standaloneHeadingMatch) {
-                return (
-                    <div key={line} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
-                        {line}
-                    </div>
+                indentSection = true;
+                elements.push(
+                    <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>{line}</div>
                 );
             } else if (bulletPointMatch) {
-                // Handle bullet points with red bullets and styled section references
                 const bulletContent = bulletPointMatch[1];
-                // Check for section references like "(see section 4.1 below)"
                 const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                
-                return (
-                    <div key={line} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
+                elements.push(
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
                         <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
                         <span style={{ flex: 1 }}>
                             {sectionRefMatch ? (
                                 <>
                                     <span>{sectionRefMatch[1]}</span>
-                                    <span style={{ 
-                                        color: '#6c757d', 
-                                        fontSize: '13px', 
-                                        fontStyle: 'italic',
-                                        opacity: 0.8 
-                                    }}>
-                                        {sectionRefMatch[2]}
-                                    </span>
+                                    <span style={{ color: '#6c757d', fontSize: '13px', fontStyle: 'italic', opacity: 0.8 }}>{sectionRefMatch[2]}</span>
                                     <span>{sectionRefMatch[3]}</span>
                                 </>
                             ) : (
@@ -2797,11 +2876,17 @@ Disbursement | Amount | VAT chargeable
                         </span>
                     </div>
                 );
+            } else {
+                const style: React.CSSProperties | undefined = indentSection ? { marginLeft: '16px' } : undefined;
+                elements.push(<div key={i} style={style}>{line}</div>);
             }
-            return <div key={line}>{line}</div>;
-        });
-        
-        return <div style={{ whiteSpace: 'pre-wrap' }}>{formattedLines}</div>;
+        }
+
+        if (inTable) {
+            pushTable();
+        }
+
+        return <div style={{ whiteSpace: 'pre-wrap' }}>{elements}</div>;
     };
     
     // Navigation functions

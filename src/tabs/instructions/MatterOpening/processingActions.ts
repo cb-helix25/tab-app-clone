@@ -251,6 +251,8 @@ export const processingActions: ProcessingAction[] = [
             return `Clio contacts synced: ${names.join(', ')} (${emptyTotal} empty fields)`;
         }
     },
+    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
+    { label: 'Databases Updated', run: async () => 'Done' },
     {
         label: 'Clio Matter Opened',
         icon: clioIcon,
@@ -268,9 +270,7 @@ export const processingActions: ProcessingAction[] = [
             if (matterId && matterIdCallback) matterIdCallback(matterId);
             return `Matter created with ID ${matterId}`;
         }
-    },
-    { label: 'NetDocument Workspace Triggered', run: async () => 'Done' },
-    { label: 'Databases Updated', run: async () => 'Done' }
+    }
 ];
 
 export const generateDraftCclAction: ProcessingAction = {

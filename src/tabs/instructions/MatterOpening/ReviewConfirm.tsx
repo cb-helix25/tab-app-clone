@@ -4,11 +4,10 @@ import React, { useState, useEffect } from 'react'; // invisible change
 import '../../../app/styles/ReviewConfirm.css';
 import { useCompletion } from './CompletionContext';
 import ProcessingSection, { ProcessingStep, ProcessingStatus } from './ProcessingSection';
-import { processingActions, initialSteps, generateDraftCclAction } from './processingActions';
-import OperationStatusToast from '../../enquiries/pitch-builder/OperationStatusToast';
+import { processingActions, initialSteps, registerMatterIdCallback } from './processingActions';
 import { UserData } from '../../../app/functionality/types';
 import ModernMultiSelect from './ModernMultiSelect';
-import DocumentsV3 from '../DocumentsV3';
+import { getDraftCclPath } from '../../../utils/paths';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
@@ -46,48 +45,23 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
     const { summaryComplete, setSummaryComplete } = useCompletion();
 
     const [processing, setProcessing] = useState(false);
-    const [processingOpen, setProcessingOpen] = useState(false);
     const [steps, setSteps] = useState<ProcessingStep[]>(initialSteps);
     const [logs, setLogs] = useState<string[]>([]);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-    const [cclUrl, setCclUrl] = useState<string>('');
     const [draftChoice, setDraftChoice] = useState<'yes' | 'no' | null>(null);
-    const [generatingCcl, setGeneratingCcl] = useState(false);
+    const [openedMatterId, setOpenedMatterId] = useState<string | null>(null);
 
     const updateStep = (index: number, status: ProcessingStatus, message: string) => {
         setSteps(prev => prev.map((s, i) => (i === index ? { ...s, status, message } : s)));
         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
     };
 
-    const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
-
     useEffect(() => {
-        const run = async () => {
-            if (draftChoice === 'yes' && summaryComplete && !cclUrl && !generatingCcl) {
-                setGeneratingCcl(true);
-                try {
-                    const result = await generateDraftCclAction.run(formData, userInitials, userData);
-                    if (typeof result === 'object' && result.url) {
-                        setCclUrl(result.url);
-                        showToast('Draft CCL generated', 'success');
-                    }
-                } catch (err) {
-                    console.error('Draft CCL generation failed', err);
-                    showToast('Draft CCL generation failed', 'error');
-                } finally {
-                    setGeneratingCcl(false);
-                }
-            }
-        };
-        run();
-    }, [draftChoice, summaryComplete]);
+        registerMatterIdCallback(setOpenedMatterId);
+        return () => registerMatterIdCallback(null);
+    }, []);
 
     const handleSubmit = async () => {
         setProcessing(true);
-        setProcessingOpen(true);
         setLogs([]);
         setSteps(initialSteps);
 
@@ -114,25 +88,30 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
             console.error('❌ Matter submit failed', err);
         } finally {
             setProcessing(false);
-            setProcessingOpen(false);
+        }
+    };
+
+    const handleDraftChoice = (choice: 'yes' | 'no') => {
+        setDraftChoice(choice);
+        if (choice === 'yes' && openedMatterId) {
+            window.location.assign(getDraftCclPath(openedMatterId));
         }
     };
 
     return (
         <div className="next-steps-content">
-            <div className="declaration-section no-border">
-                {summaryComplete ? null : (
+            {!processing && !summaryComplete && (
+                <div className="declaration-section no-border">
                     <div className="review-actions">
                         <button className="cta-declare-btn" disabled={!detailsConfirmed} onClick={handleSubmit}>
                             Open Matter
                         </button>
                     </div>
-                )}
-            </div>
-
-            {(processingOpen || processing || summaryComplete) && (
-                <ProcessingSection open={processingOpen} steps={steps} logs={logs} />
+                </div>
             )}
+
+            <ProcessingSection open={true} steps={steps} logs={logs} />
+
             {summaryComplete && !processing && draftChoice === null && (
                 <div style={{ marginTop: 16 }}>
                     <ModernMultiSelect
@@ -142,25 +121,11 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
                             { key: 'no', text: 'Not now' }
                         ]}
                         selectedValue={draftChoice}
-                        onSelectionChange={(val) => setDraftChoice(val as 'yes' | 'no')}
+                        onSelectionChange={(val) => handleDraftChoice(val as 'yes' | 'no')}
                         variant="binary"
                     />
                 </div>
             )}
-            {draftChoice === 'yes' && (
-                <div style={{ marginTop: 16 }}>
-                    <DocumentsV3
-                        initialTemplate="ccl"
-                        selectedInstructionProp={instructionRef ? ({ InstructionRef: instructionRef } as any) : undefined}
-                    />
-                </div>
-            )}
-            {cclUrl && (
-                <div style={{ marginTop: 8 }}>
-                    <a href={cclUrl} target="_blank" rel="noopener noreferrer">Download Draft CCL</a>
-                </div>
-            )}
-            <OperationStatusToast visible={toast !== null} message={toast?.message || ''} type={toast?.type || 'info'} />
         </div>
     );
 };

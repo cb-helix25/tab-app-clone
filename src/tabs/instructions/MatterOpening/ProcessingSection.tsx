@@ -47,7 +47,7 @@ const OperationRow: React.FC<{ step: ProcessingStep }> = ({ step }) => (
 const ProcessingSection: React.FC<ProcessingSectionProps> = ({ steps, logs, open }) => (
     <div className={`processing-collapsible ${open ? 'open' : ''}`}>
         <div className="processing-section">
-            <h3>Processing</h3>
+            <h3>Processing actions</h3>
             <ul className="processing-steps">
                 {steps.map((s, idx) => (
                     <OperationRow key={idx} step={s} />
