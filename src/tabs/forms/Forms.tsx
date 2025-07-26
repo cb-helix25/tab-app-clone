@@ -278,9 +278,9 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
                     key={link.title}
                     link={link}
                     isFavorite={favorites.some(fav => fav.title === link.title)}
-                    onCopy={copyToClipboard}
+                    onCopy={link.url ? copyToClipboard : undefined}
                     onToggleFavorite={() => toggleFavorite(link)}
-                    onGoTo={() => goToLink(link.url)}
+                    onGoTo={link.url ? () => goToLink(link.url!) : undefined}
                     onSelect={() => setSelectedLink(link)}
                     animationDelay={animationDelay}
                     description={link.description} // Pass description if available
@@ -304,9 +304,9 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
                     key={link.title}
                     link={link}
                     isFavorite={favorites.some(fav => fav.title === link.title)}
-                    onCopy={copyToClipboard}
+                    onCopy={link.url ? copyToClipboard : undefined}
                     onToggleFavorite={() => toggleFavorite(link)}
-                    onGoTo={() => goToLink(link.url)}
+                    onGoTo={link.url ? () => goToLink(link.url!) : undefined}
                     onSelect={() => setSelectedLink(link)}
                     animationDelay={animationDelay}
                     description={link.description} // Pass description if available
@@ -330,9 +330,9 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
                     key={link.title}
                     link={link}
                     isFavorite={favorites.some(fav => fav.title === link.title)}
-                    onCopy={copyToClipboard}
+                    onCopy={link.url ? copyToClipboard : undefined}
                     onToggleFavorite={() => toggleFavorite(link)}
-                    onGoTo={() => goToLink(link.url)}
+                    onGoTo={link.url ? () => goToLink(link.url!) : undefined}
                     onSelect={() => setSelectedLink(link)}
                     animationDelay={animationDelay}
                     description={link.description} // Pass description if available
@@ -356,9 +356,9 @@ const Forms: React.FC<FormsProps> = ({ userData, matters }) => {
                     key={link.title}
                     link={link}
                     isFavorite={favorites.some(fav => fav.title === link.title)}
-                    onCopy={copyToClipboard}
+                    onCopy={link.url ? copyToClipboard : undefined}
                     onToggleFavorite={() => toggleFavorite(link)}
-                    onGoTo={() => goToLink(link.url)}
+                    onGoTo={link.url ? () => goToLink(link.url!) : undefined}
                     onSelect={() => setSelectedLink(link)}
                     animationDelay={animationDelay}
                     description={link.description} // Pass description if available

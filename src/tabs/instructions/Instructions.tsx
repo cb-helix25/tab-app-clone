@@ -1547,6 +1547,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     setShowEIDPage(true);
   };
 
+
   const handleOpenRiskCompliance = (ref: string) => {
     setRiskFilterRef(ref);
     setActivePivot('risk');
@@ -1676,6 +1677,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   };
 
+
   const handleStartNewMatter = () => {
     if (!pendingInstruction) return;
     clearMatterOpeningDraft();
@@ -1759,6 +1761,7 @@ const Instructions: React.FC<InstructionsProps> = ({
       </Stack>
     );
   }
+
 
 
   function handleOpenInstruction(ref: string): void {

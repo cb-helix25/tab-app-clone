@@ -1,5 +1,6 @@
 import { FormItem, SectionName } from '../../app/functionality/types';
 import { financialForms } from './FinancialForms';
+import BundleForm from '../../CustomForms/BundleForm';
 
 // invisible change
 // Forms grouped by section (excluding Favorites which is dynamic)
@@ -60,6 +61,12 @@ export const formSections: { [key in Exclude<SectionName, 'Favorites'>]: FormIte
             url: 'https://www.cognitoforms.com/Helix1/IncomingPost',
             icon: 'Mail',
             embedScript: { key: 'QzaAr_2Q7kesClKq8g229g', formId: '108' },
+        },
+        {
+            title: 'Bundle',
+            url: '',
+            icon: 'Folder',
+            component: BundleForm,
         },
     ],
     Financial: financialForms,

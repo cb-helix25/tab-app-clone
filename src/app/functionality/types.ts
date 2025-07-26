@@ -7,9 +7,11 @@ export interface Tab {
   disabled?: boolean;
 }
 
+import React from 'react';
+
 export interface FormItem {
   title: string;
-  url: string;
+  url?: string;
   icon: string;
   tags?: string[];
   description?: string;
@@ -30,6 +32,7 @@ export interface FormItem {
     placeholder?: string;
     showIf?: { field: string; equals: any };
   }>;
+  component?: React.ComponentType<any>;
 }
 
 // Define the structure for UserData

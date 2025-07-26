@@ -141,6 +141,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
   }, [isCognitoLoaded, link.embedScript]);
 
   const copyToClipboard = useCallback(() => {
+    if (!link.url) return;
     navigator.clipboard
       .writeText(link.url)
       .then(() => {
@@ -252,6 +253,12 @@ const FormDetails: React.FC<FormDetailsProps> = ({
                 matters={matters} // Pass matters down so the form can render a Matter Reference dropdown
               />
             </div>
+          ) : link.component ? (
+            React.createElement(link.component, {
+              users: userData || [],
+              matters,
+              onBack: onClose,
+            })
           ) : (
             <div>
               <Text>No form available for this item.</Text>
@@ -304,18 +311,22 @@ const FormDetails: React.FC<FormDetailsProps> = ({
           </Stack>
           <div className={buttonsContainerStyle(isDarkMode)}>
             <div className={leftButtonsStyle()}>
-              <PrimaryButton
-                text="Copy"
-                onClick={copyToClipboard}
-                styles={sharedPrimaryButtonStyles}
-                ariaLabel="Copy URL to clipboard"
-              />
-              <PrimaryButton
-                text="Go To"
-                onClick={goToLink}
-                styles={sharedPrimaryButtonStyles}
-                ariaLabel="Go to URL"
-              />
+              {link.url && (
+                <>
+                  <PrimaryButton
+                    text="Copy"
+                    onClick={copyToClipboard}
+                    styles={sharedPrimaryButtonStyles}
+                    ariaLabel="Copy URL to clipboard"
+                  />
+                  <PrimaryButton
+                    text="Go To"
+                    onClick={goToLink}
+                    styles={sharedPrimaryButtonStyles}
+                    ariaLabel="Go to URL"
+                  />
+                </>
+              )}
             </div>
             <DefaultButton
               text="Close"

@@ -242,7 +242,7 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
                                     >
                                         <IconButton
                                             iconProps={{ iconName: "Copy" }}
-                                            onClick={() => copyLink(form.url, form.title)}
+                                            onClick={() => form.url && copyLink(form.url, form.title)}
                                             ariaLabel="Copy link"
                                         />
                                         <IconButton

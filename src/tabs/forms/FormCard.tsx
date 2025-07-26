@@ -46,9 +46,9 @@ const iconButtonStyles = (iconColor: string) => ({
 interface FormCardProps {
   link: FormItem;
   isFavorite: boolean;
-  onCopy: (url: string, title: string) => void;
+  onCopy?: (url: string, title: string) => void;
   onToggleFavorite: () => void;
-  onGoTo: () => void;
+  onGoTo?: () => void;
   onSelect: () => void;
   animationDelay?: number;
   description?: string;
@@ -216,7 +216,7 @@ const FormCard: React.FC<FormCardProps> = React.memo(
                 ariaLabel="Copy Link"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
-                  onCopy(link.url, link.title);
+                  onCopy && link.url && onCopy(link.url, link.title);
                 }}
                 styles={iconButtonStyles(colours.cta)}
               />
@@ -252,7 +252,7 @@ const FormCard: React.FC<FormCardProps> = React.memo(
                 ariaLabel="Go To"
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
-                  onGoTo();
+                  onGoTo && onGoTo();
                 }}
                 styles={iconButtonStyles(colours.cta)}
               />

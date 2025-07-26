@@ -18,6 +18,18 @@ import { DEFAULT_CCL_TEMPLATE } from './templates/cclTemplate';
 // Inject styles into document head
 injectPlaceholderStyles();
 
+const INDENT_STYLE: React.CSSProperties = {
+    display: 'block',
+    marginLeft: '16px',
+    textIndent: '-16px',
+    lineHeight: '1.5'
+};
+
+const HEADING_STYLE: React.CSSProperties = {
+    ...INDENT_STYLE,
+    fontWeight: 'bold'
+};
+
 const MESSAGE_TEMPLATES = {
     ccl: DEFAULT_CCL_TEMPLATE,
     custom: ''
@@ -586,42 +598,14 @@ Disbursement | Amount | VAT chargeable
     const renderTemplateContentWithHighlights = (content: string) => {
         if (!content) return 'No content to preview...';
         
-        // Special handling for Action Points table - use more flexible regex patterns
-        const actionPointsStartRegex = /18 Action points/;
-        const actionPointsStartMatch = content.match(actionPointsStartRegex);
+        // Special handling for Action Points table
+        const actionPointsRegex = /(18 Action points[\s\S]*?)(Please contact me if you have any queries)/;
+        const actionPointsMatch = content.match(actionPointsRegex);
         
-        if (actionPointsStartMatch) {
-            const actionPointsStartIndex = actionPointsStartMatch.index!;
-            
-            // Look for the end of the action points section - try multiple possible end markers
-            const possibleEndPatterns = [
-                /Please contact me if you have any queries/,
-                /Yours sincerely/,
-                /Next steps/,
-                /Electronic signatures/,
-                /If you have any questions/,
-                /\n\n(?=\d+(?:\.\d+)*\s+\w+)/, // Next numbered section
-                /\n\n(?=\w+:)/ // Next section starting with word followed by colon
-            ];
-            
-            let actionPointsEndIndex = content.length; // Default to end of content
-            let endMarkerLength = 0;
-            
-            // Find the earliest end marker after the action points start
-            for (const pattern of possibleEndPatterns) {
-                const endMatch = content.substring(actionPointsStartIndex).match(pattern);
-                if (endMatch && endMatch.index !== undefined) {
-                    const absoluteEndIndex = actionPointsStartIndex + endMatch.index;
-                    if (absoluteEndIndex < actionPointsEndIndex) {
-                        actionPointsEndIndex = absoluteEndIndex;
-                        endMarkerLength = endMatch[0].length;
-                    }
-                }
-            }
-            
-            const beforeActionPoints = content.substring(0, actionPointsStartIndex);
-            const actionPointsSection = content.substring(actionPointsStartIndex, actionPointsEndIndex);
-            const afterActionPoints = content.substring(actionPointsEndIndex);
+        if (actionPointsMatch) {
+            const beforeActionPoints = content.substring(0, actionPointsMatch.index!);
+            const actionPointsSection = actionPointsMatch[1];
+            const afterActionPoints = content.substring(actionPointsMatch.index! + actionPointsMatch[0].length - actionPointsMatch[2].length);
             
             // Process the action points section specially
             const processedActionPoints = renderActionPointsTable(actionPointsSection);
@@ -662,13 +646,7 @@ Disbursement | Amount | VAT chargeable
                 const match = line.match(/^(\d+)\s+(.+)$/);
                 if (match) {
                     headerElements.push(
-                        <div key={`header-${i}`} style={{ 
-                            display: 'block', 
-                            marginLeft: '16px', 
-                            textIndent: '-16px', 
-                            lineHeight: '1.5', 
-                            fontWeight: 'bold' 
-                        }}>
+                        <div key={`header-${i}`} style={HEADING_STYLE}>
                             <span style={{ color: '#d65541', marginRight: '8px', fontWeight: 'bold' }}>{match[1]}</span>
                             <span>{match[2]}</span>
                         </div>
@@ -676,7 +654,7 @@ Disbursement | Amount | VAT chargeable
                 }
             } else {
                 headerElements.push(
-                    <div key={`header-${i}`} style={{ marginLeft: '16px', lineHeight: '1.5' }}>
+                    <div key={`header-${i}`} style={INDENT_STYLE}>
                         {line}
                     </div>
                 );
@@ -846,21 +824,34 @@ Disbursement | Amount | VAT chargeable
                 parts.push(processedText);
             }
 
-            const variableName = match[1].trim();
-            const fieldValue = templateFields[variableName];
-            const placeholderText = variableName.replace(/_/g, ' ');
+            const rawName = match[1].trim();
+            const [labelPart, keyPart] = rawName.split('::');
+            const variableKey = keyPart ? keyPart.trim() : rawName;
+            const label = keyPart ? labelPart.trim() : null;
+            const fieldValue = templateFields[variableKey];
+            const placeholderText = variableKey.replace(/_/g, ' ');
 
-            if (fieldValue && fieldValue.trim()) {
+            if (variableKey.startsWith('#if ')) {
+                const condition = variableKey.substring(4);
+                parts.push(
+                    <span key={`if-${condition}-${match.index}`} className="conditional-token">IF {condition}</span>
+                );
+            } else if (variableKey.startsWith('/if')) {
+                parts.push(
+                    <span key={`endif-${match.index}`} className="conditional-token">END IF</span>
+                );
+            } else if (fieldValue && fieldValue.trim()) {
                 // Rendered field with value
                 parts.push(
-                    <span key={`${variableName}-${match.index}`} style={{ 
+                    <span key={`${variableKey}-${match.index}`} style={{
                         display: 'inline',
                         position: 'relative'
                     }}>
+                        {label && <span className="placeholder-label">{label}:</span>}
                         <span
                             contentEditable
                             suppressContentEditableWarning={true}
-                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                            onMouseEnter={(e) => handleFieldHover(variableKey, e)}
                             onMouseLeave={handleFieldHoverLeave}
                             style={{
                                 backgroundColor: '#e8f5e8',
@@ -890,7 +881,7 @@ Disbursement | Amount | VAT chargeable
                                 const newValue = e.target.textContent || '';
                                 setTemplateFields(prev => ({
                                     ...prev,
-                                    [variableName]: newValue
+                                    [variableKey]: newValue
                                 }));
                                 e.target.style.backgroundColor = '#e8f5e8';
                             }}
@@ -899,11 +890,11 @@ Disbursement | Amount | VAT chargeable
                         </span>
                         <Icon
                             iconName="Add"
-                            onClick={(e) => handleFieldClick(variableName, e)}
-                            styles={{ 
-                                root: { 
+                            onClick={(e) => handleFieldClick(variableKey, e)}
+                            styles={{
+                                root: {
                                     display: 'inline',
-                                    marginLeft: 4, 
+                                    marginLeft: 4,
                                     cursor: 'pointer', 
                                     fontSize: 12, 
                                     color: colours.blue,
@@ -916,15 +907,16 @@ Disbursement | Amount | VAT chargeable
             } else {
                 // Empty field placeholder
                 parts.push(
-                    <span key={`${variableName}-${match.index}`} style={{ 
+                    <span key={`${variableKey}-${match.index}`} style={{
                         display: 'inline',
                         position: 'relative'
                     }}>
+                        {label && <span className="placeholder-label">{label}:</span>}
                         <span
                             contentEditable
                             suppressContentEditableWarning={true}
                             data-placeholder={placeholderText}
-                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
+                            onMouseEnter={(e) => handleFieldHover(variableKey, e)}
                             onMouseLeave={handleFieldHoverLeave}
                             style={{
                                 backgroundColor: '#f0f8ff',
@@ -956,7 +948,7 @@ Disbursement | Amount | VAT chargeable
                                 const newValue = e.target.textContent || '';
                                 setTemplateFields(prev => ({
                                     ...prev,
-                                    [variableName]: newValue
+                                    [variableKey]: newValue
                                 }));
                                 e.target.style.backgroundColor = '#f0f8ff';
                                 e.target.style.borderStyle = 'dashed';
@@ -966,7 +958,7 @@ Disbursement | Amount | VAT chargeable
                         </span>
                         <Icon
                             iconName="Add"
-                            onClick={(e) => handleFieldClick(variableName, e)}
+                            onClick={(e) => handleFieldClick(variableKey, e)}
                             styles={{ 
                                 root: { 
                                     display: 'inline',
@@ -1231,13 +1223,7 @@ Disbursement | Amount | VAT chargeable
                                     tableElements.push(
                                         <span
                                             key={lineKey}
-                                            style={{
-                                                display: 'block',
-                                            marginLeft: '16px',
-                                            textIndent: '-16px',
-                                            lineHeight: '1.5',
-                                            fontWeight: 'bold'
-                                            }}
+                                            style={HEADING_STYLE}
                                         >
                                             <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
                                             <span>{headingText}</span>
@@ -1246,7 +1232,7 @@ Disbursement | Amount | VAT chargeable
                                     );
                                 } else if (standaloneHeadingMatch) {
                                     tableElements.push(
-                                        <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
+                                        <span key={lineKey} style={HEADING_STYLE}>
                                             {line}
                                             {index < lines.length - 1 ? '\n' : ''}
                                         </span>
@@ -1254,14 +1240,9 @@ Disbursement | Amount | VAT chargeable
                                 } else if (bulletPointMatch) {
                                     const bulletContent = bulletPointMatch[1];
                                     const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-                                    
+
                                     tableElements.push(
-                                        <span key={lineKey} style={{ 
-                                            display: 'block', 
-                                            marginLeft: '16px',
-                                            textIndent: '-16px',
-                                            lineHeight: '1.5'
-                                        }}>
+                                        <span key={lineKey} style={INDENT_STYLE}>
                                             <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
                                             <span style={{ display: 'inline' }}>
                                                 {sectionRefMatch ? (
@@ -1327,13 +1308,7 @@ Disbursement | Amount | VAT chargeable
                             return (
                                 <span
                                     key={lineKey}
-                                    style={{
-                                        display: 'block',
-                                        marginLeft: '16px',
-                                        textIndent: '-16px',
-                                        lineHeight: '1.5',
-                                        fontWeight: 'bold'
-                                    }}
+                                    style={HEADING_STYLE}
                                 >
                                     <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
                                     <span>{headingText}</span>
@@ -1344,7 +1319,7 @@ Disbursement | Amount | VAT chargeable
                             inSection = true;
                             persistentIndent = true;
                             return (
-                                <span key={lineKey} style={{ fontWeight: 'bold', display: 'block' }}>
+                                <span key={lineKey} style={HEADING_STYLE}>
                                     {line}
                                     {index < lines.length - 1 ? '\n' : ''}
                                 </span>
@@ -1356,12 +1331,7 @@ Disbursement | Amount | VAT chargeable
                             const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
                             
                             return (
-                                <span key={lineKey} style={{ 
-                                    display: 'block', 
-                                    marginLeft: '16px',
-                                    textIndent: '-16px',
-                                    lineHeight: '1.5'
-                                }}>
+                                <span key={lineKey} style={INDENT_STYLE}>
                                     <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold' }}>•</span>
                                     <span style={{ display: 'inline' }}>
                                         {sectionRefMatch ? (
@@ -1521,7 +1491,9 @@ Disbursement | Amount | VAT chargeable
             }
             
             // Add the interactive inline editor for placeholders
-            const variableName = match[1].trim();
+            const rawBlockName = match[1].trim();
+            const [blockLabelPart, blockKeyPart] = rawBlockName.split('::');
+            const variableName = blockKeyPart ? blockKeyPart.trim() : rawBlockName;
 
             if (consumedPlaceholders.has(variableName)) {
                 lastIndex = match.index + match[0].length;

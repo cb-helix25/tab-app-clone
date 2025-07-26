@@ -25,6 +25,22 @@ export const placeholderStyles = `
 .placeholder-segment-empty:last-of-type {
     border-bottom: 1px dashed #0078d4 !important;
 }
+
+.placeholder-label {
+    margin-right: 4px;
+    font-style: italic;
+    color: #555;
+}
+
+.conditional-token {
+    background-color: #fff5f5;
+    border: 1px dashed #d65541;
+    color: #d65541;
+    padding: 2px 4px;
+    font-size: 12px;
+    margin: 0 2px;
+    display: inline-block;
+}
 </style>
 `;
 
