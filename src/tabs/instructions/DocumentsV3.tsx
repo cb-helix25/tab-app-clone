@@ -74,6 +74,13 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
             setDocumentContent(MESSAGE_TEMPLATES[initialTemplate]);
         }
     }, [initialTemplate]);
+
+    // Update document when template definition changes during dev hot reload
+    useEffect(() => {
+        if (selectedTemplate === 'ccl') {
+            setDocumentContent(DEFAULT_CCL_TEMPLATE);
+        }
+    }, [DEFAULT_CCL_TEMPLATE]);
     const [templateFields, setTemplateFields] = useState<Record<string, string>>({
         insert_clients_name: '',
         insert_heading_eg_matter_description: '',
@@ -996,7 +1003,11 @@ Disbursement | Amount | VAT chargeable
         let match: RegExpExecArray | null;
         let globalTableState = false; // Track table state across segments
         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
-        let persistentIndent = false; // Maintain section indentation across segments
+        // Indentation was previously persisted across segments to align
+        // placeholders after numbered headings. This resulted in paragraphs
+        // remaining indented even when they should start flush with the left
+        // margin. The editor now behaves more like a Word document so
+        // indentation is handled on a per-line basis.
         
         const consumedPlaceholders = new Set<string>();
         while ((match = templateVariableRegex.exec(content)) !== null) {
@@ -1290,7 +1301,7 @@ Disbursement | Amount | VAT chargeable
                     }
 
                     // Regular text formatting (non-table content)
-                    let inSection = persistentIndent;
+                    let inSection = false;
                     const formattedLines = lines.map((line, index) => {
                         // Check if line starts with number followed by space and text (e.g., "1 Contact details")
                         // OR if it's a standalone heading like "Next steps" or "Electronic signatures"
@@ -1303,8 +1314,7 @@ Disbursement | Amount | VAT chargeable
                         if (numberedHeadingMatch) {
                             const number = numberedHeadingMatch[1];
                             const headingText = numberedHeadingMatch[2];
-                            inSection = true;
-                            persistentIndent = true;
+                            inSection = false;
                             return (
                                 <span
                                     key={lineKey}
@@ -1316,8 +1326,7 @@ Disbursement | Amount | VAT chargeable
                                 </span>
                             );
                         } else if (standaloneHeadingMatch) {
-                            inSection = true;
-                            persistentIndent = true;
+                            inSection = false;
                             return (
                                 <span key={lineKey} style={HEADING_STYLE}>
                                     {line}
@@ -1373,7 +1382,6 @@ Disbursement | Amount | VAT chargeable
                             </span>
                         );
                     });
-                    persistentIndent = inSection;
                     return { nodes: formattedLines, isTable: false };
                 };
                 
@@ -2456,11 +2464,7 @@ Disbursement | Amount | VAT chargeable
                             />
                         </span>
                     );
-                    if (isLineStart && persistentIndent) {
-                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-                    } else {
-                        parts.push(placeholderNode);
-                    }
+                    parts.push(placeholderNode);
                 }
             } else {
                 // Variable is empty - show as inline input placeholder
@@ -2596,11 +2600,7 @@ Disbursement | Amount | VAT chargeable
                             />
                         </span>
                     );
-                    if (isLineStart && persistentIndent) {
-                        parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-                    } else {
-                        parts.push(placeholderNode);
-                    }
+                    parts.push(placeholderNode);
                 }
             }
             }
@@ -3158,7 +3158,8 @@ Disbursement | Amount | VAT chargeable
         const elements: React.ReactNode[] = [];
         let inTable = false;
         let tableRows: JSX.Element[] = [];
-        let indentSection = false;
+        // Word-style formatting does not maintain indentation after headings
+        // so indentation is applied only where explicitly needed.
 
         const pushTable = () => {
             if (tableRows.length > 0) {
@@ -3250,7 +3251,6 @@ Disbursement | Amount | VAT chargeable
             if (numberedHeadingMatch) {
                 const number = numberedHeadingMatch[1];
                 const headingText = numberedHeadingMatch[2];
-                indentSection = true;
                 elements.push(
                     <div
                         key={i}
@@ -3269,7 +3269,6 @@ Disbursement | Amount | VAT chargeable
                     </div>
                 );
             } else if (standaloneHeadingMatch) {
-                indentSection = true;
                 elements.push(
                     <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>{line}</div>
                 );
@@ -3293,8 +3292,7 @@ Disbursement | Amount | VAT chargeable
                     </div>
                 );
             } else {
-                const style: React.CSSProperties | undefined = indentSection ? { marginLeft: '16px' } : undefined;
-                elements.push(<div key={i} style={style}>{line}</div>);
+                elements.push(<div key={i}>{line}</div>);
             }
         }
 

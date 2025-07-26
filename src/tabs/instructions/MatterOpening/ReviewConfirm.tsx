@@ -7,7 +7,6 @@ import ProcessingSection, { ProcessingStep, ProcessingStatus } from './Processin
 import { processingActions, initialSteps, registerMatterIdCallback } from './processingActions';
 import { UserData } from '../../../app/functionality/types';
 import ModernMultiSelect from './ModernMultiSelect';
-import { getDraftCclPath } from '../../../utils/paths';
 
 interface ReviewConfirmProps {
     detailsConfirmed: boolean;
@@ -95,12 +94,8 @@ const ReviewConfirm: React.FC<ReviewConfirmProps> = ({ detailsConfirmed, formDat
 
     const handleDraftChoice = (choice: 'yes' | 'no') => {
         setDraftChoice(choice);
-        if (choice === 'yes' && openedMatterId) {
-            if (onDraftCclNow) {
-                onDraftCclNow(openedMatterId);
-            } else {
-                window.location.assign(getDraftCclPath(openedMatterId));
-            }
+        if (choice === 'yes' && openedMatterId && onDraftCclNow) {
+            onDraftCclNow(openedMatterId);
         }
     };
 

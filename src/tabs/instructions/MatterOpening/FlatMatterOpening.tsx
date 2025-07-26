@@ -34,7 +34,6 @@ import { processingActions, initialSteps, registerClientIdCallback, registerMatt
 import idVerifications from '../../../localData/localIdVerifications.json';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
 import { clearMatterOpeningDraft, completeMatterOpening } from '../../../app/functionality/matterOpeningUtils';
-import { getDraftCclPath } from '../../../utils/paths';
 
 // Local implementation of useDraftedState for draft persistence
 function useDraftedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -1019,12 +1018,8 @@ const handleClearAll = () => {
 
     const handleDraftChoice = (choice: 'yes' | 'no') => {
         setDraftChoice(choice);
-        if (choice === 'yes' && openedMatterId) {
-            if (onDraftCclNow) {
-                onDraftCclNow(openedMatterId);
-            } else {
-                window.location.assign(getDraftCclPath(openedMatterId));
-            }
+        if (choice === 'yes' && openedMatterId && onDraftCclNow) {
+            onDraftCclNow(openedMatterId);
         }
     };
 

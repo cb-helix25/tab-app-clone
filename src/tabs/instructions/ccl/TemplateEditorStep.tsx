@@ -1,5 +1,5 @@
-import React from 'react';
-import { Stack } from '@fluentui/react';
+import React, { useRef } from 'react';
+import { Stack, IconButton } from '@fluentui/react';
 
 interface Step2Props {
     currentStep: number;
@@ -29,6 +29,13 @@ const Step2: React.FC<Step2Props> = (props) => {
         canProceedToStep3,
         goToNextStep
     } = props;
+
+    const editorRef = useRef<HTMLDivElement>(null);
+
+    const applyFormat = (command: string) => {
+        document.execCommand(command, false, undefined);
+        editorRef.current?.focus();
+    };
 
     if (currentStep !== 2) return null;
 
@@ -119,16 +126,34 @@ const Step2: React.FC<Step2Props> = (props) => {
                                 <div style={{
                                     border: '1px solid #e1e5e9',
                                     borderRadius: '4px',
-                                    padding: '16px',
-                                    minHeight: '300px',
-                                    fontFamily: 'Raleway, sans-serif',
-                                    fontSize: '14px',
-                                    lineHeight: '1.3',
-                                    whiteSpace: 'pre-wrap',
-                                    backgroundColor: '#fff',
-                                    cursor: 'text'
+                                    backgroundColor: '#fff'
                                 }}>
-                                    {renderEditableTemplateContent(documentContent)}
+                                    <div style={{
+                                        borderBottom: '1px solid #e1e5e9',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        gap: '4px'
+                                    }}>
+                                        <IconButton iconProps={{ iconName: 'Bold' }} title="Bold" onClick={() => applyFormat('bold')} />
+                                        <IconButton iconProps={{ iconName: 'Italic' }} title="Italic" onClick={() => applyFormat('italic')} />
+                                        <IconButton iconProps={{ iconName: 'Underline' }} title="Underline" onClick={() => applyFormat('underline')} />
+                                        <IconButton iconProps={{ iconName: 'BulletedList' }} title="Bullet List" onClick={() => applyFormat('insertUnorderedList')} />
+                                        <IconButton iconProps={{ iconName: 'NumberedList' }} title="Numbered List" onClick={() => applyFormat('insertOrderedList')} />
+                                    </div>
+                                    <div
+                                        ref={editorRef}
+                                        style={{
+                                            padding: '16px',
+                                            minHeight: '300px',
+                                            fontFamily: 'Raleway, sans-serif',
+                                            fontSize: '14px',
+                                            lineHeight: '1.3',
+                                            whiteSpace: 'pre-wrap',
+                                            cursor: 'text'
+                                        }}
+                                    >
+                                        {renderEditableTemplateContent(documentContent)}
+                                    </div>
                                 </div>
                             )}
                         </div>
