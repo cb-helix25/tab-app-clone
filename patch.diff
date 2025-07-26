@@ -1,405 +1,306 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 199ceddc77a989ed1cf8001fc4ac26985211cad0..9e89583018a4ab8436bc65959e58e16559341e8c 100644
+index 9e89583018a4ab8436bc65959e58e16559341e8c..e28a70ee88e7c056c0a44a0007399c14049fd76f 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1935,278 +1935,304 @@ Disbursement | Amount | VAT chargeable
-                                         Change
-                                     </button>
-                                 </div>
-                             </>
-                         )}
-                     </div>
-                 );
-             } else {
-                 const fieldValue = templateFields[variableName];
-                 
-                 // Detect if this template variable is part of a bullet point
-                 const beforeMatch = content.substring(0, match.index);
-                 const afterMatch = content.substring(match.index + match[0].length);
-                 const isInBullet = beforeMatch.includes('—') &&
-                                  !beforeMatch.split('—').pop()!.includes('\n');
-                 const isLineStart = match.index === 0 || content[match.index - 1] === '\n';
-             
-             if (fieldValue && fieldValue.trim()) {
-                 // Variable has a value - show as inline editable text
-                 if (isInBullet) {
-                     // Special handling for filled placeholders within bullets - render with bullet alignment
-                     parts.push(
-                         <div
-                             key={match.index}
-                             style={{
--                                display: 'block',
-+                                display: 'flex',
-+                                alignItems: 'center',
-                                 marginLeft: '16px',
-                                 textIndent: '-16px',
-                                 lineHeight: '1.5'
-                             }}
-                         >
-                             <span
-                                 contentEditable
-                                 suppressContentEditableWarning={true}
--                                onClick={(e) => handleFieldClick(variableName, e)}
-                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                                 onMouseLeave={handleFieldHoverLeave}
-                                 style={{
-                                     backgroundColor: '#e8f5e8',
-                                     color: '#20b26c',
-                                     padding: '2px 4px',
-                                     fontWeight: 500,
-                                     outline: 'none',
-                                     fontFamily: 'Raleway, sans-serif',
-                                     fontSize: '14px',
-                                     display: 'inline',
-                                     cursor: 'text',
-                                     transition: 'all 0.2s ease',
-                                     wordBreak: 'break-word',
-                                     whiteSpace: 'pre-wrap',
-                                     boxSizing: 'border-box',
-                                     marginTop: '-1px',
-                                     marginBottom: '-1px',
-                                     borderLeft: '1px solid #20b26c',
-                                     borderRight: '1px solid #20b26c',
-                                     position: 'relative',
-                                     boxDecorationBreak: 'slice',
-                                     WebkitBoxDecorationBreak: 'slice',
-                                     marginLeft: '16px' // Align with bullet content
-                                 }}
-                                 className="placeholder-segment"
-                                 onFocus={(e) => {
-                                     e.target.style.backgroundColor = '#d4edda';
-                                 }}
-                                 onBlur={(e) => {
-                                     const newValue = e.target.textContent || '';
+@@ -2691,69 +2691,300 @@ Disbursement | Amount | VAT chargeable
+                             )}
+                             
+                             <TextField
+                                 label={formatFieldLabel(field)}
+                                 value={fieldValue}
+                                 onChange={(_, newValue) => {
                                      setTemplateFields(prev => ({
                                          ...prev,
-                                         [variableName]: newValue
+                                         [field]: newValue || ''
                                      }));
-                                     e.target.style.backgroundColor = '#e8f5e8';
                                  }}
-                             >
-                                 {fieldValue}
-                             </span>
-+                            <Icon
-+                                iconName="Add"
-+                                onClick={(e) => handleFieldClick(variableName, e)}
-+                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-+                            />
+                                 multiline={field.length > 30}
+                                 placeholder={`Enter ${formatFieldLabel(field).toLowerCase()}...`}
+                                 styles={{ 
+                                     root: { marginTop: context ? 8 : 0 }
+                                 }}
+                             />
                          </div>
                      );
-                 } else {
-                     const placeholderNode = (
-                         <span
-                             key={match.index}
--                            contentEditable
--                            suppressContentEditableWarning={true}
--                            onClick={(e) => handleFieldClick(variableName, e)}
--                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
--                            onMouseLeave={handleFieldHoverLeave}
--                            style={{
--                                backgroundColor: '#e8f5e8',
--                                color: '#20b26c',
--                                padding: '2px 4px',
--                                fontWeight: 500,
--                                outline: 'none',
--                                fontFamily: 'Raleway, sans-serif',
--                                fontSize: '14px',
--                                display: 'inline',
--                                cursor: 'text',
--                                transition: 'all 0.2s ease',
--                                wordBreak: 'break-word',
--                                whiteSpace: 'pre-wrap',
--                                boxSizing: 'border-box',
--                                // Use negative margins to overlap and create unified shape
--                                marginTop: '-1px',
--                                marginBottom: '-1px',
--                                // Border only on left and right, let top/bottom merge
--                                borderLeft: '1px solid #20b26c',
--                                borderRight: '1px solid #20b26c',
--                                // Add top/bottom borders via pseudo-elements for first/last lines
--                                position: 'relative',
--                                // Use slice mode for continuous background
--                                boxDecorationBreak: 'slice',
--                                WebkitBoxDecorationBreak: 'slice'
--                            }}
--                            className="placeholder-segment"
--                            onFocus={(e) => {
--                                e.target.style.backgroundColor = '#d4edda';
--                            }}
--                            onBlur={(e) => {
--                                const newValue = e.target.textContent || '';
--                                setTemplateFields(prev => ({
--                                    ...prev,
--                                    [variableName]: newValue
--                                }));
--                                e.target.style.backgroundColor = '#e8f5e8';
--                            }}
-+                            style={{ display: 'inline-flex', alignItems: 'center' }}
-                         >
--                            {fieldValue}
-+                            <span
-+                                contentEditable
-+                                suppressContentEditableWarning={true}
-+                                onMouseEnter={(e) => handleFieldHover(variableName, e)}
-+                                onMouseLeave={handleFieldHoverLeave}
-+                                style={{
-+                                    backgroundColor: '#e8f5e8',
-+                                    color: '#20b26c',
-+                                    padding: '2px 4px',
-+                                    fontWeight: 500,
-+                                    outline: 'none',
-+                                    fontFamily: 'Raleway, sans-serif',
-+                                    fontSize: '14px',
-+                                    display: 'inline',
-+                                    cursor: 'text',
-+                                    transition: 'all 0.2s ease',
-+                                    wordBreak: 'break-word',
-+                                    whiteSpace: 'pre-wrap',
-+                                    boxSizing: 'border-box',
-+                                    // Use negative margins to overlap and create unified shape
-+                                    marginTop: '-1px',
-+                                    marginBottom: '-1px',
-+                                    // Border only on left and right, let top/bottom merge
-+                                    borderLeft: '1px solid #20b26c',
-+                                    borderRight: '1px solid #20b26c',
-+                                    // Add top/bottom borders via pseudo-elements for first/last lines
-+                                    position: 'relative',
-+                                    // Use slice mode for continuous background
-+                                    boxDecorationBreak: 'slice',
-+                                    WebkitBoxDecorationBreak: 'slice'
-+                                }}
-+                                className="placeholder-segment"
-+                                onFocus={(e) => {
-+                                    e.target.style.backgroundColor = '#d4edda';
-+                                }}
-+                                onBlur={(e) => {
-+                                    const newValue = e.target.textContent || '';
-+                                    setTemplateFields(prev => ({
-+                                        ...prev,
-+                                        [variableName]: newValue
-+                                    }));
-+                                    e.target.style.backgroundColor = '#e8f5e8';
-+                                }}
-+                            >
-+                                {fieldValue}
-+                            </span>
-+                            <Icon
-+                                iconName="Add"
-+                                onClick={(e) => handleFieldClick(variableName, e)}
-+                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-+                            />
-                         </span>
-                     );
-                     if (isLineStart && persistentIndent) {
-                         parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-                     } else {
-                         parts.push(placeholderNode);
-                     }
-                 }
-             } else {
-                 // Variable is empty - show as inline input placeholder
-                 const placeholderText = variableName.replace(/_/g, ' ');
-                 
-                 if (isInBullet) {
-                     // Special handling for placeholders within bullets - render with bullet alignment
-                     parts.push(
-                         <div
-                             key={match.index}
-                             style={{
--                                display: 'block',
-+                                display: 'flex',
-+                                alignItems: 'center',
-                                 marginLeft: '16px',
-                                 textIndent: '-16px',
-                                 lineHeight: '1.5'
-                             }}
-                         >
-                             <span
-                                 contentEditable
-                                 suppressContentEditableWarning={true}
-                                 data-placeholder={placeholderText}
--                                onClick={(e) => handleFieldClick(variableName, e)}
-                                 onMouseEnter={(e) => handleFieldHover(variableName, e)}
-                                 onMouseLeave={handleFieldHoverLeave}
-                                 style={{
-                                     backgroundColor: '#f0f8ff',
-                                     color: '#0078d4',
-                                     padding: '2px 4px',
-                                     fontWeight: 500,
-                                     outline: 'none',
-                                     fontFamily: 'Raleway, sans-serif',
-                                     fontSize: '14px',
-                                     display: 'inline',
-                                     minWidth: '20px',
-                                     cursor: 'text',
-                                     transition: 'all 0.2s ease',
-                                     wordBreak: 'break-word',
-                                     whiteSpace: 'pre-wrap',
-                                     boxSizing: 'border-box',
-                                     marginTop: '-1px',
-                                     marginBottom: '-1px',
-                                     borderLeft: '1px dashed #0078d4',
-                                     borderRight: '1px dashed #0078d4',
-                                     position: 'relative',
-                                     boxDecorationBreak: 'slice',
-                                     WebkitBoxDecorationBreak: 'slice',
-                                     marginLeft: '16px' // Align with bullet content
-                                 }}
-                                 className="placeholder-segment-empty"
-                                 onFocus={(e) => {
-                                     e.target.style.backgroundColor = '#e6f3ff';
-                                     e.target.style.borderStyle = 'solid';
-                                 }}
-                                 onBlur={(e) => {
-                                     const newValue = e.target.textContent || '';
-                                     setTemplateFields(prev => ({
-                                         ...prev,
-                                         [variableName]: newValue
-                                     }));
-                                     e.target.style.backgroundColor = '#f0f8ff';
-                                     e.target.style.borderStyle = 'dashed';
-                                 }}
-                             >
-                                 {placeholderText}
-                             </span>
-+                            <Icon
-+                                iconName="Add"
-+                                onClick={(e) => handleFieldClick(variableName, e)}
-+                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-+                            />
-                         </div>
-                     );
-                 } else {
-                     const placeholderNode = (
-                         <span
-                             key={match.index}
--                            contentEditable
--                            suppressContentEditableWarning={true}
--                            data-placeholder={placeholderText}
--                            onClick={(e) => handleFieldClick(variableName, e)}
--                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
--                            onMouseLeave={handleFieldHoverLeave}
--                            style={{
--                                backgroundColor: '#f0f8ff',
--                                color: '#0078d4',
--                                padding: '2px 4px',
--                                fontWeight: 500,
--                                outline: 'none',
--                                fontFamily: 'Raleway, sans-serif',
--                                fontSize: '14px',
--                                display: 'inline',
--                                minWidth: '20px',
--                                cursor: 'text',
--                                transition: 'all 0.2s ease',
--                                wordBreak: 'break-word',
--                                whiteSpace: 'pre-wrap',
--                                boxSizing: 'border-box',
--                                // Use negative margins to overlap and create unified shape
--                                marginTop: '-1px',
--                                marginBottom: '-1px',
--                                // Border only on left and right, let top/bottom merge
--                                borderLeft: '1px dashed #0078d4',
--                                borderRight: '1px dashed #0078d4',
--                                // Add top/bottom borders via pseudo-elements for first/last lines
--                                position: 'relative',
--                                // Use slice mode for continuous background
--                                boxDecorationBreak: 'slice',
--                                WebkitBoxDecorationBreak: 'slice'
--                            }}
--                            className="placeholder-segment-empty"
--                            onFocus={(e) => {
--                                e.target.style.backgroundColor = '#e6f3ff';
--                                e.target.style.borderStyle = 'solid';
--                            }}
--                            onBlur={(e) => {
--                                const newValue = e.target.textContent || '';
--                                setTemplateFields(prev => ({
--                                    ...prev,
--                                    [variableName]: newValue
--                                }));
--                                e.target.style.backgroundColor = '#f0f8ff';
--                                e.target.style.borderStyle = 'dashed';
--                            }}
-+                            style={{ display: 'inline-flex', alignItems: 'center' }}
-                         >
--                            {placeholderText}
-+                            <span
-+                                contentEditable
-+                                suppressContentEditableWarning={true}
-+                                data-placeholder={placeholderText}
-+                                onMouseEnter={(e) => handleFieldHover(variableName, e)}
-+                                onMouseLeave={handleFieldHoverLeave}
-+                                style={{
-+                                    backgroundColor: '#f0f8ff',
-+                                    color: '#0078d4',
-+                                    padding: '2px 4px',
-+                                    fontWeight: 500,
-+                                    outline: 'none',
-+                                    fontFamily: 'Raleway, sans-serif',
-+                                    fontSize: '14px',
-+                                    display: 'inline',
-+                                    minWidth: '20px',
-+                                    cursor: 'text',
-+                                    transition: 'all 0.2s ease',
-+                                    wordBreak: 'break-word',
-+                                    whiteSpace: 'pre-wrap',
-+                                    boxSizing: 'border-box',
-+                                    // Use negative margins to overlap and create unified shape
-+                                    marginTop: '-1px',
-+                                    marginBottom: '-1px',
-+                                    // Border only on left and right, let top/bottom merge
-+                                    borderLeft: '1px dashed #0078d4',
-+                                    borderRight: '1px dashed #0078d4',
-+                                    // Add top/bottom borders via pseudo-elements for first/last lines
-+                                    position: 'relative',
-+                                    // Use slice mode for continuous background
-+                                    boxDecorationBreak: 'slice',
-+                                    WebkitBoxDecorationBreak: 'slice'
-+                                }}
-+                                className="placeholder-segment-empty"
-+                                onFocus={(e) => {
-+                                    e.target.style.backgroundColor = '#e6f3ff';
-+                                    e.target.style.borderStyle = 'solid';
-+                                }}
-+                                onBlur={(e) => {
-+                                    const newValue = e.target.textContent || '';
-+                                    setTemplateFields(prev => ({
-+                                        ...prev,
-+                                        [variableName]: newValue
-+                                    }));
-+                                    e.target.style.backgroundColor = '#f0f8ff';
-+                                    e.target.style.borderStyle = 'dashed';
-+                                }}
-+                            >
-+                                {placeholderText}
-+                            </span>
-+                            <Icon
-+                                iconName="Add"
-+                                onClick={(e) => handleFieldClick(variableName, e)}
-+                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-+                            />
-                         </span>
-                     );
-                     if (isLineStart && persistentIndent) {
-                         parts.push(<div key={`wrap-${match.index}`} style={{ marginLeft: '16px' }}>{placeholderNode}</div>);
-                     } else {
-                         parts.push(placeholderNode);
-                     }
-                 }
-             }
-             }
-             
-             lastIndex = match.index + match[0].length;
-         }
+                 })}
+             </div>
+         );
+     };
+ 
+     // Function to render template content with editable text and placeholders
++    const renderTemplateContentWithHighlightsV2 = (content: string) => {
++        if (!content) return 'No content to preview...';
++
++        const parseTextWithPlaceholders = (text: string, keyPrefix: string): React.ReactNode[] => {
++            const nodes: React.ReactNode[] = [];
++            const regex = /\{\{([^}]+)\}\}/g;
++            let last = 0;
++            let m: RegExpExecArray | null;
++            while ((m = regex.exec(text)) !== null) {
++                if (m.index > last) {
++                    nodes.push(text.substring(last, m.index));
++                }
++                const variableName = m[1].trim();
++                const value = templateFields[variableName];
++                const baseStyle: React.CSSProperties = {
++                    padding: '2px 4px',
++                    fontWeight: 500,
++                    fontFamily: 'Raleway, sans-serif',
++                    fontSize: '14px',
++                    display: 'inline',
++                    cursor: 'text',
++                    whiteSpace: 'pre-wrap'
++                };
++                if (value) {
++                    nodes.push(
++                        <span
++                            key={`${keyPrefix}-${m.index}`}
++                            contentEditable
++                            suppressContentEditableWarning={true}
++                            style={{
++                                ...baseStyle,
++                                backgroundColor: '#e8f5e8',
++                                color: '#20b26c',
++                                borderLeft: '1px solid #20b26c',
++                                borderRight: '1px solid #20b26c'
++                            }}
++                            onBlur={e => {
++                                const newValue = e.currentTarget.textContent || '';
++                                setTemplateFields(prev => ({ ...prev, [variableName]: newValue }));
++                            }}
++                        >
++                            {value}
++                        </span>
++                    );
++                } else {
++                    const placeholderText = variableName.replace(/_/g, ' ');
++                    nodes.push(
++                        <span
++                            key={`${keyPrefix}-${m.index}`}
++                            contentEditable
++                            suppressContentEditableWarning={true}
++                            data-placeholder={placeholderText}
++                            style={{
++                                ...baseStyle,
++                                backgroundColor: '#f0f8ff',
++                                color: '#0078d4',
++                                borderLeft: '1px dashed #0078d4',
++                                borderRight: '1px dashed #0078d4',
++                                minWidth: '20px'
++                            }}
++                            onBlur={e => {
++                                const newValue = e.currentTarget.textContent || '';
++                                setTemplateFields(prev => ({ ...prev, [variableName]: newValue }));
++                            }}
++                        >
++                            {placeholderText}
++                        </span>
++                    );
++                }
++                last = m.index + m[0].length;
++            }
++            if (last < text.length) {
++                nodes.push(text.substring(last));
++            }
++            return nodes;
++        };
++
++        const lines = content.split('\n');
++        const elements: React.ReactNode[] = [];
++        let inTable = false;
++        let tableRows: JSX.Element[] = [];
++
++        const pushTable = () => {
++            if (tableRows.length > 0) {
++                elements.push(
++                    <div key={`table-${elements.length}`} style={{ display: 'block', marginTop: '16px', marginBottom: '16px', width: '100%' }}>
++                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc', fontSize: '14px' }}>
++                            <thead>
++                                <tr style={{ backgroundColor: '#f8f9fa' }}>
++                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Action required by you</th>
++                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Additional information</th>
++                                </tr>
++                            </thead>
++                            <tbody>{tableRows}</tbody>
++                        </table>
++                    </div>
++                );
++                tableRows = [];
++            }
++        };
++
++        for (let i = 0; i < lines.length; i++) {
++            let line = lines[i];
++
++            if (line.includes('Action required by you | Additional information')) {
++                inTable = true;
++                tableRows = [];
++                continue;
++            }
++
++            if (inTable) {
++                if (line.includes('☐') || line.trim().startsWith('☐')) {
++                    let actionPart = '';
++                    let infoPart = '';
++                    if (line.includes('|')) {
++                        [actionPart, infoPart] = line.split('|').map(part => part.trim());
++                    } else {
++                        actionPart = line.trim();
++                        infoPart = '';
++                    }
++
++                    const isDocumentsRow = actionPart.includes('Provide the following documents');
++                    const additionalItems: string[] = [];
++
++                    if (isDocumentsRow) {
++                        let next = i + 1;
++                        while (next < lines.length) {
++                            const nextLine = lines[next];
++                            if (nextLine.trim() === '') { next++; continue; }
++                            if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
++                                additionalItems.push(nextLine.trim());
++                                lines[next] = '';
++                                next++;
++                                i = next - 1;
++                            } else {
++                                break;
++                            }
++                        }
++                    }
++
++                    tableRows.push(
++                        <tr key={`row-${i}`}>
++                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
++                                <div>{parseTextWithPlaceholders(actionPart, `a-${i}`)}</div>
++                                {additionalItems.length > 0 && (
++                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
++                                        {additionalItems.map((item, idx) => (
++                                            <div key={idx} style={{ marginBottom: '4px' }}>
++                                                {parseTextWithPlaceholders(item, `ad-${i}-${idx}`)}
++                                            </div>
++                                        ))}
++                                    </div>
++                                )}
++                            </td>
++                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
++                                {parseTextWithPlaceholders(infoPart, `i-${i}`)}
++                            </td>
++                        </tr>
++                    );
++                    continue;
++                } else if (line.trim() === '' || line.includes('{{describe_')) {
++                    continue;
++                } else {
++                    pushTable();
++                    inTable = false;
++                    // fall through to process this line normally
++                }
++            }
++
++            const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
++            const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
++            const bulletPointMatch = line.match(/^—(.+)$/);
++
++            if (numberedHeadingMatch) {
++                const number = numberedHeadingMatch[1];
++                const headingText = numberedHeadingMatch[2];
++                elements.push(
++                    <div
++                        key={i}
++                        style={{
++                            display: 'flex',
++                            alignItems: 'flex-start',
++                            marginTop: '16px',
++                            marginBottom: '8px',
++                            marginLeft: '16px',
++                            textIndent: '-16px',
++                            fontWeight: 'bold'
++                        }}
++                    >
++                        <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
++                        <span>{parseTextWithPlaceholders(headingText, `h-${i}`).map((n, idx) => <React.Fragment key={idx}>{n}</React.Fragment>)}</span>
++                    </div>
++                );
++            } else if (standaloneHeadingMatch) {
++                elements.push(
++                    <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
++                        {parseTextWithPlaceholders(line, `sh-${i}`)}
++                    </div>
++                );
++            } else if (bulletPointMatch) {
++                const bulletContent = bulletPointMatch[1];
++                const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
++                elements.push(
++                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
++                        <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
++                        <span style={{ flex: 1 }}>
++                            {sectionRefMatch ? (
++                                <>
++                                    {parseTextWithPlaceholders(sectionRefMatch[1], `b1-${i}`)}
++                                    <span style={{ color: '#6c757d', fontSize: '13px', fontStyle: 'italic', opacity: 0.8 }}>
++                                        {sectionRefMatch[2]}
++                                    </span>
++                                    {parseTextWithPlaceholders(sectionRefMatch[3], `b2-${i}`)}
++                                </>
++                            ) : (
++                                parseTextWithPlaceholders(bulletContent, `b-${i}`)
++                            )}
++                        </span>
++                    </div>
++                );
++            } else {
++                elements.push(<div key={i} style={{ marginLeft: '16px' }}>{parseTextWithPlaceholders(line, `p-${i}`)}</div>);
++            }
++        }
++
++        if (inTable) {
++            pushTable();
++        }
++
++        return <div style={{ whiteSpace: 'pre-wrap' }}>{elements}</div>;
++    };
+     const renderEditableTemplateContent = (content: string) => {
+         if (!content) return 'No content to preview...';
          
-         // Handle any remaining table at the end
-         if (globalTableState && globalTableRows.length > 0) {
-             parts.push(
-                 <div key={`final-table`} style={{ 
-                     display: 'block',
-                     marginTop: '16px',
-                     marginBottom: '16px',
-                     width: '100%'
-                 }}>
-                     <table style={{ 
-                         width: '100%', 
+         // Always render in template mode with inline editing
+         return (
+             <div style={{ 
+                 width: '100%', 
+                 height: '100%',
+                 overflow: 'auto',
+                 fontFamily: 'Raleway, sans-serif',
+                 fontSize: '14px',
+                 lineHeight: '1.3',
+                 whiteSpace: 'pre-wrap',
+                 padding: '8px',
+                 minHeight: '100%',
+                 cursor: 'text',
+                 userSelect: 'text'
+             }}>
+-                {renderTemplateContentWithHighlights(documentContent)}
++                {renderTemplateContentWithHighlightsV2(documentContent)}
+             </div>
+         );
+     };
+ 
+     // Function to render template content for read-only preview
+     const renderTemplateContentForPreview = (content: string) => {
+         if (!content) return 'No content to preview...';
+         
+         let processedContent = content;
+         
+         // Handle costs section choice
+         const costsText = costsChoice === 'no_costs' 
+             ? "We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter."
+             : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
+         
+         processedContent = processedContent.replace(/\{\{costs_section_choice\}\}/g, costsText);
+         
+         // Handle disbursements section choice
+         const disbursementsText = disbursementsChoice === 'table' 
+             ? `Based on the information you have provided, we expect to incur the following disbursements:
+ 
+ Disbursement | Amount | VAT chargeable
+ [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
+ [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
+             : !showEstimateExamples 
