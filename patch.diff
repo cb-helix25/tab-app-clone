@@ -1,306 +1,375 @@
 diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 9e89583018a4ab8436bc65959e58e16559341e8c..e28a70ee88e7c056c0a44a0007399c14049fd76f 100644
+index 9e89583018a4ab8436bc65959e58e16559341e8c..2fb19ba90de36a7b8ff26b900d1269d79fc5bcc5 100644
 --- a/src/tabs/instructions/DocumentsV3.tsx
 +++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -2691,69 +2691,300 @@ Disbursement | Amount | VAT chargeable
-                             )}
-                             
-                             <TextField
-                                 label={formatFieldLabel(field)}
-                                 value={fieldValue}
-                                 onChange={(_, newValue) => {
-                                     setTemplateFields(prev => ({
-                                         ...prev,
-                                         [field]: newValue || ''
-                                     }));
-                                 }}
-                                 multiline={field.length > 30}
-                                 placeholder={`Enter ${formatFieldLabel(field).toLowerCase()}...`}
-                                 styles={{ 
-                                     root: { marginTop: context ? 8 : 0 }
-                                 }}
-                             />
-                         </div>
-                     );
-                 })}
-             </div>
-         );
+@@ -561,50 +561,203 @@ Disbursement | Amount | VAT chargeable
+         
+         // Replace other template fields
+         Object.keys(templateFields).forEach(key => {
+             const value = templateFields[key];
+             if (value && value.trim()) {
+                 const placeholder = `{{${key}}}`;
+                 content = content.replace(new RegExp(placeholder, 'g'), value);
+             }
+         });
+         
+         return content;
+     };
+     
+     // Function to render content with highlighted template variables
+     // Helper function to measure text width
+     const measureTextWidth = (text: string, fontSize: number = 14, fontFamily: string = 'Raleway, sans-serif'): number => {
+         const canvas = document.createElement('canvas');
+         const context = canvas.getContext('2d');
+         if (context) {
+             context.font = `${fontSize}px ${fontFamily}`;
+             return context.measureText(text).width;
+         }
+         return text.length * 8; // Fallback
      };
  
-     // Function to render template content with editable text and placeholders
-+    const renderTemplateContentWithHighlightsV2 = (content: string) => {
-+        if (!content) return 'No content to preview...';
++    // Helper to render placeholders within table cells
++    const renderTextWithPlaceholders = (raw: string, consumed: Set<string>): React.ReactNode[] => {
++        const nodes: React.ReactNode[] = [];
++        const regex = /\{\{([^}]+)\}\}/g;
++        let last = 0;
++        let m: RegExpExecArray | null;
++        while ((m = regex.exec(raw)) !== null) {
++            if (m.index > last) {
++                nodes.push(raw.substring(last, m.index));
++            }
++            const variableName = m[1].trim();
++            consumed.add(variableName);
++            const fieldValue = templateFields[variableName];
++            const placeholderText = variableName.replace(/_/g, ' ');
 +
-+        const parseTextWithPlaceholders = (text: string, keyPrefix: string): React.ReactNode[] => {
-+            const nodes: React.ReactNode[] = [];
-+            const regex = /\{\{([^}]+)\}\}/g;
-+            let last = 0;
-+            let m: RegExpExecArray | null;
-+            while ((m = regex.exec(text)) !== null) {
-+                if (m.index > last) {
-+                    nodes.push(text.substring(last, m.index));
-+                }
-+                const variableName = m[1].trim();
-+                const value = templateFields[variableName];
-+                const baseStyle: React.CSSProperties = {
-+                    padding: '2px 4px',
-+                    fontWeight: 500,
-+                    fontFamily: 'Raleway, sans-serif',
-+                    fontSize: '14px',
-+                    display: 'inline',
-+                    cursor: 'text',
-+                    whiteSpace: 'pre-wrap'
-+                };
-+                if (value) {
-+                    nodes.push(
++            if (fieldValue && fieldValue.trim()) {
++                nodes.push(
++                    <span key={`${variableName}-${m.index}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
 +                        <span
-+                            key={`${keyPrefix}-${m.index}`}
 +                            contentEditable
 +                            suppressContentEditableWarning={true}
++                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
++                            onMouseLeave={handleFieldHoverLeave}
 +                            style={{
-+                                ...baseStyle,
 +                                backgroundColor: '#e8f5e8',
 +                                color: '#20b26c',
++                                padding: '2px 4px',
++                                fontWeight: 500,
++                                outline: 'none',
++                                fontFamily: 'Raleway, sans-serif',
++                                fontSize: '14px',
++                                display: 'inline',
++                                cursor: 'text',
++                                transition: 'all 0.2s ease',
++                                wordBreak: 'break-word',
++                                whiteSpace: 'pre-wrap',
++                                boxSizing: 'border-box',
++                                marginTop: '-1px',
++                                marginBottom: '-1px',
 +                                borderLeft: '1px solid #20b26c',
-+                                borderRight: '1px solid #20b26c'
++                                borderRight: '1px solid #20b26c',
++                                position: 'relative',
++                                boxDecorationBreak: 'slice',
++                                WebkitBoxDecorationBreak: 'slice'
 +                            }}
-+                            onBlur={e => {
-+                                const newValue = e.currentTarget.textContent || '';
-+                                setTemplateFields(prev => ({ ...prev, [variableName]: newValue }));
++                            className="placeholder-segment"
++                            onFocus={(e) => {
++                                e.target.style.backgroundColor = '#d4edda';
++                            }}
++                            onBlur={(e) => {
++                                const newValue = e.target.textContent || '';
++                                setTemplateFields(prev => ({
++                                    ...prev,
++                                    [variableName]: newValue
++                                }));
++                                e.target.style.backgroundColor = '#e8f5e8';
 +                            }}
 +                        >
-+                            {value}
++                            {fieldValue}
 +                        </span>
-+                    );
-+                } else {
-+                    const placeholderText = variableName.replace(/_/g, ' ');
-+                    nodes.push(
++                        <Icon
++                            iconName="Add"
++                            onClick={(e) => handleFieldClick(variableName, e)}
++                            styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
++                        />
++                    </span>
++                );
++            } else {
++                nodes.push(
++                    <span key={`${variableName}-${m.index}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
 +                        <span
-+                            key={`${keyPrefix}-${m.index}`}
 +                            contentEditable
 +                            suppressContentEditableWarning={true}
 +                            data-placeholder={placeholderText}
++                            onMouseEnter={(e) => handleFieldHover(variableName, e)}
++                            onMouseLeave={handleFieldHoverLeave}
 +                            style={{
-+                                ...baseStyle,
 +                                backgroundColor: '#f0f8ff',
 +                                color: '#0078d4',
++                                padding: '2px 4px',
++                                fontWeight: 500,
++                                outline: 'none',
++                                fontFamily: 'Raleway, sans-serif',
++                                fontSize: '14px',
++                                display: 'inline',
++                                minWidth: '20px',
++                                cursor: 'text',
++                                transition: 'all 0.2s ease',
++                                wordBreak: 'break-word',
++                                whiteSpace: 'pre-wrap',
++                                boxSizing: 'border-box',
++                                marginTop: '-1px',
++                                marginBottom: '-1px',
 +                                borderLeft: '1px dashed #0078d4',
 +                                borderRight: '1px dashed #0078d4',
-+                                minWidth: '20px'
++                                position: 'relative',
++                                boxDecorationBreak: 'slice',
++                                WebkitBoxDecorationBreak: 'slice'
 +                            }}
-+                            onBlur={e => {
-+                                const newValue = e.currentTarget.textContent || '';
-+                                setTemplateFields(prev => ({ ...prev, [variableName]: newValue }));
++                            className="placeholder-segment-empty"
++                            onFocus={(e) => {
++                                e.target.style.backgroundColor = '#e6f3ff';
++                                e.target.style.borderStyle = 'solid';
++                            }}
++                            onBlur={(e) => {
++                                const newValue = e.target.textContent || '';
++                                setTemplateFields(prev => ({
++                                    ...prev,
++                                    [variableName]: newValue
++                                }));
++                                e.target.style.backgroundColor = '#f0f8ff';
++                                e.target.style.borderStyle = 'dashed';
 +                            }}
 +                        >
 +                            {placeholderText}
 +                        </span>
-+                    );
-+                }
-+                last = m.index + m[0].length;
-+            }
-+            if (last < text.length) {
-+                nodes.push(text.substring(last));
-+            }
-+            return nodes;
-+        };
-+
-+        const lines = content.split('\n');
-+        const elements: React.ReactNode[] = [];
-+        let inTable = false;
-+        let tableRows: JSX.Element[] = [];
-+
-+        const pushTable = () => {
-+            if (tableRows.length > 0) {
-+                elements.push(
-+                    <div key={`table-${elements.length}`} style={{ display: 'block', marginTop: '16px', marginBottom: '16px', width: '100%' }}>
-+                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ccc', fontSize: '14px' }}>
-+                            <thead>
-+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
-+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Action required by you</th>
-+                                    <th style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '50%' }}>Additional information</th>
-+                                </tr>
-+                            </thead>
-+                            <tbody>{tableRows}</tbody>
-+                        </table>
-+                    </div>
++                        <Icon
++                            iconName="Add"
++                            onClick={(e) => handleFieldClick(variableName, e)}
++                            styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
++                        />
++                    </span>
 +                );
-+                tableRows = [];
 +            }
-+        };
-+
-+        for (let i = 0; i < lines.length; i++) {
-+            let line = lines[i];
-+
-+            if (line.includes('Action required by you | Additional information')) {
-+                inTable = true;
-+                tableRows = [];
-+                continue;
-+            }
-+
-+            if (inTable) {
-+                if (line.includes('☐') || line.trim().startsWith('☐')) {
-+                    let actionPart = '';
-+                    let infoPart = '';
-+                    if (line.includes('|')) {
-+                        [actionPart, infoPart] = line.split('|').map(part => part.trim());
-+                    } else {
-+                        actionPart = line.trim();
-+                        infoPart = '';
-+                    }
-+
-+                    const isDocumentsRow = actionPart.includes('Provide the following documents');
-+                    const additionalItems: string[] = [];
-+
-+                    if (isDocumentsRow) {
-+                        let next = i + 1;
-+                        while (next < lines.length) {
-+                            const nextLine = lines[next];
-+                            if (nextLine.trim() === '') { next++; continue; }
-+                            if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
-+                                additionalItems.push(nextLine.trim());
-+                                lines[next] = '';
-+                                next++;
-+                                i = next - 1;
-+                            } else {
-+                                break;
-+                            }
-+                        }
-+                    }
-+
-+                    tableRows.push(
-+                        <tr key={`row-${i}`}>
-+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
-+                                <div>{parseTextWithPlaceholders(actionPart, `a-${i}`)}</div>
-+                                {additionalItems.length > 0 && (
-+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
-+                                        {additionalItems.map((item, idx) => (
-+                                            <div key={idx} style={{ marginBottom: '4px' }}>
-+                                                {parseTextWithPlaceholders(item, `ad-${i}-${idx}`)}
-+                                            </div>
-+                                        ))}
-+                                    </div>
-+                                )}
-+                            </td>
-+                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
-+                                {parseTextWithPlaceholders(infoPart, `i-${i}`)}
-+                            </td>
-+                        </tr>
-+                    );
-+                    continue;
-+                } else if (line.trim() === '' || line.includes('{{describe_')) {
-+                    continue;
-+                } else {
-+                    pushTable();
-+                    inTable = false;
-+                    // fall through to process this line normally
-+                }
-+            }
-+
-+            const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
-+            const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-+            const bulletPointMatch = line.match(/^—(.+)$/);
-+
-+            if (numberedHeadingMatch) {
-+                const number = numberedHeadingMatch[1];
-+                const headingText = numberedHeadingMatch[2];
-+                elements.push(
-+                    <div
-+                        key={i}
-+                        style={{
-+                            display: 'flex',
-+                            alignItems: 'flex-start',
-+                            marginTop: '16px',
-+                            marginBottom: '8px',
-+                            marginLeft: '16px',
-+                            textIndent: '-16px',
-+                            fontWeight: 'bold'
-+                        }}
-+                    >
-+                        <span style={{ color: colours.cta, marginRight: '8px', fontWeight: 'bold' }}>{number}</span>
-+                        <span>{parseTextWithPlaceholders(headingText, `h-${i}`).map((n, idx) => <React.Fragment key={idx}>{n}</React.Fragment>)}</span>
-+                    </div>
-+                );
-+            } else if (standaloneHeadingMatch) {
-+                elements.push(
-+                    <div key={i} style={{ fontWeight: 'bold', marginTop: '16px', marginBottom: '8px' }}>
-+                        {parseTextWithPlaceholders(line, `sh-${i}`)}
-+                    </div>
-+                );
-+            } else if (bulletPointMatch) {
-+                const bulletContent = bulletPointMatch[1];
-+                const sectionRefMatch = bulletContent.match(/^(.+?)(\(see section [^)]+\))(.*)$/);
-+                elements.push(
-+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '4px', marginLeft: '16px' }}>
-+                        <span style={{ color: '#dc3545', marginRight: '8px', fontWeight: 'bold', flexShrink: 0 }}>•</span>
-+                        <span style={{ flex: 1 }}>
-+                            {sectionRefMatch ? (
-+                                <>
-+                                    {parseTextWithPlaceholders(sectionRefMatch[1], `b1-${i}`)}
-+                                    <span style={{ color: '#6c757d', fontSize: '13px', fontStyle: 'italic', opacity: 0.8 }}>
-+                                        {sectionRefMatch[2]}
-+                                    </span>
-+                                    {parseTextWithPlaceholders(sectionRefMatch[3], `b2-${i}`)}
-+                                </>
-+                            ) : (
-+                                parseTextWithPlaceholders(bulletContent, `b-${i}`)
-+                            )}
-+                        </span>
-+                    </div>
-+                );
-+            } else {
-+                elements.push(<div key={i} style={{ marginLeft: '16px' }}>{parseTextWithPlaceholders(line, `p-${i}`)}</div>);
-+            }
++            last = m.index + m[0].length;
 +        }
-+
-+        if (inTable) {
-+            pushTable();
++        if (last < raw.length) {
++            nodes.push(raw.substring(last));
 +        }
-+
-+        return <div style={{ whiteSpace: 'pre-wrap' }}>{elements}</div>;
++        return nodes;
 +    };
-     const renderEditableTemplateContent = (content: string) => {
++
++    const renderPreviewTextWithPlaceholders = (raw: string): React.ReactNode[] => {
++        const nodes: React.ReactNode[] = [];
++        const regex = /\{\{([^}]+)\}\}/g;
++        let last = 0;
++        let m: RegExpExecArray | null;
++        while ((m = regex.exec(raw)) !== null) {
++            if (m.index > last) {
++                nodes.push(raw.substring(last, m.index));
++            }
++            const variableName = m[1].trim();
++            const fieldValue = templateFields[variableName];
++            const placeholderText = variableName.replace(/_/g, ' ');
++            nodes.push(fieldValue && fieldValue.trim() ? fieldValue : `[${placeholderText}]`);
++            last = m.index + m[0].length;
++        }
++        if (last < raw.length) {
++            nodes.push(raw.substring(last));
++        }
++        return nodes;
++    };
++
+     const renderTemplateContentWithHighlights = (content: string) => {
          if (!content) return 'No content to preview...';
          
-         // Always render in template mode with inline editing
-         return (
-             <div style={{ 
-                 width: '100%', 
-                 height: '100%',
-                 overflow: 'auto',
-                 fontFamily: 'Raleway, sans-serif',
-                 fontSize: '14px',
-                 lineHeight: '1.3',
-                 whiteSpace: 'pre-wrap',
-                 padding: '8px',
-                 minHeight: '100%',
-                 cursor: 'text',
-                 userSelect: 'text'
-             }}>
--                {renderTemplateContentWithHighlights(documentContent)}
-+                {renderTemplateContentWithHighlightsV2(documentContent)}
-             </div>
-         );
-     };
+         // Find all template variables in the content
+         const templateVariableRegex = /\{\{([^}]+)\}\}/g;
+         const parts = [];
+         let lastIndex = 0;
+         let match: RegExpExecArray | null;
+         let globalTableState = false; // Track table state across segments
+         let globalTableRows: JSX.Element[] = []; // Share table rows across segments
+         let persistentIndent = false; // Maintain section indentation across segments
+         
+         const consumedPlaceholders = new Set<string>();
+         while ((match = templateVariableRegex.exec(content)) !== null) {
+             // Add editable text before the variable
+             if (match.index > lastIndex) {
+                 const segmentStart = lastIndex;
+                 const segmentEnd = match.index;
+                 const textSegment = content.substring(segmentStart, segmentEnd);
+                 
+                 const formatTextSegment = (text: string, segmentIndex: number, isTableContext: boolean = false): { nodes: React.ReactNode[]; isTable: boolean; tableRows?: JSX.Element[] } => {
+                     const lines = text.split('\n');
  
-     // Function to render template content for read-only preview
-     const renderTemplateContentForPreview = (content: string) => {
-         if (!content) return 'No content to preview...';
-         
-         let processedContent = content;
-         
-         // Handle costs section choice
-         const costsText = costsChoice === 'no_costs' 
-             ? "We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter."
-             : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
-         
-         processedContent = processedContent.replace(/\{\{costs_section_choice\}\}/g, costsText);
-         
-         // Handle disbursements section choice
-         const disbursementsText = disbursementsChoice === 'table' 
-             ? `Based on the information you have provided, we expect to incur the following disbursements:
+                     // Check if this text contains table-like content (Action points section)
+                     const hasTableContent = lines.some(line =>
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 9e89583018a4ab8436bc65959e58e16559341e8c..2fb19ba90de36a7b8ff26b900d1269d79fc5bcc5 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -676,89 +829,89 @@ Disbursement | Amount | VAT chargeable
  
- Disbursement | Amount | VAT chargeable
- [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
- [Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
-             : !showEstimateExamples 
+                                         if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
+                                             if (additionalContent) additionalContent += '\n\n';
+                                             additionalContent += nextLine;
+ 
+                                             const placeholderMatch = nextLine.match(/\{\{([^}]+)\}\}/);
+                                             if (placeholderMatch) {
+                                                 consumedPlaceholders.add(placeholderMatch[1]);
+                                             }
+ 
+                                             lines[nextIndex] = '';
+                                             nextIndex++;
+                                         } else {
+                                             break;
+                                         }
+                                     }
+                                     
+                                     tableRows.push(
+                                         <tr key={lineKey}>
+                                             <td style={{ 
+                                                 border: '1px solid #ccc',
+                                                 padding: '12px',
+                                                 verticalAlign: 'top',
+                                                 lineHeight: '1.4'
+                                             }}>
+-                                                <div>{actionPart}</div>
++                                                <div>{renderTextWithPlaceholders(actionPart, consumedPlaceholders)}</div>
+                                                 {additionalContent && (
+                                                     <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                                                         {additionalContent.split('\n\n').map((item, idx) => (
+                                                             <div key={idx} style={{ marginBottom: '4px' }}>
+-                                                                {item.trim()}
++                                                                {renderTextWithPlaceholders(item.trim(), consumedPlaceholders)}
+                                                             </div>
+                                                         ))}
+                                                     </div>
+                                                 )}
+                                             </td>
+                                             <td style={{ 
+                                                 border: '1px solid #ccc',
+                                                 padding: '12px',
+                                                 verticalAlign: 'top',
+                                                 lineHeight: '1.4'
+                                             }}>
+-                                                {infoPart}
++                                                {renderTextWithPlaceholders(infoPart, consumedPlaceholders)}
+                                             </td>
+                                         </tr>
+                                     );
+                                 } else {
+                                     tableRows.push(
+                                         <tr key={lineKey}>
+                                             <td style={{ 
+                                                 border: '1px solid #ccc',
+                                                 padding: '12px',
+                                                 verticalAlign: 'top',
+                                                 lineHeight: '1.4'
+                                             }}>
+-                                                {actionPart}
++                                                {renderTextWithPlaceholders(actionPart, consumedPlaceholders)}
+                                             </td>
+                                             <td style={{ 
+                                                 border: '1px solid #ccc',
+                                                 padding: '12px',
+                                                 verticalAlign: 'top',
+                                                 lineHeight: '1.4'
+                                             }}>
+-                                                {infoPart}
++                                                {renderTextWithPlaceholders(infoPart, consumedPlaceholders)}
+                                             </td>
+                                         </tr>
+                                     );
+                                 }
+                             } else {
+                                 // Check if this line indicates the end of the table
+                                 // End table only when we hit a clear end marker
+                                 const shouldEndTable = line.trim() !== '' && 
+                                                      !line.includes('{{describe_') &&
+                                                      !line.includes('Action required by you') &&
+                                                      line.trim() !== 'Additional information' &&
+                                                      (line.includes('Please contact me') || 
+                                                       line.includes('Yours sincerely') ||
+                                                       line.match(/^\d+(?:\.\d+)*\s+/)); // Numbered sections
+                                 
+                                 // End of table or regular line
+                                 if (isInTable && shouldEndTable && tableRows.length > 0) {
+                                     // Add the completed table
+                                     tableElements.push(
+                                         <div key={`table-${index}`} style={{ 
+                                             display: 'block',
+                                             marginTop: '16px',
+                                             marginBottom: '16px',
+                                             width: '100%'
+                                         }}>
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 9e89583018a4ab8436bc65959e58e16559341e8c..2fb19ba90de36a7b8ff26b900d1269d79fc5bcc5 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -2816,60 +2969,60 @@ Disbursement | Amount | VAT chargeable
+                         infoPart = '';
+                     }
+ 
+                     const isDocumentsRow = actionPart.includes('Provide the following documents');
+                     const additionalItems: string[] = [];
+ 
+                     if (isDocumentsRow) {
+                         let next = i + 1;
+                         while (next < lines.length) {
+                             const nextLine = lines[next];
+                             if (nextLine.trim() === '') { next++; continue; }
+                             if (nextLine.includes('{{describe_') && nextLine.includes('document')) {
+                                 additionalItems.push(nextLine.trim());
+                                 lines[next] = '';
+                                 next++;
+                                 i = next - 1;
+                             } else {
+                                 break;
+                             }
+                         }
+                     }
+ 
+                     tableRows.push(
+                         <tr key={`row-${i}`}>
+                             <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>
+-                                <div>{actionPart}</div>
++                                <div>{renderPreviewTextWithPlaceholders(actionPart)}</div>
+                                 {additionalItems.length > 0 && (
+                                     <div style={{ marginTop: '8px', fontSize: '13px', color: '#666' }}>
+                                         {additionalItems.map((item, idx) => (
+-                                            <div key={idx} style={{ marginBottom: '4px' }}>{item}</div>
++                                            <div key={idx} style={{ marginBottom: '4px' }}>{renderPreviewTextWithPlaceholders(item)}</div>
+                                         ))}
+                                     </div>
+                                 )}
+                             </td>
+-                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>{infoPart}</td>
++                            <td style={{ border: '1px solid #ccc', padding: '12px', verticalAlign: 'top', lineHeight: '1.4' }}>{renderPreviewTextWithPlaceholders(infoPart)}</td>
+                         </tr>
+                     );
+                     continue;
+                 } else if (line.trim() === '' || line.includes('{{describe_')) {
+                     continue;
+                 } else {
+                     pushTable();
+                     inTable = false;
+                     // fall through to process this line normally
+                 }
+             }
+ 
+             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
+             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
+             const bulletPointMatch = line.match(/^—(.+)$/);
+ 
+             if (numberedHeadingMatch) {
+                 const number = numberedHeadingMatch[1];
+                 const headingText = numberedHeadingMatch[2];
+                 indentSection = true;
+                 elements.push(
+                     <div
+                         key={i}
+                         style={{
+                             display: 'flex',

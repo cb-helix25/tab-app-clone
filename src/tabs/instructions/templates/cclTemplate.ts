@@ -167,10 +167,10 @@ The action list below explains what you need to do next.
 Action required by you | Additional information
 ☐ Sign and return one copy of the Terms of Business below | If you don't sign but continue to give us instructions you will be deemed to have accepted the terms in this letter and the Terms of Business
 ☐ {{insert_next_step_you_would_like_client_to_take}} | {{state_why_this_step_is_important}}
-☐ Provide a payment on account of costs and disbursements of £{{state_amount}} | If we do not receive a payment on account of costs and disbursements, there may be a delay in starting work on your behalf
+☐ Provide a payment on account of costs and disbursements of £{{state_amount}} | If we do not receive a payment on account of costs and disbursements, {{insert_consequence}}
 ☐ If you would like us to start work during the 14-day cancellation period, sign and return the attached 'Request to start work during the cancellation period' form | This form is attached to this Engagement Letter
-☐ Alternatively, if wish to cancel your contract with us, tell us within 14 days | You can simply inform us of your decision to cancel by letter, telephone or e-mail
-☐ Provide the following documents [and information] to allow me to take the next steps in your matter: | Without these documents there may be a delay in your matter.
+☐ Alternatively, if you wish to cancel your contract with us, tell us within 14 days | You can simply inform us of your decision to cancel by letter, telephone or e-mail
+☐ Provide the following documents (and information) to allow me to take the next steps in your matter: | Without these documents there may be a delay in your matter
 
 {{describe_first_document_or_information_you_need_from_your_client}}
 {{describe_second_document_or_information_you_need_from_your_client}}
