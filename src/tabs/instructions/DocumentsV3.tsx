@@ -202,7 +202,7 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     };
 
     // Preset data for template fields
-    const FIELD_PRESETS = {
+    const FIELD_PRESETS: Record<string, string[]> = {
         insert_clients_name: [
             "Mr. John Smith",
             "Mrs. Sarah Johnson", 
@@ -477,11 +477,14 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
 
     // Preset system functions
     const handleFieldClick = (fieldName: string, event: React.MouseEvent) => {
+        if (!FIELD_PRESETS[fieldName] || FIELD_PRESETS[fieldName].length === 0) {
+            return;
+        }
         const rect = (event.target as HTMLElement).getBoundingClientRect();
         setPresetField(fieldName);
-        setPresetPosition({ 
-            x: rect.left + rect.width / 2, 
-            y: rect.bottom + 8 
+        setPresetPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + 8
         });
         setShowPresets(true);
     };
@@ -606,13 +609,13 @@ Disbursement | Amount | VAT chargeable
         if (!content) return 'No content to preview...';
         
         // Special handling for Action Points table
-        const actionPointsRegex = /(18 Action points[\s\S]*?)(Please contact me if you have any queries)/;
-        const actionPointsMatch = content.match(actionPointsRegex);
-        
-        if (actionPointsMatch) {
-            const beforeActionPoints = content.substring(0, actionPointsMatch.index!);
-            const actionPointsSection = actionPointsMatch[1];
-            const afterActionPoints = content.substring(actionPointsMatch.index! + actionPointsMatch[0].length - actionPointsMatch[2].length);
+        const startIndex = content.indexOf('18 Action points');
+        if (startIndex !== -1) {
+            const beforeActionPoints = content.substring(0, startIndex);
+            const rest = content.substring(startIndex);
+            const closingIndex = rest.indexOf('Please contact me');
+            const actionPointsSection = closingIndex !== -1 ? rest.substring(0, closingIndex) : rest;
+            const afterActionPoints = closingIndex !== -1 ? rest.substring(closingIndex) : '';
             
             // Process the action points section specially
             const processedActionPoints = renderActionPointsTable(actionPointsSection);
@@ -895,20 +898,22 @@ Disbursement | Amount | VAT chargeable
                         >
                             {fieldValue}
                         </span>
-                        <Icon
-                            iconName="Add"
-                            onClick={(e) => handleFieldClick(variableKey, e)}
-                            styles={{
-                                root: {
-                                    display: 'inline',
-                                    marginLeft: 4,
-                                    cursor: 'pointer', 
-                                    fontSize: 12, 
-                                    color: colours.blue,
-                                    verticalAlign: 'baseline'
-                                } 
-                            }}
-                        />
+                        {FIELD_PRESETS[variableKey]?.length > 0 && (
+                            <Icon
+                                iconName="Add"
+                                onClick={(e) => handleFieldClick(variableKey, e)}
+                                styles={{
+                                    root: {
+                                        display: 'inline',
+                                        marginLeft: 4,
+                                        cursor: 'pointer',
+                                        fontSize: 12,
+                                        color: colours.blue,
+                                        verticalAlign: 'baseline'
+                                    }
+                                }}
+                            />
+                        )}
                     </span>
                 );
             } else {
@@ -963,20 +968,22 @@ Disbursement | Amount | VAT chargeable
                         >
                             {placeholderText}
                         </span>
-                        <Icon
-                            iconName="Add"
-                            onClick={(e) => handleFieldClick(variableKey, e)}
-                            styles={{ 
-                                root: { 
-                                    display: 'inline',
-                                    marginLeft: 4, 
-                                    cursor: 'pointer', 
-                                    fontSize: 12, 
-                                    color: colours.blue,
-                                    verticalAlign: 'baseline'
-                                } 
-                            }}
-                        />
+                        {FIELD_PRESETS[variableKey]?.length > 0 && (
+                            <Icon
+                                iconName="Add"
+                                onClick={(e) => handleFieldClick(variableKey, e)}
+                                styles={{
+                                    root: {
+                                        display: 'inline',
+                                        marginLeft: 4,
+                                        cursor: 'pointer',
+                                        fontSize: 12,
+                                        color: colours.blue,
+                                        verticalAlign: 'baseline'
+                                    }
+                                }}
+                            />
+                        )}
                     </span>
                 );
             }
@@ -2398,11 +2405,13 @@ Disbursement | Amount | VAT chargeable
                             >
                                 {fieldValue}
                             </span>
-                            <Icon
-                                iconName="Add"
-                                onClick={(e) => handleFieldClick(variableName, e)}
-                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-                            />
+                            {FIELD_PRESETS[variableName]?.length > 0 && (
+                                <Icon
+                                    iconName="Add"
+                                    onClick={(e) => handleFieldClick(variableName, e)}
+                                    styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
+                                />
+                            )}
                         </div>
                     );
                 } else {
@@ -2457,11 +2466,13 @@ Disbursement | Amount | VAT chargeable
                             >
                                 {fieldValue}
                             </span>
-                            <Icon
-                                iconName="Add"
-                                onClick={(e) => handleFieldClick(variableName, e)}
-                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-                            />
+                            {FIELD_PRESETS[variableName]?.length > 0 && (
+                                <Icon
+                                    iconName="Add"
+                                    onClick={(e) => handleFieldClick(variableName, e)}
+                                    styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
+                                />
+                            )}
                         </span>
                     );
                     parts.push(placeholderNode);
@@ -2530,11 +2541,13 @@ Disbursement | Amount | VAT chargeable
                             >
                                 {placeholderText}
                             </span>
-                            <Icon
-                                iconName="Add"
-                                onClick={(e) => handleFieldClick(variableName, e)}
-                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-                            />
+                            {FIELD_PRESETS[variableName]?.length > 0 && (
+                                <Icon
+                                    iconName="Add"
+                                    onClick={(e) => handleFieldClick(variableName, e)}
+                                    styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
+                                />
+                            )}
                         </div>
                     );
                 } else {
@@ -2593,11 +2606,13 @@ Disbursement | Amount | VAT chargeable
                             >
                                 {placeholderText}
                             </span>
-                            <Icon
-                                iconName="Add"
-                                onClick={(e) => handleFieldClick(variableName, e)}
-                                styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
-                            />
+                            {FIELD_PRESETS[variableName]?.length > 0 && (
+                                <Icon
+                                    iconName="Add"
+                                    onClick={(e) => handleFieldClick(variableName, e)}
+                                    styles={{ root: { marginLeft: 4, cursor: 'pointer', fontSize: 12, color: colours.blue } }}
+                                />
+                            )}
                         </span>
                     );
                     parts.push(placeholderNode);

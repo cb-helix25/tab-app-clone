@@ -10,6 +10,8 @@ import {
   FaCommentDots,
   FaRegCalendarAlt,
   FaCalendarAlt,
+  FaRegCalendarCheck,
+  FaCalendarCheck,
   FaRegTimesCircle,
   FaTimesCircle,
   FaRegFolder,
@@ -79,6 +81,7 @@ const iconMap: Record<string, { outline: IconType; filled: IconType }> = {
   Checklist: { outline: FaRegListAlt, filled: FaListAlt },
   Comment: { outline: FaRegCommentDots, filled: FaCommentDots },
   Calendar: { outline: FaRegCalendarAlt, filled: FaCalendarAlt },
+  CalendarCheck: { outline: FaRegCalendarCheck, filled: FaCalendarCheck },
   Room: { outline: MdOutlineMeetingRoom, filled: MdMeetingRoom },
   Warning: { outline: MdOutlineWarning, filled: MdWarning },
   Cancel: { outline: FaRegTimesCircle, filled: FaTimesCircle },
@@ -189,10 +192,10 @@ const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
 
   if (title === 'Confirm Attendance') {
     if (confirmed) {
-      attendanceIconName = 'Accept';
+      attendanceIconName = 'CalendarCheck';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, { color: iconColor || colours.cta });
     } else {
-      attendanceIconName = 'Cancel';
+      attendanceIconName = 'Calendar';
       attendanceIconStyle = mergeStyles(attendanceIconStyle, {
         color: colours.red,
         animation: 'redPulse 2s infinite',

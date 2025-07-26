@@ -81,6 +81,7 @@ import localV3Blocks from '../../localData/localV3Blocks.json';
 import QuickActionsCard from './QuickActionsCard';
 import QuickActionsBar from './QuickActionsBar';
 import ImmediateActionsBar from './ImmediateActionsBar';
+import InstructionsPrompt, { getActionableInstructions } from './InstructionsPrompt';
 
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
@@ -351,7 +352,7 @@ const quickActionOrder: Record<string, number> = {
 //////////////////////
 
 const quickActions: QuickLink[] = [
-  { title: 'Confirm Attendance', icon: 'Accept' },
+  { title: 'Confirm Attendance', icon: 'Calendar' },
   { title: 'Create a Task', icon: 'Checklist' },
   { title: 'Save Telephone Note', icon: 'Comment' },
   { title: 'Request Annual Leave', icon: 'Calendar' },
@@ -1011,6 +1012,30 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       setCurrentUserName(userData[0].FullName || '');
     }
   }, [userData]);
+
+  const actionableSummaries = useMemo(
+    () => getActionableInstructions(instructionData),
+    [instructionData]
+  );
+
+  const [showInstructionsPrompt, setShowInstructionsPrompt] = useState<boolean>(
+    () => actionableSummaries.length > 0 &&
+      sessionStorage.getItem('instructionsPromptDismissed') !== 'true'
+  );
+
+  useEffect(() => {
+    if (
+      actionableSummaries.length > 0 &&
+      sessionStorage.getItem('instructionsPromptDismissed') !== 'true'
+    ) {
+      setShowInstructionsPrompt(true);
+    }
+  }, [actionableSummaries]);
+
+  const dismissInstructionsPrompt = useCallback(() => {
+    setShowInstructionsPrompt(false);
+    sessionStorage.setItem('instructionsPromptDismissed', 'true');
+  }, []);
 
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
@@ -2575,8 +2600,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     if (!isLoadingAttendance && !currentUserConfirmed) {
       actions.push({
         title: 'Confirm Attendance',
-        icon: 'Cancel',
-        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
+        icon: 'Calendar',
+        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
       });
     }
     if (hasActiveMatter) {
@@ -2881,7 +2906,12 @@ const conversionRate = enquiriesMonthToDate
         />
       )}
       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-
+        {showInstructionsPrompt && (
+          <InstructionsPrompt
+            summaries={actionableSummaries}
+            onDismiss={dismissInstructionsPrompt}
+          />
+        )}
 
       {/* Actions & Metrics Container */}
       <div className={actionsMetricsContainerStyle}>

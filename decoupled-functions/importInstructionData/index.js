@@ -44,11 +44,19 @@ module.exports = async function (context, req) {
     const pool = await getSqlPool();
 
     // Update Instructions table after matter opening
+    const relatedField = body.relatedClientIds || body.relatedClientId || body.RelatedClientId;
+    let relatedClientIds = null;
+    if (Array.isArray(relatedField)) {
+      relatedClientIds = relatedField.filter(Boolean).join(',');
+    } else if (typeof relatedField === 'string') {
+      relatedClientIds = relatedField;
+    }
+
     await pool.request()
       .input('InstructionRef', sql.NVarChar(50), instructionRef)
       .input('Stage', sql.NVarChar(50), 'Client')
       .input('ClientId', sql.NVarChar(50), body.clientId || body.ClientId || null)
-      .input('RelatedClientId', sql.NVarChar(50), body.relatedClientId || body.RelatedClientId || null)
+      .input('RelatedClientId', sql.NVarChar(255), relatedClientIds)
       .input('MatterId', sql.NVarChar(50), body.matterId || body.MatterId || null)
       .query(`UPDATE Instructions
               SET Stage=@Stage,

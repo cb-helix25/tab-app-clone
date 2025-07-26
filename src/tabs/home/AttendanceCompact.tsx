@@ -11,7 +11,7 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { colours } from '../../app/styles/colours';
 import { cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
-import AttendanceFull from './Attendance';
+import AttendanceConfirmPanel from './AttendanceConfirmPanel';
 import BespokePanel from '../../app/functionality/BespokePanel';
 
 interface AttendanceRecord {
@@ -240,6 +240,70 @@ const AttendanceCompact = forwardRef<
             [annualLeaveRecords, futureLeaveRecords]
         );
 
+        const userInitials = userData?.[0]?.Initials || '';
+        const useLocalData =
+            process.env.REACT_APP_USE_LOCAL_DATA === 'true' ||
+            window.location.hostname === 'localhost';
+
+        const saveAttendance = async (weekStart: string, attendanceDays: string) => {
+            const firstName = teamData.find((t) => t.Initials === userInitials)?.First || 'Unknown';
+            const payload = [
+                { firstName, initials: userInitials, weekStart, attendanceDays },
+            ];
+
+            if (useLocalData) {
+                const newRecord = {
+                    Attendance_ID: 0,
+                    Entry_ID: 0,
+                    First_Name: firstName,
+                    Initials: userInitials,
+                    Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
+                    Week_Start: weekStart,
+                    Week_End: new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6))
+                        .toISOString()
+                        .split('T')[0],
+                    ISO_Week: getISOWeek(new Date(weekStart)),
+                    Attendance_Days: attendanceDays,
+                    Confirmed_At: new Date().toISOString(),
+                } as AttendanceRecord;
+                onAttendanceUpdated && onAttendanceUpdated([newRecord]);
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_ATTENDANCE_PATH}?code=${process.env.REACT_APP_INSERT_ATTENDANCE_CODE}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    }
+                );
+                if (!response.ok) throw new Error(`Failed to save attendance: ${response.status}`);
+                const updatedRecords = await response.json();
+                if (onAttendanceUpdated) {
+                    const newRecords = updatedRecords.map((result: any) => ({
+                        Attendance_ID: result.entryId,
+                        Entry_ID: result.entryId,
+                        First_Name: firstName,
+                        Initials: userInitials,
+                        Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
+                        Week_Start: result.weekStart,
+                        Week_End: new Date(new Date(result.weekStart).setDate(new Date(result.weekStart).getDate() + 6))
+                            .toISOString()
+                            .split('T')[0],
+                        ISO_Week: getISOWeek(new Date(result.weekStart)),
+                        Attendance_Days: result.attendanceDays,
+                        Confirmed_At: new Date().toISOString(),
+                    })) as AttendanceRecord[];
+                    onAttendanceUpdated(newRecords);
+                }
+            } catch (error) {
+                console.error('Error saving attendance:', error);
+                alert('Failed to save attendance');
+            }
+        };
+
         const getMemberWeek = (initials: string): string => {
             const records = attendanceRecords.filter(
                 (rec) => rec.Initials === initials && rec.Week_Start === weekStartToUse
@@ -376,19 +440,14 @@ const AttendanceCompact = forwardRef<
             onClose={() => setPanelOpen(false)}
             title="Confirm Attendance"
         >
-            <AttendanceFull
-                ref={attendanceRef}
+            <AttendanceConfirmPanel
                 isDarkMode={isDarkMode}
-                isLoadingAttendance={isLoadingAttendance}
-                isLoadingAnnualLeave={isLoadingAnnualLeave}
-                attendanceError={attendanceError}
-                annualLeaveError={annualLeaveError}
                 attendanceRecords={attendanceRecords}
                 teamData={teamData}
                 annualLeaveRecords={annualLeaveRecords}
                 futureLeaveRecords={futureLeaveRecords}
                 userData={userData}
-                onAttendanceUpdated={onAttendanceUpdated}
+                onSave={saveAttendance}
             />
         </BespokePanel>
         </>
@@ -396,3 +455,11 @@ const AttendanceCompact = forwardRef<
     });
 
 export default AttendanceCompact;
+
+function getISOWeek(date: Date): number {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    return Math.round(((d.getTime() - week1.getTime()) / 86400000 + 1) / 7) + 1;
+}
