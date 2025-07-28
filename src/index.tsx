@@ -12,6 +12,7 @@ import { Matter, UserData, Enquiry, TeamData } from "./app/functionality/types";
 import localUserData from "./localData/localUserData.json";
 import localEnquiries from "./localData/localEnquiries.json";
 import localMatters from "./localData/localMatters.json";
+import localTeamData from "./localData/team-sql-data.json";
 
 import { initializeIcons } from "@fluentui/react";
 initializeIcons();
@@ -291,7 +292,7 @@ const AppWithContext: React.FC = () => {
         setUserData(localUserData as UserData[]);
         setEnquiries(localEnquiries as Enquiry[]);
         setMatters(localMatters as unknown as Matter[]);
-        setTeamData(null);
+        setTeamData(localTeamData as TeamData[]);
         setLoading(false);
       }
     };

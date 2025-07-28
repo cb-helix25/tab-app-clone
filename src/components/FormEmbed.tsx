@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 // invisible change 2
 import { MessageBar, MessageBarType } from '@fluentui/react';
-import { FormItem, UserData, Matter } from '../app/functionality/types';
+import { FormItem, UserData, Matter, TeamData } from '../app/functionality/types';
 import BespokeForm from '../CustomForms/BespokeForms';
 import loaderIcon from '../assets/grey helix mark.png';
 
 interface FormEmbedProps {
     link: FormItem;
     userData: UserData[] | null;
+    teamData?: TeamData[] | null;
     matters: Matter[];
 }
 
@@ -18,7 +19,7 @@ const loaderStyle = {
     height: '100%',
 };
 
-const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, matters }) => {
+const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, teamData, matters }) => {
     const formContainerRef = useRef<HTMLDivElement>(null);
     const [isCognitoLoaded, setIsCognitoLoaded] = useState<boolean>(false);
     const [formKey, setFormKey] = useState<number>(() => Date.now());
@@ -130,12 +131,7 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, matters }) => {
                     isSubmitting={isSubmitting}
                     matters={matters}
                 />
-                ) : link.component ? (
-                    React.createElement(link.component, {
-                        users: userData || [],
-                        matters,
-                        onBack: () => { },
-                    })
+                
             ) : (
                 <div>No form available for this item.</div>
             )}

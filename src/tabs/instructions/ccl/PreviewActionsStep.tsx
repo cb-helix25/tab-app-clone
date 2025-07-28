@@ -4,7 +4,7 @@ import { MessageBar, MessageBarType, Icon, Stack } from '@fluentui/react';
 interface Step3Props {
     currentStep: number;
     questionBannerStyle: React.CSSProperties;
-    renderTemplateContentForPreview: (content: string) => JSX.Element | string;
+    renderTemplateContentForPreview: () => JSX.Element | string;
     documentContent: string;
     windowWidth: number;
     message: { type: MessageBarType; text: string } | null;
@@ -95,7 +95,7 @@ const Step3: React.FC<Step3Props> = (props) => {
                                 lineHeight: '1.6',
                                 whiteSpace: 'pre-wrap'
                             }}>
-                                {renderTemplateContentForPreview(documentContent)}
+                                {renderTemplateContentForPreview()}
                             </div>
                         </div>
 

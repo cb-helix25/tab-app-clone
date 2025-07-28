@@ -1,44 +1,95 @@
-diff --git a/src/components/FormEmbed.tsx b/src/components/FormEmbed.tsx
-index 1cac56428e15e100a2f462759d8b81e8e202a7ac..307e23892781089ba107dc218ffd6b03d8e8ec44 100644
---- a/src/components/FormEmbed.tsx
-+++ b/src/components/FormEmbed.tsx
-@@ -108,33 +108,39 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, matters }) => {
-                     isMultiline={false}
-                     onDismiss={() => setSubmissionSuccess(null)}
-                     dismissButtonAriaLabel="Close"
-                     styles={{ root: { marginBottom: '10px', borderRadius: '4px' } }}
-                 >
-                     {submissionSuccess}
-                 </MessageBar>
-             )}
-             {link.embedScript ? (
-                 <div ref={formContainerRef}>
-                     {!isCognitoLoaded && (
-                         <div style={loaderStyle}>
-                             <img src={loaderIcon} alt="Loading..." style={{ width: '100px', height: 'auto' }} />
-                         </div>
-                     )}
-                 </div>
-             ) : link.fields ? (
-                 <BespokeForm
-                     key={formKey}
-                     fields={link.fields.map((f) => ({ ...f, name: f.label }))}
-                     onSubmit={handleFinancialSubmit}
-                     onCancel={() => { }}
-                     isSubmitting={isSubmitting}
-                     matters={matters}
-                 />
-+            ) : link.component ? (
-+                React.createElement(link.component, {
-+                    users: userData || [],
-+                    matters,
-+                    onBack: () => { },
-+                })
-             ) : (
-                 <div>No form available for this item.</div>
-             )}
-         </div>
-     );
- };
+diff --git a/src/tabs/instructions/ccl/PreviewActionsStep.tsx b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+index 6f6decbcb994e8e1a6b63e326f9fce82aebcf4a6..3b1375decada378f71459271d2a7916b0d52fab4 100644
+--- a/src/tabs/instructions/ccl/PreviewActionsStep.tsx
++++ b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+@@ -1,32 +1,32 @@
+ import React from 'react';
+ import { MessageBar, MessageBarType, Icon, Stack } from '@fluentui/react';
  
- export default FormEmbed;
+ interface Step3Props {
+     currentStep: number;
+     questionBannerStyle: React.CSSProperties;
+-    renderTemplateContentForPreview: (content: string) => JSX.Element | string;
++    renderTemplateContentForPreview: () => JSX.Element | string;
+     documentContent: string;
+     windowWidth: number;
+     message: { type: MessageBarType; text: string } | null;
+     setMessage: (m: { type: MessageBarType; text: string } | null) => void;
+     generateTemplateContent: () => string;
+     templateFields: Record<string, string>;
+     selectedTemplate: 'ccl' | 'custom' | null;
+     navigationStyle: React.CSSProperties;
+     goToPreviousStep: () => void;
+     goToNextStep: () => void;
+ }
+ 
+ const Step3: React.FC<Step3Props> = (props) => {
+     const {
+         currentStep,
+         questionBannerStyle,
+         renderTemplateContentForPreview,
+         documentContent,
+         windowWidth,
+         message,
+         setMessage,
+         generateTemplateContent,
+         templateFields,
+         selectedTemplate,
+         navigationStyle,
+diff --git a/src/tabs/instructions/ccl/PreviewActionsStep.tsx b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+index 6f6decbcb994e8e1a6b63e326f9fce82aebcf4a6..3b1375decada378f71459271d2a7916b0d52fab4 100644
+--- a/src/tabs/instructions/ccl/PreviewActionsStep.tsx
++++ b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+@@ -73,51 +73,51 @@ const Step3: React.FC<Step3Props> = (props) => {
+                         display: 'flex',
+                         gap: '20px',
+                         minHeight: '500px',
+                         flexDirection: windowWidth < 1200 ? 'column' : 'row'
+                     }}>
+                         {/* Document Preview */}
+                         <div style={{
+                             flex: '1',
+                             minWidth: '0'
+                         }}>
+                             <div style={questionBannerStyle}>
+                                 Final Document Preview
+                             </div>
+                             <div style={{
+                                 border: '1px solid #e1e5e9',
+                                 borderRadius: '4px',
+                                 padding: '20px',
+                                 backgroundColor: '#f8f9fa',
+                                 height: windowWidth < 1200 ? '300px' : '450px',
+                                 overflow: 'auto',
+                                 fontFamily: 'Raleway, sans-serif',
+                                 fontSize: '14px',
+                                 lineHeight: '1.6',
+                                 whiteSpace: 'pre-wrap'
+                             }}>
+-                                {renderTemplateContentForPreview(documentContent)}
++                                {renderTemplateContentForPreview()}
+                             </div>
+                         </div>
+ 
+                         {/* Actions Panel */}
+                         <div style={{
+                             width: windowWidth < 1200 ? '100%' : '350px',
+                             flexShrink: windowWidth < 1200 ? 1 : 0,
+                             minWidth: windowWidth < 1200 ? '100%' : '300px'
+                         }}>
+                             <div style={questionBannerStyle}>
+                                 Actions & Delivery
+                             </div>
+                             <div style={{
+                                 border: '1px solid #e1e5e9',
+                                 borderRadius: '4px',
+                                 padding: '20px',
+                                 backgroundColor: '#fff',
+                                 height: windowWidth < 1200 ? '300px' : '450px'
+                             }}>
+                                 <Stack tokens={{ childrenGap: 16 }}>
+                                     <div
+                                         className="action-button"
+                                         onClick={() => setMessage({ type: MessageBarType.success, text: 'Email functionality coming soon!' })}
+                                         style={{
+                                             background: '#D65541',

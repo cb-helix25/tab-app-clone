@@ -350,6 +350,7 @@ const App: React.FC<AppProps> = ({
           <Navigator />
           <FormsSidebar
             userData={userData}
+            teamData={teamData}
             matters={allMattersFromHome || []}
             activeTab={activeTab}
             hovered={formsTabHovered}

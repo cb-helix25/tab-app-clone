@@ -4,11 +4,12 @@ import { IconButton, Text, mergeStyles, Stack } from "@fluentui/react";
 import { useTheme } from "../app/functionality/ThemeContext";
 import { colours } from "../app/styles/colours";
 import { formSections } from "../tabs/forms/formsData";
-import { FormItem, UserData, Matter } from "../app/functionality/types";
+import { FormItem, UserData, Matter, TeamData } from "../app/functionality/types";
 import FormEmbed from "./FormEmbed";
 
 interface FormsSidebarProps {
     userData: UserData[] | null;
+    teamData?: TeamData[] | null;
     matters: Matter[];
     activeTab: string;
     hovered?: boolean;
@@ -106,6 +107,7 @@ const sectionContainer = (isDarkMode: boolean) =>
 
 const FormsSidebar: React.FC<FormsSidebarProps> = ({
     userData,
+    teamData,
     matters,
     activeTab,
     hovered,
@@ -258,6 +260,7 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
                                     <FormEmbed
                                         link={form}
                                         userData={userData}
+                                        teamData={teamData}
                                         matters={matters}
                                     />
                                 )}

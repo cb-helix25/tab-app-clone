@@ -10,7 +10,7 @@ import {
   MessageBarType,
 } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
-import { FormItem, UserData, Matter } from '../../app/functionality/types';
+import { FormItem, UserData, Matter, TeamData } from '../../app/functionality/types';
 import { mergeStyles } from '@fluentui/react';
 import loaderIcon from '../../assets/grey helix mark.png';
 import BespokeForm from '../../CustomForms/BespokeForms';
@@ -20,6 +20,27 @@ import {
 // invisible change
 } from '../../app/styles/ButtonStyles';
 import BespokePanel from '../../app/functionality/BespokePanel';
+
+// Convert UserData to TeamData format
+const convertUserDataToTeamData = (userData: UserData[]): TeamData[] => {
+  return userData.map(user => ({
+    "Created Date": user.CreatedDate,
+    "Created Time": user.CreatedTime,
+    "Full Name": user.FullName,
+    "Last": user.Last,
+    "First": user.First,
+    "Nickname": user.Nickname,
+    "Initials": user.Initials,
+    "Email": user.Email,
+    "Entra ID": user.EntraID,
+    "Clio ID": user.ClioID,
+    "Rate": user.Rate,
+    "Role": user.Role,
+    "AOW": user.AOW,
+    "status": undefined, // Not available in UserData
+    holiday_entitlement: user.holiday_entitlement,
+  }));
+};
 
 interface FormDetailsProps {
   link: FormItem;
@@ -255,7 +276,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
             </div>
           ) : link.component ? (
             React.createElement(link.component, {
-              users: userData || [],
+              team: convertUserDataToTeamData(userData || []),
               matters,
               onBack: onClose,
             })

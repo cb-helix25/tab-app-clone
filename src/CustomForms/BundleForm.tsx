@@ -1,9 +1,35 @@
 import React, { useState } from 'react';
-import { Stack, Dropdown, IDropdownOption, Checkbox, TextField, DatePicker, PrimaryButton, DefaultButton } from '@fluentui/react';
+import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBoxOption, TextField, DatePicker, PrimaryButton, DefaultButton, IButtonStyles } from '@fluentui/react';
+import { colours } from '../app/styles/colours';
 import { dashboardTokens } from '../tabs/instructions/componentTokens';
 import '../app/styles/MatterOpeningCard.css';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
-import { Matter, UserData } from '../app/functionality/types';
+import { Matter, TeamData } from '../app/functionality/types';
+
+const toggleStyles: IButtonStyles = {
+    root: {
+        padding: '12px 20px',
+        borderRadius: 0,
+        backgroundColor: colours.grey,
+        border: `1px solid ${colours.darkBlue}`,
+        height: '40px',
+        fontWeight: 600,
+        color: colours.darkBlue,
+        flex: 1,
+    },
+    rootHovered: {
+        backgroundColor: colours.highlightBlue,
+        color: colours.darkBlue,
+    },
+    rootPressed: {
+        backgroundColor: colours.highlight,
+        color: '#ffffff',
+    },
+    rootChecked: {
+        backgroundColor: colours.darkBlue,
+        color: '#ffffff',
+    },
+};
 
 interface CoverLetter {
     link: string;
@@ -11,12 +37,12 @@ interface CoverLetter {
 }
 
 interface BundleFormProps {
-    users: UserData[];
+    team: TeamData[];
     matters: Matter[];
     onBack: () => void;
 }
 
-const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
+const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
     const [name, setName] = useState<string>('');
     const [matterRef, setMatterRef] = useState<string>('');
     const [bundleLink, setBundleLink] = useState<string>('');
@@ -28,14 +54,17 @@ const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
     const [copiesInOffice, setCopiesInOffice] = useState<number>(1);
     const [notes, setNotes] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
-    const userOptions: IDropdownOption[] = users.map(u => ({
-        key: u.Initials ? u.Initials : (u.FullName ? u.FullName : ''),
-        text: u.FullName ? u.FullName : (u.Initials ? u.Initials : '')
+    const userOptions: IDropdownOption[] = team.map(t => ({
+        key: t.Initials ? t.Initials : (t["Full Name"] ? t["Full Name"] : ''),
+        text: t["Full Name"] ? t["Full Name"] : (t.Initials ? t.Initials : '')
     }));
-    const matterOptions: IDropdownOption[] = matters.map(m => ({
-        key: m.InstructionRef ?? '',
-        text: m.InstructionRef ?? ''
-    }));
+    const [matterFilter, setMatterFilter] = useState<string>('');
+    const matterOptions: IComboBoxOption[] = React.useMemo(() =>
+        matters
+            .slice()
+            .sort((a, b) => new Date(b.OpenDate).getTime() - new Date(a.OpenDate).getTime())
+            .map(m => ({ key: m.DisplayNumber, text: m.DisplayNumber })),
+        [matters]);
 
     const handleAddLetter = () =>
         setCoverLetters([...coverLetters, { link: '', copies: 1 }]);
@@ -90,36 +119,113 @@ const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
     return (
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
-                <div className="step-header">
-                    <h3 className="step-title">Bundle Submission</h3>
-                </div>
-                <div className="step-content">
-                    <Stack tokens={{ childrenGap: 12 }}>
-                        <Dropdown label="Name" options={userOptions} selectedKey={name} onChange={(_, o) => setName(String(o?.key))} required styles={{ root: { maxWidth: 300 } }} />
-                        <Dropdown label="Matter reference" options={matterOptions} selectedKey={matterRef} onChange={(_, o) => setMatterRef(String(o?.key))} required styles={{ root: { maxWidth: 300 } }} />
-                        <TextField label="NetDocs link (bundle)" value={bundleLink} onChange={(_, v) => setBundleLink(v || '')} required />
-                        <div>
-                            <Checkbox label="Posted" checked={posted} onChange={(_, c) => setPosted(!!c)} />
-                            <Checkbox label="Left in office" checked={leftInOffice} onChange={(_, c) => setLeftInOffice(!!c)} />
-                        </div>
-                        <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={date => setArrivalDate(date ?? null)} isRequired={posted} />
-                        {coverLetters.map((cl, idx) => (
-                            <Stack key={idx} horizontal tokens={{ childrenGap: 8 }}>
-                                <TextField label="Covering letter link" value={cl.link} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, link: v || '' } : c))} required={posted} />
-                                <TextField label="No. of copies to address" type="number" value={cl.copies.toString()} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, copies: Number(v) || 1 } : c))} required={posted} />
-                                {coverLetters.length > 1 && <DefaultButton text="Delete" onClick={() => handleRemoveLetter(idx)} />}
-                            </Stack>
-                        ))}
-                        <PrimaryButton text="Add Covering Letter" onClick={handleAddLetter} styles={sharedPrimaryButtonStyles} />
-                        <DatePicker label="Office-ready date" value={officeDate || undefined} onSelectDate={date => setOfficeDate(date ?? null)} isRequired={leftInOffice} />
-                        <TextField label="No. of copies in office" type="number" value={copiesInOffice.toString()} onChange={(_, v) => setCopiesInOffice(Number(v) || 1)} required={leftInOffice} />
-                        <TextField label="Other notes" multiline rows={3} value={notes} onChange={(_, v) => setNotes(v || '')} />
-                        <Stack horizontal tokens={{ childrenGap: 8 }}>
-                            <PrimaryButton text="Submit" onClick={handleSubmit} disabled={!isValid() || submitting} styles={sharedPrimaryButtonStyles} />
-                            <DefaultButton text="Cancel" onClick={onBack} styles={sharedDefaultButtonStyles} />
-                        </Stack>
+                <h3 className="step-title">Bundle Submission</h3>
+                <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                    <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                        <Dropdown
+                            label="Name"
+                            options={userOptions}
+                            selectedKey={name}
+                            onChange={(_, o) => setName(String(o?.key))}
+                            required
+                            styles={{ root: { width: '100%' } }}
+                        />
+                        <ComboBox
+                            label="Matter reference"
+                            options={matterOptions}
+                            allowFreeform
+                            autoComplete="on"
+                            selectedKey={matterRef}
+                            onInputValueChange={(val) => setMatterFilter(val)}
+                            onChange={(_, option, __, val) => setMatterRef(option ? String(option.key) : (val || ''))}
+                            onResolveOptions={() => {
+                                if (!matterFilter) return matterOptions;
+                                return matterOptions.filter((opt) => opt.text.toLowerCase().includes(matterFilter.toLowerCase()));
+                            }}
+                            required
+                            styles={{ root: { width: '100%' } }}
+                        />
                     </Stack>
-                </div>
+                    <TextField label="NetDocs link (bundle)" value={bundleLink} onChange={(_, v) => setBundleLink(v || '')} required />
+                    <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                        <DefaultButton
+                            text="Posted"
+                            onClick={() => setPosted((p) => !p)}
+                            styles={toggleStyles}
+                            checked={posted}
+                            iconProps={{ iconName: 'Send' }}
+                        />
+                        <DefaultButton
+                            text="Left in office"
+                            onClick={() => setLeftInOffice((p) => !p)}
+                            styles={toggleStyles}
+                            checked={leftInOffice}
+                            iconProps={{ iconName: 'Home' }}
+                        />
+                    </Stack>
+                    <Stack horizontal tokens={{ childrenGap: 24 }} wrap styles={{ root: { width: '100%' } }}>
+                        {posted && (
+                            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                                <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={(date) => setArrivalDate(date ?? null)} isRequired />
+                                {coverLetters.map((cl, idx) => (
+                                    <Stack key={idx} horizontal tokens={{ childrenGap: 8 }}>
+                                        <TextField
+                                            label="Covering letter link"
+                                            value={cl.link}
+                                            onChange={(_, v) =>
+                                                setCoverLetters((arr) => arr.map((c, i) => (i === idx ? { ...c, link: v || '' } : c)))
+                                            }
+                                            required
+                                        />
+                                        <TextField
+                                            label="No. of copies to address"
+                                            type="number"
+                                            value={cl.copies.toString()}
+                                            onChange={(_, v) =>
+                                                setCoverLetters((arr) => arr.map((c, i) => (i === idx ? { ...c, copies: Number(v) || 1 } : c)))
+                                            }
+                                            required
+                                        />
+                                        {coverLetters.length > 1 && (
+                                            <DefaultButton text="Delete" onClick={() => handleRemoveLetter(idx)} styles={{ root: { alignSelf: 'end' } }} />
+                                        )}
+                                    </Stack>
+                                ))}
+                                <span style={{ color: colours.greyText, fontSize: '12px' }}>
+                                    This should be to the address on the covering letter uploaded
+                                </span>
+                                <PrimaryButton
+                                    text="Add Covering Letter"
+                                    onClick={handleAddLetter}
+                                    styles={{
+                                        ...sharedPrimaryButtonStyles,
+                                        root: {
+                                            ...(typeof sharedPrimaryButtonStyles.root === 'object' && sharedPrimaryButtonStyles.root !== null ? sharedPrimaryButtonStyles.root : {}),
+                                            width: 'fit-content'
+                                        }
+                                    }}
+                                />
+                            </Stack>
+                        )}
+                        {leftInOffice && (
+                            <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                                <DatePicker label="Office-ready date" value={officeDate || undefined} onSelectDate={(date) => setOfficeDate(date ?? null)} isRequired />
+                                <TextField
+                                    label="No. of copies in office"
+                                    type="number"
+                                    value={copiesInOffice.toString()}
+                                    onChange={(_, v) => setCopiesInOffice(Number(v) || 1)}
+                                    required
+                                />
+                            </Stack>
+                        )}
+                    </Stack>
+                    <TextField label="Other notes" multiline rows={3} value={notes} onChange={(_, v) => setNotes(v || '')} />
+                    <Stack horizontal tokens={{ childrenGap: 8 }}>
+                        <PrimaryButton text="Submit" onClick={handleSubmit} disabled={!isValid() || submitting} styles={sharedPrimaryButtonStyles} />
+                        <DefaultButton text="Cancel" onClick={onBack} styles={sharedDefaultButtonStyles} />
+                    </Stack>
+                </Stack>
             </div>
         </Stack>
     );
