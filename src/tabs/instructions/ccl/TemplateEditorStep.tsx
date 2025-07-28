@@ -7,7 +7,6 @@ interface Step2Props {
     renderFieldsOnlyView: () => JSX.Element;
     renderEditableTemplateContent: (content: string) => JSX.Element | string;
     documentContent: string;
-    onContentChange: (html: string) => void;
     isFieldsOnlyView: boolean;
     setIsFieldsOnlyView: (val: boolean) => void;
     navigationStyle: React.CSSProperties;
@@ -22,7 +21,6 @@ const Step2: React.FC<Step2Props> = ({
     renderFieldsOnlyView,
     renderEditableTemplateContent,
     documentContent,
-    onContentChange,
     isFieldsOnlyView,
     setIsFieldsOnlyView,
     navigationStyle,
@@ -161,14 +159,7 @@ const Step2: React.FC<Step2Props> = ({
                                     />
                                 </div>
                                 <div
-                                    contentEditable
                                     ref={editorRef}
-                                    suppressContentEditableWarning
-                                    dangerouslySetInnerHTML={{ __html: documentContent }}
-                                    onBlur={() => {
-                                        const html = editorRef.current?.innerHTML || '';
-                                        onContentChange(html);
-                                    }}
                                     style={{
                                         padding: '16px',
                                         minHeight: '300px',
@@ -178,7 +169,9 @@ const Step2: React.FC<Step2Props> = ({
                                         whiteSpace: 'pre-wrap',
                                         cursor: 'text'
                                     }}
-                                />
+                                >
+                                    {renderEditableTemplateContent(documentContent)}
+                                </div>
                             </div>
                         )}
                     </div>

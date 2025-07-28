@@ -2533,7 +2533,8 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
             },
             'instructions_link': {
                 before: 'The \'Instructions for Cancellation\' notice at',
-                after: 'explains: —how to cancel'
+                after:
+                    'explains:\n— how to cancel and the effect of cancellation;\n— what you will be liable for if you ask us to start work during the cancellation period.'
             },
             'insert_next_step_you_would_like_client_to_take': {
                 before: '☐',
@@ -2982,7 +2983,6 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
                 renderFieldsOnlyView={renderFieldsOnlyView}
                 renderEditableTemplateContent={renderEditableTemplateContent}
                 documentContent={documentContent}
-                onContentChange={setDocumentContent}
                 isFieldsOnlyView={isFieldsOnlyView}
                 setIsFieldsOnlyView={setIsFieldsOnlyView}
                 navigationStyle={navigationStyle}
