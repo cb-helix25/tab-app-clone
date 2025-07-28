@@ -1,131 +1,69 @@
-diff --git a/src/tabs/instructions/ccl/TemplateEditorStep.tsx b/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-index abe0c3856d03a9d4412c51ebc643facee4f96cae..07f86c977fcbb3fd01fce9a343ed68ae44aecf9b 100644
---- a/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-+++ b/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-@@ -1,50 +1,48 @@
- import React, { useRef } from 'react';
- import { Stack, IconButton } from '@fluentui/react';
+diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
+index 58dea4a082adb51fd39487f4cb6ea3721981278d..e127a5a687a87b9c01f6718159b0476052b82c20 100644
+--- a/src/tabs/instructions/DocumentsV3.tsx
++++ b/src/tabs/instructions/DocumentsV3.tsx
+@@ -1152,54 +1152,60 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
+                         onBlur={(e) => {
+                             if (isTable) return;
+                             let newText = e.target.textContent || '';
  
- interface Step2Props {
-     currentStep: number;
-     questionBannerStyle: React.CSSProperties;
-     renderFieldsOnlyView: () => JSX.Element;
-     renderEditableTemplateContent: (content: string) => JSX.Element | string;
-     documentContent: string;
--    onContentChange: (html: string) => void;
-     isFieldsOnlyView: boolean;
-     setIsFieldsOnlyView: (val: boolean) => void;
-     navigationStyle: React.CSSProperties;
-     goToPreviousStep: () => void;
-     canProceedToStep3: boolean;
-     goToNextStep: () => void;
- }
+                             // Preserve bullet formatting - ensure lines that had bullets still have em dashes
+                             const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
+                             const newLines = newText.split('\n');
  
- const Step2: React.FC<Step2Props> = ({
-     currentStep,
-     questionBannerStyle,
-     renderFieldsOnlyView,
-     renderEditableTemplateContent,
-     documentContent,
--    onContentChange,
-     isFieldsOnlyView,
-     setIsFieldsOnlyView,
-     navigationStyle,
-     goToPreviousStep,
-     canProceedToStep3,
-     goToNextStep
- }) => {
-     const editorRef = useRef<HTMLDivElement>(null);
+                             // Restore em dashes for lines that should be bullets
+                             const restoredLines = newLines.map((newLine, index) => {
+                                 const originalLine = originalLines[index];
+                                 if (originalLine && originalLine.match(/^—/)) {
+                                     // This was originally a bullet line
+                                     if (!newLine.match(/^—/)) {
+                                         // If the em dash was lost, restore it
+                                         return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
+                                     }
+                                 }
+                                 return newLine;
+                             });
+                             const spacingFixed = restoredLines.map(line =>
+                                 line.replace(/^(\d+(?:\.\d+)*)(\S)/, '$1 $2')
+                             );
  
-     const applyFormat = (command: string) => {
-         document.execCommand(command, false, undefined);
-         editorRef.current?.focus();
-     };
- 
-     if (currentStep !== 2) return null;
- 
-     return (
-         <div
-             className="matter-opening-card"
-             style={{ opacity: 1, animation: 'fadeIn 0.3s ease-out' }}
-         >
-             <style>
-                 {`
-           @keyframes fadeIn {
-             from { opacity: 0; transform: translateY(10px); }
-diff --git a/src/tabs/instructions/ccl/TemplateEditorStep.tsx b/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-index abe0c3856d03a9d4412c51ebc643facee4f96cae..07f86c977fcbb3fd01fce9a343ed68ae44aecf9b 100644
---- a/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-+++ b/src/tabs/instructions/ccl/TemplateEditorStep.tsx
-@@ -139,68 +137,63 @@ const Step2: React.FC<Step2Props> = ({
-                                         title="Bold"
-                                         onClick={() => applyFormat('bold')}
-                                     />
-                                     <IconButton
-                                         iconProps={{ iconName: 'Italic' }}
-                                         title="Italic"
-                                         onClick={() => applyFormat('italic')}
-                                     />
-                                     <IconButton
-                                         iconProps={{ iconName: 'Underline' }}
-                                         title="Underline"
-                                         onClick={() => applyFormat('underline')}
-                                     />
-                                     <IconButton
-                                         iconProps={{ iconName: 'BulletedList' }}
-                                         title="Bullet List"
-                                         onClick={() => applyFormat('insertUnorderedList')}
-                                     />
-                                     <IconButton
-                                         iconProps={{ iconName: 'NumberedList' }}
-                                         title="Numbered List"
-                                         onClick={() => applyFormat('insertOrderedList')}
-                                     />
-                                 </div>
-                                 <div
--                                    contentEditable
-                                     ref={editorRef}
--                                    suppressContentEditableWarning
--                                    dangerouslySetInnerHTML={{ __html: documentContent }}
--                                    onBlur={() => {
--                                        const html = editorRef.current?.innerHTML || '';
--                                        onContentChange(html);
--                                    }}
-                                     style={{
-                                         padding: '16px',
-                                         minHeight: '300px',
-                                         fontFamily: 'Raleway, sans-serif',
-                                         fontSize: '14px',
-                                         lineHeight: '1.3',
-                                         whiteSpace: 'pre-wrap',
-                                         cursor: 'text'
-                                     }}
--                                />
-+                                >
-+                                    {renderEditableTemplateContent(documentContent)}
-+                                </div>
-                             </div>
-                         )}
+                             newText = spacingFixed.join('\n');
+-                            const beforeText = content.substring(0, segmentStart);
+-                            const afterText = content.substring(segmentEnd);
+-                            const newContent = beforeText + newText + afterText;
+-                            setDocumentContent(newContent);
++                            const originalText = content.substring(segmentStart, segmentEnd);
++                            setDocumentContent(prev => {
++                                const start = prev.indexOf(originalText);
++                                if (start === -1) return prev;
++                                return (
++                                    prev.slice(0, start) +
++                                    newText +
++                                    prev.slice(start + originalText.length)
++                                );
++                            });
+                         }}
+                         style={{
+                             outline: 'none',
+                             minHeight: '1em',
+                             display: isTable ? 'block' : 'inline',
+                             whiteSpace: 'pre-wrap',
+                             cursor: isTable ? 'default' : 'text',
+                             padding: '2px',
+                             borderRadius: '2px',
+                             transition: 'background-color 0.2s ease'
+                         }}
+                     >
+                         {nodes}
                      </div>
-                 </div>
-             </Stack>
+                 );
+             }
+             
+             // Add the interactive inline editor for placeholders
+             const rawBlockName = match[1].trim();
+             const [blockLabelPart, blockKeyPart] = rawBlockName.split('::');
+             const variableName = blockKeyPart ? blockKeyPart.trim() : rawBlockName;
  
-             {/* Navigation Below Content */}
-             <div style={navigationStyle}>
-                 <div
-                     className="nav-button back-button"
-                     onClick={goToPreviousStep}
-                     tabIndex={0}
-                     style={{
-                         background: '#f4f4f6',
-                         border: '2px solid #e1dfdd',
-                         width: '48px',
-                         height: '48px',
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'center',
-                         cursor: 'pointer',
-                         boxShadow: '0 1px 2px rgba(6,23,51,0.04)',
-                         position: 'relative',
-                         overflow: 'hidden',
-                         transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)'
+             if (consumedPlaceholders.has(variableName)) {
+                 lastIndex = match.index + match[0].length;
+                 continue;

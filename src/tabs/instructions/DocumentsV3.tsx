@@ -1174,10 +1174,16 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
                             );
 
                             newText = spacingFixed.join('\n');
-                            const beforeText = content.substring(0, segmentStart);
-                            const afterText = content.substring(segmentEnd);
-                            const newContent = beforeText + newText + afterText;
-                            setDocumentContent(newContent);
+                            const originalText = content.substring(segmentStart, segmentEnd);
+                            setDocumentContent(prev => {
+                                const start = prev.indexOf(originalText);
+                                if (start === -1) return prev;
+                                return (
+                                    prev.slice(0, start) +
+                                    newText +
+                                    prev.slice(start + originalText.length)
+                                );
+                            });
                         }}
                         style={{
                             outline: 'none',
