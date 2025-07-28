@@ -9,7 +9,7 @@ interface Step3Props {
     windowWidth: number;
     message: { type: MessageBarType; text: string } | null;
     setMessage: (m: { type: MessageBarType; text: string } | null) => void;
-    generateTemplateContent: () => string;
+    generateContent: () => string;
     templateFields: Record<string, string>;
     selectedTemplate: 'ccl' | 'custom' | null;
     navigationStyle: React.CSSProperties;
@@ -26,7 +26,7 @@ const Step3: React.FC<Step3Props> = (props) => {
         windowWidth,
         message,
         setMessage,
-        generateTemplateContent,
+        generateContent,
         templateFields,
         selectedTemplate,
         navigationStyle,
@@ -209,7 +209,7 @@ const Step3: React.FC<Step3Props> = (props) => {
                                     <div
                                         className="action-button"
                                         onClick={() => {
-                                            navigator.clipboard.writeText(generateTemplateContent());
+        navigator.clipboard.writeText(generateContent());
                                             setMessage({ type: MessageBarType.success, text: 'Document copied to clipboard!' });
                                         }}
                                         style={{
@@ -245,7 +245,7 @@ const Step3: React.FC<Step3Props> = (props) => {
                                             Template: {selectedTemplate === 'ccl' ? 'Client Care Letter' : 'Custom Document'}
                                         </p>
                                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
-                                            Word count: {generateTemplateContent().split(/\s+/).filter(word => word.length > 0).length}
+                                            Word count: {generateContent().split(/\s+/).filter(word => word.length > 0).length}
                                         </p>
                                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
                                             Fields filled: {Object.values(templateFields).filter(v => v.trim() !== '').length}/{Object.keys(templateFields).length}

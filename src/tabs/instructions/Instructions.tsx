@@ -41,8 +41,6 @@ import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
 import InstructionEditor from "./components/InstructionEditor";
-import InstructionBlockEditor from "./components/InstructionBlockEditor";
-import PlaceholderIntegrationDemo from "./components/PlaceholderIntegrationDemo";
 import "../../app/styles/InstructionsBanner.css";
 // invisible change 2.2
 import DocumentEditorPage from "./DocumentEditorPage";
@@ -1555,7 +1553,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const handleDraftCclNow = () => {
     setShowNewMatterPage(false);
-    setActivePivot('documents2');
+    setActivePivot('draft-ccl');
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
@@ -1871,7 +1869,7 @@ const Instructions: React.FC<InstructionsProps> = ({
               instructions={instructionData}
             />
           )}
-          {activePivot === "documents2" && (
+          {activePivot === "draft-ccl" && (
             <DocumentsV3
               selectedInstructionProp={selectedInstruction}
               initialTemplate={selectedInstruction ? 'ccl' : undefined}
@@ -2068,7 +2066,7 @@ const Instructions: React.FC<InstructionsProps> = ({
             </button>
             <button
               className={`global-action-btn${selectedInstruction || nextReadyAction === 'ccl' ? ' selected' : ''}${nextReadyAction === 'ccl' ? ' next-action-pulse' : ''}`}
-              onClick={canOpenMatter ? () => setActivePivot("documents2") : undefined}
+              onClick={canOpenMatter ? () => setActivePivot("draft-ccl") : undefined}
               onMouseDown={e => canOpenMatter && e.currentTarget.classList.add('pressed')}
               onMouseUp={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}
               onMouseLeave={e => canOpenMatter && e.currentTarget.classList.remove('pressed')}

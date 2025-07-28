@@ -6,7 +6,7 @@ import { useTheme } from '../../app/functionality/ThemeContext';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { colours } from '../../app/styles/colours';
 import { Icon } from '@fluentui/react/lib/Icon';
-import localUserData from '../../localData/localUserData.json';
+import { useTemplateFields } from './hooks/useTemplateFields';
 import TemplateSelectionStep from './ccl/TemplateSelectionStep';
 import TemplateEditorStep from './ccl/TemplateEditorStep';
 import PreviewActionsStep from './ccl/PreviewActionsStep';
@@ -15,7 +15,8 @@ import HoverTooltip from './ccl/HoverTooltip';
 import { injectPlaceholderStyles } from './ccl/placeholderStyles';
 import { DEFAULT_CCL_TEMPLATE } from './templates/cclTemplate';
 import { FIELD_DISPLAY_NAMES, FIELD_PRESETS } from './constants/fieldMetadata';
-import { DocumentRenderer } from './ccl/DocumentRenderer';
+import CCLPreview from './ccl/CCLPreview';
+import { generateTemplateContent } from './ccl/utils/templateUtils';
 
 // Inject styles into document head
 injectPlaceholderStyles();
@@ -83,20 +84,7 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
             setDocumentContent(DEFAULT_CCL_TEMPLATE);
         }
     }, [DEFAULT_CCL_TEMPLATE]);
-    const [templateFields, setTemplateFields] = useState<Record<string, string>>({
-        insert_clients_name: '',
-        insert_heading_eg_matter_description: '',
-        matter: '',
-        name_of_person_handling_matter: '',
-        status: '',
-        email: '',
-        insert_current_position_and_scope_of_retainer: '',
-        next_steps: '',
-        realistic_timescale: '',
-        identify_the_other_party_eg_your_opponents: ''
-    });
-    const [activeField, setActiveField] = useState<string | null>(null);
-    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+    const { templateFields, setTemplateFields, activeField, setActiveField, touchedFields, setTouchedFields } = useTemplateFields(selectedInstructionProp || null);
     
     // Choice for costs section (4.3)
     const [costsChoice, setCostsChoice] = useState<'no_costs' | 'risk_costs' | null>(null);
@@ -227,48 +215,6 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
         }
     };
     
-    // Initialize template fields when instruction/matter data is available
-    useEffect(() => {
-        if (selectedInstruction) {
-            const updatedFields = { ...templateFields };
-
-            // Client name (individual or company)
-            if (!updatedFields.insert_clients_name) {
-                const first = (selectedInstruction as any).FirstName || '';
-                const last = (selectedInstruction as any).LastName || '';
-                const prefix = (selectedInstruction as any).Title ? `${(selectedInstruction as any).Title} ` : '';
-                const company = (selectedInstruction as any).CompanyName || '';
-                const name = (first || last)
-                    ? `${prefix}${first} ${last}`.trim()
-                    : company;
-                if (name) updatedFields.insert_clients_name = name;
-            }
-
-            if (selectedInstruction.title && !updatedFields.matter) {
-                updatedFields.matter = selectedInstruction.title;
-            }
-            if (selectedInstruction.title && !updatedFields.insert_heading_eg_matter_description) {
-                updatedFields.insert_heading_eg_matter_description = `RE: ${selectedInstruction.title}`;
-            }
-            if (selectedInstruction.description && !updatedFields.insert_current_position_and_scope_of_retainer) {
-                updatedFields.insert_current_position_and_scope_of_retainer = selectedInstruction.description;
-            }
-
-            if ((selectedInstruction as any).Email && !updatedFields.email) {
-                updatedFields.email = (selectedInstruction as any).Email;
-            }
-
-            const currentUser = (localUserData as any[])[0] || {};
-            if (!updatedFields.name_of_person_handling_matter && currentUser['Full Name']) {
-                updatedFields.name_of_person_handling_matter = currentUser['Full Name'];
-            }
-            if (!updatedFields.status && currentUser.Role) {
-                updatedFields.status = currentUser.Role;
-            }
-
-            setTemplateFields(updatedFields);
-        }
-    }, [selectedInstruction]);
     
     // Handle template selection
     const handleTemplateSelect = (template: 'ccl' | 'custom') => {
@@ -328,78 +274,13 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
     };
     
     // Generate template content with field substitutions
-    const generateTemplateContent = () => {
-        if (!documentContent) return documentContent;
-        
-        let content = documentContent;
-        
-        // Handle costs section choice
-        const costsText = costsChoice === 'no_costs' 
-            ? "We do not expect that you will have to pay another party's costs. This only tends to arise in litigation and is therefore not relevant to your matter."
-            : `There is a risk that you may have to pay ${templateFields.identify_the_other_party_eg_your_opponents || '{{identify_the_other_party_eg_your_opponents}}'} costs in this matter. This is explained in section 5, Funding and billing below.`;
-        
-        content = content.replace(/\{\{costs_section_choice\}\}/g, costsText);
-        
-        // Handle charges section choice
-        const chargesText = chargesChoice === 'hourly_rate' 
-            ? `Our fees are calculated on the basis of an hourly rate. My rate is £395 per hour. Other Partners/senior solicitors are charged at £395, Associate solicitors at £325, Solicitors at £285 and trainees and paralegals are charged at £195. All hourly rates will be subject to the addition of VAT.
-
-Short incoming and outgoing letters, messages, emails and routine phone calls are charged at 1/10 of an hour. All other work is timed in six minute units and charged at the relevant hourly rate. Please note that lots of small emails or telephone calls may unnecessarily increase the costs to you.
-
-I estimate the cost of the Initial Scope with be £${templateFields.figure || '{{figure}}'} plus VAT.`
-            : `We cannot give an estimate of our overall charges in this matter because ${templateFields.we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible || '{{we_cannot_give_an_estimate_of_our_overall_charges_in_this_matter_because_reason_why_estimate_is_not_possible}}'}. The next stage in your matter is ${templateFields.next_stage || '{{next_stage}}'} and we estimate that our charges up to the completion of that stage will be in the region of £${templateFields.figure_or_range || '{{figure_or_range}}'}.
-
-We reserve the right to increase the hourly rates if the work done is particularly complex or urgent, or the nature of your instructions require us to work outside normal office hours. If this happens, we will notify you in advance and agree an appropriate rate.
-
-We will review our hourly rates on a periodic basis. This is usually done annually each January. We will give you advance notice of any change to our hourly rates.`;
-        
-        content = content.replace(/\{\{charges_section_choice\}\}/g, chargesText);
-        
-        // Handle disbursements section choice
-        const disbursementsText = disbursementsChoice === 'table' 
-            ? `Based on the information you have provided, we expect to incur the following disbursements:
-
-Disbursement | Amount | VAT chargeable
-[Describe disbursement] | £[Insert estimated amount] | [Yes OR No]
-[Describe disbursement] | £[Insert estimated amount] | [Yes OR No]`
-            : !showEstimateExamples 
-                ? `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '{{estimate}}'} in total including VAT.`
-                : (() => {
-                    // Format the examples with proper "and" syntax
-                    const rawExamples = templateFields.give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees || '{{give_examples_of_what_your_estimate_includes_eg_accountants_report_and_court_fees}}';
-                    let formattedExamples = rawExamples;
-                    
-                    // If it's not a placeholder, format it properly
-                    if (rawExamples && !rawExamples.startsWith('{{')) {
-                        const selected = [];
-                        if (rawExamples.includes('court fees')) selected.push('court fees');
-                        if (rawExamples.includes('accountants report')) selected.push('accountants report');
-                        
-                        if (selected.length === 0) {
-                            formattedExamples = rawExamples; // Use raw text if no standard options detected
-                        } else if (selected.length === 1) {
-                            formattedExamples = selected[0];
-                        } else {
-                            formattedExamples = selected.slice(0, -1).join(', ') + ' and ' + selected[selected.length - 1];
-                        }
-                    }
-                    
-                    return `We cannot give an exact figure for your disbursements, but this is likely to be in the region of £${templateFields.simple_disbursements_estimate || '{{estimate}}'} for the next steps in your matter including ${formattedExamples}.`;
-                })();
-        
-        content = content.replace(/\{\{disbursements_section_choice\}\}/g, disbursementsText);
-        
-        // Replace other template fields
-        Object.keys(templateFields).forEach(key => {
-            const value = templateFields[key];
-            if (value && value.trim()) {
-                const placeholder = `{{${key}}}`;
-                content = content.replace(new RegExp(placeholder, 'g'), value);
-            }
+    const generateContent = () =>
+        generateTemplateContent(documentContent, templateFields, {
+            costsChoice,
+            chargesChoice,
+            disbursementsChoice,
+            showEstimateExamples,
         });
-        
-        return content;
-    };
     
     // Function to render content with highlighted template variables
     // Helper function to measure text width
@@ -2944,10 +2825,16 @@ Disbursement | Amount | VAT chargeable
     };
 
     // Function to render template content for read-only preview
-    const renderTemplateContentForPreview = () => {
-        const generated = generateTemplateContent();
-        return <DocumentRenderer template={generated} />;
-    };
+    const renderTemplateContentForPreview = () => (
+        <CCLPreview
+            documentContent={documentContent}
+            templateFields={templateFields}
+            costsChoice={costsChoice}
+            chargesChoice={chargesChoice}
+            disbursementsChoice={disbursementsChoice}
+            showEstimateExamples={showEstimateExamples}
+        />
+    );
 
     
     // Navigation functions
@@ -3095,13 +2982,14 @@ Disbursement | Amount | VAT chargeable
                 renderFieldsOnlyView={renderFieldsOnlyView}
                 renderEditableTemplateContent={renderEditableTemplateContent}
                 documentContent={documentContent}
+                onContentChange={setDocumentContent}
                 isFieldsOnlyView={isFieldsOnlyView}
                 setIsFieldsOnlyView={setIsFieldsOnlyView}
                 navigationStyle={navigationStyle}
                 goToPreviousStep={goToPreviousStep}
                 canProceedToStep3={canProceedToStep3}
                 goToNextStep={goToNextStep}
-            />
+/>
             <PreviewActionsStep
                 currentStep={currentStep}
                 questionBannerStyle={questionBannerStyle}
@@ -3110,7 +2998,7 @@ Disbursement | Amount | VAT chargeable
                 windowWidth={windowWidth}
                 message={message}
                 setMessage={setMessage}
-                generateTemplateContent={generateTemplateContent}
+                generateContent={generateContent}
                 templateFields={templateFields}
                 selectedTemplate={selectedTemplate}
                 navigationStyle={navigationStyle}

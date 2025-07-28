@@ -1,46 +1,155 @@
-diff --git a/src/components/FormEmbed.tsx b/src/components/FormEmbed.tsx
-index 46858e336d19608e561366864b89afb52201208a..c16c368a356390c7429b604c61eb2dcb06defd6d 100644
---- a/src/components/FormEmbed.tsx
-+++ b/src/components/FormEmbed.tsx
-@@ -109,34 +109,39 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, teamData, matters
-                     isMultiline={false}
-                     onDismiss={() => setSubmissionSuccess(null)}
-                     dismissButtonAriaLabel="Close"
-                     styles={{ root: { marginBottom: '10px', borderRadius: '4px' } }}
-                 >
-                     {submissionSuccess}
-                 </MessageBar>
-             )}
-             {link.embedScript ? (
-                 <div ref={formContainerRef}>
-                     {!isCognitoLoaded && (
-                         <div style={loaderStyle}>
-                             <img src={loaderIcon} alt="Loading..." style={{ width: '100px', height: 'auto' }} />
-                         </div>
-                     )}
-                 </div>
-             ) : link.fields ? (
-                 <BespokeForm
-                     key={formKey}
-                     fields={link.fields.map((f) => ({ ...f, name: f.label }))}
-                     onSubmit={handleFinancialSubmit}
-                     onCancel={() => { }}
-                     isSubmitting={isSubmitting}
-                     matters={matters}
-                 />
--                
-+            ) : link.component ? (
-+                React.createElement(link.component, {
-+                    team: teamData || [],
-+                    matters,
-+                    onBack: () => {}
-+                })
-             ) : (
-                 <div>No form available for this item.</div>
-             )}
-         </div>
-     );
- };
+diff --git a/src/tabs/instructions/ccl/PreviewActionsStep.tsx b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+index 3b1375decada378f71459271d2a7916b0d52fab4..596c90d834699530ca02710bcce0a2cc2d672871 100644
+--- a/src/tabs/instructions/ccl/PreviewActionsStep.tsx
++++ b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+@@ -1,54 +1,54 @@
+ import React from 'react';
+ import { MessageBar, MessageBarType, Icon, Stack } from '@fluentui/react';
  
--export default FormEmbed;
-+export default FormEmbed;
+ interface Step3Props {
+     currentStep: number;
+     questionBannerStyle: React.CSSProperties;
+     renderTemplateContentForPreview: () => JSX.Element | string;
+     documentContent: string;
+     windowWidth: number;
+     message: { type: MessageBarType; text: string } | null;
+     setMessage: (m: { type: MessageBarType; text: string } | null) => void;
+-    generateTemplateContent: () => string;
++    generateContent: () => string;
+     templateFields: Record<string, string>;
+     selectedTemplate: 'ccl' | 'custom' | null;
+     navigationStyle: React.CSSProperties;
+     goToPreviousStep: () => void;
+     goToNextStep: () => void;
+ }
+ 
+ const Step3: React.FC<Step3Props> = (props) => {
+     const {
+         currentStep,
+         questionBannerStyle,
+         renderTemplateContentForPreview,
+         documentContent,
+         windowWidth,
+         message,
+         setMessage,
+-        generateTemplateContent,
++        generateContent,
+         templateFields,
+         selectedTemplate,
+         navigationStyle,
+         goToPreviousStep,
+         goToNextStep
+     } = props;
+ 
+     if (currentStep !== 3) return null;
+ 
+     return (
+         <div className="matter-opening-card" style={{
+             opacity: 1,
+             animation: 'fadeIn 0.3s ease-out'
+         }}>
+             <style>
+                 {`
+                     @keyframes fadeIn {
+                         from { opacity: 0; transform: translateY(10px); }
+                         to { opacity: 1; transform: translateY(0); }
+                     }
+                 `}
+             </style>
+             <Stack tokens={{ childrenGap: 20 }}>
+                 {/* Message Bar */}
+                 {message && (
+diff --git a/src/tabs/instructions/ccl/PreviewActionsStep.tsx b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+index 3b1375decada378f71459271d2a7916b0d52fab4..596c90d834699530ca02710bcce0a2cc2d672871 100644
+--- a/src/tabs/instructions/ccl/PreviewActionsStep.tsx
++++ b/src/tabs/instructions/ccl/PreviewActionsStep.tsx
+@@ -187,87 +187,87 @@ const Step3: React.FC<Step3Props> = (props) => {
+                                             width: '100%',
+                                             padding: '12px 16px',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             justifyContent: 'center',
+                                             gap: '8px',
+                                             cursor: 'pointer',
+                                             transition: 'all 0.2s ease',
+                                             fontSize: '14px',
+                                             fontWeight: 600,
+                                         }}
+                                         onMouseEnter={(e) => {
+                                             e.currentTarget.style.background = '#e6e6e8';
+                                         }}
+                                         onMouseLeave={(e) => {
+                                             e.currentTarget.style.background = '#f4f4f6';
+                                         }}
+                                     >
+                                         <Icon iconName="Save" />
+                                         Save as Draft
+                                     </div>
+ 
+                                     <div
+                                         className="action-button"
+                                         onClick={() => {
+-                                            navigator.clipboard.writeText(generateTemplateContent());
++        navigator.clipboard.writeText(generateContent());
+                                             setMessage({ type: MessageBarType.success, text: 'Document copied to clipboard!' });
+                                         }}
+                                         style={{
+                                             background: '#f4f4f6',
+                                             color: '#333',
+                                             border: '1px solid #e1dfdd',
+                                             borderRadius: '0px',
+                                             width: '100%',
+                                             padding: '12px 16px',
+                                             display: 'flex',
+                                             alignItems: 'center',
+                                             justifyContent: 'center',
+                                             gap: '8px',
+                                             cursor: 'pointer',
+                                             transition: 'all 0.2s ease',
+                                             fontSize: '14px',
+                                             fontWeight: 600,
+                                         }}
+                                         onMouseEnter={(e) => {
+                                             e.currentTarget.style.background = '#e6e6e8';
+                                         }}
+                                         onMouseLeave={(e) => {
+                                             e.currentTarget.style.background = '#f4f4f6';
+                                         }}
+                                     >
+                                         <Icon iconName="Copy" />
+                                         Copy to Clipboard
+                                     </div>
+ 
+                                     <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                                         <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Document Summary</h4>
+                                         <p style={{ margin: '0', fontSize: '12px', color: '#666' }}>
+                                             Template: {selectedTemplate === 'ccl' ? 'Client Care Letter' : 'Custom Document'}
+                                         </p>
+                                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+-                                            Word count: {generateTemplateContent().split(/\s+/).filter(word => word.length > 0).length}
++                                            Word count: {generateContent().split(/\s+/).filter(word => word.length > 0).length}
+                                         </p>
+                                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                                             Fields filled: {Object.values(templateFields).filter(v => v.trim() !== '').length}/{Object.keys(templateFields).length}
+                                         </p>
+                                     </div>
+                                 </Stack>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+ 
+                 <div style={navigationStyle}>
+                     <div
+                         className="nav-button back-button"
+                         onClick={goToPreviousStep}
+                         tabIndex={0}
+                         style={{
+                             background: '#f4f4f6',
+                             border: '2px solid #e1dfdd',
+                             borderRadius: '0px',
+                             width: '48px',
+                             height: '48px',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'center',
