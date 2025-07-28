@@ -70,21 +70,18 @@
         .entry-text {
           position: relative;
           overflow: hidden;
-          perspective: 800px;
-            transform-style: preserve-3d;
           min-height: 2.5rem;
           flex: 1;
         }
         
         .entry-text>span {
-          transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.5s ease;
+          transition: opacity 0.3s ease, transform 0.3s ease;
           display: block;
-          backface-visibility: hidden;
         }
         
         .entry-main {
-          transform-origin: top;
-          transform: rotateX(0deg);
+          transform: translateY(0);
+          opacity: 1;
         }
         
         .entry-reveal {
@@ -92,18 +89,18 @@
           top: 0;
           left: 0;
           width: 100%;
-          transform-origin: bottom;
-          transform: rotateX(-80deg);
+          transform: translateY(10px);
           opacity: 0;
         }
         
         .roadmap-entry:hover .entry-main,
         .roadmap-entry.active .entry-main {
-          transform: rotateX(80deg);
+          transform: translateY(-10px);
+          opacity: 0;
         }
         
         .roadmap-entry:hover .entry-reveal,
         .roadmap-entry.active .entry-reveal {
-          transform: rotateX(0deg);
+          transform: translateY(0);
           opacity: 1;
         }

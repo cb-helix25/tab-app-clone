@@ -37,15 +37,18 @@ const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
         text: m.InstructionRef ?? ''
     }));
 
-    const handleAddLetter = () => setCoverLetters([...coverLetters, { link: '', copies: 1 }]);
-    const handleRemoveLetter = (idx: number) => setCoverLetters(cl => cl.filter((_, i) => i !== idx));
-    const canShowNotes = name && matterRef && bundleLink && (posted || leftInOffice) && ((posted && arrivalDate) || (leftInOffice && officeDate));
+    const handleAddLetter = () =>
+        setCoverLetters([...coverLetters, { link: '', copies: 1 }]);
+    const handleRemoveLetter = (idx: number) =>
+        setCoverLetters((cl) => cl.filter((_, i) => i !== idx));
+
     const isValid = () => {
         if (!name || !matterRef || !bundleLink) return false;
         if (!posted && !leftInOffice) return false;
         if (posted) {
             if (!arrivalDate) return false;
-            if (coverLetters.some(cl => !cl.link || cl.copies < 1)) return false;
+            if (coverLetters.some((cl) => !cl.link || cl.copies < 1))
+                return false;
         }
         if (leftInOffice) {
             if (!officeDate || copiesInOffice < 1) return false;
@@ -99,28 +102,18 @@ const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
                             <Checkbox label="Posted" checked={posted} onChange={(_, c) => setPosted(!!c)} />
                             <Checkbox label="Left in office" checked={leftInOffice} onChange={(_, c) => setLeftInOffice(!!c)} />
                         </div>
-                        {posted && (
-                            <>
-                                <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={date => setArrivalDate(date ?? null)} isRequired />
-                                {coverLetters.map((cl, idx) => (
-                                    <Stack key={idx} horizontal tokens={{ childrenGap: 8 }}>
-                                        <TextField label="Covering letter link" value={cl.link} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, link: v || '' } : c))} required />
-                                        <TextField label="No. of copies to address" type="number" value={cl.copies.toString()} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, copies: Number(v) || 1 } : c))} required />
-                                        {coverLetters.length > 1 && <DefaultButton text="Delete" onClick={() => handleRemoveLetter(idx)} />}
-                                    </Stack>
-                                ))}
-                                <PrimaryButton text="Add Covering Letter" onClick={handleAddLetter} styles={sharedPrimaryButtonStyles} />
-                            </>
-                        )}
-                        {leftInOffice && (
-                            <>
-                                <DatePicker label="Office-ready date" value={officeDate || undefined} onSelectDate={date => setOfficeDate(date ?? null)} isRequired />
-                                <TextField label="No. of copies in office" type="number" value={copiesInOffice.toString()} onChange={(_, v) => setCopiesInOffice(Number(v) || 1)} required />
-                            </>
-                        )}
-                        {canShowNotes && (
-                            <TextField label="Other notes" multiline rows={3} value={notes} onChange={(_, v) => setNotes(v || '')} />
-                        )}
+                        <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={date => setArrivalDate(date ?? null)} isRequired={posted} />
+                        {coverLetters.map((cl, idx) => (
+                            <Stack key={idx} horizontal tokens={{ childrenGap: 8 }}>
+                                <TextField label="Covering letter link" value={cl.link} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, link: v || '' } : c))} required={posted} />
+                                <TextField label="No. of copies to address" type="number" value={cl.copies.toString()} onChange={(_, v) => setCoverLetters(arr => arr.map((c, i) => i === idx ? { ...c, copies: Number(v) || 1 } : c))} required={posted} />
+                                {coverLetters.length > 1 && <DefaultButton text="Delete" onClick={() => handleRemoveLetter(idx)} />}
+                            </Stack>
+                        ))}
+                        <PrimaryButton text="Add Covering Letter" onClick={handleAddLetter} styles={sharedPrimaryButtonStyles} />
+                        <DatePicker label="Office-ready date" value={officeDate || undefined} onSelectDate={date => setOfficeDate(date ?? null)} isRequired={leftInOffice} />
+                        <TextField label="No. of copies in office" type="number" value={copiesInOffice.toString()} onChange={(_, v) => setCopiesInOffice(Number(v) || 1)} required={leftInOffice} />
+                        <TextField label="Other notes" multiline rows={3} value={notes} onChange={(_, v) => setNotes(v || '')} />
                         <Stack horizontal tokens={{ childrenGap: 8 }}>
                             <PrimaryButton text="Submit" onClick={handleSubmit} disabled={!isValid() || submitting} styles={sharedPrimaryButtonStyles} />
                             <DefaultButton text="Cancel" onClick={onBack} styles={sharedDefaultButtonStyles} />

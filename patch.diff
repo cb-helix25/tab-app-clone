@@ -1,116 +1,44 @@
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 6c0b334edcfcda1e17155c421c85926e8a2e6b17..e954e78ac50d2eed84708f397928eb1f20ed65bd 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -329,51 +329,51 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, metrics,
- 
- 
- //////////////////////
- // Quick Actions Order
- //////////////////////
- 
- const quickActionOrder: Record<string, number> = {
-   'Confirm Attendance': 1,
-   'Finalise Matter': 2,
-   'Review Instructions': 3,
-   'Create a Task': 4,
-   'Request CollabSpace': 5,
-   'Save Telephone Note': 6,
-   'Save Attendance Note': 7,
-   'Request ID': 8,
-   'Open a Matter': 9,
-   'Request Annual Leave': 10,
-   'Unclaimed Enquiries': 11,
+diff --git a/src/components/FormEmbed.tsx b/src/components/FormEmbed.tsx
+index 1cac56428e15e100a2f462759d8b81e8e202a7ac..307e23892781089ba107dc218ffd6b03d8e8ec44 100644
+--- a/src/components/FormEmbed.tsx
++++ b/src/components/FormEmbed.tsx
+@@ -108,33 +108,39 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, matters }) => {
+                     isMultiline={false}
+                     onDismiss={() => setSubmissionSuccess(null)}
+                     dismissButtonAriaLabel="Close"
+                     styles={{ root: { marginBottom: '10px', borderRadius: '4px' } }}
+                 >
+                     {submissionSuccess}
+                 </MessageBar>
+             )}
+             {link.embedScript ? (
+                 <div ref={formContainerRef}>
+                     {!isCognitoLoaded && (
+                         <div style={loaderStyle}>
+                             <img src={loaderIcon} alt="Loading..." style={{ width: '100px', height: 'auto' }} />
+                         </div>
+                     )}
+                 </div>
+             ) : link.fields ? (
+                 <BespokeForm
+                     key={formKey}
+                     fields={link.fields.map((f) => ({ ...f, name: f.label }))}
+                     onSubmit={handleFinancialSubmit}
+                     onCancel={() => { }}
+                     isSubmitting={isSubmitting}
+                     matters={matters}
+                 />
++            ) : link.component ? (
++                React.createElement(link.component, {
++                    users: userData || [],
++                    matters,
++                    onBack: () => { },
++                })
+             ) : (
+                 <div>No form available for this item.</div>
+             )}
+         </div>
+     );
  };
  
- //////////////////////
- // Quick Actions
- //////////////////////
- 
- const quickActions: QuickLink[] = [
--  { title: 'Confirm Attendance', icon: 'Accept' },
-+  { title: 'Confirm Attendance', icon: 'Calendar' },
-   { title: 'Create a Task', icon: 'Checklist' },
-   { title: 'Save Telephone Note', icon: 'Comment' },
-   { title: 'Request Annual Leave', icon: 'Calendar' },
-   { title: 'Book Space', icon: 'Room' },
-   { title: 'Unclaimed Enquiries', icon: 'Warning' },
- ];
- 
- //////////////////////
- // Styles
- //////////////////////
- 
- const containerStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
-     minHeight: '100vh',
-     boxSizing: 'border-box',
-   });
- 
- const headerStyle = mergeStyles({
-   display: 'flex',
-   justifyContent: 'space-between',
-   alignItems: 'flex-start',
-   width: '100%',
-   padding: '10px 0',
-   gap: '16px',
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 6c0b334edcfcda1e17155c421c85926e8a2e6b17..e954e78ac50d2eed84708f397928eb1f20ed65bd 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2553,52 +2553,52 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-       default:
-         content = <div>No form available.</div>;
-         break;
-     }
-   
-     setBespokePanelContent(content);
-     setBespokePanelTitle(titleText);
-     setIsBespokePanelOpen(true);
-   }, [
-     attendanceRef,
-     instructionData,
-     futureLeaveRecords,
-     transformedTeamData,
-     userData,
-     annualLeaveTotals,
-     bankHolidays,
-     annualLeaveAllData,
-     futureBookings,
-   ]);
- 
-   const immediateActionsList: Action[] = useMemo(() => {
-     const actions: Action[] = [];
-     if (!isLoadingAttendance && !currentUserConfirmed) {
-       actions.push({
-         title: 'Confirm Attendance',
--        icon: 'Cancel',
--        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Accept' }),
-+        icon: 'Calendar',
-+        onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
-       });
-     }
-     if (hasActiveMatter) {
-       actions.push({
-         title: 'Finalise Matter',
-         icon: 'OpenFolderHorizontal',
-         onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
-       });
-     }
-     if (instructionData.length > 0) {
-       actions.push({
-         title: 'Review Instructions',
-         icon: 'OpenFile',
-         onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
-       });
-     }
-     actions.push(
-       ...immediateALActions.map(a => ({
-         ...a,
-         icon: a.icon || '',
-       }))
-     );
-     actions.sort(
-       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-     );
+ export default FormEmbed;

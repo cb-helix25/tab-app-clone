@@ -1,5 +1,5 @@
 import React, { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { Checkbox, DefaultButton, mergeStyles, Icon, TooltipHost } from '@fluentui/react';
+import { DefaultButton, mergeStyles, Icon, TooltipHost } from '@fluentui/react';
 import { colours } from '../../app/styles/colours';
 import { componentTokens } from '../../app/styles/componentTokens';
 import { cardStyles } from '../instructions/componentTokens';
@@ -102,7 +102,7 @@ const AttendanceConfirmPanel = forwardRef<
     userData,
     onSave,
 }, ref) => {
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     const getMondayOfCurrentWeek = (): Date => {
         const now = new Date();
@@ -127,10 +127,21 @@ const AttendanceConfirmPanel = forwardRef<
             [currentWeekStart]: [],
             [nextWeekStart]: [],
         };
+        const dayMap: Record<string, string> = {
+            Mon: 'Monday',
+            Tue: 'Tuesday',
+            Wed: 'Wednesday',
+            Thu: 'Thursday',
+            Fri: 'Friday',
+            Sat: 'Saturday',
+            Sun: 'Sunday',
+        };
         attendanceRecords
             .filter((r) => r.Initials === userInitials)
             .forEach((rec) => {
-                state[rec.Week_Start] = rec.Attendance_Days ? rec.Attendance_Days.split(',').map((d) => d.trim()) : [];
+                state[rec.Week_Start] = rec.Attendance_Days
+                    ? rec.Attendance_Days.split(',').map((d) => dayMap[d.trim()] || d.trim())
+                    : [];
             });
         return state;
     }, [attendanceRecords, userInitials, currentWeekStart, nextWeekStart]);
@@ -170,6 +181,8 @@ const AttendanceConfirmPanel = forwardRef<
             Wed: 'Wednesday',
             Thu: 'Thursday',
             Fri: 'Friday',
+            Sat: 'Saturday',
+            Sun: 'Sunday',
         };
         const attendedDays = personAttendance
             ? personAttendance.split(',').map((s) => dayMap[s.trim()] || s.trim())
@@ -194,15 +207,6 @@ const AttendanceConfirmPanel = forwardRef<
         focusTable: () => { },
     }));
 
-    const isDayOnLeave = (dayStr: string, weekStart: string) => {
-        const date = new Date(weekStart);
-        const weekDayIndex = weekDays.indexOf(dayStr);
-        date.setDate(date.getDate() + weekDayIndex);
-        const iso = date.toISOString().split('T')[0];
-        return combinedLeaveRecords.some(
-            (leave) => leave.status === 'booked' && leave.person.trim().toLowerCase() === userInitials.toLowerCase() && iso >= leave.start_date && iso <= leave.end_date
-        );
-    };
 
     const toggleDay = (weekStart: string, day: string) => {
         setLocalAttendance((prev) => {
@@ -222,27 +226,97 @@ const AttendanceConfirmPanel = forwardRef<
         setSaving(false);
     };
 
-    const renderWeek = (label: string, weekStart: string) => (
-        <div className={sectionStyle} key={weekStart}>
-            <div style={headerStyle(isDarkMode)}>{label}</div>
-            <div style={contentStyle(isDarkMode)}>
-                {weekDays.map((day) => {
-                    const disabled = isDayOnLeave(day, weekStart);
-                    const checked = localAttendance[weekStart]?.includes(day);
-                    return (
-                        <Checkbox
-                            key={day}
-                            label={day}
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => toggleDay(weekStart, day)}
-                            styles={{ root: { selectors: { '.ms-Checkbox-label': { fontSize: 14 } } } }}
-                        />
-                    );
-                })}
+    const renderWeek = (label: string, weekStart: string) => {
+        const weekStartDate = new Date(weekStart + 'T00:00:00');
+        const attendanceMap: Record<string, string[]> = {};
+        const dayMap: Record<string, string> = {
+            Mon: 'Monday',
+            Tue: 'Tuesday',
+            Wed: 'Wednesday',
+            Thu: 'Thursday',
+            Fri: 'Friday',
+            Sat: 'Saturday',
+            Sun: 'Sunday',
+        };
+        attendanceRecords
+            .filter((r) => r.Week_Start === weekStart)
+            .forEach((rec) => {
+                attendanceMap[rec.Initials] = rec.Attendance_Days
+                    ? rec.Attendance_Days.split(',').map((d) => dayMap[d.trim()] || d.trim())
+                    : [];
+            });
+
+        const cellStyle = {
+            width: 32,
+            height: 32,
+            textAlign: 'center' as const,
+            border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+        };
+
+        return (
+            <div className={sectionStyle} key={weekStart}>
+                <div style={headerStyle(isDarkMode)}>{label}</div>
+                <div style={contentStyle(isDarkMode)}>
+                    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                {weekDays.map((d) => (
+                                    <th key={d} style={{ ...cellStyle, fontSize: 12 }}>{d.slice(0, 3)}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {teamData.map((member) => (
+                                <tr key={member.Initials}>
+                                    <td style={{ ...cellStyle, fontWeight: 600 }}>{member.Initials}</td>
+                                    {weekDays.map((day, idx) => {
+                                        const date = new Date(weekStartDate);
+                                        date.setDate(date.getDate() + idx);
+                                        const iso = date.toISOString().split('T')[0];
+                                        const onLeave = combinedLeaveRecords.some(
+                                            (leave) =>
+                                                leave.status === 'booked' &&
+                                                leave.person.trim().toLowerCase() === member.Initials.toLowerCase() &&
+                                                iso >= leave.start_date &&
+                                                iso <= leave.end_date
+                                        );
+                                        if (onLeave) {
+                                            return (
+                                                <td key={day} style={cellStyle}>
+                                                    <Icon iconName="Airplane" />
+                                                </td>
+                                            );
+                                        }
+                                        if (member.Initials === userInitials) {
+                                            const checked = localAttendance[weekStart]?.includes(day);
+                                            const icon = checked ? 'CityNext' : 'Home';
+                                            return (
+                                                <td
+                                                    key={day}
+                                                    style={{ ...cellStyle, cursor: 'pointer', backgroundColor: checked ? `${colours.highlight}22` : undefined }}
+                                                    onClick={() => toggleDay(weekStart, day)}
+                                                >
+                                                    <Icon iconName={icon} />
+                                                </td>
+                                            );
+                                        }
+                                        const days = attendanceMap[member.Initials] || [];
+                                        const icon = days.includes(day) ? 'CityNext' : 'Home';
+                                        return (
+                                            <td key={day} style={cellStyle}>
+                                                <Icon iconName={icon} />
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div>

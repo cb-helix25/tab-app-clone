@@ -49,7 +49,7 @@ import { componentTokens } from '../../app/styles/componentTokens';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData, Enquiry } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -81,8 +81,7 @@ import localV3Blocks from '../../localData/localV3Blocks.json';
 import QuickActionsCard from './QuickActionsCard';
 import QuickActionsBar from './QuickActionsBar';
 import ImmediateActionsBar from './ImmediateActionsBar';
-import InstructionsPrompt, { getActionableInstructions } from './InstructionsPrompt';
-
+import { getActionableInstructions } from './InstructionsPrompt';
 import OutstandingBalancesList from '../transactions/OutstandingBalancesList';
 
 import Attendance from './AttendanceCompact';
@@ -91,6 +90,7 @@ import TransactionCard from '../transactions/TransactionCard';
 import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 
 import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // Adjust the path if needed
+import UnclaimedEnquiries from '../enquiries/UnclaimedEnquiries';
 
 // Lazy-loaded form components
 const Tasking = lazy(() => import('../../CustomForms/Tasking'));
@@ -692,7 +692,7 @@ const ensureLZInApprovers = (approvers: string[] = []): string[] => {
 };
 
 // Helper: Normalize metrics alias
-// - Lukasz/Luke (LZ) -> Alex Cook (AC)
+// - Lukasz/Luke (LZ) -> Jonathan Waters (JW)
 // - Samuel Packwood   -> Sam Packwood
 
 const getMetricsAlias = (
@@ -703,7 +703,7 @@ const getMetricsAlias = (
   const parsedId = clioId ? parseInt(String(clioId), 10) : undefined;
   const trimmedName = fullName?.trim();
   if (trimmedName === 'Lukasz Zemanek' || initials?.toUpperCase() === 'LZ') {
-    return { name: 'Alex Cook', clioId: 142961 };
+    return { name: 'Jonathan Waters', clioId: 137557 };
   }
   if (trimmedName === 'Samuel Packwood') {
     return { name: 'Sam Packwood', clioId: parsedId ?? 142964 };
@@ -933,6 +933,15 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Pending snippet edits for approval
   const [snippetEdits, setSnippetEdits] = useState<SnippetEdit[]>([]);
 
+  // List of unclaimed enquiries for quick access panel
+  const unclaimedEnquiries = useMemo(
+    () =>
+      (enquiries || []).filter(
+        (e: Enquiry) => (e.Point_of_Contact || '').toLowerCase() === 'team@helix-law.com'
+      ),
+    [enquiries]
+  );
+
   // Fetch pending snippet edits and prefetch snippet blocks
   useEffect(() => {
     const useLocal = process.env.REACT_APP_USE_LOCAL_DATA === 'true';
@@ -1018,24 +1027,17 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     [instructionData]
   );
 
-  const [showInstructionsPrompt, setShowInstructionsPrompt] = useState<boolean>(
-    () => actionableSummaries.length > 0 &&
-      sessionStorage.getItem('instructionsPromptDismissed') !== 'true'
+  const actionableInstructionIds = useMemo(
+    () => actionableSummaries.map(s => s.id).sort().join(','),
+    [actionableSummaries]
   );
 
-  useEffect(() => {
-    if (
-      actionableSummaries.length > 0 &&
-      sessionStorage.getItem('instructionsPromptDismissed') !== 'true'
-    ) {
-      setShowInstructionsPrompt(true);
-    }
-  }, [actionableSummaries]);
+  const [reviewedInstructionIds, setReviewedInstructionIds] = useState<string>(() =>
+    sessionStorage.getItem('reviewedInstructionIds') || ''
+  );
 
-  const dismissInstructionsPrompt = useCallback(() => {
-    setShowInstructionsPrompt(false);
-    sessionStorage.setItem('instructionsPromptDismissed', 'true');
-  }, []);
+  const instructionsActionDone =
+    reviewedInstructionIds === actionableInstructionIds && actionableInstructionIds !== '';
 
   const getCurrentWeekKey = (): string => {
     const monday = getMondayOfCurrentWeek();
@@ -2540,12 +2542,15 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         );
         break;
       case 'Review Instructions':
-        content = (
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '20px' }}>
-            {JSON.stringify(instructionData, null, 2)}
-          </pre>
-        );
-          break;
+        sessionStorage.setItem('reviewedInstructionIds', actionableInstructionIds);
+        setReviewedInstructionIds(actionableInstructionIds);
+        try {
+          window.dispatchEvent(new CustomEvent('navigateToInstructions'));
+        } catch (error) {
+          console.error('Failed to dispatch navigation event:', error);
+        }
+        return; // Navigate without opening panel
+        break;
       case 'Finalise Matter':
         // Navigate directly to Instructions tab and trigger matter opening
         localStorage.setItem('openMatterOpening', 'true');
@@ -2572,9 +2577,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         );
         break;
       case 'Unclaimed Enquiries':
-        sessionStorage.setItem('openUnclaimedEnquiries', 'true');
-        window.dispatchEvent(new CustomEvent('navigateToUnclaimedEnquiries'));
-        return;
+        content = (
+          <UnclaimedEnquiries
+            enquiries={unclaimedEnquiries}
+            onSelect={() => {}}
+          />
+        );
+        break;
       default:
         content = <div>No form available.</div>;
         break;
@@ -2593,6 +2602,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     bankHolidays,
     annualLeaveAllData,
     futureBookings,
+    unclaimedEnquiries,
   ]);
 
   const immediateActionsList: Action[] = useMemo(() => {
@@ -2611,9 +2621,10 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
       });
     }
-    if (instructionData.length > 0) {
+    if (actionableSummaries.length > 0 && !instructionsActionDone) {
+      const title = actionableSummaries.length === 1 ? 'Review Instruction' : 'Review Instructions';
       actions.push({
-        title: 'Review Instructions',
+        title,
         icon: 'OpenFile',
         onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
       });
@@ -2628,7 +2639,16 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
     );
     return actions;
-  }, [isLoadingAttendance, currentUserConfirmed, hasActiveMatter, instructionData, immediateALActions, handleActionClick]);
+  }, [
+    isLoadingAttendance,
+    currentUserConfirmed,
+    hasActiveMatter,
+    actionableSummaries,
+    instructionsActionDone,
+    instructionData,
+    immediateALActions,
+    handleActionClick,
+  ]);
 
   // Helper function to reset quick actions selection when panels close
   const resetQuickActionsSelection = useCallback(() => {
@@ -2906,12 +2926,6 @@ const conversionRate = enquiriesMonthToDate
         />
       )}
       <Stack tokens={dashboardTokens} className={containerStyle(isDarkMode)}>
-        {showInstructionsPrompt && (
-          <InstructionsPrompt
-            summaries={actionableSummaries}
-            onDismiss={dismissInstructionsPrompt}
-          />
-        )}
 
       {/* Actions & Metrics Container */}
       <div className={actionsMetricsContainerStyle}>

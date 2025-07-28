@@ -609,7 +609,8 @@ Disbursement | Amount | VAT chargeable
         if (!content) return 'No content to preview...';
         
         // Special handling for Action Points table
-        const startIndex = content.indexOf('18 Action points');
+        const actionMatch = content.match(/\d+\s+Action points/);
+        const startIndex = actionMatch ? actionMatch.index! : -1;
         if (startIndex !== -1) {
             const beforeActionPoints = content.substring(0, startIndex);
             const rest = content.substring(startIndex);
@@ -643,7 +644,7 @@ Disbursement | Amount | VAT chargeable
         let headerProcessed = false;
         
         // Find section header
-        const sectionHeaderIndex = lines.findIndex(line => line.includes('18 Action points'));
+        const sectionHeaderIndex = lines.findIndex(line => /\d+\s+Action points/.test(line));
         const tableHeaderIndex = lines.findIndex(line => line.includes('Action required by you | Additional information'));
         
         // Render section header
@@ -652,7 +653,7 @@ Disbursement | Amount | VAT chargeable
             const line = lines[i];
             if (line.trim() === '') {
                 headerElements.push(<br key={`header-br-${i}`} />);
-            } else if (line.includes('18 Action points')) {
+            } else if (/\d+\s+Action points/.test(line)) {
                 const match = line.match(/^(\d+)\s+(.+)$/);
                 if (match) {
                     headerElements.push(
@@ -3261,7 +3262,7 @@ Disbursement | Amount | VAT chargeable
 
             const numberedHeadingMatch = line.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
             const standaloneHeadingMatch = line.match(/^(Next steps|Electronic signatures|Yours sincerely)$/);
-            const bulletPointMatch = line.match(/^—(.+)$/);
+            const bulletPointMatch = line.match(/^[—–\-•](.+)$/);
 
             if (numberedHeadingMatch) {
                 const number = numberedHeadingMatch[1];
