@@ -1,8 +1,9 @@
 const express = require('express');
 const path = require('path');
+
 const router = express.Router();
 
-// Load local user data if available for development
+// Load local user data if available
 let localUsers = [];
 try {
     localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
@@ -14,8 +15,10 @@ function findUserByName(name) {
     if (!name) return null;
     return (localUsers || []).find(u => {
         const full = u['Full Name'] || `${u.First} ${u.Last}`;
-        return full.toLowerCase() === name.toLowerCase() ||
-            (u.Initials && u.Initials.toLowerCase() === name.toLowerCase());
+        return (
+            full.toLowerCase() === name.toLowerCase() ||
+            (u.Initials && u.Initials.toLowerCase() === name.toLowerCase())
+        );
     }) || null;
 }
 
@@ -107,7 +110,7 @@ router.post('/', async (req, res) => {
             const resp = await fetch('https://app.asana.com/api/1.0/tasks', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(taskBody)

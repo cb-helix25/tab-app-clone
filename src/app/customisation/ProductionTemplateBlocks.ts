@@ -61,9 +61,9 @@ export const templateBlocks: TemplateBlock[] = [
       {
         label: 'Current Position and Problems',
         previewText: `We have discussed that you are [INSERT]. You have a dispute with [INSERT] because [INSERT] and have confirmed that [INSERT].
-  
+
   The dispute with [INSERT] situation creates difficulty for you for obvious reasons, including because [INSERT].
-  
+
   In addition to the above, additional problems arise and need to be addressed, such as [INSERT].`,
       },
     ],

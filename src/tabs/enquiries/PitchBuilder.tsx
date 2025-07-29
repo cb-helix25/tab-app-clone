@@ -70,6 +70,29 @@ import {
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
 
+// HMR: Reload template blocks if ProductionTemplateBlocks.ts changes (Vite or Webpack)
+function useHotReloadTemplateBlocks(templateSet: TemplateSet) {
+  const [blocks, setBlocks] = useState<TemplateBlock[]>(() => getTemplateBlocks(templateSet));
+  useEffect(() => {
+    setBlocks(getTemplateBlocks(templateSet));
+    // @ts-expect-error: HMR property only exists in dev
+    if (import.meta && import.meta.hot) {
+      // @ts-expect-error: HMR property only exists in dev
+      import.meta.hot.accept('../../app/customisation/ProductionTemplateBlocks', (mod: any) => {
+        setBlocks(getTemplateBlocks(templateSet));
+      });
+    // @ts-expect-error: HMR property only exists in dev
+    } else if (typeof module !== 'undefined' && module.hot) {
+      // @ts-expect-error: HMR property only exists in dev
+      module.hot.accept('../../app/customisation/ProductionTemplateBlocks', () => {
+        setBlocks(getTemplateBlocks(templateSet));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateSet]);
+  return blocks;
+}
+
 interface PitchBuilderProps {
   enquiry: Enquiry;
   userData: any;
@@ -392,7 +415,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
     background: ${colours.highlightBlue};
     color: ${colours.darkBlue};
     padding: 2px 4px;
-    border-radius: 6px;
+    border-radius: 0;
     border: 1px dashed ${colours.darkBlue};
     font-style: italic;
     cursor: pointer;
@@ -510,7 +533,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
-  const templateBlocks = getTemplateBlocks(templateSet);
+  const templateBlocks = useHotReloadTemplateBlocks(templateSet);
   // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
