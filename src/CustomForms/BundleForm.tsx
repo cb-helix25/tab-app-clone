@@ -122,30 +122,33 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                 <h3 className="step-title">Bundle Submission</h3>
                 <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                     <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
-                        <Dropdown
-                            label="Name"
-                            options={userOptions}
-                            selectedKey={name}
-                            onChange={(_, o) => setName(String(o?.key))}
-                            required
-                            styles={{ root: { width: '100%' } }}
-                        />
-                        <ComboBox
-                            label="Matter reference"
-                            options={matterOptions}
-                            allowFreeform
-                            autoComplete="on"
-                            selectedKey={matterRef}
-                            onInputValueChange={(val) => setMatterFilter(val)}
-                            onChange={(_, option, __, val) => setMatterRef(option ? String(option.key) : (val || ''))}
-                            onResolveOptions={() => {
-                                if (!matterFilter) return matterOptions;
-                                return matterOptions.filter((opt) => opt.text.toLowerCase().includes(matterFilter.toLowerCase()));
-                            }}
-                            required
-                            styles={{ root: { width: '100%' } }}
-                        />
+                        <Stack styles={{ root: { flex: 1 } }}>
+                            <Dropdown
+                                label="Name"
+                                options={userOptions}
+                                selectedKey={name}
+                                onChange={(_, o) => setName(String(o?.key))}
+                                required
+                            />
+                        </Stack>
+                        <Stack styles={{ root: { flex: 1 } }}>
+                            <ComboBox
+                                label="Matter reference"
+                                options={matterOptions}
+                                allowFreeform
+                                autoComplete="on"
+                                selectedKey={matterRef}
+                                onInputValueChange={(val) => setMatterFilter(val)}
+                                onChange={(_, option, __, val) => setMatterRef(option ? String(option.key) : (val || ''))}
+                                onResolveOptions={() => {
+                                    if (!matterFilter) return matterOptions;
+                                    return matterOptions.filter((opt) => opt.text.toLowerCase().includes(matterFilter.toLowerCase()));
+                                }}
+                                required
+                            />
+                        </Stack>
                     </Stack>
+
                     <TextField label="NetDocs link (bundle)" value={bundleLink} onChange={(_, v) => setBundleLink(v || '')} required />
                     <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                         <DefaultButton

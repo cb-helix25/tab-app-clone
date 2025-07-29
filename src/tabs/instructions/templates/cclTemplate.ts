@@ -155,9 +155,7 @@ Please see our Terms of Business for an explanation of other limits on our liabi
 17 Right to cancel
 
 You have the right to cancel this contract within 14 days without giving any reason. We will not start work during the cancellation period unless you expressly ask us to. The 'Instructions for Cancellation' notice at {{instructions_link}} explains:
-
 — how to cancel and the effect of cancellation;
-
 — what you will be liable for if you ask us to start work during the cancellation period.
 
 18 Action points

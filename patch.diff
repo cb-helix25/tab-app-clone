@@ -1,69 +1,52 @@
-diff --git a/src/tabs/instructions/DocumentsV3.tsx b/src/tabs/instructions/DocumentsV3.tsx
-index 58dea4a082adb51fd39487f4cb6ea3721981278d..e127a5a687a87b9c01f6718159b0476052b82c20 100644
---- a/src/tabs/instructions/DocumentsV3.tsx
-+++ b/src/tabs/instructions/DocumentsV3.tsx
-@@ -1152,54 +1152,60 @@ const DocumentsV3: React.FC<DocumentsV3Props> = ({
-                         onBlur={(e) => {
-                             if (isTable) return;
-                             let newText = e.target.textContent || '';
+diff --git a/src/tabs/instructions/templates/cclTemplate.ts b/src/tabs/instructions/templates/cclTemplate.ts
+index 04f7b2eb8661dd6b202f816ceafd9dbc7ee5771f..7ac0e99b9f608bc510a91712e3d4ec65159fde4f 100644
+--- a/src/tabs/instructions/templates/cclTemplate.ts
++++ b/src/tabs/instructions/templates/cclTemplate.ts
+@@ -133,47 +133,45 @@ The court gives orders and there are strict times for complying with those order
+ In all litigation and disputes all parties have a duty to preserve evidence that is relevant to the dispute, including physical and electronic records and documents which either help your case and also includes those which are against you. This duty is important not least as if documents are deleted or destroyed that are relevant to the dispute our advice to you may be compromised. Further if documents are destroyed the court will be entitled to assume the absolute worst in terms of their content. This is likely to be extremely unhelpful to your case. Please contact me if you have any queries regarding this.
  
-                             // Preserve bullet formatting - ensure lines that had bullets still have em dashes
-                             const originalLines = content.substring(segmentStart, segmentEnd).split('\n');
-                             const newLines = newText.split('\n');
+ 14 Complaints
  
-                             // Restore em dashes for lines that should be bullets
-                             const restoredLines = newLines.map((newLine, index) => {
-                                 const originalLine = originalLines[index];
-                                 if (originalLine && originalLine.match(/^—/)) {
-                                     // This was originally a bullet line
-                                     if (!newLine.match(/^—/)) {
-                                         // If the em dash was lost, restore it
-                                         return '—' + (newLine.startsWith('•') ? newLine.substring(1) : newLine);
-                                     }
-                                 }
-                                 return newLine;
-                             });
-                             const spacingFixed = restoredLines.map(line =>
-                                 line.replace(/^(\d+(?:\.\d+)*)(\S)/, '$1 $2')
-                             );
+ We want to give you the best possible service. However, if at any point you become unhappy or concerned about the service we have provided you should inform us immediately so we can do our best to resolve the problem.
  
-                             newText = spacingFixed.join('\n');
--                            const beforeText = content.substring(0, segmentStart);
--                            const afterText = content.substring(segmentEnd);
--                            const newContent = beforeText + newText + afterText;
--                            setDocumentContent(newContent);
-+                            const originalText = content.substring(segmentStart, segmentEnd);
-+                            setDocumentContent(prev => {
-+                                const start = prev.indexOf(originalText);
-+                                if (start === -1) return prev;
-+                                return (
-+                                    prev.slice(0, start) +
-+                                    newText +
-+                                    prev.slice(start + originalText.length)
-+                                );
-+                            });
-                         }}
-                         style={{
-                             outline: 'none',
-                             minHeight: '1em',
-                             display: isTable ? 'block' : 'inline',
-                             whiteSpace: 'pre-wrap',
-                             cursor: isTable ? 'default' : 'text',
-                             padding: '2px',
-                             borderRadius: '2px',
-                             transition: 'background-color 0.2s ease'
-                         }}
-                     >
-                         {nodes}
-                     </div>
-                 );
-             }
-             
-             // Add the interactive inline editor for placeholders
-             const rawBlockName = match[1].trim();
-             const [blockLabelPart, blockKeyPart] = rawBlockName.split('::');
-             const variableName = blockKeyPart ? blockKeyPart.trim() : rawBlockName;
+ In the first instance it may be helpful to contact the person who is working on your case to discuss your concerns and we will do our best to resolve any issues. If you would like to make a formal complaint, you can read our full complaints procedure here. Making a complaint will not affect how we handle your matter.
  
-             if (consumedPlaceholders.has(variableName)) {
-                 lastIndex = match.index + match[0].length;
-                 continue;
+ You may have a right to complain to the Legal Ombudsman. The time frame for doing so and full details of how to contact the Legal Ombudsman are in our Terms of Business.
+ 
+ 15 Limit on liability
+ 
+ Our maximum liability to you (or any other party we have agreed may rely on our services) in relation to any single matter or any group of connected matters which may be aggregated by our insurers will be £3,000,000, including interest and costs. This limit overrides any limit stated in our Terms of Business.
+ 
+ If you wish to discuss a variation of this limit, please contact the person dealing with your matter. Agreeing a higher limit on our liability may result in us seeking an increase in our charges for handling your matter.
+ 
+ Please see our Terms of Business for an explanation of other limits on our liability to you.
+ 
+ 16 Referral and fee sharing arrangement
+ 
+ {{explain_the_nature_of_your_arrangement_with_any_introducer_for_link_to_sample_wording_see_drafting_note_referral_and_fee_sharing_arrangement}}
+ 
+ 17 Right to cancel
+ 
+ You have the right to cancel this contract within 14 days without giving any reason. We will not start work during the cancellation period unless you expressly ask us to. The 'Instructions for Cancellation' notice at {{instructions_link}} explains:
+-
+ — how to cancel and the effect of cancellation;
+-
+ — what you will be liable for if you ask us to start work during the cancellation period.
+ 
+ 18 Action points
+ 
+ The action list below explains what you need to do next.
+ 
+ Action required by you | Additional information
+ ☐ Sign and return one copy of the Terms of Business below | If you don't sign but continue to give us instructions you will be deemed to have accepted the terms in this letter and the Terms of Business
+ ☐ {{insert_next_step_you_would_like_client_to_take}} | {{state_why_this_step_is_important}}
+ ☐ Provide a payment on account of costs and disbursements of £{{state_amount}} | If we do not receive a payment on account of costs and disbursements, {{insert_consequence}}
+ ☐ If you would like us to start work during the 14-day cancellation period, sign and return the attached 'Request to start work during the cancellation period' form | This form is attached to this Engagement Letter
+ ☐ Alternatively, if you wish to cancel your contract with us, tell us within 14 days | You can simply inform us of your decision to cancel by letter, telephone or e-mail
+ ☐ Provide the following documents (and information) to allow me to take the next steps in your matter: | Without these documents there may be a delay in your matter
+ 
+ {{describe_first_document_or_information_you_need_from_your_client}}
+ {{describe_second_document_or_information_you_need_from_your_client}}
+ {{describe_third_document_or_information_you_need_from_your_client}}
+ 
+ Please contact me if you have any queries or concerns about your matter, this Engagement Letter or the attached Terms of Business.`;
