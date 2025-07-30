@@ -28,7 +28,7 @@ import { useNavigator } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
 import InstructionCard from "./InstructionCard";
-import DealCard from "./DealCard";
+
 import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
 import type { DealSummary } from "./JointClientCard";
@@ -2310,26 +2310,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
         const showFollowUpEditor = openFollowUpIdx === idx;
         return (
           <div key={idx} style={{ position: 'relative' }}>
-            <DealCard
-              deal={deal}
-              animationDelay={animationDelay}
-              teamData={teamData}
-              userInitials={userInitials}
-              isSingleView={!!selectedDealRef}
-              onFollowUp={
-                isClosed
-                  ? undefined
-                  : () => {
-                      setOpenFollowUpIdx(idx);
-                      setFollowUpContent("");
-                    }
-              }
-              onOpenInstruction={
-                deal.InstructionRef
-                  ? () => handleOpenInstruction(deal.InstructionRef)
-                  : undefined
-              }
-            />
+
             {showFollowUpEditor && (
               <div style={{
                 position: 'absolute',

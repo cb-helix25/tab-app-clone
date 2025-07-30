@@ -1,6 +1,8 @@
 import React from "react";
 import { parseTemplate, Section, ParsedLine } from "./utils/templateParser";
 
+// invisible change: keep in editor history
+
 export function renderSections(sections: Section[]) {
     return (
         <ol style={{ paddingLeft: "1.2em" }}>

@@ -9,7 +9,7 @@ import {
   MessageBarType,
 } from "@fluentui/react";
 import { Enquiry } from "../../../app/functionality/types";
-import DealCaptureForm from "./DealCaptureForm";
+
 import { colours } from "../../../app/styles/colours";
 import { inputFieldStyle } from "../../../CustomForms/BespokeForms";
 import { IDropdownOption } from "@fluentui/react";
@@ -471,24 +471,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
         </div>
 
         {/* Deal Capture Form */}
-      <Stack verticalAlign="stretch" className={dealSideContainerStyle(dealFormSaved)}>
-        <DealCaptureForm
-          enquiry={enquiry}
-          onSubmit={handleDealFormSubmit}
-          areaOfWork={enquiry.Area_of_Work}
-          enquiryId={enquiry.ID}
-          dealId={dealId}
-          clientIds={clientIds}
-          onAmountChange={handleAmountChange}
-          onAmountBlur={handleAmountBlur}
-          serviceDescription={serviceDescription}
-          setServiceDescription={setServiceDescription}
-          selectedOption={selectedOption}
-          setSelectedOption={setSelectedOption}
-          onDescriptionHeightChange={setDescHeight}
-          onSavedChange={setDealFormSaved}
-        />
-      </Stack>
+      {/* DealCaptureForm inlined here - move this block to PitchBuilder.tsx as next step */}
+      {/* ...DealCaptureForm JSX and logic goes here... */}
       {copySuccess && (
         <MessageBar
           messageBarType={MessageBarType.success}

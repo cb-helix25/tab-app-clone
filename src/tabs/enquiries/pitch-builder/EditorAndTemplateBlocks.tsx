@@ -1,736 +1,615 @@
-import React, { RefObject, useCallback, useMemo } from 'react';
-import {
-  Stack,
-  IconButton,
-  DefaultButton,
-  Dropdown,
-  IDropdownOption,
-  Text,
-  mergeStyles,
-  Icon,
-  TooltipHost,
-  Separator,
-  Callout,
-  IButtonStyles,
-} from '@fluentui/react';
-import { TemplateBlock, TemplateOption } from '../../../app/customisation/ProductionTemplateBlocks';
-import { TemplateSet } from '../../../app/customisation/TemplateBlockSets';
-import { colours } from '../../../app/styles/colours';
-import { sharedEditorStyle, sharedOptionsDropdownStyles } from '../../../app/styles/FilterStyles';
-import { sharedDefaultButtonStyles } from '../../../app/styles/ButtonStyles';
-// invisible change
-import { getLeftoverPlaceholders } from './emailUtils';
-import EditBlockModal, { EditRequestPayload } from './EditBlockModal';
-import { useEditorState, useKeyboardShortcuts } from './editorHooks';
-import { editorFormatter } from './editorEnhancements';
 
-// Sticky toolbar CSS injection
-if (typeof window !== 'undefined' && !document.getElementById('sticky-toolbar-style')) {
-  const style = document.createElement('style');
-  style.id = 'sticky-toolbar-style';
-  style.innerHTML = `
-    .sticky-toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 11;
-      background: inherit;
-      padding-bottom: 8px;
-      transition: background 0.2s;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-if (typeof window !== 'undefined' && !document.getElementById('fade-in-animation')) {
-  const style = document.createElement('style');
-  style.id = 'fade-in-animation';
-  style.innerHTML = `
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-  `;
-  document.head.appendChild(style);
-}
+import React, { useState, useRef, useEffect } from 'react';
+import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+import { Stack, Text, Pivot, PivotItem, Icon, Callout, DirectionalHint } from '@fluentui/react';
+import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
+import { wrapInsertPlaceholders } from './emailUtils';
+import SnippetEditPopover from './SnippetEditPopover';
 
 interface EditorAndTemplateBlocksProps {
   isDarkMode: boolean;
   body: string;
-  setBody: React.Dispatch<React.SetStateAction<string>>;
+  setBody: (body: string) => void;
   templateBlocks: TemplateBlock[];
   selectedTemplateOptions: { [key: string]: string | string[] };
   insertedBlocks: { [key: string]: boolean };
   lockedBlocks: { [key: string]: boolean };
   editedBlocks: { [key: string]: boolean };
   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
-  handleSingleSelectChange: (blockTitle: string, selectedOption: string) => void;
-  insertTemplateBlock: (
-    block: TemplateBlock,
-    selectedOption: string | string[],
-    shouldFocus?: boolean,
-    append?: boolean
-  ) => void;
+  handleSingleSelectChange: (blockTitle: string, optionKey: string) => void;
+  insertTemplateBlock: (block: TemplateBlock, optionLabel: string | string[], focus?: boolean) => void;
   renderPreview: (block: TemplateBlock) => React.ReactNode;
-  applyFormat: (command: string, value?: string) => void;
+  applyFormat: (...args: any[]) => void;
   saveSelection: () => void;
-  handleInput: () => void;
-  handleBlur: () => void;
+  handleInput: (e: React.FormEvent<HTMLDivElement>) => void;
+  handleBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
   handleClearBlock: (block: TemplateBlock) => void;
-  bodyEditorRef: RefObject<HTMLDivElement>;
-  toolbarStyle: string;
-  bubblesContainerStyle: string;
-  bubbleStyle: string;
-  filteredAttachments: { key: string; text: string }[];
-  highlightBlock: (blockTitle: string, highlight: boolean, source?: 'editor' | 'template') => void;
-  onReorderBlocks: (startIndex: number, endIndex: number) => void;
-  onDuplicateBlock: (index: number) => void;
-  templateSet: TemplateSet;
-  onTemplateSetChange: (set: TemplateSet) => void;
-  onClearAllBlocks: () => void;
-  removedBlocks: string[];
-  onAddBlock: (title: string) => void;
-  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
+  bodyEditorRef: React.RefObject<HTMLDivElement>;
+  toolbarStyle?: any;
+  bubblesContainerStyle?: any;
+  saveCustomSnippet?: (blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) => Promise<void>;
 }
 
-const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = React.memo((props) => {
-  const {
-    isDarkMode,
-    body,
-    setBody,
-    templateBlocks,
-    selectedTemplateOptions,
-    insertedBlocks,
-    lockedBlocks,
-    editedBlocks,
-    handleMultiSelectChange,
-    handleSingleSelectChange,
-    insertTemplateBlock,
-    renderPreview,
-    applyFormat,
-    saveSelection,
-    handleInput,
-    handleBlur,
-    handleClearBlock,
-    bodyEditorRef,
-    toolbarStyle,
-    bubblesContainerStyle,
-    bubbleStyle,
-    filteredAttachments,
-    highlightBlock,
-    onReorderBlocks,
-    onDuplicateBlock,
-    templateSet,
-    onTemplateSetChange,
-    onClearAllBlocks,
-    removedBlocks,
-    onAddBlock,
-    showToast,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = props;
+const whiteButtonStyles = {
+  root: {
+    background: '#fff',
+    color: '#0078d4',
+    border: '1px solid #0078d4',
+    borderRadius: 4,
+    fontWeight: '500',
+    minWidth: 80,
+    marginLeft: 8
+  },
+  rootHovered: {
+    background: '#f3f2f1',
+    color: '#005a9e',
+    border: '1px solid #005a9e'
+  }
+};
 
-  const [isCheatSheetOpen, setIsCheatSheetOpen] = React.useState(false);
-  const cheatSheetButtonRef = React.useRef<HTMLDivElement | null>(null);
-  const [isActionsInfoOpen, setIsActionsInfoOpen] = React.useState(false);
-  const actionsInfoButtonRef = React.useRef<HTMLDivElement | null>(null);
+const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
+  isDarkMode,
+  body,
+  setBody,
+  templateBlocks,
+  selectedTemplateOptions,
+  insertedBlocks,
+  lockedBlocks,
+  editedBlocks,
+  handleMultiSelectChange,
+  handleSingleSelectChange,
+  insertTemplateBlock,
+  renderPreview,
+  applyFormat,
+  saveSelection,
+  handleInput,
+  handleBlur,
+  handleClearBlock,
+  bodyEditorRef,
+  toolbarStyle,
+  bubblesContainerStyle,
+  saveCustomSnippet,
+}) => {
+  const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
+  const [userLockedBlocks, setUserLockedBlocks] = useState<Record<string, boolean>>({});
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionTarget, setSuggestionTarget] = useState<HTMLElement | null>(null);
+  const [currentPlaceholder, setCurrentPlaceholder] = useState<string>('');
+  const [currentBlockTitle, setCurrentBlockTitle] = useState<string>('');
+  const [currentOptionLabel, setCurrentOptionLabel] = useState<string>('');
+  const [snippetEditState, setSnippetEditState] = useState<{
+    blockTitle: string;
+    optionLabel: string;
+    target: HTMLElement;
+  } | null>(null);
+  const editorRefs = useRef<Record<string, HTMLDivElement>>({});
 
-  // Use enhanced editor state hook
-  const { formattingState, actions: editorActions } = useEditorState();
-  const { boldActive, italicActive, underlineActive } = formattingState;
-  const containerStyle = mergeStyles({
-    backgroundColor: isDarkMode ? colours.dark.grey : colours.light.grey,
-    borderRadius: 0,
-boxShadow: isDarkMode
-  ? '0 4px 12px rgba(255, 255, 255, 0.1)'
-  : '0 4px 12px rgba(0, 0, 0, 0.1)', // for light mode
-    padding: '24px',
-    width: '100%',
-    transition: 'background 0.3s, box-shadow 0.3s',
-  });
-
-  // Memoize expensive computations
-  const placeholderInfo = useMemo(
-    () => ({
-      blocks: templateBlocks.map((block) => ({
-        title: block.title,
-        placeholder: block.placeholder,
-        options: block.options.map((o) => o.label),
-      })),
-      additional: getLeftoverPlaceholders(templateBlocks).filter(
-        (ph) => !templateBlocks.some((tb) => tb.placeholder === ph)
-      ),
-    }),
-    [templateBlocks]
-  );
-
-  const blockOptionsMap = useMemo(
-    () =>
-      Object.fromEntries(
-        templateBlocks.map((b) => [b.title, b.options.map((o) => o.label)])
-      ),
-    [templateBlocks]
-  );
-
-  // Optimize button styles with useMemo
-  const whiteButtonStyles: IButtonStyles = useMemo(() => ({
-    ...sharedDefaultButtonStyles,
-    root: {
-      ...(sharedDefaultButtonStyles.root as any),
-      backgroundColor: '#ffffff',
-    },
-    rootHovered: {
-      ...(sharedDefaultButtonStyles.rootHovered as any),
-      background:
-        'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), #ffffff !important',
-    },
-    rootPressed: {
-      ...(sharedDefaultButtonStyles.rootPressed as any),
-      background:
-        'radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), #ffffff !important',
-    },
-    rootFocused: {
-      ...(sharedDefaultButtonStyles.rootFocused as any),
-      backgroundColor: '#ffffff !important',
-    },
-  }), []);
-
-  const selectedButtonStyles: IButtonStyles = useMemo(() => ({
-    ...sharedDefaultButtonStyles,
-    root: {
-      ...(sharedDefaultButtonStyles.root as any),
-      backgroundColor: colours.highlightBlue,
-      fontWeight: 600,
-    },
-    rootHovered: {
-      ...(sharedDefaultButtonStyles.rootHovered as any),
-      background:
-        `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%), ${colours.highlightBlue} !important`,
-    },
-    rootPressed: {
-      ...(sharedDefaultButtonStyles.rootPressed as any),
-      background:
-        `radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%), ${colours.highlightBlue} !important`,
-    },
-    rootFocused: {
-      ...(sharedDefaultButtonStyles.rootFocused as any),
-      backgroundColor: `${colours.highlightBlue} !important`,
-    },
-  }), []);
-
-  const toolbarButtonStyle = useMemo(() => ({
-    root: {
-      color: '#ffffff',
-      width: 32,
-      height: 32,
-    },
-    rootHovered: {
-      backgroundColor: colours.blue,
-      color: '#ffffff',
-    },
-    rootChecked: {
-      backgroundColor: colours.blue,
-      color: '#ffffff',
-    },
-    icon: { fontSize: 18 },
-  }), []);
-
-
-  const [blockToEdit, setBlockToEdit] = React.useState<TemplateBlock | null>(null);
-  const [previewNode, setPreviewNode] = React.useState<React.ReactNode>(null);
-
-  const [initialOption, setInitialOption] = React.useState<string | undefined>(undefined);
-  const [initialLevel, setInitialLevel] = React.useState<'block' | 'option' | 'sentence'>('block');
-
-  const openEditModal = (block: TemplateBlock, option?: string) => {
-    setPreviewNode(renderPreview(block));
-    setInitialOption(option);
-    setInitialLevel(option ? 'option' : 'block');
-    setBlockToEdit(block);
+  // Helper: get selected option for a block
+  const getSelectedOption = (block: TemplateBlock): string => {
+    const sel = selectedTemplateOptions[block.title];
+    if (typeof sel === 'string') return sel;
+    if (Array.isArray(sel) && sel.length > 0) return sel[0];
+    return block.options[0]?.label || '';
   };
 
-  React.useEffect(() => {
-    (window as any).openBlockEdit = (title: string) => {
-      const block = templateBlocks.find((b) => b.title === title);
-      if (block) {
-        openEditModal(block);
+  // Auto-insert all template block content on component load for immediate preview
+  useEffect(() => {
+    templateBlocks.forEach(block => {
+      const selectedOption = getSelectedOption(block);
+      const selectedOpt = block.options.find(opt => opt.label === selectedOption);
+      if (selectedOpt && selectedOption) {
+        // Insert the default content immediately so preview shows all data
+        insertTemplateBlock(block, selectedOption, false);
       }
-    };
-    (window as any).openSnippetEdit = (title: string, option: string) => {
-      const block = templateBlocks.find((b) => b.title === title);
-      if (block) {
-        openEditModal(block, option);
-      }
-    };
-  }, [templateBlocks]);
+    });
+  }, [templateBlocks, selectedTemplateOptions, insertTemplateBlock]); // Include all relevant dependencies
 
-  const requestChange = async (payload: EditRequestPayload) => {
-    if (!blockToEdit) return;
-    const finalPayload = {
-      ...payload,
-      block: blockToEdit.title.toLowerCase().replace(/\s+/g, ''),
-    };
-    try {
-      if (showToast) {
-        showToast('Submitting suggestion...', 'info');
-      }
-      await fetch(
-        `${process.env.REACT_APP_PROXY_BASE_URL}/sendEmail?code=${process.env.REACT_APP_SEND_EMAIL_CODE}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email_contents: JSON.stringify(finalPayload, null, 2),
-            user_email: 'lz@helix-law.com',
-          }),
-        }
-      );
-      if (showToast) {
-        showToast('Thanks! Your suggestion has been submitted for review.', 'success');
-      }
-    } catch (err) {
-      console.error('Failed to send change request', err);
-      if (showToast) {
-        showToast('Failed to submit suggestion', 'error');
-      }
-    } finally {
-      setBlockToEdit(null);
+  const handleTabChange = (block: TemplateBlock, optionKey: string) => {
+    if (block.options.length > 1) {
+      handleSingleSelectChange(block.title, optionKey);
+      // Don't automatically insert - let user edit in the editor area first
     }
   };
 
-  // Enhanced formatting functions using the formatter utility
-  const handleBoldFormat = useCallback(() => {
-    editorFormatter.executeCommand('bold');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
+  // Get content for an option (either edited or original)
+  const getOptionContent = (blockTitle: string, optionLabel: string, originalContent: string): string => {
+    const edited = editedContent[blockTitle]?.[optionLabel];
+    return edited || wrapInsertPlaceholders(originalContent);
+  };
 
-  const handleItalicFormat = useCallback(() => {
-    editorFormatter.executeCommand('italic');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
+  // Wrap [INSERT] placeholders with contentEditable styling
+  const wrapInsertPlaceholders = (text: string): string => {
+    return text.replace(
+      /\[INSERT[^\]]*\]/gi,
+      (match) => `<span class="insert-placeholder" contenteditable="true" data-placeholder="${match}" style="background-color: #f0f8ff; color: #0078d4; padding: 2px 4px; border-left: 1px dashed #0078d4; border-right: 1px dashed #0078d4; min-width: 20px; cursor: text; transition: all 0.2s ease; word-break: break-word; white-space: pre-wrap; box-sizing: border-box; position: relative; display: inline; outline: none;">${match}</span>`
+    );
+  };
 
-  const handleUnderlineFormat = useCallback(() => {
-    editorFormatter.executeCommand('underline');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
-
-  const handleBulletListFormat = useCallback(() => {
-    editorFormatter.createList('bullet');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
-
-  const handleNumberedListFormat = useCallback(() => {
-    editorFormatter.createList('number');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
-
-  const handleLetteredListFormat = useCallback(() => {
-    editorFormatter.createList('letter');
-    editorActions.updateFormattingState();
-  }, [editorActions]);
-
-  const handleLinkFormat = useCallback(() => {
-    editorFormatter.insertLink();
-    editorActions.updateFormattingState();
-  }, [editorActions]);
-
-  // Enhanced keyboard shortcuts
-  const { handleKeyDown } = useKeyboardShortcuts({
-    onBold: handleBoldFormat,
-    onItalic: handleItalicFormat,
-    onUnderline: handleUnderlineFormat,
-    onBulletList: handleBulletListFormat,
-    onNumberedList: handleNumberedListFormat,
-    onLetteredList: handleLetteredListFormat,
-    onLink: handleLinkFormat,
-    onSave: () => {
-      if (showToast) {
-        showToast('Content saved', 'success');
+  // Handle content editing
+  const handleContentEdit = (blockTitle: string, optionLabel: string, content: string) => {
+    setEditedContent(prev => ({
+      ...prev,
+      [blockTitle]: {
+        ...prev[blockTitle],
+        [optionLabel]: content
       }
-    },
-  });
+    }));
+    
+    // Always auto-insert content to preview (regardless of lock state)
+    // The lock only controls manual insertion, not the preview visibility
+    const block = templateBlocks.find(b => b.title === blockTitle);
+    if (block) {
+      const modifiedBlock = {
+        ...block,
+        options: block.options.map(opt => 
+          opt.label === optionLabel 
+            ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
+            : opt
+        )
+      };
+      insertTemplateBlock(modifiedBlock, optionLabel, false); // Don't focus to avoid interrupting editing
+    }
+  };
 
-  // Enhanced lettered list function with better error handling
-  const applyLetteredList = useCallback(() => {
+  // Handle placeholder click to show suggestions
+  const handlePlaceholderClick = (e: React.MouseEvent, blockTitle: string, optionLabel: string) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('insert-placeholder')) {
+      const placeholder = target.getAttribute('data-placeholder') || '';
+      setCurrentPlaceholder(placeholder);
+      setCurrentBlockTitle(blockTitle);
+      setCurrentOptionLabel(optionLabel);
+      setSuggestionTarget(target);
+      setShowSuggestions(true);
+    }
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (suggestion: string) => {
+    if (suggestionTarget && currentBlockTitle && currentOptionLabel) {
+      // Replace the placeholder with the suggestion
+      suggestionTarget.textContent = suggestion;
+      suggestionTarget.style.backgroundColor = '#e8f5e8';
+      suggestionTarget.style.borderColor = '#20b26c';
+      
+      // Update the content
+      const editorKey = `${currentBlockTitle}-${currentOptionLabel}`;
+      const editor = editorRefs.current[editorKey];
+      if (editor) {
+        const updatedContent = editor.innerHTML;
+        handleContentEdit(currentBlockTitle, currentOptionLabel, updatedContent);
+      }
+    }
+    setShowSuggestions(false);
+  };
+
+  // Handle adding a placeholder via + button
+  const handleAddPlaceholder = (e: React.MouseEvent, blockTitle: string, optionLabel: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const editorKey = `${blockTitle}-${optionLabel}`;
+    const editor = editorRefs.current[editorKey];
+    if (!editor) return;
+
+    // Insert a new [INSERT] placeholder at the cursor or at the end
     const selection = window.getSelection();
-    if (!selection || !selection.rangeCount || !bodyEditorRef.current) {
-      console.warn('No valid selection for lettered list');
-      return;
+    if (selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
+      const range = selection.getRangeAt(0);
+      const placeholderSpan = document.createElement('span');
+      placeholderSpan.className = 'insert-placeholder';
+      placeholderSpan.contentEditable = 'true';
+      placeholderSpan.setAttribute('data-placeholder', '[INSERT]');
+      placeholderSpan.style.cssText = 'background-color: #f0f8ff; color: #0078d4; padding: 2px 4px; border-left: 1px dashed #0078d4; border-right: 1px dashed #0078d4; min-width: 20px; cursor: text; transition: all 0.2s ease; word-break: break-word; white-space: pre-wrap; box-sizing: border-box; position: relative; display: inline; outline: none;';
+      placeholderSpan.textContent = '[INSERT]';
+      
+      range.deleteContents();
+      range.insertNode(placeholderSpan);
+      range.setStartAfter(placeholderSpan);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Insert at the end
+      const placeholderHtml = `<span class="insert-placeholder" contenteditable="true" data-placeholder="[INSERT]" style="background-color: #f0f8ff; color: #0078d4; padding: 2px 4px; border-left: 1px dashed #0078d4; border-right: 1px dashed #0078d4; min-width: 20px; cursor: text; transition: all 0.2s ease; word-break: break-word; white-space: pre-wrap; box-sizing: border-box; position: relative; display: inline; outline: none;">[INSERT]</span>`;
+      editor.innerHTML += ` ${placeholderHtml}`;
     }
 
-    const range = selection.getRangeAt(0);
-    const selectedNode = range.commonAncestorContainer;
+    // Update the content
+    const updatedContent = editor.innerHTML;
+    handleContentEdit(blockTitle, optionLabel, updatedContent);
+  };
 
-    if (!bodyEditorRef.current.contains(selectedNode)) {
-      console.warn('Selection is outside editor');
-      return;
-    }
-
-    try {
-      saveSelection();
-
-      let parentList: Node | Element | null =
-        selectedNode.nodeType === Node.ELEMENT_NODE
-          ? selectedNode
-          : selectedNode.parentElement;
-
-      // Check if we're already in a lettered list
-      while (parentList && parentList !== bodyEditorRef.current) {
-        if (
-          parentList instanceof HTMLElement &&
-          parentList.tagName === 'OL' &&
-          parentList.style.listStyleType === 'lower-alpha'
-        ) {
-          // Toggle off lettered list
-          document.execCommand('insertUnorderedList', false, undefined);
-          setBody(bodyEditorRef.current.innerHTML);
-          return;
+  // Handle insert to main editor / lock toggle
+  const handleLockToggle = (blockTitle: string, optionLabel: string) => {
+    const editorKey = `${blockTitle}-${optionLabel}`;
+    const isCurrentlyLocked = userLockedBlocks[editorKey];
+    
+    if (!isCurrentlyLocked) {
+      // Lock the block and ensure content is inserted
+      const editor = editorRefs.current[editorKey];
+      if (editor) {
+        const content = editor.innerHTML;
+        const block = templateBlocks.find(b => b.title === blockTitle);
+        if (block) {
+          const modifiedBlock = {
+            ...block,
+            options: block.options.map(opt => 
+              opt.label === optionLabel 
+                ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
+                : opt
+            )
+          };
+          insertTemplateBlock(modifiedBlock, optionLabel, true);
         }
-        parentList = (parentList as Element).parentElement;
-      }
-
-      // Create new lettered list
-      if (!parentList || parentList === bodyEditorRef.current) {
-        const ol = document.createElement('ol');
-        ol.style.listStyleType = 'lower-alpha';
-        ol.style.paddingLeft = '20px';
-        const li = document.createElement('li');
-        ol.appendChild(li);
-
-        if (range.collapsed) {
-          range.insertNode(ol);
-          range.setStart(li, 0);
-          range.collapse(true);
-        } else {
-          const fragment = range.extractContents();
-          li.appendChild(fragment);
-          range.insertNode(ol);
-        }
-
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-
-      setBody(bodyEditorRef.current.innerHTML);
-    } catch (error) {
-      console.error('Error applying lettered list:', error);
-      if (showToast) {
-        showToast('Failed to apply lettered list', 'error');
       }
     }
-  }, [saveSelection, setBody, showToast]);
+    
+    // Toggle lock state
+    setUserLockedBlocks(prev => ({
+      ...prev,
+      [editorKey]: !isCurrentlyLocked
+    }));
+  };
 
-  // Additional callback functions
-  const handleCheatSheetToggle = useCallback(() => {
-    setIsCheatSheetOpen(!isCheatSheetOpen);
-  }, [isCheatSheetOpen]);
+  // Remove the old functions we don't need anymore
+  const handleInsertToMainEditor = (blockTitle: string, optionLabel: string) => {
+    handleLockToggle(blockTitle, optionLabel);
+  };
 
-  const handleActionsInfoToggle = useCallback(() => {
-    setIsActionsInfoOpen(!isActionsInfoOpen);
-  }, [isActionsInfoOpen]);
+  const handleEditorClick = (blockTitle: string, optionLabel: string) => {
+    // No longer used for committing
+  };
+
+  // Handle save snippet
+  const handleSaveSnippet = (e: React.MouseEvent, blockTitle: string, optionLabel: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setSnippetEditState({
+      blockTitle,
+      optionLabel,
+      target: e.currentTarget as HTMLElement
+    });
+  };
+
+  // Handle snippet save from popover
+  const handleSnippetSave = async ({ label, sortOrder, isNew }: { label: string; sortOrder: number; isNew: boolean }) => {
+    if (snippetEditState && saveCustomSnippet) {
+      try {
+        await saveCustomSnippet(snippetEditState.blockTitle, label, sortOrder, isNew);
+        setSnippetEditState(null);
+      } catch (error) {
+        console.error('Failed to save snippet:', error);
+      }
+    }
+  };
 
   return (
     <>
-      {blockToEdit && (
-        <EditBlockModal
-          isOpen={true}
-          onDismiss={() => {
-            setBlockToEdit(null);
-            setInitialOption(undefined);
-            setInitialLevel('block');
-          }}
-          blockTitle={blockToEdit.title}
-          previewContent={previewNode}
-          block={blockToEdit}
-          onSubmit={requestChange}
-          referenceOptions={templateBlocks.map((b) => ({ key: b.title, text: b.title }))}
-          blockOptionsMap={blockOptionsMap}
-          isDarkMode={isDarkMode}
-          initialOption={initialOption}
-          initialLevel={initialLevel}
-        />
-      )}
-      <Stack horizontal tokens={{ childrenGap: 20 }} className={containerStyle}>
-        <Stack style={{ width: '100%' }} tokens={{ childrenGap: 20 }}>
-          <Stack
-            horizontal
-            verticalAlign="center"
-            tokens={{ childrenGap: 8 }}
-            styles={{ root: { paddingBottom: '5px', justifyContent: 'space-between' } }}
-          >
-            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-              <DefaultButton
-                text="Production"
-                onClick={() => onTemplateSetChange('Database')}
-                styles={templateSet === 'Database' ? selectedButtonStyles : whiteButtonStyles}
-              />
-              <DefaultButton
-                text="Simplified"
-                onClick={() => onTemplateSetChange('Simplified')}
-                styles={templateSet === 'Simplified' ? selectedButtonStyles : whiteButtonStyles}
-              />
-              <DefaultButton
-                text="Original"
-                onClick={() => onTemplateSetChange('Production')}
-                styles={templateSet === 'Production' ? selectedButtonStyles : whiteButtonStyles}
-              />
-              <div ref={cheatSheetButtonRef}>
-                <IconButton
-                  iconProps={{ iconName: 'Info' }}
-                  title="Placeholder Cheat Sheet"
-                  ariaLabel="Placeholder Cheat Sheet"
-                  onClick={handleCheatSheetToggle}
-                />
-              </div>
-              {removedBlocks.length > 0 && (
-                <Dropdown
-                  placeholder="Add Block"
-                  options={removedBlocks.map(b => ({ key: b, text: b }))}
-                  styles={sharedOptionsDropdownStyles(isDarkMode)}
-                  onChange={(_e, opt) => opt && onAddBlock(opt.key as string)}
-                />
-              )}
-            </Stack>
-            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginLeft: 'auto' } }}>
-              <DefaultButton
-                text="Clear"
-                iconProps={{ iconName: 'Cancel' }}
-                onClick={onClearAllBlocks}
-                styles={whiteButtonStyles}
-              />
-              <div ref={actionsInfoButtonRef}>
-                <IconButton
-                  iconProps={{ iconName: 'Info' }}
-                  title="Actions Info"
-                  ariaLabel="Actions Info"
-                  onClick={handleActionsInfoToggle}
-                />
-              </div>
-            </Stack>
-          </Stack>
-
-          {isCheatSheetOpen && (
-            <Callout
-              target={cheatSheetButtonRef.current}
-              onDismiss={() => setIsCheatSheetOpen(false)}
-              setInitialFocus
-            >
-              <div
-                style={{
-                  maxHeight: 300,
-                  overflowY: 'auto',
-                  padding: 12,
-                  border: `1px dotted ${colours.greyText}`,
-                }}
-              >
-                <Stack tokens={{ childrenGap: 12 }}>
-                  {placeholderInfo.blocks.map((info) => (
-                    <Stack key={info.placeholder} tokens={{ childrenGap: 4 }}>
-                      <Text>{info.placeholder}</Text>
-                      <Text variant="small">{info.title}</Text>
-                      {info.options.length > 0 && (
-                        <ul style={{ margin: '0 0 0 16px' }}>
-                          {info.options.map((opt) => (
-                            <li key={opt} style={{ fontSize: '12px' }}>
-                              {opt}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </Stack>
-                  ))}
-                  {placeholderInfo.additional.length > 0 && (
-                    <Stack tokens={{ childrenGap: 4 }}>
-                      <Separator />
-                      <Text>Other Placeholders</Text>
-                      {placeholderInfo.additional.map((ph) => (
-                        <Text key={ph} variant="small">
-                          {ph}
-                        </Text>
-                      ))}
-                    </Stack>
-                  )}
-                </Stack>
-              </div>
-            </Callout>
-          )}
-          {isActionsInfoOpen && (
-            <Callout
-              target={actionsInfoButtonRef.current}
-              onDismiss={() => setIsActionsInfoOpen(false)}
-              setInitialFocus
-            >
-              <Stack tokens={{ childrenGap: 4 }} styles={{ root: { padding: 12 } }}>
-                <Text variant="small">Clear removes all inserted blocks.</Text>
-              </Stack>
-            </Callout>
-          )}
-
-
-          <Stack tokens={{ childrenGap: 20 }}>
-
-          <Stack horizontal tokens={{ childrenGap: 20 }}>
-            <Stack tokens={{ childrenGap: 6 }} grow>
-              <div className={toolbarStyle + ' sticky-toolbar'} style={{ backgroundColor: colours.darkBlue }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TooltipHost content="Undo (Ctrl+Z)">
-                    <IconButton
-                      iconProps={{ iconName: 'Undo' }}
-                      ariaLabel="Undo"
-                      onClick={undo}
-                      disabled={!canUndo}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <TooltipHost content="Redo (Ctrl+Y)">
-                    <IconButton
-                      iconProps={{ iconName: 'Redo' }}
-                      ariaLabel="Redo"
-                      onClick={redo}
-                      disabled={!canRedo}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '1px',
-                      height: '24px',
-                      background: '#ddd',
-                      margin: '0 8px',
-                    }}
-                  />
-                  <TooltipHost content="Bold (Ctrl+B)">
-                    <IconButton
-                      iconProps={{ iconName: 'Bold' }}
-                      ariaLabel="Bold"
-                      onClick={handleBoldFormat}
-                      checked={boldActive}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <TooltipHost content="Italic (Ctrl+I)">
-                    <IconButton
-                      iconProps={{ iconName: 'Italic' }}
-                      ariaLabel="Italic"
-                      onClick={handleItalicFormat}
-                      checked={italicActive}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <TooltipHost content="Underline (Ctrl+U)">
-                    <IconButton
-                      iconProps={{ iconName: 'Underline' }}
-                      ariaLabel="Underline"
-                      onClick={handleUnderlineFormat}
-                      checked={underlineActive}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '1px',
-                      height: '24px',
-                      background: '#ddd',
-                      margin: '0 8px',
-                    }}
-                  />
-                  <TooltipHost content="Bulleted List (Ctrl+Shift+8)">
-                    <IconButton
-                      iconProps={{ iconName: 'BulletedList' }}
-                      ariaLabel="Bulleted List"
-                      onClick={handleBulletListFormat}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <TooltipHost content="Numbered List (Ctrl+Shift+7)">
-                    <IconButton
-                      iconProps={{ iconName: 'NumberedList' }}
-                      ariaLabel="Numbered List"
-                      onClick={handleNumberedListFormat}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <TooltipHost content="A, B, C List (Ctrl+Shift+L)">
-                    <IconButton
-                      iconProps={{ iconName: 'SortLines' }}
-                      ariaLabel="Lettered List"
-                      onClick={handleLetteredListFormat}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '1px',
-                      height: '24px',
-                      background: '#ddd',
-                      margin: '0 8px',
-                    }}
-                  />
-                  <TooltipHost content="Insert Link (Ctrl+K)">
-                    <IconButton
-                      iconProps={{ iconName: 'Link' }}
-                      ariaLabel="Insert Link"
-                      onClick={handleLinkFormat}
-                      styles={toolbarButtonStyle}
-                    />
-                  </TooltipHost>
-                </div>
-              </div>
-              <div
-                contentEditable
-                ref={bodyEditorRef}
-                onBlur={handleBlur}
-                onInput={handleInput}
-                onKeyDown={handleKeyDown}
-                suppressContentEditableWarning={true}
-                className={sharedEditorStyle(isDarkMode)}
-                style={{
-                  flexGrow: 1,
-                  overflowY: 'auto',
-                  height: 'auto',
-                  minHeight: '200px',
-                  maxHeight: 'none',
-                }}
-                aria-label="Email Body Editor"
-                onMouseUp={editorActions.updateFormattingState}
-                onKeyUp={editorActions.updateFormattingState}
-                onFocus={editorActions.updateFormattingState}
-              />
-            </Stack>
-          </Stack>
-          {/*
-            Attachments are temporarily disabled. Preserve the code for future
-            use but prevent rendering by wrapping it in a comment block.
-          <Stack tokens={{ childrenGap: 6 }} styles={{ root: { paddingTop: '20px', paddingBottom: '5px' } }}>
-            <Label className={labelStyle}>Attachments</Label>
-            <div className={bubblesContainerStyle}>
-              {filteredAttachments.map((att) => (
-                <div
-                  key={`attachment-${att.key}`}
-                  className={bubbleStyle}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Attachment ${att.text} (Coming Soon)`}
+      <Stack tokens={{ childrenGap: 12 }}>
+        {templateBlocks.map((block) => (
+          <Stack key={block.title} tokens={{ childrenGap: 2 }} styles={{ root: { marginBottom: 12 } }}>
+            <Text styles={{ root: { fontSize: 13, fontWeight: 500, color: 'rgba(30,30,30,0.55)', marginBottom: 6, letterSpacing: '0.1px' } }}>{block.title}</Text>
+            {block.options.length > 1 ? (
+              <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', marginBottom: 4 }}>
+                <Pivot
+                  selectedKey={getSelectedOption(block)}
+                  onLinkClick={item => handleTabChange(block, item?.props.itemKey || '')}
+                  styles={{
+                    root: {
+                      minWidth: 0,
+                      width: 'max-content',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      paddingLeft: 0,
+                      marginLeft: 0,
+                    },
+                    link: {
+                      fontSize: 12,
+                      color: 'rgba(30,30,30,0.45)',
+                      fontWeight: 400,
+                      padding: '2px 10px',
+                      marginLeft: 0,
+                      marginRight: 2,
+                      borderRadius: 3,
+                    },
+                    linkIsSelected: {
+                      color: '#0078d4',
+                      background: 'rgba(0,120,212,0.07)',
+                      fontWeight: 500,
+                    },
+                  }}
                 >
-                  {att.text}
+                  {block.options.map((opt, idx) => (
+                    <PivotItem
+                      headerText={opt.label}
+                      itemKey={opt.label}
+                      key={opt.label}
+                      // Remove left margin for the first tab to align with label
+                      style={idx === 0 ? { marginLeft: 0 } : {}}
+                    />
+                  ))}
+                </Pivot>
+              </div>
+            ) : null}
+            {block.options
+              .filter(opt => opt.label === getSelectedOption(block))
+              .map(opt => (
+                <div key={opt.label} style={{ marginTop: 4 }}>
+                  {/* Editor-style interface */}
+                  <div style={{
+                    border: '1px solid #e1e5e9',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    marginBottom: '8px'
+                  }}>
+                    {/* Toolbar */}
+                    <div style={{
+                      borderBottom: '1px solid #e1e5e9',
+                      padding: '4px',
+                      display: 'flex',
+                      gap: '4px',
+                      backgroundColor: '#f8f9fa',
+                    }}>
+                      <div
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e1dfdd',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          color: '#0078d4',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onClick={(e) => handleAddPlaceholder(e, block.title, opt.label)}
+                        onMouseEnter={(e) => {
+                          const target = e.currentTarget as HTMLElement;
+                          target.style.backgroundColor = '#e6f3ff';
+                          target.style.borderColor = '#0078d4';
+                        }}
+                        onMouseLeave={(e) => {
+                          const target = e.currentTarget as HTMLElement;
+                          target.style.backgroundColor = '#ffffff';
+                          target.style.borderColor = '#e1dfdd';
+                        }}
+                      >
+                        <Icon iconName="Add" styles={{ root: { fontSize: '12px' } }} />
+                        <span>Add Placeholder</span>
+                      </div>
+                      {(() => {
+                        const editorKey = `${block.title}-${opt.label}`;
+                        const isLocked = userLockedBlocks[editorKey];
+                        return (
+                          <div
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: isLocked ? '#e8f5e8' : '#ffffff',
+                              border: `1px solid ${isLocked ? '#20b26c' : '#e1dfdd'}`,
+                              borderRadius: '2px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              color: isLocked ? '#20b26c' : '#107c10',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onClick={() => handleLockToggle(block.title, opt.label)}
+                            onMouseEnter={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              if (isLocked) {
+                                target.style.backgroundColor = '#d1edd1';
+                                target.style.borderColor = '#107c10';
+                              } else {
+                                target.style.backgroundColor = '#f3f2f1';
+                                target.style.borderColor = '#20b26c';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              target.style.backgroundColor = isLocked ? '#e8f5e8' : '#ffffff';
+                              target.style.borderColor = isLocked ? '#20b26c' : '#e1dfdd';
+                            }}
+                          >
+                            <Icon iconName="Lock" styles={{ root: { fontSize: '12px' } }} />
+                            <span>{isLocked ? "Locked" : "Lock"}</span>
+                          </div>
+                        );
+                      })()}
+                      {saveCustomSnippet && (
+                        <div
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e1dfdd',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            color: '#d83b01',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onClick={(e) => handleSaveSnippet(e, block.title, opt.label)}
+                          onMouseEnter={(e) => {
+                            const target = e.currentTarget as HTMLElement;
+                            target.style.backgroundColor = '#fdf6f6';
+                            target.style.borderColor = '#d83b01';
+                          }}
+                          onMouseLeave={(e) => {
+                            const target = e.currentTarget as HTMLElement;
+                            target.style.backgroundColor = '#ffffff';
+                            target.style.borderColor = '#e1dfdd';
+                          }}
+                        >
+                          <Icon iconName="Save" styles={{ root: { fontSize: '12px' } }} />
+                          <span>Save Snippet</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Editable content area */}
+                    <div
+                      ref={(el) => {
+                        if (el) editorRefs.current[`${block.title}-${opt.label}`] = el;
+                      }}
+                      contentEditable
+                      suppressContentEditableWarning={true}
+                      style={{
+                        padding: '12px',
+                        minHeight: '80px',
+                        fontFamily: 'Raleway, sans-serif',
+                        fontSize: '14px',
+                        lineHeight: '1.3',
+                        whiteSpace: 'pre-wrap',
+                        cursor: userLockedBlocks[`${block.title}-${opt.label}`] ? 'default' : 'text',
+                        outline: 'none',
+                        backgroundColor: userLockedBlocks[`${block.title}-${opt.label}`] ? '#f8fffe' : '#ffffff',
+                        border: userLockedBlocks[`${block.title}-${opt.label}`] ? '1px solid #e8f5e8' : 'none',
+                        borderRadius: userLockedBlocks[`${block.title}-${opt.label}`] ? '3px' : '0',
+                        margin: userLockedBlocks[`${block.title}-${opt.label}`] ? '4px' : '0',
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: getOptionContent(block.title, opt.label, opt.previewText.replace(/\n/g, '<br />')),
+                      }}
+                      onInput={(e) => {
+                        const content = (e.target as HTMLElement).innerHTML;
+                        handleContentEdit(block.title, opt.label, content);
+                        // Auto-insert is now handled in handleContentEdit
+                      }}
+                      onClick={(e) => {
+                        handlePlaceholderClick(e, block.title, opt.label);
+                        // Auto-insert and lock toggle handled separately
+                      }}
+                      onFocus={(e) => {
+                        // Add focus/blur handlers for placeholders
+                        const setupPlaceholderHandlers = () => {
+                          const placeholders = e.currentTarget.querySelectorAll('.insert-placeholder');
+                          placeholders.forEach((ph) => {
+                            const element = ph as HTMLElement;
+                            element.addEventListener('focus', (focusEvent) => {
+                              (focusEvent.target as HTMLElement).style.backgroundColor = '#e6f3ff';
+                              (focusEvent.target as HTMLElement).style.borderStyle = 'solid';
+                            });
+                            element.addEventListener('blur', (blurEvent) => {
+                              (blurEvent.target as HTMLElement).style.backgroundColor = '#f0f8ff';
+                              (blurEvent.target as HTMLElement).style.borderStyle = 'dashed';
+                            });
+                            element.addEventListener('click', (clickEvent) => {
+                              clickEvent.stopPropagation();
+                              const placeholder = element.getAttribute('data-placeholder') || '';
+                              setCurrentPlaceholder(placeholder);
+                              setCurrentBlockTitle(block.title);
+                              setCurrentOptionLabel(opt.label);
+                              setSuggestionTarget(element);
+                              setShowSuggestions(true);
+                            });
+                          });
+                        };
+                        setupPlaceholderHandlers();
+                      }}
+                    />
+                  </div>
+
+                  {/* Original preview for comparison */}
+                  <details style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                    <summary style={{ cursor: 'pointer', userSelect: 'none' }}>Original Preview</summary>
+                    <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '2px', fontSize: '13px' }}>
+                      <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                        {opt.previewText.split('\n').map((line, index) => (
+                          <div key={index} style={{ marginBottom: index < opt.previewText.split('\n').length - 1 ? '4px' : '0' }}>
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </div>
               ))}
-            </div>
           </Stack>
-          */}
-          </Stack>
+        ))}
       </Stack>
-    </Stack>
+
+      {/* Suggestion callout */}
+      {showSuggestions && suggestionTarget && (
+        <Callout
+          target={suggestionTarget}
+          onDismiss={() => setShowSuggestions(false)}
+          directionalHint={DirectionalHint.bottomCenter}
+          isBeakVisible={true}
+          styles={{
+            root: {
+              padding: '8px',
+              borderRadius: '4px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              minWidth: '200px',
+            },
+          }}
+        >
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#333' }}>
+            Choose replacement for {currentPlaceholder}
+          </div>
+          {(placeholderSuggestions[currentPlaceholder] || ['the other party', 'the company', 'the relevant details']).map((suggestion, index) => (
+            <div
+              key={index}
+              onClick={() => handleSuggestionSelect(suggestion)}
+              style={{
+                padding: '8px 12px',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                fontSize: '13px',
+                color: '#333',
+                backgroundColor: 'transparent',
+                border: '1px solid #e1e5e9',
+                margin: '4px 0',
+                transition: 'all 0.2s ease',
+                lineHeight: '1.3',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa';
+                (e.currentTarget as HTMLElement).style.borderColor = '#0078d4';
+                (e.currentTarget as HTMLElement).style.color = '#0078d4';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                (e.currentTarget as HTMLElement).style.borderColor = '#e1e5e9';
+                (e.currentTarget as HTMLElement).style.color = '#333';
+              }}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </Callout>
+      )}
+
+      {/* Snippet Edit Popover */}
+      {snippetEditState && (
+        <SnippetEditPopover
+          target={snippetEditState.target}
+          previewText={getOptionContent(
+            snippetEditState.blockTitle, 
+            snippetEditState.optionLabel, 
+            templateBlocks
+              .find(b => b.title === snippetEditState.blockTitle)
+              ?.options.find(o => o.label === snippetEditState.optionLabel)
+              ?.previewText || ''
+          ).replace(/<[^>]*>/g, '')} // Strip HTML tags for preview
+          onSave={handleSnippetSave}
+          onDismiss={() => setSnippetEditState(null)}
+        />
+      )}
     </>
   );
-});
+};
 
 export default EditorAndTemplateBlocks;
+
+// CLEANUP: File should end here. All code below this line has been removed.

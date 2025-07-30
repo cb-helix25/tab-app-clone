@@ -21,6 +21,8 @@ import { generateTemplateContent } from './ccl/utils/templateUtils';
 // Inject styles into document head
 injectPlaceholderStyles();
 
+// invisible change: keep in editor history
+
 const INDENT_STYLE: React.CSSProperties = {
     display: 'block',
     marginLeft: '16px',

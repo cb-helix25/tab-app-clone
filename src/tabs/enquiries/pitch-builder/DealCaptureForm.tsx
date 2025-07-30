@@ -24,6 +24,8 @@ import { colours } from '../../../app/styles/colours';
 import { Enquiry } from '../../../app/functionality/types';
 import PaymentPreview from './PaymentPreview';
 
+
+
 interface ClientInfo {
   firstName: string;
   lastName: string;
@@ -74,6 +76,7 @@ function formatCurrency(val: string | number) {
   return num.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 }
 
+// invisible change for traceability
 const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   enquiry,
   onSubmit,
@@ -562,15 +565,12 @@ useLayoutEffect(() => {
           />
         </div>
       </div>
-      <div className={paymentInfoWrapper(showPaymentInfo || !!amountError)}>
-        <div className={paymentInfoClass(!!amountError, true)}>
-          {amountError || ''}
-        </div>
-        <div className={paymentInfoClass(showPaymentInfo && !amountError)}>
-          {(enquiry.First_Name || 'The client')} will be asked to pay{' '}
-          {formatCurrency(Number(amount.replace(/,/g, '')) * 1.2)} on account
-        </div>
-      </div>
+
+
+      {/* Deal summary card removed as per user request */}
+      {amountError && (
+        <div className={paymentInfoClass(true, true)}>{amountError}</div>
+      )}
 
       <PaymentPreview serviceDescription={serviceDescription} amount={amount} />
 

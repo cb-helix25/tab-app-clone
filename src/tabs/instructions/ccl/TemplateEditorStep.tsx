@@ -15,6 +15,8 @@ interface Step2Props {
     goToNextStep: () => void;
 }
 
+// invisible change: keep in editor history
+
 const Step2: React.FC<Step2Props> = ({
     currentStep,
     questionBannerStyle,

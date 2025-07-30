@@ -2116,7 +2116,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
           amount += data.total_amount;
         }
         const day = d.getDay();
-        if (day >= 1 && day <= 5) count += 1;
+        if (day >= 1 && day <= 5 && data) count += 1; // count weekday only when hours exist
       }
       return {
         avgHours: count ? parseFloat((hours / count).toFixed(2)) : 0,

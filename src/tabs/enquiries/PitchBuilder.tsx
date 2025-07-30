@@ -51,10 +51,16 @@ import ReactDOMServer from 'react-dom/server';
 import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch-builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
-import PitchHeaderRow from './pitch-builder/PitchHeaderRow';
+
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
+// import InstructionCard from '../instructions/InstructionCard';
+import { addDays } from 'date-fns';
 import PlaceholderEditorPopover from './pitch-builder/PlaceholderEditorPopover';
 import SnippetEditPopover from './pitch-builder/SnippetEditPopover';
+
+
+
+
 import { placeholderSuggestions } from '../../app/customisation/InsertSuggestions';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import {
@@ -70,24 +76,37 @@ import {
 import { inputFieldStyle } from '../../CustomForms/BespokeForms';
 import { ADDITIONAL_CLIENT_PLACEHOLDER_ID } from '../../constants/deals';
 
-// HMR: Reload template blocks if ProductionTemplateBlocks.ts changes (Vite or Webpack)
-function useHotReloadTemplateBlocks(templateSet: TemplateSet) {
+
+// Dynamic import + HMR for ProductionTemplateBlocks
+function useDynamicTemplateBlocks(templateSet: TemplateSet) {
   const [blocks, setBlocks] = useState<TemplateBlock[]>(() => getTemplateBlocks(templateSet));
   useEffect(() => {
-    setBlocks(getTemplateBlocks(templateSet));
+    let cancelled = false;
+    async function loadBlocks() {
+      const mod = await import('../../app/customisation/ProductionTemplateBlocks');
+      if (!cancelled) {
+        // If you export named blocks, adjust as needed
+        setBlocks(getTemplateBlocks(templateSet));
+      }
+    }
+    loadBlocks();
+    // HMR support
     // @ts-expect-error: HMR property only exists in dev
     if (import.meta && import.meta.hot) {
       // @ts-expect-error: HMR property only exists in dev
       import.meta.hot.accept('../../app/customisation/ProductionTemplateBlocks', (mod: any) => {
-        setBlocks(getTemplateBlocks(templateSet));
+        loadBlocks();
       });
     // @ts-expect-error: HMR property only exists in dev
     } else if (typeof module !== 'undefined' && module.hot) {
       // @ts-expect-error: HMR property only exists in dev
       module.hot.accept('../../app/customisation/ProductionTemplateBlocks', () => {
-        setBlocks(getTemplateBlocks(templateSet));
+        loadBlocks();
       });
     }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateSet]);
   return blocks;
@@ -529,11 +548,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
 }
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+  // Initial Notes state
+  const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
-  const templateBlocks = useHotReloadTemplateBlocks(templateSet);
+  const templateBlocks = useDynamicTemplateBlocks(templateSet);
   // Ref for the body editor
   const bodyEditorRef = useRef<HTMLDivElement>(null);
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
@@ -3628,40 +3649,186 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   return (
     <Stack className={containerStyle}>
       <header className={headerWrapperStyle}>
-        <PitchHeaderRow
-          enquiry={enquiry}
-          to={to}
-          setTo={setTo}
-          cc={cc}
-          setCc={setCc}
-          bcc={bcc}
-          setBcc={setBcc}
-          subject={subject}
-          setSubject={setSubject}
-          serviceDescription={serviceDescription}
-          setServiceDescription={setServiceDescription}
-          selectedOption={selectedOption}
-          setSelectedOption={setSelectedOption}
-          SERVICE_OPTIONS={SERVICE_OPTIONS}
-          amount={amount}
-          handleAmountChange={handleAmountChange}
-          handleAmountBlur={handleAmountBlur}
-          handleDealFormSubmit={handleDealFormSubmit}
-          dealId={dealId}
-          clientIds={clientIds}
-          isDarkMode={isDarkMode}
-        />
+        <div style={{ padding: '20px 20px 0 20px' }}>
+          {/* Unified summary fields, now without card container */}
+          {/* Client Info */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, gap: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Changed icon to single-color SVG person icon */}
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="8" r="4" />
+                  <rect x="4" y="15" width="16" height="6" rx="3" />
+                </svg>
+              </span>
+              {enquiry.First_Name} {enquiry.Last_Name}
+            </div>
+            {enquiry.Email && (
+              <span style={{ color: '#3690CE', fontSize: 13, marginLeft: 12 }}>{enquiry.Email}</span>
+            )}
+            {enquiry.Phone_Number && (
+              <span style={{ color: '#666', fontSize: 13, marginLeft: 12 }}>{enquiry.Phone_Number}</span>
+            )}
+          </div>
+
+          {/* Separator between header and fields */}
+          <div style={{ borderBottom: '2px solid #e1e4e8', margin: '0 0 18px 0', width: '100%' }} />
+
+          {/* New two-column layout for summary card */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: 24, marginBottom: 8 }}>
+            {/* Left column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* To, CC, BCC stacked */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>To</div>
+                  <input
+                    type="email"
+                    value={to}
+                    onChange={e => setTo(e.target.value)}
+                    placeholder="Recipient email"
+                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>CC</div>
+                  <input
+                    type="email"
+                    value={cc}
+                    onChange={e => setCc(e.target.value)}
+                    placeholder="CC emails"
+                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>BCC</div>
+                  <input
+                    type="email"
+                    value={bcc}
+                    onChange={e => setBcc(e.target.value)}
+                    placeholder="BCC emails"
+                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                  />
+                </div>
+              </div>
+              {/* Subject line */}
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Subject</div>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  placeholder="Email subject"
+                  style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                />
+              </div>
+              {/* Email and Phone boxes */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {/* Email box */}
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
+                  <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/><polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/></svg>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#333', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiry.Email || 'Email'}</div>
+                </div>
+                {/* Phone box */}
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
+                  <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/></svg>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#333', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiry.Phone_Number || 'Phone'}</div>
+                </div>
+              </div>
+            </div>
+            {/* Right column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Service Description */}
+              <div>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Service Description</div>
+                <input
+                  type="text"
+                  value={serviceDescription}
+                  onChange={e => setServiceDescription(e.target.value)}
+                  placeholder="Describe the service"
+                  style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                />
+              </div>
+              {/* Amount and Deal Expiry in a row */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                {/* Amount box with label, 66% width */}
+                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Amount (ex. VAT)</div>
+                  <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
+                    <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#3690CE' }}>£</div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', height: '100%' }}>
+                      <input
+                        type="number"
+                        value={amount}
+                        onChange={e => handleAmountChange(e.target.value)}
+                        onBlur={handleAmountBlur}
+                        placeholder="0.00"
+                        style={{ width: '100%', height: '100%', padding: '0 8px', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, color: '#3690CE', fontSize: '0.95rem' }}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Deal Expiry, 33% width */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Deal Expiry</div>
+                  <input
+                    type="date"
+                    value={addDays(new Date(), 14).toISOString().slice(0, 10)}
+                    onChange={() => {}}
+                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                    disabled
+                  />
+                </div>
+              </div>
+              {/* Payment Preview */}
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>Payment Preview</div>
+                <div style={{ background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, padding: 12, fontSize: 14, color: '#3690CE', fontWeight: 600, marginBottom: 12 }}>
+                  {serviceDescription
+                    ? `The fee is including VAT for ${serviceDescription.trim() || '[Service description]'}.` 
+                    : 'The fee is including VAT for [Service description].'}
+                  {amount && parseFloat(amount) > 0 && (
+                    <span style={{ marginLeft: 8, color: '#24292f', fontWeight: 500 }}>
+                      (£{parseFloat(amount).toFixed(2)})
+                    </span>
+                  )}
+                </div>
+                {/* Initial Notes below Payment Preview */}
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>Initial Notes</div>
+                  <textarea
+                    value={initialNotes || ''}
+                    onChange={e => setInitialNotes(e.target.value)}
+                    placeholder="Add any initial notes..."
+                    style={{ width: '100%', minHeight: 48, padding: 8, border: '1px solid #e1e4e8', borderRadius: 0, resize: 'vertical', fontSize: 13 }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* ...existing code... */}
+        {/* ...existing code... */}
       </header>
 
       <main className={bodyWrapperStyle}>
+        {/* Summary/Overview Section: Instruction, Deal, and Risk/Compliance Cards */}
+        {/* Old InstructionCard removed: now using unified summary card above */}
+
         {/* Row: Combined Email Editor and Template Blocks */}
         <EditorAndTemplateBlocks
           isDarkMode={isDarkMode}
           body={body}
           setBody={setBodyForComponents}
           templateBlocks={blocks}
-          templateSet={templateSet}
-          onTemplateSetChange={handleTemplateSetChange}
+          // templateSet prop removed; not needed by EditorAndTemplateBlocks
+          // onTemplateSetChange prop removed; not needed by EditorAndTemplateBlocks
           selectedTemplateOptions={selectedTemplateOptions}
           insertedBlocks={insertedBlocks}
           lockedBlocks={lockedBlocks}
@@ -3678,19 +3845,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           bodyEditorRef={bodyEditorRef}
           toolbarStyle={toolbarStyle}
           bubblesContainerStyle={bubblesContainerStyle}
-          bubbleStyle={bubbleStyle}
-          filteredAttachments={filteredAttachments.map(att => ({ key: att.key, text: att.text }))}
-          highlightBlock={highlightBlock}
-          onReorderBlocks={reorderTemplateBlocks}
-          onDuplicateBlock={duplicateTemplateBlock}
-          onClearAllBlocks={clearAllBlocks}
-          removedBlocks={Object.keys(hiddenBlocks)}
-          onAddBlock={addTemplateBlock}
-          showToast={showToast}
-          undo={undo}
-          redo={redo}
-          canUndo={undoStack.length > 1}
-          canRedo={redoStack.length > 0}
+          saveCustomSnippet={saveCustomSnippet}
+          // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
+          // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
+          // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
+          // onReorderBlocks prop removed; not needed by EditorAndTemplateBlocks
+          // onDuplicateBlock prop removed; not needed by EditorAndTemplateBlocks
+          // onClearAllBlocks prop removed; not needed by EditorAndTemplateBlocks
+          // removedBlocks prop removed; not needed by EditorAndTemplateBlocks
+          // onAddBlock prop removed; not needed by EditorAndTemplateBlocks
+          // showToast prop removed; not needed by EditorAndTemplateBlocks
+          // undo prop removed; not needed by EditorAndTemplateBlocks
+          // redo prop removed; not needed by EditorAndTemplateBlocks
+          // canUndo prop removed; not needed by EditorAndTemplateBlocks
+          // canRedo prop removed; not needed by EditorAndTemplateBlocks
         />
 
         {snippetOptionsBlock && snippetOptionsTarget && (
@@ -3851,7 +4019,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           />
         )}
 
-        {/* Row: Preview and Reset Buttons */}
+        {/* Row: Preview and Reset Buttons (single instance) */}
         <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
           <PrimaryButton
             text="Preview Email"
@@ -3896,23 +4064,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           passcode={dealPasscode}
         />
 
-        {/* Row: Preview and Reset Buttons */}
-        <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
-          <PrimaryButton
-            text="Preview Email"
-            onClick={togglePreview}
-            styles={sharedPrimaryButtonStyles}
-            ariaLabel="Preview Email"
-            iconProps={{ iconName: 'Preview' }}
-          />
-          <DefaultButton
-            text="Reset"
-            onClick={resetForm}
-            styles={sharedDefaultButtonStyles}
-            ariaLabel="Reset Form"
-            iconProps={{ iconName: 'Refresh' }}
-          />
-        </Stack>
+        {/* Removed duplicate Preview and Reset buttons */}
 
         <OperationStatusToast
           visible={toast !== null}
