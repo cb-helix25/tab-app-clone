@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useR
 import {
   Stack,
   Text,
+  Icon,
   mergeStyles,
   MessageBar,
   MessageBarType,
@@ -28,7 +29,9 @@ import {
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
 import { Enquiry, UserData, POID } from '../../app/functionality/types';
 import CustomPagination from '../../app/styles/CustomPagination';
-import EnquiryCard from './EnquiryCard';
+import EnquiryLineItem from './EnquiryLineItem';
+import GroupedEnquiryCard from './GroupedEnquiryCard';
+import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
 import EnquiryOverview from './EnquiryOverview';
 import PitchBuilder from './PitchBuilder';
 import { colours } from '../../app/styles/colours';
@@ -148,6 +151,66 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   teamData,
 }) => {
   const [localEnquiries, setLocalEnquiries] = useState<Enquiry[]>(enquiries || []);
+
+  // Add sample test data for demonstration
+  const sampleTestEnquiries: Enquiry[] = [
+    {
+      ID: 'test-001',
+      Date_Created: '2024-07-25T10:30:00Z',
+      Touchpoint_Date: '2024-07-25T10:30:00Z',
+      Email: 'luke.phillips@example.com',
+      Area_of_Work: 'Commercial',
+      Type_of_Work: 'Contract Review',
+      Method_of_Contact: 'Email',
+      Point_of_Contact: 'team@helix-law.com',
+      Company: 'Phillips Consulting Ltd',
+      First_Name: 'Luke',
+      Last_Name: 'Phillips',
+      Phone_Number: '+44 7123 456789',
+      Value: '£5,000',
+      Rating: 'Good',
+    },
+    {
+      ID: 'test-002',
+      Date_Created: '2024-07-20T14:15:00Z',
+      Touchpoint_Date: '2024-07-20T14:15:00Z',
+      Email: 'luke.phillips@example.com',
+      Area_of_Work: 'Property',
+      Type_of_Work: 'Lease Agreement',
+      Method_of_Contact: 'Phone',
+      Point_of_Contact: 'team@helix-law.com',
+      Company: 'Phillips Consulting Ltd',
+      First_Name: 'Luke',
+      Last_Name: 'Phillips',
+      Phone_Number: '+44 7123 456789',
+      Value: '£3,500',
+      Rating: 'Neutral',
+    },
+    {
+      ID: 'test-003',
+      Date_Created: '2024-07-28T09:00:00Z',
+      Touchpoint_Date: '2024-07-28T09:00:00Z',
+      Email: 'sarah.jones@testcompany.co.uk',
+      Area_of_Work: 'Employment',
+      Type_of_Work: 'Workplace Dispute',
+      Method_of_Contact: 'Web Form',
+      Point_of_Contact: 'team@helix-law.com',
+      Company: 'Test Company Ltd',
+      First_Name: 'Sarah',
+      Last_Name: 'Jones',
+      Phone_Number: '+44 7987 654321',
+      Value: '£2,000',
+    },
+  ];
+
+  // Combine actual enquiries with test data for demonstration
+  const [enrichedEnquiries, setEnrichedEnquiries] = useState<Enquiry[]>(() => {
+    const combined = [...(enquiries || []), ...sampleTestEnquiries];
+    return combined;
+  });
+
+  // Use enrichedEnquiries instead of localEnquiries for demonstration
+  const [displayEnquiries, setDisplayEnquiries] = useState<Enquiry[]>(enrichedEnquiries);
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
@@ -169,6 +232,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
+  const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
 
   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
@@ -200,8 +264,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, []);
 
   useEffect(() => {
-    if (localEnquiries.length > 0) {
-      const validDates = localEnquiries
+    if (displayEnquiries.length > 0) {
+      const validDates = displayEnquiries
         .map((enq) => enq.Touchpoint_Date)
         .filter((d): d is string => typeof d === 'string' && isValid(parseISO(d)))
         .map((d) => parseISO(d));
@@ -218,22 +282,22 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     } else {
       setDateRange(null);
     }
-  }, [localEnquiries]);
+  }, [displayEnquiries]);
 
   const sortedEnquiries = useMemo(() => {
-    return [...localEnquiries].sort((a, b) => {
+    return [...displayEnquiries].sort((a, b) => {
       const dateA = parseISO(a.Touchpoint_Date || '');
       const dateB = parseISO(b.Touchpoint_Date || '');
       return dateA.getTime() - dateB.getTime();
     });
-  }, [localEnquiries]);
+  }, [displayEnquiries]);
 
   const unclaimedEnquiries = useMemo(
     () =>
-      localEnquiries.filter(
+      displayEnquiries.filter(
         (e) => e.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
       ),
-    [localEnquiries]
+    [displayEnquiries]
   );
 
   const sortedValidEnquiries = useMemo(() => {
@@ -300,18 +364,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, [enquiriesInSliderRange]);
 
   useEffect(() => {
-    if (poidData && localEnquiries.length > 0) {
-      const converted = localEnquiries.filter((enq) =>
+    if (poidData && displayEnquiries.length > 0) {
+      const converted = displayEnquiries.filter((enq) =>
         poidData.some((poid) => String(poid.acid) === enq.ID)
       );
       setConvertedEnquiriesList(converted);
   
       const convertedPoid = poidData.filter((poid) =>
-        localEnquiries.some((enq) => enq.ID === String(poid.acid))
+        displayEnquiries.some((enq) => enq.ID === String(poid.acid))
       );
       setConvertedPoidDataList(convertedPoid);
     }
-  }, [poidData, localEnquiries]);
+  }, [poidData, displayEnquiries]);
 
   const handleSubTabChange = useCallback((item?: PivotItem) => {
     if (item) {
@@ -321,7 +385,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const handleSelectEnquiry = useCallback((enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
-    setActiveSubTab('Overview');
+    setActiveSubTab('Pitch'); // Go directly to Pitch Builder instead of Overview
   }, []);
 
   const handleBackToList = useCallback(() => {
@@ -461,10 +525,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // );
   // const totalPages = Math.ceil(filteredEnquiries.length / enquiriesPerPage);
 
-  // Added for infinite scroll
-  const displayedEnquiries = useMemo(() => {
-          return [...filteredEnquiries].reverse().slice(0, itemsToShow);
-    }, [filteredEnquiries, itemsToShow]);
+  // Added for infinite scroll - support both grouped and regular view
+  const displayedItems = useMemo(() => {
+    if (showGroupedView) {
+      // Use grouped display
+      const mixedItems = getMixedEnquiryDisplay([...filteredEnquiries].reverse());
+      return mixedItems.slice(0, itemsToShow);
+    } else {
+      // Use regular display
+      return [...filteredEnquiries].reverse().slice(0, itemsToShow);
+    }
+  }, [filteredEnquiries, itemsToShow, showGroupedView]);
 
   const handleLoadMore = useCallback(() => {
     setItemsToShow((prev) => Math.min(prev + 20, filteredEnquiries.length));
@@ -561,6 +632,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           setSearchTerm={setSearchTerm}
           isSearchActive={isSearchActive}
           setSearchActive={setSearchActive}
+          showGroupedView={showGroupedView}
+          setShowGroupedView={setShowGroupedView}
         />
       );
     } else {
@@ -669,20 +742,29 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
       <Stack
-        tokens={{ childrenGap: 12 }}
+        tokens={{ childrenGap: 24 }}
         styles={{
           root: {
             backgroundColor: isDarkMode
               ? colours.dark.sectionBackground
               : colours.light.sectionBackground,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            padding: 20,
+            boxShadow: isDarkMode
+              ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+              : '0 8px 32px rgba(0, 0, 0, 0.1)',
+            padding: '32px',
+            borderRadius: '12px',
             fontFamily: 'Raleway, sans-serif',
           },
         }}
       >
         {activeSubTab === 'Overview' && (
-          <EnquiryOverview enquiry={enquiry} onEditRating={handleRate} onEditNotes={() => { }} />
+          <EnquiryOverview 
+            enquiry={enquiry} 
+            onEditRating={handleRate} 
+            onEditNotes={() => { }} 
+            allEnquiries={displayEnquiries}
+            onSelectEnquiry={handleSelectEnquiry}
+          />
         )}
         {activeSubTab === 'Pitch' && (
           <PitchBuilder enquiry={enquiry} userData={userData} />
@@ -691,12 +773,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     ),
     [handleRate, isDarkMode, activeSubTab, userData]
   );
-
-  const calculateAnimationDelay = (row: number, col: number) => {
-    const delayPerRow = 0.2;
-    const delayPerCol = 0.1;
-    return row * delayPerRow + col * delayPerCol;
-  };
 
   const enquiriesCountPerMember = useMemo(() => {
     if (!enquiriesInSliderRange || !teamData) return [];
@@ -840,6 +916,25 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     <div className={containerStyle(isDarkMode)}>
       <div className={mergeStyles({ width: '100%' })}></div>
 
+      <section className="page-section">
+        <Stack
+          tokens={{ childrenGap: 20 }}
+          styles={{
+            root: {
+              backgroundColor: isDarkMode 
+                ? colours.dark.sectionBackground 
+                : colours.light.sectionBackground,
+              padding: '16px',
+              borderRadius: 0,
+              boxShadow: isDarkMode
+                ? `0 4px 12px ${colours.dark.border}`
+                : `0 4px 12px ${colours.light.border}`,
+              width: '100%',
+              fontFamily: 'Raleway, sans-serif',
+            },
+          }}
+        >
+
       {showUnclaimedBoard ? (
         <UnclaimedEnquiries
           enquiries={unclaimedEnquiries}
@@ -976,9 +1071,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px',
-          paddingBottom: '40px',
-          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.background,
+          gap: '0px', // Remove extra gap between sections
+          paddingBottom: 0, // Remove extra space at the bottom
+          backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
           transition: 'background-color 0.3s',
         })}
       >
@@ -1150,7 +1245,42 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         ) : (
           <>
             {filteredEnquiries.length === 0 ? (
-              <Stack tokens={{ childrenGap: 8 }} horizontalAlign="center">
+              <div
+                className={mergeStyles({
+                  backgroundColor: isDarkMode 
+                    ? colours.dark.sectionBackground 
+                    : colours.light.sectionBackground,
+                  borderRadius: '12px',
+                  padding: '60px 40px',
+                  textAlign: 'center',
+                  boxShadow: isDarkMode
+                    ? '0 4px 16px rgba(0, 0, 0, 0.3)'
+                    : '0 4px 16px rgba(0, 0, 0, 0.1)',
+                })}
+              >
+                <Icon
+                  iconName="Search"
+                  styles={{
+                    root: {
+                      fontSize: '48px',
+                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                      marginBottom: '20px',
+                    },
+                  }}
+                />
+                <Text
+                  variant="xLarge"
+                  styles={{
+                    root: {
+                      color: isDarkMode ? colours.dark.text : colours.light.text,
+                      fontFamily: 'Raleway, sans-serif',
+                      fontWeight: '600',
+                      marginBottom: '8px',
+                    },
+                  }}
+                >
+                  No enquiries found
+                </Text>
                 <Text
                   variant="medium"
                   styles={{
@@ -1160,32 +1290,52 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                     },
                   }}
                 >
-                  No results found matching your criteria.
+                  Try adjusting your search criteria or filters
                 </Text>
-              </Stack>
+              </div>
             ) : (
               <>
+                {/* Connected List Items */}
                 <div
                   className={mergeStyles({
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap:  "12px",
+                    padding: 0,
+                    margin: 0,
+                    backgroundColor: isDarkMode 
+                      ? colours.dark.cardBackground 
+                      : colours.light.cardBackground,
                   })}
                 >
-                  {displayedEnquiries.map((enquiry, index) => {
-                    const row = Math.floor(index / 4);
-                    const col = index % 4;
-                    const animationDelay = calculateAnimationDelay(row, col);
-                    return (
-                      <EnquiryCard
-                        key={`${enquiry.ID}-${index}-${showAll}`}
-                        enquiry={enquiry}
-                        onSelect={handleSelectEnquiry}
-                        onRate={handleRate}
-                        animationDelay={animationDelay}
-                        teamData={teamData}
-                      />
-                    );
+                  {displayedItems.map((item, idx) => {
+                    const isLast = idx === displayedItems.length - 1;
+                    
+                    if (isGroupedEnquiry(item)) {
+                      // Render grouped enquiry card
+                      return (
+                        <GroupedEnquiryCard
+                          key={item.clientKey}
+                          groupedEnquiry={item}
+                          onSelect={handleSelectEnquiry}
+                          onRate={handleRate}
+                          teamData={teamData}
+                          isLast={isLast}
+                        />
+                      );
+                    } else {
+                      // Render single enquiry
+                      return (
+                        <EnquiryLineItem
+                          key={item.ID}
+                          enquiry={item}
+                          onSelect={handleSelectEnquiry}
+                          onRate={handleRate}
+                          teamData={teamData}
+                          isLast={isLast}
+                        />
+                      );
+                    }
                   })}
                 </div>
                 <div ref={loader} />
@@ -1274,17 +1424,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           </Stack>
         </Stack>
       </Modal>
+        </Stack>
+      </section>
     </div>
   );
 
   function containerStyle(dark: boolean) {
     return mergeStyles({
-      width: '100%',
-      padding: '20px',
       backgroundColor: dark ? colours.dark.background : colours.light.background,
       minHeight: '100vh',
-      fontFamily: 'Raleway, sans-serif',
-      paddingBottom: '100px',
+      boxSizing: 'border-box',
+      color: dark ? colours.light.text : colours.dark.text,
     });
   }
 };

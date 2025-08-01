@@ -184,7 +184,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   const solicitorTeamMembers = React.useMemo(() => {
     return (
       teamData?.filter(
-        (team) => team.status === 'active' && team.Initials && team["Role"] !== 'Non-solicitor'
+        (team) => team.Initials && team["Role"] !== 'Non-solicitor'
       ) || []
     );
   }, [teamData]);
@@ -394,20 +394,38 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
   }, [filteredPoidData]);
 
   const tableData = React.useMemo(() => {
-    return filteredTeamMembers.map((team) => {
-      const clioId = String(team["Clio ID"] || "");
-      const email = team.Email || "";
-      const fullName = team["Full Name"] || "";
-      return {
-        initial: team.Initials!,
-        wipHours: formatHours(getTeamWipHours(clioId)),
-        wipPounds: formatCurrency(getTeamWipPounds(clioId)),
-        collected: formatCurrency(getTeamCollected(clioId)),
-        enquiries: getTeamEnquiries(email),
-        matters: getTeamMatters(fullName),
-        idSubmissions: totalIdSubmissionsOverall,
-      };
-    });
+    return filteredTeamMembers
+      .map((team) => {
+        const clioId = String(team["Clio ID"] || "");
+        const email = team.Email || "";
+        const fullName = team["Full Name"] || "";
+
+        const wipHoursNum = getTeamWipHours(clioId);
+        const wipPoundsNum = getTeamWipPounds(clioId);
+        const collectedNum = getTeamCollected(clioId);
+        const enquiriesNum = getTeamEnquiries(email);
+        const mattersNum = getTeamMatters(fullName);
+
+        const hasData =
+          wipHoursNum !== 0 ||
+          wipPoundsNum !== 0 ||
+          collectedNum !== 0 ||
+          enquiriesNum !== 0 ||
+          mattersNum !== 0;
+
+        if (!hasData) return null;
+
+        return {
+          initial: team.Initials!,
+          wipHours: formatHours(wipHoursNum),
+          wipPounds: formatCurrency(wipPoundsNum),
+          collected: formatCurrency(collectedNum),
+          enquiries: enquiriesNum,
+          matters: mattersNum,
+          idSubmissions: totalIdSubmissionsOverall,
+        } as TableRow;
+      })
+      .filter((row): row is TableRow => row !== null);
   }, [
     filteredTeamMembers,
     filteredWip,

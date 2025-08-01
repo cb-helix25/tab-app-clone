@@ -3427,6 +3427,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const containerStyle = mergeStyles({
     padding: 0,
     backgroundColor: 'transparent',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
     borderRadius: 0,
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
@@ -3450,7 +3451,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const bodyWrapperStyle = mergeStyles({
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     display: 'flex',

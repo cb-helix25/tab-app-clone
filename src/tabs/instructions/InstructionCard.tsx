@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { mergeStyles } from '@fluentui/react';
 import { 
@@ -16,10 +16,82 @@ import {
   FaFileAudio,
   FaFileVideo,
   FaFileUpload,
-  FaInfoCircle
+  FaInfoCircle,
+  FaEnvelope,
+  FaPhone,
+  FaCopy
 } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
+
+// Utility for copying text and showing feedback - same as enquiry cards
+function useCopyToClipboard(timeout = 1200): [boolean, (text: string) => void] {
+  const [copied, setCopied] = useState(false);
+  const copy = (text: string) => {
+    if (navigator && navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), timeout);
+      });
+    }
+  };
+  return [copied, copy];
+}
+
+interface CopyableTextProps {
+  value: string;
+  className?: string;
+  label?: string;
+  noHoverEffects?: boolean; // Add option to disable hover enlargement
+  iconHovered?: boolean; // Add option to track icon hover state
+}
+
+const CopyableText: React.FC<CopyableTextProps> = ({ value, className, label, noHoverEffects = false, iconHovered = false }) => {
+  const [copied, copy] = useCopyToClipboard();
+  const [isHovered, setIsHovered] = useState(false);
+  
+  return (
+    <span
+      className={className}
+      title={copied ? `${label || 'Value'} copied!` : `Click to copy ${label || 'value'}`}
+      onClick={e => {
+        e.stopPropagation();
+        copy(value);
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ 
+        display: 'inline-block', 
+        position: 'relative', 
+        cursor: 'copy',
+        padding: isHovered && !noHoverEffects ? '2px 4px' : '0',
+        backgroundColor: isHovered && !noHoverEffects ? 'rgba(54, 144, 206, 0.08)' : 'transparent',
+        borderRadius: isHovered && !noHoverEffects ? '3px' : '0',
+        transition: 'all 0.2s ease',
+        color: isHovered ? '#3690CE' : 'inherit',
+      }}
+    >
+      {value}
+      {copied && (
+        <span style={{
+          position: 'absolute',
+          left: '100%',
+          top: 0,
+          marginLeft: 8,
+          fontSize: 12,
+          color: '#43a047',
+          background: '#fff',
+          borderRadius: 3,
+          padding: '2px 6px',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          zIndex: 10,
+        }}>
+          Copied!
+        </span>
+      )}
+    </span>
+  );
+};
 
 // File type icon mapping
 const iconMap: Record<string, JSX.Element> = {
@@ -203,14 +275,10 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
         position: 'relative',
         border: selected 
             ? '2px solid #3690CE' 
-            : isCompleted 
-                ? '0.25px solid #0ea5e9' 
-                : '1px solid #e1e4e8',
+            : '1px solid #e1e4e8',
         boxShadow: selected
             ? '0 0 0 1px #3690CE20, 0 4px 16px rgba(54, 144, 206, 0.15)'
-            : isCompleted 
-                ? 'inset 0 0 2px rgba(14, 165, 233, 0.15), 0 2px 8px rgba(0,0,0,0.08)'
-                : '0 2px 8px rgba(0,0,0,0.08)',
+            : '0 2px 8px rgba(0,0,0,0.08)',
         opacity: isCompleted ? 0.6 : 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
         selectors: {
@@ -239,296 +307,456 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
 
     return (
         <div className={cardClass} style={style} onClick={handleCardClick} ref={innerRef}>
-
-
-            {/* Client Name Header */}
+            {/* HORIZONTAL LINE LAYOUT LIKE ENQUIRY CARDS */}
             <div style={{
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '1rem',
-                fontWeight: 600,
-                color: '#24292f',
-                marginBottom: '8px',
-                borderBottom: '1px solid rgba(0,0,0,0.1)',
-                paddingBottom: '6px'
+                gap: '20px',
+                width: '100%',
+                flexWrap: 'wrap',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {isMultiClient ? (
-                        <FaUsers style={{ 
-                            fontSize: '14px', 
-                            color: selected ? '#3690CE' : '#666' 
-                        }} />
-                    ) : (
-                        <FaUser style={{ 
-                            fontSize: '14px', 
-                            color: selected ? '#3690CE' : '#666' 
-                        }} />
-                    )}
-                    <span>{fullName || 'Client Name'}</span>
-                </div>
-                {instruction.InstructionRef && (
-                    <span style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 400,
-                        color: '#666',
-                        fontFamily: 'monospace'
+                
+                {/* CLIENT INFO AND DATE/REF - Combined Left Section */}
+                <div style={{ flex: '0 0 420px', minWidth: '420px', display: 'flex', gap: '12px' }}>
+                    {/* CLIENT INFO BOX */}
+                    <div style={{
+                        backgroundColor: '#f8f9fa',
+                        border: '1px solid #e1e4e8',
+                        borderRadius: '0px',
+                        padding: '8px 12px',
+                        height: '62px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        flex: '1'
                     }}>
-                        {instruction.InstructionRef}
-                    </span>
-                )}
-            </div>
-
-            {/* Stage/Status Banner */}
-            {instruction.Stage && (
-                <div style={{
-                    backgroundColor: isCompleted ? '#f0f9ff' : '#f8f9fa',
-                    borderLeft: `4px solid ${isCompleted ? '#0ea5e9' : '#6b7280'}`,
-                    color: isCompleted ? '#0284c7' : '#4b5563',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
-                    padding: '8px 16px',
-                    marginBottom: '12px',
-                    borderRadius: '0px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    border: isCompleted ? '1px solid rgba(14, 165, 233, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <FaInfoCircle style={{ fontSize: '14px', opacity: 0.7 }} />
-                        <span>{isCompleted ? (hasAssociatedMatter ? 'Pending CCL Draft' : 'Pending matter opening') : `Stage: ${instruction.Stage}`}</span>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            color: '#24292f',
+                            marginBottom: '3px',
+                            gap: '6px'
+                        }}>
+                            {isMultiClient ? (
+                                <FaUsers style={{ 
+                                    fontSize: '12px', 
+                                    color: selected ? '#3690CE' : '#666' 
+                                }} />
+                            ) : (
+                                <FaUser style={{ 
+                                    fontSize: '12px', 
+                                    color: selected ? '#3690CE' : '#666' 
+                                }} />
+                            )}
+                            <span style={{ flex: 1 }}>{fullName || 'Client Name'}</span>
+                            <FaCopy
+                                style={{
+                                    fontSize: '10px',
+                                    color: '#999',
+                                    cursor: 'pointer',
+                                    transition: 'color 0.2s ease'
+                                }}
+                                onClick={(e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    if (navigator && navigator.clipboard) {
+                                        navigator.clipboard.writeText(fullName || 'Client Name');
+                                    }
+                                }}
+                                onMouseEnter={(e: React.MouseEvent) => {
+                                    (e.currentTarget as HTMLElement).style.color = '#3690CE';
+                                }}
+                                onMouseLeave={(e: React.MouseEvent) => {
+                                    (e.currentTarget as HTMLElement).style.color = '#999';
+                                }}
+                                title="Copy client name"
+                            />
+                        </div>
+                        {instruction.Email && (
+                            <div style={{
+                                fontSize: '0.75rem',
+                                color: '#333',
+                                marginBottom: '1px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                            onMouseEnter={(e) => {
+                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
+                                if (icon) icon.style.color = '#3690CE';
+                            }}
+                            onMouseLeave={(e) => {
+                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
+                                if (icon) icon.style.color = selected ? '#3690CE' : '#666';
+                            }}
+                            >
+                                <FaEnvelope 
+                                    className="contact-icon"
+                                    style={{ 
+                                        fontSize: '10px', 
+                                        color: selected ? '#3690CE' : '#666',
+                                        transition: 'color 0.2s ease'
+                                    }} 
+                                />
+                                <span 
+                                    style={{ 
+                                        flex: 1, 
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline',
+                                        color: '#3690CE'
+                                    }}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        window.location.href = `mailto:${instruction.Email}`;
+                                    }}
+                                    title="Send email"
+                                >
+                                    {instruction.Email}
+                                </span>
+                                <FaCopy
+                                    style={{
+                                        fontSize: '10px',
+                                        color: '#999',
+                                        cursor: 'pointer',
+                                        transition: 'color 0.2s ease'
+                                    }}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        if (navigator && navigator.clipboard && instruction.Email) {
+                                            navigator.clipboard.writeText(instruction.Email);
+                                        }
+                                    }}
+                                    onMouseEnter={(e: React.MouseEvent) => {
+                                        (e.currentTarget as HTMLElement).style.color = '#3690CE';
+                                    }}
+                                    onMouseLeave={(e: React.MouseEvent) => {
+                                        (e.currentTarget as HTMLElement).style.color = '#999';
+                                    }}
+                                    title="Copy email"
+                                />
+                            </div>
+                        )}
+                        {instruction.Phone && (
+                            <div style={{
+                                fontSize: '0.75rem',
+                                color: '#333',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                            onMouseEnter={(e) => {
+                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
+                                if (icon) icon.style.color = '#3690CE';
+                            }}
+                            onMouseLeave={(e) => {
+                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
+                                if (icon) icon.style.color = selected ? '#3690CE' : '#666';
+                            }}
+                            >
+                                <FaPhone 
+                                    className="contact-icon"
+                                    style={{ 
+                                        fontSize: '10px', 
+                                        color: selected ? '#3690CE' : '#666',
+                                        transition: 'color 0.2s ease'
+                                    }} 
+                                />
+                                <span 
+                                    style={{ 
+                                        flex: 1, 
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline',
+                                        color: '#3690CE'
+                                    }}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        window.location.href = `tel:${instruction.Phone}`;
+                                    }}
+                                    title="Call phone number"
+                                >
+                                    {instruction.Phone}
+                                </span>
+                                <FaCopy
+                                    style={{
+                                        fontSize: '10px',
+                                        color: '#999',
+                                        cursor: 'pointer',
+                                        transition: 'color 0.2s ease'
+                                    }}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        if (navigator && navigator.clipboard && instruction.Phone) {
+                                            navigator.clipboard.writeText(instruction.Phone);
+                                        }
+                                    }}
+                                    onMouseEnter={(e: React.MouseEvent) => {
+                                        (e.currentTarget as HTMLElement).style.color = '#3690CE';
+                                    }}
+                                    onMouseLeave={(e: React.MouseEvent) => {
+                                        (e.currentTarget as HTMLElement).style.color = '#999';
+                                    }}
+                                    title="Copy phone number"
+                                />
+                            </div>
+                        )}
                     </div>
-                    {formattedDate && (
-                        <span style={{
+
+                    {/* DATE AND INSTRUCTION REF BOX */}
+                    <div style={{
+                        backgroundColor: '#f8f9fa',
+                        border: '1px solid #e1e4e8',
+                        borderRadius: '0px',
+                        padding: '8px 12px',
+                        height: '62px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        minWidth: '120px'
+                    }}>
+                        {formattedDate && (
+                            <div style={{
+                                fontSize: '0.85rem',
+                                fontWeight: 500,
+                                color: '#24292f',
+                                marginBottom: '6px'
+                            }}>
+                                {formattedDate}
+                            </div>
+                        )}
+                        {instruction.InstructionRef && (
+                            <div style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 400,
+                                color: '#666',
+                                fontFamily: 'monospace',
+                                backgroundColor: '#fff',
+                                padding: '3px 6px',
+                                borderRadius: '2px',
+                                border: '1px solid #e1e4e8'
+                            }}>
+                                <CopyableText 
+                                    value={instruction.InstructionRef} 
+                                    label="instruction reference"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* STAGE */}
+                <div style={{ flex: '0 0 140px', minWidth: '140px' }}>
+                    <div style={{
+                        backgroundColor: isCompleted ? '#f0f9ff' : '#f8f9fa',
+                        borderLeft: `4px solid ${isCompleted ? '#0ea5e9' : '#6b7280'}`,
+                        color: isCompleted ? '#0284c7' : '#4b5563',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        padding: '8px 12px',
+                        borderRadius: '0px',
+                        border: isCompleted ? '1px solid rgba(14, 165, 233, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)',
+                        height: '62px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative'
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            left: '8px',
+                            backgroundColor: colours.light.sectionBackground,
+                            padding: '0 4px',
                             fontSize: '0.75rem',
-                            fontWeight: 400,
-                            opacity: 0.8
+                            color: '#8b949e',
+                            fontWeight: 500
                         }}>
-                            {stage === 'initialised' ? 'Initialised:' : 'Submitted:'} {formattedDate}
-                        </span>
+                            Next Action
+                        </div>
+                        {isCompleted ? (hasAssociatedMatter ? 'CCL Draft' : 'Matter Opening') : instruction.Stage}
+                    </div>
+                </div>
+
+                {/* SERVICE & FEE */}
+                <div style={{ flex: '1', minWidth: '250px', maxWidth: '350px' }}>
+                    {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
+                        <div style={{
+                            backgroundColor: '#f8f9fa',
+                            border: '1px solid #e1e4e8',
+                            borderRadius: '0px',
+                            padding: '8px 12px',
+                            height: '62px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            position: 'relative'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                left: '8px',
+                                backgroundColor: colours.light.sectionBackground,
+                                padding: '0 4px',
+                                fontSize: '0.75rem',
+                                color: '#8b949e',
+                                fontWeight: 500
+                            }}>
+                                Service & Fee
+                            </div>
+                            <div style={{ 
+                                marginBottom: '4px', 
+                                fontSize: '0.9rem',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                {deal.ServiceDescription || 'Legal Service'}
+                            </div>
+                            {typeof deal.Amount === 'number' && (
+                                <div style={{ 
+                                    fontSize: '0.85rem', 
+                                    fontWeight: 600, 
+                                    color: '#3690CE',
+                                    fontFamily: 'Raleway'
+                                }}>
+                                    £{deal.Amount.toLocaleString()}
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
-            )}
 
-            {/* Service Description from Deal */}
-            {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
-                <div style={{
-                    backgroundColor: '#f8f9fa',
-                    border: '1px solid #e1e4e8',
-                    borderRadius: '0px',
-                    padding: '8px 12px',
-                    marginBottom: '12px',
-                    position: 'relative'
+                {/* STATUS BOXES - Now inline with main content and will wrap only if needed */}
+                <div style={{ 
+                    display: 'flex',
+                    gap: '10px',
+                    flex: '1 1 520px', // Allow growth when wrapped
+                    minWidth: '520px'
                 }}>
+                    {/* ID Status Box */}
                     <div style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        left: '8px',
-                        backgroundColor: colours.light.sectionBackground,
-                        padding: '0 4px',
-                        fontSize: '0.75rem',
-                        color: '#8b949e',
-                        fontWeight: 500
-                    }}>
-                        Service & Fee
-                    </div>
-                    <div style={{ marginBottom: '4px', fontSize: '0.9rem' }}>
-                        {deal.ServiceDescription || 'Legal Service'}
-                    </div>
-                    {typeof deal.Amount === 'number' && (
-                        <div style={{ 
-                            fontSize: '0.85rem', 
-                            fontWeight: 600, 
-                            color: '#3690CE',
-                            fontFamily: 'Raleway'
-                        }}>
-                            £{deal.Amount.toLocaleString()}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Contact Information */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginBottom: '12px'
-            }}>
-                {instruction.Email && (
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        backgroundColor: '#f8f9fa',
-                        border: '1px solid #e1e4e8',
+                        backgroundColor: 'rgba(0,0,0,0.02)',
+                        padding: '10px 8px',
                         borderRadius: '0px',
-                        height: '36px',
-                        overflow: 'hidden',
+                        textAlign: 'center',
+                        flex: '1',
+                        border: '1px solid rgba(0,0,0,0.05)'
                     }}>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>ID</div>
                         <div style={{
-                            backgroundColor: '#fff',
-                            borderRight: '1px solid #e1e4e8',
-                            height: '100%',
-                            width: '36px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: verifyIdStatus === 'complete' ? '#20b26c' : 
+                                   verifyIdStatus === 'review' ? '#FFB900' :
+                                   verifyIdStatus === 'received' ? '#3690CE' : '#666',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            gap: '4px'
                         }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/>
-                                <polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/>
-                            </svg>
-                        </div>
-                        <div style={{
-                            fontSize: '0.8rem',
-                            color: '#333',
-                            padding: '0 8px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                        }}>
-                            {instruction.Email}
+                            <span style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                backgroundColor: verifyIdStatus === 'complete' ? '#20b26c' : 
+                                               verifyIdStatus === 'review' ? '#FFB900' :
+                                               verifyIdStatus === 'received' ? '#3690CE' : '#ccc'
+                            }} />
+                            {verifyIdStatus === 'complete' ? 'OK' : 
+                             verifyIdStatus === 'review' ? 'Review' :
+                             verifyIdStatus === 'received' ? 'Rcvd' : 'Pending'}
                         </div>
                     </div>
-                )}
 
-                {instruction.Phone && (
+                    {/* Payment Status Box */}
                     <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        backgroundColor: '#f8f9fa',
-                        border: '1px solid #e1e4e8',
+                        backgroundColor: 'rgba(0,0,0,0.02)',
+                        padding: '10px 8px',
                         borderRadius: '0px',
-                        height: '36px',
-                        overflow: 'hidden',
+                        textAlign: 'center',
+                        flex: '1',
+                        border: '1px solid rgba(0,0,0,0.05)'
                     }}>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Pay</div>
                         <div style={{
-                            backgroundColor: '#fff',
-                            borderRight: '1px solid #e1e4e8',
-                            height: '100%',
-                            width: '36px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#666',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            gap: '4px'
                         }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/>
-                            </svg>
+                            <span style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                backgroundColor: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#ccc'
+                            }} />
+                            {paymentComplete ? 'OK' : paymentFailed ? 'Failed' : 'Pending'}
                         </div>
+                    </div>
+
+                    {/* Documents Status Box */}
+                    <div style={{
+                        backgroundColor: 'rgba(0,0,0,0.02)',
+                        padding: '10px 8px',
+                        borderRadius: '0px',
+                        textAlign: 'center',
+                        flex: '1',
+                        border: '1px solid rgba(0,0,0,0.05)'
+                    }}>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Docs</div>
                         <div style={{
-                            fontSize: '0.8rem',
-                            color: '#333',
-                            padding: '0 8px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: documentsComplete ? '#20b26c' : '#666',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
                         }}>
-                            {instruction.Phone}
+                            <span style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                backgroundColor: documentsComplete ? '#20b26c' : '#ccc'
+                            }} />
+                            {documentsComplete ? `${documents?.length ?? documentCount}` : 'None'}
                         </div>
                     </div>
-                )}
-            </div>
 
-            {/* Quick Summary Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-                gap: '8px',
-                backgroundColor: 'rgba(0,0,0,0.02)',
-                padding: '8px',
-                borderRadius: '0px'
-            }}>
-                {/* ID Status */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>ID Verification</div>
+                    {/* Risk Status Box */}
                     <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: verifyIdStatus === 'complete' ? '#20b26c' : 
-                               verifyIdStatus === 'review' ? '#FFB900' :
-                               verifyIdStatus === 'received' ? '#3690CE' : '#666',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
+                        backgroundColor: 'rgba(0,0,0,0.02)',
+                        padding: '10px 8px',
+                        borderRadius: '0px',
+                        textAlign: 'center',
+                        flex: '1',
+                        border: '1px solid rgba(0,0,0,0.05)'
                     }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: verifyIdStatus === 'complete' ? '#20b26c' : 
-                                           verifyIdStatus === 'review' ? '#FFB900' :
-                                           verifyIdStatus === 'received' ? '#3690CE' : '#ccc'
-                        }} />
-                        {verifyIdStatus === 'complete' ? 'Verified' : 
-                         verifyIdStatus === 'review' ? 'Review' :
-                         verifyIdStatus === 'received' ? 'Received' : 'Pending'}
-                    </div>
-                </div>
-
-                {/* Payment Status */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Payment</div>
-                    <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#666',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#ccc'
-                        }} />
-                        {paymentComplete ? 'Complete' : paymentFailed ? 'Failed' : 'Pending'}
-                    </div>
-                </div>
-
-                {/* Documents Status */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Documents</div>
-                    <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: documentsComplete ? '#20b26c' : '#666',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: documentsComplete ? '#20b26c' : '#ccc'
-                        }} />
-                        {documentsComplete ? `${documents?.length ?? documentCount} Files` : 'Pending'}
-                    </div>
-                </div>
-
-                {/* Risk Assessment */}
-                <div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '2px' }}>Risk</div>
-                    <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: riskStatus === 'complete' ? '#20b26c' : 
-                               riskStatus === 'flagged' ? '#FFB900' : '#666',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: riskStatus === 'complete' ? '#20b26c' : 
-                                           riskStatus === 'flagged' ? '#FFB900' : '#ccc'
-                        }} />
-                        {riskStatus === 'complete' ? 'Assessed' :
-                         riskStatus === 'flagged' ? 'Flagged' : 'Pending'}
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Risk</div>
+                        <div style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            color: riskStatus === 'complete' ? '#20b26c' : 
+                                   riskStatus === 'flagged' ? '#FFB900' : '#666',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
+                        }}>
+                            <span style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                backgroundColor: riskStatus === 'complete' ? '#20b26c' : 
+                                               riskStatus === 'flagged' ? '#FFB900' : '#ccc'
+                            }} />
+                            {riskStatus === 'complete' ? 'OK' :
+                             riskStatus === 'flagged' ? 'Flag' : 'Pending'}
+                        </div>
                     </div>
                 </div>
             </div>

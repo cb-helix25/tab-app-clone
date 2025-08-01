@@ -108,11 +108,13 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   passcode,
 }) => {
   // Strip blocks auto inserted by the system unless edited
-  const withoutAutoBlocks = removeAutoInsertedBlocks(
-    body,
-    autoInsertedBlocks,
-    editedBlocks
-  );
+  // Disabled for now since we want content to display by default
+  const withoutAutoBlocks = body;
+  
+  // Generate checkout URL first
+  const checkoutPreviewUrl = passcode && enquiry?.ID
+    ? `https://instruct.helix-law.com/pitch/${enquiry.ID}-${passcode}`
+    : '#';
   
   // Process body HTML using imported functions
   const sanitized = removeHighlightSpans(withoutAutoBlocks);
@@ -122,7 +124,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
     enquiry,
     amount,
     passcode,
-    passcode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}` : undefined
+    checkoutPreviewUrl
   );
   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
@@ -142,10 +144,6 @@ const previewRef = React.useRef<HTMLDivElement>(null);
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
   const showAiAssistButton = false;
-
-  const checkoutPreviewUrl = passcode
-    ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${passcode}`
-    : process.env.REACT_APP_CHECKOUT_URL || '#';
 
   // Example follow-up options (you may wish to pass these in or centralise them)
   const followUpOptions: { [key: string]: string } = {
@@ -169,31 +167,42 @@ function formatCurrency(val?: string): string {
 }
 
   const subjectBannerClass = mergeStyles('subject-banner', {
-    background: componentTokens.infoBanner.background,
-    borderLeft: componentTokens.infoBanner.borderLeft,
-    padding: componentTokens.infoBanner.padding,
-    fontSize: '0.875rem',
+    background: '#f8f9fa',
+    border: '1px solid #e8eaed',
+    borderRadius: '4px',
+    padding: '12px 16px',
+    fontSize: '14px',
     fontWeight: 600,
+    color: '#0078d4',
+    margin: '0 16px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
   });
 
   const panelStyles = {
-    padding: '12px',
-    backgroundColor: colours.light.previewBackground,
-    color: colours.light.text,
+    padding: '0',
+    backgroundColor: '#ffffff',
+    color: '#3c4043',
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    overflow: 'hidden'
   } as const;
 
   const bodyStyles = {
     whiteSpace: 'pre-wrap',
-    maxHeight: '60vh',
+    flex: 1,
     overflowY: 'auto',
-    backgroundImage: `url(${markWhite})`,
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 20px top 0',
-    backgroundSize: '180px',
-    backgroundColor: colours.light.previewBackground,
+    padding: '24px',
+    fontFamily: 'Raleway, sans-serif',
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: '#3c4043',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    borderRadius: '4px',
+    margin: '0 16px 16px 16px',
+    border: '1px solid #e8eaed',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
   } as const;
 
   return (
@@ -206,151 +215,394 @@ function formatCurrency(val?: string): string {
       styles={{
         main: panelStyles,
         commands: { display: 'none' },
+        content: { 
+          padding: 0,
+          borderRadius: '0',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          border: 'none'
+        },
+        overlay: {
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(4px)'
+        }
       }}
     >
-      <Stack tokens={{ childrenGap: 10 }} styles={{ root: { flex: 1 } }}>
-        {/* Header with close button */}
-        <Stack tokens={{ childrenGap: 4 }}>
-          <Stack
-            horizontal
-            verticalAlign="center"
-            styles={{ root: { justifyContent: 'space-between' } }}
-          >
-            <Text variant="medium" styles={{ root: { fontWeight: 600 } }}>
-              You're sending an email to {fullName || 'N/A'}
-            </Text>
-            <IconButton
-              iconProps={{ iconName: 'Cancel' }}
-              ariaLabel="Close preview"
-              onClick={onDismiss}
-            />
-          </Stack>
-          <Stack tokens={{ childrenGap: 2 }}>
-            <Text variant="medium">{to}</Text>
-            {cc && <Text variant="medium">CC: {cc}</Text>}
-            {bcc && <Text variant="medium">BCC: {bcc}</Text>}
-          </Stack>
-        </Stack>
-
-        <div className={subjectBannerClass}>
-          You're requesting {formatCurrency(amount)} on account for{' '}
-          {serviceDescription || 'N/A'}.
+      {/* Compact Header */}
+      <div style={{
+        background: '#1a365d',
+        padding: '16px',
+        color: 'white',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '16px'
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Header row with title and recipient info */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '8px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: 'white'
+              }}>
+                Email Preview
+              </div>
+              <div style={{
+                fontSize: '11px',
+                opacity: 0.8,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                padding: '2px 6px',
+                borderRadius: '3px'
+              }}>
+                To: {fullName || 'N/A'}
+              </div>
+              <div style={{
+                fontSize: '10px',
+                opacity: 0.7,
+                fontFamily: 'monospace'
+              }}>
+                {to}
+                {(cc || bcc) && (
+                  <span style={{ marginLeft: '8px' }}>
+                    {cc && <span>CC: {cc} </span>}
+                    {bcc && <span>BCC: {bcc}</span>}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Request and subject info */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{
+                fontSize: '11px',
+                opacity: 0.9,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                padding: '4px 8px',
+                borderRadius: '3px'
+              }}>
+                Requesting: {formatCurrency(amount)} for {serviceDescription || 'N/A'}
+              </div>
+              <div style={{
+                fontSize: '11px',
+                opacity: 0.9,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                padding: '4px 8px',
+                borderRadius: '3px'
+              }}>
+                Subject: {subject || 'N/A'}
+              </div>
+            </div>
+          </div>
+          
+          <IconButton
+            iconProps={{ iconName: 'Cancel' }}
+            ariaLabel="Close preview"
+            onClick={onDismiss}
+            styles={{
+              root: {
+                color: 'white',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderRadius: '4px',
+                width: '32px',
+                height: '32px',
+                flexShrink: 0
+              },
+              rootHovered: {
+                backgroundColor: 'rgba(255,255,255,0.2)'
+              }
+            }}
+          />
         </div>
+      </div>
 
-        {/* Removed duplicate summary section */}
-
+      <Stack tokens={{ childrenGap: 12 }} styles={{ root: { flex: 1, padding: '12px 0' } }}>
+        {/* Success Message */}
         {isSuccessVisible && (
-          <MessageBar
-            messageBarType={MessageBarType.success}
-            isMultiline={false}
-            onDismiss={() => {}}
-            dismissButtonAriaLabel="Close"
-            styles={{ root: { borderRadius: 0, marginTop: '10px' } }}
-          >
-            Email drafted successfully!
-          </MessageBar>
+          <div style={{
+            margin: '0 16px',
+            padding: '12px 16px',
+            backgroundColor: '#e8f5e8',
+            border: '1px solid #20b26c',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+          }}>
+            <span style={{
+              color: '#20b26c',
+              fontWeight: 600,
+              fontSize: '14px'
+            }}>
+              Email drafted successfully
+            </span>
+          </div>
         )}
-        <Separator />
-        <div className={subjectBannerClass}>{subject || 'N/A'}</div>
 
-        {/* Body */}
-        <Stack tokens={{ childrenGap: 6 }} styles={{ root: { flexGrow: 1 } }}>
+        {/* Email Body Preview */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          margin: '0 16px 16px 16px'
+        }}>
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: '#f8f9fa',
+            borderBottom: '1px solid #e8eaed',
+            borderTopLeftRadius: '4px',
+            borderTopRightRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#5f6368',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase'
+            }}>
+              Email Content
+            </span>
+            <div style={{
+              marginLeft: 'auto',
+              padding: '2px 8px',
+              backgroundColor: '#d6e8ff',
+              borderRadius: '6px',
+              fontSize: '10px',
+              fontWeight: 500,
+              color: colours.highlight
+            }}>
+              Preview
+            </div>
+          </div>
+
           <div
             ref={previewRef}
-            style={bodyStyles}
+            style={{
+              ...bodyStyles,
+              margin: 0,
+              borderTopLeftRadius: 0,
+              borderTopRightRadius: 0,
+              borderTop: 'none'
+            }}
             dangerouslySetInnerHTML={{ __html: finalBody }}
           />
-        </Stack>
+        </div>
 
-        {/*
-          Attachments preview disabled. Retained code for future use.
-        {attachments.length > 0 && (
-          <>
-            <Separator />
-            <Stack tokens={{ childrenGap: 6 }}>
-              <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-                Attachments:
-              </Text>
-              <Stack tokens={{ childrenGap: 5 }}>
-                {attachments.map((att: string) => (
-                  <Text key={att} variant="medium">
-                    - {att}
-                  </Text>
-                ))}
-              </Stack>
-            </Stack>
-          </>
-        )}
-        */}
-
-      {followUp && (
-        <>
-          <Separator />
-          <Stack tokens={{ childrenGap: 6 }}>
-            <Text variant="large" styles={{ root: { fontWeight: '600', color: colours.highlight, marginBottom: '5px' } }}>
-              Follow Up:
-            </Text>
-            <Text variant="medium">
+        {/* Follow Up Section */}
+        {followUp && (
+          <div style={{
+            margin: '0 16px',
+            padding: '16px',
+            backgroundColor: '#fff8e1',
+            borderRadius: '4px',
+            border: '1px solid #ffcc02',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+          }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#f57f17',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px'
+            }}>
+              Follow Up Reminder
+            </div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#e65100'
+            }}>
               {followUpOptions[followUp] || followUp}
-            </Text>
-          </Stack>
-        </>
-      )}
-
-      </Stack>
-      <Checkbox
-        label="Looks good"
-        checked={isConfirmed}
-        onChange={(_e, checked) => setIsConfirmed(!!checked)}
-        styles={{ root: { marginTop: 10 } }}
-      />
-
-      <Stack horizontal styles={{ root: { marginTop: 20, justifyContent: 'space-between', alignItems: 'center' } }}>
-        <Stack horizontal tokens={{ childrenGap: 15 }}>
-          <PrimaryButton
-            text="Send Email"
-            onClick={sendEmail}
-            styles={sharedPrimaryButtonStyles}
-            disabled
-            title="Sending is disabled in testing mode. Use Draft Email."
-          />
-          <DefaultButton
-            text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
-            onClick={handleDraftEmail}
-            styles={isDraftConfirmed ? sharedDraftConfirmedButtonStyles : sharedDefaultButtonStyles}
-            disabled={!isConfirmed || isDraftConfirmed}
-            iconProps={isDraftConfirmed ? { iconName: 'CheckMark' } : undefined}
-          />
-        </Stack>
-        {canUseAi && showAiAssistButton && (
-          <DefaultButton
-            text="AI Assist"
-            styles={sharedDefaultButtonStyles}
-            onClick={() => setIsAiOpen(true)}
-            iconProps={{ iconName: 'Robot' }}
-            title="Send this email to OpenAI for suggestions"
-          />
+            </div>
+          </div>
         )}
-        <DefaultButton
-          text="Copy to Clipboard"
-          styles={sharedDefaultButtonStyles}
-          onClick={() => {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = finalBody;
-            navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
-          }}
-          iconProps={{ iconName: 'Copy' }}
-          title="Copy the email preview text to your clipboard"
-        />
+
       </Stack>
-      <Link
-        href={checkoutPreviewUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        styles={{ root: { marginTop: 10, display: 'inline-block' } }}
-      >
-        Preview Checkout Link
-      </Link>
+
+      {/* Footer Actions */}
+      <div style={{
+        padding: '16px 24px',
+        backgroundColor: '#f8f9fa',
+        borderTop: '1px solid #e8eaed',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        {/* Confirmation Checkbox */}
+        <Checkbox
+          label="Everything looks good, ready to proceed"
+          checked={isConfirmed}
+          onChange={(_e, checked) => setIsConfirmed(!!checked)}
+          styles={{
+            root: {
+              backgroundColor: 'white',
+              padding: '12px 16px',
+              borderRadius: '4px',
+              border: '1px solid #e8eaed',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+            },
+            label: {
+              fontWeight: 500,
+              color: '#3c4043'
+            }
+          }}
+        />
+
+        {/* Action Buttons */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <PrimaryButton
+              text="Send Email"
+              onClick={sendEmail}
+              styles={{
+                root: {
+                  background: 'linear-gradient(135deg, #1a73e8 0%, #4285f4 100%)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '0 20px',
+                  height: '40px',
+                  fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(26,115,232,0.3)',
+                  opacity: 0.5
+                },
+                rootDisabled: {
+                  background: '#e8eaed',
+                  color: '#5f6368'
+                }
+              }}
+              disabled
+              title="Sending is disabled in testing mode. Use Draft Email."
+            />
+            <DefaultButton
+              text={isDraftConfirmed ? 'Drafted' : 'Draft Email'}
+              onClick={handleDraftEmail}
+              styles={{
+                root: {
+                  backgroundColor: isDraftConfirmed ? '#e8f5e8' : 'white',
+                  border: `1px solid ${isDraftConfirmed ? '#20b26c' : '#e8eaed'}`,
+                  color: isDraftConfirmed ? '#20b26c' : '#3c4043',
+                  borderRadius: '4px',
+                  padding: '0 20px',
+                  height: '40px',
+                  fontWeight: 600,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                },
+                rootHovered: {
+                  backgroundColor: isDraftConfirmed ? '#d1edd1' : '#f8f9fa',
+                  borderColor: isDraftConfirmed ? '#107c10' : '#dadce0'
+                },
+                rootDisabled: {
+                  backgroundColor: '#f8f9fa',
+                  color: '#9aa0a6',
+                  borderColor: '#e8eaed'
+                }
+              }}
+              disabled={!isConfirmed || isDraftConfirmed}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {canUseAi && showAiAssistButton && (
+              <DefaultButton
+                text="AI Assist"
+                styles={{
+                  root: {
+                    backgroundColor: 'white',
+                    border: '1px solid #e8eaed',
+                    borderRadius: '4px',
+                    padding: '0 16px',
+                    height: '36px',
+                    fontWeight: 500,
+                    color: '#5f6368'
+                  },
+                  rootHovered: {
+                    backgroundColor: '#f8f9fa',
+                    borderColor: '#dadce0'
+                  }
+                }}
+                onClick={() => setIsAiOpen(true)}
+                title="Send this email to OpenAI for suggestions"
+              />
+            )}
+            <DefaultButton
+              text="Copy"
+              styles={{
+                root: {
+                  backgroundColor: 'white',
+                  border: '1px solid #e8eaed',
+                  borderRadius: '4px',
+                  padding: '0 16px',
+                  height: '36px',
+                  fontWeight: 500,
+                  color: '#5f6368'
+                },
+                rootHovered: {
+                  backgroundColor: '#f8f9fa',
+                  borderColor: '#dadce0'
+                }
+              }}
+              onClick={() => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = finalBody;
+                navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
+              }}
+              title="Copy the email preview text to your clipboard"
+            />
+          </div>
+        </div>
+
+        {/* Checkout Link */}
+        <Link
+          href={checkoutPreviewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          styles={{
+            root: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              backgroundColor: '#fff8e1',
+              borderRadius: '4px',
+              border: '1px solid #ffcc02',
+              textDecoration: 'none',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#f57f17',
+              alignSelf: 'flex-start'
+            }
+          }}
+        >
+          Preview Checkout Link
+        </Link>
+      </div>
       {canUseAi && showAiAssistButton && (
         <ExperimentalAssistant
           isOpen={isAiOpen}

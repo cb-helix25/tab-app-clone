@@ -1,5 +1,5 @@
 import React from 'react';
-import { mergeStyles, SearchBox, Icon, Text } from '@fluentui/react';
+import { mergeStyles, SearchBox, Icon, Text, IconButton, TooltipHost } from '@fluentui/react';
 import QuickActionsCard from '../home/QuickActionsCard';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
@@ -16,6 +16,8 @@ interface EnquiriesMenuProps {
     toggleDashboard: () => void;
     toggleUnclaimed: () => void;
     unclaimedActive: boolean;
+    showGroupedView: boolean;
+    setShowGroupedView: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ACTION_BAR_HEIGHT = 48;
@@ -110,6 +112,8 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
     toggleDashboard,
     toggleUnclaimed,
     unclaimedActive,
+    showGroupedView,
+    setShowGroupedView,
 }) => {
     const { isDarkMode } = useTheme();
 
@@ -201,6 +205,29 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
                             <Icon iconName="Search" styles={{ root: { fontSize: '20px', color: isDarkMode ? colours.dark.text : colours.light.text } }} />
                         )}
                     </div>
+                    <TooltipHost content={showGroupedView ? "Switch to list view" : "Group repeated clients"}>
+                        <IconButton
+                            iconProps={{ 
+                                iconName: showGroupedView ? 'SingleBookmark' : 'GroupedDescending'
+                            }}
+                            onClick={() => setShowGroupedView(!showGroupedView)}
+                            styles={{
+                                root: {
+                                    color: showGroupedView ? colours.highlight : (isDarkMode ? colours.dark.text : colours.light.text),
+                                    backgroundColor: 'transparent',
+                                    selectors: {
+                                        ':hover': {
+                                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                        },
+                                    },
+                                },
+                                icon: {
+                                    fontSize: '18px',
+                                    color: showGroupedView ? colours.highlight : (isDarkMode ? colours.dark.text : colours.light.text),
+                                },
+                            }}
+                        />
+                    </TooltipHost>
                     <div className={searchBoxStyles}>
                         <SearchBox
                             placeholder="Search..."

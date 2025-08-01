@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import { Stack, Text, Pivot, PivotItem, Icon, Callout, DirectionalHint } from '@fluentui/react';
+import { colours } from '../../../app/styles/colours';
 import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
 import { wrapInsertPlaceholders } from './emailUtils';
 import SnippetEditPopover from './SnippetEditPopover';
@@ -82,6 +83,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     optionLabel: string;
     target: HTMLElement;
   } | null>(null);
+  const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
+  const [autoInsertedOnLoad, setAutoInsertedOnLoad] = useState<Record<string, boolean>>({});
   const editorRefs = useRef<Record<string, HTMLDivElement>>({});
 
   // Helper: get selected option for a block
@@ -92,17 +95,24 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     return block.options[0]?.label || '';
   };
 
-  // Auto-insert all template block content on component load for immediate preview
+  // Auto-insert default content on component mount
   useEffect(() => {
     templateBlocks.forEach(block => {
       const selectedOption = getSelectedOption(block);
-      const selectedOpt = block.options.find(opt => opt.label === selectedOption);
-      if (selectedOpt && selectedOption) {
-        // Insert the default content immediately so preview shows all data
-        insertTemplateBlock(block, selectedOption, false);
+      if (!autoInsertedOnLoad[block.title] && 
+          !insertedBlocks[block.title] && 
+          !insertedBlocks[`${block.title}-${selectedOption}`]) {
+        
+        // Mark as auto-inserted
+        setAutoInsertedOnLoad(prev => ({ ...prev, [block.title]: true }));
+        
+        // Auto-insert the selected option
+        setTimeout(() => {
+          insertTemplateBlock(block, selectedOption, false);
+        }, 100);
       }
     });
-  }, [templateBlocks, selectedTemplateOptions, insertTemplateBlock]); // Include all relevant dependencies
+  }, [templateBlocks]); // Only run when templateBlocks change
 
   const handleTabChange = (block: TemplateBlock, optionKey: string) => {
     if (block.options.length > 1) {
@@ -114,7 +124,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   // Get content for an option (either edited or original)
   const getOptionContent = (blockTitle: string, optionLabel: string, originalContent: string): string => {
     const edited = editedContent[blockTitle]?.[optionLabel];
-    return edited || wrapInsertPlaceholders(originalContent);
+    if (edited) {
+      return edited; // Return the edited content as-is, don't re-wrap placeholders
+    }
+    return wrapInsertPlaceholders(originalContent);
   };
 
   // Wrap [INSERT] placeholders with contentEditable styling
@@ -135,19 +148,26 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       }
     }));
     
-    // Always auto-insert content to preview (regardless of lock state)
-    // The lock only controls manual insertion, not the preview visibility
-    const block = templateBlocks.find(b => b.title === blockTitle);
-    if (block) {
-      const modifiedBlock = {
-        ...block,
-        options: block.options.map(opt => 
-          opt.label === optionLabel 
-            ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
-            : opt
-        )
-      };
-      insertTemplateBlock(modifiedBlock, optionLabel, false); // Don't focus to avoid interrupting editing
+    // Don't auto-insert on every keystroke - only save the content locally
+    // This prevents cursor jumping issues
+  };
+
+  // Handle auto-insert when user finishes editing (on blur)
+  const handleContentBlur = (blockTitle: string, optionLabel: string) => {
+    const content = editedContent[blockTitle]?.[optionLabel];
+    if (content) {
+      const block = templateBlocks.find(b => b.title === blockTitle);
+      if (block) {
+        const modifiedBlock = {
+          ...block,
+          options: block.options.map(opt => 
+            opt.label === optionLabel 
+              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
+              : opt
+          )
+        };
+        insertTemplateBlock(modifiedBlock, optionLabel, false);
+      }
     }
   };
 
@@ -162,6 +182,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       setSuggestionTarget(target);
       setShowSuggestions(true);
     }
+  };
+
+  // Toggle original content visibility
+  const toggleOriginalView = (blockTitle: string, optionLabel: string) => {
+    const key = `${blockTitle}-${optionLabel}`;
+    setShowOriginal(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   // Handle suggestion selection
@@ -221,27 +250,25 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   };
 
   // Handle insert to main editor / lock toggle
-  const handleLockToggle = (blockTitle: string, optionLabel: string) => {
+  const handleInsertToMainEditor = (blockTitle: string, optionLabel: string) => {
     const editorKey = `${blockTitle}-${optionLabel}`;
     const isCurrentlyLocked = userLockedBlocks[editorKey];
     
-    if (!isCurrentlyLocked) {
-      // Lock the block and ensure content is inserted
-      const editor = editorRefs.current[editorKey];
-      if (editor) {
-        const content = editor.innerHTML;
-        const block = templateBlocks.find(b => b.title === blockTitle);
-        if (block) {
-          const modifiedBlock = {
-            ...block,
-            options: block.options.map(opt => 
-              opt.label === optionLabel 
-                ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
-                : opt
-            )
-          };
-          insertTemplateBlock(modifiedBlock, optionLabel, true);
-        }
+    // Always ensure content is inserted when clicking the lock button
+    const editor = editorRefs.current[editorKey];
+    if (editor) {
+      const content = editor.innerHTML;
+      const block = templateBlocks.find(b => b.title === blockTitle);
+      if (block) {
+        const modifiedBlock = {
+          ...block,
+          options: block.options.map(opt => 
+            opt.label === optionLabel 
+              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
+              : opt
+          )
+        };
+        insertTemplateBlock(modifiedBlock, optionLabel, !isCurrentlyLocked); // Focus only when locking
       }
     }
     
@@ -252,13 +279,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     }));
   };
 
-  // Remove the old functions we don't need anymore
-  const handleInsertToMainEditor = (blockTitle: string, optionLabel: string) => {
-    handleLockToggle(blockTitle, optionLabel);
-  };
-
-  const handleEditorClick = (blockTitle: string, optionLabel: string) => {
-    // No longer used for committing
+  // New lock toggle function - just for protection, content always displays
+  const handleLockToggle = (blockTitle: string, optionLabel: string) => {
+    const editorKey = `${blockTitle}-${optionLabel}`;
+    
+    // Toggle lock state only
+    setUserLockedBlocks(prev => ({
+      ...prev,
+      [editorKey]: !prev[editorKey]
+    }));
   };
 
   // Handle save snippet
@@ -287,12 +316,31 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   return (
     <>
-      <Stack tokens={{ childrenGap: 12 }}>
+      <Stack tokens={{ childrenGap: 24 }}>
         {templateBlocks.map((block) => (
-          <Stack key={block.title} tokens={{ childrenGap: 2 }} styles={{ root: { marginBottom: 12 } }}>
-            <Text styles={{ root: { fontSize: 13, fontWeight: 500, color: 'rgba(30,30,30,0.55)', marginBottom: 6, letterSpacing: '0.1px' } }}>{block.title}</Text>
+          <Stack key={block.title} tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 8 } }}>
             {block.options.length > 1 ? (
-              <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', marginBottom: 4 }}>
+              <div style={{ 
+                overflowX: 'auto', 
+                overflowY: 'hidden', 
+                WebkitOverflowScrolling: 'touch', 
+                marginBottom: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Text styles={{ 
+                  root: { 
+                    fontSize: 14, 
+                    fontWeight: 600, 
+                    color: colours.highlight, 
+                    letterSpacing: '0.1px',
+                    whiteSpace: 'nowrap',
+                    marginRight: '4px'
+                  } 
+                }}>
+                  {block.title}:
+                </Text>
                 <Pivot
                   selectedKey={getSelectedOption(block)}
                   onLinkClick={item => handleTabChange(block, item?.props.itemKey || '')}
@@ -306,18 +354,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       marginLeft: 0,
                     },
                     link: {
-                      fontSize: 12,
-                      color: 'rgba(30,30,30,0.45)',
-                      fontWeight: 400,
-                      padding: '2px 10px',
+                      fontSize: 13,
+                      color: 'rgba(30,30,30,0.55)',
+                      fontWeight: 500,
+                      padding: '6px 12px',
                       marginLeft: 0,
-                      marginRight: 2,
-                      borderRadius: 3,
+                      marginRight: 4,
+                      borderRadius: 4,
                     },
                     linkIsSelected: {
-                      color: '#0078d4',
-                      background: 'rgba(0,120,212,0.07)',
-                      fontWeight: 500,
+                      color: colours.highlight,
+                      background: 'rgba(54,144,206,0.08)',
+                      fontWeight: 600,
                     },
                   }}
                 >
@@ -326,121 +374,66 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       headerText={opt.label}
                       itemKey={opt.label}
                       key={opt.label}
-                      // Remove left margin for the first tab to align with label
                       style={idx === 0 ? { marginLeft: 0 } : {}}
                     />
                   ))}
                 </Pivot>
               </div>
-            ) : null}
+            ) : (
+              <Text styles={{ 
+                root: { 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  color: colours.highlight, 
+                  marginBottom: 4, 
+                  letterSpacing: '0.1px' 
+                } 
+              }}>
+                {block.title}:
+              </Text>
+            )}
             {block.options
               .filter(opt => opt.label === getSelectedOption(block))
               .map(opt => (
-                <div key={opt.label} style={{ marginTop: 4 }}>
+                <div key={opt.label} style={{ marginTop: 12 }}>
                   {/* Editor-style interface */}
                   <div style={{
                     border: '1px solid #e1e5e9',
                     borderRadius: '4px',
                     backgroundColor: '#fff',
-                    marginBottom: '8px'
+                    marginBottom: '16px'
                   }}>
                     {/* Toolbar */}
                     <div style={{
                       borderBottom: '1px solid #e1e5e9',
-                      padding: '4px',
+                      padding: '8px',
                       display: 'flex',
-                      gap: '4px',
+                      gap: '8px',
                       backgroundColor: '#f8f9fa',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}>
-                      <div
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e1dfdd',
-                          borderRadius: '2px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '12px',
-                          color: '#0078d4',
-                          transition: 'all 0.2s ease',
-                        }}
-                        onClick={(e) => handleAddPlaceholder(e, block.title, opt.label)}
-                        onMouseEnter={(e) => {
-                          const target = e.currentTarget as HTMLElement;
-                          target.style.backgroundColor = '#e6f3ff';
-                          target.style.borderColor = '#0078d4';
-                        }}
-                        onMouseLeave={(e) => {
-                          const target = e.currentTarget as HTMLElement;
-                          target.style.backgroundColor = '#ffffff';
-                          target.style.borderColor = '#e1dfdd';
-                        }}
-                      >
-                        <Icon iconName="Add" styles={{ root: { fontSize: '12px' } }} />
-                        <span>Add Placeholder</span>
-                      </div>
-                      {(() => {
-                        const editorKey = `${block.title}-${opt.label}`;
-                        const isLocked = userLockedBlocks[editorKey];
-                        return (
-                          <div
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: isLocked ? '#e8f5e8' : '#ffffff',
-                              border: `1px solid ${isLocked ? '#20b26c' : '#e1dfdd'}`,
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                              color: isLocked ? '#20b26c' : '#107c10',
-                              transition: 'all 0.2s ease',
-                            }}
-                            onClick={() => handleLockToggle(block.title, opt.label)}
-                            onMouseEnter={(e) => {
-                              const target = e.currentTarget as HTMLElement;
-                              if (isLocked) {
-                                target.style.backgroundColor = '#d1edd1';
-                                target.style.borderColor = '#107c10';
-                              } else {
-                                target.style.backgroundColor = '#f3f2f1';
-                                target.style.borderColor = '#20b26c';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              const target = e.currentTarget as HTMLElement;
-                              target.style.backgroundColor = isLocked ? '#e8f5e8' : '#ffffff';
-                              target.style.borderColor = isLocked ? '#20b26c' : '#e1dfdd';
-                            }}
-                          >
-                            <Icon iconName="Lock" styles={{ root: { fontSize: '12px' } }} />
-                            <span>{isLocked ? "Locked" : "Lock"}</span>
-                          </div>
-                        );
-                      })()}
-                      {saveCustomSnippet && (
+                      {/* Left side buttons */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <div
                           style={{
-                            padding: '4px 8px',
+                            padding: '6px 12px',
                             backgroundColor: '#ffffff',
                             border: '1px solid #e1dfdd',
-                            borderRadius: '2px',
+                            borderRadius: '4px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '12px',
-                            color: '#d83b01',
+                            gap: '6px',
+                            fontSize: '13px',
+                            color: colours.highlight,
                             transition: 'all 0.2s ease',
                           }}
-                          onClick={(e) => handleSaveSnippet(e, block.title, opt.label)}
+                          onClick={(e) => handleAddPlaceholder(e, block.title, opt.label)}
                           onMouseEnter={(e) => {
                             const target = e.currentTarget as HTMLElement;
-                            target.style.backgroundColor = '#fdf6f6';
-                            target.style.borderColor = '#d83b01';
+                            target.style.backgroundColor = '#d6e8ff';
+                            target.style.borderColor = colours.highlight;
                           }}
                           onMouseLeave={(e) => {
                             const target = e.currentTarget as HTMLElement;
@@ -448,88 +441,314 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             target.style.borderColor = '#e1dfdd';
                           }}
                         >
-                          <Icon iconName="Save" styles={{ root: { fontSize: '12px' } }} />
-                          <span>Save Snippet</span>
+                          <Icon iconName="Add" styles={{ root: { fontSize: '13px' } }} />
+                          <span>Add Placeholder</span>
+                        </div>
+                        {saveCustomSnippet && (
+                          <div
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e1dfdd',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '13px',
+                              color: '#d83b01',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onClick={(e) => handleSaveSnippet(e, block.title, opt.label)}
+                            onMouseEnter={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              target.style.backgroundColor = '#fdf6f6';
+                              target.style.borderColor = '#d83b01';
+                            }}
+                            onMouseLeave={(e) => {
+                              const target = e.currentTarget as HTMLElement;
+                              target.style.backgroundColor = '#ffffff';
+                              target.style.borderColor = '#e1dfdd';
+                            }}
+                          >
+                            <Icon iconName="Save" styles={{ root: { fontSize: '13px' } }} />
+                            <span>Save Snippet</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right side - Show Original and Lock */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div 
+                          style={{
+                            fontSize: '12px',
+                            color: showOriginal[`${block.title}-${opt.label}`] ? colours.highlight : '#666',
+                            padding: '6px 12px',
+                            backgroundColor: showOriginal[`${block.title}-${opt.label}`] ? '#d6e8ff' : '#ffffff',
+                            border: `1px solid ${showOriginal[`${block.title}-${opt.label}`] ? colours.highlight : '#e1dfdd'}`,
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onClick={() => toggleOriginalView(block.title, opt.label)}
+                          onMouseEnter={(e) => {
+                            const target = e.currentTarget as HTMLElement;
+                            if (!showOriginal[`${block.title}-${opt.label}`]) {
+                              target.style.backgroundColor = '#d6e8ff';
+                              target.style.borderColor = colours.highlight;
+                              target.style.color = colours.highlight;
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            const target = e.currentTarget as HTMLElement;
+                            if (!showOriginal[`${block.title}-${opt.label}`]) {
+                              target.style.backgroundColor = '#ffffff';
+                              target.style.borderColor = '#e1dfdd';
+                              target.style.color = '#666';
+                            }
+                          }}
+                        >
+                          <Icon iconName={showOriginal[`${block.title}-${opt.label}`] ? "Hide" : "Preview"} styles={{ root: { fontSize: '11px' } }} />
+                          <span style={{ fontWeight: 500 }}>{showOriginal[`${block.title}-${opt.label}`] ? "Hide Original" : "Show Original"}</span>
+                        </div>
+                        {(() => {
+                          const editorKey = `${block.title}-${opt.label}`;
+                          const isLocked = userLockedBlocks[editorKey];
+                          return (
+                            <div
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: isLocked ? '#e8f5e8' : '#ffffff',
+                                border: `1px solid ${isLocked ? '#107c10' : '#e1dfdd'}`,
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                color: isLocked ? '#107c10' : '#666',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onClick={() => handleLockToggle(block.title, opt.label)}
+                              onMouseEnter={(e) => {
+                                const target = e.currentTarget as HTMLElement;
+                                if (isLocked) {
+                                  target.style.backgroundColor = '#d1edd1';
+                                  target.style.borderColor = '#107c10';
+                                } else {
+                                  target.style.backgroundColor = '#f3f2f1';
+                                  target.style.borderColor = '#107c10';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                const target = e.currentTarget as HTMLElement;
+                                target.style.backgroundColor = isLocked ? '#e8f5e8' : '#ffffff';
+                                target.style.borderColor = isLocked ? '#107c10' : '#e1dfdd';
+                              }}
+                            >
+                              <Icon iconName={isLocked ? "Lock" : "Unlock"} styles={{ root: { fontSize: '11px' } }} />
+                              <span style={{ fontWeight: 500 }}>{isLocked ? "Locked" : "Lock"}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Content area - main editor with optional original on the right */}
+                    <div style={{ display: 'flex', minHeight: '120px' }}>
+                      {/* Main editor - always visible */}
+                      <div style={{ 
+                        flex: showOriginal[`${block.title}-${opt.label}`] ? 1 : '1 1 100%',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}>
+                        <div
+                          ref={(el) => {
+                            if (el) {
+                              editorRefs.current[`${block.title}-${opt.label}`] = el;
+                              // Always set innerHTML on initial load - content should display by default
+                              const editorKey = `${block.title}-${opt.label}`;
+                              if (el.innerHTML === '' || !editedContent[block.title]?.[opt.label]) {
+                                el.innerHTML = getOptionContent(block.title, opt.label, opt.previewText.replace(/\n/g, '<br />'));
+                              }
+                            }
+                          }}
+                          contentEditable={!userLockedBlocks[`${block.title}-${opt.label}`]}
+                          suppressContentEditableWarning={true}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            fontFamily: 'Raleway, sans-serif',
+                            fontSize: '14px',
+                            lineHeight: '1.3',
+                            whiteSpace: 'pre-wrap',
+                            cursor: userLockedBlocks[`${block.title}-${opt.label}`] ? 'default' : 'text',
+                            outline: 'none',
+                            backgroundColor: userLockedBlocks[`${block.title}-${opt.label}`] ? '#f8f9fa' : '#ffffff',
+                            minHeight: '120px',
+                            borderRight: showOriginal[`${block.title}-${opt.label}`] ? '1px solid #e1e5e9' : 'none',
+                            opacity: userLockedBlocks[`${block.title}-${opt.label}`] ? 0.7 : 1
+                          }}
+                          onInput={(e) => {
+                            if (!userLockedBlocks[`${block.title}-${opt.label}`]) {
+                              const content = (e.target as HTMLElement).innerHTML;
+                              handleContentEdit(block.title, opt.label, content);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!userLockedBlocks[`${block.title}-${opt.label}`]) {
+                              handleContentBlur(block.title, opt.label);
+                            }
+                          }}
+                          onClick={(e) => {
+                            if (!userLockedBlocks[`${block.title}-${opt.label}`]) {
+                              handlePlaceholderClick(e, block.title, opt.label);
+                            }
+                          }}
+                          onFocus={(e) => {
+                            if (!userLockedBlocks[`${block.title}-${opt.label}`]) {
+                              // Add focus/blur handlers for placeholders
+                              const setupPlaceholderHandlers = () => {
+                                const placeholders = e.currentTarget.querySelectorAll('.insert-placeholder');
+                                placeholders.forEach((ph) => {
+                                  const element = ph as HTMLElement;
+                                  element.addEventListener('focus', (focusEvent) => {
+                                    (focusEvent.target as HTMLElement).style.backgroundColor = '#e6f3ff';
+                                    (focusEvent.target as HTMLElement).style.borderStyle = 'solid';
+                                  });
+                                  element.addEventListener('blur', (blurEvent) => {
+                                    (blurEvent.target as HTMLElement).style.backgroundColor = '#f0f8ff';
+                                    (blurEvent.target as HTMLElement).style.borderStyle = 'dashed';
+                                  });
+                                  element.addEventListener('click', (clickEvent) => {
+                                    clickEvent.stopPropagation();
+                                    const placeholder = element.getAttribute('data-placeholder') || '';
+                                    setCurrentPlaceholder(placeholder);
+                                    setCurrentBlockTitle(block.title);
+                                    setCurrentOptionLabel(opt.label);
+                                    setSuggestionTarget(element);
+                                    setShowSuggestions(true);
+                                  });
+                                });
+                              };
+                              setupPlaceholderHandlers();
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {/* Original content - only shown when toggled */}
+                      {showOriginal[`${block.title}-${opt.label}`] && (
+                        <div style={{
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          backgroundColor: '#fafbfc',
+                          borderRadius: '0 3px 3px 0',
+                          overflow: 'hidden'
+                        }}>
+                          {/* Header */}
+                          <div style={{
+                            padding: '12px 16px',
+                            backgroundColor: 'linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%)',
+                            borderBottom: '1px solid #e8eaed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                          }}>
+                            <div style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: '#34a853'
+                            }} />
+                            <span style={{
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#5f6368',
+                              letterSpacing: '0.5px',
+                              textTransform: 'uppercase'
+                            }}>
+                              Template Original
+                            </span>
+                            <div style={{
+                              marginLeft: 'auto',
+                              padding: '2px 8px',
+                              backgroundColor: '#e8f0fe',
+                              borderRadius: '12px',
+                              fontSize: '10px',
+                              fontWeight: 500,
+                              color: '#1a73e8'
+                            }}>
+                              Read-only
+                            </div>
+                          </div>
+
+                          {/* Content */}
+                          <div style={{
+                            flex: 1,
+                            padding: '16px',
+                            fontFamily: 'Raleway, sans-serif',
+                            fontSize: '14px',
+                            lineHeight: '1.5',
+                            whiteSpace: 'pre-wrap',
+                            overflow: 'auto',
+                            color: '#3c4043',
+                            position: 'relative'
+                          }}>
+                            {/* Subtle background pattern */}
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(0,0,0,0.02) 1px, transparent 0)`,
+                              backgroundSize: '12px 12px',
+                              pointerEvents: 'none'
+                            }} />
+                            
+                            <div 
+                              style={{
+                                position: 'relative',
+                                zIndex: 1
+                              }}
+                              dangerouslySetInnerHTML={{
+                                __html: wrapInsertPlaceholders(opt.previewText.replace(/\n/g, '<br />'))
+                                  .replace(
+                                    /class="insert-placeholder"/g,
+                                    'class="insert-placeholder-preview"'
+                                  )
+                                  .replace(
+                                    /style="[^"]*"/g,
+                                    'style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); color: #ef6c00; padding: 4px 8px; border-radius: 6px; font-weight: 500; border: 1px solid #ffb74d; box-shadow: 0 1px 3px rgba(239,108,0,0.2); display: inline-block; margin: 0 2px; font-size: 13px; position: relative; transform: translateY(-1px);"'
+                                  )
+                              }}
+                            />
+                          </div>
+
+                          {/* Footer info */}
+                          <div style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#f8f9fa',
+                            borderTop: '1px solid #e8eaed',
+                            fontSize: '11px',
+                            color: '#5f6368',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <Icon iconName="Info" styles={{ root: { fontSize: '10px', color: '#5f6368' } }} />
+                            <span>This is the original template content for reference</span>
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    {/* Editable content area */}
-                    <div
-                      ref={(el) => {
-                        if (el) editorRefs.current[`${block.title}-${opt.label}`] = el;
-                      }}
-                      contentEditable
-                      suppressContentEditableWarning={true}
-                      style={{
-                        padding: '12px',
-                        minHeight: '80px',
-                        fontFamily: 'Raleway, sans-serif',
-                        fontSize: '14px',
-                        lineHeight: '1.3',
-                        whiteSpace: 'pre-wrap',
-                        cursor: userLockedBlocks[`${block.title}-${opt.label}`] ? 'default' : 'text',
-                        outline: 'none',
-                        backgroundColor: userLockedBlocks[`${block.title}-${opt.label}`] ? '#f8fffe' : '#ffffff',
-                        border: userLockedBlocks[`${block.title}-${opt.label}`] ? '1px solid #e8f5e8' : 'none',
-                        borderRadius: userLockedBlocks[`${block.title}-${opt.label}`] ? '3px' : '0',
-                        margin: userLockedBlocks[`${block.title}-${opt.label}`] ? '4px' : '0',
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: getOptionContent(block.title, opt.label, opt.previewText.replace(/\n/g, '<br />')),
-                      }}
-                      onInput={(e) => {
-                        const content = (e.target as HTMLElement).innerHTML;
-                        handleContentEdit(block.title, opt.label, content);
-                        // Auto-insert is now handled in handleContentEdit
-                      }}
-                      onClick={(e) => {
-                        handlePlaceholderClick(e, block.title, opt.label);
-                        // Auto-insert and lock toggle handled separately
-                      }}
-                      onFocus={(e) => {
-                        // Add focus/blur handlers for placeholders
-                        const setupPlaceholderHandlers = () => {
-                          const placeholders = e.currentTarget.querySelectorAll('.insert-placeholder');
-                          placeholders.forEach((ph) => {
-                            const element = ph as HTMLElement;
-                            element.addEventListener('focus', (focusEvent) => {
-                              (focusEvent.target as HTMLElement).style.backgroundColor = '#e6f3ff';
-                              (focusEvent.target as HTMLElement).style.borderStyle = 'solid';
-                            });
-                            element.addEventListener('blur', (blurEvent) => {
-                              (blurEvent.target as HTMLElement).style.backgroundColor = '#f0f8ff';
-                              (blurEvent.target as HTMLElement).style.borderStyle = 'dashed';
-                            });
-                            element.addEventListener('click', (clickEvent) => {
-                              clickEvent.stopPropagation();
-                              const placeholder = element.getAttribute('data-placeholder') || '';
-                              setCurrentPlaceholder(placeholder);
-                              setCurrentBlockTitle(block.title);
-                              setCurrentOptionLabel(opt.label);
-                              setSuggestionTarget(element);
-                              setShowSuggestions(true);
-                            });
-                          });
-                        };
-                        setupPlaceholderHandlers();
-                      }}
-                    />
                   </div>
-
-                  {/* Original preview for comparison */}
-                  <details style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
-                    <summary style={{ cursor: 'pointer', userSelect: 'none' }}>Original Preview</summary>
-                    <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '2px', fontSize: '13px' }}>
-                      <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
-                        {opt.previewText.split('\n').map((line, index) => (
-                          <div key={index} style={{ marginBottom: index < opt.previewText.split('\n').length - 1 ? '4px' : '0' }}>
-                            {line}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </details>
                 </div>
               ))}
           </Stack>

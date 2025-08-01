@@ -1583,14 +1583,11 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const overviewGridStyle = mergeStyles({
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-    gridAutoRows: "8px",
-    gap: "16px",
+    gridTemplateColumns: "1fr",
+    gap: "8px",
     width: "100%",
-    maxWidth: "1440px",
     margin: "0 auto",
     boxSizing: "border-box",
-    alignItems: "start",
   });
 
   const overviewItemStyle = mergeStyles({

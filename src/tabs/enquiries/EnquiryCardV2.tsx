@@ -171,6 +171,42 @@ const EnquiryCardV2: React.FC<EnquiryCardV2Props> = ({
                 )}
             </Stack>
             <Stack horizontal className="actions">
+                <TooltipHost content="Start Pitch Builder">
+                    <IconButton
+                        iconProps={{ iconName: 'Edit' }}
+                        ariaLabel="Start Pitch Builder"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect(enquiry); // This will now go directly to pitch builder
+                        }}
+                        styles={{
+                            root: {
+                                color: '#ffffff',
+                                backgroundColor: colours.cta,
+                                border: 'none',
+                                selectors: {
+                                    ':hover': {
+                                        backgroundColor: colours.darkBlue,
+                                        color: '#ffffff',
+                                    },
+                                    ':focus': {
+                                        backgroundColor: colours.darkBlue,
+                                        color: '#ffffff',
+                                    },
+                                },
+                                height: '20px',
+                                width: '20px',
+                                padding: '0px',
+                                boxShadow: 'none',
+                            },
+                            icon: {
+                                fontSize: '16px',
+                                lineHeight: '20px',
+                                color: '#ffffff',
+                            },
+                        }}
+                    />
+                </TooltipHost>
                 {enquiry.Phone_Number && (
                     <TooltipHost content="Call Client">
                         <IconButton

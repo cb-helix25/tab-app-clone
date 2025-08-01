@@ -17,6 +17,8 @@ interface EnquiryOverviewProps {
   enquiry: Enquiry;
   onEditRating: (id: string) => void; // Function to open modal to edit rating
   onEditNotes: () => void; // Function to trigger editing notes
+  allEnquiries?: Enquiry[]; // All enquiries to find client history
+  onSelectEnquiry?: (enquiry: Enquiry) => void; // Function to select another enquiry
 // invisible change
 }
 
@@ -24,8 +26,36 @@ const EnquiryOverview: React.FC<EnquiryOverviewProps> = ({
   enquiry,
   onEditRating,
   onEditNotes,
+  allEnquiries = [],
+  onSelectEnquiry,
 }) => {
   const { isDarkMode } = useTheme(); // Access isDarkMode from Theme Context
+
+  // Find other enquiries from the same client
+  const getClientHistory = () => {
+    if (!allEnquiries || allEnquiries.length === 0) return [];
+    
+    const currentClientEmail = enquiry.Email?.toLowerCase();
+    const currentClientName = `${enquiry.First_Name} ${enquiry.Last_Name}`.toLowerCase();
+    
+    return allEnquiries.filter(enq => {
+      if (enq.ID === enquiry.ID) return false; // Exclude current enquiry
+      
+      const enquiryEmail = enq.Email?.toLowerCase();
+      const enquiryName = `${enq.First_Name} ${enq.Last_Name}`.toLowerCase();
+      
+      // Match by email (primary) or name (fallback)
+      return (currentClientEmail && enquiryEmail === currentClientEmail) ||
+             (!currentClientEmail && enquiryName === currentClientName);
+    }).sort((a, b) => {
+      // Sort by date, newest first
+      const dateA = new Date(a.Touchpoint_Date || '').getTime();
+      const dateB = new Date(b.Touchpoint_Date || '').getTime();
+      return dateB - dateA;
+    });
+  };
+
+  const clientHistory = getClientHistory();
 
   // Function to map rating to style and icon
   const mapRatingToStyle = (rating: string | undefined) => {
@@ -446,6 +476,171 @@ const EnquiryOverview: React.FC<EnquiryOverviewProps> = ({
           </TooltipHost>
         )}
       </Stack>
+
+      {/* Client History Section */}
+      {clientHistory.length > 0 && (
+        <>
+          <Separator styles={{
+            root: {
+              marginTop: '20px',
+              marginBottom: '20px',
+            }
+          }} />
+          
+          <Stack tokens={{ childrenGap: 15 }}>
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 10 }}>
+              <Icon 
+                iconName="History" 
+                styles={{
+                  root: {
+                    fontSize: '16px',
+                    color: colours.highlight,
+                  }
+                }}
+              />
+              <Text 
+                variant="large" 
+                styles={{
+                  root: {
+                    fontWeight: '600',
+                    color: isDarkMode ? colours.dark.text : colours.light.text,
+                  }
+                }}
+              >
+                Client History ({clientHistory.length} previous enquir{clientHistory.length === 1 ? 'y' : 'ies'})
+              </Text>
+            </Stack>
+
+            <Stack tokens={{ childrenGap: 12 }}>
+              {clientHistory.map((historyEnquiry, index) => (
+                <div
+                  key={historyEnquiry.ID}
+                  className={mergeStyles({
+                    padding: '16px',
+                    backgroundColor: isDarkMode 
+                      ? colours.dark.cardBackground 
+                      : colours.light.cardBackground,
+                    borderRadius: '8px',
+                    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                    cursor: onSelectEnquiry ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease',
+                    selectors: onSelectEnquiry ? {
+                      ':hover': {
+                        backgroundColor: isDarkMode 
+                          ? colours.dark.cardHover 
+                          : colours.light.cardHover,
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      }
+                    } : {},
+                  })}
+                  onClick={() => onSelectEnquiry?.(historyEnquiry)}
+                >
+                  <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+                    <Stack tokens={{ childrenGap: 8 }}>
+                      <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
+                        <Text 
+                          variant="medium" 
+                          styles={{
+                            root: {
+                              fontWeight: '600',
+                              color: isDarkMode ? colours.dark.text : colours.light.text,
+                            }
+                          }}
+                        >
+                          {historyEnquiry.Area_of_Work}
+                        </Text>
+                        {historyEnquiry.Type_of_Work && (
+                          <Text 
+                            variant="small" 
+                            styles={{
+                              root: {
+                                color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                                fontStyle: 'italic',
+                              }
+                            }}
+                          >
+                            {historyEnquiry.Type_of_Work}
+                          </Text>
+                        )}
+                      </Stack>
+                      
+                      <Stack horizontal tokens={{ childrenGap: 16 }}>
+                        <Text 
+                          variant="small" 
+                          styles={{
+                            root: {
+                              color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                            }
+                          }}
+                        >
+                          {new Date(historyEnquiry.Touchpoint_Date || '').toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </Text>
+                        
+                        {historyEnquiry.Value && (
+                          <Text 
+                            variant="small" 
+                            styles={{
+                              root: {
+                                color: colours.highlight,
+                                fontWeight: '500',
+                              }
+                            }}
+                          >
+                            {historyEnquiry.Value}
+                          </Text>
+                        )}
+                        
+                        <Text 
+                          variant="small" 
+                          styles={{
+                            root: {
+                              color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                            }
+                          }}
+                        >
+                          ID: {historyEnquiry.ID}
+                        </Text>
+                      </Stack>
+                    </Stack>
+
+                    {onSelectEnquiry && (
+                      <Icon 
+                        iconName="ChevronRight" 
+                        styles={{
+                          root: {
+                            fontSize: '14px',
+                            color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                          }
+                        }}
+                      />
+                    )}
+                  </Stack>
+                </div>
+              ))}
+            </Stack>
+            
+            {clientHistory.length > 3 && (
+              <Text 
+                variant="small" 
+                styles={{
+                  root: {
+                    textAlign: 'center',
+                    color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                    fontStyle: 'italic',
+                  }
+                }}
+              >
+                Total client relationship spans {clientHistory.length + 1} enquiries
+              </Text>
+            )}
+          </Stack>
+        </>
+      )}
     </Stack>
   );
 };
