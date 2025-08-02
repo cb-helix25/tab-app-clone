@@ -19,7 +19,10 @@ import {
   FaInfoCircle,
   FaEnvelope,
   FaPhone,
-  FaCopy
+  FaCopy,
+  FaPoundSign,
+  FaShieldAlt,
+  FaBuilding
 } from 'react-icons/fa';
 import { colours } from '../../app/styles/colours';
 import { ClientInfo } from './JointClientCard';
@@ -261,10 +264,38 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             : 'flagged'
         : 'pending';
 
+    // Matter status - recognize if matter exists
+    const matterStatus = hasAssociatedMatter ? 'complete' : 'pending';
+    // CCL status - currently always pending until we have data to determine completion
+    const cclStatus = 'pending' as 'pending' | 'complete';
+    
+    // Timeline progression logic - risk must be complete before matter/CCL can be considered "next"
+    const riskComplete = riskStatus === 'complete' || riskStatus === 'flagged';
+    
+    // Determine which step should pulse (next action needed)
+    const getNextActionStep = () => {
+        // If ID not complete, that's next
+        if (verifyIdStatus === 'pending') return 'id';
+        // If payment not complete, that's next
+        if (!paymentComplete && !paymentFailed) return 'payment';
+        // If documents not complete, that's next
+        if (!documentsComplete) return 'documents';
+        // If risk not complete, that's next (this takes priority over matter)
+        if (!riskComplete) return 'risk';
+        // If matter not complete and risk is complete, that's next
+        if (matterStatus === 'pending' && riskComplete) return 'matter';
+        // If all above complete, CCL is next
+        return 'ccl';
+    };
+    
+    const nextActionStep = getNextActionStep();
+
     // Format submission date
     const formattedDate = instruction.SubmissionDate
         ? format(new Date(instruction.SubmissionDate), 'd MMM yyyy')
         : undefined;
+
+    const [isHovered, setIsHovered] = useState(false);
 
     const cardClass = mergeStyles('instructionCard', {
         backgroundColor: colours.light.sectionBackground,
@@ -281,15 +312,33 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
             : '0 2px 8px rgba(0,0,0,0.08)',
         opacity: isCompleted ? 0.6 : 1,
         transition: 'box-shadow 0.3s ease, transform 0.3s ease, border 0.3s ease, opacity 0.3s ease',
+        flex: '1' as const, // Add flex to expand within parent
         selectors: {
             ':hover': {
                 boxShadow: selected
                     ? '0 0 0 1px #3690CE30, 0 6px 20px rgba(54, 144, 206, 0.2)'
                     : '0 4px 16px rgba(0,0,0,0.12)',
-                transform: 'translateY(-1px)',
+                transform: 'translateY(-1px) scale(1.01)',
             },
         },
     });
+
+    // Add CSS animation for pulsing
+    const pulseAnimation = `
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    `;
+    
+    // Inject the animation styles if not already present
+    if (!document.querySelector('#timeline-pulse-animation')) {
+        const style = document.createElement('style');
+        style.id = 'timeline-pulse-animation';
+        style.textContent = pulseAnimation;
+        document.head.appendChild(style);
+    }
 
     const style: React.CSSProperties = {
         '--animation-delay': `${animationDelay}s`,
@@ -306,568 +355,652 @@ const InstructionCard: React.FC<InstructionCardProps> = ({
     };
 
     return (
-        <div className={cardClass} style={style} onClick={handleCardClick} ref={innerRef}>
-            {/* HORIZONTAL LINE LAYOUT LIKE ENQUIRY CARDS */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-                width: '100%',
-                flexWrap: 'wrap',
-            }}>
-                
-                {/* CLIENT INFO AND DATE/REF - Combined Left Section */}
-                <div style={{ flex: '0 0 420px', minWidth: '420px', display: 'flex', gap: '12px' }}>
-                    {/* CLIENT INFO BOX */}
+        <div 
+            className={cardClass} 
+            style={style} 
+            onClick={handleCardClick} 
+            ref={innerRef}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {/* CARD HEADER */}
+            <div>
+                {/* Header Row 1: Client Name and Ref */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '8px'
+                }}>
                     <div style={{
-                        backgroundColor: '#f8f9fa',
-                        border: '1px solid #e1e4e8',
-                        borderRadius: '0px',
-                        padding: '8px 12px',
-                        height: '62px',
                         display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        flex: '1'
+                        alignItems: 'center',
+                        gap: '8px'
                     }}>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            fontSize: '0.9rem',
-                            fontWeight: 600,
-                            color: '#24292f',
-                            marginBottom: '3px',
-                            gap: '6px'
-                        }}>
-                            {isMultiClient ? (
-                                <FaUsers style={{ 
-                                    fontSize: '12px', 
-                                    color: selected ? '#3690CE' : '#666' 
-                                }} />
-                            ) : (
-                                <FaUser style={{ 
-                                    fontSize: '12px', 
-                                    color: selected ? '#3690CE' : '#666' 
-                                }} />
+                        {isMultiClient ? (
+                            <FaUsers style={{ 
+                                fontSize: '14px', 
+                                color: selected || isHovered ? '#3690CE' : '#666',
+                                transition: 'color 0.3s ease'
+                            }} />
+                        ) : (
+                            <FaUser style={{ 
+                                fontSize: '14px', 
+                                color: selected || isHovered ? '#3690CE' : '#666',
+                                transition: 'color 0.3s ease'
+                            }} />
+                        )}
+                        <div>
+                            <span style={{
+                                fontSize: '1rem',
+                                fontWeight: 600,
+                                color: selected || isHovered ? '#3690CE' : '#24292f',
+                                transition: 'color 0.3s ease'
+                            }}>
+                                {fullName || 'Client Name'}
+                            </span>
+                            {instruction.CompanyName && (firstName || lastName) && (
+                                <span style={{
+                                    fontSize: '0.9rem',
+                                    color: '#666',
+                                    marginLeft: '8px'
+                                }}>
+                                    - {instruction.CompanyName}
+                                </span>
                             )}
-                            <span style={{ flex: 1 }}>{fullName || 'Client Name'}</span>
-                            <FaCopy
-                                style={{
-                                    fontSize: '10px',
-                                    color: '#999',
-                                    cursor: 'pointer',
-                                    transition: 'color 0.2s ease'
-                                }}
-                                onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    if (navigator && navigator.clipboard) {
-                                        navigator.clipboard.writeText(fullName || 'Client Name');
-                                    }
-                                }}
-                                onMouseEnter={(e: React.MouseEvent) => {
-                                    (e.currentTarget as HTMLElement).style.color = '#3690CE';
-                                }}
-                                onMouseLeave={(e: React.MouseEvent) => {
-                                    (e.currentTarget as HTMLElement).style.color = '#999';
-                                }}
-                                title="Copy client name"
-                            />
                         </div>
-                        {instruction.Email && (
-                            <div style={{
-                                fontSize: '0.75rem',
-                                color: '#333',
-                                marginBottom: '1px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}
-                            onMouseEnter={(e) => {
-                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
-                                if (icon) icon.style.color = '#3690CE';
-                            }}
-                            onMouseLeave={(e) => {
-                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
-                                if (icon) icon.style.color = selected ? '#3690CE' : '#666';
-                            }}
-                            >
-                                <FaEnvelope 
-                                    className="contact-icon"
-                                    style={{ 
-                                        fontSize: '10px', 
-                                        color: selected ? '#3690CE' : '#666',
-                                        transition: 'color 0.2s ease'
-                                    }} 
-                                />
-                                <span 
-                                    style={{ 
-                                        flex: 1, 
-                                        cursor: 'pointer',
-                                        textDecoration: 'underline',
-                                        color: '#3690CE'
-                                    }}
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        window.location.href = `mailto:${instruction.Email}`;
-                                    }}
-                                    title="Send email"
-                                >
-                                    {instruction.Email}
-                                </span>
-                                <FaCopy
-                                    style={{
-                                        fontSize: '10px',
-                                        color: '#999',
-                                        cursor: 'pointer',
-                                        transition: 'color 0.2s ease'
-                                    }}
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        if (navigator && navigator.clipboard && instruction.Email) {
-                                            navigator.clipboard.writeText(instruction.Email);
-                                        }
-                                    }}
-                                    onMouseEnter={(e: React.MouseEvent) => {
-                                        (e.currentTarget as HTMLElement).style.color = '#3690CE';
-                                    }}
-                                    onMouseLeave={(e: React.MouseEvent) => {
-                                        (e.currentTarget as HTMLElement).style.color = '#999';
-                                    }}
-                                    title="Copy email"
-                                />
-                            </div>
-                        )}
-                        {instruction.Phone && (
-                            <div style={{
-                                fontSize: '0.75rem',
-                                color: '#333',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}
-                            onMouseEnter={(e) => {
-                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
-                                if (icon) icon.style.color = '#3690CE';
-                            }}
-                            onMouseLeave={(e) => {
-                                const icon = e.currentTarget.querySelector('.contact-icon') as HTMLElement;
-                                if (icon) icon.style.color = selected ? '#3690CE' : '#666';
-                            }}
-                            >
-                                <FaPhone 
-                                    className="contact-icon"
-                                    style={{ 
-                                        fontSize: '10px', 
-                                        color: selected ? '#3690CE' : '#666',
-                                        transition: 'color 0.2s ease'
-                                    }} 
-                                />
-                                <span 
-                                    style={{ 
-                                        flex: 1, 
-                                        cursor: 'pointer',
-                                        textDecoration: 'underline',
-                                        color: '#3690CE'
-                                    }}
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        window.location.href = `tel:${instruction.Phone}`;
-                                    }}
-                                    title="Call phone number"
-                                >
-                                    {instruction.Phone}
-                                </span>
-                                <FaCopy
-                                    style={{
-                                        fontSize: '10px',
-                                        color: '#999',
-                                        cursor: 'pointer',
-                                        transition: 'color 0.2s ease'
-                                    }}
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        if (navigator && navigator.clipboard && instruction.Phone) {
-                                            navigator.clipboard.writeText(instruction.Phone);
-                                        }
-                                    }}
-                                    onMouseEnter={(e: React.MouseEvent) => {
-                                        (e.currentTarget as HTMLElement).style.color = '#3690CE';
-                                    }}
-                                    onMouseLeave={(e: React.MouseEvent) => {
-                                        (e.currentTarget as HTMLElement).style.color = '#999';
-                                    }}
-                                    title="Copy phone number"
-                                />
-                            </div>
-                        )}
                     </div>
-
-                    {/* DATE AND INSTRUCTION REF BOX */}
-                    <div style={{
-                        backgroundColor: '#f8f9fa',
-                        border: '1px solid #e1e4e8',
-                        borderRadius: '0px',
-                        padding: '8px 12px',
-                        height: '62px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        minWidth: '120px'
-                    }}>
+                    <div style={{ textAlign: 'right' }}>
+                        {instruction.InstructionRef && (
+                            <div style={{
+                                fontSize: '0.75rem',
+                                fontFamily: 'monospace',
+                                fontWeight: 600,
+                                color: '#24292f',
+                                backgroundColor: 'rgba(0,0,0,0.03)',
+                                padding: '2px 6px',
+                                borderRadius: '3px',
+                                border: '1px solid rgba(0,0,0,0.1)',
+                                marginBottom: '4px'
+                            }}>
+                                {instruction.InstructionRef}
+                            </div>
+                        )}
                         {formattedDate && (
                             <div style={{
-                                fontSize: '0.85rem',
-                                fontWeight: 500,
-                                color: '#24292f',
-                                marginBottom: '6px'
+                                fontSize: '0.75rem',
+                                color: '#666'
                             }}>
                                 {formattedDate}
                             </div>
                         )}
-                        {instruction.InstructionRef && (
-                            <div style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 400,
-                                color: '#666',
-                                fontFamily: 'monospace',
-                                backgroundColor: '#fff',
-                                padding: '3px 6px',
-                                borderRadius: '2px',
-                                border: '1px solid #e1e4e8'
-                            }}>
-                                <CopyableText 
-                                    value={instruction.InstructionRef} 
-                                    label="instruction reference"
-                                />
-                            </div>
-                        )}
                     </div>
                 </div>
 
-                {/* STAGE */}
-                <div style={{ flex: '0 0 140px', minWidth: '140px' }}>
-                    <div style={{
-                        backgroundColor: isCompleted ? '#f0f9ff' : '#f8f9fa',
-                        borderLeft: `4px solid ${isCompleted ? '#0ea5e9' : '#6b7280'}`,
-                        color: isCompleted ? '#0284c7' : '#4b5563',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        padding: '8px 12px',
-                        borderRadius: '0px',
-                        border: isCompleted ? '1px solid rgba(14, 165, 233, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)',
-                        height: '62px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative'
-                    }}>
+                {/* Header Row 2: Contact Details */}
+                <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    marginBottom: '8px',
+                    fontSize: '0.8rem'
+                }}>
+                    {instruction.Email && (
                         <div style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            left: '8px',
-                            backgroundColor: colours.light.sectionBackground,
-                            padding: '0 4px',
-                            fontSize: '0.75rem',
-                            color: '#8b949e',
-                            fontWeight: 500
-                        }}>
-                            Next Action
-                        </div>
-                        {isCompleted ? (hasAssociatedMatter ? 'CCL Draft' : 'Matter Opening') : instruction.Stage}
-                    </div>
-                </div>
-
-                {/* SERVICE & FEE */}
-                <div style={{ flex: '1', minWidth: '250px', maxWidth: '350px' }}>
-                    {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
-                        <div style={{
-                            backgroundColor: '#f8f9fa',
-                            border: '1px solid #e1e4e8',
-                            borderRadius: '0px',
-                            padding: '8px 12px',
-                            height: '62px',
                             display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            position: 'relative'
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#3690CE',
+                            cursor: 'pointer'
+                        }}
+                        onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            window.location.href = `mailto:${instruction.Email}`;
                         }}>
-                            <div style={{
-                                position: 'absolute',
-                                top: '-8px',
-                                left: '8px',
-                                backgroundColor: colours.light.sectionBackground,
-                                padding: '0 4px',
-                                fontSize: '0.75rem',
-                                color: '#8b949e',
-                                fontWeight: 500
-                            }}>
-                                Service & Fee
-                            </div>
-                            <div style={{ 
-                                marginBottom: '4px', 
-                                fontSize: '0.9rem',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                {deal.ServiceDescription || 'Legal Service'}
-                            </div>
-                            {typeof deal.Amount === 'number' && (
-                                <div style={{ 
-                                    fontSize: '0.85rem', 
-                                    fontWeight: 600, 
-                                    color: '#3690CE',
-                                    fontFamily: 'Raleway'
-                                }}>
-                                    £{deal.Amount.toLocaleString()}
-                                </div>
-                            )}
+                            <FaEnvelope style={{ fontSize: '10px' }} />
+                            <span>{instruction.Email}</span>
+                        </div>
+                    )}
+                    {instruction.Phone && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#3690CE',
+                            cursor: 'pointer'
+                        }}
+                        onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            window.location.href = `tel:${instruction.Phone}`;
+                        }}>
+                            <FaPhone style={{ fontSize: '10px' }} />
+                            <span>{instruction.Phone}</span>
                         </div>
                     )}
                 </div>
 
-                {/* STATUS BOXES - Now inline with main content and will wrap only if needed */}
-                <div style={{ 
+                {/* Header Row 3: Service Description and Amount */}
+                {deal && (deal.ServiceDescription || typeof deal.Amount === 'number') && (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px'
+                    }}>
+                        <div style={{
+                            fontSize: '0.85rem',
+                            color: '#333',
+                            flex: 1
+                        }}>
+                            {deal.ServiceDescription || 'Legal Service'}
+                        </div>
+                        {typeof deal.Amount === 'number' && (
+                            <div style={{
+                                fontSize: '0.9rem',
+                                fontWeight: 600,
+                                color: '#3690CE',
+                                fontFamily: 'Raleway'
+                            }}>
+                                £{deal.Amount.toLocaleString()}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* TIMELINE PROGRESS */}
+            <div>
+                {/* Timeline Row */}
+                <div style={{
                     display: 'flex',
-                    gap: '10px',
-                    flex: '1 1 520px', // Allow growth when wrapped
-                    minWidth: '520px'
+                    alignItems: 'center',
+                    gap: '8px'
                 }}>
-                    {/* ID Status Box */}
+                    {/* Step 1: ID Verification */}
                     <div style={{
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                        padding: '10px 8px',
-                        borderRadius: '0px',
-                        textAlign: 'center',
-                        flex: '1',
-                        border: '1px solid rgba(0,0,0,0.05)'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                     }}>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>ID</div>
-                        <div style={{
-                            fontSize: '0.75rem',
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: verifyIdStatus === 'complete' || verifyIdStatus === 'review' || verifyIdStatus === 'received' ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'id' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
                             fontWeight: 600,
-                            color: verifyIdStatus === 'complete' ? '#20b26c' : 
-                                   verifyIdStatus === 'review' ? '#FFB900' :
-                                   verifyIdStatus === 'received' ? '#3690CE' : '#666',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
+                            color: (verifyIdStatus === 'complete' || verifyIdStatus === 'review' || verifyIdStatus === 'received') ? '#20b26c' : 
+                                   nextActionStep === 'id' ? colours.cta : '#999'
                         }}>
-                            <span style={{
-                                width: '7px',
-                                height: '7px',
-                                borderRadius: '50%',
-                                backgroundColor: verifyIdStatus === 'complete' ? '#20b26c' : 
-                                               verifyIdStatus === 'review' ? '#FFB900' :
-                                               verifyIdStatus === 'received' ? '#3690CE' : '#ccc'
-                            }} />
-                            {verifyIdStatus === 'complete' ? 'OK' : 
-                             verifyIdStatus === 'review' ? 'Review' :
-                             verifyIdStatus === 'received' ? 'Rcvd' : 'Pending'}
-                        </div>
+                            ID
+                        </span>
                     </div>
-
-                    {/* Payment Status Box */}
+                    
+                    {/* Connector Line */}
                     <div style={{
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                        padding: '10px 8px',
-                        borderRadius: '0px',
-                        textAlign: 'center',
-                        flex: '1',
-                        border: '1px solid rgba(0,0,0,0.05)'
+                        width: '16px',
+                        height: '2px',
+                        backgroundColor: paymentComplete || paymentFailed ? '#20b26c' : '#ddd'
+                    }}></div>
+                    
+                    {/* Step 2: Payment */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                     }}>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Pay</div>
-                        <div style={{
-                            fontSize: '0.75rem',
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: paymentComplete || paymentFailed ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'payment' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
                             fontWeight: 600,
-                            color: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#666',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
+                            color: (paymentComplete || paymentFailed) ? '#20b26c' : 
+                                   nextActionStep === 'payment' ? colours.cta : '#999'
                         }}>
-                            <span style={{
-                                width: '7px',
-                                height: '7px',
-                                borderRadius: '50%',
-                                backgroundColor: paymentComplete ? '#20b26c' : paymentFailed ? '#d13438' : '#ccc'
-                            }} />
-                            {paymentComplete ? 'OK' : paymentFailed ? 'Failed' : 'Pending'}
-                        </div>
+                            Pay
+                        </span>
                     </div>
-
-                    {/* Documents Status Box */}
+                    
+                    {/* Connector Line */}
                     <div style={{
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                        padding: '10px 8px',
-                        borderRadius: '0px',
-                        textAlign: 'center',
-                        flex: '1',
-                        border: '1px solid rgba(0,0,0,0.05)'
+                        width: '16px',
+                        height: '2px',
+                        backgroundColor: documentsComplete ? '#20b26c' : '#ddd'
+                    }}></div>
+                    
+                    {/* Step 3: Documents */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                     }}>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Docs</div>
-                        <div style={{
-                            fontSize: '0.75rem',
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: documentsComplete ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'documents' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
                             fontWeight: 600,
-                            color: documentsComplete ? '#20b26c' : '#666',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
+                            color: documentsComplete ? '#20b26c' : 
+                                   nextActionStep === 'documents' ? colours.cta : '#999'
                         }}>
-                            <span style={{
-                                width: '7px',
-                                height: '7px',
-                                borderRadius: '50%',
-                                backgroundColor: documentsComplete ? '#20b26c' : '#ccc'
-                            }} />
-                            {documentsComplete ? `${documents?.length ?? documentCount}` : 'None'}
-                        </div>
+                            Docs
+                        </span>
                     </div>
-
-                    {/* Risk Status Box */}
+                    
+                    {/* Connector Line */}
                     <div style={{
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                        padding: '10px 8px',
-                        borderRadius: '0px',
-                        textAlign: 'center',
-                        flex: '1',
-                        border: '1px solid rgba(0,0,0,0.05)'
+                        width: '16px',
+                        height: '2px',
+                        backgroundColor: riskStatus === 'complete' || riskStatus === 'flagged' ? '#20b26c' : '#ddd'
+                    }}></div>
+                    
+                    {/* Step 4: Risk Assessment */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                     }}>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '6px' }}>Risk</div>
-                        <div style={{
-                            fontSize: '0.75rem',
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: riskStatus === 'complete' || riskStatus === 'flagged' ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'risk' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
                             fontWeight: 600,
-                            color: riskStatus === 'complete' ? '#20b26c' : 
-                                   riskStatus === 'flagged' ? '#FFB900' : '#666',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px'
+                            color: (riskStatus === 'complete' || riskStatus === 'flagged') ? '#20b26c' : 
+                                   nextActionStep === 'risk' ? colours.cta : '#999'
                         }}>
-                            <span style={{
-                                width: '7px',
-                                height: '7px',
-                                borderRadius: '50%',
-                                backgroundColor: riskStatus === 'complete' ? '#20b26c' : 
-                                               riskStatus === 'flagged' ? '#FFB900' : '#ccc'
-                            }} />
-                            {riskStatus === 'complete' ? 'OK' :
-                             riskStatus === 'flagged' ? 'Flag' : 'Pending'}
-                        </div>
+                            Risk
+                        </span>
+                    </div>
+                    
+                    {/* Connector Line */}
+                    <div style={{
+                        width: '16px',
+                        height: '2px',
+                        backgroundColor: matterStatus === 'complete' ? '#20b26c' : '#ddd'
+                    }}></div>
+                    
+                    {/* Step 5: Matter */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: matterStatus === 'complete' ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'matter' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: 600,
+                            color: matterStatus === 'complete' ? '#20b26c' : 
+                                   nextActionStep === 'matter' ? colours.cta : '#999'
+                        }}>
+                            Matter
+                        </span>
+                    </div>
+                    
+                    {/* Connector Line */}
+                    <div style={{
+                        width: '16px',
+                        height: '2px',
+                        backgroundColor: cclStatus === 'complete' ? '#20b26c' : '#ddd'
+                    }}></div>
+                    
+                    {/* Step 6: CCL */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}>
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: cclStatus === 'complete' ? '#20b26c' : '#ddd',
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            ...(nextActionStep === 'ccl' ? {
+                                animation: 'pulse 2s infinite',
+                                backgroundColor: colours.cta
+                            } : {})
+                        }}></div>
+                        <span style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: 600,
+                            color: cclStatus === 'complete' ? '#20b26c' : 
+                                   nextActionStep === 'ccl' ? colours.cta : '#999'
+                        }}>
+                            CCL
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* Expanded Documents Section */}
-            {expanded && documents && documents.length > 0 && (
-                <div style={{
-                    marginTop: '16px',
-                    padding: '16px',
-                    backgroundColor: 'rgba(54, 144, 206, 0.03)',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(54, 144, 206, 0.1)'
-                }}>
-                    <div style={{
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: '#3690CE',
-                        marginBottom: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                    }}>
-                        <FaFileAlt /> Deal Documents
-                    </div>
-                    
-                    <div style={{
-                        display: 'grid',
-                        gap: '8px',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
-                    }}>
-                        {documents.map((doc: any, docIndex: number) => (
-                            <div key={docIndex} style={{
+            {/* Expanded Sections */}
+            {(expanded || selected) && (
+                <div>
+                    {/* ID Verification Section */}
+                    {(verifyIdStatus !== 'pending' || (instruction.PassportNumber || instruction.DriversLicenseNumber)) && (
+                        <div style={{
+                            marginBottom: '16px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(54, 144, 206, 0.1)'
+                        }}>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#3690CE',
+                                marginBottom: '12px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '12px 14px',
-                                backgroundColor: 'white',
-                                borderRadius: '4px',
-                                border: '1px solid #e1e4e8',
-                                fontSize: '0.75rem',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                gap: '6px'
+                            }}>
+                                <FaUser /> ID Verification
+                            </div>
+                            <div style={{
+                                display: 'grid',
+                                gap: '8px',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))'
                             }}>
                                 <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    flex: 1
+                                    padding: '12px',
+                                    backgroundColor: 'white',
+                                    borderRadius: '4px',
+                                    border: '1px solid #e1e4e8'
                                 }}>
+                                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Status</div>
                                     <div style={{
-                                        marginRight: '12px',
-                                        fontSize: '1.1rem',
-                                        color: '#3690CE'
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        color: verifyIdStatus === 'complete' ? colours.green : 
+                                               verifyIdStatus === 'review' ? colours.cta :
+                                               verifyIdStatus === 'received' ? colours.blue : '#666'
                                     }}>
-                                        {getFileIcon(doc.FileName)}
-                                    </div>
-                                    <div>
-                                        <div style={{
-                                            fontWeight: 500,
-                                            color: '#24292f',
-                                            marginBottom: '4px'
-                                        }}>
-                                            {doc.FileName || 'Unnamed document'}
-                                        </div>
-                                        {doc.FileSizeBytes && (
-                                            <div style={{
-                                                color: '#666',
-                                                fontSize: '0.7rem'
-                                            }}>
-                                                {Math.round(doc.FileSizeBytes / 1024)}KB
-                                            </div>
-                                        )}
+                                        {verifyIdStatus === 'complete' ? 'Verified' : 
+                                         verifyIdStatus === 'review' ? 'Under Review' :
+                                         verifyIdStatus === 'received' ? 'Received' : 'Pending'}
                                     </div>
                                 </div>
-                                {(doc.BlobUrl || doc.DocumentUrl) && (
-                                    <button
-                                        onClick={() => handleDocumentClick(doc)}
-                                        style={{
-                                            color: '#3690CE',
-                                            textDecoration: 'none',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 500,
-                                            padding: '6px 10px',
-                                            borderRadius: '4px',
-                                            border: '1px solid #3690CE',
-                                            backgroundColor: 'transparent',
-                                            transition: 'all 0.2s ease',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}
-                                        onMouseOver={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#3690CE';
-                                            e.currentTarget.style.color = 'white';
-                                        }}
-                                        onMouseOut={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                            e.currentTarget.style.color = '#3690CE';
-                                        }}
-                                    >
-                                        <FaDownload style={{ fontSize: '0.65rem' }} /> 
-                                        {(() => {
-                                            const filename = doc.FileName || '';
-                                            const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-                                            const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
-                                            return previewableTypes.includes(ext) ? 'Preview' : 'Download';
-                                        })()}
-                                    </button>
+                                {instruction.PassportNumber && (
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '4px',
+                                        border: '1px solid #e1e4e8'
+                                    }}>
+                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Passport</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                            {instruction.PassportNumber}
+                                        </div>
+                                    </div>
+                                )}
+                                {instruction.DriversLicenseNumber && (
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '4px',
+                                        border: '1px solid #e1e4e8'
+                                    }}>
+                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Driver's License</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                            {instruction.DriversLicenseNumber}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
+
+                    {/* Payment Section */}
+                    {instruction.PaymentResult && (
+                        <div style={{
+                            marginBottom: '16px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(54, 144, 206, 0.1)'
+                        }}>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#3690CE',
+                                marginBottom: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <FaPoundSign /> Payment
+                            </div>
+                            <div style={{
+                                padding: '12px',
+                                backgroundColor: 'white',
+                                borderRadius: '4px',
+                                border: '1px solid #e1e4e8'
+                            }}>
+                                <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Status</div>
+                                <div style={{
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: paymentComplete ? colours.green : paymentFailed ? colours.red : '#666'
+                                }}>
+                                    {instruction.PaymentResult}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Risk Assessment Section */}
+                    {risk && risk.MatterId === instruction.InstructionRef && (
+                        <div style={{
+                            marginBottom: '16px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(54, 144, 206, 0.1)'
+                        }}>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#3690CE',
+                                marginBottom: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <FaShieldAlt /> Risk Assessment
+                            </div>
+                            <div style={{
+                                display: 'grid',
+                                gap: '8px',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))'
+                            }}>
+                                <div style={{
+                                    padding: '12px',
+                                    backgroundColor: 'white',
+                                    borderRadius: '4px',
+                                    border: '1px solid #e1e4e8'
+                                }}>
+                                    <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Result</div>
+                                    <div style={{
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        color: riskStatus === 'complete' ? colours.green : 
+                                               riskStatus === 'flagged' ? colours.cta : '#666'
+                                    }}>
+                                        {(risk as any)?.RiskAssessmentResult || 'Pending'}
+                                    </div>
+                                </div>
+                                {typeof risk.RiskScore === 'number' && (
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '4px',
+                                        border: '1px solid #e1e4e8'
+                                    }}>
+                                        <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: '4px' }}>Score</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                            {risk.RiskScore}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Documents Section */}
+                    {documents && documents.length > 0 && (
+                        <div style={{
+                            padding: '16px',
+                            backgroundColor: 'rgba(54, 144, 206, 0.03)',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(54, 144, 206, 0.1)'
+                        }}>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#3690CE',
+                                marginBottom: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                                <FaFileAlt /> Documents
+                            </div>
+                            
+                            <div style={{
+                                display: 'grid',
+                                gap: '8px',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'
+                            }}>
+                                {documents.map((doc: any, docIndex: number) => (
+                                    <div key={docIndex} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '12px 14px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '4px',
+                                        border: '1px solid #e1e4e8',
+                                        fontSize: '0.75rem',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            flex: 1
+                                        }}>
+                                            <div style={{
+                                                marginRight: '12px',
+                                                fontSize: '1.1rem',
+                                                color: '#3690CE'
+                                            }}>
+                                                {getFileIcon(doc.FileName)}
+                                            </div>
+                                            <div>
+                                                <div style={{
+                                                    fontWeight: 500,
+                                                    color: '#24292f',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    {doc.FileName || 'Unnamed document'}
+                                                </div>
+                                                {doc.FileSizeBytes && (
+                                                    <div style={{
+                                                        color: '#666',
+                                                        fontSize: '0.7rem'
+                                                    }}>
+                                                        {Math.round(doc.FileSizeBytes / 1024)}KB
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {(doc.BlobUrl || doc.DocumentUrl) && (
+                                            <button
+                                                onClick={() => handleDocumentClick(doc)}
+                                                style={{
+                                                    color: '#3690CE',
+                                                    textDecoration: 'none',
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 500,
+                                                    padding: '6px 10px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #3690CE',
+                                                    backgroundColor: 'transparent',
+                                                    transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                                onMouseOver={(e) => {
+                                                    e.currentTarget.style.backgroundColor = '#3690CE';
+                                                    e.currentTarget.style.color = 'white';
+                                                }}
+                                                onMouseOut={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.color = '#3690CE';
+                                                }}
+                                            >
+                                                <FaDownload style={{ fontSize: '0.65rem' }} /> 
+                                                {(() => {
+                                                    const filename = doc.FileName || '';
+                                                    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+                                                    const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+                                                    return previewableTypes.includes(ext) ? 'Preview' : 'Download';
+                                                })()}
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

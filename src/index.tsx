@@ -131,19 +131,26 @@ async function fetchEnquiries(
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
+  
+  // Build query parameters for the new decoupled function
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  // Note: email parameter not used in new function as it filters by different fields
+  
   const response = await fetch(
-    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
+    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH}?code=${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE}&${params.toString()}`,
     {
-      method: "POST",
+      method: "GET",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, dateFrom, dateTo }),
     },
   );
   if (!response.ok)
     throw new Error(`Failed to fetch enquiries: ${response.status}`);
   const data = await response.json();
-  setCachedData(cacheKey, data);
-  return data;
+  const enquiries = data.enquiries || [];
+  setCachedData(cacheKey, enquiries);
+  return enquiries;
 }
 
 async function fetchMatters(fullName: string): Promise<Matter[]> {

@@ -748,7 +748,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
                     const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
                     const originalIndex = weekDays.indexOf(day);
                     const dayDate = new Date(weekKey.start);
-                    dayDate.setDate(dayDate.getDate() + originalIndex);
+                    dayDate.setUTCDate(dayDate.getUTCDate() + originalIndex);
                     const cellDateStr = dayDate.toISOString().split('T')[0];
                     const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
 

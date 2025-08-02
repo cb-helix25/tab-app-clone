@@ -31,12 +31,10 @@ import InstructionCard from "./InstructionCard";
 
 import RiskComplianceCard from "./RiskComplianceCard";
 import JointClientCard, { ClientInfo } from "./JointClientCard";
+import DealCard from "./DealCard";
 import type { DealSummary } from "./JointClientCard";
 import { InstructionData, POID, TeamData, UserData, Matter } from "../../app/functionality/types";
 import { hasActiveMatterOpening, clearMatterOpeningDraft } from "../../app/functionality/matterOpeningUtils";
-import localInstructionData from "../../localData/localInstructionData.json";
-import localInstructionCards from "../../localData/localInstructionCards.json";
-import localIdVerifications from "../../localData/localIdVerifications.json";
 import FlatMatterOpening from "./MatterOpening/FlatMatterOpening";
 import RiskAssessmentPage from "./RiskAssessmentPage";
 import EIDCheckPage from "./EIDCheckPage";
@@ -49,6 +47,8 @@ import localUserData from "../../localData/localUserData.json";
 
 interface InstructionsProps {
   userInitials: string;
+  instructionData: InstructionData[];
+  setInstructionData: React.Dispatch<React.SetStateAction<InstructionData[]>>;
   poidData: POID[];
   setPoidData: React.Dispatch<React.SetStateAction<POID[]>>;
   teamData?: TeamData[] | null;
@@ -59,6 +59,8 @@ interface InstructionsProps {
 }
 const Instructions: React.FC<InstructionsProps> = ({
   userInitials,
+  instructionData,
+  setInstructionData,
   poidData,
   setPoidData,
   teamData,
@@ -69,7 +71,6 @@ const Instructions: React.FC<InstructionsProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
-  const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);
@@ -157,7 +158,7 @@ const Instructions: React.FC<InstructionsProps> = ({
     }
   }, []); // Only run on mount
   
-  const [activePivot, setActivePivot] = useState<string>("overview");
+  const [activePivot, setActivePivot] = useState<string>("deals-clients");
   const [riskFilterRef, setRiskFilterRef] = useState<string | null>(null);
   const [selectedDealRef, setSelectedDealRef] = useState<string | null>(null);
   const [showOnlyMyDeals, setShowOnlyMyDeals] = useState<boolean>(false);
@@ -261,79 +262,6 @@ const Instructions: React.FC<InstructionsProps> = ({
     window.location.hostname === "localhost";
 
   const isProduction = process.env.NODE_ENV === "production" && !useLocalData;
-
-  useEffect(() => {
-    async function fetchData() {
-      // Previously we fetched instructions for a specific fee earner by initials.
-      // We now retrieve all instructions and filter client-side when necessary.
-      const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
-      const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
-
-      if (useLocalData) {
-        // Merge local instruction data with ID verification data
-        const instructionsWithIdVerifications = (localInstructionData as InstructionData[]).map(prospect => ({
-          ...prospect,
-          // Add ID verifications to prospect level
-          idVerifications: (localIdVerifications as any[]).filter(
-            (idv: any) => prospect.instructions?.some((inst: any) => inst.InstructionRef === idv.InstructionRef)
-          ),
-          // Also add to instructions level for easier access
-          instructions: prospect.instructions?.map(inst => ({
-            ...inst,
-            idVerifications: (localIdVerifications as any[]).filter(
-              (idv: any) => idv.InstructionRef === inst.InstructionRef
-            )
-          }))
-        }));
-        
-        setInstructionData(instructionsWithIdVerifications);
-        return;
-      }
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
-      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
-      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
-      if (!baseUrl || !path || !code) {
-        console.error("Missing env variables for instruction data");
-        return;
-      }
-
-      try {
-        // Request all instruction data; we'll filter client-side
-        const url = `${baseUrl}/${path}?code=${code}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          const all = Array.isArray(data) ? data : [data];
-          // Narrow down to the current user's instructions to preserve existing
-          // behaviour while still retrieving the full data set.
-          const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
-            const instructions = (prospect.instructions ?? []).filter(
-              (inst: any) => inst.HelixContact === targetInitials,
-            );
-            if (instructions.length > 0) {
-              const refSet = new Set(
-                instructions.map((i: any) => i.InstructionRef),
-              );
-              acc.push({
-                ...prospect,
-                instructions,
-                deals: (prospect.deals ?? []).filter((d: any) =>
-                  refSet.has(d.InstructionRef),
-                ),
-              });
-            }
-            return acc;
-          }, []);
-          setInstructionData(filtered);
-        } else {
-          console.error("Failed to fetch instructions");
-        }
-      } catch (err) {
-        console.error("Error fetching instructions", err);
-      }
-    }
-    fetchData();
-  }, [useLocalData]);
 
   const handleBack = () => {
     if (showNewMatterPage) {
@@ -661,21 +589,21 @@ const Instructions: React.FC<InstructionsProps> = ({
             <div className={quickLinksStyle(isDarkMode)}>
               {/* Pivot Navigation as Quick Action Cards */}
               <QuickActionsCard
-                title="Overview"
-                icon="List"
-                isDarkMode={isDarkMode}
-                selected={activePivot === "overview"}
-                onClick={() => setActivePivot("overview")}
-                iconColor={activePivot === "overview" ? colours.cta : colours.greyText}
-                orientation="row"
-              />
-              <QuickActionsCard
-                title="Deals & Clients"
-                icon="People"
+                title="Pitches"
+                icon="FileTemplate"
                 isDarkMode={isDarkMode}
                 selected={activePivot === "deals-clients"}
                 onClick={() => setActivePivot("deals-clients")}
                 iconColor={activePivot === "deals-clients" ? colours.cta : colours.greyText}
+                orientation="row"
+              />
+              <QuickActionsCard
+                title="Clients"
+                icon="People"
+                isDarkMode={isDarkMode}
+                selected={activePivot === "overview"}
+                onClick={() => setActivePivot("overview")}
+                iconColor={activePivot === "overview" ? colours.cta : colours.greyText}
                 orientation="row"
               />
               <QuickActionsCard
@@ -866,19 +794,39 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   const poidResult =
     selectedOverviewItem?.eid?.EIDOverallResult?.toLowerCase() ?? "";
+  const eidStatus = selectedOverviewItem?.eid?.EIDStatus?.toLowerCase() ?? "";
   const poidPassed = poidResult === "passed" || poidResult === "approved";
   const verificationFound = !!selectedOverviewItem?.eid;
-  const verifyButtonReview = verificationFound && !poidPassed;
-  const verifyButtonDisabled = verificationFound && poidPassed;
-  const verifyButtonLabel = verificationFound
-    ? poidPassed
-      ? "ID Verified"
-      : "Review ID"
+  
+  // Match InstructionCard logic for verification status
+  let verifyIdStatus: 'pending' | 'received' | 'review' | 'complete';
+  const proofOfIdComplete = Boolean(
+    selectedInstruction?.PassportNumber || selectedInstruction?.DriversLicenseNumber
+  );
+  
+  if (!selectedOverviewItem?.eid || eidStatus === 'pending') {
+    verifyIdStatus = proofOfIdComplete ? 'received' : 'pending';
+  } else if (poidPassed) {
+    verifyIdStatus = 'complete';
+  } else {
+    verifyIdStatus = 'review';
+  }
+  
+  const verifyButtonReview = verifyIdStatus === 'review';
+  const verifyButtonDisabled = verifyIdStatus === 'complete';
+  const verifyButtonLabel = verifyIdStatus === 'complete'
+    ? "ID Verified"
+    : verifyIdStatus === 'review'
+    ? "Review ID"
     : "Verify ID";
 
-  const riskResult =
-    selectedOverviewItem?.risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
-  const riskButtonDisabled = !!riskResult;
+  const riskResultRaw = selectedOverviewItem?.risk?.RiskAssessmentResult?.toString().toLowerCase() ?? "";
+  const riskStatus = riskResultRaw
+    ? ['low', 'low risk', 'pass', 'approved'].includes(riskResultRaw)
+        ? 'complete'
+        : 'flagged'
+    : 'pending';
+  const riskButtonDisabled = riskStatus === 'complete';
   
   // Payment status logic
   const paymentResult = selectedOverviewItem?.instruction?.PaymentResult?.toLowerCase();
@@ -929,8 +877,8 @@ const Instructions: React.FC<InstructionsProps> = ({
       return 'verify';
     }
     
-    // Priority 2: If risk needs assessment, risk button should pulse
-    if (!riskButtonDisabled) {
+    // Priority 2: If risk needs assessment (pending), risk button should pulse
+    if (riskStatus === 'pending') {
       return 'risk';
     }
     
@@ -1760,9 +1708,10 @@ const Instructions: React.FC<InstructionsProps> = ({
 
 
   function handleOpenInstruction(ref: string): void {
-    // Filter to show only this deal and expand it to full width
+    // For deals, don't change filtering - cards should expand inline instead
     if (activePivot === "deals-clients") {
-      setSelectedDealRef(ref);
+      // No longer filtering to single deal view - cards handle their own expansion
+      return;
     } else {
       // Navigate to the risk compliance view for this specific instruction
       setRiskFilterRef(ref);
@@ -1825,6 +1774,7 @@ const Instructions: React.FC<InstructionsProps> = ({
                 handleOpenInstruction={handleOpenInstruction}
                 selectedDealRef={selectedDealRef}
                 onClearSelection={() => setSelectedDealRef(null)}
+                onSelectDeal={(ref: string) => setSelectedDealRef(ref)}
                 showOnlyMyDeals={showOnlyMyDeals}
                 onToggleMyDeals={() => setShowOnlyMyDeals(!showOnlyMyDeals)}
                 currentUser={currentUser}
@@ -2138,6 +2088,7 @@ interface DealsPivotProps {
   handleOpenInstruction: (ref: string) => void;
   selectedDealRef?: string | null;
   onClearSelection?: () => void;
+  onSelectDeal?: (ref: string) => void;
   showOnlyMyDeals?: boolean;
   onToggleMyDeals?: () => void;
   currentUser?: any;
@@ -2150,6 +2101,7 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
   handleOpenInstruction, 
   selectedDealRef, 
   onClearSelection,
+  onSelectDeal,
   showOnlyMyDeals = false,
   onToggleMyDeals,
   currentUser,
@@ -2163,24 +2115,19 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
   const filteredDeals = useMemo(() => {
     let dealsToShow = deals;
     
-    // If a specific deal is selected, show only that deal
-    if (selectedDealRef) {
-      dealsToShow = deals.filter(deal => deal.InstructionRef === selectedDealRef);
-    } else {
-      // Apply "my deals" filter if enabled
-      if (showOnlyMyDeals && currentUser) {
-        // Filter deals that belong to the current user (you may need to adjust this logic based on your data structure)
-        dealsToShow = deals.filter(deal => 
-          deal.Email === currentUser.Email || 
-          deal.Lead === currentUser.Email ||
-          deal.assignedTo === currentUser.Email
-        );
-      }
-      
-      // Apply the closed deals filter
-      if (!showClosedDeals) {
-        dealsToShow = dealsToShow.filter(deal => String(deal.Status).toLowerCase() !== 'closed');
-      }
+    // Apply "my deals" filter if enabled (removed selectedDealRef filtering)
+    if (showOnlyMyDeals && currentUser) {
+      // Filter deals that belong to the current user (you may need to adjust this logic based on your data structure)
+      dealsToShow = deals.filter(deal => 
+        deal.Email === currentUser.Email || 
+        deal.Lead === currentUser.Email ||
+        deal.assignedTo === currentUser.Email
+      );
+    }
+    
+    // Apply the closed deals filter
+    if (!showClosedDeals) {
+      dealsToShow = dealsToShow.filter(deal => String(deal.Status).toLowerCase() !== 'closed');
     }
     
     return dealsToShow;
@@ -2190,10 +2137,10 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
   const openDealsCount = deals.length - closedDealsCount;
   
   const gridContainerStyle = mergeStyles({
-    display: "grid",
-    gridTemplateColumns: selectedDealRef ? "1fr" : "repeat(auto-fit, minmax(350px, 1fr))",
-    gap: "16px",
-    maxWidth: selectedDealRef ? "100%" : "1440px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    maxWidth: "100%",
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box",
@@ -2307,6 +2254,25 @@ const DealsPivot: React.FC<DealsPivotProps> = ({
         const showFollowUpEditor = openFollowUpIdx === idx;
         return (
           <div key={idx} style={{ position: 'relative' }}>
+            <DealCard
+              deal={deal}
+              animationDelay={animationDelay}
+              onFollowUp={() => setOpenFollowUpIdx(idx)}
+              teamData={null}
+              userInitials={userInitials}
+              isSingleView={selectedDealRef === deal.DealId}
+              expanded={selectedDealRef === deal.InstructionRef}
+              selected={selectedDealRef === deal.InstructionRef}
+              onSelect={() => {
+                // Toggle selection: if already selected, unselect; otherwise select
+                if (selectedDealRef === deal.InstructionRef) {
+                  onClearSelection?.();
+                } else {
+                  // Just select the deal for inline expansion
+                  onSelectDeal?.(deal.InstructionRef);
+                }
+              }}
+            />
 
             {showFollowUpEditor && (
               <div style={{

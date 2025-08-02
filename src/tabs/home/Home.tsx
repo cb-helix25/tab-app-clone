@@ -1889,11 +1889,17 @@ const officeAttendanceButtonText = currentUserConfirmed
   : 'Confirm Attendance';
 
   const today = new Date();
-  const formattedToday = today.toISOString().split('T')[0];
+  const formatDateLocal = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const formattedToday = formatDateLocal(today);
   const columnsForPeople = 3;
 
   const isPersonOutToday = (person: Person): boolean => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatDateLocal(new Date());
     return annualLeaveRecords.some((leave) => {
       if (leave.status !== 'booked') return false;
       if (leave.person.trim().toLowerCase() !== person.initials.trim().toLowerCase()) return false;
@@ -2092,7 +2098,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     const currentWeekData = wipClioData.current_week?.daily_data[formattedToday];
     const lastWeekDate = new Date(today);
     lastWeekDate.setDate(today.getDate() - 7);
-    const formattedLastWeekDate = lastWeekDate.toISOString().split('T')[0];
+    const formattedLastWeekDate = formatDateLocal(lastWeekDate);
     const lastWeekData = wipClioData.last_week?.daily_data[formattedLastWeekDate];
     const startOfCurrentWeek = new Date(today);
     startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
@@ -2109,7 +2115,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       let amount = 0;
       let count = 0;
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatDateLocal(d);
         const data = dailyData[dateStr];
         if (data) {
           hours += data.total_hours;
@@ -2166,7 +2172,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     const workWeekDays = getWorkWeekDays();
     let leaveDays = 0;
     workWeekDays.forEach((day) => {
-      const dayString = day.toISOString().split('T')[0];
+      const dayString = formatDateLocal(day);
       if (
         annualLeaveRecords.some(
           (rec) =>
@@ -2754,7 +2760,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const currentWeekMonday = getMondayOfCurrentWeek();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatDateLocal(new Date());
 
   // Example usage in attendancePersons:
   const attendancePersons = useMemo(() => {

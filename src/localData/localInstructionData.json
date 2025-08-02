@@ -15,12 +15,33 @@
         "PitchedTime": "10:00:00",
         "PitchValidUntil": "2025-07-31",
         "Status": "pitched",
-        "IsMultiClient": false,
+        "IsMultiClient": true,
         "LeadClientId": 5001,
         "LeadClientEmail": "lead1@example.com",
         "CloseDate": null,
         "CloseTime": null,
-        "jointClients": [],
+        "jointClients": [
+          {
+            "DealJointClientId": 1,
+            "DealId": 10001,
+            "ClientEmail": "joint1@example.com",
+            "FirstName": "John",
+            "LastName": "Partner",
+            "Phone": "0202020202",
+            "HasSubmitted": true,
+            "SubmissionDateTime": "2025-07-01T10:30:00"
+          },
+          {
+            "DealJointClientId": 2,
+            "DealId": 10001,
+            "ClientEmail": "joint2@example.com",
+            "FirstName": "Sarah",
+            "LastName": "Associate",
+            "Phone": "0303030303",
+            "HasSubmitted": false,
+            "SubmissionDateTime": null
+          }
+        ],
         "documents": []
       }
     ],

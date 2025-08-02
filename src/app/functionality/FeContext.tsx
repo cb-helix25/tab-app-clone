@@ -183,11 +183,19 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   const fetchEnquiries = useCallback(
     async (email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> => {
       try {
-        console.log('Fetching enquiries with email:', email, 'from:', dateFrom, 'to:', dateTo);
-        const response = await fetch(getEnquiriesUrl, {
-          method: 'POST',
+        console.log('Fetching enquiries with dateFrom:', dateFrom, 'dateTo:', dateTo);
+        
+        // Build query parameters for the new decoupled function
+        const params = new URLSearchParams();
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
+        // Note: email parameter not used in new function as it filters by different fields
+        
+        const fetchEnquiriesUrl = `${proxyBaseUrl}/${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH}?code=${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE}&${params.toString()}`;
+        
+        const response = await fetch(fetchEnquiriesUrl, {
+          method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, dateFrom, dateTo }),
         });
 
         if (!response.ok) {
@@ -196,10 +204,10 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
 
         const data = await response.json();
         let fetchedEnquiries: Enquiry[] = [];
-        if (Array.isArray(data)) {
-          fetchedEnquiries = data as Enquiry[];
-        } else if (Array.isArray(data.enquiries)) {
+        if (Array.isArray(data.enquiries)) {
           fetchedEnquiries = data.enquiries as Enquiry[];
+        } else if (Array.isArray(data)) {
+          fetchedEnquiries = data as Enquiry[];
         } else {
           console.warn('Unexpected data format:', data);
         }
@@ -212,7 +220,7 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
         return [];
       }
     },
-    [getEnquiriesUrl]
+    [proxyBaseUrl]
   );
 
   // Function to fetch Matters

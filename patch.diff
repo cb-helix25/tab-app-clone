@@ -1,158 +1,57 @@
-diff --git a/src/tabs/Reporting/ManagementDashboard.tsx b/src/tabs/Reporting/ManagementDashboard.tsx
-index 2ec2aaffee759da7c2a32806c32a3cd7cd636f5e..9fbc7446eed82f0050faf2538142b024912158c2 100644
---- a/src/tabs/Reporting/ManagementDashboard.tsx
-+++ b/src/tabs/Reporting/ManagementDashboard.tsx
-@@ -162,51 +162,51 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
-           setRefreshBaseTime(Date.now()); // Reset base time after refresh
-         }
-         setCurrentTime(Date.now()); // Update current time for countdown
-       }, 1000); // Check every second
-     };
+diff --git a/src/tabs/home/Attendance.tsx b/src/tabs/home/Attendance.tsx
+index bcd06dc8989f70208fcf928c4eb4631c464f8bb8..340f5fb641effd2ca8474894b1f2262955abfc73 100644
+--- a/src/tabs/home/Attendance.tsx
++++ b/src/tabs/home/Attendance.tsx
+@@ -726,51 +726,51 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
+               >
+                 <thead>
+                   <tr className={headerRowStyle}>
+                     <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
+                     {attendancePersons.map((person) => (
+                       <th
+                         key={person.initials}
+                         style={{
+                           border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                           padding: '8px',
+                           textAlign: 'center',
+                           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+                           width: '100px',
+                         }}
+                       >
+                         <AttendancePersonaHeader person={person} />
+                       </th>
+                     ))}
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {orderedWeekDays.map((day, index) => {
+                     const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
+                     const originalIndex = weekDays.indexOf(day);
+                     const dayDate = new Date(weekKey.start);
+-                    dayDate.setDate(dayDate.getDate() + originalIndex);
++                    dayDate.setUTCDate(dayDate.getUTCDate() + originalIndex);
+                     const cellDateStr = dayDate.toISOString().split('T')[0];
+                     const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
  
-     startAutoRefresh();
- 
-     return () => clearInterval(intervalId);
-   }, [triggerRefresh, refreshBaseTime, isFetching]);
- 
-   // Manual refresh handler
-   const handleManualRefresh = () => {
-     if (triggerRefresh) {
-       triggerRefresh();
-       setRefreshBaseTime(Date.now()); // Reset base time for next 5-minute cycle
-     }
-   };
- 
-   // Calculate remaining time until next refresh
-   const nextRefreshCountdown = Math.max(300000 - (currentTime - refreshBaseTime), 0);
- 
-   const solicitorTeamMembers = React.useMemo(() => {
-     return (
-       teamData?.filter(
--        (team) => team.status === 'active' && team.Initials && team["Role"] !== 'Non-solicitor'
-+        (team) => team.Initials && team["Role"] !== 'Non-solicitor'
-       ) || []
-     );
-   }, [teamData]);
- 
-   const filteredTeamMembers = React.useMemo(() => {
-     if (selectedTeams.length === 0 || selectedTeams.length === solicitorTeamMembers.length) {
-       return solicitorTeamMembers;
-     }
-     return solicitorTeamMembers.filter((team) => selectedTeams.includes(team.Initials!));
-   }, [solicitorTeamMembers, selectedTeams]);
- 
-   const solicitorClioIDs = React.useMemo(
-     () => new Set(filteredTeamMembers.map((tm) => String(tm["Clio ID"] || ""))),
-     [filteredTeamMembers]
-   );
- 
-   const solicitorEmails = React.useMemo(
-     () => new Set(filteredTeamMembers.map((tm) => tm.Email?.toLowerCase()).filter(Boolean)),
-     [filteredTeamMembers]
-   );
- 
-   const solicitorNormalizedNames = React.useMemo(
-     () => filteredTeamMembers.map((tm) => normalizeName(tm["Full Name"] || "")),
-     [filteredTeamMembers]
-   );
-diff --git a/src/tabs/Reporting/ManagementDashboard.tsx b/src/tabs/Reporting/ManagementDashboard.tsx
-index 2ec2aaffee759da7c2a32806c32a3cd7cd636f5e..9fbc7446eed82f0050faf2538142b024912158c2 100644
---- a/src/tabs/Reporting/ManagementDashboard.tsx
-+++ b/src/tabs/Reporting/ManagementDashboard.tsx
-@@ -372,64 +372,82 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
-   const totalWipHoursOverall = React.useMemo(() => {
-     return filteredWip.reduce((sum, w) => sum + (w.quantity_in_hours || 0), 0) || 0;
-   }, [filteredWip]);
- 
-   const totalWipPoundsOverall = React.useMemo(() => {
-     return filteredWip.reduce((sum, w) => sum + (w.total || 0), 0) || 0;
-   }, [filteredWip]);
- 
-   const totalCollectedOverall = React.useMemo(() => {
-     return filteredRecoveredFees.reduce((sum, rf) => sum + rf.payment_allocated, 0) || 0;
-   }, [filteredRecoveredFees]);
- 
-   const totalEnquiriesOverall = React.useMemo(() => {
-     return filteredEnquiries.length || 0;
-   }, [filteredEnquiries]);
- 
-   const totalMattersOverall = React.useMemo(() => {
-     return filteredMatters.length || 0;
-   }, [filteredMatters]);
- 
-   const totalIdSubmissionsOverall = React.useMemo(() => {
-     return filteredPoidData.length || 0;
-   }, [filteredPoidData]);
- 
-   const tableData = React.useMemo(() => {
--    return filteredTeamMembers.map((team) => {
--      const clioId = String(team["Clio ID"] || "");
--      const email = team.Email || "";
--      const fullName = team["Full Name"] || "";
--      return {
--        initial: team.Initials!,
--        wipHours: formatHours(getTeamWipHours(clioId)),
--        wipPounds: formatCurrency(getTeamWipPounds(clioId)),
--        collected: formatCurrency(getTeamCollected(clioId)),
--        enquiries: getTeamEnquiries(email),
--        matters: getTeamMatters(fullName),
--        idSubmissions: totalIdSubmissionsOverall,
--      };
--    });
-+    return filteredTeamMembers
-+      .map((team) => {
-+        const clioId = String(team["Clio ID"] || "");
-+        const email = team.Email || "";
-+        const fullName = team["Full Name"] || "";
-+
-+        const wipHoursNum = getTeamWipHours(clioId);
-+        const wipPoundsNum = getTeamWipPounds(clioId);
-+        const collectedNum = getTeamCollected(clioId);
-+        const enquiriesNum = getTeamEnquiries(email);
-+        const mattersNum = getTeamMatters(fullName);
-+
-+        const hasData =
-+          wipHoursNum !== 0 ||
-+          wipPoundsNum !== 0 ||
-+          collectedNum !== 0 ||
-+          enquiriesNum !== 0 ||
-+          mattersNum !== 0;
-+
-+        if (!hasData) return null;
-+
-+        return {
-+          initial: team.Initials!,
-+          wipHours: formatHours(wipHoursNum),
-+          wipPounds: formatCurrency(wipPoundsNum),
-+          collected: formatCurrency(collectedNum),
-+          enquiries: enquiriesNum,
-+          matters: mattersNum,
-+          idSubmissions: totalIdSubmissionsOverall,
-+        } as TableRow;
-+      })
-+      .filter((row): row is TableRow => row !== null);
-   }, [
-     filteredTeamMembers,
-     filteredWip,
-     filteredRecoveredFees,
-     filteredEnquiries,
-     filteredMatters,
-     totalIdSubmissionsOverall,
-   ]);
- 
-   const totalRow: TableRow = {
-     initial: 'TOTAL',
-     wipHours: formatHours(totalWipHoursOverall),
-     wipPounds: formatCurrency(totalWipPoundsOverall),
-     collected: formatCurrency(totalCollectedOverall),
-     enquiries: totalEnquiriesOverall,
-     matters: totalMattersOverall,
-     idSubmissions: totalIdSubmissionsOverall,
-   };
- 
-   const finalTableData = React.useMemo(() => [...tableData, totalRow], [tableData, totalRow]);
- 
-   const sortedTableData = React.useMemo(() => {
-     const parseHours = (formatted: string): number => {
-       const match = formatted.match(/(\d+)h\s*(\d+)m/);
-       return match ? parseInt(match[1], 10) + parseInt(match[2], 10) / 60 : 0;
+                     return (
+                       <tr
+                         key={day}
+                         className={rowStyle(isCurrentDay, originalIndex, todayIndex, isTableExpanded, selectedWeek === 'next')}
+                       >
+                         <td
+                           style={{
+                             border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                             padding: '8px',
+                             fontWeight: 'bold',
+                             backgroundColor: colours.reporting.tableHeaderBackground,
+                             width: '100px',
+                             fontSize: '14px',
+                           }}
+                         >
+                           {getShortDayLabel(dayDate)}
+                         </td>
+                         {attendancePersons.map((person) => {
+                           const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
+                           const localDays = localAttendance[weekStart]?.[person.initials] || person.attendance;
+                           const status = getCellStatus(localDays, person.initials, day, cellDateStr);
+                           const cellBg = isCurrentDay

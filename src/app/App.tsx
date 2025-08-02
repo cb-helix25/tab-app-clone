@@ -8,9 +8,10 @@ import { NavigatorProvider } from './functionality/NavigatorContext';
 import { colours } from './styles/colours';
 import * as microsoftTeams from '@microsoft/teams-js';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
-import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomBooking, SoundproofPodBooking } from './functionality/types';
+import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomBooking, SoundproofPodBooking, InstructionData } from './functionality/types';
 import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
+import localInstructionData from '../localData/localInstructionData.json';
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -96,6 +97,7 @@ const App: React.FC<AppProps> = ({
       isNaN(Number(poid.last))
     );
   const [poidData, setPoidData] = useState<POID[]>(initialPoidData);
+  const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
   const [allMattersFromHome, setAllMattersFromHome] = useState<Matter[] | null>(null);
   const [outstandingBalances, setOutstandingBalances] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[] | undefined>(undefined);
@@ -209,6 +211,86 @@ const App: React.FC<AppProps> = ({
   // Determine the current user's initials
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
 
+  // Fetch instruction data on app load
+  useEffect(() => {
+    const useLocalData =
+      process.env.REACT_APP_USE_LOCAL_DATA === "true" ||
+      window.location.hostname === "localhost";
+
+    async function fetchInstructionData() {
+      const pilotUsers = ["AC", "JW", "KW", "BL", "LZ"];
+      const targetInitials = pilotUsers.includes(userInitials) ? "LZ" : userInitials;
+
+      if (useLocalData) {
+        // Merge local instruction data with ID verification data
+        const instructionsWithIdVerifications = (localInstructionData as InstructionData[]).map(prospect => ({
+          ...prospect,
+          // Add ID verifications to prospect level
+          idVerifications: (localIdVerifications as any[]).filter(
+            (idv: any) => prospect.instructions?.some((inst: any) => inst.InstructionRef === idv.InstructionRef)
+          ),
+          // Also add to instructions level for easier access
+          instructions: prospect.instructions?.map(inst => ({
+            ...inst,
+            idVerifications: (localIdVerifications as any[]).filter(
+              (idv: any) => idv.InstructionRef === inst.InstructionRef
+            )
+          }))
+        }));
+        
+        setInstructionData(instructionsWithIdVerifications);
+        return;
+      }
+
+      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
+      const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
+      if (!baseUrl || !path || !code) {
+        console.error("Missing env variables for instruction data");
+        return;
+      }
+
+      try {
+        // Request all instruction data; we'll filter client-side
+        const url = `${baseUrl}/${path}?code=${code}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const all = Array.isArray(data) ? data : [data];
+          // Narrow down to the current user's instructions to preserve existing
+          // behaviour while still retrieving the full data set.
+          const filtered = all.reduce<InstructionData[]>((acc, prospect) => {
+            const instructions = (prospect.instructions ?? []).filter(
+              (inst: any) => inst.HelixContact === targetInitials,
+            );
+            if (instructions.length > 0) {
+              const refSet = new Set(
+                instructions.map((i: any) => i.InstructionRef),
+              );
+              acc.push({
+                ...prospect,
+                instructions,
+                deals: (prospect.deals ?? []).filter((d: any) =>
+                  refSet.has(d.InstructionRef),
+                ),
+              });
+            }
+            return acc;
+          }, []);
+          setInstructionData(filtered);
+        } else {
+          console.error("Failed to fetch instructions");
+        }
+      } catch (err) {
+        console.error("Error fetching instructions", err);
+      }
+    }
+
+    if (userInitials) {
+      fetchInstructionData();
+    }
+  }, [userInitials]);
+
   // Tabs visible to all users start with the Enquiries tab.
   // Only show the Instructions tab to Alex (AC), Jonathan (JW), Luke (LZ), Kelly (KW), Ben (BL), RC, and JWH. Keep it visible when developing locally
   // (hostname === 'localhost').
@@ -266,6 +348,8 @@ const App: React.FC<AppProps> = ({
         return (
           <Instructions
             userInitials={userInitials}
+            instructionData={instructionData}
+            setInstructionData={setInstructionData}
             poidData={poidData}
             setPoidData={setPoidData}
             teamData={teamData}
