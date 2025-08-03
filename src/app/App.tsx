@@ -29,6 +29,8 @@ interface AppProps {
   isLoading: boolean;
   error: string | null;
   teamData?: TeamData[] | null;
+  isLocalDev?: boolean;
+  onAreaChange?: (areas: string[]) => void;
 }
 
 const App: React.FC<AppProps> = ({
@@ -40,6 +42,8 @@ const App: React.FC<AppProps> = ({
   isLoading,
   error,
   teamData,
+  isLocalDev = false,
+  onAreaChange,
 }) => {
   const [activeTab, setActiveTab] = useState('home');
   const isDarkMode = teamsContext?.theme === 'dark';
@@ -425,6 +429,8 @@ const App: React.FC<AppProps> = ({
             onResourcesClick={handleResourcesTabClick}
             hasActiveMatter={hasActiveMatter}
             isInMatterOpeningWorkflow={isInMatterOpeningWorkflow}
+            isLocalDev={isLocalDev}
+            onAreaChange={onAreaChange}
           />
           <Navigator />
           <FormsSidebar

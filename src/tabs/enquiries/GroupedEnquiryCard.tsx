@@ -35,6 +35,7 @@ interface GroupedEnquiryCardProps {
   onRate: (enquiryId: string) => void;
   teamData?: TeamData[] | null;
   isLast?: boolean;
+  userAOW?: string[]; // List of user's areas of work (lowercase)
 }
 
 const formatCurrency = (value: string): string => {
@@ -104,6 +105,7 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
   onRate,
   teamData,
   isLast,
+  userAOW,
 }) => {
   const { isDarkMode } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -417,6 +419,7 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
                   onRate={onRate}
                   teamData={teamData}
                   isLast={idx === enquiries.length - 1}
+                  userAOW={userAOW}
                 />
               </div>
             ))}

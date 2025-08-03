@@ -249,6 +249,21 @@ const AppWithContext: React.FC = () => {
   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Local development state for area selection
+  const [localSelectedAreas, setLocalSelectedAreas] = useState<string[]>(['Commercial', 'Construction', 'Property']);
+
+  // Update user data when local areas change
+  const updateLocalUserData = (areas: string[]) => {
+    setLocalSelectedAreas(areas);
+    if (useLocalData && userData) {
+      const updatedUserData = [{
+        ...userData[0],
+        AOW: areas.join(', ')
+      }];
+      setUserData(updatedUserData as UserData[]);
+    }
+  };
 
   useEffect(() => {
     const initializeTeamsAndFetchData = async () => {
@@ -296,7 +311,13 @@ const AppWithContext: React.FC = () => {
           userPrincipalName: "lz@helix-law.com",
           theme: "default",
         } as microsoftTeams.Context);
-        setUserData(localUserData as UserData[]);
+        
+        // Initialize local user data with selected areas
+        const initialUserData = [{
+          ...localUserData[0],
+          AOW: localSelectedAreas.join(', ')
+        }];
+        setUserData(initialUserData as UserData[]);
         setEnquiries(localEnquiries as Enquiry[]);
         setMatters(localMatters as unknown as Matter[]);
         setTeamData(localTeamData as TeamData[]);
@@ -305,19 +326,23 @@ const AppWithContext: React.FC = () => {
     };
 
     initializeTeamsAndFetchData();
-  }, []);
+  }, [localSelectedAreas]); // Add dependency so it re-runs when areas change
 
   return (
-    <App
-      teamsContext={teamsContext}
-      userData={userData}
-      enquiries={enquiries}
-      matters={matters}
-      fetchMatters={fetchMatters}
-      isLoading={loading}
-      error={error}
-      teamData={teamData}
-    />
+    <>
+      <App
+        teamsContext={teamsContext}
+        userData={userData}
+        enquiries={enquiries}
+        matters={matters}
+        fetchMatters={fetchMatters}
+        isLoading={loading}
+        error={error}
+        teamData={teamData}
+        isLocalDev={useLocalData}
+        onAreaChange={updateLocalUserData}
+      />
+    </>
   );
 };
 

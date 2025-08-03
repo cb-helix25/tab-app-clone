@@ -19,6 +19,15 @@
 .user-bubble-button:hover {
     background: var(--helix-blue);
 }
+
+.user-bubble-button.clickable-local-dev {
+    border: 2px solid var(--helix-highlight);
+    background: var(--helix-blue);
+    color: #fff;
+    box-shadow: 0 0 0 2px var(--helix-highlight);
+    opacity: 1 !important;
+    z-index: 2000;
+}
 /* invisible change */
 
 .user-initials {
@@ -77,4 +86,43 @@
 
 .detail-row .copy-btn:hover {
     text-decoration: underline;
+}
+
+.local-area-selector {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.selector-header {
+    margin-bottom: 6px;
+}
+
+.selector-header .label {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.area-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.area-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.area-checkbox input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    accent-color: var(--helix-highlight);
+}
+
+.area-checkbox span {
+    user-select: none;
 }

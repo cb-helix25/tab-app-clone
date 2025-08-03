@@ -88,6 +88,7 @@ interface EnquiryLineItemProps {
   onPitch?: (enquiry: Enquiry) => void;
   teamData?: TeamData[] | null;
   isLast?: boolean;
+  userAOW?: string[]; // List of user's areas of work (lowercase)
 }
 
 const formatCurrency = (value: string): string => {
@@ -128,6 +129,7 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   onPitch,
   teamData,
   isLast,
+  userAOW,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -165,6 +167,12 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
     }
   };
 
+  // Determine if this enquiry should be greyed out (not in user's AOW)
+  let isGreyedOut = false;
+  if (userAOW && userAOW.length > 0 && enquiry.Area_of_Work) {
+    isGreyedOut = !userAOW.includes(enquiry.Area_of_Work.toLowerCase());
+  }
+
   const lineItemStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
@@ -175,10 +183,13 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
     fontFamily: 'Raleway, sans-serif',
     minHeight: '44px',
     position: 'relative',
-    backgroundColor: 'transparent',
+    backgroundColor: isGreyedOut ? (isDarkMode ? '#23272e' : '#f3f3f3') : 'transparent',
+    opacity: isGreyedOut ? 0.5 : 1,
+    filter: isGreyedOut ? 'grayscale(0.7)' : 'none',
+    pointerEvents: isGreyedOut ? 'auto' : 'auto',
     selectors: {
       ':hover': {
-        backgroundColor: 'transparent',
+        backgroundColor: isGreyedOut ? (isDarkMode ? '#23272e' : '#f3f3f3') : 'transparent',
         transform: 'translateX(2px)',
       },
       ':active': {

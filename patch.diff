@@ -1,10 +1,9 @@
-diff --git a/server/routes/instructions.js b/server/routes/instructions.js
-index 458e73fcc48b28a174f1818f2b5910398dec676c..b5c59919e8cd2e2226cff8f0df6555bbc008dff2 100644
---- a/server/routes/instructions.js
-+++ b/server/routes/instructions.js
-@@ -1,27 +1,26 @@
+diff --git a/server/routes/enquiries.js b/server/routes/enquiries.js
+index f0f9f7e50ad8dffe6b5f7894bdda7db8592387a5..88fc2ee45ba4423ef43a85c5ca11fa4909d0f89f 100644
+--- a/server/routes/enquiries.js
++++ b/server/routes/enquiries.js
+@@ -1,40 +1,52 @@
  const express = require('express');
--const fetch = require('node-fetch');
  const { DefaultAzureCredential } = require('@azure/identity');
  const { SecretClient } = require('@azure/keyvault-secrets');
  const router = express.Router();
@@ -15,18 +14,62 @@ index 458e73fcc48b28a174f1818f2b5910398dec676c..b5c59919e8cd2e2226cff8f0df6555bb
  const client = new SecretClient(vaultUrl, credential);
  
  // Route: GET /api/enquiries
- // Calls the fetchenquriries function app in the instructions VNet space
+-// Calls the fetchEnquiriesData function in the VNet space
++// Tries the new fetchEnquiriesData function first, falls back to the legacy fetchenquiries function
  router.get('/', async (req, res) => {
    try {
-     // Get the function key from Key Vault
-     const secret = await client.getSecret('fetchenquriries-key');
-     const functionCode = secret.value;
-     
-     // Call the function app
-     const functionUrl = 'https://your-instructions-function-app.azurewebsites.net/api/fetchenquriries';
-     const url = `${functionUrl}?code=${functionCode}`;
-     
-     const response = await fetch(url);
-     if (!response.ok) {
-       return res.status(response.status).json({ error: 'Failed to fetch enquiries data.' });
+-    // Get the function code from Key Vault
+-    const secret = await client.getSecret('fetchEnquiriesData-code');
+-    const functionCode = secret.value;
+-    
+-    // Forward any query parameters from the request
+     const queryParams = new URLSearchParams(req.query);
+-    
+-    // Call the function app in VNet space
+-    const functionUrl = process.env.VNET_FUNCTION_BASE_URL || 'https://your-vnet-function-app.azurewebsites.net';
+-    const url = `${functionUrl}/api/fetchEnquiriesData?code=${functionCode}&${queryParams.toString()}`;
+-    
+-    const response = await fetch(url);
+-    if (!response.ok) {
+-      console.error(`Function call failed: ${response.status} ${response.statusText}`);
+-      return res.status(response.status).json({ error: 'Failed to fetch enquiries data.' });
++
++    // Attempt the new function if a base URL is configured
++    const baseUrl = process.env.VNET_FUNCTION_BASE_URL;
++    if (baseUrl) {
++      try {
++        const secret = await client.getSecret('fetchEnquiriesData-code');
++        const functionCode = secret.value;
++        const url = `${baseUrl}/api/fetchEnquiriesData?code=${functionCode}&${queryParams.toString()}`;
++        const response = await fetch(url);
++        if (response.ok) {
++          const data = await response.json();
++          return res.json(data);
++        }
++        console.error(`VNet function call failed: ${response.status} ${response.statusText}`);
++      } catch (err) {
++        console.error('VNet function error:', err);
++      }
++      // Fall through to legacy if new function is not configured or fails
++    }
++
++    // Legacy instructions function
++    const legacySecret = await client.getSecret('fetchenquiries-key');
++    const legacyCode = legacySecret.value;
++    const legacyUrl = 'https://your-instructions-function-app.azurewebsites.net/api/fetchenquiries';
++    const legacyResponse = await fetch(`${legacyUrl}?code=${legacyCode}&${queryParams.toString()}`);
++    if (!legacyResponse.ok) {
++      return res.status(legacyResponse.status).json({ error: 'Failed to fetch enquiries data.' });
      }
+-    
+-    const data = await response.json();
+-    res.json(data);
++    const legacyData = await legacyResponse.json();
++    res.json(legacyData);
+   } catch (err) {
+     console.error('Error fetching enquiries data:', err);
+     res.status(500).json({ error: 'Internal server error.' });
+   }
+ });
+ 
+ module.exports = router;

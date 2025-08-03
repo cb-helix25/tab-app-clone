@@ -6,10 +6,21 @@ import '../app/styles/personas.css';
 
 interface UserBubbleProps {
     user: UserData;
+    isLocalDev?: boolean;
+    onAreasChange?: (areas: string[]) => void;
 }
 
-const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
+const AVAILABLE_AREAS = [
+    'Commercial',
+    'Construction', 
+    'Property',
+    'Employment',
+    'Misc/Other'
+];
+
+const UserBubble: React.FC<UserBubbleProps> = ({ user, isLocalDev = false, onAreasChange }) => {
     const [open, setOpen] = useState(false);
+    const [isClickToggled, setIsClickToggled] = useState(false);
     const bubbleRef = useRef<HTMLButtonElement | null>(null);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -50,6 +61,25 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
         };
     }, [open]);
 
+    // Handle click outside to close popover in local dev mode
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (isClickToggled && 
+                bubbleRef.current && 
+                popoverRef.current && 
+                !bubbleRef.current.contains(event.target as Node) &&
+                !popoverRef.current.contains(event.target as Node)) {
+                setOpen(false);
+                setIsClickToggled(false);
+            }
+        }
+
+        if (isClickToggled) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [isClickToggled]);
+
     const copy = (text?: string) => {
         if (text) navigator.clipboard.writeText(text);
     };
@@ -69,16 +99,32 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
             value: String(user[key as keyof UserData]),
         }));
 
+    // Extract and format areas of work
+    let areasOfWork: string[] = [];
+    if (user.AOW) {
+        areasOfWork = String(user.AOW).split(',').map(s => s.trim()).filter(Boolean);
+    } else if ((user as any).Area_of_Work) {
+        areasOfWork = String((user as any).Area_of_Work).split(',').map(s => s.trim()).filter(Boolean);
+    } else if ((user as any).aow) {
+        areasOfWork = String((user as any).aow).split(',').map(s => s.trim()).filter(Boolean);
+    }
+
     return (
         <div className="user-bubble-container">
             <button
                 type="button"
-                className="user-bubble-button persona-bubble"
+                className={`user-bubble-button persona-bubble ${isLocalDev && onAreasChange ? 'clickable-local-dev' : ''}`}
                 ref={bubbleRef}
                 onMouseEnter={() => setOpen(true)}
-                onMouseLeave={() => setOpen(false)}
+                onMouseLeave={() => !isClickToggled && setOpen(false)}
                 onFocus={() => setOpen(true)}
-                onBlur={() => setOpen(false)}
+                onBlur={() => !isClickToggled && setOpen(false)}
+                onClick={() => {
+                    if (isLocalDev && onAreasChange) {
+                        setIsClickToggled(!open);
+                        setOpen(!open);
+                    }
+                }}
             >
                 <span className="user-initials">{initials}</span>
             </button>
@@ -88,7 +134,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
                     className="user-popover"
                     style={{ top: pos.top, left: pos.left }}
                     onMouseEnter={() => setOpen(true)}
-                    onMouseLeave={() => setOpen(false)}
+                    onMouseLeave={() => !isClickToggled && setOpen(false)}
                 >
                     {userDetails.map((d) => (
                         <div key={d.label} className="detail-row">
@@ -103,6 +149,36 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user }) => {
                             </button>
                         </div>
                     ))}
+                    {areasOfWork.length > 0 && (
+                        <div className="detail-row">
+                            <span className="label">Areas of Work:</span>
+                            <span className="value">{areasOfWork.join(', ')}</span>
+                        </div>
+                    )}
+                    {isLocalDev && onAreasChange && (
+                        <div className="local-area-selector">
+                            <div className="selector-header">
+                                <span className="label">Local Area Selection:</span>
+                            </div>
+                            <div className="area-checkboxes">
+                                {AVAILABLE_AREAS.map(area => (
+                                    <label key={area} className="area-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            checked={areasOfWork.includes(area)}
+                                            onChange={(e) => {
+                                                const newAreas = e.target.checked 
+                                                    ? [...areasOfWork, area]
+                                                    : areasOfWork.filter(a => a !== area);
+                                                onAreasChange(newAreas);
+                                            }}
+                                        />
+                                        <span>{area}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

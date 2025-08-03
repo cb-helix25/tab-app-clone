@@ -41,7 +41,6 @@ import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
-import EnquiriesMenu from './EnquiriesMenu';
 import NewEnquiryList from './NewEnquiryList';
 import { NewEnquiry } from '../../app/functionality/newEnquiryTypes';
 import 'rc-slider/assets/index.css';
@@ -237,7 +236,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       Gift_Rank: parseInt(newEnquiry.rank) || 0,
     } as Enquiry;
   };
-  const [searchTerm, setSearchTerm] = useState<string>('');
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -246,16 +244,29 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [currentRating, setCurrentRating] = useState<string>('');
   const [ratingEnquiryId, setRatingEnquiryId] = useState<string | null>(null);
   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
-  const [showAll, setShowAll] = useState<boolean>(false);
-  const [activeMainTab, setActiveMainTab] = useState<string>('Claimed');
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
   const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
-  const [convertedEnquiriesList, setConvertedEnquiriesList] = useState<Enquiry[]>([]);
-  const [convertedPoidDataList, setConvertedPoidDataList] = useState<POID[]>([]);
+  const [convertedEnquiriesList, setConvertedEnquiriesList] = useState<any[]>([]);
+  const [convertedPoidDataList, setConvertedPoidDataList] = useState<any[]>([]);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
+  
+  // Navigation state variables  
+  const [activeState, setActiveState] = useState<string>('Claimed');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
+
+  // Reset area filter if current filter is no longer available
+  useEffect(() => {
+    if (userData && userData.length > 0 && userData[0].AOW) {
+      const userAOW = userData[0].AOW.split(',').map(a => a.trim());
+      if (activeAreaFilter !== 'All' && !userAOW.includes(activeAreaFilter)) {
+        setActiveAreaFilter('All');
+      }
+    }
+  }, [userData, activeAreaFilter]);
 
   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
@@ -266,13 +277,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const previousMainTab = useRef<string>('Claimed');
 
   const toggleDashboard = useCallback(() => {
-    if (activeMainTab === '') {
-      setActiveMainTab(previousMainTab.current || 'Claimed');
+    if (activeState === '') {
+      setActiveState(previousMainTab.current || 'Claimed');
     } else {
-      previousMainTab.current = activeMainTab;
-      setActiveMainTab('');
+      previousMainTab.current = activeState;
+      setActiveState('');
     }
-  }, [activeMainTab]);
+  }, [activeState]);
 
   useEffect(() => {
     const flag = sessionStorage.getItem('openUnclaimedEnquiries');
@@ -475,68 +486,72 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const filteredEnquiries = useMemo(() => {
     let filtered = enquiriesInSliderRange;
-    if (activeMainTab === 'All') {
-      // do nothing
-    } else {
-      switch (activeMainTab) {
-        case 'Claimed':
-          filtered = filtered.filter(
-            (e) => e.Point_of_Contact?.toLowerCase() === (context?.userPrincipalName || '').toLowerCase()
-          );
-          break;
-        case 'Converted':
-          if (context && context.userPrincipalName) {
-            const userEmail = context.userPrincipalName.toLowerCase();
-            const userFilteredEnquiryIds = convertedPoidDataList
-              .filter((p) => p.poc?.toLowerCase() === userEmail)
-              .map((p) => String(p.acid));
-            filtered = convertedEnquiriesList.filter((enq) =>
-              userFilteredEnquiryIds.includes(enq.ID)
-            );
-          } else {
-            filtered = convertedEnquiriesList;
+    
+    // Filter by activeState first (supports All, Claimed, Unclaimed, etc.)
+    if (activeState === 'Claimed') {
+      filtered = filtered.filter(enquiry => 
+        enquiry.Point_of_Contact && 
+        enquiry.Point_of_Contact.toLowerCase() !== 'team@helix-law.com'
+      );
+    } else if (activeState === 'Claimable') { // Maps to "Unclaimed" display
+      filtered = filtered.filter(enquiry => 
+        enquiry.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
+      );
+    }
+    // If activeState === 'All', show all enquiries (no filtering)
+    
+    // Filter by user's areas of work (this maintains the area-based access control)
+    // In localhost, filter by locally selected areas; in production, filter by user's AOW
+    if (userData && userData.length > 0 && userData[0].AOW) {
+      const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
+      const hasFullAccess = userAOW.includes('operations') || userAOW.includes('tech');
+      
+      if (!hasFullAccess) {
+        filtered = filtered.filter(enquiry => {
+          if (!enquiry.Area_of_Work) return false;
+          const enquiryArea = enquiry.Area_of_Work.toLowerCase();
+          
+          // First check if enquiry is in user's allowed areas
+          if (!userAOW.includes(enquiryArea)) return false;
+          
+          // Then apply active area filter if not 'All'
+          if (activeAreaFilter !== 'All') {
+            return enquiryArea === activeAreaFilter.toLowerCase();
           }
-          break;
-        case 'Claimable':
-          filtered = filtered.filter(
-            (enq) => enq.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
-          );
-          break;
-        case 'Triaged':
-          filtered = filtered.filter(
-            (enq) =>
-              enq.Point_of_Contact &&
-              triagedPointOfContactEmails.includes(enq.Point_of_Contact.toLowerCase())
-          );
-          break;
-        default:
-          break;
+          
+          return true;
+        });
+      } else {
+        // Operations/Tech users: only apply area filter if not 'All'
+        if (activeAreaFilter !== 'All') {
+          filtered = filtered.filter(enquiry => {
+            if (!enquiry.Area_of_Work) return false;
+            return enquiry.Area_of_Work.toLowerCase() === activeAreaFilter.toLowerCase();
+          });
+        }
       }
     }
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (en) =>
-          `${en.First_Name} ${en.Last_Name}`.toLowerCase().includes(lowerSearchTerm) ||
-          en.Email?.toLowerCase().includes(lowerSearchTerm) ||
-          (en.Company && en.Company.toLowerCase().includes(lowerSearchTerm))
+    
+    // Apply search term filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(enquiry => 
+        enquiry.First_Name?.toLowerCase().includes(term) ||
+        enquiry.Last_Name?.toLowerCase().includes(term) ||
+        enquiry.Email?.toLowerCase().includes(term) ||
+        enquiry.Company?.toLowerCase().includes(term) ||
+        enquiry.Type_of_Work?.toLowerCase().includes(term) ||
+        enquiry.ID?.toLowerCase().includes(term)
       );
     }
-    if (selectedArea) {
-      filtered = filtered.filter(
-        (enq) => enq.Area_of_Work && enq.Area_of_Work.toLowerCase() === selectedArea.toLowerCase()
-      );
-    }
+    
     return filtered;
   }, [
     enquiriesInSliderRange,
-    activeMainTab,
-    context,
+    userData,
+    activeState,
+    activeAreaFilter,
     searchTerm,
-    triagedPointOfContactEmails,
-    convertedEnquiriesList,
-    convertedPoidDataList,
-    selectedArea,
   ]);
 
   // Removed pagination logic
@@ -597,7 +612,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       if (key !== '') {
         previousMainTab.current = key;
       }
-      setActiveMainTab(key);
+      setActiveState(key);
       setActiveSubTab('Overview');
       setItemsToShow(20);
       setTimeout(() => {
@@ -642,22 +657,105 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   useLayoutEffect(() => {
     if (!selectedEnquiry && !selectedNewEnquiry) {
+      // Enhanced navigation with all filter options + area-of-work integration
+      // Use actual userData (which gets updated by area selection in localhost)
+      let userAOW = userData && userData.length > 0 && userData[0].AOW 
+        ? userData[0].AOW.split(',').map(a => a.trim()) 
+        : [];
+      
+      // Operations/Tech users get access to all areas for filtering
+      const hasFullAccess = userAOW.some(area => 
+        area.toLowerCase() === 'operations' || area.toLowerCase() === 'tech'
+      );
+      
+      if (hasFullAccess) {
+        userAOW = ['Commercial', 'Construction', 'Property', 'Employment', 'Misc/Other', 'Operations', 'Tech'];
+      }
+      
       setContent(
-        <EnquiriesMenu
-          activeArea={selectedArea}
-          setActiveArea={setSelectedArea}
-          activeState={activeMainTab}
-          setActiveState={handleSetActiveState}
-          toggleDashboard={toggleDashboard}
-          toggleUnclaimed={toggleUnclaimedBoard}
-          unclaimedActive={showUnclaimedBoard}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          isSearchActive={isSearchActive}
-          setSearchActive={setSearchActive}
-          showGroupedView={showGroupedView}
-          setShowGroupedView={setShowGroupedView}
-        />
+        <div style={{
+          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+          padding: '12px 24px',
+          boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          fontSize: '14px',
+          fontFamily: 'Raleway, sans-serif',
+          flexWrap: 'wrap',
+        }}>
+          {/* Status filter navigation buttons */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {['All', 'Claimed', 'Unclaimed'].map(filterOption => (
+              <button
+                key={filterOption}
+                onClick={() => setActiveState(filterOption === 'Unclaimed' ? 'Claimable' : filterOption)}
+                style={{
+                  background: activeState === (filterOption === 'Unclaimed' ? 'Claimable' : filterOption) ? colours.highlight : 'transparent',
+                  color: activeState === (filterOption === 'Unclaimed' ? 'Claimable' : filterOption) ? 'white' : (isDarkMode ? colours.dark.text : colours.light.text),
+                  border: `1px solid ${colours.highlight}`,
+                  borderRadius: '16px',
+                  padding: '6px 16px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontFamily: 'Raleway, sans-serif',
+                }}
+              >
+                {filterOption}
+              </button>
+            ))}
+          </div>
+          
+          {/* Area filter buttons - only show if user has multiple areas */}
+          {userAOW.length > 1 && (
+            <>
+              <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {/* All areas button */}
+                <button
+                  key="All"
+                  onClick={() => setActiveAreaFilter('All')}
+                  style={{
+                    background: activeAreaFilter === 'All' ? colours.highlight : (isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground),
+                    color: activeAreaFilter === 'All' ? 'white' : (isDarkMode ? colours.dark.text : colours.light.text),
+                    border: `1px solid ${activeAreaFilter === 'All' ? colours.highlight : (isDarkMode ? colours.dark.border : colours.light.border)}`,
+                    borderRadius: '12px',
+                    padding: '4px 12px',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    fontFamily: 'Raleway, sans-serif',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  All
+                </button>
+                {/* Individual area buttons */}
+                {userAOW.map(area => (
+                  <button
+                    key={area}
+                    onClick={() => setActiveAreaFilter(area)}
+                    style={{
+                      background: activeAreaFilter === area ? colours.highlight : (isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground),
+                      color: activeAreaFilter === area ? 'white' : (isDarkMode ? colours.dark.text : colours.light.text),
+                      border: `1px solid ${activeAreaFilter === area ? colours.highlight : (isDarkMode ? colours.dark.border : colours.light.border)}`,
+                      borderRadius: '12px',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      fontFamily: 'Raleway, sans-serif',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {area}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       );
     } else {
       setContent(
@@ -686,14 +784,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     selectedEnquiry,
     selectedNewEnquiry,
     selectedArea,
-    activeMainTab,
-    searchTerm,
-    isSearchActive,
-    handleSetActiveState,
+    userData,
     isDarkMode,
     activeSubTab,
     handleSubTabChange,
     handleBackToList,
+    activeState,
+    activeAreaFilter,
   ]);
 
   // Navigator content for new enquiry system
@@ -1075,134 +1172,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           enquiries={unclaimedEnquiries}
           onSelect={handleSelectEnquiry}
         />
-      ) : (
-        !selectedEnquiry &&
-        !selectedNewEnquiry &&
-        !selectedArea &&
-        !activeMainTab && (
-          <Stack
-            tokens={{ childrenGap: 20 }}
-            styles={{
-              root: {
-                backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#fff',
-              padding: '30px',
-              borderRadius: '12px',
-              boxShadow: isDarkMode
-                ? '0 4px 16px rgba(0, 0, 0, 0.6)'
-                : '0 4px 16px rgba(0, 0, 0, 0.1)',
-              marginBottom: '20px',
-              fontFamily: 'Raleway, sans-serif',
-            },
-          }}
-        >
-          <Stack
-            horizontalAlign="center"
-            tokens={{ childrenGap: 20 }}
-            style={{ marginBottom: '20px' }}
-          >
-              <Stack
-              tokens={{ childrenGap: 5 }}
-              verticalAlign="center"
-              style={{ fontFamily: 'Raleway, sans-serif' }}
-              >
-              <Text
-                variant="mediumPlus"
-                styles={{
-                  root: {
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontFamily: 'Raleway, sans-serif',
-                    fontWeight: 600,
-                    textAlign: 'center',
-                    width: '100%',
-                  },
-                }}
-                >
-                {sortedValidEnquiries[currentSliderEnd]?.Touchpoint_Date
-                  ? format(
-                    parseISO(sortedValidEnquiries[currentSliderEnd].Touchpoint_Date),
-                    'dd MMM yyyy'
-                  )
-                  : ''}
-                {' - '}
-                {sortedValidEnquiries[currentSliderStart]?.Touchpoint_Date
-                  ? format(
-                    parseISO(sortedValidEnquiries[currentSliderStart].Touchpoint_Date),
-                    'dd MMM yyyy'
-                  )
-                  : ''}
-              </Text>
-              <Slider
-                range
-                min={0}
-                max={sortedValidEnquiries.length - 1}
-                value={[
-                  sortedValidEnquiries.length - 1 - currentSliderEnd,
-                  sortedValidEnquiries.length - 1 - currentSliderStart,
-                ]}
-                onChange={(value) => {
-                  if (Array.isArray(value)) {
-                    setCurrentSliderStart(sortedValidEnquiries.length - 1 - value[1]);
-                    setCurrentSliderEnd(sortedValidEnquiries.length - 1 - value[0]);
-                  }
-                }}
-                trackStyle={[{ backgroundColor: colours.highlight, height: 8 }]}
-                handleStyle={[
-                  {
-                    backgroundColor: colours.highlight,
-                    borderColor: colours.highlight,
-                    height: 20,
-                    width: 20,
-                    transform: 'translateX(-50%)',
-                  },
-                  {
-                    backgroundColor: colours.highlight,
-                    borderColor: colours.highlight,
-                    height: 20,
-                    width: 20,
-                    transform: 'translateX(-50%)',
-                  },
-                ]}
-                railStyle={{
-                  backgroundColor: isDarkMode
-                    ? colours.dark.border
-                    : colours.inactiveTrackLight,
-                  height: 8,
-                }}
-                style={{ width: 500, margin: '0 auto' }}
-              />
-
-            </Stack>
-          </Stack>
-          <Stack
-            horizontal
-            wrap
-            horizontalAlign="stretch"
-            tokens={{ childrenGap: 20 }}
-            style={{ width: '100%', marginBottom: '20px' }}
-          >
-            {['Commercial', 'Property', 'Construction', 'Employment', 'Other/Unsure'].map(
-              (area) => (
-                <AreaCountCard
-                  key={area}
-                  area={area}
-                  count={enquiriesCountPerArea[area]}
-                  monthlyCounts={monthlyEnquiryCounts.map((m) => ({
-                    month: m.month,
-                    count: getMonthlyCountByArea(m, area),
-                  }))}
-                  icon={getAreaIcon(area)}
-                  color={getAreaColor(area)}
-                  animationDelay={0.2}
-                />
-              )
-            )}
-          </Stack>
-        </Stack>
-        )
-      )}
+      ) : null}
 
       <div
-        key={activeMainTab}
+        key={activeState}
         className={mergeStyles({
           flex: 1,
           display: 'flex',
@@ -1213,166 +1186,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           transition: 'background-color 0.3s',
         })}
       >
-        {!selectedEnquiry && !selectedArea && !activeMainTab ? (
-          <div
-            className={mergeStyles({
-              padding: '30px',
-              backgroundColor: 'transparent',
-              borderRadius: '20px',
-              boxShadow: 'none',
-              position: 'relative',
-              fontFamily: 'Raleway, sans-serif',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
-          >
-            <ResponsiveContainer width="100%" height={500}>
-              <BarChart
-                data={monthlyEnquiryCounts}
-                margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                style={{ fontFamily: 'Raleway, sans-serif' }}
-              >
-
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDarkMode ? colours.dark.border : '#e0e0e0'}
-                />
-                <YAxis
-                  stroke={isDarkMode ? colours.dark.text : colours.light.text}
-                  tick={{
-                    fontSize: 14,
-                    fontWeight: 400,
-                    fontFamily: 'Raleway, sans-serif',
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDarkMode
-                      ? colours.dark.sectionBackground
-                      : colours.light.background,
-                    border: `1px solid ${
-                      isDarkMode ? colours.dark.border : colours.light.border
-                    }`,
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontFamily: 'Raleway, sans-serif',
-                  }}
-                  labelStyle={{
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontFamily: 'Raleway, sans-serif',
-                  }}
-                  itemStyle={{
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontFamily: 'Raleway, sans-serif',
-                  }}
-                />
-                <Legend content={renderCustomLegend} />
-                <Bar
-                  dataKey="commercial"
-                  shape={<CustomBarShape />}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  <LabelList
-                    dataKey="commercial"
-                    content={(props) => (
-                      <CustomLabel
-                        {...props}
-                        value={typeof props.value === 'number' ? props.value : undefined}
-                        isDarkMode={isDarkMode}
-                        dataKey="commercial"
-                      />
-                    )}
-                  />
-                </Bar>
-                <Bar
-                  dataKey="property"
-                  shape={<CustomBarShape />}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  <LabelList
-                    dataKey="property"
-                    content={(props) => (
-                      <CustomLabel
-                        {...props}
-                        value={typeof props.value === 'number' ? props.value : undefined}
-                        isDarkMode={isDarkMode}
-                        dataKey="property"
-                      />
-                    )}
-                  />
-                </Bar>
-                <Bar
-                  dataKey="construction"
-                  shape={<CustomBarShape />}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  <LabelList
-                    dataKey="construction"
-                    content={(props) => (
-                      <CustomLabel
-                        {...props}
-                        value={typeof props.value === 'number' ? props.value : undefined}
-                        isDarkMode={isDarkMode}
-                        dataKey="construction"
-                      />
-                    )}
-                  />
-                </Bar>
-                <Bar
-                  dataKey="employment"
-                  shape={<CustomBarShape />}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  <LabelList
-                    dataKey="employment"
-                    content={(props) => (
-                      <CustomLabel
-                        {...props}
-                        value={typeof props.value === 'number' ? props.value : undefined}
-                        isDarkMode={isDarkMode}
-                        dataKey="employment"
-                      />
-                    )}
-                  />
-                </Bar>
-                <Bar
-                  dataKey="otherUnsure"
-                  shape={<CustomBarShape />}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                >
-                  <LabelList
-                    dataKey="otherUnsure"
-                    content={(props) => (
-                      <CustomLabel
-                        {...props}
-                        value={typeof props.value === 'number' ? props.value : undefined}
-                        isDarkMode={isDarkMode}
-                        dataKey="otherUnsure"
-                      />
-                    )}
-                  />
-                </Bar>
-                <XAxis
-                  dataKey="month"
-                  stroke={isDarkMode ? colours.dark.text : colours.light.text}
-                  tick={{
-                    fontSize: 14,
-                    fontWeight: 400,
-                    fontFamily: 'Raleway, sans-serif',
-                    textAnchor: 'middle',
-                  }}
-                  height={50}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : selectedEnquiry ? (
+        {selectedEnquiry ? (
           renderDetailView(selectedEnquiry)
         ) : (
           <>
@@ -1392,6 +1206,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 setSelectedEnquiry(convertedEnquiry);
                 setActiveSubTab('Pitch'); // Go directly to Pitch Builder
               }}
+              userData={userData || undefined}
+              activeMainTab={activeState}
+              selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
             />
 
             {/* V1 Enquiries - only show if no v2 enquiry is selected */}
@@ -1456,6 +1273,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   {displayedItems.map((item, idx) => {
                     const isLast = idx === displayedItems.length - 1;
                     
+                    // Extract user's areas of work (AOW) for filtering
+                    // Skip area filtering in local development (localhost)
+                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    let userAOW: string[] = [];
+                    if (!isLocalhost && userData && userData.length > 0 && userData[0].AOW) {
+                      userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
+                    }
+                    
                     if (isGroupedEnquiry(item)) {
                       // Render grouped enquiry card
                       return (
@@ -1466,6 +1291,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                           onRate={handleRate}
                           teamData={teamData}
                           isLast={isLast}
+                          userAOW={userAOW}
                         />
                       );
                     } else {
@@ -1478,6 +1304,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                           onRate={handleRate}
                           teamData={teamData}
                           isLast={isLast}
+                          userAOW={userAOW}
                         />
                       );
                     }

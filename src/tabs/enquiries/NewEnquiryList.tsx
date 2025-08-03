@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { mergeStyles } from '@fluentui/react';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { colours } from '../../app/styles/colours';
 import { NewEnquiry } from '../../app/functionality/newEnquiryTypes';
+import { UserData } from '../../app/functionality/types';
 import { fetchNewEnquiriesData } from '../../app/functionality/fetchNewEnquiries';
 import NewEnquiryLineItem from './NewEnquiryLineItem';
 
@@ -10,18 +11,71 @@ interface NewEnquiryListProps {
   onSelectEnquiry?: (enquiry: NewEnquiry) => void;
   onRateEnquiry?: (enquiryId: number) => void;
   onPitch?: (enquiry: NewEnquiry) => void;
+  userData?: UserData[];
+  activeMainTab?: string;
+  selectedArea?: string | null;
 }
 
 const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
   onSelectEnquiry,
   onRateEnquiry,
   onPitch,
+  userData,
+  activeMainTab,
+  selectedArea,
 }) => {
   const { isDarkMode } = useTheme();
   const [enquiries, setEnquiries] = useState<NewEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEnquiry, setSelectedEnquiry] = useState<NewEnquiry | null>(null);
+
+  // Filter enquiries based on user's areas of work, main tab, and selected area
+  const filteredEnquiries = useMemo(() => {
+    let filtered = enquiries;
+    
+    // Filter by activeMainTab first
+    if (activeMainTab === 'Claimed') {
+      filtered = filtered.filter(enquiry => 
+        enquiry.poc && 
+        enquiry.poc.toLowerCase() !== 'team@helix-law.com'
+      );
+    } else if (activeMainTab === 'Unclaimed') {
+      filtered = filtered.filter(enquiry => 
+        enquiry.poc?.toLowerCase() === 'team@helix-law.com'
+      );
+    }
+    
+    // Filter by user's areas of work
+    // Skip area filtering in local development (localhost)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocalhost && userData && userData.length > 0 && userData[0].AOW) {
+      const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
+      filtered = filtered.filter(enquiry => {
+        if (!enquiry.aow) return false;
+        return userAOW.includes(enquiry.aow.toLowerCase());
+      });
+    }
+    
+    // Apply area-specific filter if selected
+    if (selectedArea) {
+      // Handle multiple areas (comma-separated)
+      const selectedAreas = selectedArea.split(',').map(a => a.trim().toLowerCase());
+      const hasFullAccess = selectedAreas.includes('operations') || selectedAreas.includes('tech');
+      
+      if (!hasFullAccess) {
+        filtered = filtered.filter(
+          (enq) => {
+            const area = (enq.aow || (enq as any).Area_of_Work || '').toLowerCase();
+            return selectedAreas.includes(area);
+          }
+        );
+      }
+      // If user has Operations/Tech access, show all enquiries (no area filtering)
+    }
+    
+    return filtered;
+  }, [enquiries, userData, activeMainTab, selectedArea]);
 
   useEffect(() => {
     loadEnquiries();
@@ -166,13 +220,13 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
     );
   }
 
-  // Calculate stats
-  const totalEnquiries = enquiries.length;
-  const highValueEnquiries = enquiries.filter(e => {
+  // Calculate stats using filtered enquiries
+  const totalEnquiries = filteredEnquiries.length;
+  const highValueEnquiries = filteredEnquiries.filter(e => {
     const value = parseFloat(e.value.replace(/[£,]/g, ''));
     return value >= 3000;
   }).length;
-  const recentEnquiries = enquiries.filter(e => {
+  const recentEnquiries = filteredEnquiries.filter(e => {
     const enquiryDate = new Date(e.datetime);
     const today = new Date();
     const diffTime = Math.abs(today.getTime() - enquiryDate.getTime());
@@ -207,18 +261,23 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
             Retry
           </button>
         </div>
+      ) : filteredEnquiries.length === 0 ? (
+        <div className={errorStyles}>
+          <h3>No Enquiries Found</h3>
+          <p>No enquiries match your current area of work filter.</p>
+        </div>
       ) : (
         <>
           {/* Enquiry Line Items with Inline Expansion */}
           <div>
-            {enquiries.map((enquiry, index) => (
+            {filteredEnquiries.map((enquiry, index) => (
               <NewEnquiryLineItem
                 key={enquiry.id}
                 enquiry={enquiry}
                 onSelect={handleSelectEnquiry}
                 onRate={handleRateEnquiry}
                 onPitch={handlePitch}
-                isLast={index === enquiries.length - 1}
+                isLast={index === filteredEnquiries.length - 1}
                 isExpanded={selectedEnquiry?.id === enquiry.id}
               />
             ))}
