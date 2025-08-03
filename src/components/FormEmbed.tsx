@@ -91,6 +91,21 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, teamData, matters
                         setFormKey(Date.now());
                     }, 3000);
                 }
+
+                if (link.title === 'Payment Requests') {
+                    try {
+                        await fetch(
+                            'https://prod-16.uksouth.logic.azure.com:443/workflows/625f5ed1d19b42999e113bd44c4799e5/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OQhUuEJuXMgy2UCbOAuwM-3OBKb0xLIKgbp1GcnH_Bg',
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(values),
+                            }
+                        );
+                    } catch (err) {
+                        console.error('Error posting payment request to external endpoint:', err);
+                    }
+                }
             } catch (error: any) {
                 console.error('Error in financial form submission:', error);
                 setSubmissionSuccess(null);

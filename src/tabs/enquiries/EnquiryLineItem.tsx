@@ -1,8 +1,6 @@
 import {
     Text,
-    IconButton,
-    TooltipHost,
-    IButtonStyles,
+    Icon,
 } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { Enquiry } from '../../app/functionality/types';
@@ -87,6 +85,7 @@ interface EnquiryLineItemProps {
   enquiry: Enquiry;
   onSelect: (enquiry: Enquiry) => void;
   onRate: (enquiryId: string) => void;
+  onPitch?: (enquiry: Enquiry) => void;
   teamData?: TeamData[] | null;
   isLast?: boolean;
 }
@@ -122,40 +121,11 @@ const getAreaColor = (area: string): string => {
   }
 };
 
-const iconButtonStyles = (iconColor: string): IButtonStyles => ({
-  root: {
-    color: iconColor,
-    backgroundColor: 'transparent',
-    border: 'none',
-    selectors: {
-      ':hover': {
-        backgroundColor: colours.highlight,
-        color: '#ffffff',
-      },
-      ':focus': {
-        backgroundColor: colours.highlight,
-        color: '#ffffff',
-      },
-    },
-    height: '32px',
-    width: '32px',
-    padding: '0px',
-    boxShadow: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    fontSize: '16px',
-    lineHeight: '1',
-    color: iconColor,
-  },
-});
-
 const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   enquiry,
   onSelect,
   onRate,
+  onPitch,
   teamData,
   isLast,
 }) => {
@@ -198,29 +168,38 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   const lineItemStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
-    padding: '20px 24px',
-    backgroundColor: isDarkMode 
-      ? colours.dark.cardBackground 
-      : colours.light.cardBackground,
-    borderBottom: !isLast ? `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}` : 'none',
+    padding: '8px 20px',
+    borderBottom: !isLast ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}` : 'none',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.15s ease',
     fontFamily: 'Raleway, sans-serif',
-    minHeight: '88px',
-    borderLeft: `4px solid ${getAreaColor(enquiry.Area_of_Work)}`,
+    minHeight: '44px',
     position: 'relative',
+    backgroundColor: 'transparent',
     selectors: {
       ':hover': {
-        backgroundColor: isDarkMode 
-          ? colours.dark.cardHover 
-          : colours.light.cardHover,
-        transform: 'translateX(4px)',
-        boxShadow: isDarkMode
-          ? '0 4px 20px rgba(0, 0, 0, 0.4)'
-          : '0 4px 20px rgba(0, 0, 0, 0.15)',
+        backgroundColor: 'transparent',
+        transform: 'translateX(2px)',
       },
       ':active': {
-        transform: 'translateX(2px)',
+        transform: 'translateX(1px)',
+      },
+      '::before': {
+        content: '""',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 2,
+        background: getAreaColor(enquiry.Area_of_Work),
+        zIndex: 2,
+        height: '100%',
+        opacity: 0.6,
+        transition: 'all 0.15s ease',
+      },
+      ':hover::before': {
+        width: 3,
+        opacity: 1,
       },
     },
   });
@@ -230,15 +209,15 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
     display: 'grid',
     gridTemplateColumns: '2.5fr 1.2fr 1.2fr 1fr 120px',
     alignItems: 'center',
-    gap: '24px',
+    gap: '16px',
     width: '100%',
   });
 
   const nameStyle = mergeStyles({
-    fontWeight: '600',
-    fontSize: '16px',
+    fontWeight: '500',
+    fontSize: '14px',
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    marginBottom: '4px',
+    marginBottom: '2px',
     userSelect: 'text',
     cursor: 'copy',
     transition: 'color 0.2s',
@@ -248,38 +227,40 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   });
 
   const companyStyle = mergeStyles({
-    fontSize: '14px',
-    color: isDarkMode ? colours.dark.subText : colours.light.subText,
-    marginBottom: '2px',
+    fontSize: '12px',
+    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+    marginBottom: '1px',
+    fontWeight: '500',
   });
 
   const emailStyle = mergeStyles({
-    fontSize: '13px',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    opacity: 0.8,
+    fontSize: '11px',
+    color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
     userSelect: 'text',
     cursor: 'copy',
     transition: 'color 0.2s',
+    fontWeight: '500',
     ':hover': {
       color: colours.highlight,
     },
   });
 
   const metaStyle = mergeStyles({
-    fontSize: '14px',
+    fontSize: '13px',
     color: isDarkMode ? colours.dark.text : colours.light.text,
     fontWeight: '500',
   });
 
   const valueStyle = mergeStyles({
-    fontSize: '14px',
+    fontSize: '13px',
     color: colours.highlight,
     fontWeight: '600',
   });
 
   const dateStyle = mergeStyles({
-    fontSize: '13px',
-    color: isDarkMode ? colours.dark.subText : colours.light.subText,
+    fontSize: '11px',
+    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+    fontWeight: '500',
   });
 
   const actionsStyle = mergeStyles({
@@ -290,13 +271,107 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   });
 
   const claimerBadgeStyle = mergeStyles({
-    fontSize: '11px',
+    fontSize: '10px',
+    color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
     fontWeight: '500',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    opacity: 0.6,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    marginTop: '2px',
+    marginTop: '1px',
+  });
+
+  const actionBadgeStyle = mergeStyles({
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+    color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+    border: 'none',
+    borderRadius: '16px',
+    padding: '4px 10px',
+    fontSize: '10px',
+    fontWeight: '600',
+    fontFamily: 'Raleway, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    boxShadow: 'none',
+    height: '24px',
+    minWidth: '35px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    selectors: {
+      ':hover': {
+        backgroundColor: 'rgba(102, 170, 232, 0.15)',
+        color: colours.highlight,
+        transform: 'translateY(-0.5px)',
+      },
+      ':active': {
+        transform: 'translateY(0)',
+      },
+    },
+  });
+
+  const pitchButtonStyle = mergeStyles({
+    backgroundColor: colours.highlight,
+    color: 'white',
+    border: 'none',
+    borderRadius: '16px',
+    padding: '4px 12px',
+    fontSize: '10px',
+    fontWeight: '600',
+    fontFamily: 'Raleway, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    boxShadow: 'none',
+    height: '24px',
+    minWidth: '45px',
+    selectors: {
+      ':hover': {
+        backgroundColor: colours.blue,
+        transform: 'translateY(-0.5px)',
+      },
+      ':active': {
+        transform: 'translateY(0)',
+      },
+    },
+  });
+
+  const ratingBadgeStyle = (rating?: string) => mergeStyles({
+    backgroundColor: rating 
+      ? (rating === 'Good' ? 'rgba(102, 170, 232, 0.15)' : 
+         rating === 'Neutral' ? 'rgba(128, 128, 128, 0.15)' : 'rgba(244, 67, 54, 0.15)')
+      : (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+    color: rating 
+      ? (rating === 'Good' ? colours.blue : 
+         rating === 'Neutral' ? colours.grey : colours.cta)
+      : (isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
+    border: 'none',
+    borderRadius: '16px',
+    padding: '4px 10px',
+    fontSize: '10px',
+    fontWeight: '600',
+    fontFamily: 'Raleway, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    boxShadow: 'none',
+    height: '24px',
+    minWidth: '35px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    selectors: {
+      ':hover': {
+        backgroundColor: rating 
+          ? (rating === 'Good' ? 'rgba(102, 170, 232, 0.25)' : 
+             rating === 'Neutral' ? 'rgba(128, 128, 128, 0.25)' : 'rgba(244, 67, 54, 0.25)')
+          : 'rgba(102, 170, 232, 0.15)',
+        color: rating 
+          ? (rating === 'Good' ? colours.blue : 
+             rating === 'Neutral' ? colours.grey : colours.cta)
+          : colours.highlight,
+        transform: 'translateY(-0.5px)',
+      },
+      ':active': {
+        transform: 'translateY(0)',
+      },
+    },
   });
 
   return (
@@ -305,40 +380,52 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
       <div className={mainContentStyle}>
         {/* Contact Info */}
         <div>
-          {/* Name click-to-copy */}
           <div>
             <CopyableText value={`${enquiry.First_Name} ${enquiry.Last_Name}`} className={nameStyle} label="Name" />
           </div>
           {enquiry.Company && (
             <div className={companyStyle}>{enquiry.Company}</div>
           )}
-          {/* Email click-to-copy */}
           <div>
             <CopyableText value={enquiry.Email} className={emailStyle} label="Email" />
           </div>
         </div>
 
-        {/* Area & Type */}
+        {/* Area, Type & Value */}
         <div>
           <div className={metaStyle}>{enquiry.Area_of_Work}</div>
           {enquiry.Type_of_Work && (
             <Text variant="small" styles={{
               root: {
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                fontSize: '13px',
-                opacity: 0.7,
+                color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                fontSize: '11px',
+                fontWeight: '500',
+                marginTop: '1px',
               }
             }}>
               {enquiry.Type_of_Work}
             </Text>
           )}
-        </div>
-
-        {/* Value */}
-        <div>
-          <div className={valueStyle}>
+          <div className={valueStyle} style={{ marginTop: '2px' }}>
             {enquiry.Value ? formatCurrency(enquiry.Value) : 'Not specified'}
           </div>
+        </div>
+
+        {/* Date & ID */}
+        <div>
+          <div className={dateStyle}>
+            {formatDate(enquiry.Touchpoint_Date)}
+          </div>
+          <Text variant="small" styles={{
+            root: {
+              color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+              fontSize: '10px',
+              fontWeight: '500',
+              marginTop: '1px',
+            }
+          }}>
+            ID: {enquiry.ID}
+          </Text>
           {claimer && (
             <div className={claimerBadgeStyle}>
               {claimer.Initials || claimer.Email?.split('@')[0]}
@@ -346,97 +433,62 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
           )}
         </div>
 
-        {/* Date */}
-        <div>
-          <div className={dateStyle}>
-            {formatDate(enquiry.Touchpoint_Date)}
-          </div>
-          <Text variant="small" styles={{
-            root: {
-              color: isDarkMode ? colours.dark.subText : colours.light.subText,
-              fontSize: '12px',
-            }
-          }}>
-            ID: {enquiry.ID}
-          </Text>
-        </div>
+        {/* Actions - All CTA Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginRight: '16px' }}>
+          <button
+            className={pitchButtonStyle}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onPitch) {
+                onPitch(enquiry);
+              }
+            }}
+          >
+            Pitch
+          </button>
+          
+          <button
+            className={actionBadgeStyle}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (enquiry.Phone_Number) {
+                window.location.href = `tel:${enquiry.Phone_Number}`;
+              }
+            }}
+            title="Call"
+          >
+            <Icon iconName="Phone" style={{ fontSize: '10px' }} />
+          </button>
 
-        {/* Actions */}
-        <div className={actionsStyle}>
-          <TooltipHost content="Call">
-            <IconButton
-              iconProps={{ iconName: 'Phone' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (enquiry.Phone_Number) {
-                  window.location.href = `tel:${enquiry.Phone_Number}`;
-                }
-              }}
-              styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)}
-            />
-          </TooltipHost>
+          <button
+            className={actionBadgeStyle}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (enquiry.Email) {
+                window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`;
+              }
+            }}
+            title="Email"
+          >
+            <Icon iconName="Mail" style={{ fontSize: '10px' }} />
+          </button>
 
-          <TooltipHost content="Email">
-            <IconButton
-              iconProps={{ iconName: 'Mail' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (enquiry.Email) {
-                  window.location.href = `mailto:${enquiry.Email}?subject=Your%20Enquiry&bcc=1day@followupthen.com`;
-                }
-              }}
-              styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)}
+          <button
+            className={ratingBadgeStyle(enquiry.Rating)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRate(enquiry.ID);
+            }}
+            title={enquiry.Rating ? `Rating: ${enquiry.Rating}` : 'Rate Enquiry'}
+          >
+            <Icon 
+              iconName={enquiry.Rating 
+                ? (enquiry.Rating === 'Poor' ? 'DislikeSolid' : 'LikeSolid')
+                : 'Like'
+              }
+              style={{ fontSize: '10px' }}
             />
-          </TooltipHost>
-
-          <TooltipHost content={enquiry.Rating ? `Rating: ${enquiry.Rating}` : 'Rate Enquiry'}>
-            <IconButton
-              iconProps={{ 
-                iconName: enquiry.Rating 
-                  ? (enquiry.Rating === 'Poor' ? 'DislikeSolid' : 'LikeSolid')
-                  : 'Like'
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRate(enquiry.ID);
-              }}
-              styles={{
-                root: {
-                  color: enquiry.Rating 
-                    ? (enquiry.Rating === 'Good' ? colours.blue : 
-                       enquiry.Rating === 'Neutral' ? colours.grey : colours.cta)
-                    : (isDarkMode ? colours.dark.text : colours.light.text),
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  selectors: {
-                    ':hover': {
-                      backgroundColor: colours.highlight,
-                      color: '#ffffff',
-                    },
-                    ':focus': {
-                      backgroundColor: colours.highlight,
-                      color: '#ffffff',
-                    },
-                  },
-                  height: '32px',
-                  width: '32px',
-                  padding: '0px',
-                  boxShadow: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-                icon: {
-                  fontSize: '16px',
-                  lineHeight: '1',
-                  color: enquiry.Rating 
-                    ? (enquiry.Rating === 'Good' ? colours.blue : 
-                       enquiry.Rating === 'Neutral' ? colours.grey : colours.cta)
-                    : (isDarkMode ? colours.dark.text : colours.light.text),
-                },
-              }}
-            />
-          </TooltipHost>
+          </button>
         </div>
       </div>
     </div>

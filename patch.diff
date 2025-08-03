@@ -1,57 +1,70 @@
-diff --git a/src/tabs/home/Attendance.tsx b/src/tabs/home/Attendance.tsx
-index bcd06dc8989f70208fcf928c4eb4631c464f8bb8..340f5fb641effd2ca8474894b1f2262955abfc73 100644
---- a/src/tabs/home/Attendance.tsx
-+++ b/src/tabs/home/Attendance.tsx
-@@ -726,51 +726,51 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
-               >
-                 <thead>
-                   <tr className={headerRowStyle}>
-                     <th style={{ border: '1px solid transparent', padding: '8px', width: '100px' }}></th>
-                     {attendancePersons.map((person) => (
-                       <th
-                         key={person.initials}
-                         style={{
-                           border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                           padding: '8px',
-                           textAlign: 'center',
-                           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-                           width: '100px',
-                         }}
-                       >
-                         <AttendancePersonaHeader person={person} />
-                       </th>
-                     ))}
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {orderedWeekDays.map((day, index) => {
-                     const weekKey = selectedWeek === 'current' ? currentWeek : nextWeek;
-                     const originalIndex = weekDays.indexOf(day);
-                     const dayDate = new Date(weekKey.start);
--                    dayDate.setDate(dayDate.getDate() + originalIndex);
-+                    dayDate.setUTCDate(dayDate.getUTCDate() + originalIndex);
-                     const cellDateStr = dayDate.toISOString().split('T')[0];
-                     const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
+diff --git a/src/tabs/forms/FormDetails.tsx b/src/tabs/forms/FormDetails.tsx
+index e29bb429d85d65c6b64536a2f6096d0c47e9e586..8a72181e1baea2a85730a9e8f4af0e17aec3350b 100644
+--- a/src/tabs/forms/FormDetails.tsx
++++ b/src/tabs/forms/FormDetails.tsx
+@@ -171,50 +171,65 @@ const FormDetails: React.FC<FormDetailsProps> = ({
+       const endpointUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
  
-                     return (
-                       <tr
-                         key={day}
-                         className={rowStyle(isCurrentDay, originalIndex, todayIndex, isTableExpanded, selectedWeek === 'next')}
-                       >
-                         <td
-                           style={{
-                             border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                             padding: '8px',
-                             fontWeight: 'bold',
-                             backgroundColor: colours.reporting.tableHeaderBackground,
-                             width: '100px',
-                             fontSize: '14px',
-                           }}
-                         >
-                           {getShortDayLabel(dayDate)}
-                         </td>
-                         {attendancePersons.map((person) => {
-                           const weekStart = selectedWeek === 'current' ? currentWeek.start : nextWeek.start;
-                           const localDays = localAttendance[weekStart]?.[person.initials] || person.attendance;
-                           const status = getCellStatus(localDays, person.initials, day, cellDateStr);
-                           const cellBg = isCurrentDay
+       try {
+         const response = await fetch(endpointUrl, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify(payload),
+         });
+ 
+         if (!response.ok) {
+           const errText = await response.text();
+           console.error('Error posting financial task:', errText);
+           setSubmissionSuccess(null);
+         } else {
+           const result = await response.json();
+           console.log('Financial task created successfully:', result);
+           setIsSubmitted(true);
+           setSubmissionSuccess('Financial form submitted successfully!');
+ 
+           setTimeout(() => {
+             setIsSubmitted(false);
+             setSubmissionSuccess(null);
+             setFormKey(Date.now());
+           }, 3000);
+         }
++
++        if (link.title === 'Payment Requests') {
++          try {
++            await fetch(
++              'https://prod-16.uksouth.logic.azure.com:443/workflows/625f5ed1d19b42999e113bd44c4799e5/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OQhUuEJuXMgy2UCbOAuwM-3OBKb0xLIKgbp1GcnH_Bg',
++              {
++                method: 'POST',
++                headers: { 'Content-Type': 'application/json' },
++                body: JSON.stringify(values),
++              }
++            );
++          } catch (err) {
++            console.error('Error posting payment request to external endpoint:', err);
++          }
++        }
+       } catch (error: any) {
+         console.error('Error in financial form submission:', error);
+         setSubmissionSuccess(null);
+       } finally {
+         setIsSubmitting(false); // Re-enable the button after response
+       }
+     },
+     [link.title, userData, isSubmitting]
+   );
+ 
+   return (
+     <BespokePanel
+       isOpen={isOpen}
+       onClose={onClose}
+       title={link.title}
+       width="60%"
+       offsetTop={offsetTop}
+     >
+       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+         {submissionSuccess && (
+           <MessageBar
+             messageBarType={MessageBarType.success}
+             isMultiline={false}
+             onDismiss={() => setSubmissionSuccess(null)}
+             dismissButtonAriaLabel="Close"

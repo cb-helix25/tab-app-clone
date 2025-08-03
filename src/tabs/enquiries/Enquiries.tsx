@@ -42,6 +42,8 @@ import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
 import EnquiriesMenu from './EnquiriesMenu';
+import NewEnquiryList from './NewEnquiryList';
+import { NewEnquiry } from '../../app/functionality/newEnquiryTypes';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 
@@ -214,6 +216,27 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
+  const [selectedNewEnquiry, setSelectedNewEnquiry] = useState<NewEnquiry | null>(null);
+
+  // Convert NewEnquiry to Enquiry for compatibility with PitchBuilder
+  const convertNewEnquiryToEnquiry = (newEnquiry: NewEnquiry): Enquiry => {
+    return {
+      ID: newEnquiry.id.toString(),
+      Date_Created: newEnquiry.datetime,
+      Touchpoint_Date: newEnquiry.datetime,
+      Email: newEnquiry.email,
+      Area_of_Work: newEnquiry.aow,
+      Type_of_Work: newEnquiry.tow,
+      Method_of_Contact: newEnquiry.moc,
+      Point_of_Contact: newEnquiry.poc,
+      First_Name: newEnquiry.first,
+      Last_Name: newEnquiry.last,
+      Phone_Number: newEnquiry.phone,
+      Value: newEnquiry.value,
+      // Add other required fields with sensible defaults
+      Gift_Rank: parseInt(newEnquiry.rank) || 0,
+    } as Enquiry;
+  };
   const [searchTerm, setSearchTerm] = useState<string>('');
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
@@ -618,7 +641,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }
 
   useLayoutEffect(() => {
-    if (!selectedEnquiry) {
+    if (!selectedEnquiry && !selectedNewEnquiry) {
       setContent(
         <EnquiriesMenu
           activeArea={selectedArea}
@@ -661,6 +684,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, [
     setContent,
     selectedEnquiry,
+    selectedNewEnquiry,
     selectedArea,
     activeMainTab,
     searchTerm,
@@ -671,6 +695,117 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     handleSubTabChange,
     handleBackToList,
   ]);
+
+  // Navigator content for new enquiry system
+  useEffect(() => {
+    if (selectedNewEnquiry) {
+      setContent(
+        <div className={detailNavStyle(isDarkMode)}>
+          <div 
+            className="nav-back-button"
+            onClick={() => setSelectedNewEnquiry(null)}
+            style={{
+              width: '32px',
+              height: '32px',
+              background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
+              border: '1px solid #e1dfdd',
+              borderRadius: '0px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+              position: 'relative',
+              overflow: 'hidden',
+              marginRight: 8,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#e7f1ff';
+              e.currentTarget.style.border = '1px solid #3690CE';
+              e.currentTarget.style.width = '120px';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
+              e.currentTarget.style.border = '1px solid #e1dfdd';
+              e.currentTarget.style.width = '32px';
+              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+            }}
+            title="Back to Enquiries"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setSelectedNewEnquiry(null);
+              }
+            }}
+          >
+            {/* ChevronLeft Icon */}
+            <svg 
+              width="16" 
+              height="16" 
+              viewBox="0 0 16 16" 
+              fill="none"
+              style={{
+                transition: 'color 0.3s, opacity 0.3s',
+                color: isDarkMode ? '#ffffff' : '#666666',
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <path 
+                d="M10 12L6 8L10 4" 
+                stroke="currentColor" 
+                strokeWidth="1.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+            </svg>
+            
+            {/* Expandable Text */}
+            <span 
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#3690CE',
+                opacity: 0,
+                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                whiteSpace: 'nowrap',
+              }}
+              className="back-text"
+            >
+              Back to Enquiries
+            </span>
+          </div>
+          
+          <span style={{ 
+            fontSize: '14px', 
+            fontWeight: 600, 
+            color: isDarkMode ? colours.dark.text : colours.light.text,
+            marginLeft: '8px'
+          }}>
+            Enquiry: {selectedNewEnquiry.id}
+          </span>
+          
+          <style>{`
+            .nav-back-button:hover .back-text {
+              opacity: 1 !important;
+            }
+            .nav-back-button:hover svg {
+              opacity: 0 !important;
+            }
+          `}</style>
+        </div>
+      );
+    }
+  }, [selectedNewEnquiry, setContent, isDarkMode]);
 
   const ratingOptions = [
     {
@@ -942,6 +1077,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         />
       ) : (
         !selectedEnquiry &&
+        !selectedNewEnquiry &&
         !selectedArea &&
         !activeMainTab && (
           <Stack
@@ -1073,7 +1209,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           flexDirection: 'column',
           gap: '0px', // Remove extra gap between sections
           paddingBottom: 0, // Remove extra space at the bottom
-          backgroundColor: isDarkMode ? colours.dark.background : colours.light.background,
+          backgroundColor: 'transparent',
           transition: 'background-color 0.3s',
         })}
       >
@@ -1081,13 +1217,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           <div
             className={mergeStyles({
               padding: '30px',
-              backgroundColor: isDarkMode
-                ? colours.dark.sectionBackground
-                : colours.light.sectionBackground,
+              backgroundColor: 'transparent',
               borderRadius: '20px',
-              boxShadow: isDarkMode
-                ? '0 8px 24px rgba(0, 0, 0, 0.5)'
-                : '0 8px 24px rgba(0, 0, 0, 0.2)',
+              boxShadow: 'none',
               position: 'relative',
               fontFamily: 'Raleway, sans-serif',
               height: '100%',
@@ -1244,18 +1376,33 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           renderDetailView(selectedEnquiry)
         ) : (
           <>
-            {filteredEnquiries.length === 0 ? (
+            {/* New Enquiry List - always shown unless v1 enquiry is selected */}
+            <NewEnquiryList
+              onSelectEnquiry={(enquiry: NewEnquiry) => {
+                setSelectedNewEnquiry(enquiry);
+              }}
+              onRateEnquiry={(enquiryId: number) => {
+                console.log('Rate enquiry:', enquiryId);
+                // Could integrate with existing rating system
+              }}
+              onPitch={(enquiry: NewEnquiry) => {
+                setSelectedNewEnquiry(enquiry);
+                // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
+                const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
+                setSelectedEnquiry(convertedEnquiry);
+                setActiveSubTab('Pitch'); // Go directly to Pitch Builder
+              }}
+            />
+
+            {/* V1 Enquiries - only show if no v2 enquiry is selected */}
+            {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
               <div
                 className={mergeStyles({
-                  backgroundColor: isDarkMode 
-                    ? colours.dark.sectionBackground 
-                    : colours.light.sectionBackground,
+                  backgroundColor: 'transparent',
                   borderRadius: '12px',
                   padding: '60px 40px',
                   textAlign: 'center',
-                  boxShadow: isDarkMode
-                    ? '0 4px 16px rgba(0, 0, 0, 0.3)'
-                    : '0 4px 16px rgba(0, 0, 0, 0.1)',
+                  boxShadow: 'none',
                 })}
               >
                 <Icon
@@ -1293,7 +1440,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   Try adjusting your search criteria or filters
                 </Text>
               </div>
-            ) : (
+            ) : !selectedNewEnquiry ? (
               <>
                 {/* Connected List Items */}
                 <div
@@ -1303,9 +1450,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                     gap:  "12px",
                     padding: 0,
                     margin: 0,
-                    backgroundColor: isDarkMode 
-                      ? colours.dark.cardBackground 
-                      : colours.light.cardBackground,
+                    backgroundColor: 'transparent',
                   })}
                 >
                   {displayedItems.map((item, idx) => {
@@ -1340,7 +1485,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 </div>
                 <div ref={loader} />
               </>
-            )}
+            ) : null}
           </>
         )}
       </div>

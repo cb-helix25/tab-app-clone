@@ -139,7 +139,7 @@ async function fetchEnquiries(
   // Note: email parameter not used in new function as it filters by different fields
   
   const response = await fetch(
-    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH}?code=${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE}&${params.toString()}`,
+    `/api/enquiries?${params.toString()}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },

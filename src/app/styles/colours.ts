@@ -88,7 +88,7 @@ export const colours = {
   },
 
   orange: '#FF8C00', // Construction
-  green: '#107c10', // Property
+  green: '#20b26c', // Property - updated to match pitched indicators in deal cards
   yellow: '#ffd54f', // Employment
   red: '#D65541', // CTA color used as red
   tagBackground: '#e1dfdd',

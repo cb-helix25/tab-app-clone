@@ -12,6 +12,8 @@ const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
 const riskAssessmentsRouter = require('./routes/riskAssessments');
 const bundleRouter = require('./routes/bundle');
+
+const enquiriesRouter = require('./routes/enquiries');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
@@ -40,6 +42,8 @@ app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/ccl', cclRouter);
 app.use('/ccls', express.static(CCL_DIR));
+
+app.use('/api/enquiries', enquiriesRouter);
 
 app.get('/api/keys/:name/preview', async (req, res) => {
     try {

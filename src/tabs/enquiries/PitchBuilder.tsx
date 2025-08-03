@@ -3673,142 +3673,227 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           </div>
 
           {/* Separator between header and fields */}
-          <div style={{ borderBottom: '2px solid #e1e4e8', margin: '0 0 18px 0', width: '100%' }} />
+          <div style={{ borderBottom: '1px solid #e1e4e8', margin: '0 0 12px 0', width: '100%' }} />
 
-          {/* New two-column layout for summary card */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: 24, marginBottom: 8 }}>
-            {/* Left column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* To, CC, BCC stacked */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>To</div>
+          {/* New streamlined layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 6 }}>
+            {/* Left column - essential email fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* To and Subject in compact style - same size */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '8px',
+                    backgroundColor: '#fff',
+                    padding: '0 4px',
+                    fontSize: '0.75rem',
+                    color: '#8b949e',
+                    fontWeight: 500,
+                    zIndex: 1
+                  }}>
+                    To
+                  </div>
                   <input
                     type="email"
                     value={to}
                     onChange={e => setTo(e.target.value)}
                     placeholder="Recipient email"
-                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                    style={{ 
+                      width: '100%', 
+                      height: 36, 
+                      padding: '0 12px', 
+                      border: '1px solid #e1e4e8', 
+                      borderRadius: 0, 
+                      outline: 'none', 
+                      background: '#fff', 
+                      fontSize: '0.875rem',
+                      transition: 'border-color 0.2s ease'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#3690CE'}
+                    onBlur={(e) => e.target.style.borderColor = '#e1e4e8'}
                   />
                 </div>
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>CC</div>
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '8px',
+                    backgroundColor: '#fff',
+                    padding: '0 4px',
+                    fontSize: '0.75rem',
+                    color: '#8b949e',
+                    fontWeight: 500,
+                    zIndex: 1
+                  }}>
+                    Subject
+                  </div>
                   <input
-                    type="email"
-                    value={cc}
-                    onChange={e => setCc(e.target.value)}
-                    placeholder="CC emails"
-                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>BCC</div>
-                  <input
-                    type="email"
-                    value={bcc}
-                    onChange={e => setBcc(e.target.value)}
-                    placeholder="BCC emails"
-                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
+                    type="text"
+                    value={subject}
+                    onChange={e => setSubject(e.target.value)}
+                    placeholder="Email subject"
+                    style={{ 
+                      width: '100%', 
+                      height: 36, 
+                      padding: '0 12px', 
+                      border: '1px solid #e1e4e8', 
+                      borderRadius: 0, 
+                      outline: 'none', 
+                      background: '#fff', 
+                      fontSize: '0.875rem',
+                      transition: 'border-color 0.2s ease'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#3690CE'}
+                    onBlur={(e) => e.target.style.borderColor = '#e1e4e8'}
                   />
                 </div>
               </div>
-              {/* Subject line */}
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Subject</div>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={e => setSubject(e.target.value)}
-                  placeholder="Email subject"
-                  style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
-                />
-              </div>
-              {/* Email and Phone boxes */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                {/* Email box */}
-                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
-                  <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/><polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/></svg>
+              
+              {/* Contact info chips - horizontal layout */}
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 12, height: 24, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+                  <div style={{ paddingLeft: 8, paddingRight: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/><polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/></svg>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#333', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiry.Email || 'Email'}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#555', paddingRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{enquiry.Email || 'Email'}</div>
                 </div>
-                {/* Phone box */}
-                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
-                  <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/></svg>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 12, height: 24, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+                  <div style={{ paddingLeft: 8, paddingRight: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/></svg>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#333', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{enquiry.Phone_Number || 'Phone'}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#555', paddingRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{enquiry.Phone_Number || 'Phone'}</div>
+                </div>
+              </div>
+
+              {/* Notes moved below email and phone */}
+              <div style={{ marginTop: 4, position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  left: '8px',
+                  backgroundColor: '#fff',
+                  padding: '0 4px',
+                  fontSize: '0.75rem',
+                  color: '#8b949e',
+                  fontWeight: 500,
+                  zIndex: 1
+                }}>
+                  Enquiry Notes
+                </div>
+                <div style={{ width: '100%', height: '30px', padding: '6px 8px', border: '1px solid #e1e4e8', borderRadius: 0, fontSize: '0.8rem', background: '#f9fafb', color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+                  {enquiry.Initial_first_call_notes || 'No notes available'}
                 </div>
               </div>
             </div>
-            {/* Right column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Service Description */}
-              <div>
-                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Service Description</div>
-                <input
-                  type="text"
-                  value={serviceDescription}
-                  onChange={e => setServiceDescription(e.target.value)}
-                  placeholder="Describe the service"
-                  style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
-                />
-              </div>
-              {/* Amount and Deal Expiry in a row */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                {/* Amount box with label, 66% width */}
-                <div style={{ flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Amount (ex. VAT)</div>
-                  <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, height: 36, overflow: 'hidden' }}>
-                    <div style={{ background: '#fff', borderRight: '1px solid #e1e4e8', height: '100%', width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#3690CE' }}>£</div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', height: '100%' }}>
+            {/* Right column - streamlined deal card */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, padding: 16, position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  left: '8px',
+                  backgroundColor: '#fff',
+                  padding: '0 4px',
+                  fontSize: '0.75rem',
+                  color: '#8b949e',
+                  fontWeight: 500,
+                  zIndex: 1
+                }}>
+                  Deal Details
+                </div>
+                
+                {/* Service row */}
+                <div style={{ marginBottom: 12, position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '8px',
+                    backgroundColor: '#f8f9fa',
+                    padding: '0 4px',
+                    fontSize: '0.75rem',
+                    color: '#8b949e',
+                    fontWeight: 500,
+                    zIndex: 1
+                  }}>
+                    Service
+                  </div>
+                  <textarea
+                    value={serviceDescription}
+                    onChange={e => setServiceDescription(e.target.value)}
+                    placeholder="Describe the service"
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 0, fontSize: '0.8rem', background: '#fff', resize: 'none', minHeight: '40px', wordWrap: 'break-word', overflowWrap: 'break-word' }}
+                    rows={2}
+                  />
+                </div>
+
+                {/* Amount and Expiry side by side */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      left: '8px',
+                      backgroundColor: '#f8f9fa',
+                      padding: '0 4px',
+                      fontSize: '0.75rem',
+                      color: '#8b949e',
+                      fontWeight: 500,
+                      zIndex: 1
+                    }}>
+                      Amount
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #d1d5db', borderRadius: 0, height: 30, overflow: 'hidden' }}>
+                      <div style={{ background: '#f1f5f9', borderRight: '1px solid #d1d5db', height: '100%', width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#3690CE', fontSize: '11px' }}>£</div>
                       <input
                         type="number"
                         value={amount}
                         onChange={e => handleAmountChange(e.target.value)}
                         onBlur={handleAmountBlur}
                         placeholder="0.00"
-                        style={{ width: '100%', height: '100%', padding: '0 8px', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, color: '#3690CE', fontSize: '0.95rem' }}
+                        style={{ width: '100%', height: '100%', padding: '0 6px', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, color: '#3690CE', fontSize: '0.8rem' }}
                         min="0"
                         step="0.01"
                       />
                     </div>
                   </div>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      left: '8px',
+                      backgroundColor: '#f8f9fa',
+                      padding: '0 4px',
+                      fontSize: '0.75rem',
+                      color: '#8b949e',
+                      fontWeight: 500,
+                      zIndex: 1
+                    }}>
+                      Expiry
+                    </div>
+                    <input
+                      type="date"
+                      value={addDays(new Date(), 14).toISOString().slice(0, 10)}
+                      onChange={() => {}}
+                      style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 0, fontSize: '0.8rem', background: '#f9fafb', color: '#6b7280', height: 30 }}
+                      disabled
+                    />
+                  </div>
                 </div>
-                {/* Deal Expiry, 33% width */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>Deal Expiry</div>
-                  <input
-                    type="date"
-                    value={addDays(new Date(), 14).toISOString().slice(0, 10)}
-                    onChange={() => {}}
-                    style={{ width: '100%', padding: 8, border: '1px solid #e1e4e8', borderRadius: 0 }}
-                    disabled
-                  />
-                </div>
-              </div>
-              {/* Payment Preview */}
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>Payment Preview</div>
-                <div style={{ background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, padding: 12, fontSize: 14, color: '#3690CE', fontWeight: 600, marginBottom: 12 }}>
-                  {serviceDescription
-                    ? `The fee is including VAT for ${serviceDescription.trim() || '[Service description]'}.` 
-                    : 'The fee is including VAT for [Service description].'}
-                  {amount && parseFloat(amount) > 0 && (
-                    <span style={{ marginLeft: 8, color: '#24292f', fontWeight: 500 }}>
-                      (£{parseFloat(amount).toFixed(2)})
-                    </span>
-                  )}
-                </div>
-                {/* Initial Notes below Payment Preview */}
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>Initial Notes</div>
-                  <textarea
-                    value={initialNotes || ''}
-                    onChange={e => setInitialNotes(e.target.value)}
-                    placeholder="Add any initial notes..."
-                    style={{ width: '100%', minHeight: 48, padding: 8, border: '1px solid #e1e4e8', borderRadius: 0, resize: 'vertical', fontSize: 13 }}
-                  />
+
+                {/* Payment preview with white background and blue border - thinner */}
+                <div style={{ background: '#fff', border: '1px solid #3690CE', color: '#3690CE', padding: '4px 8px', borderRadius: 0, marginBottom: 8, fontSize: '11px', fontWeight: 600, wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                  <div style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+                    {serviceDescription
+                      ? `Fee including VAT for ${serviceDescription.trim() || '[Service]'}` 
+                      : 'Fee including VAT for [Service]'}
+                    {amount && parseFloat(amount) > 0 && (
+                      <span style={{ fontWeight: 700, marginLeft: 6 }}>
+                        £{parseFloat(amount).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
