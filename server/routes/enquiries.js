@@ -1,5 +1,4 @@
 const express = require('express');
-const fetch = require('node-fetch');
 const { DefaultAzureCredential } = require('@azure/identity');
 const { SecretClient } = require('@azure/keyvault-secrets');
 const router = express.Router();

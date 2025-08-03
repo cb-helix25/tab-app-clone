@@ -94,49 +94,29 @@ const SnippetEditsApproval: React.FC<SnippetEditsApprovalProps> = ({
                     <Stack key={edit.id} tokens={{ childrenGap: 8 }} className={cardStyle}>
                         <Text variant="mediumPlus">{currentBlockTitle}</Text>
                         <Text variant="small">Snippet ID: {edit.snippetId}</Text>
-                        <Text variant="small">Current label: {edit.currentLabel || 'N/A'}</Text>
-                        {typeof edit.currentSortOrder === 'number' && (
-                            <Text variant="small">Current sort order: {edit.currentSortOrder}</Text>
-                        )}
-                        {edit.currentBlockId && (
-                            <Text variant="small">Current block: {currentBlockTitle}</Text>
-                        )}
-                        {edit.currentCreatedBy && (
-                            <Text variant="small">Created by {edit.currentCreatedBy}</Text>
-                        )}
-                        {edit.currentCreatedAt && (
-                            <Text variant="small">Created at {new Date(edit.currentCreatedAt).toLocaleString()}</Text>
-                        )}
-                        {edit.currentUpdatedBy && (
-                            <Text variant="small">Updated by {edit.currentUpdatedBy}</Text>
-                        )}
-                        {edit.currentUpdatedAt && (
-                            <Text variant="small">Updated at {new Date(edit.currentUpdatedAt).toLocaleString()}</Text>
-                        )}
-                        {edit.currentApprovedBy && (
-                            <Text variant="small">Approved by {edit.currentApprovedBy}</Text>
-                        )}
-                        {edit.currentApprovedAt && (
-                            <Text variant="small">Approved at {new Date(edit.currentApprovedAt).toLocaleString()}</Text>
-                        )}
-                        {typeof edit.currentVersion === 'number' && (
-                            <Text variant="small">Version: {edit.currentVersion}</Text>
-                        )}
-                        {edit.currentIsApproved !== undefined && (
-                            <Text variant="small">Is approved: {edit.currentIsApproved ? 'Yes' : 'No'}</Text>
-                        )}
-                        <Text>Current text:</Text>
-                        <Text variant="small">{edit.currentText}</Text>
-                        <Text variant="medium">Proposed changes</Text>
-                        <Text>{edit.proposedText}</Text>
-                        {edit.proposedLabel && <Text>Label: {edit.proposedLabel}</Text>}
-                        {typeof edit.proposedSortOrder === 'number' && (
-                            <Text>Sort order: {edit.proposedSortOrder}</Text>
-                        )}
-                        {edit.proposedBlockId && (
-                            <Text>Block: {proposedBlockTitle || edit.proposedBlockId}</Text>
-                        )}
-                        {edit.isNew && <Text variant="small">New snippet</Text>}
+                        <Text variant="small">This change will update the snippet used in the pitch builder.</Text>
+                        <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { alignItems: 'flex-start' } }}>
+                            <Stack grow tokens={{ childrenGap: 4 }}>
+                                <Text variant="smallPlus">Current</Text>
+                                <Text variant="small">{edit.currentText}</Text>
+                                <Text variant="small">Label: {edit.currentLabel || 'N/A'}</Text>
+                                {typeof edit.currentSortOrder === 'number' && (
+                                    <Text variant="small">Sort order: {edit.currentSortOrder}</Text>
+                                )}
+                            </Stack>
+                            <Stack grow tokens={{ childrenGap: 4 }}>
+                                <Text variant="smallPlus">Proposed</Text>
+                                <Text>{edit.proposedText}</Text>
+                                {edit.proposedLabel && <Text>Label: {edit.proposedLabel}</Text>}
+                                {typeof edit.proposedSortOrder === 'number' && (
+                                    <Text>Sort order: {edit.proposedSortOrder}</Text>
+                                )}
+                                {edit.proposedBlockId && (
+                                    <Text>Block: {proposedBlockTitle || edit.proposedBlockId}</Text>
+                                )}
+                                {edit.isNew && <Text variant="small">New snippet</Text>}
+                            </Stack>
+                        </Stack>
                         <Text variant="small">Submitted by {edit.submittedBy}</Text>
                         {edit.submittedAt && (
                             <Text variant="small">Submitted at {new Date(edit.submittedAt).toLocaleString()}</Text>

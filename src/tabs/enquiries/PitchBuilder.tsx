@@ -2412,10 +2412,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         })
       });
       setSavedSnippets(prev => ({ ...prev, [blockTitle]: snippetHtml }));
-      showToast('Snippet saved', 'success');
+      showToast('Snippet submitted for approval', 'success');
     } catch (err) {
       console.error('Failed to save snippet', err);
-      showToast('Save failed', 'error');
+      showToast('Submission failed', 'error');
     }
   }
 
@@ -4085,11 +4085,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         {snippetEdit && (
           <SnippetEditPopover
             target={snippetEdit.target}
-            previewText={pendingOptionText}
             onDismiss={() => {
               setSnippetEdit(null);
               setPendingOptionText('');
-            }}
+            } }
             onSave={({ label, sortOrder, isNew }) => {
               submitPlaceholderOption(
                 snippetEdit.blockTitle,
@@ -4097,12 +4096,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 snippetEdit.placeholder,
                 label,
                 sortOrder,
-                isNew,
+                isNew
               );
               setSnippetEdit(null);
               setPendingOptionText('');
-            }}
-          />
+            } } originalText={''} editedText={''}          />
         )}
 
         {/* Row: Preview and Reset Buttons (single instance) */}

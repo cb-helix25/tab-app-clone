@@ -855,16 +855,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       {snippetEditState && (
         <SnippetEditPopover
           target={snippetEditState.target}
-          previewText={getOptionContent(
-            snippetEditState.blockTitle, 
-            snippetEditState.optionLabel, 
-            templateBlocks
-              .find(b => b.title === snippetEditState.blockTitle)
-              ?.options.find(o => o.label === snippetEditState.optionLabel)
-              ?.previewText || ''
-          ).replace(/<[^>]*>/g, '')} // Strip HTML tags for preview
           onSave={handleSnippetSave}
           onDismiss={() => setSnippetEditState(null)}
+          originalText=""
+          editedText=""
         />
       )}
     </>

@@ -1,70 +1,32 @@
-diff --git a/src/tabs/forms/FormDetails.tsx b/src/tabs/forms/FormDetails.tsx
-index e29bb429d85d65c6b64536a2f6096d0c47e9e586..8a72181e1baea2a85730a9e8f4af0e17aec3350b 100644
---- a/src/tabs/forms/FormDetails.tsx
-+++ b/src/tabs/forms/FormDetails.tsx
-@@ -171,50 +171,65 @@ const FormDetails: React.FC<FormDetailsProps> = ({
-       const endpointUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
+diff --git a/server/routes/instructions.js b/server/routes/instructions.js
+index 458e73fcc48b28a174f1818f2b5910398dec676c..b5c59919e8cd2e2226cff8f0df6555bbc008dff2 100644
+--- a/server/routes/instructions.js
++++ b/server/routes/instructions.js
+@@ -1,27 +1,26 @@
+ const express = require('express');
+-const fetch = require('node-fetch');
+ const { DefaultAzureCredential } = require('@azure/identity');
+ const { SecretClient } = require('@azure/keyvault-secrets');
+ const router = express.Router();
  
-       try {
-         const response = await fetch(endpointUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify(payload),
-         });
+ // Set up Key Vault client
+ const credential = new DefaultAzureCredential();
+ const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
+ const client = new SecretClient(vaultUrl, credential);
  
-         if (!response.ok) {
-           const errText = await response.text();
-           console.error('Error posting financial task:', errText);
-           setSubmissionSuccess(null);
-         } else {
-           const result = await response.json();
-           console.log('Financial task created successfully:', result);
-           setIsSubmitted(true);
-           setSubmissionSuccess('Financial form submitted successfully!');
- 
-           setTimeout(() => {
-             setIsSubmitted(false);
-             setSubmissionSuccess(null);
-             setFormKey(Date.now());
-           }, 3000);
-         }
-+
-+        if (link.title === 'Payment Requests') {
-+          try {
-+            await fetch(
-+              'https://prod-16.uksouth.logic.azure.com:443/workflows/625f5ed1d19b42999e113bd44c4799e5/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OQhUuEJuXMgy2UCbOAuwM-3OBKb0xLIKgbp1GcnH_Bg',
-+              {
-+                method: 'POST',
-+                headers: { 'Content-Type': 'application/json' },
-+                body: JSON.stringify(values),
-+              }
-+            );
-+          } catch (err) {
-+            console.error('Error posting payment request to external endpoint:', err);
-+          }
-+        }
-       } catch (error: any) {
-         console.error('Error in financial form submission:', error);
-         setSubmissionSuccess(null);
-       } finally {
-         setIsSubmitting(false); // Re-enable the button after response
-       }
-     },
-     [link.title, userData, isSubmitting]
-   );
- 
-   return (
-     <BespokePanel
-       isOpen={isOpen}
-       onClose={onClose}
-       title={link.title}
-       width="60%"
-       offsetTop={offsetTop}
-     >
-       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-         {submissionSuccess && (
-           <MessageBar
-             messageBarType={MessageBarType.success}
-             isMultiline={false}
-             onDismiss={() => setSubmissionSuccess(null)}
-             dismissButtonAriaLabel="Close"
+ // Route: GET /api/enquiries
+ // Calls the fetchenquriries function app in the instructions VNet space
+ router.get('/', async (req, res) => {
+   try {
+     // Get the function key from Key Vault
+     const secret = await client.getSecret('fetchenquriries-key');
+     const functionCode = secret.value;
+     
+     // Call the function app
+     const functionUrl = 'https://your-instructions-function-app.azurewebsites.net/api/fetchenquriries';
+     const url = `${functionUrl}?code=${functionCode}`;
+     
+     const response = await fetch(url);
+     if (!response.ok) {
+       return res.status(response.status).json({ error: 'Failed to fetch enquiries data.' });
+     }

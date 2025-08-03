@@ -55,15 +55,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 }) => {
   const [snippetEditState, setSnippetEditState] = useState<{
     blockTitle: string;
-    label: string;
-    content: string;
-    sortOrder: number;
-    isNew: boolean;
+    optionLabel: string;
+    target: HTMLElement;
   } | null>(null);
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
   const [autoInsertedOnLoad, setAutoInsertedOnLoad] = useState<Record<string, boolean>>({});
   const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
-  const [popupPosition, setPopupPosition] = useState<{[key: string]: {x: number, y: number}}>({});
   const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
   const [removedBlocks, setRemovedBlocks] = useState<Record<string, boolean>>({});
@@ -397,24 +394,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     });
   };
 
-  const handleSaveSnippet = async (event: React.MouseEvent, blockTitle: string, optionLabel: string) => {
-    event.stopPropagation();
-    
-    const block = templateBlocks.find(b => b.title === blockTitle);
-    const option = block?.options.find(opt => opt.label === optionLabel);
-    
-    if (block && option) {
-      const content = editedContent[blockTitle]?.[optionLabel] || option.previewText;
-      const sortOrder = block.options.indexOf(option);
-      
-      setSnippetEditState({
-        blockTitle,
-        label: optionLabel,
-        content: content.replace(/<br\s*\/?>/gi, '\n'),
-        sortOrder,
-        isNew: false
-      });
-    }
+  const handleSaveSnippet = (e: React.MouseEvent, blockTitle: string, optionLabel: string) => {
+    e.stopPropagation();
+    setSnippetEditState({
+      blockTitle,
+      optionLabel,
+      target: e.currentTarget as HTMLElement,
+    });
   };
 
   const handleSnippetSave = async (data: { label: string; sortOrder: number; isNew: boolean; }) => {
@@ -773,6 +759,28 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                         <span>Add Placeholder</span>
                       </div>
 
+                      {/* Save Snippet */}
+                      {saveCustomSnippet && (
+                        <div
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e1dfdd',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            color: '#d83b01',
+                          }}
+                          onClick={(e) => handleSaveSnippet(e, block.title, selectedOpt.label)}
+                        >
+                          <Icon iconName="Save" styles={{ root: { fontSize: '10px' } }} />
+                          <span>Save Snippet</span>
+                        </div>
+                      )}
+
                       {/* Show Original */}
                       <div 
                         style={{
@@ -827,7 +835,26 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         </div>
       </Stack>
 
-      {/* TODO: Add snippet editor when needed */}
+      {snippetEditState && (
+        <SnippetEditPopover
+          target={snippetEditState.target}
+          originalText={(() => {
+            const block = templateBlocks.find(b => b.title === snippetEditState.blockTitle);
+            const opt = block?.options.find(o => o.label === snippetEditState.optionLabel);
+            const text = opt?.previewText || '';
+            return text.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+          })()}
+          editedText={(() => {
+            const block = templateBlocks.find(b => b.title === snippetEditState.blockTitle);
+            const opt = block?.options.find(o => o.label === snippetEditState.optionLabel);
+            const original = opt?.previewText ? opt.previewText.replace(/\n/g, '<br />') : '';
+            const processed = getProcessedContent(snippetEditState.blockTitle, snippetEditState.optionLabel, original);
+            return processed.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
+          })()}
+          onSave={handleSnippetSave}
+          onDismiss={() => setSnippetEditState(null)}
+        />
+      )}
     </>
   );
 };

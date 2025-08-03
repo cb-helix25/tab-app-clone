@@ -53,6 +53,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
   const [popupPosition, setPopupPosition] = useState<{[key: string]: {x: number, y: number}}>({});
   const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
+  const [lastContentUpdate, setLastContentUpdate] = useState<number>(Date.now()); // Force re-renders
   const editorRefs = useRef<Record<string, HTMLDivElement>>({});
 
   // Helper: get selected option for a block
@@ -98,13 +99,64 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   // Handle content editing
   const handleContentEdit = (blockTitle: string, optionLabel: string, content: string) => {
-    setEditedContent(prev => ({
-      ...prev,
-      [blockTitle]: {
-        ...prev[blockTitle],
-        [optionLabel]: content
-      }
-    }));
+    // Get the original content for comparison
+    const block = templateBlocks.find((b: TemplateBlock) => b.title === blockTitle);
+    const option = block?.options.find((opt: TemplateOption) => opt.label === optionLabel);
+    const originalContentText = option?.previewText || '';
+    
+    // Helper function to clean content for comparison
+    const cleanForComparison = (content: string) => {
+      return content
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&nbsp;/g, ' ') // Replace &nbsp; with regular spaces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+    };
+    
+    const cleanOriginal = cleanForComparison(originalContentText);
+    const cleanEdited = cleanForComparison(content);
+    
+    // Also clean the processed original content (with wrapInsertPlaceholders applied)
+    const processedOriginal = wrapInsertPlaceholders(originalContentText);
+    const cleanProcessedOriginal = cleanForComparison(processedOriginal);
+    
+    // Check if content differs from BOTH the raw original AND the processed original
+    // This prevents the initial HTML processing from being considered a "change"
+    const isDifferentFromRaw = cleanOriginal !== cleanEdited;
+    const isDifferentFromProcessed = cleanProcessedOriginal !== cleanEdited;
+    const hasValidContent = cleanEdited.length > 0;
+    
+    // Only consider it a real change if it differs from both versions and has content
+    if (isDifferentFromRaw && isDifferentFromProcessed && hasValidContent) {
+      console.log('Real content change detected:', { blockTitle, optionLabel, cleanOriginal, cleanProcessedOriginal, cleanEdited });
+      setEditedContent(prev => ({
+        ...prev,
+        [blockTitle]: {
+          ...prev[blockTitle],
+          [optionLabel]: content
+        }
+      }));
+      setLastContentUpdate(Date.now()); // Trigger re-render for action popup
+    } else {
+      console.log('Content matches original (no real changes), removing from editedContent:', { blockTitle, optionLabel });
+      // Remove from editedContent if it matches original (user reverted changes or initial load)
+      setEditedContent(prev => {
+        const newState = { ...prev };
+        if (newState[blockTitle]) {
+          const blockEdits = { ...newState[blockTitle] };
+          delete blockEdits[optionLabel];
+          
+          // If no more edits for this block, remove the block entirely
+          if (Object.keys(blockEdits).length === 0) {
+            delete newState[blockTitle];
+          } else {
+            newState[blockTitle] = blockEdits;
+          }
+        }
+        return newState;
+      });
+      setLastContentUpdate(Date.now()); // Trigger re-render for action popup
+    }
   };
 
   // Handle auto-insert when user finishes editing (on blur)
@@ -141,7 +193,32 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     const option = block?.options.find((opt: TemplateOption) => opt.label === optionLabel);
     
     if (block && option) {
-      const content = editedContent[blockTitle]?.[optionLabel] || option.previewText;
+      const editedContentText = editedContent[blockTitle]?.[optionLabel] || '';
+      const originalContentText = option.previewText || '';
+      
+      // Helper function to clean content for comparison
+      const cleanForComparison = (content: string) => {
+        return content
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/&nbsp;/g, ' ') // Replace &nbsp; with regular spaces
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
+      };
+      
+      const cleanOriginal = cleanForComparison(originalContentText);
+      const cleanEdited = cleanForComparison(editedContentText);
+      
+      // Check if content has actually been modified
+      const hasChanges = cleanOriginal !== cleanEdited && cleanEdited.length > 0;
+      
+      if (!hasChanges) {
+        // Show a brief message that no changes were detected
+        console.log('No changes detected - snippet editor not opened');
+        // Could add a toast notification here in the future
+        return;
+      }
+      
+      const content = editedContentText || originalContentText;
       const sortOrder = block.options.indexOf(option as TemplateOption);
       
       setSnippetEditState({
@@ -402,6 +479,60 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           </div>
                         );
                       })()}
+
+                      {/* Save Custom Snippet */}
+                      {(() => {
+                        // Force re-evaluation when content changes
+                        const _ = lastContentUpdate; // Dependency to trigger re-render
+                        
+                        const originalContentText = selectedOpt.previewText || '';
+                        
+                        // Helper function to clean content for comparison
+                        const cleanForComparison = (content: string) => {
+                          return content
+                            .replace(/<[^>]*>/g, '') // Remove HTML tags
+                            .replace(/&nbsp;/g, ' ') // Replace &nbsp; with regular spaces
+                            .replace(/\s+/g, ' ') // Normalize whitespace
+                            .trim();
+                        };
+                        
+                        const cleanOriginal = cleanForComparison(originalContentText);
+                        
+                        // Only check if we have editedContent state - this is the only reliable indicator of user changes
+                        const editedContentText = editedContent[block.title]?.[selectedOpt.label];
+                        let hasChanges = false;
+                        
+                        if (editedContentText) {
+                          // Only if we have tracked edited content, compare it
+                          const cleanEdited = cleanForComparison(editedContentText);
+                          hasChanges = cleanOriginal !== cleanEdited && cleanEdited.length > 0;
+                        }
+                        // If no editedContent in state, there are no changes (button should be disabled)
+                        
+                        return (
+                          <div
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: hasChanges ? '#ffffff' : '#f8f9fa',
+                              border: hasChanges ? '1px solid #0078d4' : '1px solid #e1dfdd',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '11px',
+                              color: hasChanges ? '#0078d4' : '#999',
+                              cursor: hasChanges ? 'pointer' : 'not-allowed',
+                              opacity: hasChanges ? 1 : 0.6,
+                              transition: 'all 0.2s ease-out'
+                            }}
+                            onClick={hasChanges ? (e) => handleSaveSnippet(e, block.title, selectedOpt.label) : undefined}
+                            title={hasChanges ? 'Save custom snippet' : 'No changes to save'}
+                          >
+                            <Icon iconName="Save" styles={{ root: { fontSize: '10px' } }} />
+                            <span>Save</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
@@ -417,7 +548,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           target={snippetEditState.target}
           onSave={handleSnippetSave}
           onDismiss={() => setSnippetEditState(null)}
-          previewText={snippetEditState.content}
+          originalText={(() => {
+            const block = templateBlocks.find((b: TemplateBlock) => b.title === snippetEditState.blockTitle);
+            const option = block?.options.find((opt: TemplateOption) => opt.label === snippetEditState.label);
+            return option?.previewText || '';
+          })()}
+          editedText={snippetEditState.content}
         />
       )}
     </>
