@@ -18,8 +18,6 @@ const Forms = lazy(() => import('../tabs/forms/Forms'));
 const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
 const Instructions = lazy(() => import('../tabs/instructions/Instructions'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
-// invisible change 2
-const Roadmap = lazy(() => import('../tabs/roadmap/Roadmap'));
 const ReportingHome = lazy(() => import('../tabs/Reporting/ReportingHome')); // Replace ReportingCode with ReportingHome
 
 interface AppProps {
@@ -306,7 +304,6 @@ const App: React.FC<AppProps> = ({
       : []),
     { key: 'matters', text: 'Matters' },
     // Removed 'forms' and 'resources' tabs since they are now on the sides
-    { key: 'roadmap', text: 'Roadmap' },
     { key: 'reporting', text: 'Reports' },
     ];
 
@@ -374,8 +371,6 @@ const App: React.FC<AppProps> = ({
             setPoidData={setPoidData}
           />
         );
-      case 'roadmap':
-        return <Roadmap userData={userData} />;
       case 'reporting':
         return isAuthorized ? (
           <ReportingHome userData={userData} teamData={teamData} />

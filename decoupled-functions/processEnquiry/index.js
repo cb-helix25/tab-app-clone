@@ -25,126 +25,63 @@ async function ensureDbPassword() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// SOURCE SCHEMA MAPPINGS - Add new sources here as they're integrated
+// DATABASE SCHEMA MAPPING - London Timezone Aware
 // Database Schema: [id] [datetime] [stage] [claim] [poc] [pitch] [aow] [tow] [moc] 
 //                  [rep] [first] [last] [email] [phone] [value] [notes] [rank] 
 //                  [rating] [acid] [card_id] [source] [url] [contact_referrer] 
 //                  [company_referrer] [gclid]
+//
+// REQUIRED: datetime, stage, aow, moc, first, last, email, source
+// CONDITIONAL: rep (required if moc contains 'call')
+// OPTIONAL: claim, poc, pitch, tow, phone, value, rating, acid, card_id, url, 
+//           contact_referrer, company_referrer, gclid
+// DEFAULTS: rank=4, stage='enquiry', source='originalForward'
 // ──────────────────────────────────────────────────────────────────────────────
 
-const SOURCE_MAPPINGS = {
-  'cta_processing': {
-    // Maps fields from the C# cta_processing function output
-    datetime: (data) => data.Date_Created || data.dateCreated || new Date(),
-    stage: (data) => 'new enquiry',
-    claim: (data) => null, // Will be set later when claimed
-    poc: (data) => data.Point_of_Contact || data.pointOfContact || 'team@helix-law.com',
-    pitch: (data) => null, // Will be set later when pitch is assigned
-    aow: (data) => data.Area_of_Work || data.areaOfWork || data.formType || null,
-    tow: (data) => null, // Type of work - will be refined later
-    moc: (data) => data.Method_of_Contact || data.methodOfContact || 'web form',
-    rep: (data) => null, // Representative - assigned later
-    first: (data) => data.First_Name || data.firstName || data.first_name || null,
-    last: (data) => data.Last_Name || data.lastName || data.last_name || null,
-    email: (data) => data.Email || data.email || null,
-    phone: (data) => data.Phone_Number || data.phoneNumber || data.phone || null,
-    value: (data) => data.Value || data.value || data.amountRange || null,
-    notes: (data) => data.Initial_first_call_notes || data.initialNotes || data.details || null,
-    rank: (data) => data.Gift_Rank || data.giftRank || '4',
-    rating: (data) => null, // Will be set after initial contact
-    acid: (data) => data.ID || data.contactId || null, // ActiveCampaign ID
-    card_id: (data) => null, // Card ID - set later if applicable
-    source: (data) => data.source || 'cta_processing',
-    url: (data) => data.Referral_URL || data.referralUrl || data.formUrl || null,
-    contact_referrer: (data) => null, // Individual referrer
-    company_referrer: (data) => null, // Company referrer  
-    gclid: (data) => data.gclid || (data.url && data.url.includes('gclid') ? extractGclid(data.url) : null)
-  },
+function getLondonDateTime() {
+  // Create current time in London timezone
+  const now = new Date();
+  const londonTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/London"}));
+  return londonTime;
+}
 
-  'web_form': {
-    // Example mapping for direct web form submissions
-    datetime: (data) => data.submissionDate ? new Date(data.submissionDate) : new Date(),
-    stage: (data) => 'new enquiry',
-    claim: (data) => null,
-    poc: (data) => data.assignedTo || 'team@helix-law.com',
-    pitch: (data) => null,
-    aow: (data) => data.practiceArea || data.serviceType || 'general',
-    tow: (data) => data.typeOfWork || null,
-    moc: (data) => 'web form',
-    rep: (data) => null,
-    first: (data) => data.firstName || data.first_name || null,
-    last: (data) => data.lastName || data.last_name || null,
-    email: (data) => data.email || data.contactEmail || null,
-    phone: (data) => data.phone || data.phoneNumber || null,
-    value: (data) => data.estimatedValue || null,
-    notes: (data) => data.message || data.notes || data.enquiry || null,
-    rank: (data) => data.priority || '4',
-    rating: (data) => null,
-    acid: (data) => data.activecampaignId || null,
-    card_id: (data) => null,
-    source: (data) => 'web_form',
-    url: (data) => data.referrerUrl || data.pageUrl || null,
-    contact_referrer: (data) => data.referredBy || null,
-    company_referrer: (data) => data.referringCompany || null,
-    gclid: (data) => data.gclid || (data.referrerUrl && data.referrerUrl.includes('gclid') ? extractGclid(data.referrerUrl) : null)
-  },
-
-  'phone_enquiry': {
-    // Example mapping for phone enquiries
-    datetime: (data) => data.callDate ? new Date(data.callDate) : new Date(),
-    stage: (data) => 'new enquiry',
-    claim: (data) => null,
-    poc: (data) => data.handledBy || 'reception',
-    pitch: (data) => null,
-    aow: (data) => data.practiceArea || 'general',
-    tow: (data) => data.typeOfWork || null,
-    moc: (data) => 'phone call',
-    rep: (data) => data.assignedRep || null,
-    first: (data) => data.callerFirstName || data.firstName || null,
-    last: (data) => data.callerLastName || data.lastName || null,
-    email: (data) => data.email || null,
-    phone: (data) => data.callerPhone || data.phone || null,
-    value: (data) => data.estimatedValue || null,
-    notes: (data) => data.callNotes || data.notes || null,
-    rank: (data) => data.urgency || '4',
-    rating: (data) => null,
-    acid: (data) => null,
-    card_id: (data) => null,
-    source: (data) => 'phone_enquiry',
-    url: (data) => data.referralSource || null,
-    contact_referrer: (data) => data.referredByContact || null,
-    company_referrer: (data) => data.referredByCompany || null,
-    gclid: (data) => null
-  },
-
-  'generic': {
-    // Fallback mapping for unknown sources - tries common field names
-    datetime: (data) => data.datetime || data.date || data.timestamp ? new Date(data.datetime || data.date || data.timestamp) : new Date(),
-    stage: (data) => data.stage || 'new enquiry',
-    claim: (data) => data.claim || null,
-    poc: (data) => data.poc || data.pointOfContact || data.assignedTo || 'team@helix-law.com',
-    pitch: (data) => data.pitch || null,
-    aow: (data) => data.aow || data.areaOfWork || data.practice || data.service || 'general',
-    tow: (data) => data.tow || data.typeOfWork || null,
-    moc: (data) => data.moc || data.methodOfContact || data.channel || 'unknown',
-    rep: (data) => data.rep || data.representative || null,
-    first: (data) => data.first || data.firstName || data.first_name || data.fname || null,
-    last: (data) => data.last || data.lastName || data.last_name || data.lname || null,
-    email: (data) => data.email || data.emailAddress || null,
-    phone: (data) => data.phone || data.phoneNumber || data.tel || null,
-    value: (data) => data.value || data.amount || data.estimatedValue || null,
-    notes: (data) => data.notes || data.message || data.details || null,
-    rank: (data) => data.rank || data.priority || '4',
-    rating: (data) => data.rating || null,
-    acid: (data) => data.acid || data.activecampaignId || data.contactId || null,
-    card_id: (data) => data.card_id || data.cardId || null,
-    source: (data) => data.source || 'generic',
-    url: (data) => data.url || data.referralUrl || null,
-    contact_referrer: (data) => data.contact_referrer || data.referredBy || null,
-    company_referrer: (data) => data.company_referrer || data.referringCompany || null,
-    gclid: (data) => data.gclid || (data.url && data.url.includes('gclid') ? extractGclid(data.url) : null)
-  }
-};
+function mapEnquiryFields(data) {
+  // Parse moc to determine if rep is required
+  const moc = data.moc || data.methodOfContact || data.channel || null;
+  const isCallBased = moc && moc.toLowerCase().includes('call');
+  
+  return {
+    // REQUIRED FIELDS
+    datetime: getLondonDateTime(), // Always current London time when request is made
+    stage: 'enquiry', // Default stage for all new enquiries
+    aow: data.aow || data.areaOfWork || data.practice || data.service || null, // REQUIRED
+    moc: moc, // REQUIRED
+    first: data.first || data.firstName || data.first_name || data.fname || null, // REQUIRED
+    last: data.last || data.lastName || data.last_name || data.lname || null, // REQUIRED
+    email: data.email || data.emailAddress || null, // REQUIRED
+    source: 'originalForward', // Default source classification
+    
+    // CONDITIONAL FIELDS
+    rep: isCallBased ? (data.rep || data.representative || null) : null, // Required if moc contains 'call'
+    
+    // OPTIONAL FIELDS
+    claim: null, // Will be updated later
+    poc: null, // Will be updated later  
+    pitch: null, // Will be updated later
+    tow: data.tow || data.typeOfWork || null, // Optional
+    phone: data.phone || data.phoneNumber || data.tel || null, // Optional
+    value: data.value || data.amount || data.estimatedValue || null, // Optional
+    notes: data.notes || data.message || data.details || null, // Optional
+    rank: '4', // Default rank
+    rating: data.rating || null, // Optional
+    acid: data.acid || data.activecampaignId || data.contactId || null, // Optional
+    card_id: data.card_id || data.cardId || null, // Optional
+    url: data.url || data.referralUrl || null, // Optional
+    contact_referrer: data.contact_referrer || data.referredBy || null, // Optional
+    company_referrer: data.company_referrer || data.referringCompany || null, // Optional
+    gclid: data.gclid || (data.url && data.url.includes('gclid') ? extractGclid(data.url) : null) // Optional
+  };
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // DATA TRANSFORMATION UTILITIES
@@ -204,23 +141,80 @@ function ensureDateTime(dateValue) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// VALIDATION FUNCTIONS
+// ──────────────────────────────────────────────────────────────────────────────
+
+function validateRequiredFields(mappedData) {
+  const errors = [];
+  
+  // Required fields validation
+  if (!mappedData.aow) errors.push('aow (Area of Work) is required');
+  if (!mappedData.moc) errors.push('moc (Method of Contact) is required');
+  if (!mappedData.first) errors.push('first (First Name) is required');
+  if (!mappedData.last) errors.push('last (Last Name) is required');
+  if (!mappedData.email) errors.push('email is required');
+  
+  // Conditional validation: rep required if moc contains 'call'
+  if (mappedData.moc && mappedData.moc.toLowerCase().includes('call') && !mappedData.rep) {
+    errors.push('rep (Representative) is required when method of contact contains "call"');
+  }
+  
+  return errors;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ACTIVECAMPAIGN INTEGRATION FUNCTIONS (Basic contact checking)
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function processActiveCampaignIntegration(mappedData, updateAC = false) {
+  if (!updateAC || !mappedData.email) {
+    return { processed: false, reason: updateAC ? 'No email provided' : 'AC processing disabled' };
+  }
+  
+  try {
+    // Check if contact exists in ActiveCampaign
+    const existingContactId = await checkActiveCampaignContact(mappedData.email);
+    
+    if (existingContactId) {
+      // Update existing contact
+      await updateActiveCampaignContact(existingContactId, mappedData);
+      return { processed: true, action: 'updated', contactId: existingContactId };
+    } else {
+      // Create new contact
+      const newContactId = await createActiveCampaignContact(mappedData);
+      return { processed: true, action: 'created', contactId: newContactId };
+    }
+  } catch (error) {
+    return { processed: false, error: error.message };
+  }
+}
+
+async function checkActiveCampaignContact(email) {
+  // TODO: Implement ActiveCampaign API call to check if contact exists
+  // This is a placeholder for basic contact checking functionality
+  // When implemented, this should return the contact ID if found, null if not found
+  return null;
+}
+
+async function updateActiveCampaignContact(contactId, data) {
+  // TODO: Implement ActiveCampaign API call to update existing contact
+  // This is a placeholder for contact update functionality
+  return null;
+}
+
+async function createActiveCampaignContact(data) {
+  // TODO: Implement ActiveCampaign API call to create new contact
+  // This is a placeholder for contact creation functionality
+  return null;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // CORE MAPPING FUNCTION
 // ──────────────────────────────────────────────────────────────────────────────
 
 function mapEnquiryData(sourceData, sourceType = 'generic') {
-  const mapping = SOURCE_MAPPINGS[sourceType] || SOURCE_MAPPINGS['generic'];
-  
-  const mappedData = {};
-  
-  // Apply all field mappings
-  for (const [dbField, mapperFunction] of Object.entries(mapping)) {
-    try {
-      mappedData[dbField] = mapperFunction(sourceData);
-    } catch (error) {
-      console.warn(`Warning: Failed to map field ${dbField} from source ${sourceType}:`, error.message);
-      mappedData[dbField] = null;
-    }
-  }
+  // Map the data to our database schema
+  const mappedData = mapEnquiryFields(sourceData);
   
   // Apply post-mapping transformations
   mappedData.phone = transformPhoneNumber(mappedData.phone);
@@ -264,24 +258,28 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Extract source type and data
-    const sourceType = req.query.source || requestBody.source || 'generic';
+    // Extract source type, data, and ActiveCampaign flag
+    const sourceType = req.query.source || requestBody.source || 'originalForward';
     const sourceData = requestBody.data || requestBody;
+    const updateAC = req.query.updateAC === 'true' || requestBody.updateAC === true || false;
     
     context.log(`Processing enquiry from source: ${sourceType}`);
+    context.log(`ActiveCampaign processing: ${updateAC ? 'ENABLED' : 'DISABLED'}`);
     context.log('Source data received:', JSON.stringify(sourceData, null, 2));
 
     // Map the source data to our database schema
     const mappedData = mapEnquiryData(sourceData, sourceType);
     context.log('Mapped enquiry data:', JSON.stringify(mappedData, null, 2));
 
-    // Validate required fields - at least email or phone required
-    if (!mappedData.email && !mappedData.phone) {
-      context.log('ERROR: Validation failed - neither email nor phone provided');
+    // Validate required fields
+    const validationErrors = validateRequiredFields(mappedData);
+    if (validationErrors.length > 0) {
+      context.log('ERROR: Validation failed -', validationErrors.join(', '));
       context.res = { 
         status: 400, 
         body: { 
-          error: 'Either email or phone is required',
+          error: 'Validation failed',
+          details: validationErrors,
           receivedData: sourceData,
           mappedData: mappedData
         } 
@@ -294,6 +292,20 @@ module.exports = async function (context, req) {
     await ensureDbPassword();
     const pool = await getSqlPool();
     context.log('Database connection established');
+
+    // Process ActiveCampaign integration if enabled
+    let activeCampaignResult = null;
+    if (updateAC) {
+      context.log('Processing ActiveCampaign integration...');
+      activeCampaignResult = await processActiveCampaignIntegration(mappedData, updateAC);
+      context.log('ActiveCampaign result:', JSON.stringify(activeCampaignResult, null, 2));
+      
+      // Update acid field if we got a contact ID from ActiveCampaign
+      if (activeCampaignResult.processed && activeCampaignResult.contactId) {
+        mappedData.acid = activeCampaignResult.contactId;
+        context.log(`Updated acid field with ActiveCampaign contact ID: ${activeCampaignResult.contactId}`);
+      }
+    }
 
     // Prepare SQL insert query - note: [id] is IDENTITY so we don't insert it
     const insertQuery = `
@@ -357,7 +369,9 @@ module.exports = async function (context, req) {
         sourceType: sourceType,
         rowsAffected: result.rowsAffected[0],
         insertedData: mappedData,
-        timestamp: new Date().toISOString()
+        activeCampaign: activeCampaignResult,
+        timestamp: new Date().toISOString(),
+        londonTime: getLondonDateTime().toISOString()
       }
     };
 
