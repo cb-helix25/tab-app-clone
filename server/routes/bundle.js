@@ -46,10 +46,7 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const user = findUserByName(name);
-    const clientId = user?.ASANAClientID || process.env.ASANA_CLIENT_ID;
-    const clientSecret = user?.ASANASecret || process.env.ASANA_SECRET;
-    const refreshToken = user?.ASANARefreshToken || process.env.ASANA_REFRESH_TOKEN;
+    const { ASANAClientID: clientId, ASANASecret: clientSecret, ASANARefreshToken: refreshToken } = req.body;
 
     if (!clientId || !clientSecret || !refreshToken) {
         return res.status(500).json({ error: 'Asana credentials not found' });
