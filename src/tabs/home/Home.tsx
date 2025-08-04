@@ -1045,7 +1045,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Populate current user details once user data is available
   useEffect(() => {
     if (userData && userData[0]) {
-      setCurrentUserEmail(userData[0].Email || '');
+      setCurrentUserEmail((userData[0].Email || '').toLowerCase().trim());
       setCurrentUserName(userData[0].FullName || '');
     }
   }, [userData]);
@@ -1197,30 +1197,36 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const prevWeekEnd = new Date(prevToday);
       const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+
+      const matchesUser = (email: string | undefined | null) =>
+        (email || '').toLowerCase().trim() === currentUserEmail;
+
       const todayCount = enquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (
           enquiryDate.toDateString() === today.toDateString() &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
+
       const weekToDateCount = enquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (
           enquiryDate >= startOfWeek &&
           enquiryDate <= today &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
+
       const monthToDateCount = enquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (
           enquiryDate >= startOfMonth &&
           enquiryDate <= today &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
 
@@ -1229,7 +1235,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (
           enquiryDate.toDateString() === prevToday.toDateString() &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
 
@@ -1239,7 +1245,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         return (
           enquiryDate >= prevWeekStart &&
           enquiryDate <= prevWeekEnd &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
 
@@ -1249,9 +1255,10 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         return (
           enquiryDate >= prevMonthStart &&
           enquiryDate <= prevMonthEnd &&
-          enquiry.Point_of_Contact === currentUserEmail
+          matchesUser(enquiry.Point_of_Contact)
         );
       }).length;
+
       setEnquiriesToday(todayCount);
       setEnquiriesWeekToDate(weekToDateCount);
       setEnquiriesMonthToDate(monthToDateCount);

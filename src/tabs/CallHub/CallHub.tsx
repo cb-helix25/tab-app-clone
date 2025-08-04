@@ -17,6 +17,7 @@ const CallHub: React.FC = () => {
     const [lookupStatus, setLookupStatus] = useState<string | null>(null);
     const [claimTime, setClaimTime] = useState<number | null>(null);
     const [contactTime, setContactTime] = useState<number | null>(null);
+    const [abandonTime, setAbandonTime] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -50,6 +51,25 @@ const CallHub: React.FC = () => {
         }
     };
 
+    const handleAbandon = async () => {
+        if (!claimTime) return;
+        const now = Date.now();
+        setAbandonTime(now);
+        try {
+            await sendCallEvent({
+                action: 'abandon',
+                enquiryType,
+                contactPreference,
+                email,
+                contactPhone,
+                claimTime,
+                abandonTime: now,
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleSave = async () => {
         setSaving(true);
         setSaveError(null);
@@ -65,6 +85,7 @@ const CallHub: React.FC = () => {
                 notes,
                 claimTime,
                 contactTime,
+                abandonTime,
             });
             setSaveSuccess(true);
         } catch (err: any) {
@@ -95,7 +116,7 @@ const CallHub: React.FC = () => {
     };
 
     const missingEmail = contactPreference === 'phone' && !email;
-    const canSave = !!enquiryType && !!contactPreference && !missingEmail && !saving;
+    const canSave = !!enquiryType && !!contactPreference && !missingEmail && !saving && !abandonTime;
 
     return (
         <div style={{ padding: 20 }}>
@@ -220,12 +241,23 @@ const CallHub: React.FC = () => {
                         <Stack horizontal tokens={{ childrenGap: 10 }}>
                             <PrimaryButton text="Claim Enquiry" onClick={handleClaim} disabled={!!claimTime} />
                             <PrimaryButton text="Mark Contacted" onClick={handleContacted} disabled={!claimTime || !!contactTime} />
+                            <PrimaryButton
+                                text="Abandon Call"
+                                onClick={handleAbandon}
+                                disabled={!claimTime || !!contactTime || !!abandonTime}
+                            />
                             <PrimaryButton text="Save Call" onClick={handleSave} disabled={!canSave} />
                         </Stack>
 
                         {claimTime && <div>Claimed at {new Date(claimTime).toLocaleTimeString()}</div>}
                         {claimTime && contactTime && (
                             <div>Time to contact: {formatDuration(claimTime, contactTime)}</div>
+                        )}
+                        {claimTime && abandonTime && (
+                            <div>Time to abandon: {formatDuration(claimTime, abandonTime)}</div>
+                        )}
+                        {abandonTime && (
+                            <div>Abandoned at {new Date(abandonTime).toLocaleTimeString()}</div>
                         )}
                         {saveSuccess && (
                             <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setSaveSuccess(false)}>

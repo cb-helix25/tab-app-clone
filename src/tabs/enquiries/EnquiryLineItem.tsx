@@ -170,7 +170,11 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   // Determine if this enquiry should be greyed out (not in user's AOW)
   let isGreyedOut = false;
   if (userAOW && userAOW.length > 0 && enquiry.Area_of_Work) {
-    isGreyedOut = !userAOW.includes(enquiry.Area_of_Work.toLowerCase());
+    const area = enquiry.Area_of_Work.toLowerCase();
+    const hasFullAccess = userAOW.some(a => a.includes('operations') || a.includes('tech'));
+    if (!hasFullAccess) {
+      isGreyedOut = !userAOW.some(a => a === area || a.includes(area) || area.includes(a));
+    }
   }
 
   const lineItemStyle = mergeStyles({

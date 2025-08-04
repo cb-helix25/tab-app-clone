@@ -1,157 +1,76 @@
-diff --git a/server/routes/bundle.js b/server/routes/bundle.js
-index e9f315e84496c83c37471454cafbcbbfbc45ed91..36a8432f5322ce697e356d91a92a3649db76d046 100644
---- a/server/routes/bundle.js
-+++ b/server/routes/bundle.js
-@@ -1,135 +1,83 @@
- const express = require('express');
--const path = require('path');
+diff --git a/src/tabs/Reporting/ReportCard.tsx b/src/tabs/Reporting/ReportCard.tsx
+index a5b306162622a3306e8f3f2afa7a8fe4829ace23..7c3ba136efc4f06b25800e34644b86566352bdb3 100644
+--- a/src/tabs/Reporting/ReportCard.tsx
++++ b/src/tabs/Reporting/ReportCard.tsx
+@@ -1,67 +1,67 @@
+ import React from 'react';
+ // invisible change
+ import { Text, TooltipHost, Icon } from '@fluentui/react';
+ import { mergeStyles } from '@fluentui/react/lib/Styling';
+ import { colours } from '../../app/styles/colours';
+ import { useTheme } from '../../app/functionality/ThemeContext';
  
- const router = express.Router();
- 
- function inLocalMode() {
-     return process.env.USE_LOCAL_SECRETS === 'true';
+ interface Report {
+   title: string;
+   description: string;
+   path: string;
+   icon: string;
+   isReady: boolean;
  }
  
--// Load local user data if in local mode
--let localUsers = [];
--if (inLocalMode()) {
--    try {
--        localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
--    } catch (err) {
--        console.warn('localUserData.json not loaded:', err.message);
--        localUsers = [];
--    }
--}
--
--function findUserByName(name) {
--    if (!name) return null;
--    return (localUsers || []).find(u => {
--        const full = u['Full Name'] || `${u.First} ${u.Last}`;
--        return (
--            full.toLowerCase() === name.toLowerCase() ||
--            (u.Initials && u.Initials.toLowerCase() === name.toLowerCase())
--        );
--    }) || null;
--}
--
- router.post('/', async (req, res) => {
-     const {
-         name,
-         matterReference,
-         bundleLink,
--        deliveryOptions = {},
--        arrivalDate,
--        officeReadyDate,
--        coveringLetter,
--        copiesInOffice,
--        notes
-+        clientId,
-+        clientSecret,
-+        refreshToken
-     } = req.body || {};
+ interface ReportCardProps {
+   report: Report;
+   onGoTo: (title: string) => void;
+   animationDelay?: number;
+ }
  
-     if (!name || !matterReference || !bundleLink) {
-         return res.status(400).json({ error: 'Missing required fields' });
-     }
+ const cardStyle = (isDarkMode: boolean, isReady: boolean) =>
+   mergeStyles({
+     padding: '20px',
+     backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+-    borderRadius: '0',
+-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
++    borderRadius: '4px',
++    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+     transition: 'box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease',
+     cursor: isReady ? 'pointer' : 'not-allowed',
+     display: 'flex',
+     flexDirection: 'column',
+     justifyContent: 'space-between',
+     height: '180px',
+     width: '100%',
+     border: 'none',
+     filter: isReady ? 'none' : 'grayscale(100%)',
+     opacity: isReady ? 1 : 0.6,
+     position: 'relative', // Added for absolute positioning of backdrop icon
+     overflow: 'hidden', // Ensure backdrop icon doesn't overflow
+     ':hover': isReady ? {
+-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+-      transform: 'translateY(-3px)',
++      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
++      transform: 'translateY(-2px)',
+     } : {},
+   });
  
--    const { ASANAClientID: clientId, ASANASecret: clientSecret, ASANARefreshToken: refreshToken } = req.body;
--
-     if (!clientId || !clientSecret || !refreshToken) {
--        return res.status(500).json({ error: 'Asana credentials not found' });
-+        return res.status(400).json({ error: 'Missing Asana credentials' });
-     }
+ const contentStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     display: 'flex',
+     flexDirection: 'column',
+     gap: '8px',
+     position: 'relative', // Ensure content stays above backdrop
+     zIndex: 1, // Layer content above backdrop icon
+   });
  
--    const projectId = process.env.ASANA_BUNDLE_PROJECT_ID || '1207163713256345';
--
--    const tokenBody = new URLSearchParams();
--    tokenBody.append('grant_type', 'refresh_token');
--    tokenBody.append('client_id', clientId);
--    tokenBody.append('client_secret', clientSecret);
--    tokenBody.append('refresh_token', refreshToken);
--
-     try {
--        let accessToken = 'mock';
-+        let accessToken = 'local-token';
-         if (!inLocalMode()) {
-+            const body = new URLSearchParams();
-+            body.append('grant_type', 'refresh_token');
-+            body.append('client_id', clientId);
-+            body.append('client_secret', clientSecret);
-+            body.append('refresh_token', refreshToken);
-+
-             const tokenResp = await fetch('https://app.asana.com/-/oauth_token', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
--                body: tokenBody.toString()
-+                body: body.toString()
-             });
-             if (!tokenResp.ok) {
--                const text = await tokenResp.text();
--                console.error('Asana token refresh failed', text);
-+                console.error('Asana token refresh failed', await tokenResp.text());
-                 return res.status(500).json({ error: 'Asana token refresh failed' });
-             }
-             const tokenData = await tokenResp.json();
-             accessToken = tokenData.access_token;
--        } else {
--            console.log('Local mode - skipping Asana token refresh');
--            accessToken = 'local-token';
--        }
--
--        const descriptionParts = [
--            `Matter: ${matterReference}`,
--            `Bundle: ${bundleLink}`
--        ];
--        if (notes) descriptionParts.push(`Notes: ${notes}`);
--        if (deliveryOptions.posted) {
--            descriptionParts.push('Posted to opponent');
--            if (arrivalDate) descriptionParts.push(`Arrival date: ${arrivalDate}`);
--            if (coveringLetter && coveringLetter.link) {
--                descriptionParts.push(`Letter: ${coveringLetter.link} x${coveringLetter.copies}`);
--            }
--        }
--        if (deliveryOptions.leftInOffice) {
--            descriptionParts.push('Copies left in office');
--            if (officeReadyDate) descriptionParts.push(`Office-ready date: ${officeReadyDate}`);
--            if (copiesInOffice) descriptionParts.push(`Copies: ${copiesInOffice}`);
-         }
+ const titleRowStyle = (isDarkMode: boolean) =>
+   mergeStyles({
+     display: 'flex',
+     flexDirection: 'row',
+     alignItems: 'center',
+     gap: '12px',
+   });
  
-+        const projectId = process.env.ASANA_BUNDLE_PROJECT_ID || '1207163713256345';
-         const taskBody = {
-             data: {
-                 projects: [projectId],
-                 name: `${matterReference} - Bundle`,
--                notes: descriptionParts.join('\n')
-+                notes: `Matter: ${matterReference}\nBundle: ${bundleLink}\nSubmitted by: ${name}`
-             }
-         };
- 
-         if (!inLocalMode()) {
-             const resp = await fetch('https://app.asana.com/api/1.0/tasks', {
-                 method: 'POST',
-                 headers: {
-                     Authorization: `Bearer ${accessToken}`,
-                     'Content-Type': 'application/json'
-                 },
-                 body: JSON.stringify(taskBody)
-             });
-             if (!resp.ok) {
--                const text = await resp.text();
--                console.error('Asana task creation failed', text);
-+                console.error('Asana task creation failed', await resp.text());
-                 return res.status(500).json({ error: 'Asana task creation failed' });
-             }
-             const data = await resp.json();
-             return res.json({ ok: true, task: data.data });
-         } else {
-             console.log('Local mode - skipping Asana task creation');
-             return res.json({ ok: true, simulated: true });
-         }
-     } catch (err) {
-         console.error('Bundle submission failed', err);
-         res.status(500).json({ error: 'Bundle submission failed' });
-     }
- });
- 
--module.exports = router;
-+module.exports = router;
+ const titleStyle = (isReady: boolean) =>
+   mergeStyles({
+     fontSize: '20px',
+     fontWeight: '600',
+     color: isReady ? '#1b2526' : '#999',

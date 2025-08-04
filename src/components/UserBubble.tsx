@@ -122,10 +122,13 @@ const UserBubble: React.FC<UserBubbleProps> = ({
         areasOfWork = String((user as any).aow).split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    // Normalize potential fields to lower case and trim whitespace so
+    // production data with trailing spaces or nickname variations still match.
     const canSwitchUser = ALLOWED_SWITCHERS.some((a) => {
-        const first = user.First?.toLowerCase();
-        const initials = user.Initials?.toLowerCase();
-        return first === a || initials === a;
+        const first = user.First?.toLowerCase().trim();
+        const initials = user.Initials?.toLowerCase().trim();
+        const nickname = user.Nickname?.toLowerCase().trim();
+        return first === a || initials === a || nickname === a;
     });
 
     return (

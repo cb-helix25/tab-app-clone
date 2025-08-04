@@ -51,25 +51,32 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (!isLocalhost && userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
-      filtered = filtered.filter(enquiry => {
-        if (!enquiry.aow) return false;
-        return userAOW.includes(enquiry.aow.toLowerCase());
-      });
+      const hasFullAccess = userAOW.some(
+        area => area.includes('operations') || area.includes('tech')
+      );
+
+      if (!hasFullAccess) {
+        filtered = filtered.filter(enquiry => {
+          const area = enquiry.aow?.toLowerCase();
+          if (!area) return false;
+          return userAOW.some(a => a === area || a.includes(area) || area.includes(a));
+        });
+      }
     }
     
     // Apply area-specific filter if selected
     if (selectedArea) {
       // Handle multiple areas (comma-separated)
       const selectedAreas = selectedArea.split(',').map(a => a.trim().toLowerCase());
-      const hasFullAccess = selectedAreas.includes('operations') || selectedAreas.includes('tech');
-      
+      const hasFullAccess = selectedAreas.some(
+        area => area.includes('operations') || area.includes('tech')
+      );
+
       if (!hasFullAccess) {
-        filtered = filtered.filter(
-          (enq) => {
-            const area = (enq.aow || (enq as any).Area_of_Work || '').toLowerCase();
-            return selectedAreas.includes(area);
-          }
-        );
+        filtered = filtered.filter(enq => {
+          const area = (enq.aow || (enq as any).Area_of_Work || '').toLowerCase();
+          return selectedAreas.some(sel => sel === area || sel.includes(area) || area.includes(sel));
+        });
       }
       // If user has Operations/Tech access, show all enquiries (no area filtering)
     }

@@ -504,21 +504,26 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     // In localhost, filter by locally selected areas; in production, filter by user's AOW
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
-      const hasFullAccess = userAOW.includes('operations') || userAOW.includes('tech');
-      
+      const hasFullAccess = userAOW.some(
+        area => area.includes('operations') || area.includes('tech')
+      );
+
       if (!hasFullAccess) {
         filtered = filtered.filter(enquiry => {
           if (!enquiry.Area_of_Work) return false;
           const enquiryArea = enquiry.Area_of_Work.toLowerCase();
-          
-          // First check if enquiry is in user's allowed areas
-          if (!userAOW.includes(enquiryArea)) return false;
-          
+
+          // First check if enquiry is in user's allowed areas (allow partial matches)
+          const inAllowed = userAOW.some(
+            a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
+          );
+          if (!inAllowed) return false;
+
           // Then apply active area filter if not 'All'
           if (activeAreaFilter !== 'All') {
             return enquiryArea === activeAreaFilter.toLowerCase();
           }
-          
+
           return true;
         });
       } else {
@@ -664,8 +669,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         : [];
       
       // Operations/Tech users get access to all areas for filtering
-      const hasFullAccess = userAOW.some(area => 
-        area.toLowerCase() === 'operations' || area.toLowerCase() === 'tech'
+      const hasFullAccess = userAOW.some(area =>
+        area.toLowerCase().includes('operations') || area.toLowerCase().includes('tech')
       );
       
       if (hasFullAccess) {
