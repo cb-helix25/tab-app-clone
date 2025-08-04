@@ -5,7 +5,7 @@ import { dashboardTokens } from '../tabs/instructions/componentTokens';
 import '../app/styles/MatterOpeningCard.css';
 import '../app/styles/MultiSelect.css';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
-import { Matter, TeamData } from '../app/functionality/types';
+import { Matter, UserData } from '../app/functionality/types';
 
 const toggleStyles: IButtonStyles = {
     root: {
@@ -39,12 +39,12 @@ interface CoverLetter {
 }
 
 interface BundleFormProps {
-    team: TeamData[];
+    users: UserData[];
     matters: Matter[];
     onBack: () => void;
 }
 
-const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
+const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
     const [name, setName] = useState<string>('');
     const [matterRef, setMatterRef] = useState<string>('');
     const [bundleLink, setBundleLink] = useState<string>('');
@@ -56,10 +56,11 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
     const [copiesInOffice, setCopiesInOffice] = useState<number>(1);
     const [notes, setNotes] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
-    const userOptions: IDropdownOption[] = team.map(t => ({
-        key: t.Initials ? t.Initials : (t["Full Name"] ? t["Full Name"] : ''),
-        text: t["Full Name"] ? t["Full Name"] : (t.Initials ? t.Initials : '')
-    }));
+    const userOptions: IDropdownOption[] = users.map(u => {
+        const fullName = (u as any)["Full Name"] || u.FullName || `${u.First || ''} ${u.Last || ''}`.trim();
+        const key = u.Initials || fullName;
+        return { key, text: fullName };
+    });
     const [matterFilter, setMatterFilter] = useState<string>('');
     const matterOptions: IComboBoxOption[] = React.useMemo(() =>
         matters
@@ -85,7 +86,9 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
     const handleSubmit = async () => {
         if (!isValid()) return;
         setSubmitting(true);
-        const payload = {
+        const currentUser = users[0];
+
+        const payload: any = {
             name,
             matterReference: matterRef,
             bundleLink,
@@ -99,6 +102,13 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
             copiesInOffice: leftInOffice ? copiesInOffice : undefined,
             notes: notes || undefined,
         };
+
+        if (currentUser) {
+            payload.ASANAClientID = currentUser.ASANAClientID;
+            payload.ASANASecret = currentUser.ASANASecret;
+            payload.ASANARefreshToken = currentUser.ASANARefreshToken;
+        }
+
         try {
             await fetch('/api/bundle', {
                 method: 'POST',

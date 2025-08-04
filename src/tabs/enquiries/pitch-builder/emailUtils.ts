@@ -95,13 +95,32 @@ export function removeHighlightSpans(html: string): string {
 
   // Elements that should be fully removed
   const removeSelectors =
-    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
+    '.lock-toggle, .block-sidebar, .sentence-delete, .sentence-handle';
   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
 
-  // Unwrap any remaining placeholder containers but keep their content
+  // Unwrap placeholder containers and keep only the active option content
   tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
     const parent = el.parentNode;
     if (!parent) return;
+
+    // Within each block, strip out unselected option bubbles
+    el.querySelectorAll('.option-bubble').forEach((bubble) => {
+      const bubbleEl = bubble as HTMLElement;
+      const isActive =
+        bubbleEl.classList.contains('active') ||
+        bubbleEl.classList.contains('selected');
+
+      if (isActive) {
+        const bubbleParent = bubbleEl.parentNode;
+        if (!bubbleParent) return;
+        while (bubbleEl.firstChild)
+          bubbleParent.insertBefore(bubbleEl.firstChild, bubbleEl);
+        bubbleParent.removeChild(bubbleEl);
+      } else {
+        bubbleEl.remove();
+      }
+    });
+
     while (el.firstChild) parent.insertBefore(el.firstChild, el);
     parent.removeChild(el);
   });

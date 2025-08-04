@@ -1,65 +1,83 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-index 7df4a53c756021884f026fc48610eb42820900cc..2ba035cacdec4ac589c9a5c5df7718114bd8aaf7 100644
---- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
-@@ -108,59 +108,52 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
-   isDraftConfirmed,
-   amount,
-   passcode,
- }) => {
-   // Strip blocks auto inserted by the system unless edited
-   // Disabled for now since we want content to display by default
-   const withoutAutoBlocks = body;
-   
-   // Generate checkout URL first
-   const checkoutPreviewUrl = passcode && enquiry?.ID
-     ? `https://instruct.helix-law.com/pitch/${enquiry.ID}-${passcode}`
-     : '#';
-   
-   // Process body HTML using imported functions
-   const sanitized = removeHighlightSpans(withoutAutoBlocks);
-   const substituted = applyDynamicSubstitutions(
-     sanitized,
-     userData,
-     enquiry,
-     amount,
-     passcode,
-     checkoutPreviewUrl
-   );
-   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
-   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
--  const wrappedBody = `<table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
--    <tr>
--      <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
--        ${finalBody}
--      </td>
--    </tr>
--  </table>`;
-   const previewHtml = ReactDOMServer.renderToStaticMarkup(
--    <EmailSignature bodyHtml={wrappedBody} userData={userData} />
-+    <EmailSignature bodyHtml={finalBody} userData={userData} />
-   );
- const previewRef = React.useRef<HTMLDivElement>(null);
+diff --git a/src/tabs/enquiries/pitch-builder/emailUtils.ts b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+index e666f60f20c1ef0954e70b6a513f4088e8931d41..9ce95a475343f0bf9e92d38e7c196fa5dfb6e11c 100644
+--- a/src/tabs/enquiries/pitch-builder/emailUtils.ts
++++ b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+@@ -73,57 +73,76 @@ export function markUnfilledPlaceholders(
+   let marked = text;
+   placeholders.forEach((placeholder) => {
+     const regex = new RegExp(escapeRegExp(placeholder), 'g');
+     marked = marked.replace(
+       regex,
+       `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
+     );
+   });
+   // Also highlight generic [INSERT ...] placeholders that haven't been filled
+   marked = marked.replace(/\[INSERT[^\]]*\]/gi, (m) => {
+     return `<span style="color: ${colours.cta}; font-weight: bold;">${m}</span>`;
+   });
+   return marked;
+ }
  
-   const [isAiOpen, setIsAiOpen] = React.useState(false);
-   const [isConfirmed, setIsConfirmed] = React.useState(false);
-   React.useEffect(() => {
-     if (isPreviewOpen) {
-       setIsConfirmed(false);
+ /**
+  * Strips all the highlight <span> attributes (data-placeholder, data-inserted, etc.)
+  * so final email doesn't have bright highlighting.
+  */
+ export function removeHighlightSpans(html: string): string {
+   const tempDiv = document.createElement('div');
+   tempDiv.innerHTML = html;
+ 
+   // Elements that should be fully removed
+   const removeSelectors =
+-    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
++    '.lock-toggle, .block-sidebar, .sentence-delete, .sentence-handle';
+   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
+ 
+-  // Unwrap any remaining placeholder containers but keep their content
++  // Unwrap placeholder containers and keep only the active option content
+   tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
+     const parent = el.parentNode;
+     if (!parent) return;
++
++    // Within each block, strip out unselected option bubbles
++    el.querySelectorAll('.option-bubble').forEach((bubble) => {
++      const bubbleEl = bubble as HTMLElement;
++      const isActive =
++        bubbleEl.classList.contains('active') ||
++        bubbleEl.classList.contains('selected');
++
++      if (isActive) {
++        const bubbleParent = bubbleEl.parentNode;
++        if (!bubbleParent) return;
++        while (bubbleEl.firstChild)
++          bubbleParent.insertBefore(bubbleEl.firstChild, bubbleEl);
++        bubbleParent.removeChild(bubbleEl);
++      } else {
++        bubbleEl.remove();
++      }
++    });
++
+     while (el.firstChild) parent.insertBefore(el.firstChild, el);
+     parent.removeChild(el);
+   });
+ 
+   // Remove highlight attributes/classes but keep user content
+   const cleanupSelectors =
+     '[data-placeholder], [data-inserted], [data-link], [data-sentence], [data-insert], [data-snippet], [data-block-title], .insert-placeholder, .block-main, .block-container';
+   tempDiv.querySelectorAll(cleanupSelectors).forEach((el) => {
+     el.removeAttribute('data-placeholder');
+     el.removeAttribute('data-inserted');
+     el.removeAttribute('data-link');
+     el.removeAttribute('data-sentence');
+     el.removeAttribute('data-insert');
+     el.removeAttribute('data-snippet');
+     el.removeAttribute('data-block-title');
+     el.removeAttribute('style');
+     el.removeAttribute('contenteditable');
+     if ((el as HTMLElement).classList.contains('block-main')) {
+       (el as HTMLElement).classList.remove('block-main');
      }
-   }, [isPreviewOpen]);
-   const inTeams = isInTeams();
-   const useLocalData =
-     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
-   const allowedInitials = ['LZ', 'AC'];
-   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
-   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
-   const showAiAssistButton = false;
- 
-   // Example follow-up options (you may wish to pass these in or centralise them)
-   const followUpOptions: { [key: string]: string } = {
-     '1_day': '1 day',
-     '2_days': '2 days',
-     '3_days': '3 days',
-     '7_days': '7 days',
-     '14_days': '14 days',
+     if ((el as HTMLElement).classList.contains('block-container')) {
+       (el as HTMLElement).classList.remove('block-container');
+     }
+     if ((el as HTMLElement).classList.contains('insert-placeholder')) {
+       (el as HTMLElement).classList.remove('insert-placeholder');
