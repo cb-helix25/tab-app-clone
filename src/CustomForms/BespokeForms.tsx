@@ -275,10 +275,13 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
             border: 'none',
           },
           callout: {
-            minWidth: '100%',
+            maxHeight: 300,
+            overflowY: 'auto',
             zIndex: 1100,
           },
           optionsContainer: {
+            maxHeight: 300,
+            overflowY: 'auto',
             selectors: {
               '.ms-ComboBox-option': {
                 height: '32px',

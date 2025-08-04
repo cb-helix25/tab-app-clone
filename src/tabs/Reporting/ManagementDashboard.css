@@ -1,12 +1,12 @@
 .management-dashboard-container {
   min-height: 100vh;
-  padding: 40px;
+  padding: 24px;
   font-family: 'Raleway', sans-serif;
   color: #333;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  background: #f5f7fa;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 24px;
 }
 
 .animate-dashboard {
@@ -35,10 +35,6 @@
 
 /* Filter Section */
 .filter-section {
-  background: #ffffff;
-  border-radius: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  padding: 20px;
   width: 100%;
   animation: slideInFromLeft 0.6s ease-out forwards;
 }
@@ -47,10 +43,6 @@
   display: flex;
   align-items: stretch;
   gap: 20px;
-  background: #ffffff;
-  border-radius: 0;
-  padding: 15px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 2;
 }
@@ -105,16 +97,11 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 15px;
-  background: #ffffff;
-  border-radius: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
-  z-index: 1;
-  margin-top: -15px;
-  padding-top: 40px;
   overflow-x: auto;
   white-space: nowrap;
+  padding-top: 20px;
+  margin-top: -15px;
 }
 
 .team-slicer-buttons .ms-Button--primary {
@@ -146,8 +133,8 @@
 /* Metrics Table Section */
 .metrics-table {
   background: #ffffff;
-  border-radius: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   width: 100%;
 }
@@ -155,7 +142,7 @@
 .metrics-table-header {
   display: grid;
   grid-template-columns: 100px repeat(9, 1fr);
-  background: linear-gradient(135deg, #666 0%, #555 100%);
+  background: var(--darkBlue);
   color: #fff;
   padding: 15px 20px;
   font-size: 13px;
@@ -171,7 +158,7 @@
   padding: 15px 20px;
   font-size: 14px;
   color: #333;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease;
   opacity: 0;
   border-bottom: 1px solid #e9ecef;
 }
@@ -185,8 +172,6 @@
 
 .metrics-table-row:hover {
   background: #f8f9fa;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .metrics-table-row:last-child:hover {

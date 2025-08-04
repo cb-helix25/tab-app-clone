@@ -4,6 +4,7 @@ import { Text, TooltipHost, Icon } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { reportCardClass } from './componentTokens';
 
 interface Report {
   title: string;
@@ -20,28 +21,30 @@ interface ReportCardProps {
 }
 
 const cardStyle = (isDarkMode: boolean, isReady: boolean) =>
-  mergeStyles({
-    padding: '20px',
-    backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
-    borderRadius: '0',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-    transition: 'box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease',
-    cursor: isReady ? 'pointer' : 'not-allowed',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    height: '180px',
-    width: '100%',
-    border: 'none',
-    filter: isReady ? 'none' : 'grayscale(100%)',
-    opacity: isReady ? 1 : 0.6,
-    position: 'relative', // Added for absolute positioning of backdrop icon
-    overflow: 'hidden', // Ensure backdrop icon doesn't overflow
-    ':hover': isReady ? {
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
-      transform: 'translateY(-3px)',
-    } : {},
-  });
+  mergeStyles(
+    reportCardClass,
+    {
+      backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+      transition: 'box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease',
+      cursor: isReady ? 'pointer' : 'not-allowed',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      height: '180px',
+      width: '100%',
+      border: 'none',
+      filter: isReady ? 'none' : 'grayscale(100%)',
+      opacity: isReady ? 1 : 0.6,
+      position: 'relative',
+      overflow: 'hidden',
+      ':hover': isReady
+        ? {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            transform: 'translateY(-3px)',
+          }
+        : {},
+    }
+  );
 
 const contentStyle = (isDarkMode: boolean) =>
   mergeStyles({
@@ -92,11 +95,11 @@ const backdropIconStyle = mergeStyles({
   position: 'absolute',
   bottom: '10px',
   right: '10px',
-  fontSize: '80px', // Larger size for backdrop effect
+  fontSize: '80px',
   color: colours.grey,
-  opacity: 0.5, // 50% opacity initially
-  transition: 'opacity 0.3s ease', // Smooth transition on hover
-  zIndex: 0, // Behind content
+  opacity: 0.3,
+  transition: 'opacity 0.3s ease',
+  zIndex: 0,
 });
 
 const ReportCard: React.FC<ReportCardProps> = React.memo(({ report, onGoTo, animationDelay = 0 }) => {

@@ -1,76 +1,97 @@
-diff --git a/src/tabs/Reporting/ReportCard.tsx b/src/tabs/Reporting/ReportCard.tsx
-index a5b306162622a3306e8f3f2afa7a8fe4829ace23..7c3ba136efc4f06b25800e34644b86566352bdb3 100644
---- a/src/tabs/Reporting/ReportCard.tsx
-+++ b/src/tabs/Reporting/ReportCard.tsx
-@@ -1,67 +1,67 @@
- import React from 'react';
- // invisible change
- import { Text, TooltipHost, Icon } from '@fluentui/react';
- import { mergeStyles } from '@fluentui/react/lib/Styling';
- import { colours } from '../../app/styles/colours';
- import { useTheme } from '../../app/functionality/ThemeContext';
+diff --git a/src/components/ResourcesSidebar.tsx b/src/components/ResourcesSidebar.tsx
+index c8b344e9405cbf614628e8351071e315a3e2c350..3e634693e1a8efb20149c3539070df2fa1df73f2 100644
+--- a/src/components/ResourcesSidebar.tsx
++++ b/src/components/ResourcesSidebar.tsx
+@@ -40,87 +40,91 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean, top: number) =>
+         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+         boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
+         padding: 16,
+         overflowY: 'auto',
+         transition: 'right 0.3s ease',
+         zIndex: 850,
+     });
  
- interface Report {
-   title: string;
-   description: string;
-   path: string;
-   icon: string;
-   isReady: boolean;
- }
+ const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
+     mergeStyles({
+         position: 'fixed',
+         top,
+         right: isOpen ? sidebarWidth : 0,
+         height: `calc(100vh - ${top}px)`,
+         width: 24,
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         cursor: 'pointer',
+         backgroundColor: isOpen
+             ? isDarkMode
+                 ? colours.dark.cardHover
+                 : colours.light.cardHover
+             : 'transparent',
+         boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
+-        transition: 'right 0.3s ease, opacity 0.3s ease',
++        transition: 'opacity 0.3s ease',
+         zIndex: 851,
+         opacity: isOpen ? 1 : 0,
+         selectors: {
+             ':hover': {
+                 opacity: 1,
+                 backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
+             },
+         },
+     });
  
- interface ReportCardProps {
-   report: Report;
-   onGoTo: (title: string) => void;
-   animationDelay?: number;
- }
+ const ResourcesSidebar: React.FC<ResourcesSidebarProps> = ({
+     activeTab,
+     hovered,
+     pinned,
+     setPinned,
+ }) => {
+     const { isDarkMode } = useTheme();
+     const [isOpen, setIsOpen] = React.useState(false);
+     const [sidebarTop, setSidebarTop] = React.useState<number>(DEFAULT_SIDEBAR_TOP);
  
- const cardStyle = (isDarkMode: boolean, isReady: boolean) =>
-   mergeStyles({
-     padding: '20px',
-     backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
--    borderRadius: '0',
--    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-+    borderRadius: '4px',
-+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-     transition: 'box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease',
-     cursor: isReady ? 'pointer' : 'not-allowed',
-     display: 'flex',
-     flexDirection: 'column',
-     justifyContent: 'space-between',
-     height: '180px',
-     width: '100%',
-     border: 'none',
-     filter: isReady ? 'none' : 'grayscale(100%)',
-     opacity: isReady ? 1 : 0.6,
-     position: 'relative', // Added for absolute positioning of backdrop icon
-     overflow: 'hidden', // Ensure backdrop icon doesn't overflow
-     ':hover': isReady ? {
--      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
--      transform: 'translateY(-3px)',
-+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-+      transform: 'translateY(-2px)',
-     } : {},
-   });
+     const updateTop = React.useCallback(() => {
+         setSidebarTop(calculateSidebarTop());
+     }, []);
  
- const contentStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     display: 'flex',
-     flexDirection: 'column',
-     gap: '8px',
-     position: 'relative', // Ensure content stays above backdrop
-     zIndex: 1, // Layer content above backdrop icon
-   });
+     React.useEffect(() => {
+         updateTop();
+         window.addEventListener('resize', updateTop);
+         return () => window.removeEventListener('resize', updateTop);
+     }, [updateTop]);
  
- const titleRowStyle = (isDarkMode: boolean) =>
-   mergeStyles({
-     display: 'flex',
-     flexDirection: 'row',
-     alignItems: 'center',
-     gap: '12px',
-   });
+     React.useEffect(() => {
+         if (isOpen) {
+             updateTop();
+         }
+     }, [isOpen, updateTop]);
  
- const titleStyle = (isReady: boolean) =>
-   mergeStyles({
-     fontSize: '20px',
-     fontWeight: '600',
-     color: isReady ? '#1b2526' : '#999',
++    React.useEffect(() => {
++        updateTop();
++    }, [activeTab, updateTop]);
++
+     React.useEffect(() => {
+         if (activeTab === 'resources') {
+             setPinned(true);
+             setIsOpen(true);
+         }
+     }, [activeTab, setPinned]);
+ 
+     React.useEffect(() => {
+         if (!pinned) {
+             setIsOpen(hovered || false);
+         }
+     }, [hovered, pinned]);
+ 
+     React.useEffect(() => {
+         if (pinned) {
+             setIsOpen(true);
+         }
+     }, [pinned]);
+ 
+     return (
+         <>
+             <div
+                 className={handleStyle(isOpen, isDarkMode, sidebarTop)}
+                 onClick={() => {
+                     if (pinned) {

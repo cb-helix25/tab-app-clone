@@ -138,3 +138,24 @@
     font-size: 0.75rem;
     padding: 2px;
 }
+
+.data-inspector {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.data-inspector .data-btn {
+    width: 100%;
+    font-size: 0.75rem;
+    padding: 2px;
+    background: none;
+    border: 1px solid var(--helix-highlight);
+    color: var(--helix-highlight);
+    cursor: pointer;
+}
+
+.data-inspector .data-btn:hover {
+    background: var(--helix-highlight);
+    color: var(--helix-dark-blue);
+}

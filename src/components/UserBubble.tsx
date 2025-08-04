@@ -40,6 +40,11 @@ const UserBubble: React.FC<UserBubbleProps> = ({
         `${user.First?.charAt(0) || ''}${user.Last?.charAt(0) || ''}`.toUpperCase();
 
     useEffect(() => {
+        // Persist current user initials for debugging features
+        localStorage.setItem('__currentUserInitials', (user.Initials || '').toLowerCase());
+    }, [user]);
+
+    useEffect(() => {
         function updatePosition() {
             if (bubbleRef.current && popoverRef.current) {
                 const bubbleRect = bubbleRef.current.getBoundingClientRect();
@@ -94,23 +99,22 @@ const UserBubble: React.FC<UserBubbleProps> = ({
         if (text) navigator.clipboard.writeText(text);
     };
 
-    // Only display email, Clio ID, Entra ID, and Asana credentials from the user data
-    const allowedFields = ['Email', 'ClioID', 'EntraID', 'ASANAClientID', 'ASANASecret', 'ASANARefreshToken'] as const;
-    const labels: Record<typeof allowedFields[number], string> = {
-        Email: 'Email',
-        ClioID: 'Clio ID',
-        EntraID: 'Entra ID',
-        ASANAClientID: 'Asana Client ID',
-        ASANASecret: 'Asana Secret',
-        ASANARefreshToken: 'Asana Refresh Token',
-    };
-
-    const userDetails = allowedFields
-        .filter((key) => user[key as keyof UserData])
-        .map((key) => ({
-            label: labels[key],
-            value: String(user[key as keyof UserData]),
-        }));
+    // Display all available fields from the user object.
+    // Deduplicate keys that differ only by spacing or underscores.
+    const detailsMap = new Map<string, { label: string; value: string }>();
+    Object.entries(user as Record<string, unknown>)
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .forEach(([key, value]) => {
+            const canonical = key.replace(/[\s_]/g, '').toLowerCase();
+            if (canonical === 'aow') return; // handled separately
+            if (!detailsMap.has(canonical)) {
+                detailsMap.set(canonical, {
+                    label: key.replace(/_/g, ' '),
+                    value: String(value),
+                });
+            }
+        });
+    const userDetails = Array.from(detailsMap.values());
 
     // Extract and format areas of work
     let areasOfWork: string[] = [];
@@ -124,12 +128,14 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
     // Normalize potential fields to lower case and trim whitespace so
     // production data with trailing spaces or nickname variations still match.
-    const canSwitchUser = ALLOWED_SWITCHERS.some((a) => {
+    const isPowerUser = ALLOWED_SWITCHERS.some((a) => {
         const first = user.First?.toLowerCase().trim();
         const initials = user.Initials?.toLowerCase().trim();
         const nickname = user.Nickname?.toLowerCase().trim();
         return first === a || initials === a || nickname === a;
     });
+
+    const canSwitchUser = isPowerUser;
 
     return (
         <div className="user-bubble-container">
@@ -189,7 +195,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                             type="checkbox"
                                             checked={areasOfWork.includes(area)}
                                             onChange={(e) => {
-                                                const newAreas = e.target.checked 
+                                                const newAreas = e.target.checked
                                                     ? [...areasOfWork, area]
                                                     : areasOfWork.filter(a => a !== area);
                                                 onAreasChange(newAreas);
@@ -199,6 +205,16 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                     </label>
                                 ))}
                             </div>
+                        </div>
+                    )}
+                    {isPowerUser && (
+                        <div className="data-inspector">
+                            <button
+                                className="data-btn"
+                                onClick={() => (window.location.href = '/data')}
+                            >
+                                Data
+                            </button>
                         </div>
                     )}
                     {onUserChange && availableUsers && canSwitchUser && (

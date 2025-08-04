@@ -83,7 +83,7 @@ const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
                 : colours.light.cardHover
             : "transparent",
         boxShadow: "2px 0 4px rgba(0,0,0,0.2)",
-        transition: "left 0.3s ease, opacity 0.3s ease",
+        transition: "opacity 0.3s ease",
         zIndex: 851,
         opacity: isOpen ? 1 : 0,
         selectors: {
@@ -137,6 +137,10 @@ const FormsSidebar: React.FC<FormsSidebarProps> = ({
             updateTop();
         }
     }, [isOpen, updateTop]);
+
+    React.useEffect(() => {
+        updateTop();
+    }, [activeTab, updateTop]);
 
     React.useEffect(() => {
         if (activeTab === "forms") {

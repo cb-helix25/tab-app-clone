@@ -17,6 +17,7 @@ import { Enquiry, Matter, TeamData, UserData, POID } from '../../app/functionali
 import MetricCard from './MetricCard';
 import { colours } from '../../app/styles/colours';
 import './ManagementDashboard.css';
+import { sectionClass } from './componentTokens';
 
 interface RecoveredFee {
   payment_date: string;
@@ -677,7 +678,7 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
 
   return (
     <div className="management-dashboard-container animate-dashboard">
-      <div className="filter-section">
+      <div className={`filter-section ${sectionClass}`}>
         <div className="date-filter-wrapper">
           <div className="date-pickers">
             <Stack horizontal tokens={{ childrenGap: 16 }}>
@@ -817,12 +818,8 @@ const ManagementDashboard: React.FC<ManagementDashboardProps> = ({
       </div>
 
       <div
-        className="metrics-table-section"
+        className={`metrics-table-section ${sectionClass}`}
         style={{
-          background: colours.light.sectionBackground,
-          padding: '16px',
-          borderRadius: '0',
-          boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
           marginTop: '-8px',
           position: 'relative',
           zIndex: 1,

@@ -14,6 +14,9 @@ import localMatters from "./localData/localMatters.json";
 import localTeamData from "./localData/team-sql-data.json";
 import { getLiveLocalEnquiries } from "./tabs/home/Home";
 
+import "./utils/callLogger";
+import Data from "./tabs/Data";
+
 import { initializeIcons } from "@fluentui/react";
 initializeIcons();
 
@@ -368,11 +371,23 @@ const AppWithContext: React.FC = () => {
   );
 };
 
-ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider theme={customTheme}>
-      <AppWithContext />
-    </ThemeProvider>
-  </React.StrictMode>,
-  document.getElementById("root"),
-);
+const root = document.getElementById('root');
+if (window.location.pathname === '/data') {
+  ReactDOM.render(
+    <React.StrictMode>
+      <ThemeProvider theme={customTheme}>
+        <Data />
+      </ThemeProvider>
+    </React.StrictMode>,
+    root,
+  );
+} else {
+  ReactDOM.render(
+    <React.StrictMode>
+      <ThemeProvider theme={customTheme}>
+        <AppWithContext />
+      </ThemeProvider>
+    </React.StrictMode>,
+    root,
+  );
+}
