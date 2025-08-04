@@ -1,4 +1,13 @@
 const path = require('path');
+
+// Provide a fetch implementation when running on Node versions
+// that do not ship with a global `fetch` (Node <18). This prevents
+// runtime ReferenceError failures that surface as HTTP 500 responses
+// when routes attempt to call `fetch`.
+if (typeof fetch === 'undefined') {
+    global.fetch = require('node-fetch');
+}
+
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');

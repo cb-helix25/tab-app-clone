@@ -1,4 +1,13 @@
 const path = require('path');
+
+// Ensure `fetch` is available for route handlers when running on
+// versions of Node.js that do not provide it natively. Without this
+// check, calls to `fetch` would throw a ReferenceError and surface as
+// 500 errors in production.
+if (typeof fetch === 'undefined') {
+    global.fetch = require('node-fetch');
+}
+
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
 const morgan = require('morgan');

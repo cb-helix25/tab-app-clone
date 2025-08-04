@@ -1,75 +1,292 @@
-diff --git a/server/routes/enquiries.js b/server/routes/enquiries.js
-index f0f9f7e50ad8dffe6b5f7894bdda7db8592387a5..88fc2ee45ba4423ef43a85c5ca11fa4909d0f89f 100644
---- a/server/routes/enquiries.js
-+++ b/server/routes/enquiries.js
-@@ -1,40 +1,52 @@
- const express = require('express');
- const { DefaultAzureCredential } = require('@azure/identity');
- const { SecretClient } = require('@azure/keyvault-secrets');
- const router = express.Router();
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index cff38798e6ec9a067d55f59fb7c534226ad159f1..7df4a53c756021884f026fc48610eb42820900cc 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -11,50 +11,52 @@ import {
+   DefaultButton,
+   Checkbox,
+   IconButton,
+   mergeStyles,
+   Link,
+ } from '@fluentui/react';
+ import { colours } from '../../../app/styles/colours';
+ import {
+   sharedPrimaryButtonStyles,
+   sharedDefaultButtonStyles,
+ // invisible change
+   sharedDraftConfirmedButtonStyles,
+ } from '../../../app/styles/ButtonStyles';
+ import { componentTokens } from '../../../app/styles/componentTokens';
+ import markWhite from '../../../assets/markwhite.svg';
+ import {
+   removeHighlightSpans,
+   markUnfilledPlaceholders,
+   removeUnfilledPlaceholders,
+   applyDynamicSubstitutions,
+   convertDoubleBreaksToParagraphs,
+ } from './emailUtils';
+ import ExperimentalAssistant from './ExperimentalAssistant';
+ import { isInTeams } from '../../../app/functionality/isInTeams';
+ import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
++import ReactDOMServer from 'react-dom/server';
++import EmailSignature from '../EmailSignature';
  
- // Set up Key Vault client
- const credential = new DefaultAzureCredential();
- const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
- const client = new SecretClient(vaultUrl, credential);
+ function escapeRegExp(str: string): string {
+   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+ }
  
- // Route: GET /api/enquiries
--// Calls the fetchEnquiriesData function in the VNet space
-+// Tries the new fetchEnquiriesData function first, falls back to the legacy fetchenquiries function
- router.get('/', async (req, res) => {
-   try {
--    // Get the function code from Key Vault
--    const secret = await client.getSecret('fetchEnquiriesData-code');
--    const functionCode = secret.value;
--    
--    // Forward any query parameters from the request
-     const queryParams = new URLSearchParams(req.query);
--    
--    // Call the function app in VNet space
--    const functionUrl = process.env.VNET_FUNCTION_BASE_URL || 'https://your-vnet-function-app.azurewebsites.net';
--    const url = `${functionUrl}/api/fetchEnquiriesData?code=${functionCode}&${queryParams.toString()}`;
--    
--    const response = await fetch(url);
--    if (!response.ok) {
--      console.error(`Function call failed: ${response.status} ${response.statusText}`);
--      return res.status(response.status).json({ error: 'Failed to fetch enquiries data.' });
-+
-+    // Attempt the new function if a base URL is configured
-+    const baseUrl = process.env.VNET_FUNCTION_BASE_URL;
-+    if (baseUrl) {
-+      try {
-+        const secret = await client.getSecret('fetchEnquiriesData-code');
-+        const functionCode = secret.value;
-+        const url = `${baseUrl}/api/fetchEnquiriesData?code=${functionCode}&${queryParams.toString()}`;
-+        const response = await fetch(url);
-+        if (response.ok) {
-+          const data = await response.json();
-+          return res.json(data);
-+        }
-+        console.error(`VNet function call failed: ${response.status} ${response.statusText}`);
-+      } catch (err) {
-+        console.error('VNet function error:', err);
-+      }
-+      // Fall through to legacy if new function is not configured or fails
-+    }
-+
-+    // Legacy instructions function
-+    const legacySecret = await client.getSecret('fetchenquiries-key');
-+    const legacyCode = legacySecret.value;
-+    const legacyUrl = 'https://your-instructions-function-app.azurewebsites.net/api/fetchenquiries';
-+    const legacyResponse = await fetch(`${legacyUrl}?code=${legacyCode}&${queryParams.toString()}`);
-+    if (!legacyResponse.ok) {
-+      return res.status(legacyResponse.status).json({ error: 'Failed to fetch enquiries data.' });
+ function removeAutoInsertedBlocks(
+   html: string,
+   autoBlocks: { [key: string]: boolean },
+   editedBlocks: { [key: string]: boolean }
+ ): string {
+   let result = html;
+   Object.keys(autoBlocks).forEach((title) => {
+     if (!autoBlocks[title]) return;
+     if (editedBlocks[title]) return;
+     const escaped = escapeRegExp(title);
+     const regex = new RegExp(
+       `<!--START_BLOCK:${escaped}-->[\\s\\S]*?<!--END_BLOCK:${escaped}-->`,
+       'g'
+     );
+     result = result.replace(regex, '');
+   });
+   return result;
+ }
+ 
+ interface EmailPreviewProps {
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index cff38798e6ec9a067d55f59fb7c534226ad159f1..7df4a53c756021884f026fc48610eb42820900cc 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -106,50 +108,60 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
+   isDraftConfirmed,
+   amount,
+   passcode,
+ }) => {
+   // Strip blocks auto inserted by the system unless edited
+   // Disabled for now since we want content to display by default
+   const withoutAutoBlocks = body;
+   
+   // Generate checkout URL first
+   const checkoutPreviewUrl = passcode && enquiry?.ID
+     ? `https://instruct.helix-law.com/pitch/${enquiry.ID}-${passcode}`
+     : '#';
+   
+   // Process body HTML using imported functions
+   const sanitized = removeHighlightSpans(withoutAutoBlocks);
+   const substituted = applyDynamicSubstitutions(
+     sanitized,
+     userData,
+     enquiry,
+     amount,
+     passcode,
+     checkoutPreviewUrl
+   );
+   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
+   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
++  const wrappedBody = `<table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
++    <tr>
++      <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
++        ${finalBody}
++      </td>
++    </tr>
++  </table>`;
++  const previewHtml = ReactDOMServer.renderToStaticMarkup(
++    <EmailSignature bodyHtml={wrappedBody} userData={userData} />
++  );
+ const previewRef = React.useRef<HTMLDivElement>(null);
+ 
+   const [isAiOpen, setIsAiOpen] = React.useState(false);
+   const [isConfirmed, setIsConfirmed] = React.useState(false);
+   React.useEffect(() => {
+     if (isPreviewOpen) {
+       setIsConfirmed(false);
      }
--    
--    const data = await response.json();
--    res.json(data);
-+    const legacyData = await legacyResponse.json();
-+    res.json(legacyData);
-   } catch (err) {
-     console.error('Error fetching enquiries data:', err);
-     res.status(500).json({ error: 'Internal server error.' });
-   }
- });
+   }, [isPreviewOpen]);
+   const inTeams = isInTeams();
+   const useLocalData =
+     process.env.REACT_APP_USE_LOCAL_DATA === 'true' || !inTeams;
+   const allowedInitials = ['LZ', 'AC'];
+   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+   const canUseAi = useLocalData || allowedInitials.includes(userInitials);
+   const showAiAssistButton = false;
  
- module.exports = router;
+   // Example follow-up options (you may wish to pass these in or centralise them)
+   const followUpOptions: { [key: string]: string } = {
+     '1_day': '1 day',
+     '2_days': '2 days',
+     '3_days': '3 days',
+     '7_days': '7 days',
+     '14_days': '14 days',
+     '30_days': '30 days',
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index cff38798e6ec9a067d55f59fb7c534226ad159f1..7df4a53c756021884f026fc48610eb42820900cc 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -167,51 +179,50 @@ function formatCurrency(val?: string): string {
+ }
+ 
+   const subjectBannerClass = mergeStyles('subject-banner', {
+     background: '#f8f9fa',
+     border: '1px solid #e8eaed',
+     borderRadius: '4px',
+     padding: '12px 16px',
+     fontSize: '14px',
+     fontWeight: 600,
+     color: '#0078d4',
+     margin: '0 16px',
+     boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+   });
+ 
+   const panelStyles = {
+     padding: '0',
+     backgroundColor: '#ffffff',
+     color: '#3c4043',
+     display: 'flex',
+     flexDirection: 'column',
+     height: '100%',
+     overflow: 'hidden'
+   } as const;
+ 
+   const bodyStyles = {
+-    whiteSpace: 'pre-wrap',
+     flex: 1,
+     overflowY: 'auto',
+     padding: '24px',
+     fontFamily: 'Raleway, sans-serif',
+     fontSize: '14px',
+     lineHeight: '1.6',
+     color: '#3c4043',
+     backgroundColor: '#ffffff',
+     position: 'relative',
+     borderRadius: '4px',
+     margin: '0 16px 16px 16px',
+     border: '1px solid #e8eaed',
+     boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+   } as const;
+ 
+   return (
+     <Panel
+       isOpen={isPreviewOpen}
+       onDismiss={onDismiss}
+       type={PanelType.custom}
+       customWidth="50%"
+       hasCloseButton={false}
+       styles={{
+         main: panelStyles,
+         commands: { display: 'none' },
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index cff38798e6ec9a067d55f59fb7c534226ad159f1..7df4a53c756021884f026fc48610eb42820900cc 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -382,51 +393,51 @@ function formatCurrency(val?: string): string {
+             }}>
+               Email Content
+             </span>
+             <div style={{
+               marginLeft: 'auto',
+               padding: '2px 8px',
+               backgroundColor: '#d6e8ff',
+               borderRadius: '6px',
+               fontSize: '10px',
+               fontWeight: 500,
+               color: colours.highlight
+             }}>
+               Preview
+             </div>
+           </div>
+ 
+           <div
+             ref={previewRef}
+             style={{
+               ...bodyStyles,
+               margin: 0,
+               borderTopLeftRadius: 0,
+               borderTopRightRadius: 0,
+               borderTop: 'none'
+             }}
+-            dangerouslySetInnerHTML={{ __html: finalBody }}
++            dangerouslySetInnerHTML={{ __html: previewHtml }}
+           />
+         </div>
+ 
+         {/* Follow Up Section */}
+         {followUp && (
+           <div style={{
+             margin: '0 16px',
+             padding: '16px',
+             backgroundColor: '#fff8e1',
+             borderRadius: '4px',
+             border: '1px solid #ffcc02',
+             boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+           }}>
+             <div style={{
+               fontSize: '12px',
+               fontWeight: 600,
+               color: '#f57f17',
+               textTransform: 'uppercase',
+               letterSpacing: '0.5px',
+               marginBottom: '8px'
+             }}>
+               Follow Up Reminder
+             </div>
+             <div style={{
+               fontSize: '14px',
+diff --git a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+index cff38798e6ec9a067d55f59fb7c534226ad159f1..7df4a53c756021884f026fc48610eb42820900cc 100644
+--- a/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
++++ b/src/tabs/enquiries/pitch-builder/EmailPreview.tsx
+@@ -548,51 +559,51 @@ function formatCurrency(val?: string): string {
+                   }
+                 }}
+                 onClick={() => setIsAiOpen(true)}
+                 title="Send this email to OpenAI for suggestions"
+               />
+             )}
+             <DefaultButton
+               text="Copy"
+               styles={{
+                 root: {
+                   backgroundColor: 'white',
+                   border: '1px solid #e8eaed',
+                   borderRadius: '4px',
+                   padding: '0 16px',
+                   height: '36px',
+                   fontWeight: 500,
+                   color: '#5f6368'
+                 },
+                 rootHovered: {
+                   backgroundColor: '#f8f9fa',
+                   borderColor: '#dadce0'
+                 }
+               }}
+               onClick={() => {
+                 const tempDiv = document.createElement('div');
+-                tempDiv.innerHTML = finalBody;
++                tempDiv.innerHTML = previewHtml;
+                 navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
+               }}
+               title="Copy the email preview text to your clipboard"
+             />
+           </div>
+         </div>
+ 
+         {/* Checkout Link */}
+         <Link
+           href={checkoutPreviewUrl}
+           target="_blank"
+           rel="noopener noreferrer"
+           styles={{
+             root: {
+               display: 'inline-flex',
+               alignItems: 'center',
+               gap: '6px',
+               padding: '8px 12px',
+               backgroundColor: '#fff8e1',
+               borderRadius: '4px',
+               border: '1px solid #ffcc02',
+               textDecoration: 'none',
+               fontSize: '13px',
+               fontWeight: 500,
+               color: '#f57f17',

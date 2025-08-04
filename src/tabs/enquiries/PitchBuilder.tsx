@@ -2615,6 +2615,10 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   function togglePreview() {
+    if (!isPreviewOpen && bodyEditorRef.current) {
+      // Sync the latest editor content into state before showing the preview
+      setBody(bodyEditorRef.current.innerHTML);
+    }
     setIsPreviewOpen(!isPreviewOpen);
   }
 

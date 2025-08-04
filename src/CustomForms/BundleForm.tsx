@@ -3,6 +3,7 @@ import { Stack, Dropdown, IDropdownOption, ComboBox, IComboBoxOption, TextField,
 import { colours } from '../app/styles/colours';
 import { dashboardTokens } from '../tabs/instructions/componentTokens';
 import '../app/styles/MatterOpeningCard.css';
+import '../app/styles/MultiSelect.css';
 import { sharedPrimaryButtonStyles, sharedDefaultButtonStyles } from '../app/styles/ButtonStyles';
 import { Matter, TeamData } from '../app/functionality/types';
 
@@ -116,8 +117,9 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
         <Stack tokens={dashboardTokens} className="workflow-container">
             <div className="workflow-main matter-opening-card">
                 <h3 className="step-title">Bundle Submission</h3>
-                <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
-                    <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
+                <Stack tokens={{ childrenGap: 16 }} styles={{ root: { width: '100%' } }}>
+                    <div className="question-banner">Request Details</div>
+                    <Stack horizontal tokens={{ childrenGap: 12 }} wrap styles={{ root: { width: '100%' } }}>
                         <Stack styles={{ root: { flex: 1 } }}>
                             <Dropdown
                                 label="Name"
@@ -144,8 +146,10 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                             />
                         </Stack>
                     </Stack>
-
                     <TextField label="NetDocs link (bundle)" value={bundleLink} onChange={(_, v) => setBundleLink(v || '')} required />
+                    <div className="form-separator" />
+
+                    <div className="question-banner">Delivery Method</div>
                     <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                         <DefaultButton
                             text="Posted"
@@ -162,8 +166,11 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                             iconProps={{ iconName: 'Home' }}
                         />
                     </Stack>
-                    <Stack horizontal tokens={{ childrenGap: 24 }} wrap styles={{ root: { width: '100%' } }}>
-                        {posted && (
+
+                    {posted && (
+                        <>
+                            <div className="form-separator" />
+                            <div className="question-banner">Postal Details</div>
                             <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                                 <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={(date) => setArrivalDate(date ?? null)} isRequired />
                                 <Stack horizontal tokens={{ childrenGap: 8 }}>
@@ -184,10 +191,14 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                                 <span style={{ color: colours.greyText, fontSize: '12px' }}>
                                     This should be to the address on the covering letter uploaded
                                 </span>
-                                {/* Only a single covering letter allowed; add/remove buttons removed */}
                             </Stack>
-                        )}
-                        {leftInOffice && (
+                        </>
+                    )}
+
+                    {leftInOffice && (
+                        <>
+                            <div className="form-separator" />
+                            <div className="question-banner">Office Drop-off</div>
                             <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                                 <DatePicker label="Office-ready date" value={officeDate || undefined} onSelectDate={(date) => setOfficeDate(date ?? null)} isRequired />
                                 <TextField
@@ -198,8 +209,11 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                                     required
                                 />
                             </Stack>
-                        )}
-                    </Stack>
+                        </>
+                    )}
+
+                    <div className="form-separator" />
+                    <div className="question-banner">Additional Notes</div>
                     <TextField label="Other notes" multiline rows={3} value={notes} onChange={(_, v) => setNotes(v || '')} />
                     <Stack horizontal tokens={{ childrenGap: 8 }}>
                         <PrimaryButton text="Submit" onClick={handleSubmit} disabled={!isValid() || submitting} styles={sharedPrimaryButtonStyles} />

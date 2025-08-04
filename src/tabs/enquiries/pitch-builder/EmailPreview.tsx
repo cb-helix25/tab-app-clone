@@ -33,6 +33,8 @@ import {
 import ExperimentalAssistant from './ExperimentalAssistant';
 import { isInTeams } from '../../../app/functionality/isInTeams';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+import ReactDOMServer from 'react-dom/server';
+import EmailSignature from '../EmailSignature';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -128,6 +130,16 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   );
   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
+  const wrappedBody = `<table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+    <tr>
+      <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
+        ${finalBody}
+      </td>
+    </tr>
+  </table>`;
+  const previewHtml = ReactDOMServer.renderToStaticMarkup(
+    <EmailSignature bodyHtml={wrappedBody} userData={userData} />
+  );
 const previewRef = React.useRef<HTMLDivElement>(null);
 
   const [isAiOpen, setIsAiOpen] = React.useState(false);
@@ -189,7 +201,6 @@ function formatCurrency(val?: string): string {
   } as const;
 
   const bodyStyles = {
-    whiteSpace: 'pre-wrap',
     flex: 1,
     overflowY: 'auto',
     padding: '24px',
@@ -404,7 +415,7 @@ function formatCurrency(val?: string): string {
               borderTopRightRadius: 0,
               borderTop: 'none'
             }}
-            dangerouslySetInnerHTML={{ __html: finalBody }}
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         </div>
 
@@ -570,7 +581,7 @@ function formatCurrency(val?: string): string {
               }}
               onClick={() => {
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = finalBody;
+                tempDiv.innerHTML = previewHtml;
                 navigator.clipboard.writeText(tempDiv.innerText || tempDiv.textContent || '');
               }}
               title="Copy the email preview text to your clipboard"
