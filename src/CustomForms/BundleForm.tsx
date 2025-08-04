@@ -31,6 +31,7 @@ const toggleStyles: IButtonStyles = {
     },
 };
 
+// Only allow a single covering letter
 interface CoverLetter {
     link: string;
     copies: number;
@@ -50,7 +51,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
     const [leftInOffice, setLeftInOffice] = useState<boolean>(false);
     const [arrivalDate, setArrivalDate] = useState<Date | null>(null);
     const [officeDate, setOfficeDate] = useState<Date | null>(null);
-    const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([{ link: '', copies: 1 }]);
+    const [coverLetter, setCoverLetter] = useState<CoverLetter>({ link: '', copies: 1 });
     const [copiesInOffice, setCopiesInOffice] = useState<number>(1);
     const [notes, setNotes] = useState<string>('');
     const [submitting, setSubmitting] = useState<boolean>(false);
@@ -66,18 +67,13 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
             .map(m => ({ key: m.DisplayNumber, text: m.DisplayNumber })),
         [matters]);
 
-    const handleAddLetter = () =>
-        setCoverLetters([...coverLetters, { link: '', copies: 1 }]);
-    const handleRemoveLetter = (idx: number) =>
-        setCoverLetters((cl) => cl.filter((_, i) => i !== idx));
-
+    // Validation function
     const isValid = () => {
         if (!name || !matterRef || !bundleLink) return false;
         if (!posted && !leftInOffice) return false;
         if (posted) {
             if (!arrivalDate) return false;
-            if (coverLetters.some((cl) => !cl.link || cl.copies < 1))
-                return false;
+            if (!coverLetter.link || coverLetter.copies < 1) return false;
         }
         if (leftInOffice) {
             if (!officeDate || copiesInOffice < 1) return false;
@@ -98,7 +94,7 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
             },
             arrivalDate: posted ? arrivalDate?.toISOString() : null,
             officeReadyDate: leftInOffice ? officeDate?.toISOString() : null,
-            coveringLetters: posted ? coverLetters : [],
+            coveringLetter: posted ? coverLetter : undefined,
             copiesInOffice: leftInOffice ? copiesInOffice : undefined,
             notes: notes || undefined,
         };
@@ -170,44 +166,25 @@ const BundleForm: React.FC<BundleFormProps> = ({ team, matters, onBack }) => {
                         {posted && (
                             <Stack tokens={{ childrenGap: 12 }} styles={{ root: { width: '100%' } }}>
                                 <DatePicker label="Arrival date" value={arrivalDate || undefined} onSelectDate={(date) => setArrivalDate(date ?? null)} isRequired />
-                                {coverLetters.map((cl, idx) => (
-                                    <Stack key={idx} horizontal tokens={{ childrenGap: 8 }}>
-                                        <TextField
-                                            label="Covering letter link"
-                                            value={cl.link}
-                                            onChange={(_, v) =>
-                                                setCoverLetters((arr) => arr.map((c, i) => (i === idx ? { ...c, link: v || '' } : c)))
-                                            }
-                                            required
-                                        />
-                                        <TextField
-                                            label="No. of copies to address"
-                                            type="number"
-                                            value={cl.copies.toString()}
-                                            onChange={(_, v) =>
-                                                setCoverLetters((arr) => arr.map((c, i) => (i === idx ? { ...c, copies: Number(v) || 1 } : c)))
-                                            }
-                                            required
-                                        />
-                                        {coverLetters.length > 1 && (
-                                            <DefaultButton text="Delete" onClick={() => handleRemoveLetter(idx)} styles={{ root: { alignSelf: 'end' } }} />
-                                        )}
-                                    </Stack>
-                                ))}
+                                <Stack horizontal tokens={{ childrenGap: 8 }}>
+                                    <TextField
+                                        label="Covering letter link"
+                                        value={coverLetter.link}
+                                        onChange={(_, v) => setCoverLetter((c) => ({ ...c, link: v || '' }))}
+                                        required
+                                    />
+                                    <TextField
+                                        label="No. of copies to address"
+                                        type="number"
+                                        value={coverLetter.copies.toString()}
+                                        onChange={(_, v) => setCoverLetter((c) => ({ ...c, copies: Number(v) || 1 }))}
+                                        required
+                                    />
+                                </Stack>
                                 <span style={{ color: colours.greyText, fontSize: '12px' }}>
                                     This should be to the address on the covering letter uploaded
                                 </span>
-                                <PrimaryButton
-                                    text="Add Covering Letter"
-                                    onClick={handleAddLetter}
-                                    styles={{
-                                        ...sharedPrimaryButtonStyles,
-                                        root: {
-                                            ...(typeof sharedPrimaryButtonStyles.root === 'object' && sharedPrimaryButtonStyles.root !== null ? sharedPrimaryButtonStyles.root : {}),
-                                            width: 'fit-content'
-                                        }
-                                    }}
-                                />
+                                {/* Only a single covering letter allowed; add/remove buttons removed */}
                             </Stack>
                         )}
                         {leftInOffice && (

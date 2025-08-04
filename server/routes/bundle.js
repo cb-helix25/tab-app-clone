@@ -3,12 +3,19 @@ const path = require('path');
 
 const router = express.Router();
 
-// Load local user data if available
+function inLocalMode() {
+    return process.env.USE_LOCAL_SECRETS === 'true';
+}
+
+// Load local user data if in local mode
 let localUsers = [];
-try {
-    localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
-} catch {
-    localUsers = [];
+if (inLocalMode()) {
+    try {
+        localUsers = require(path.join(process.cwd(), 'src', 'localData', 'localUserData.json'));
+    } catch (err) {
+        console.warn('localUserData.json not loaded:', err.message);
+        localUsers = [];
+    }
 }
 
 function findUserByName(name) {
@@ -22,10 +29,6 @@ function findUserByName(name) {
     }) || null;
 }
 
-function inLocalMode() {
-    return process.env.USE_LOCAL_SECRETS === 'true';
-}
-
 router.post('/', async (req, res) => {
     const {
         name,
@@ -34,7 +37,7 @@ router.post('/', async (req, res) => {
         deliveryOptions = {},
         arrivalDate,
         officeReadyDate,
-        coveringLetters = [],
+        coveringLetter,
         copiesInOffice,
         notes
     } = req.body || {};
@@ -88,9 +91,9 @@ router.post('/', async (req, res) => {
         if (deliveryOptions.posted) {
             descriptionParts.push('Posted to opponent');
             if (arrivalDate) descriptionParts.push(`Arrival date: ${arrivalDate}`);
-            coveringLetters.forEach((cl, idx) => {
-                descriptionParts.push(`Letter ${idx + 1}: ${cl.link} x${cl.copies}`);
-            });
+            if (coveringLetter && coveringLetter.link) {
+                descriptionParts.push(`Letter: ${coveringLetter.link} x${coveringLetter.copies}`);
+            }
         }
         if (deliveryOptions.leftInOffice) {
             descriptionParts.push('Copies left in office');
