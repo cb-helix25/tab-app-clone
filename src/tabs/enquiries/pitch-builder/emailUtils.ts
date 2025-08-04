@@ -98,21 +98,38 @@ export function removeHighlightSpans(html: string): string {
     '.lock-toggle, .block-sidebar, .sentence-delete, .sentence-handle';
   tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
 
-  // Unwrap placeholder containers and keep only the active option content
+  // Unwrap placeholder containers. If no option is selected, keep the first
+  // option's content so that default previews still render.
   tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
     const parent = el.parentNode;
     if (!parent) return;
 
-    // Within each block, strip out unselected option bubbles
-    el.querySelectorAll('.option-bubble').forEach((bubble) => {
-      const bubbleEl = bubble as HTMLElement;
-      const isActive =
-        bubbleEl.classList.contains('active') ||
-        bubbleEl.classList.contains('selected');
+    const bubbles = Array.from(el.querySelectorAll('.option-bubble')) as HTMLElement[];
+    let keep = bubbles.find(
+      (b) => b.classList.contains('active') || b.classList.contains('selected')
+    );
+    if (!keep && bubbles.length > 0) {
+      keep = bubbles[0];
+    }
 
-      if (isActive) {
+    bubbles.forEach((bubble) => {
+      const bubbleEl = bubble as HTMLElement;
+      if (bubbleEl === keep) {
         const bubbleParent = bubbleEl.parentNode;
         if (!bubbleParent) return;
+
+        // Remove option headers so only the main content remains
+        bubbleEl.querySelectorAll('strong').forEach((el) => el.remove());
+
+        // Unwrap option-preview containers to avoid indentation styles
+        bubbleEl.querySelectorAll('.option-preview').forEach((preview) => {
+          const previewParent = preview.parentNode;
+          if (!previewParent) return;
+          while (preview.firstChild)
+            previewParent.insertBefore(preview.firstChild, preview);
+          previewParent.removeChild(preview);
+        });
+
         while (bubbleEl.firstChild)
           bubbleParent.insertBefore(bubbleEl.firstChild, bubbleEl);
         bubbleParent.removeChild(bubbleEl);
@@ -178,9 +195,15 @@ export function removeHighlightSpans(html: string): string {
 export function cleanTemplateString(template: string): string {
   // Trim the entire string to remove leading/trailing whitespace and newlines
   const trimmedTemplate = template.trim();
-  return trimmedTemplate
-    .split('\n')
-    .map(line => line.trim())
+  let lines = trimmedTemplate.split('\n');
+
+  // If the first line is a header followed by a blank line, drop both
+  if (lines.length > 1 && lines[1].trim() === '') {
+    lines = lines.slice(2);
+  }
+
+  return lines
+    .map((line) => line.trim())
     .join('<br />')
     .replace(/(<br \/>)+$/, '');
 }

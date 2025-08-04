@@ -1,11 +1,8 @@
 diff --git a/src/tabs/enquiries/pitch-builder/emailUtils.ts b/src/tabs/enquiries/pitch-builder/emailUtils.ts
-index e666f60f20c1ef0954e70b6a513f4088e8931d41..9ce95a475343f0bf9e92d38e7c196fa5dfb6e11c 100644
+index 9ce95a475343f0bf9e92d38e7c196fa5dfb6e11c..97faf85765c805ea1cfc0e7340d33f248f3211ca 100644
 --- a/src/tabs/enquiries/pitch-builder/emailUtils.ts
 +++ b/src/tabs/enquiries/pitch-builder/emailUtils.ts
-@@ -73,57 +73,76 @@ export function markUnfilledPlaceholders(
-   let marked = text;
-   placeholders.forEach((placeholder) => {
-     const regex = new RegExp(escapeRegExp(placeholder), 'g');
+@@ -76,65 +76,82 @@ export function markUnfilledPlaceholders(
      marked = marked.replace(
        regex,
        `<span style="color: ${colours.cta}; font-weight: bold;">${placeholder}</span>`
@@ -28,34 +25,57 @@ index e666f60f20c1ef0954e70b6a513f4088e8931d41..9ce95a475343f0bf9e92d38e7c196fa5
  
    // Elements that should be fully removed
    const removeSelectors =
--    '.lock-toggle, .block-sidebar, .sentence-delete, .option-bubble, .sentence-handle';
-+    '.lock-toggle, .block-sidebar, .sentence-delete, .sentence-handle';
+     '.lock-toggle, .block-sidebar, .sentence-delete, .sentence-handle';
    tempDiv.querySelectorAll(removeSelectors).forEach((el) => el.remove());
  
--  // Unwrap any remaining placeholder containers but keep their content
-+  // Unwrap placeholder containers and keep only the active option content
+-  // Unwrap placeholder containers and keep only the active option content
++  // Unwrap placeholder containers. If no option is selected, keep the first
++  // option's content so that default previews still render.
    tempDiv.querySelectorAll('.block-option-list').forEach((el) => {
      const parent = el.parentNode;
      if (!parent) return;
-+
-+    // Within each block, strip out unselected option bubbles
-+    el.querySelectorAll('.option-bubble').forEach((bubble) => {
+ 
+-    // Within each block, strip out unselected option bubbles
+-    el.querySelectorAll('.option-bubble').forEach((bubble) => {
+-      const bubbleEl = bubble as HTMLElement;
+-      const isActive =
+-        bubbleEl.classList.contains('active') ||
+-        bubbleEl.classList.contains('selected');
++    const bubbles = Array.from(el.querySelectorAll('.option-bubble')) as HTMLElement[];
++    let keep = bubbles.find(
++      (b) => b.classList.contains('active') || b.classList.contains('selected')
++    );
++    if (!keep && bubbles.length > 0) {
++      keep = bubbles[0];
++    }
+ 
+-      if (isActive) {
++    bubbles.forEach((bubble) => {
 +      const bubbleEl = bubble as HTMLElement;
-+      const isActive =
-+        bubbleEl.classList.contains('active') ||
-+        bubbleEl.classList.contains('selected');
++      if (bubbleEl === keep) {
+         const bubbleParent = bubbleEl.parentNode;
+         if (!bubbleParent) return;
 +
-+      if (isActive) {
-+        const bubbleParent = bubbleEl.parentNode;
-+        if (!bubbleParent) return;
-+        while (bubbleEl.firstChild)
-+          bubbleParent.insertBefore(bubbleEl.firstChild, bubbleEl);
-+        bubbleParent.removeChild(bubbleEl);
-+      } else {
-+        bubbleEl.remove();
-+      }
-+    });
++        // Remove option headers so only the main content remains
++        bubbleEl.querySelectorAll('strong').forEach((el) => el.remove());
 +
++        // Unwrap option-preview containers to avoid indentation styles
++        bubbleEl.querySelectorAll('.option-preview').forEach((preview) => {
++          const previewParent = preview.parentNode;
++          if (!previewParent) return;
++          while (preview.firstChild)
++            previewParent.insertBefore(preview.firstChild, preview);
++          previewParent.removeChild(preview);
++        });
++
+         while (bubbleEl.firstChild)
+           bubbleParent.insertBefore(bubbleEl.firstChild, bubbleEl);
+         bubbleParent.removeChild(bubbleEl);
+       } else {
+         bubbleEl.remove();
+       }
+     });
+ 
      while (el.firstChild) parent.insertBefore(el.firstChild, el);
      parent.removeChild(el);
    });
@@ -73,11 +93,70 @@ index e666f60f20c1ef0954e70b6a513f4088e8931d41..9ce95a475343f0bf9e92d38e7c196fa5
      el.removeAttribute('data-block-title');
      el.removeAttribute('style');
      el.removeAttribute('contenteditable');
-     if ((el as HTMLElement).classList.contains('block-main')) {
-       (el as HTMLElement).classList.remove('block-main');
-     }
-     if ((el as HTMLElement).classList.contains('block-container')) {
-       (el as HTMLElement).classList.remove('block-container');
-     }
-     if ((el as HTMLElement).classList.contains('insert-placeholder')) {
-       (el as HTMLElement).classList.remove('insert-placeholder');
+diff --git a/src/tabs/enquiries/pitch-builder/emailUtils.ts b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+index 9ce95a475343f0bf9e92d38e7c196fa5dfb6e11c..97faf85765c805ea1cfc0e7340d33f248f3211ca 100644
+--- a/src/tabs/enquiries/pitch-builder/emailUtils.ts
++++ b/src/tabs/enquiries/pitch-builder/emailUtils.ts
+@@ -156,53 +173,59 @@ export function removeHighlightSpans(html: string): string {
+     while (el.firstChild) parent.insertBefore(el.firstChild, el);
+     parent.removeChild(el);
+   });
+ 
+   tempDiv.querySelectorAll('.block-main, .block-container').forEach((el) => {
+     const parent = el.parentNode;
+     if (!parent) return;
+     while (el.firstChild) parent.insertBefore(el.firstChild, el);
+     parent.removeChild(el);
+   });
+ 
+   // Remove label helpers
+   tempDiv
+     .querySelectorAll('.block-label, .block-label-display')
+     .forEach((el) => el.remove());
+ 
+   return tempDiv.innerHTML;
+ }
+ 
+ /**
+  * When we insert multiline text from the TemplateBlocks, we turn raw newlines into <br />.
+  */
+ export function cleanTemplateString(template: string): string {
+   // Trim the entire string to remove leading/trailing whitespace and newlines
+   const trimmedTemplate = template.trim();
+-  return trimmedTemplate
+-    .split('\n')
+-    .map(line => line.trim())
++  let lines = trimmedTemplate.split('\n');
++
++  // If the first line is a header followed by a blank line, drop both
++  if (lines.length > 1 && lines[1].trim() === '') {
++    lines = lines.slice(2);
++  }
++
++  return lines
++    .map((line) => line.trim())
+     .join('<br />')
+     .replace(/(<br \/>)+$/, '');
+ }
+ 
+ /**
+  * Wrap all [INSERT ...] placeholders in a span so we can detect them easily.
+  */
+ export function wrapInsertPlaceholders(text: string): string {
+   return text.replace(/\[INSERT[^\]]*\]/gi, (m) => {
+     return `<span class="insert-placeholder" data-insert tabindex="0" role="button">${m}</span>`;
+   });
+ }
+ 
+ /**
+  * A quick helper: do we have an array of strings or a single string?
+  */
+ export function isStringArray(value: string | string[]): value is string[] {
+   return Array.isArray(value);
+ }
+ 
+ export function replacePlaceholders(
+   template: string,
+   intro: string,
+   enquiry: Enquiry,
+   userData: any,
