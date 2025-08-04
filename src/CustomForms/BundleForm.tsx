@@ -39,12 +39,12 @@ interface CoverLetter {
 }
 
 interface BundleFormProps {
-    users: UserData[];
+    users?: UserData[];
     matters: Matter[];
     onBack: () => void;
 }
 
-const BundleForm: React.FC<BundleFormProps> = ({ users, matters, onBack }) => {
+const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) => {
     const [name, setName] = useState<string>('');
     const [matterRef, setMatterRef] = useState<string>('');
     const [bundleLink, setBundleLink] = useState<string>('');

@@ -552,6 +552,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
+  const userEmailAddress = userData?.[0]?.Initials
+    ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
+    : '';
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
   const templateBlocks = useDynamicTemplateBlocks(templateSet);
@@ -2843,7 +2846,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
     const requestBody = {
       email_contents: fullEmailHtml,
-      user_email: enquiry.Point_of_Contact,
+      user_email: userEmailAddress,
       subject_line: subject,
       to,
       cc,

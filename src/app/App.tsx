@@ -19,6 +19,7 @@ const Enquiries = lazy(() => import('../tabs/enquiries/Enquiries'));
 const Instructions = lazy(() => import('../tabs/instructions/Instructions'));
 const Matters = lazy(() => import('../tabs/matters/Matters'));
 const ReportingHome = lazy(() => import('../tabs/Reporting/ReportingHome')); // Replace ReportingCode with ReportingHome
+const CallHub = lazy(() => import('../tabs/CallHub/CallHub'));
 
 interface AppProps {
   teamsContext: TeamsContextType | null;
@@ -309,6 +310,7 @@ const App: React.FC<AppProps> = ({
     { key: 'matters', text: 'Matters' },
     // Removed 'forms' and 'resources' tabs since they are now on the sides
     { key: 'reporting', text: 'Reports' },
+    ...(isLocalhost ? [{ key: 'callhub', text: 'Call Hub' }] : []),
     ];
 
   // Check if the user has authorized initials for the Reporting tab
@@ -384,6 +386,8 @@ const App: React.FC<AppProps> = ({
             <p>You do not have permission to view the Reports dashboard.</p>
           </div>
         );
+      case 'callhub':
+        return <CallHub />;
       default:
         return (
           <Home

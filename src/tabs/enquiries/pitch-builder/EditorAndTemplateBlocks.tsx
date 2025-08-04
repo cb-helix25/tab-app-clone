@@ -59,7 +59,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     target: HTMLElement;
   } | null>(null);
   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
-  const [autoInsertedOnLoad, setAutoInsertedOnLoad] = useState<Record<string, boolean>>({});
   const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
   const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
@@ -145,26 +144,34 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     return block.options[0]?.label || '';
   };
 
-  // Auto-insert default content on component mount
+  // Auto-insert default content once the body placeholders are ready
   useEffect(() => {
     templateBlocks
       .filter(block => !removedBlocks[block.title]) // Only process non-removed blocks
       .forEach(block => {
-      const selectedOption = getSelectedOption(block);
-      if (!autoInsertedOnLoad[block.title] && 
-          !insertedBlocks[block.title] && 
-          !insertedBlocks[`${block.title}-${selectedOption}`]) {
-        
-        // Mark as auto-inserted
-        setAutoInsertedOnLoad(prev => ({ ...prev, [block.title]: true }));
-        
-        // Auto-insert the selected option
-        setTimeout(() => {
-          insertTemplateBlock(block, selectedOption, false);
-        }, 100);
-      }
-    });
-  }, [templateBlocks, selectedTemplateOptions, insertedBlocks, autoInsertedOnLoad, insertTemplateBlock, removedBlocks]);
+        const selectedOption = getSelectedOption(block);
+        if (
+          !insertedBlocks[block.title] &&
+          !insertedBlocks[`${block.title}-${selectedOption}`]
+        ) {
+          const placeholder = bodyEditorRef.current?.querySelector(
+            `span[data-placeholder="${block.placeholder}"]`
+          );
+          if (placeholder) {
+            setTimeout(() => {
+              insertTemplateBlock(block, selectedOption, false);
+            }, 0);
+          }
+        }
+      });
+  }, [
+    templateBlocks,
+    selectedTemplateOptions,
+    insertedBlocks,
+    body,
+    insertTemplateBlock,
+    removedBlocks,
+  ]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

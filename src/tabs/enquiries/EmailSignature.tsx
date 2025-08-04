@@ -27,20 +27,20 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
     <tr>
       <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
         ${bodyHtml}
-        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin:0; padding:0; width:auto; font-family: Raleway, sans-serif; color:#000;">
+        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin:0; padding:0; width:auto; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4; color:#000;">
           <tr>
             <td style="padding-bottom: 8px; font-family: Raleway, sans-serif; color:#000;">
               <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/50px-logo.png" alt="Helix Law Logo" style="height:50px; display:block; margin:15px 0;" />
             </td>
           </tr>
           <tr>
-            <td style="padding-top: 8px; padding-bottom: 8px; font-family: Raleway, sans-serif; color:#000;">
-              <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <td style="padding-top: 8px; padding-bottom: 8px; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4; color:#000;">
+              <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; font-size:10pt; line-height:1.4;">
                 <tr>
                   <td style="padding-right:4px; vertical-align:middle;">
                     <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/email.png" alt="Email Icon" style="height:12px; vertical-align:middle;" />
                   </td>
-                  <td style="padding-right:15px; vertical-align:middle; font-family: Raleway, sans-serif;">
+                  <td style="padding-right:15px; vertical-align:middle; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4;">
                     <a href="mailto:${userEmail}" style="color:#3690CE; text-decoration:none;">
                       ${userEmail}
                     </a>
@@ -48,7 +48,7 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
                   <td style="padding-right:4px; vertical-align:middle;">
                     <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/phone.png" alt="Phone Icon" style="height:12px; vertical-align:middle;" />
                   </td>
-                  <td style="padding-right:15px; vertical-align:middle; font-family: Raleway, sans-serif;">
+                  <td style="padding-right:15px; vertical-align:middle; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4;">
                     <a href="tel:+443453142044" style="color:#0D2F60; text-decoration:none;">
                       0345 314 2044
                     </a>
@@ -56,7 +56,7 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
                   <td style="padding-right:4px; vertical-align:middle;">
                     <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/website.png" alt="Website Icon" style="height:12px; vertical-align:middle;" />
                   </td>
-                  <td style="padding-right:0; vertical-align:middle; font-family: Raleway, sans-serif;">
+                  <td style="padding-right:0; vertical-align:middle; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4;">
                     <a href="https://www.helix-law.com/" style="color:#3690CE; text-decoration:none;">
                       www.helix-law.com
                     </a>
@@ -66,13 +66,13 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
             </td>
           </tr>
           <tr>
-            <td style="padding-top:8px; padding-bottom: 8px; font-family: Raleway, sans-serif;">
-              <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <td style="padding-top:8px; padding-bottom: 8px; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4;">
+              <table border="0" cellpadding="0" cellspacing="0" style="border-collapse: collapse; font-size:10pt; line-height:1.4;">
                 <tr>
                   <td style="padding-right:4px; vertical-align:middle;">
                     <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/location.png" alt="Location Icon" style="height:12px; vertical-align:middle;" />
                   </td>
-                  <td style="vertical-align:middle; color:#0D2F60; font-family: Raleway, sans-serif;">
+                  <td style="vertical-align:middle; color:#0D2F60; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4;">
                     Helix Law Ltd, Second Floor, Britannia House, 21 Station Street, Brighton, BN1 4DE
                   </td>
                 </tr>

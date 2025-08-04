@@ -84,12 +84,15 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user, isLocalDev = false, onAre
         if (text) navigator.clipboard.writeText(text);
     };
 
-    // Only display email, Clio ID and Entra ID from the user data
-    const allowedFields = ['Email', 'ClioID', 'EntraID'] as const;
+    // Only display email, Clio ID, Entra ID, and Asana credentials from the user data
+    const allowedFields = ['Email', 'ClioID', 'EntraID', 'ASANAClientID', 'ASANASecret', 'ASANARefreshToken'] as const;
     const labels: Record<typeof allowedFields[number], string> = {
         Email: 'Email',
         ClioID: 'Clio ID',
         EntraID: 'Entra ID',
+        ASANAClientID: 'Asana Client ID',
+        ASANASecret: 'Asana Secret',
+        ASANARefreshToken: 'Asana Refresh Token',
     };
 
     const userDetails = allowedFields

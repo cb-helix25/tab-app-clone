@@ -148,10 +148,12 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, teamData, matters
                 />
                 ) : link.component ? (
                     React.createElement(link.component, {
+                        users: teamData || [],
                         team: teamData || [],
+                        userData: userData || [],
                         matters,
                         onBack: () => { }
-                    })                
+                    })           
             ) : (
                 <div>No form available for this item.</div>
             )}
