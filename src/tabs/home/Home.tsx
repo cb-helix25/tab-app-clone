@@ -92,6 +92,28 @@ import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // Adjust the path if needed
 import UnclaimedEnquiries from '../enquiries/UnclaimedEnquiries';
 
+// Helper to dynamically update localEnquiries.json's first record to always have today's date in local mode
+function getLiveLocalEnquiries() {
+  try {
+    // Only do this in local mode
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const localEnquiries = require('../../localData/localEnquiries.json');
+    if (Array.isArray(localEnquiries) && localEnquiries.length > 0) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      localEnquiries[0].Touchpoint_Date = todayStr;
+      localEnquiries[0].Date_Created = todayStr;
+    }
+    return localEnquiries;
+  } catch (e) {
+    // ignore if not found
+    return [];
+  }
+}
+
 // Lazy-loaded form components
 const Tasking = lazy(() => import('../../CustomForms/Tasking'));
 const TelephoneAttendance = lazy(() => import('../../CustomForms/TelephoneAttendance'));

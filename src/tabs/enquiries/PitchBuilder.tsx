@@ -2616,6 +2616,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   function togglePreview() {
     if (!isPreviewOpen && bodyEditorRef.current) {
+      Object.entries(selectedTemplateOptions).forEach(
+        ([blockTitle, selectedOption]) => {
+          const block = templateBlocks.find((b) => b.title === blockTitle);
+          if (block && !insertedBlocks[block.title] && selectedOption) {
+            insertTemplateBlock(block, selectedOption as any, false);
+          }
+        }
+      );
       // Sync the latest editor content into state before showing the preview
       setBody(bodyEditorRef.current.innerHTML);
     }
@@ -2784,6 +2792,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       setIsErrorVisible(true);
       return;
     }
+    if (bodyEditorRef.current) {
+      Object.entries(selectedTemplateOptions).forEach(
+        ([blockTitle, selectedOption]) => {
+          const block = templateBlocks.find((b) => b.title === blockTitle);
+          if (block && !insertedBlocks[block.title] && selectedOption) {
+            insertTemplateBlock(block, selectedOption as any, false);
+          }
+        }
+      );
+      setBody(bodyEditorRef.current.innerHTML);
+    }
     setToast({ message: 'Saving deal...', type: 'info', loading: true });
     const dealOk = await insertDealIfNeeded();
     if (dealOk) {
@@ -2818,19 +2837,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     // After removing leftover placeholders/highlights in handleDraftEmail():
     const finalHtml = convertDoubleBreaksToParagraphs(noPlaceholders);
 
-    // Instead of just passing finalHtml, wrap it in a table:
-    const wrappedBody = `
-      <table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-        <tr>
-          <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
-            ${finalHtml}
-          </td>
-        </tr>
-      </table>
-    `;
-
     const fullEmailHtml = ReactDOMServer.renderToStaticMarkup(
-      <EmailSignature bodyHtml={wrappedBody} userData={userData} />
+      <EmailSignature bodyHtml={finalHtml} userData={userData} />
     );
 
     const requestBody = {

@@ -4,11 +4,9 @@
 import React from 'react';
 import {
   Stack,
-  Dropdown,
   Toggle,
   PrimaryButton,
   DefaultButton,
-  TextField,
   ComboBox,
   IComboBoxOption,
 } from '@fluentui/react';
@@ -20,6 +18,7 @@ import {
   sharedDefaultButtonStyles,
 } from '../app/styles/ButtonStyles';
 import { Matter } from '../app/functionality/types';
+import '../app/styles/MultiSelect.css';
 
 export const INPUT_HEIGHT = 40;
 
@@ -32,22 +31,22 @@ export const formContainerStyle = mergeStyles({
   boxShadow: componentTokens.stepContent.boxShadow,
   display: 'flex',
   flexDirection: 'column',
-  gap: '20px',
+  gap: '12px',
 });
 
 export const inputFieldStyle = mergeStyles({
   height: `${INPUT_HEIGHT}px`,
   padding: '5px',
-  border: `1px solid ${colours.light.border}`,
-  borderRadius: componentTokens.stepHeader.base.borderRadius,
-  backgroundColor: colours.light.inputBackground,
+  border: `1px solid ${colours.highlight}`,
+  borderRadius: 0,
+  backgroundColor: colours.light.sectionBackground,
   boxSizing: 'border-box',
   selectors: {
     ':hover': {
-      borderColor: colours.light.cta,
+      borderColor: colours.highlight,
     },
     ':focus': {
-      borderColor: colours.light.cta,
+      borderColor: colours.highlight,
     },
     input: {
       padding: '0 5px',
@@ -56,21 +55,21 @@ export const inputFieldStyle = mergeStyles({
 });
 
 export const dropdownStyle = mergeStyles({
-  width: '300px',
+  width: '100%',
   height: `${INPUT_HEIGHT}px`,
-  border: `1px solid ${colours.light.border}`,
-  borderRadius: componentTokens.stepHeader.base.borderRadius,
-  backgroundColor: colours.light.inputBackground,
+  border: `1px solid ${colours.highlight}`,
+  borderRadius: 0,
+  backgroundColor: '#fff',
   display: 'flex',
   alignItems: 'center',
   padding: '0 5px',
   boxSizing: 'border-box',
   selectors: {
     ':hover': {
-      borderColor: colours.light.cta,
+      borderColor: colours.highlight,
     },
     ':focus-within': {
-      borderColor: colours.light.cta,
+      borderColor: colours.highlight,
     },
     '.ms-Dropdown-title': {
       backgroundColor: 'transparent',
@@ -111,10 +110,8 @@ export const prefixStyle = mergeStyles({
   width: '50px',
   height: '100%',
   backgroundColor: colours.light.sectionBackground,
-  border: `1px solid ${colours.light.border}`,
+  border: `1px solid ${colours.highlight}`,
   borderRight: 'none',
-  borderTopLeftRadius: componentTokens.stepHeader.base.borderRadius,
-  borderBottomLeftRadius: componentTokens.stepHeader.base.borderRadius,
   fontWeight: 'bold',
   padding: '0 5px',
 });
@@ -124,20 +121,18 @@ export const amountInputStyle = (hasPrefix: boolean) =>
     flexGrow: 1,
     width: '100%',
     height: '100%',
-    border: `1px solid ${colours.light.border}`,
-    borderRadius: hasPrefix
-      ? `0 ${componentTokens.stepHeader.base.borderRadius} ${componentTokens.stepHeader.base.borderRadius} 0`
-      : componentTokens.stepHeader.base.borderRadius,
+    border: `1px solid ${colours.highlight}`,
+    borderRadius: 0,
     padding: '5px',
-    backgroundColor: colours.light.inputBackground,
+    backgroundColor: colours.light.sectionBackground,
     boxSizing: 'border-box',
     appearance: 'textfield',
     selectors: {
       ':hover': {
-        borderColor: colours.light.cta,
+        borderColor: colours.highlight,
       },
       ':focus': {
-        borderColor: colours.light.cta,
+        borderColor: colours.highlight,
       },
       '::-webkit-inner-spin-button, ::-webkit-outer-spin-button': {
         appearance: 'none',
@@ -249,51 +244,53 @@ const MatterReferenceDropdown: React.FC<MatterReferenceDropdownProps> = ({
   }, [matters]);
 
   return (
-    <ComboBox
-      label={field.label}
-      placeholder="Select or enter Matter Reference"
-      required={field.required}
-      options={sortedOptions}
-      allowFreeform
-      autoComplete="on"
-      selectedKey={value}
-      onInputValueChange={(val: string) => setFilter(val)}
-      onChange={(_, option, __, val) => {
-        const selectedValue = option ? option.key : val;
-        handleInputChange(field.name, selectedValue);
-        setFilter('');
-      }}
-      onResolveOptions={(): IComboBoxOption[] => {
-        if (!filter) return sortedOptions;
-        return sortedOptions.filter((opt) =>
-          opt.text.toLowerCase().includes(filter.toLowerCase())
-        );
-      }}
-      disabled={isSubmitting}
-      styles={{
-        root: [dropdownStyle, { width: '100%' }],
-        input: {
-          height: `${INPUT_HEIGHT}px`,
-          lineHeight: `${INPUT_HEIGHT}px`,
-          padding: '0 5px',
-          border: 'none',
-        },
-        callout: {
-          minWidth: '100%',
-          zIndex: 1100,
-        },
-        optionsContainer: {
-          selectors: {
-            '.ms-ComboBox-option': {
-              height: '32px',
-              lineHeight: '32px',
-              paddingTop: '4px',
-              paddingBottom: '4px',
+    <div>
+      <div className="question-banner">{field.label}</div>
+      <ComboBox
+        placeholder="Select or enter Matter Reference"
+        required={field.required}
+        options={sortedOptions}
+        allowFreeform
+        autoComplete="on"
+        selectedKey={value}
+        onInputValueChange={(val: string) => setFilter(val)}
+        onChange={(_, option, __, val) => {
+          const selectedValue = option ? option.key : val;
+          handleInputChange(field.name, selectedValue);
+          setFilter('');
+        }}
+        onResolveOptions={(): IComboBoxOption[] => {
+          if (!filter) return sortedOptions;
+          return sortedOptions.filter((opt) =>
+            opt.text.toLowerCase().includes(filter.toLowerCase())
+          );
+        }}
+        disabled={isSubmitting}
+        styles={{
+          root: [dropdownStyle, { width: '100%' }],
+          input: {
+            height: `${INPUT_HEIGHT}px`,
+            lineHeight: `${INPUT_HEIGHT}px`,
+            padding: '0 5px',
+            border: 'none',
+          },
+          callout: {
+            minWidth: '100%',
+            zIndex: 1100,
+          },
+          optionsContainer: {
+            selectors: {
+              '.ms-ComboBox-option': {
+                height: '32px',
+                lineHeight: '32px',
+                paddingTop: '4px',
+                paddingBottom: '4px',
+              },
             },
           },
-        },
-      }}
-    />
+        }}
+      />
+    </div>
   );
 };
 
@@ -370,7 +367,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
   return (
     <form onSubmit={handleSubmit} style={style}>
       <div className={formContainerStyle}>
-        <Stack tokens={{ childrenGap: 20 }}>
+        <Stack tokens={{ childrenGap: 12 }}>
           {fields.map((field, index) => {
             if (
               field.label === 'Matter Reference' ||
@@ -388,48 +385,87 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
               );
             }
 
-            if (field.group === 'dateRange') {
-              return (
-                <Stack horizontal tokens={{ childrenGap: 10 }} key={index}>
-                  <TextField
-                    label={field.label}
-                    required={field.required}
-                    placeholder={field.placeholder}
-                    type={field.type}
-                    value={formValues[field.name]?.toString() || ''}
-                    onChange={(e, value) =>
-                      handleInputChange(field.name, value || '')
-                    }
-                    styles={{
-                      fieldGroup: inputFieldStyle,
-                      field: { padding: '0 5px' },
-                    }}
-                  />
-                </Stack>
-              );
-            }
-
             if (field.showIf) {
               const controllingValue = formValues[field.showIf.field];
               if (controllingValue !== field.showIf.equals) {
                 return null;
               }
             }
+
+            const questionBanner = (
+              <div className="question-banner">
+                {field.label}
+                {field.required ? ' *' : ''}
+              </div>
+            );
+
             switch (field.type) {
               case 'dropdown':
                 return (
-                  <React.Fragment key={index}>
-                    <Dropdown
-                      label={field.label}
-                      options={(field.options || []).map(opt => ({ key: opt, text: opt }))}
-                      onChange={(_, option) => handleInputChange(field.name, option?.key || '')}
-                      required={field.required}
-                      disabled={isSubmitting}
-                      styles={{
-                        dropdown: dropdownStyle,
-                        callout: { width: '300px', zIndex: 1100 },
+                  <div key={index}>
+                    {questionBanner}
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: `${INPUT_HEIGHT}px`,
+                        border: `1px solid ${colours.highlight}`,
+                        background: '#fff',
+                        overflow: 'hidden',
                       }}
-                    />
+                    >
+                      <select
+                        value={formValues[field.name] || ''}
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        required={field.required}
+                        disabled={isSubmitting}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: 'none',
+                          background: 'transparent',
+                          padding: '0 40px 0 16px',
+                          fontSize: '16px',
+                          appearance: 'none',
+                          cursor: 'pointer',
+                          outline: 'none',
+                        }}
+                      >
+                        <option value="" disabled>
+                          Select {field.label}
+                        </option>
+                        {(field.options || []).map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          pointerEvents: 'none',
+                          color: colours.highlight,
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M6 9l6 6 6-6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
                     {field.name === 'Payment Type' &&
                       formValues['Payment Type'] === 'CHAPS (same day over £1m)' && (
                         <div className={infoBoxStyle}>
@@ -443,94 +479,55 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                             guide
                           </a>.
                         </div>
-                    )}
-                  </React.Fragment>
+                      )}
+                  </div>
                 );
-              
+
               case 'toggle':
                 return (
-                  <React.Fragment key={index}>
-                    <div style={{ marginBottom: '15px' }}>
-                      <Toggle
-                        label={field.label}
-                        checked={Boolean(formValues[field.name] ?? field.defaultValue)}
-                        onText={field.onText}
-                        offText={field.offText}
-                        onChange={(_, checked) => handleInputChange(field.name, !!checked)}
-                        disabled={isSubmitting}
-                        styles={{ root: toggleStyle }}
-                      />
-                    </div>
+                  <div key={index}>
+                    {questionBanner}
+                    <Toggle
+                      checked={Boolean(formValues[field.name] ?? field.defaultValue)}
+                      onText={field.onText}
+                      offText={field.offText}
+                      onChange={(_, checked) => handleInputChange(field.name, !!checked)}
+                      disabled={isSubmitting}
+                      styles={{ root: toggleStyle }}
+                    />
                     {field.name === 'Is the amount you are sending over £50k' &&
                       formValues[field.name] === true && (
                         <div className={infoBoxStyle}>
                           Please note we will need to perform an extra verification check. Accounts will send a small random amount and a small random reference to the payee. You will need to ask them to confirm the amount and reference used before accounts can make the remaining balancing payment.
                         </div>
-                    )}
-                  </React.Fragment>
+                      )}
+                  </div>
                 );
-                
+
               case 'textarea':
                 return (
-                  <TextField
-                    key={index}
-                    label={field.label}
-                    multiline
-                    rows={3}
-                    required={field.required}
-                    value={formValues[field.name]?.toString() || ''}
-                    onChange={(e, value) =>
-                      handleInputChange(field.name, value || '')
-                    }
-                    disabled={isSubmitting}
-                    styles={{ fieldGroup: inputFieldStyle }}
-                  />
-                );
-              case 'number':
-              case 'currency-picker':
-                return (
-                  <div key={index} style={field.style}>
-                    <label
+                  <div key={index}>
+                    {questionBanner}
+                    <textarea
+                      required={field.required}
+                      value={formValues[field.name]?.toString() || ''}
+                      onChange={(e) => handleInputChange(field.name, e.target.value)}
+                      disabled={isSubmitting}
                       style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontWeight: 600,
+                        width: '100%',
+                        minHeight: '80px',
+                        border: `1px solid ${colours.highlight}`,
+                        borderRadius: 0,
+                        padding: '8px',
+                        boxSizing: 'border-box',
                       }}
-                    >
-                      {field.label}
-                      {field.required && ' *'}
-                    </label>
-                    <div className={amountContainerStyle}>
-                      {field.prefix && (
-                        <span className={prefixStyle}>{field.prefix}</span>
-                      )}
-                      <TextField
-                        required={field.required}
-                        value={formValues[field.name]?.toString() || ''}
-                        onChange={(e, value) =>
-                          handleInputChange(field.name, value || '')
-                        }
-                        type="number"
-                        disabled={isSubmitting}
-                        styles={
-                          field.styles || {
-                            root: { flexGrow: 1 },
-                            fieldGroup: amountInputStyle(!!field.prefix),
-                          }
-                        }
-                        step={field.step}
-                        min={field.min}
-                        max={field.max}
-                        readOnly={field.editable === false}
-                        onWheel={(e) => e.currentTarget.blur()}
-                      />
-                    </div>
+                    />
                     {field.helpText && (
                       <span
                         style={{
                           color: colours.greyText,
                           fontSize: '12px',
-                          marginTop: '10px',
+                          marginTop: '4px',
                           display: 'block',
                         }}
                       >
@@ -539,20 +536,75 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                     )}
                   </div>
                 );
+
+              case 'number':
+              case 'currency-picker':
+              case 'text':
+                return (
+                  <div key={index} style={field.style}>
+                    {questionBanner}
+                    {field.prefix ? (
+                      <div className={amountContainerStyle}>
+                        <span className={prefixStyle}>{field.prefix}</span>
+                        <input
+                          type="number"
+                          required={field.required}
+                          value={formValues[field.name]?.toString() || ''}
+                          onChange={(e) => handleInputChange(field.name, e.target.value)}
+                          disabled={isSubmitting}
+                          step={field.step}
+                          min={field.min}
+                          max={field.max}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            border: `1px solid ${colours.highlight}`,
+                            borderRadius: 0,
+                            padding: '0 10px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type={field.type === 'number' || field.type === 'currency-picker' ? 'number' : 'text'}
+                        required={field.required}
+                        value={formValues[field.name]?.toString() || ''}
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        disabled={isSubmitting}
+                        step={field.step}
+                        min={field.min}
+                        max={field.max}
+                        style={{
+                          width: '100%',
+                          height: `${INPUT_HEIGHT}px`,
+                          border: `1px solid ${colours.highlight}`,
+                          borderRadius: 0,
+                          padding: '0 10px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    )}
+                    {field.helpText && (
+                      <span
+                        style={{
+                          color: colours.greyText,
+                          fontSize: '12px',
+                          marginTop: '4px',
+                          display: 'block',
+                        }}
+                      >
+                        {field.helpText}
+                      </span>
+                    )}
+                  </div>
+                );
+
               case 'file':
                 const fileValue = formValues[field.name];
                 return (
-                  <div key={index} style={{ marginBottom: '15px' }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {field.label}
-                      {field.required && ' *'}
-                    </label>
+                  <div key={index}>
+                    {questionBanner}
                     <PrimaryButton
                       text="Upload File"
                       iconProps={{ iconName: 'Upload' }}
@@ -613,23 +665,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   </div>
                 );
               default:
-                return (
-                  <TextField
-                    key={index}
-                    label={field.label}
-                    required={field.required}
-                    value={formValues[field.name]?.toString() || ''}
-                    onChange={(e, value) =>
-                      handleInputChange(field.name, value || '')
-                    }
-                    type={field.type}
-                    disabled={isSubmitting}
-                    styles={{
-                      fieldGroup: inputFieldStyle,
-                      field: { padding: '0 5px' },
-                    }}
-                  />
-                );
+                return null;
             }
           })}
           {children}

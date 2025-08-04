@@ -130,15 +130,8 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   );
   const highlightedBody = markUnfilledPlaceholders(substituted, templateBlocks);
   const finalBody = convertDoubleBreaksToParagraphs(highlightedBody);
-  const wrappedBody = `<table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-    <tr>
-      <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
-        ${finalBody}
-      </td>
-    </tr>
-  </table>`;
   const previewHtml = ReactDOMServer.renderToStaticMarkup(
-    <EmailSignature bodyHtml={wrappedBody} userData={userData} />
+    <EmailSignature bodyHtml={finalBody} userData={userData} />
   );
 const previewRef = React.useRef<HTMLDivElement>(null);
 
