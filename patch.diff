@@ -1,97 +1,188 @@
-diff --git a/src/components/ResourcesSidebar.tsx b/src/components/ResourcesSidebar.tsx
-index c8b344e9405cbf614628e8351071e315a3e2c350..3e634693e1a8efb20149c3539070df2fa1df73f2 100644
---- a/src/components/ResourcesSidebar.tsx
-+++ b/src/components/ResourcesSidebar.tsx
-@@ -40,87 +40,91 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean, top: number) =>
-         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-         boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
-         padding: 16,
-         overflowY: 'auto',
-         transition: 'right 0.3s ease',
-         zIndex: 850,
-     });
+diff --git a/src/index.tsx b/src/index.tsx
+index 24c16f032e023984ad5f3927df6b49c9849473a6..55001596a81c0012bed3deaf133c16435dcdf3a8 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -112,70 +112,110 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
+   if (cached) return cached;
  
- const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
-     mergeStyles({
-         position: 'fixed',
-         top,
-         right: isOpen ? sidebarWidth : 0,
-         height: `calc(100vh - ${top}px)`,
-         width: 24,
-         display: 'flex',
-         alignItems: 'center',
-         justifyContent: 'center',
-         cursor: 'pointer',
-         backgroundColor: isOpen
-             ? isDarkMode
-                 ? colours.dark.cardHover
-                 : colours.light.cardHover
-             : 'transparent',
-         boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
--        transition: 'right 0.3s ease, opacity 0.3s ease',
-+        transition: 'opacity 0.3s ease',
-         zIndex: 851,
-         opacity: isOpen ? 1 : 0,
-         selectors: {
-             ':hover': {
-                 opacity: 1,
-                 backgroundColor: isDarkMode ? colours.dark.cardHover : colours.light.cardHover,
-             },
-         },
-     });
+   const response = await fetch(
+     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ userObjectId: objectId }),
+     },
+   );
+   if (!response.ok)
+     throw new Error(`Failed to fetch user data: ${response.status}`);
+   const data = await response.json();
+   setCachedData(cacheKey, data);
+   return data;
+ }
  
- const ResourcesSidebar: React.FC<ResourcesSidebarProps> = ({
-     activeTab,
-     hovered,
-     pinned,
-     setPinned,
- }) => {
-     const { isDarkMode } = useTheme();
-     const [isOpen, setIsOpen] = React.useState(false);
-     const [sidebarTop, setSidebarTop] = React.useState<number>(DEFAULT_SIDEBAR_TOP);
- 
-     const updateTop = React.useCallback(() => {
-         setSidebarTop(calculateSidebarTop());
-     }, []);
- 
-     React.useEffect(() => {
-         updateTop();
-         window.addEventListener('resize', updateTop);
-         return () => window.removeEventListener('resize', updateTop);
-     }, [updateTop]);
- 
-     React.useEffect(() => {
-         if (isOpen) {
-             updateTop();
-         }
-     }, [isOpen, updateTop]);
- 
-+    React.useEffect(() => {
-+        updateTop();
-+    }, [activeTab, updateTop]);
+ async function fetchEnquiries(
+   email: string,
+   dateFrom: string,
+   dateTo: string,
+ ): Promise<Enquiry[]> {
+   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
+   const cached = getCachedData<Enquiry[]>(cacheKey);
+   if (cached) return cached;
+-  
+-  // Build query parameters for the new decoupled function
+-  const params = new URLSearchParams();
+-  if (dateFrom) params.append('dateFrom', dateFrom);
+-  if (dateTo) params.append('dateTo', dateTo);
+-  // Note: email parameter not used in new function as it filters by different fields
+-  
+-  const response = await fetch(
+-    `/api/enquiries?${params.toString()}`,
 +
-     React.useEffect(() => {
-         if (activeTab === 'resources') {
-             setPinned(true);
-             setIsOpen(true);
-         }
-     }, [activeTab, setPinned]);
++  // Always fetch the legacy enquiries data
++  const legacyResponse = await fetch(
++    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
+     {
+-      method: "GET",
++      method: "POST",
+       headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ email, dateFrom, dateTo }),
+     },
+   );
+-  if (!response.ok)
+-    throw new Error(`Failed to fetch enquiries: ${response.status}`);
+-  const data = await response.json();
+-  const enquiries = data.enquiries || [];
+-  setCachedData(cacheKey, enquiries);
+-  return enquiries;
++  if (!legacyResponse.ok)
++    throw new Error(`Failed to fetch enquiries: ${legacyResponse.status}`);
++  const legacyData = await legacyResponse.json();
++  let legacyEnquiries: Enquiry[] = [];
++  if (Array.isArray(legacyData)) {
++    legacyEnquiries = legacyData as Enquiry[];
++  } else if (Array.isArray(legacyData.enquiries)) {
++    legacyEnquiries = legacyData.enquiries as Enquiry[];
++  }
++
++  const normalizedEmail = email.toLowerCase();
++  const isLzUser = [
++    "lz@helix-law.com",
++    "lukasz@helix-law.com",
++    "luke@helix-law.com",
++  ].includes(normalizedEmail);
++
++  let combined = legacyEnquiries;
++
++  if (isLzUser) {
++    try {
++      const params = new URLSearchParams();
++      if (dateFrom) params.append("dateFrom", dateFrom);
++      if (dateTo) params.append("dateTo", dateTo);
++
++      const newResponse = await fetch(`/api/enquiries?${params.toString()}`, {
++        method: "GET",
++        headers: { "Content-Type": "application/json" },
++      });
++
++      if (newResponse.ok) {
++        const newData = await newResponse.json();
++        const newEnquiries: Enquiry[] = newData.enquiries || [];
++
++        // Merge and deduplicate by ID if present
++        const seen = new Set<string>();
++        combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
++          const id = String(e.ID ?? e.id ?? "");
++          if (seen.has(id)) return false;
++          seen.add(id);
++          return true;
++        });
++      }
++    } catch (err) {
++      console.warn("Failed to fetch new enquiries", err);
++    }
++  }
++
++  setCachedData(cacheKey, combined);
++  return combined;
+ }
  
-     React.useEffect(() => {
-         if (!pinned) {
-             setIsOpen(hovered || false);
-         }
-     }, [hovered, pinned]);
+ async function fetchMatters(fullName: string): Promise<Matter[]> {
+   const cacheKey = `matters-${fullName}`;
+   const cached = getCachedData<Matter[]>(cacheKey);
+   if (cached) return cached;
  
-     React.useEffect(() => {
-         if (pinned) {
-             setIsOpen(true);
-         }
-     }, [pinned]);
+   const response = await fetch(
+     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ fullName }),
+     },
+   );
+   if (!response.ok)
+     throw new Error(`Failed to fetch matters: ${response.status}`);
+   const data = await response.json();
  
-     return (
-         <>
-             <div
-                 className={handleStyle(isOpen, isDarkMode, sidebarTop)}
-                 onClick={() => {
-                     if (pinned) {
+   const mapData = (items: any[]): Matter[] => {
+     return items.map((item) => ({
+       MatterID: item["MatterID"] || item["Matter ID"] || "",
+       InstructionRef: item["InstructionRef"] || item["Instruction Ref"] || "",
+       DisplayNumber: item["Display Number"] || "",
+       OpenDate: item["Open Date"] || "",
+diff --git a/src/index.tsx b/src/index.tsx
+index 24c16f032e023984ad5f3927df6b49c9849473a6..55001596a81c0012bed3deaf133c16435dcdf3a8 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -288,51 +328,51 @@ const AppWithContext: React.FC = () => {
+     }
+   };
+ 
+   useEffect(() => {
+     const initializeTeamsAndFetchData = async () => {
+       if (inTeams && !useLocalData) {
+         try {
+           microsoftTeams.initialize();
+           microsoftTeams.getContext(async (ctx) => {
+             setTeamsContext(ctx);
+ 
+             const objectId = ctx.userObjectId || "";
+             if (!objectId) throw new Error("Missing Teams context objectId.");
+ 
+             const { dateFrom, dateTo } = getDateRange();
+ 
+             // 1. Fetch user data first to get full name
+             const userDataRes = await fetchUserData(objectId);
+             setUserData(userDataRes);
+ 
+             const fullName =
+               `${userDataRes[0]?.First} ${userDataRes[0]?.Last}`.trim() || "";
+ 
+             // 2. In parallel, fetch enquiries, matters, and team data
+             const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
+-              fetchEnquiries("anyone", dateFrom, dateTo),
++              fetchEnquiries(userDataRes[0]?.Email || "", dateFrom, dateTo),
+               fetchMatters(fullName),
+               fetchTeamData(),
+             ]);
+ 
+             setEnquiries(enquiriesRes);
+             setMatters(mattersRes);
+             setTeamData(teamDataRes);
+ 
+             setLoading(false);
+           });
+         } catch (err: any) {
+           console.error("Error initializing or fetching data:", err);
+           setError(err.message || "Unknown error occurred.");
+ 
+           setLoading(false);
+         }
+       } else {
+         console.warn("Using local sample data for development.");
+         setTeamsContext({
+           userObjectId: "local",
+           userPrincipalName: "lz@helix-law.com",
+           theme: "default",
+         } as microsoftTeams.Context);
+         
+         // Initialize local user data with selected areas

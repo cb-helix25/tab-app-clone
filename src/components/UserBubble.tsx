@@ -79,21 +79,22 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     // Handle click outside to close popover in local dev mode
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (isClickToggled && 
-                bubbleRef.current && 
-                popoverRef.current && 
+            if (
+                open &&
+                bubbleRef.current &&
+                popoverRef.current &&
                 !bubbleRef.current.contains(event.target as Node) &&
-                !popoverRef.current.contains(event.target as Node)) {
+                !popoverRef.current.contains(event.target as Node)
+            ) {
                 setOpen(false);
                 setIsClickToggled(false);
             }
         }
-
-        if (isClickToggled) {
+        if (open) {
             document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
-    }, [isClickToggled]);
+    }, [open]);
 
     const copy = (text?: string) => {
         if (text) navigator.clipboard.writeText(text);
@@ -143,13 +144,14 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                 type="button"
                 className={`user-bubble-button persona-bubble ${isLocalDev && onAreasChange ? 'clickable-local-dev' : ''}`}
                 ref={bubbleRef}
-                onMouseEnter={() => !isClickToggled && setOpen(true)}
-                onMouseLeave={() => !isClickToggled && setOpen(false)}
-                onFocus={() => !isClickToggled && setOpen(true)}
-                onBlur={() => !isClickToggled && setOpen(false)}
                 onClick={() => {
-                    setIsClickToggled(!isClickToggled);
-                    setOpen(!open);
+                    if (open) {
+                        setOpen(false);
+                        setIsClickToggled(false);
+                    } else {
+                        setOpen(true);
+                        setIsClickToggled(true);
+                    }
                 }}
             >
                 <span className="user-initials">{initials}</span>
@@ -159,8 +161,6 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                     ref={popoverRef}
                     className="user-popover"
                     style={{ top: pos.top, left: pos.left }}
-                    onMouseEnter={() => !isClickToggled && setOpen(true)}
-                    onMouseLeave={() => !isClickToggled && setOpen(false)}
                 >
                     {userDetails.map((d) => (
                         <div key={d.label} className="detail-row">

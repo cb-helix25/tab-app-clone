@@ -45,13 +45,8 @@ const inTeams = isInTeams();
 const useLocalData =
   process.env.REACT_APP_USE_LOCAL_DATA === "true" || !inTeams;
 
-// Clear persisted pitch builder state when the page is refreshed or closed
+// Surface any unhandled promise rejections so they don't fail silently
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    sessionStorage.removeItem("pitchBuilderState");
-  });
-
-  // Surface any unhandled promise rejections so they don't fail silently
   if (!(window as any).__unhandledRejectionHandlerAdded) {
     (window as any).__unhandledRejectionHandlerAdded = true;
     window.addEventListener("unhandledrejection", (event) => {
@@ -134,26 +129,66 @@ async function fetchEnquiries(
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
-  
-  // Build query parameters for the new decoupled function
-  const params = new URLSearchParams();
-  if (dateFrom) params.append('dateFrom', dateFrom);
-  if (dateTo) params.append('dateTo', dateTo);
-  // Note: email parameter not used in new function as it filters by different fields
-  
-  const response = await fetch(
-    `/api/enquiries?${params.toString()}`,
+
+  // Always fetch the legacy enquiries data
+  const legacyResponse = await fetch(
+    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
     {
-      method: "GET",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, dateFrom, dateTo }),
     },
   );
-  if (!response.ok)
-    throw new Error(`Failed to fetch enquiries: ${response.status}`);
-  const data = await response.json();
-  const enquiries = data.enquiries || [];
-  setCachedData(cacheKey, enquiries);
-  return enquiries;
+  if (!legacyResponse.ok)
+    throw new Error(`Failed to fetch enquiries: ${legacyResponse.status}`);
+  const legacyData = await legacyResponse.json();
+  let legacyEnquiries: Enquiry[] = [];
+  if (Array.isArray(legacyData)) {
+    legacyEnquiries = legacyData as Enquiry[];
+  } else if (Array.isArray(legacyData.enquiries)) {
+    legacyEnquiries = legacyData.enquiries as Enquiry[];
+  }
+
+  const normalizedEmail = email.toLowerCase();
+  const isLzUser = [
+    "lz@helix-law.com",
+    "lukasz@helix-law.com",
+    "luke@helix-law.com",
+  ].includes(normalizedEmail);
+
+  let combined = legacyEnquiries;
+
+  if (isLzUser) {
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.append("dateFrom", dateFrom);
+      if (dateTo) params.append("dateTo", dateTo);
+
+      const newResponse = await fetch(`/api/enquiries?${params.toString()}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (newResponse.ok) {
+        const newData = await newResponse.json();
+        const newEnquiries: Enquiry[] = newData.enquiries || [];
+
+        // Merge and deduplicate by ID if present
+        const seen = new Set<string>();
+        combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
+          const id = String(e.ID ?? e.id ?? "");
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to fetch new enquiries", err);
+    }
+  }
+
+  setCachedData(cacheKey, combined);
+  return combined;
 }
 
 async function fetchMatters(fullName: string): Promise<Matter[]> {
@@ -310,7 +345,7 @@ const AppWithContext: React.FC = () => {
 
             // 2. In parallel, fetch enquiries, matters, and team data
             const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
-              fetchEnquiries("anyone", dateFrom, dateTo),
+              fetchEnquiries(userDataRes[0]?.Email || "", dateFrom, dateTo),
               fetchMatters(fullName),
               fetchTeamData(),
             ]);

@@ -33,10 +33,11 @@ const calculateSidebarTop = () => {
 const sidebarContainer = (isOpen: boolean, isDarkMode: boolean, top: number) =>
     mergeStyles({
         position: 'fixed',
-        top,
+        top: 0,
         right: isOpen ? 0 : `calc(-${sidebarWidth})`,
         width: sidebarWidth,
-        height: `calc(100vh - ${top}px)`,
+        height: '100vh',
+        paddingTop: top,
         backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
         boxShadow: '-2px 0 4px rgba(0,0,0,0.2)',
         padding: 16,
@@ -48,9 +49,9 @@ const sidebarContainer = (isOpen: boolean, isDarkMode: boolean, top: number) =>
 const handleStyle = (isOpen: boolean, isDarkMode: boolean, top: number) =>
     mergeStyles({
         position: 'fixed',
-        top,
+        top: 0,
         right: isOpen ? sidebarWidth : 0,
-        height: `calc(100vh - ${top}px)`,
+        height: '100vh',
         width: 24,
         display: 'flex',
         alignItems: 'center',
