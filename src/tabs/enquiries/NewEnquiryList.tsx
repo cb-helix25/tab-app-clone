@@ -85,11 +85,26 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchNewEnquiriesData();
-      setEnquiries(data);
+      
+      // Check if we're in development/localhost - use new system
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if (isLocalhost) {
+        // Development: Use new enquiry system (not ready for production)
+        const data = await fetchNewEnquiriesData();
+        setEnquiries(data);
+      } else {
+        // Production: Fall back to mock data until new system is ready
+        console.log('Production mode: Using mock enquiry data (new system not ready)');
+        const { mockNewEnquiries } = await import('../../app/functionality/newEnquiryTypes');
+        setEnquiries(mockNewEnquiries);
+      }
     } catch (err) {
       setError('Failed to load enquiries');
       console.error('Error loading enquiries:', err);
+      // Fallback to mock data on any error
+      const { mockNewEnquiries } = await import('../../app/functionality/newEnquiryTypes');
+      setEnquiries(mockNewEnquiries);
     } finally {
       setLoading(false);
     }

@@ -791,6 +791,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     handleBackToList,
     activeState,
     activeAreaFilter,
+    filteredEnquiries, // Add this to trigger updates when enquiries change
   ]);
 
   // Navigator content for new enquiry system
@@ -1190,26 +1191,29 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           renderDetailView(selectedEnquiry)
         ) : (
           <>
-            {/* New Enquiry List - always shown unless v1 enquiry is selected */}
-            <NewEnquiryList
-              onSelectEnquiry={(enquiry: NewEnquiry) => {
-                setSelectedNewEnquiry(enquiry);
-              }}
-              onRateEnquiry={(enquiryId: number) => {
-                console.log('Rate enquiry:', enquiryId);
-                // Could integrate with existing rating system
-              }}
-              onPitch={(enquiry: NewEnquiry) => {
-                setSelectedNewEnquiry(enquiry);
-                // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
-                const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
-                setSelectedEnquiry(convertedEnquiry);
-                setActiveSubTab('Pitch'); // Go directly to Pitch Builder
-              }}
-              userData={userData || undefined}
-              activeMainTab={activeState}
-              selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
-            />
+            {/* New Enquiry List - temporarily disabled in production */}
+            {/* TODO: Re-enable when new enquiry system is ready */}
+            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <NewEnquiryList
+                onSelectEnquiry={(enquiry: NewEnquiry) => {
+                  setSelectedNewEnquiry(enquiry);
+                }}
+                onRateEnquiry={(enquiryId: number) => {
+                  console.log('Rate enquiry:', enquiryId);
+                  // Could integrate with existing rating system
+                }}
+                onPitch={(enquiry: NewEnquiry) => {
+                  setSelectedNewEnquiry(enquiry);
+                  // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
+                  const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
+                  setSelectedEnquiry(convertedEnquiry);
+                  setActiveSubTab('Pitch'); // Go directly to Pitch Builder
+                }}
+                userData={userData || undefined}
+                activeMainTab={activeState}
+                selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
+              />
+            )}
 
             {/* V1 Enquiries - only show if no v2 enquiry is selected */}
             {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (

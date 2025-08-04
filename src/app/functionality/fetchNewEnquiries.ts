@@ -14,7 +14,10 @@ export async function fetchNewEnquiriesData(): Promise<NewEnquiry[]> {
     }
 
     const data = await response.json();
-    return data;
+    
+    // Handle the response structure from the Azure Function
+    // The API returns { enquiries: [...], count: number, filters: {...} }
+    return Array.isArray(data) ? data : (data.enquiries || []);
   } catch (error) {
     console.error('Error fetching new enquiries data:', error);
     // Fallback to mock data if fetch fails
