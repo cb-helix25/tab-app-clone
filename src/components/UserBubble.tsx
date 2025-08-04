@@ -143,15 +143,13 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                 type="button"
                 className={`user-bubble-button persona-bubble ${isLocalDev && onAreasChange ? 'clickable-local-dev' : ''}`}
                 ref={bubbleRef}
-                onMouseEnter={() => setOpen(true)}
+                onMouseEnter={() => !isClickToggled && setOpen(true)}
                 onMouseLeave={() => !isClickToggled && setOpen(false)}
-                onFocus={() => setOpen(true)}
+                onFocus={() => !isClickToggled && setOpen(true)}
                 onBlur={() => !isClickToggled && setOpen(false)}
                 onClick={() => {
-                    if (isLocalDev && onAreasChange) {
-                        setIsClickToggled(!open);
-                        setOpen(!open);
-                    }
+                    setIsClickToggled(!isClickToggled);
+                    setOpen(!open);
                 }}
             >
                 <span className="user-initials">{initials}</span>
@@ -161,7 +159,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                     ref={popoverRef}
                     className="user-popover"
                     style={{ top: pos.top, left: pos.left }}
-                    onMouseEnter={() => setOpen(true)}
+                    onMouseEnter={() => !isClickToggled && setOpen(true)}
                     onMouseLeave={() => !isClickToggled && setOpen(false)}
                 >
                     {userDetails.map((d) => (
