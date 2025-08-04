@@ -8,6 +8,8 @@ interface UserBubbleProps {
     user: UserData;
     isLocalDev?: boolean;
     onAreasChange?: (areas: string[]) => void;
+    onUserChange?: (user: UserData) => void;
+    availableUsers?: UserData[] | null;
 }
 
 const AVAILABLE_AREAS = [
@@ -18,7 +20,15 @@ const AVAILABLE_AREAS = [
     'Misc/Other'
 ];
 
-const UserBubble: React.FC<UserBubbleProps> = ({ user, isLocalDev = false, onAreasChange }) => {
+const ALLOWED_SWITCHERS = ['lukasz', 'lz', 'luke'];
+
+const UserBubble: React.FC<UserBubbleProps> = ({
+    user,
+    isLocalDev = false,
+    onAreasChange,
+    onUserChange,
+    availableUsers,
+}) => {
     const [open, setOpen] = useState(false);
     const [isClickToggled, setIsClickToggled] = useState(false);
     const bubbleRef = useRef<HTMLButtonElement | null>(null);
@@ -112,6 +122,12 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user, isLocalDev = false, onAre
         areasOfWork = String((user as any).aow).split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    const canSwitchUser = ALLOWED_SWITCHERS.some((a) => {
+        const first = user.First?.toLowerCase();
+        const initials = user.Initials?.toLowerCase();
+        return first === a || initials === a;
+    });
+
     return (
         <div className="user-bubble-container">
             <button
@@ -180,6 +196,29 @@ const UserBubble: React.FC<UserBubbleProps> = ({ user, isLocalDev = false, onAre
                                     </label>
                                 ))}
                             </div>
+                        </div>
+                    )}
+                    {onUserChange && availableUsers && canSwitchUser && (
+                        <div className="user-switcher">
+                            <div className="selector-header">
+                                <span className="label">Switch User:</span>
+                            </div>
+                            <select
+                                className="user-dropdown"
+                                onChange={(e) => {
+                                    const selected = availableUsers.find(
+                                        (u) => u.Initials === e.target.value,
+                                    );
+                                    if (selected) onUserChange(selected);
+                                }}
+                            >
+                                <option value="">Select...</option>
+                                {availableUsers.map((u) => (
+                                    <option key={u.Initials} value={u.Initials}>
+                                        {u.FullName || `${u.First || ''} ${u.Last || ''}`}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     )}
                 </div>

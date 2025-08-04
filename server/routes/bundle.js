@@ -1,5 +1,11 @@
 const express = require('express');
 const path = require('path');
+// Ensure a fetch implementation is available.  In some production
+// environments the global `fetch` API is missing which would cause the
+// route handler to throw a ReferenceError.  Fallback to `node-fetch` when
+// necessary so the bundle submission works both locally and after
+// deployment.
+const fetch = global.fetch || require('node-fetch');
 
 const router = express.Router();
 
@@ -39,16 +45,30 @@ router.post('/', async (req, res) => {
         officeReadyDate,
         coveringLetter,
         copiesInOffice,
-        notes
+        notes,
+        user,
     } = req.body || {};
 
     if (!name || !matterReference || !bundleLink) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const { ASANAClientID: clientId, ASANASecret: clientSecret, ASANARefreshToken: refreshToken } = req.body;
+    // Credentials may be supplied directly on the payload or nested under a
+    // `user` object.  This mirrors how the client sends user data and avoids
+    // additional database lookups in production.
+    // Support both camelCase and snake_case field names for compatibility
+    const userData = user || req.body;
+    const clientId = userData.ASANAClientID || userData.ASANAClient_ID;
+    const clientSecret = userData.ASANASecret || userData.ASANA_Secret;
+    const refreshToken = userData.ASANARefreshToken || userData.ASANARefresh_Token;
 
     if (!clientId || !clientSecret || !refreshToken) {
+        console.error('Asana credentials missing:', { 
+            hasClientId: !!clientId, 
+            hasSecret: !!clientSecret, 
+            hasRefreshToken: !!refreshToken,
+            availableFields: Object.keys(userData).filter(k => k.includes('ASANA'))
+        });
         return res.status(500).json({ error: 'Asana credentials not found' });
     }
 

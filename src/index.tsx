@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import "./app/styles/index.css";
@@ -13,6 +12,7 @@ import localUserData from "./localData/localUserData.json";
 import localEnquiries from "./localData/localEnquiries.json";
 import localMatters from "./localData/localMatters.json";
 import localTeamData from "./localData/team-sql-data.json";
+import { getLiveLocalEnquiries } from "./tabs/home/Home";
 
 import { initializeIcons } from "@fluentui/react";
 initializeIcons();
@@ -265,6 +265,26 @@ const AppWithContext: React.FC = () => {
     }
   };
 
+  // Allow switching user in production for specific users
+  const switchUser = async (newUser: UserData) => {
+    const normalized: UserData = {
+      ...newUser,
+      EntraID: (newUser as any)["Entra ID"] || newUser.EntraID,
+      ClioID: (newUser as any)["Clio ID"] || newUser.ClioID,
+      FullName: newUser.FullName || (newUser as any)["Full Name"],
+    };
+    setUserData([normalized]);
+    const fullName =
+      normalized.FullName ||
+      `${normalized.First || ''} ${normalized.Last || ''}`.trim();
+    try {
+      const mattersRes = await fetchMatters(fullName);
+      setMatters(mattersRes);
+    } catch (err) {
+      console.error('Error fetching matters for switched user:', err);
+    }
+  };
+
   useEffect(() => {
     const initializeTeamsAndFetchData = async () => {
       if (inTeams && !useLocalData) {
@@ -318,7 +338,8 @@ const AppWithContext: React.FC = () => {
           AOW: localSelectedAreas.join(', ')
         }];
         setUserData(initialUserData as UserData[]);
-        setEnquiries(localEnquiries as Enquiry[]);
+        // Use getLiveLocalEnquiries to set Point_of_Contact for all records to the local user's email
+        setEnquiries(getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[]);
         setMatters(localMatters as unknown as Matter[]);
         setTeamData(localTeamData as TeamData[]);
         setLoading(false);
@@ -341,6 +362,7 @@ const AppWithContext: React.FC = () => {
         teamData={teamData}
         isLocalDev={useLocalData}
         onAreaChange={updateLocalUserData}
+        onUserChange={switchUser}
       />
     </>
   );

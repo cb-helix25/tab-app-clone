@@ -5,6 +5,8 @@ param aadAppTenantId string
 param aadAppOauthAuthorityHost string
 @secure()
 param aadAppClientSecret string
+@secure()
+param sqlConnectionString string
 param location string = resourceGroup().location
 param serverfarmsName string = resourceBaseName
 param functionAppName string = resourceBaseName
@@ -101,6 +103,10 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
         {
           name: 'WEBSITE_AUTH_AAD_ACL'
           value: '{"allowed_client_applications": [${allowedClientApplications}]}'
+        }
+        {
+          name: 'SQL_CONNECTION_STRING'
+          value: sqlConnectionString
         }
       ]
       ftpsState: 'FtpsOnly'

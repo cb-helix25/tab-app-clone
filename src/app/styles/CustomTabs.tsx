@@ -38,6 +38,8 @@ interface CustomTabsProps {
   isInMatterOpeningWorkflow?: boolean; // Whether user is currently in the matter opening workflow
   isLocalDev?: boolean;
   onAreaChange?: (areas: string[]) => void;
+  teamData?: UserData[] | null;
+  onUserChange?: (user: UserData) => void;
 }
 
 const customPivotStyles = (_isDarkMode: boolean): Partial<IPivotStyles> => ({
@@ -80,6 +82,8 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
   isInMatterOpeningWorkflow = false,
   isLocalDev = false,
   onAreaChange,
+  teamData,
+  onUserChange,
 }) => {
   const { isDarkMode } = useTheme();
 
@@ -204,19 +208,21 @@ const CustomTabs: React.FC<CustomTabsProps> = ({
           />
         ))}
       </Pivot>
-      {(
-        isLocalDev || user
-      ) && (
+      {(isLocalDev || user) && (
         <UserBubble
-          user={user || {
-            First: 'Local',
-            Last: 'Dev',
-            Initials: 'LD',
-            AOW: 'Commercial, Construction, Property, Employment, Misc/Other',
-            Email: 'local@dev.com',
-          }}
+          user={
+            user || {
+              First: 'Local',
+              Last: 'Dev',
+              Initials: 'LD',
+              AOW: 'Commercial, Construction, Property, Employment, Misc/Other',
+              Email: 'local@dev.com',
+            }
+          }
           isLocalDev={isLocalDev}
           onAreasChange={onAreaChange}
+          availableUsers={teamData || undefined}
+          onUserChange={onUserChange}
         />
       )}
     </div>

@@ -58,6 +58,10 @@ export interface UserData {
   ASANAClientID?: string;
   ASANASecret?: string;
   ASANARefreshToken?: string;
+  // Database snake_case versions for compatibility
+  ASANAClient_ID?: string;
+  ASANA_Secret?: string;
+  ASANARefresh_Token?: string;
   holiday_entitlement?: number; // Added holiday entitlement field
 }
 

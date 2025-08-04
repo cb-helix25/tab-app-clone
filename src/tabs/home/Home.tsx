@@ -93,7 +93,7 @@ import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // 
 import UnclaimedEnquiries from '../enquiries/UnclaimedEnquiries';
 
 // Helper to dynamically update localEnquiries.json's first record to always have today's date in local mode
-function getLiveLocalEnquiries() {
+export function getLiveLocalEnquiries(currentUserEmail?: string) {
   try {
     // Only do this in local mode
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -106,6 +106,12 @@ function getLiveLocalEnquiries() {
       const todayStr = `${yyyy}-${mm}-${dd}`;
       localEnquiries[0].Touchpoint_Date = todayStr;
       localEnquiries[0].Date_Created = todayStr;
+      // Set Point_of_Contact for all records to current user email in local mode
+      if (currentUserEmail) {
+        localEnquiries.forEach((enq: any) => {
+          enq.Point_of_Contact = currentUserEmail;
+        });
+      }
     }
     return localEnquiries;
   } catch (e) {

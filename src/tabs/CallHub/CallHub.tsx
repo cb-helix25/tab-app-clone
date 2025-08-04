@@ -1,25 +1,92 @@
 import React, { useState } from 'react';
-import { Stack, TextField, PrimaryButton } from '@fluentui/react';
+import { Stack, TextField, PrimaryButton, MessageBar, MessageBarType } from '@fluentui/react';
 import '../../app/styles/MatterOpeningCard.css';
+import { sendCallEvent, lookupClient } from './callHubApi';
+import { EnquiryType, ContactPreference, ClientInfo } from './types';
 
 const CallHub: React.FC = () => {
-    const [enquiryType, setEnquiryType] = useState<'new' | 'existing' | 'expert' | null>(null);
-    const [contactPreference, setContactPreference] = useState<'email' | 'phone' | null>(null);
+    const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(null);
+    const [contactPreference, setContactPreference] = useState<ContactPreference | null>(null);
     const [email, setEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
+    const [callerName, setCallerName] = useState('');
+    const [notes, setNotes] = useState('');
     const [countryCode, setCountryCode] = useState('+44');
     const [lookupPhone, setLookupPhone] = useState('');
-    const [clientInfo, setClientInfo] = useState<{ name: string; email: string; matters: string[] } | null>(null);
+    const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
+    const [lookupStatus, setLookupStatus] = useState<string | null>(null);
     const [claimTime, setClaimTime] = useState<number | null>(null);
     const [contactTime, setContactTime] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
-    const handleClaim = () => {
-        setClaimTime(Date.now());
+    const handleClaim = async () => {
+        const now = Date.now();
+        setClaimTime(now);
+        try {
+            await sendCallEvent({ action: 'claim', enquiryType, contactPreference, claimTime: now });
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const handleContacted = () => {
+    const handleContacted = async () => {
         if (!claimTime) return;
-        setContactTime(Date.now());
+        const now = Date.now();
+        setContactTime(now);
+        try {
+            await sendCallEvent({
+                action: 'contact',
+                enquiryType,
+                contactPreference,
+                email,
+                contactPhone,
+                claimTime,
+                contactTime: now,
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        setSaveError(null);
+        setSaveSuccess(false);
+        try {
+            await sendCallEvent({
+                action: 'save',
+                enquiryType,
+                contactPreference,
+                email,
+                contactPhone,
+                callerName,
+                notes,
+                claimTime,
+                contactTime,
+            });
+            setSaveSuccess(true);
+        } catch (err: any) {
+            setSaveError(err.message || 'Unable to save call');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleLookup = async () => {
+        setLookupStatus(null);
+        try {
+            const info = await lookupClient(countryCode, lookupPhone);
+            if (info) {
+                setClientInfo(info);
+            } else {
+                setClientInfo(null);
+                setLookupStatus('No client found');
+            }
+        } catch (err) {
+            setLookupStatus('Lookup failed');
+        }
     };
 
     const formatDuration = (start: number, end: number) => {
@@ -28,6 +95,7 @@ const CallHub: React.FC = () => {
     };
 
     const missingEmail = contactPreference === 'phone' && !email;
+    const canSave = !!enquiryType && !!contactPreference && !missingEmail && !saving;
 
     return (
         <div style={{ padding: 20 }}>
@@ -37,6 +105,11 @@ const CallHub: React.FC = () => {
                 </div>
                 <div className="step-content active">
                     <Stack tokens={{ childrenGap: 20 }}>
+                        <TextField
+                            label="Caller Name"
+                            value={callerName}
+                            onChange={(_, v) => setCallerName(v || '')}
+                        />
                         <div className="client-type-selection">
                             <div
                                 className={`client-type-icon-btn${enquiryType === 'new' ? ' active' : ''}`}
@@ -102,8 +175,11 @@ const CallHub: React.FC = () => {
                                         value={lookupPhone}
                                         onChange={(_, v) => setLookupPhone(v || '')}
                                     />
-                                    <PrimaryButton text="Lookup Client" onClick={() => setClientInfo({ name: 'Jane Doe', email: 'jane@example.com', matters: ['Matter A', 'Matter B'] })} />
+                                    <PrimaryButton text="Lookup Client" onClick={handleLookup} />
                                 </Stack>
+                                {lookupStatus && (
+                                    <MessageBar messageBarType={MessageBarType.warning}>{lookupStatus}</MessageBar>
+                                )}
                                 {clientInfo && (
                                     <div>
                                         <div>
@@ -122,6 +198,13 @@ const CallHub: React.FC = () => {
                             </Stack>
                         )}
 
+                        <TextField
+                            label="Notes"
+                            multiline
+                            value={notes}
+                            onChange={(_, v) => setNotes(v || '')}
+                        />
+
                         {enquiryType && enquiryType !== 'expert' && (
                             <div>
                                 <strong>Contact Options</strong>
@@ -137,46 +220,57 @@ const CallHub: React.FC = () => {
                         <Stack horizontal tokens={{ childrenGap: 10 }}>
                             <PrimaryButton text="Claim Enquiry" onClick={handleClaim} disabled={!!claimTime} />
                             <PrimaryButton text="Mark Contacted" onClick={handleContacted} disabled={!claimTime || !!contactTime} />
+                            <PrimaryButton text="Save Call" onClick={handleSave} disabled={!canSave} />
                         </Stack>
 
                         {claimTime && <div>Claimed at {new Date(claimTime).toLocaleTimeString()}</div>}
                         {claimTime && contactTime && (
                             <div>Time to contact: {formatDuration(claimTime, contactTime)}</div>
                         )}
+                        {saveSuccess && (
+                            <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setSaveSuccess(false)}>
+                                Call saved
+                            </MessageBar>
+                        )}
+                        {saveError && (
+                            <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setSaveError(null)}>
+                                {saveError}
+                            </MessageBar>
+                        )}
                     </Stack>
                 </div>
             </div>
             <style>{`
-        .client-type-selection {
-          display: flex;
-          gap: 8px;
-        }
-        .client-type-icon-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 14.4px 8px;
-          border: 1px solid #e0e0e0;
-          background: #f8f8f8;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .client-type-icon-btn .client-type-label {
-          pointer-events: none;
-        }
-        .client-type-icon-btn:not(.active):hover {
-          background: #e3f0fc;
-          border-color: #3690CE;
-        }
-        .client-type-icon-btn.active {
-          background: #e3f0fc;
-          border-color: #3690CE;
-          color: #3690CE;
-          font-weight: 600;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-      `}</style>
+          .client-type-selection {
+            display: flex;
+            gap: 8px;
+          }
+          .client-type-icon-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14.4px 8px;
+            border: 1px solid #e0e0e0;
+            background: #f8f8f8;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .client-type-icon-btn .client-type-label {
+            pointer-events: none;
+          }
+          .client-type-icon-btn:not(.active):hover {
+            background: #e3f0fc;
+            border-color: #3690CE;
+          }
+          .client-type-icon-btn.active {
+            background: #e3f0fc;
+            border-color: #3690CE;
+            color: #3690CE;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+        `}</style>
         </div>
     );
 };

@@ -88,6 +88,17 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
         setSubmitting(true);
         const currentUser = users[0];
 
+        const getAsanaField = (user: any, key: string) => {
+            // Try camelCase, then snake_case, then uppercase
+            return (
+                user[key] ||
+                user[key.replace('ID', '_ID')] ||
+                user[key.replace('ID', '_ID').toUpperCase()] ||
+                user[key.replace('ID', '_Id')] ||
+                user[key.replace('ID', '_Id').toUpperCase()]
+            );
+        };
+
         const payload: any = {
             name,
             matterReference: matterRef,
@@ -104,9 +115,9 @@ const BundleForm: React.FC<BundleFormProps> = ({ users = [], matters, onBack }) 
         };
 
         if (currentUser) {
-            payload.ASANAClientID = currentUser.ASANAClientID;
-            payload.ASANASecret = currentUser.ASANASecret;
-            payload.ASANARefreshToken = currentUser.ASANARefreshToken;
+            payload.ASANAClientID = getAsanaField(currentUser, 'ASANAClientID');
+            payload.ASANASecret = getAsanaField(currentUser, 'ASANASecret');
+            payload.ASANARefreshToken = getAsanaField(currentUser, 'ASANARefreshToken');
         }
 
         try {

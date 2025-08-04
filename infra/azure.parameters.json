@@ -17,6 +17,9 @@
     "aadAppOauthAuthorityHost": {
       "value": "${{AAD_APP_OAUTH_AUTHORITY_HOST}}"
     },
+    "sqlConnectionString": {
+      "value": "${{SQL_CONNECTION_STRING}}"
+    },
     "functionAppSKU": {
       "value": "B1"
     },
