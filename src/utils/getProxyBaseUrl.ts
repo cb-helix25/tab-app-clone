@@ -1,3 +1,4 @@
+const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
 export function getProxyBaseUrl(): string {
     const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
     const isLocal =
@@ -13,7 +14,7 @@ export function getProxyBaseUrl(): string {
         return envUrl;
     }
 
-    return window.location.origin;
+    return DEFAULT_PROXY_BASE_URL;
 }
 
 export default getProxyBaseUrl;

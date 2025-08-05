@@ -1,246 +1,28 @@
-diff --git a/src/index.tsx b/src/index.tsx
-index 11e8433f38590eb3288b748f374479d716cbf7b8..9c425a7b0b0010a8d3b47bc1ecf61c856ca2c2b9 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -1,67 +1,70 @@
- import React, { useState, useEffect } from "react";
- import ReactDOM from "react-dom";
- import "./app/styles/index.css";
- import App from "./app/App";
- import { createTheme, ThemeProvider } from "@fluentui/react";
- import { colours } from "./app/styles/colours";
- import * as microsoftTeams from "@microsoft/teams-js";
- import { isInTeams } from "./app/functionality/isInTeams";
- import { Matter, UserData, Enquiry, TeamData } from "./app/functionality/types";
- // Local sample data used when REACT_APP_USE_LOCAL_DATA is set
- import localUserData from "./localData/localUserData.json";
- import localEnquiries from "./localData/localEnquiries.json";
- import localMatters from "./localData/localMatters.json";
- import localTeamData from "./localData/team-sql-data.json";
- import { getLiveLocalEnquiries } from "./tabs/home/Home";
- 
- import "./utils/callLogger";
- import Data from "./tabs/Data";
-+import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
- 
- import { initializeIcons } from "@fluentui/react";
- initializeIcons();
- 
- // Define the custom Fluent UI theme
- // invisible change 2
- const customTheme = createTheme({
-   palette: {
-     themePrimary: colours.blue,
-     themeDark: colours.darkBlue,
-     themeLighter: colours.highlight,
-     accent: colours.accent,
-     neutralLight: colours.grey,
-     redDark: colours.cta,
-     neutralPrimary: colours.websiteBlue,
-   },
-   fonts: {
-     small: { fontFamily: "Raleway, sans-serif" },
-     medium: { fontFamily: "Raleway, sans-serif" },
-     large: { fontFamily: "Raleway, sans-serif" },
-     xLarge: { fontFamily: "Raleway, sans-serif" },
-   },
- });
- 
-+const proxyBaseUrl = getProxyBaseUrl();
+diff --git a/src/utils/getProxyBaseUrl.ts b/src/utils/getProxyBaseUrl.ts
+index 39b8b86943aa16c52f8d6ba9041c47607d0f3ea0..c61cb95fe46fc96b49c77835eebbd76718d2db4e 100644
+--- a/src/utils/getProxyBaseUrl.ts
++++ b/src/utils/getProxyBaseUrl.ts
+@@ -1,19 +1,21 @@
++const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
 +
- // Flag to decide whether to use local sample data instead of remote API
- const inTeams = isInTeams();
- const useLocalData =
-   process.env.REACT_APP_USE_LOCAL_DATA === "true" || !inTeams;
+ export function getProxyBaseUrl(): string {
+     const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
+     const isLocal =
+         typeof window !== "undefined" &&
+         (window.location.hostname === "localhost" ||
+             window.location.hostname === "127.0.0.1");
  
- // Surface any unhandled promise rejections so they don't fail silently
- if (typeof window !== "undefined") {
-   if (!(window as any).__unhandledRejectionHandlerAdded) {
-     (window as any).__unhandledRejectionHandlerAdded = true;
-     window.addEventListener("unhandledrejection", (event) => {
-       console.error("Unhandled promise rejection:", event.reason);
-       event.preventDefault();
-       alert("An unexpected error occurred. Check the console for details.");
-     });
-   }
- }
- 
- // Simple localStorage caching with a 15 minute TTL
- const CACHE_TTL = 15 * 60 * 1000;
- 
- function getCachedData<T>(key: string): T | null {
-   try {
-     const raw = localStorage.getItem(key);
-     if (!raw) return null;
-     const { data, timestamp } = JSON.parse(raw);
-diff --git a/src/index.tsx b/src/index.tsx
-index 11e8433f38590eb3288b748f374479d716cbf7b8..9c425a7b0b0010a8d3b47bc1ecf61c856ca2c2b9 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -85,51 +88,51 @@ function setCachedData(key: string, data: unknown) {
- // Helper function to calculate the date range (6 months)
- const getDateRange = () => {
-   const now = new Date();
-   const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1); // Increase range
-   const startDate = new Date(
-     twelveMonthsAgo.getFullYear(),
-     twelveMonthsAgo.getMonth(),
-     1,
-   );
-   const endDate = now;
-   const formattedStartDate = startDate.toISOString().split("T")[0];
-   const formattedEndDate = endDate.toISOString().split("T")[0];
-   return {
-     dateFrom: formattedStartDate,
-     dateTo: formattedEndDate,
-   };
- };
- 
- // Fetch functions
- async function fetchUserData(objectId: string): Promise<UserData[]> {
-   const cacheKey = `userData-${objectId}`;
-   const cached = getCachedData<UserData[]>(cacheKey);
-   if (cached) return cached;
- 
-   const response = await fetch(
--    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
-+    `${proxyBaseUrl}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
-     {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ userObjectId: objectId }),
-     },
-   );
-   if (!response.ok)
-     throw new Error(`Failed to fetch user data: ${response.status}`);
-   const data = await response.json();
-   setCachedData(cacheKey, data);
-   return data;
- }
- 
- async function fetchEnquiries(
-   email: string,
-   dateFrom: string,
-   dateTo: string,
-   userAow: string = '',
-   userInitials: string = '',
- ): Promise<Enquiry[]> {
-   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
-   const cached = getCachedData<Enquiry[]>(cacheKey);
-   if (cached) return cached;
- 
-   // FOR TESTING: Only fetch from the NEW decoupled function to simulate production behavior
-diff --git a/src/index.tsx b/src/index.tsx
-index 11e8433f38590eb3288b748f374479d716cbf7b8..9c425a7b0b0010a8d3b47bc1ecf61c856ca2c2b9 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -342,51 +345,51 @@ async function fetchEnquiries(
-     if (!hasFullAccess) {
-       filteredEnquiries = enquiries.filter((enq) => {
-         const area = (enq.Area_of_Work || (enq as any).aow || '').toLowerCase();
-         return userAreas.some(
-           (a) => a === area || a.includes(area) || area.includes(a),
-         );
-       });
+     if (isLocal) {
+         return envUrl || "http://localhost:8080";
      }
-   }
  
-   console.log('🎯 FINAL ENQUIRIES SUMMARY:');
-   console.log('   Total before AOW filtering:', enquiries.length);
-   console.log('   Total after AOW filtering:', filteredEnquiries.length);
-   console.log('   User AOW:', userAow);
- 
-   setCachedData(cacheKey, filteredEnquiries);
-   return filteredEnquiries;
- }
- 
- async function fetchMatters(fullName: string): Promise<Matter[]> {
-   const cacheKey = `matters-${fullName}`;
-   const cached = getCachedData<Matter[]>(cacheKey);
-   if (cached) return cached;
- 
-   const response = await fetch(
--    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
-+    `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
-     {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ fullName }),
-     },
-   );
-   if (!response.ok)
-     throw new Error(`Failed to fetch matters: ${response.status}`);
-   const data = await response.json();
- 
-   const mapData = (items: any[]): Matter[] => {
-     return items.map((item) => ({
-       MatterID: item["MatterID"] || item["Matter ID"] || "",
-       InstructionRef: item["InstructionRef"] || item["Instruction Ref"] || "",
-       DisplayNumber: item["Display Number"] || "",
-       OpenDate: item["Open Date"] || "",
-       MonthYear: item["MonthYear"] || "",
-       YearMonthNumeric: item["YearMonthNumeric"] || 0,
-       ClientID: item["Client ID"] || "",
-       ClientName: item["Client Name"] || "",
-       ClientPhone: item["Client Phone"] || "",
-       ClientEmail: item["Client Email"] || "",
-       Status: item["Status"] || "",
-       UniqueID: item["Unique ID"] || "",
-       Description: item["Description"] || "",
-diff --git a/src/index.tsx b/src/index.tsx
-index 11e8433f38590eb3288b748f374479d716cbf7b8..9c425a7b0b0010a8d3b47bc1ecf61c856ca2c2b9 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -404,51 +407,51 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
-       method_of_contact: item["method_of_contact"] || "",
-       CCL_date: item["CCL_date"] || null,
-       Rating: item["Rating"] as "Good" | "Neutral" | "Poor" | undefined,
-     }));
-   };
- 
-   let fetchedMatters: Matter[] = [];
- 
-   if (Array.isArray(data)) {
-     fetchedMatters = mapData(data);
-   } else if (Array.isArray(data.matters)) {
-     fetchedMatters = mapData(data.matters);
-   } else {
-     console.warn("Unexpected data format:", data);
-   }
-   setCachedData(cacheKey, fetchedMatters);
-   return fetchedMatters;
- }
- 
- async function fetchTeamData(): Promise<TeamData[] | null> {
-   const cacheKey = "teamData";
-   const cached = getCachedData<TeamData[]>(cacheKey);
-   if (cached) return cached;
-   try {
-     const response = await fetch(
--      `${process.env.REACT_APP_PROXY_BASE_URL}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
-+      `${proxyBaseUrl}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
-       {
-         method: "GET",
-         headers: { "Content-Type": "application/json" },
-       },
-     );
-     if (!response.ok) {
-       throw new Error(`Failed to fetch team data: ${response.statusText}`);
+     if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
+         return envUrl;
      }
-     const data: TeamData[] = await response.json();
-     setCachedData(cacheKey, data);
-     return data;
-   } catch (error) {
-     console.error("Error fetching team data:", error);
-     return null;
-   }
+ 
+-    return window.location.origin;
++    return DEFAULT_PROXY_BASE_URL;
  }
  
- // Main component
- const AppWithContext: React.FC = () => {
-   const [teamsContext, setTeamsContext] =
-     useState<microsoftTeams.Context | null>(null);
-   const [userData, setUserData] = useState<UserData[] | null>(null);
-   const [enquiries, setEnquiries] = useState<Enquiry[] | null>(null);
-   const [matters, setMatters] = useState<Matter[] | null>(null);
-   const [teamData, setTeamData] = useState<TeamData[] | null>(null);
+-export default getProxyBaseUrl;
++export default getProxyBaseUrl;
