@@ -28,7 +28,7 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         boxShadow: isDarkMode
             ? '0 2px 4px rgba(0,0,0,0.4)'
             : '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '0 8px',
+        padding: '0 24px',
         transition: 'background-color 0.3s',
         display: 'flex',
         flexDirection: 'row',
@@ -60,11 +60,11 @@ const quickLinksStyle = (isDarkMode: boolean, highlighted: boolean) =>
         },
         '@media (max-width: 900px)': {
             gap: '2px',
-            padding: '0 2px',
+            padding: '0 24px',
         },
         '@media (max-width: 600px)': {
             gap: '0px',
-            padding: '0 0px',
+            padding: '0 24px',
         },
     });
 
@@ -140,7 +140,7 @@ const QuickActionsBar: React.FC<QuickActionsBarProps> = ({
                     style: {
                         '--card-index': index,
                         fontSize: '15px',
-                        padding: '0 14px',
+                        padding: '0 12px',
                         height: '48px', // Changed from 44px to match Enquiries/Matters
                         minWidth: 0,
                         display: 'flex',

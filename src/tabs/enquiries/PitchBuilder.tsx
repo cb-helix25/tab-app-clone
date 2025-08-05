@@ -1104,13 +1104,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [savedSnippets, setSavedSnippets] = useState<{ [key: string]: string }>({});
+  const suppressSaveRef = useRef(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('pitchBuilderState');
+    const saved = localStorage.getItem('pitchBuilderState');
     let initialSet: TemplateSet = 'Database';
     if (saved) {
       try {
         const state = JSON.parse(saved);
+        if (state.enquiryId !== enquiry.ID) {
+          handleTemplateSetChange(initialSet);
+          return;
+        }
         if (state.templateSet) {
           setTemplateSet(state.templateSet);
           initialSet = state.templateSet;
@@ -2637,6 +2642,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
    * Reset the entire form
    */
   function resetForm() {
+    suppressSaveRef.current = true;
     setSubject('Your Practice Area Enquiry');
     setTo(enquiry.Email || '');
     setCc('');
@@ -2664,6 +2670,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setIsDraftConfirmed(false); // **Reset confirmation state**
     setDealId(null);
     setClientIds([]);
+    localStorage.removeItem('pitchBuilderState');
 
     // Immediately clear any highlight styles from the DOM
     templateBlocks.forEach((block) => {
@@ -3607,34 +3614,39 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     return () => {
-      const state = {
-        templateSet,
-        serviceDescription,
-        selectedOption,
-        amount,
-        subject,
-        to,
-        cc,
-        bcc,
-        body,
-        attachments,
-        followUp,
-        activeTab,
-        selectedTemplateOptions,
-        insertedBlocks,
-        autoInsertedBlocks,
-        lockedBlocks,
-        pinnedBlocks,
-        editedBlocks,
-        editedSnippets,
-        originalBlockContent,
-        originalSnippetContent,
-        hiddenBlocks,
-        blocks,
-        savedSnippets,
-      };
-      sessionStorage.setItem('pitchBuilderState', JSON.stringify(state));
+    if (suppressSaveRef.current) {
+      suppressSaveRef.current = false;
+      return;
+    }
+    const state = {
+      templateSet,
+      serviceDescription,
+      selectedOption,
+      amount,
+      subject,
+      to,
+      cc,
+      bcc,
+      body,
+      attachments,
+      followUp,
+      activeTab,
+      selectedTemplateOptions,
+      insertedBlocks,
+      autoInsertedBlocks,
+      lockedBlocks,
+      pinnedBlocks,
+      editedBlocks,
+      editedSnippets,
+      originalBlockContent,
+      originalSnippetContent,
+      hiddenBlocks,
+      blocks,
+      savedSnippets,
+      enquiryId: enquiry.ID,
     };
+    localStorage.setItem('pitchBuilderState', JSON.stringify(state));
+  };
   }, [
     templateSet,
     serviceDescription,

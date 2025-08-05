@@ -426,6 +426,28 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     setSelectedEnquiry(null);
   }, []);
 
+  useEffect(() => {
+    const resume = localStorage.getItem('resumePitchBuilder');
+    if (resume) {
+      localStorage.removeItem('resumePitchBuilder');
+      const saved = localStorage.getItem('pitchBuilderState');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          const enquiryId = state.enquiryId;
+          if (enquiryId) {
+            const found = displayEnquiries.find(e => e.ID === enquiryId);
+            if (found) {
+              handleSelectEnquiry(found);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to resume pitch builder', e);
+        }
+      }
+    }
+  }, [displayEnquiries, handleSelectEnquiry]);
+
   const handleRate = useCallback((id: string) => {
     setRatingEnquiryId(id);
     setCurrentRating('');

@@ -179,13 +179,20 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
     return monday;
   };
 
+  const formatDateLocal = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getWeekKey = (date: Date): { start: string; end: string } => {
     const monday = new Date(date);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     return {
-      start: monday.toISOString().split('T')[0],
-      end: sunday.toISOString().split('T')[0],
+      start: formatDateLocal(monday),
+      end: formatDateLocal(sunday),
     };
   };
 
@@ -195,7 +202,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
 
   const currentWeek = getWeekKey(currentWeekMonday);
   const nextWeek = getWeekKey(nextWeekMonday);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatDateLocal(new Date());
   const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const attendancePersons = useMemo(() => {
@@ -338,7 +345,9 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
         Initials: userInitials,
         Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
         Week_Start: p.weekStart,
-        Week_End: new Date(new Date(p.weekStart).setDate(new Date(p.weekStart).getDate() + 6)).toISOString().split('T')[0],
+        Week_End: formatDateLocal(
+          new Date(new Date(p.weekStart).setDate(new Date(p.weekStart).getDate() + 6))
+        ),
         ISO_Week: getISOWeek(new Date(p.weekStart)),
         Attendance_Days: p.attendanceDays,
         Confirmed_At: new Date().toISOString(),
@@ -369,7 +378,9 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
           Initials: userInitials,
           Level: teamData.find((t) => t.Initials === userInitials)?.Level || '',
           Week_Start: result.weekStart,
-          Week_End: new Date(new Date(result.weekStart).setDate(new Date(result.weekStart).getDate() + 6)).toISOString().split('T')[0],
+          Week_End: formatDateLocal(
+            new Date(new Date(result.weekStart).setDate(new Date(result.weekStart).getDate() + 6))
+          ),
           ISO_Week: getISOWeek(new Date(result.weekStart)),
           Attendance_Days: result.attendanceDays,
           Confirmed_At: new Date().toISOString(),
@@ -749,7 +760,7 @@ const Attendance: React.FC<AttendanceProps & RefAttributes<{ focusTable: () => v
                     const originalIndex = weekDays.indexOf(day);
                     const dayDate = new Date(weekKey.start);
                     dayDate.setUTCDate(dayDate.getUTCDate() + originalIndex);
-                    const cellDateStr = dayDate.toISOString().split('T')[0];
+                    const cellDateStr = formatDateLocal(dayDate);
                     const isCurrentDay = selectedWeek === 'current' && originalIndex === todayIndex;
 
                     return (

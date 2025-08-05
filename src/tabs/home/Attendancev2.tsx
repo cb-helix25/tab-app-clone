@@ -194,7 +194,15 @@ const AttendanceCompact = forwardRef<
         if (afterFiveThirty) nextDay.setDate(londonNow.getDate() + 1);
 
         const targetDayLabel = weekDays[nextDay.getDay()];
-        const targetDayStr = nextDay.toISOString().split('T')[0];
+
+        const formatDateLocal = (d: Date): string => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const targetDayStr = formatDateLocal(nextDay);
 
         const [panelOpen, setPanelOpen] = useState(false);
         const attendanceRef = useRef<{ focusTable: () => void; setWeek: (week: 'current' | 'next') => void }>(null);
@@ -208,10 +216,8 @@ const AttendanceCompact = forwardRef<
             return monday;
         };
 
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-        const currentWeekStart = formatDate(getMondayOfCurrentWeek());
-        const nextWeekStart = formatDate(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
+        const currentWeekStart = formatDateLocal(getMondayOfCurrentWeek());
+        const nextWeekStart = formatDateLocal(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
 
         const useNextWeek =
             (londonNow.getDay() === 5 && afterFiveThirty) ||
@@ -349,7 +355,7 @@ const AttendanceCompact = forwardRef<
             const days = weekLabels.map((label, idx) => {
                 const d = new Date(weekStartDate);
                 d.setDate(weekStartDate.getDate() + idx);
-                const ds = d.toISOString().split('T')[0];
+                const ds = formatDateLocal(d);
                 const st = getStatusForDay(attendance, member.Initials, label, ds);
                 const icon = st === 'office' ? 'CityNext' : st === 'home' ? 'Home' : 'Airplane';
                 return (

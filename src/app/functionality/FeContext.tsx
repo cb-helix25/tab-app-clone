@@ -148,11 +148,14 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   const getEnquiriesPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
   const getMattersCode = process.env.REACT_APP_GET_MATTERS_CODE;
   const getMattersPath = process.env.REACT_APP_GET_MATTERS_PATH;
+  const fetchEnquiriesCode = process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE;
+  const fetchEnquiriesPath = process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH;
 
   // Construct URLs
   const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`;
   const getEnquiriesUrl = `${proxyBaseUrl}/${getEnquiriesPath}?code=${getEnquiriesCode}`;
   const getMattersUrl = `${proxyBaseUrl}/${getMattersPath}?code=${getMattersCode}`;
+  const fetchEnquiriesBaseUrl = `${proxyBaseUrl}/${fetchEnquiriesPath}?code=${fetchEnquiriesCode}`;
 
   // Fetch User Data on Context Change
   const fetchUserData = useCallback(async (objectId: string): Promise<any> => {
@@ -184,43 +187,77 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
     async (email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> => {
       try {
         console.log('Fetching enquiries with dateFrom:', dateFrom, 'dateTo:', dateTo);
-        
-        // Build query parameters for the new decoupled function
-        const params = new URLSearchParams();
-        if (dateFrom) params.append('dateFrom', dateFrom);
-        if (dateTo) params.append('dateTo', dateTo);
-        // Note: email parameter not used in new function as it filters by different fields
-        
-        const fetchEnquiriesUrl = `${proxyBaseUrl}/${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH}?code=${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE}&${params.toString()}`;
-        
-        const response = await fetch(fetchEnquiriesUrl, {
-          method: 'GET',
+
+        const legacyResponse = await fetch(getEnquiriesUrl, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, dateFrom, dateTo }),
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!legacyResponse.ok) {
+          throw new Error(`HTTP error! status: ${legacyResponse.status}`);
         }
 
-        const data = await response.json();
-        let fetchedEnquiries: Enquiry[] = [];
-        if (Array.isArray(data.enquiries)) {
-          fetchedEnquiries = data.enquiries as Enquiry[];
-        } else if (Array.isArray(data)) {
-          fetchedEnquiries = data as Enquiry[];
+        const legacyData = await legacyResponse.json();
+        let legacyEnquiries: Enquiry[] = [];
+        if (Array.isArray(legacyData.enquiries)) {
+          legacyEnquiries = legacyData.enquiries as Enquiry[];
+        } else if (Array.isArray(legacyData)) {
+          legacyEnquiries = legacyData as Enquiry[];
         } else {
-          console.warn('Unexpected data format:', data);
+          console.warn('Unexpected legacy data format:', legacyData);
         }
 
-        setEnquiries(fetchedEnquiries);
-        return fetchedEnquiries;
+        let combined = legacyEnquiries;
+
+        const normalizedEmail = email.toLowerCase();
+        const isLzUser = [
+          'lz@helix-law.com',
+          'lukasz@helix-law.com',
+          'luke@helix-law.com',
+        ].includes(normalizedEmail);
+
+        if (isLzUser) {
+          try {
+            const params = new URLSearchParams();
+            if (dateFrom) params.append('dateFrom', dateFrom);
+            if (dateTo) params.append('dateTo', dateTo);
+
+            const newResponse = await fetch(`${fetchEnquiriesBaseUrl}&${params.toString()}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (newResponse.ok) {
+              const newData = await newResponse.json();
+              const newEnquiries: Enquiry[] = Array.isArray(newData.enquiries)
+                ? newData.enquiries
+                : Array.isArray(newData)
+                ? newData
+                : [];
+
+              const seen = new Set<string>();
+              combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
+                const id = String((e as any).ID ?? (e as any).id ?? '');
+                if (seen.has(id)) return false;
+                seen.add(id);
+                return true;
+              });
+            }
+          } catch (err) {
+            console.warn('Failed to fetch new enquiries', err);
+          }
+        }
+
+        setEnquiries(combined);
+        return combined;
       } catch (error) {
         console.error('Error fetching enquiries:', error);
         setFetchEnquiriesError('Failed to fetch enquiries.');
         return [];
       }
     },
-    [proxyBaseUrl]
+    [fetchEnquiriesBaseUrl, getEnquiriesUrl]
   );
 
   // Function to fetch Matters

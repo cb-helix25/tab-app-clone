@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import DataInspector from './DataInspector';
 // invisible change 2
 import { UserData } from '../app/functionality/types';
 import '../app/styles/UserBubble.css';
@@ -20,7 +21,7 @@ const AVAILABLE_AREAS = [
     'Misc/Other'
 ];
 
-const ALLOWED_SWITCHERS = ['lukasz', 'lz', 'luke'];
+const ALLOWED_SWITCHERS = ['lukasz', 'lz', 'luke', 'alex', 'ac'];
 
 const UserBubble: React.FC<UserBubbleProps> = ({
     user,
@@ -31,6 +32,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 }) => {
     const [open, setOpen] = useState(false);
     const [isClickToggled, setIsClickToggled] = useState(false);
+    const [showDataInspector, setShowDataInspector] = useState(false);
     const bubbleRef = useRef<HTMLButtonElement | null>(null);
     const popoverRef = useRef<HTMLDivElement | null>(null);
     const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -46,37 +48,47 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
     useEffect(() => {
         function updatePosition() {
-            if (bubbleRef.current && popoverRef.current) {
+            if (bubbleRef.current) {
                 const bubbleRect = bubbleRef.current.getBoundingClientRect();
-                const popRect = popoverRef.current.getBoundingClientRect();
-
+                
+                // Position the popover relative to the bubble
                 let left = bubbleRect.left;
-                if (left + popRect.width > window.innerWidth - 8) {
-                    left = window.innerWidth - popRect.width - 8;
-                }
-                if (left < 8) left = 8;
-
                 let top = bubbleRect.bottom + 8;
-                if (top + popRect.height > window.innerHeight - 8) {
-                    top = bubbleRect.top - popRect.height - 8;
+                
+                // Keep popover within viewport bounds
+                const popoverWidth = 320; // estimated width
+                const popoverHeight = 400; // estimated height
+                
+                if (left + popoverWidth > window.innerWidth - 16) {
+                    left = window.innerWidth - popoverWidth - 16;
                 }
-                if (top < 8) top = 8;
+                if (left < 16) left = 16;
+
+                if (top + popoverHeight > window.innerHeight - 16) {
+                    top = bubbleRect.top - popoverHeight - 8;
+                }
+                if (top < 16) top = 16;
 
                 setPos({ top, left });
             }
         }
+        
         if (open) {
             updatePosition();
+            // Prevent body scroll when popover is open
+            const originalOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            
             window.addEventListener('resize', updatePosition);
-            window.addEventListener('scroll', updatePosition);
+            
+            return () => {
+                window.removeEventListener('resize', updatePosition);
+                document.body.style.overflow = originalOverflow;
+            };
         }
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition);
-        };
     }, [open]);
 
-    // Handle click outside to close popover in local dev mode
+    // Handle click outside to close popover
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (
@@ -153,92 +165,333 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                         setIsClickToggled(true);
                     }
                 }}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '6px',
+                    background: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    color: '#64748b',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                }}
             >
-                <span className="user-initials">{initials}</span>
+                {initials}
             </button>
+            
             {open && (
-                <div
-                    ref={popoverRef}
-                    className="user-popover"
-                    style={{ top: pos.top, left: pos.left }}
-                >
-                    {userDetails.map((d) => (
-                        <div key={d.label} className="detail-row">
-                            <span className="label">{d.label}:</span>
-                            <span className="value">{d.value}</span>
-                            <button
-                                className="copy-btn"
-                                aria-label={`Copy ${d.label}`}
-                                onClick={() => copy(d.value)}
-                            >
-                                Copy
-                            </button>
-                        </div>
-                    ))}
-                    {areasOfWork.length > 0 && (
-                        <div className="detail-row">
-                            <span className="label">Areas of Work:</span>
-                            <span className="value">{areasOfWork.join(', ')}</span>
-                        </div>
-                    )}
-                    {isLocalDev && onAreasChange && (
-                        <div className="local-area-selector">
-                            <div className="selector-header">
-                                <span className="label">Local Area Selection:</span>
+                <>
+                    {/* Backdrop */}
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.1)',
+                            zIndex: 1998
+                        }}
+                        onClick={() => {
+                            setOpen(false);
+                            setIsClickToggled(false);
+                        }}
+                    />
+                    
+                    {/* Popover */}
+                    <div
+                        ref={popoverRef}
+                        style={{
+                            position: 'fixed',
+                            top: pos.top,
+                            left: pos.left,
+                            width: '320px',
+                            maxHeight: '80vh',
+                            background: '#ffffff',
+                            borderRadius: '12px',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+                            border: '1px solid #e5e7eb',
+                            overflow: 'hidden',
+                            zIndex: 1999,
+                            animation: 'fadeInUp 0.2s ease forwards'
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{
+                            background: '#f8fafc',
+                            color: '#64748b',
+                            padding: '12px 16px',
+                            borderBottom: '1px solid #e2e8f0'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    background: '#e2e8f0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    color: '#64748b'
+                                }}>
+                                    {initials}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '1px', color: '#374151' }}>
+                                        {user.FullName || `${user.First || ''} ${user.Last || ''}`.trim() || 'User Profile'}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                                        {user.Role || 'Team Member'}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="area-checkboxes">
-                                {AVAILABLE_AREAS.map(area => (
-                                    <label key={area} className="area-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={areasOfWork.includes(area)}
-                                            onChange={(e) => {
-                                                const newAreas = e.target.checked
-                                                    ? [...areasOfWork, area]
-                                                    : areasOfWork.filter(a => a !== area);
-                                                onAreasChange(newAreas);
-                                            }}
-                                        />
-                                        <span>{area}</span>
-                                    </label>
-                                ))}
+                        </div>
+
+                        {/* Content */}
+                        <div style={{
+                            maxHeight: 'calc(80vh - 80px)',
+                            overflowY: 'auto',
+                            padding: '12px 16px'
+                        }}>
+                            {/* User Details */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <h4 style={{
+                                    margin: '0 0 8px 0',
+                                    fontSize: '11px',
+                                    fontWeight: '500',
+                                    color: '#6b7280',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Profile Details
+                                </h4>
+                                <div style={{ display: 'grid', gap: '4px' }}>
+                                    {userDetails.map((d) => (
+                                        <div key={d.label} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            padding: '6px 8px',
+                                            background: '#fafbfc',
+                                            borderRadius: '4px',
+                                            border: '1px solid #f1f3f4'
+                                        }}>
+                                            <span style={{
+                                                fontSize: '10px',
+                                                fontWeight: '500',
+                                                color: '#6b7280',
+                                                minWidth: '70px',
+                                                textTransform: 'capitalize'
+                                            }}>
+                                                {d.label}:
+                                            </span>
+                                            <span style={{
+                                                fontSize: '10px',
+                                                color: '#374151',
+                                                flex: 1,
+                                                marginLeft: '6px',
+                                                wordBreak: 'break-word'
+                                            }}>
+                                                {d.value}
+                                            </span>
+                                            <button
+                                                onClick={() => copy(d.value)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: '#6b7280',
+                                                    cursor: 'pointer',
+                                                    fontSize: '9px',
+                                                    padding: '2px 4px',
+                                                    borderRadius: '2px',
+                                                    marginLeft: '6px',
+                                                    transition: 'color 0.15s ease'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                                            >
+                                                Copy
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Areas of Work */}
+                            {areasOfWork.length > 0 && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <h4 style={{
+                                        margin: '0 0 8px 0',
+                                        fontSize: '11px',
+                                        fontWeight: '500',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Areas of Work
+                                    </h4>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                        {areasOfWork.map((area, index) => (
+                                            <span key={index} style={{
+                                                background: '#f8fafc',
+                                                color: '#6b7280',
+                                                padding: '3px 6px',
+                                                borderRadius: '3px',
+                                                fontSize: '10px',
+                                                fontWeight: '400',
+                                                border: '1px solid #f1f3f4'
+                                            }}>
+                                                {area}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Local Area Selector */}
+                            {isLocalDev && onAreasChange && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <h4 style={{
+                                        margin: '0 0 8px 0',
+                                        fontSize: '11px',
+                                        fontWeight: '500',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Local Development
+                                    </h4>
+                                    <div style={{
+                                        background: '#fafbfc',
+                                        border: '1px solid #f1f3f4',
+                                        borderRadius: '4px',
+                                        padding: '8px'
+                                    }}>
+                                        <div style={{ marginBottom: '6px', fontSize: '10px', color: '#6b7280' }}>
+                                            Override areas of work:
+                                        </div>
+                                        <div style={{ display: 'grid', gap: '4px' }}>
+                                            {AVAILABLE_AREAS.map(area => (
+                                                <label key={area} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '10px',
+                                                    color: '#6b7280'
+                                                }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={areasOfWork.includes(area)}
+                                                        onChange={(e) => {
+                                                            const newAreas = e.target.checked
+                                                                ? [...areasOfWork, area]
+                                                                : areasOfWork.filter(a => a !== area);
+                                                            onAreasChange(newAreas);
+                                                        }}
+                                                        style={{ accentColor: '#6b7280' }}
+                                                    />
+                                                    <span>{area}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* User Switcher */}
+                            {onUserChange && availableUsers && canSwitchUser && (
+                                <div style={{ marginBottom: '16px' }}>
+                                    <h4 style={{
+                                        margin: '0 0 8px 0',
+                                        fontSize: '11px',
+                                        fontWeight: '500',
+                                        color: '#6b7280',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Switch User
+                                    </h4>
+                                    <select
+                                        onChange={(e) => {
+                                            const selected = availableUsers.find(
+                                                (u) => u.Initials === e.target.value,
+                                            );
+                                            if (selected) onUserChange(selected);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '6px 8px',
+                                            border: '1px solid #f1f3f4',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            backgroundColor: '#fafbfc',
+                                            color: '#374151'
+                                        }}
+                                    >
+                                        <option value="">Select user...</option>
+                                        {availableUsers.map((u) => (
+                                            <option key={u.Initials} value={u.Initials}>
+                                                {u.FullName || `${u.First || ''} ${u.Last || ''}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Data Inspector */}
+                            {isPowerUser && (
+                                <div>
+                                    <button
+                                        onClick={() => setShowDataInspector(true)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            background: '#f8fafc',
+                                            color: '#6b7280',
+                                            border: '1px solid #f1f3f4',
+                                            borderRadius: '4px',
+                                            fontSize: '10px',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = '#f1f5f9';
+                                            e.currentTarget.style.color = '#374151';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = '#f8fafc';
+                                            e.currentTarget.style.color = '#6b7280';
+                                        }}
+                                    >
+                                        Open Application Inspector
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    )}
-                    {isPowerUser && (
-                        <div className="data-inspector">
-                            <button
-                                className="data-btn"
-                                onClick={() => (window.location.href = '/data')}
-                            >
-                                Data
-                            </button>
-                        </div>
-                    )}
-                    {onUserChange && availableUsers && canSwitchUser && (
-                        <div className="user-switcher">
-                            <div className="selector-header">
-                                <span className="label">Switch User:</span>
-                            </div>
-                            <select
-                                className="user-dropdown"
-                                onChange={(e) => {
-                                    const selected = availableUsers.find(
-                                        (u) => u.Initials === e.target.value,
-                                    );
-                                    if (selected) onUserChange(selected);
-                                }}
-                            >
-                                <option value="">Select...</option>
-                                {availableUsers.map((u) => (
-                                    <option key={u.Initials} value={u.Initials}>
-                                        {u.FullName || `${u.First || ''} ${u.Last || ''}`}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                </>
+            )}
+            
+            {showDataInspector && (
+                <DataInspector data={user} onClose={() => setShowDataInspector(false)} />
             )}
         </div>
     );

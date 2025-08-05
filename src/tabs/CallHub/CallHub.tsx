@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Stack,
     TextField,
@@ -16,7 +16,7 @@ import { EnquiryType, ContactPreference, ClientInfo, CallKind } from './types';
 const CallHub: React.FC = () => {
     const [callKind, setCallKind] = useState<CallKind | null>(null);
     const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(null);
-    const [contactPreference, setContactPreference] = useState<ContactPreference | null>(null);
+    const [contactPreference, setContactPreference] = useState<ContactPreference | null>('email');
     const [email, setEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [firstName, setFirstName] = useState('');
@@ -46,6 +46,13 @@ const CallHub: React.FC = () => {
     const [heardAboutUs, setHeardAboutUs] = useState<string | undefined>();
     const [searchTerm, setSearchTerm] = useState('');
     const [webPageVisited, setWebPageVisited] = useState('');
+
+    useEffect(() => {
+        if (callKind !== 'message' || enquiryType !== 'existing') {
+            setClientInfo(null);
+            setLookupStatus(null);
+        }
+    }, [callKind, enquiryType]);
 
     const countryCodeOptions: IDropdownOption[] = [
         { key: '+44', text: '+44' },
@@ -256,6 +263,7 @@ const CallHub: React.FC = () => {
     const missingEmail = (callKind === 'enquiry' || contactPreference === 'email') && !email;
     const canSave =
         !!callKind &&
+        (callKind !== 'message' || !!enquiryType) &&
         !!contactPreference &&
         !!contactPhone &&
         !!firstName &&
@@ -275,26 +283,28 @@ const CallHub: React.FC = () => {
                         <div className="client-type-selection">
                             <div
                                 className={`client-type-icon-btn${callKind === 'enquiry' ? ' active' : ''}`}
-                                onClick={() => setCallKind('enquiry')}
+                                onClick={() => {
+                                    setCallKind('enquiry');
+                                    setEnquiryType('new');
+                                    setContactPreference('email');
+                                }}
                             >
                                 <span className="client-type-label">New Enquiry</span>
                             </div>
                             <div
                                 className={`client-type-icon-btn${callKind === 'message' ? ' active' : ''}`}
-                                onClick={() => setCallKind('message')}
+                                onClick={() => {
+                                    setCallKind('message');
+                                    setEnquiryType(null);
+                                    setContactPreference('phone');
+                                }}
                             >
                                 <span className="client-type-label">Telephone Message</span>
                             </div>
                         </div>
 
-                        {callKind === 'enquiry' && (
+                        {callKind === 'message' && (
                             <div className="client-type-selection">
-                                <div
-                                    className={`client-type-icon-btn${enquiryType === 'new' ? ' active' : ''}`}
-                                    onClick={() => setEnquiryType('new')}
-                                >
-                                    <span className="client-type-label">New Enquiry</span>
-                                </div>
                                 <div
                                     className={`client-type-icon-btn${enquiryType === 'existing' ? ' active' : ''}`}
                                     onClick={() => setEnquiryType('existing')}
@@ -305,12 +315,18 @@ const CallHub: React.FC = () => {
                                     className={`client-type-icon-btn${enquiryType === 'expert' ? ' active' : ''}`}
                                     onClick={() => setEnquiryType('expert')}
                                 >
-                                    <span className="client-type-label">Expert or Other</span>
+                                    <span className="client-type-label">Expert</span>
+                                </div>
+                                <div
+                                    className={`client-type-icon-btn${enquiryType === 'other' ? ' active' : ''}`}
+                                    onClick={() => setEnquiryType('other')}
+                                >
+                                    <span className="client-type-label">Other</span>
                                 </div>
                             </div>
                         )}
 
-                        {callKind && (
+                        {(callKind === 'enquiry' || (callKind === 'message' && enquiryType)) && (
                             <>
                                 <Stack horizontal tokens={{ childrenGap: 8 }}>
                                     <TextField
@@ -339,7 +355,11 @@ const CallHub: React.FC = () => {
                                             value={contactPhone}
                                             onChange={(_, v) => setContactPhone(v || '')}
                                         />
-                                        <PrimaryButton text="Lookup Client" onClick={handleLookup} />
+                                        <PrimaryButton
+                                            text="Lookup Client"
+                                            onClick={handleLookup}
+                                            disabled={!(callKind === 'message' && enquiryType === 'existing')}
+                                        />
                                     </Stack>
                                     {lookupStatus && (
                                         <MessageBar messageBarType={MessageBarType.warning}>{lookupStatus}</MessageBar>
@@ -496,7 +516,7 @@ const CallHub: React.FC = () => {
                             </>
                         )}
 
-                        {callKind === 'enquiry' && enquiryType !== 'expert' && (
+                        {callKind === 'enquiry' && (
                             <div>
                                 <strong>Contact Options</strong>
                                 <ul>

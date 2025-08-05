@@ -1,4 +1,4 @@
-export type EnquiryType = 'new' | 'existing' | 'expert';
+export type EnquiryType = 'new' | 'existing' | 'expert' | 'other';
 export type ContactPreference = 'email' | 'phone';
 export type CallKind = 'enquiry' | 'message';
 

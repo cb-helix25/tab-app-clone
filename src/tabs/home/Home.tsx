@@ -65,6 +65,7 @@ import ActionSection from './ActionSection';
 import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import { hasActiveMatterOpening } from '../../app/functionality/matterOpeningUtils';
+import { hasActivePitchBuilder } from '../../app/functionality/pitchBuilderUtils';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
@@ -941,9 +942,10 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
   // Show immediate actions overlay (and Dismiss button) only on the first
   // home load for the session when immediate actions exist 
   const [showFocusOverlay, setShowFocusOverlay] = useState<boolean>(false);
-  
+
   // Track if there's an active matter opening in progress
   const [hasActiveMatter, setHasActiveMatter] = useState<boolean>(false);
+  const [hasActivePitch, setHasActivePitch] = useState<boolean>(false);
 
   // Show overlay when immediate actions become available (first time only)
   // This effect must run AFTER immediateActionsList is defined
@@ -1014,15 +1016,24 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     const checkActiveMatter = () => {
       setHasActiveMatter(hasActiveMatterOpening(isInMatterOpeningWorkflow));
     };
-    
+
     // Initial check
     checkActiveMatter();
-    
+
     // Set up polling
     const interval = setInterval(checkActiveMatter, 2000);
-    
+
     return () => clearInterval(interval);
   }, [isInMatterOpeningWorkflow]);
+
+  useEffect(() => {
+    const checkActivePitch = () => {
+      setHasActivePitch(hasActivePitchBuilder());
+    };
+    checkActivePitch();
+    const interval = setInterval(checkActivePitch, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [instructionData, setInstructionData] = useState<InstructionData[]>([]);
 
@@ -2603,6 +2614,15 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         }
         return; // Exit early, no panel needed
         break;
+      case 'Resume Pitch':
+        localStorage.setItem('resumePitchBuilder', 'true');
+        try {
+          window.dispatchEvent(new CustomEvent('navigateToEnquiries'));
+        } catch (error) {
+          console.error('Failed to dispatch navigation event:', error);
+        }
+        return;
+        break;
       case 'Book Space':
         content = (
           <Suspense fallback={<Spinner size={SpinnerSize.small} />}>
@@ -2662,6 +2682,13 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
       });
     }
+    if (hasActivePitch) {
+      actions.push({
+        title: 'Resume Pitch',
+        icon: 'Mail',
+        onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Mail' }),
+      });
+    }
     if (actionableSummaries.length > 0 && !instructionsActionDone) {
       const title = actionableSummaries.length === 1 ? 'Review Instruction' : 'Review Instructions';
       actions.push({
@@ -2689,6 +2716,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     instructionData,
     immediateALActions,
     handleActionClick,
+    hasActivePitch,
   ]);
 
   // Helper function to reset quick actions selection when panels close

@@ -113,10 +113,15 @@ const AttendanceConfirmPanel = forwardRef<
         return monday;
     };
 
-    const getWeekStart = (date: Date) => date.toISOString().split('T')[0];
+    const formatDateLocal = (d: Date): string => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
-    const currentWeekStart = getWeekStart(getMondayOfCurrentWeek());
-    const nextWeekStart = getWeekStart(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
+    const currentWeekStart = formatDateLocal(getMondayOfCurrentWeek());
+    const nextWeekStart = formatDateLocal(new Date(getMondayOfCurrentWeek().setDate(getMondayOfCurrentWeek().getDate() + 7)));
 
     const userInitials = userData?.[0]?.Initials || '';
 
@@ -155,7 +160,7 @@ const AttendanceConfirmPanel = forwardRef<
     const nextDay = new Date(londonNow);
     if (afterFiveThirty) nextDay.setDate(londonNow.getDate() + 1);
     const targetDayLabel = weekDaysFull[nextDay.getDay()];
-    const targetDayStr = nextDay.toISOString().split('T')[0];
+    const targetDayStr = formatDateLocal(nextDay);
     const useNextWeek = (londonNow.getDay() === 5 && afterFiveThirty) || londonNow.getDay() === 6 || londonNow.getDay() === 0;
     const weekStartToUse = useNextWeek ? nextWeekStart : currentWeekStart;
 
@@ -273,7 +278,7 @@ const AttendanceConfirmPanel = forwardRef<
                                     {weekDays.map((day, idx) => {
                                         const date = new Date(weekStartDate);
                                         date.setDate(date.getDate() + idx);
-                                        const iso = date.toISOString().split('T')[0];
+                                        const iso = formatDateLocal(date);
                                         const onLeave = combinedLeaveRecords.some(
                                             (leave) =>
                                                 leave.status === 'booked' &&
