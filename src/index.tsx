@@ -125,8 +125,9 @@ async function fetchEnquiries(
   email: string,
   dateFrom: string,
   dateTo: string,
+  userAow: string = '',
 ): Promise<Enquiry[]> {
-  const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}`;
+  const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
 
@@ -184,6 +185,25 @@ async function fetchEnquiries(
       }
     } catch (err) {
       console.warn("Failed to fetch new enquiries", err);
+    }
+  }
+
+  // Apply area-of-work filtering based on user's AOW
+  if (userAow) {
+    const userAreas = userAow
+      .split(',')
+      .map((a) => a.trim().toLowerCase())
+      .filter(Boolean);
+    const hasFullAccess = userAreas.some(
+      (a) => a.includes('operations') || a.includes('tech'),
+    );
+    if (!hasFullAccess) {
+      combined = combined.filter((enq) => {
+        const area = (enq.Area_of_Work || '').toLowerCase();
+        return userAreas.some(
+          (a) => a === area || a.includes(area) || area.includes(a),
+        );
+      });
     }
   }
 
@@ -345,7 +365,12 @@ const AppWithContext: React.FC = () => {
 
             // 2. In parallel, fetch enquiries, matters, and team data
             const [enquiriesRes, mattersRes, teamDataRes] = await Promise.all([
-              fetchEnquiries(userDataRes[0]?.Email || "", dateFrom, dateTo),
+              fetchEnquiries(
+                userDataRes[0]?.Email || "",
+                dateFrom,
+                dateTo,
+                userDataRes[0]?.AOW || "",
+              ),
               fetchMatters(fullName),
               fetchTeamData(),
             ]);

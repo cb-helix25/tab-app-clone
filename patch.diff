@@ -1,188 +1,82 @@
-diff --git a/src/app/functionality/FeContext.tsx b/src/app/functionality/FeContext.tsx
-index 44dd422d38a65bf1de9a6ffad594e66bef3a5a01..0a8e3ccb78212d866630a41cc758e48334cdd16a 100644
---- a/src/app/functionality/FeContext.tsx
-+++ b/src/app/functionality/FeContext.tsx
-@@ -126,123 +126,160 @@ const FeContext = createContext<FeContextProps>({
- });
+diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
+index d06589eb3ddf95d51a76e5798f33b2b73ba3a716..5e26cdf11b921e2fcb306d8d53831f80b117d1ac 100644
+--- a/src/tabs/enquiries/Enquiries.tsx
++++ b/src/tabs/enquiries/Enquiries.tsx
+@@ -1196,71 +1196,73 @@ const Enquiries: React.FC<EnquiriesProps> = ({
+         >
  
- // Define the provider's props to include children
- interface FeProviderProps {
-   children: ReactNode;
- }
+       {showUnclaimedBoard ? (
+         <UnclaimedEnquiries
+           enquiries={unclaimedEnquiries}
+           onSelect={handleSelectEnquiry}
+         />
+       ) : null}
  
- export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
-   const { context } = useContext(TeamsContext); // Ensure TeamsContext provides 'context' with 'userObjectId'
-   const [sqlData, setSqlData] = useState<any>(null);
-   const [enquiries, setEnquiries] = useState<Enquiry[]>([]); // Added enquiries state
-   const [isLoading, setIsLoading] = useState<boolean>(false);
-   const [error, setError] = useState<string | null>(null);
-   const [fetchEnquiriesError, setFetchEnquiriesError] = useState<string | null>(null);
-   const [fetchMattersError, setFetchMattersError] = useState<string | null>(null);
-   const [fetchUserDataError, setFetchUserDataError] = useState<string | null>(null); // Added error state for fetchUserData
+       <div
+         key={activeState}
+         className={mergeStyles({
+           flex: 1,
+           display: 'flex',
+           flexDirection: 'column',
+           gap: '0px', // Remove extra gap between sections
+           paddingBottom: 0, // Remove extra space at the bottom
+           backgroundColor: 'transparent',
+           transition: 'background-color 0.3s',
+         })}
+       >
+         {selectedEnquiry ? (
+           renderDetailView(selectedEnquiry)
+         ) : (
+           <>
+-            {/* New Enquiry List - temporarily disabled in production */}
+-            {/* TODO: Re-enable when new enquiry system is ready */}
+-            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
++            {(window.location.hostname === 'localhost' ||
++              window.location.hostname === '127.0.0.1' ||
++              userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
+               <NewEnquiryList
+                 onSelectEnquiry={(enquiry: NewEnquiry) => {
+                   setSelectedNewEnquiry(enquiry);
+                 }}
+                 onRateEnquiry={(enquiryId: number) => {
+                   console.log('Rate enquiry:', enquiryId);
+                   // Could integrate with existing rating system
+                 }}
+                 onPitch={(enquiry: NewEnquiry) => {
+                   setSelectedNewEnquiry(enquiry);
+                   // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
+                   const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
+                   setSelectedEnquiry(convertedEnquiry);
+                   setActiveSubTab('Pitch'); // Go directly to Pitch Builder
+                 }}
+                 userData={userData || undefined}
+                 activeMainTab={activeState}
+-                selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
++                selectedArea={
++                  activeAreaFilter !== 'All' ? activeAreaFilter : null
++                }
+               />
+             )}
  
-   // Environment Variables
-   const proxyBaseUrl = process.env.REACT_APP_PROXY_BASE_URL;
-   const getUserDataCode = process.env.REACT_APP_GET_USER_DATA_CODE;
-   const getUserDataPath = process.env.REACT_APP_GET_USER_DATA_PATH;
-   const getEnquiriesCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
-   const getEnquiriesPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
-   const getMattersCode = process.env.REACT_APP_GET_MATTERS_CODE;
-   const getMattersPath = process.env.REACT_APP_GET_MATTERS_PATH;
-+  const fetchEnquiriesCode = process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE;
-+  const fetchEnquiriesPath = process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH;
- 
-   // Construct URLs
-   const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`;
-   const getEnquiriesUrl = `${proxyBaseUrl}/${getEnquiriesPath}?code=${getEnquiriesCode}`;
-   const getMattersUrl = `${proxyBaseUrl}/${getMattersPath}?code=${getMattersCode}`;
-+  const fetchEnquiriesBaseUrl = `${proxyBaseUrl}/${fetchEnquiriesPath}?code=${fetchEnquiriesCode}`;
- 
-   // Fetch User Data on Context Change
-   const fetchUserData = useCallback(async (objectId: string): Promise<any> => {
-     try {
-       console.log('Fetching user data for object ID:', objectId);
-       const response = await fetch(getUserDataUrl, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ userObjectId: objectId }),
-       });
- 
-       if (!response.ok) {
-         throw new Error(`Failed to fetch user data: ${response.status}`);
-       }
- 
-       const data = await response.json();
-       console.log('User Data:', data);
-       setSqlData(data); // Assuming user data is set here
-       return data;
-     } catch (error) {
-       console.error('Error fetching user data:', error);
-       setFetchUserDataError('Failed to fetch user data.');
-       return {};
-     }
-   }, [getUserDataUrl]);
- 
-   // Function to fetch Enquiries
-   const fetchEnquiries = useCallback(
-     async (email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> => {
-       try {
-         console.log('Fetching enquiries with dateFrom:', dateFrom, 'dateTo:', dateTo);
--        
--        // Build query parameters for the new decoupled function
--        const params = new URLSearchParams();
--        if (dateFrom) params.append('dateFrom', dateFrom);
--        if (dateTo) params.append('dateTo', dateTo);
--        // Note: email parameter not used in new function as it filters by different fields
--        
--        const fetchEnquiriesUrl = `${proxyBaseUrl}/${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_PATH}?code=${process.env.REACT_APP_FETCH_ENQUIRIES_DATA_CODE}&${params.toString()}`;
--        
--        const response = await fetch(fetchEnquiriesUrl, {
--          method: 'GET',
-+
-+        const legacyResponse = await fetch(getEnquiriesUrl, {
-+          method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-+          body: JSON.stringify({ email, dateFrom, dateTo }),
-         });
- 
--        if (!response.ok) {
--          throw new Error(`HTTP error! status: ${response.status}`);
-+        if (!legacyResponse.ok) {
-+          throw new Error(`HTTP error! status: ${legacyResponse.status}`);
-         }
- 
--        const data = await response.json();
--        let fetchedEnquiries: Enquiry[] = [];
--        if (Array.isArray(data.enquiries)) {
--          fetchedEnquiries = data.enquiries as Enquiry[];
--        } else if (Array.isArray(data)) {
--          fetchedEnquiries = data as Enquiry[];
-+        const legacyData = await legacyResponse.json();
-+        let legacyEnquiries: Enquiry[] = [];
-+        if (Array.isArray(legacyData.enquiries)) {
-+          legacyEnquiries = legacyData.enquiries as Enquiry[];
-+        } else if (Array.isArray(legacyData)) {
-+          legacyEnquiries = legacyData as Enquiry[];
-         } else {
--          console.warn('Unexpected data format:', data);
-+          console.warn('Unexpected legacy data format:', legacyData);
-+        }
-+
-+        let combined = legacyEnquiries;
-+
-+        const normalizedEmail = email.toLowerCase();
-+        const isLzUser = [
-+          'lz@helix-law.com',
-+          'lukasz@helix-law.com',
-+          'luke@helix-law.com',
-+        ].includes(normalizedEmail);
-+
-+        if (isLzUser) {
-+          try {
-+            const params = new URLSearchParams();
-+            if (dateFrom) params.append('dateFrom', dateFrom);
-+            if (dateTo) params.append('dateTo', dateTo);
-+
-+            const newResponse = await fetch(`${fetchEnquiriesBaseUrl}&${params.toString()}`, {
-+              method: 'GET',
-+              headers: { 'Content-Type': 'application/json' },
-+            });
-+
-+            if (newResponse.ok) {
-+              const newData = await newResponse.json();
-+              const newEnquiries: Enquiry[] = Array.isArray(newData.enquiries)
-+                ? newData.enquiries
-+                : Array.isArray(newData)
-+                ? newData
-+                : [];
-+
-+              const seen = new Set<string>();
-+              combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
-+                const id = String((e as any).ID ?? (e as any).id ?? '');
-+                if (seen.has(id)) return false;
-+                seen.add(id);
-+                return true;
-+              });
-+            }
-+          } catch (err) {
-+            console.warn('Failed to fetch new enquiries', err);
-+          }
-         }
- 
--        setEnquiries(fetchedEnquiries);
--        return fetchedEnquiries;
-+        setEnquiries(combined);
-+        return combined;
-       } catch (error) {
-         console.error('Error fetching enquiries:', error);
-         setFetchEnquiriesError('Failed to fetch enquiries.');
-         return [];
-       }
-     },
--    [proxyBaseUrl]
-+    [fetchEnquiriesBaseUrl, getEnquiriesUrl]
-   );
- 
-   // Function to fetch Matters
-   const fetchMatters = useCallback(
-     async (fullName: string): Promise<Matter[]> => {
-       try {
-         const response = await fetch(getMattersUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ fullName }),
-         });
- 
-         if (!response.ok) {
-           throw new Error(`HTTP error! status: ${response.status}`);
-         }
- 
-         const data = await response.json();
-         let fetchedMatters: Matter[] = [];
-         if (Array.isArray(data)) {
-           fetchedMatters = data as Matter[];
-         } else if (Array.isArray(data.matters)) {
-           fetchedMatters = data.matters as Matter[];
-         } else {
-           console.warn('Unexpected data format:', data);
-         }
+             {/* V1 Enquiries - only show if no v2 enquiry is selected */}
+             {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
+               <div
+                 className={mergeStyles({
+                   backgroundColor: 'transparent',
+                   borderRadius: '12px',
+                   padding: '60px 40px',
+                   textAlign: 'center',
+                   boxShadow: 'none',
+                 })}
+               >
+                 <Icon
+                   iconName="Search"
+                   styles={{
+                     root: {
+                       fontSize: '48px',
+                       color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                       marginBottom: '20px',
+                     },
+                   }}
+                 />
+                 <Text

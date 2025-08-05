@@ -1218,9 +1218,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           renderDetailView(selectedEnquiry)
         ) : (
           <>
-            {/* New Enquiry List - temporarily disabled in production */}
-            {/* TODO: Re-enable when new enquiry system is ready */}
-            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+            {(window.location.hostname === 'localhost' ||
+              window.location.hostname === '127.0.0.1' ||
+              userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
               <NewEnquiryList
                 onSelectEnquiry={(enquiry: NewEnquiry) => {
                   setSelectedNewEnquiry(enquiry);
@@ -1238,7 +1238,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 }}
                 userData={userData || undefined}
                 activeMainTab={activeState}
-                selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
+                selectedArea={
+                  activeAreaFilter !== 'All' ? activeAreaFilter : null
+                }
               />
             )}
 
