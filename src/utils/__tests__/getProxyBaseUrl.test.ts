@@ -4,31 +4,34 @@ const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
 
 describe("getProxyBaseUrl", () => {
     const originalEnv = process.env.REACT_APP_PROXY_BASE_URL;
+    const originalNodeEnv = process.env.NODE_ENV;
 
     afterEach(() => {
         process.env.REACT_APP_PROXY_BASE_URL = originalEnv;
-        delete (global as any).window;
+        process.env.NODE_ENV = originalNodeEnv;
     });
 
-    const setWindow = (hostname: string, origin: string) => {
-        (global as any).window = { location: { hostname, origin } } as any;
-    };
-
-    it("uses env url in local development", () => {
+    it("uses env url in development when provided", () => {
+        process.env.NODE_ENV = "development";
         process.env.REACT_APP_PROXY_BASE_URL = "http://localhost:8080";
-        setWindow("localhost", "http://localhost");
         expect(getProxyBaseUrl()).toBe("http://localhost:8080");
     });
 
-    it("falls back to default api url when env url is localhost in production", () => {
+    it("defaults to remote api in development when env url missing", () => {
+        process.env.NODE_ENV = "development";
+        delete process.env.REACT_APP_PROXY_BASE_URL;
+        expect(getProxyBaseUrl()).toBe(DEFAULT_PROXY_BASE_URL);
+    });
+
+    it("ignores localhost env url in production", () => {
+        process.env.NODE_ENV = "production";
         process.env.REACT_APP_PROXY_BASE_URL = "http://localhost:8080";
-        setWindow("example.com", "https://example.com");
         expect(getProxyBaseUrl()).toBe(DEFAULT_PROXY_BASE_URL);
     });
 
     it("uses env url when non-local in production", () => {
+        process.env.NODE_ENV = "production";
         process.env.REACT_APP_PROXY_BASE_URL = "https://api.example.com";
-        setWindow("example.com", "https://example.com");
         expect(getProxyBaseUrl()).toBe("https://api.example.com");
     });
 });

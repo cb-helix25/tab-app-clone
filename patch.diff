@@ -1,28 +1,39 @@
 diff --git a/src/utils/getProxyBaseUrl.ts b/src/utils/getProxyBaseUrl.ts
-index 39b8b86943aa16c52f8d6ba9041c47607d0f3ea0..c61cb95fe46fc96b49c77835eebbd76718d2db4e 100644
+index 3b99e7837cbc0195e8e9ac981c9aba1f853dba6e..6bc671823155f3aec0290171d4982e87087f7c19 100644
 --- a/src/utils/getProxyBaseUrl.ts
 +++ b/src/utils/getProxyBaseUrl.ts
-@@ -1,19 +1,21 @@
-+const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
-+
+@@ -1,24 +1,23 @@
+-const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
++const DEFAULT_PROXY_BASE_URL =
++    "https://helix-keys-proxy.azurewebsites.net/api";
+ 
  export function getProxyBaseUrl(): string {
      const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
-     const isLocal =
-         typeof window !== "undefined" &&
-         (window.location.hostname === "localhost" ||
-             window.location.hostname === "127.0.0.1");
+-    const isLocal =
+-        typeof window !== "undefined" &&
+-        (window.location.hostname === "localhost" ||
+-            window.location.hostname === "127.0.0.1");
++    const nodeEnv = process.env.NODE_ENV;
  
-     if (isLocal) {
-         return envUrl || "http://localhost:8080";
+-    // Always prioritize the environment variable if it's valid
+-    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
+-        return envUrl;
++    // In development allow explicit overrides, otherwise fall back to the
++    // remote API to avoid failed calls when the local server isn't running.
++    if (nodeEnv === "development") {
++        return envUrl || DEFAULT_PROXY_BASE_URL;
      }
  
-     if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
-         return envUrl;
+-    // Use localhost only in local development
+-    if (isLocal) {
+-        return "http://localhost:8080";
++    // In production only honor env values that aren't pointing at localhost.
++    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
++        return envUrl;
      }
  
--    return window.location.origin;
-+    return DEFAULT_PROXY_BASE_URL;
+     // Fallback to the default production URL
+     return DEFAULT_PROXY_BASE_URL;
  }
  
--export default getProxyBaseUrl;
-+export default getProxyBaseUrl;
+ export default getProxyBaseUrl;

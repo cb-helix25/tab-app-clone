@@ -45,6 +45,7 @@ import { useNavigator } from '../../app/functionality/NavigatorContext';
 import '../../app/styles/MetricCard.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
 import { componentTokens } from '../../app/styles/componentTokens';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
@@ -92,6 +93,8 @@ import TransactionApprovalPopup from '../transactions/TransactionApprovalPopup';
 
 import OutstandingBalanceCard from '../transactions/OutstandingBalanceCard'; // Adjust the path if needed
 import UnclaimedEnquiries from '../enquiries/UnclaimedEnquiries';
+
+const proxyBaseUrl = getProxyBaseUrl();
 
 // Helper to dynamically update localEnquiries.json's first record to always have today's date in local mode
 export function getLiveLocalEnquiries(currentUserEmail?: string) {
@@ -985,7 +988,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
         return;
       }
       try {
-        const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
+        const url = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_EDITS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_EDITS_CODE}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -997,7 +1000,7 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
 
       if (!sessionStorage.getItem('prefetchedBlocksData')) {
         try {
-          const blocksUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
+          const blocksUrl = `${proxyBaseUrl}/${process.env.REACT_APP_GET_SNIPPET_BLOCKS_PATH}?code=${process.env.REACT_APP_GET_SNIPPET_BLOCKS_CODE}`;
           const blocksRes = await fetch(blocksUrl);
           if (blocksRes.ok) {
             const data = await blocksRes.json();
@@ -1353,7 +1356,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingAttendance(true);
           const attendanceResponse = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ATTENDANCE_PATH}?code=${process.env.REACT_APP_GET_ATTENDANCE_CODE}`,
+            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ATTENDANCE_PATH}?code=${process.env.REACT_APP_GET_ATTENDANCE_CODE}`,
             { method: 'POST', headers: { 'Content-Type': 'application/json' } }
           );
           if (!attendanceResponse.ok)
@@ -1375,7 +1378,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingAnnualLeave(true);
           const annualLeaveResponse = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_GET_ANNUAL_LEAVE_CODE}`,
+            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ANNUAL_LEAVE_PATH}?code=${process.env.REACT_APP_GET_ANNUAL_LEAVE_CODE}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1480,7 +1483,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           const clioIDForRecovered = metricsClioId || clioIDForWip;
           const [wipResponse, recoveredResponse, prevRecoveredResponse] = await Promise.all([
             fetch(
-              `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
+              `${proxyBaseUrl}/${process.env.REACT_APP_GET_WIP_CLIO_PATH}?code=${process.env.REACT_APP_GET_WIP_CLIO_CODE}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1488,7 +1491,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
               }
             ),
             fetch(
-              `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
+              `${proxyBaseUrl}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1496,7 +1499,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
               }
             ),
             fetch(
-              `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
+              `${proxyBaseUrl}/${process.env.REACT_APP_GET_RECOVERED_PATH}?code=${process.env.REACT_APP_GET_RECOVERED_CODE}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1560,7 +1563,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingAllMatters(true);
           const response = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${process.env.REACT_APP_GET_ALL_MATTERS_CODE}`,
+            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${process.env.REACT_APP_GET_ALL_MATTERS_CODE}`,
             { method: 'GET' }
           );
           if (!response.ok) {
@@ -1640,7 +1643,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         try {
           setIsLoadingPOID6Years(true);
           const response = await fetch(
-            `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_POID_6YEARS_PATH}?code=${process.env.REACT_APP_GET_POID_6YEARS_CODE}`,
+            `${proxyBaseUrl}/${process.env.REACT_APP_GET_POID_6YEARS_PATH}?code=${process.env.REACT_APP_GET_POID_6YEARS_CODE}`,
             { method: 'GET' }
           );
           if (!response.ok) {
@@ -1668,7 +1671,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     async function fetchSpaceBookings() {
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_FUTURE_BOOKINGS_PATH}?code=${process.env.REACT_APP_GET_FUTURE_BOOKINGS_CODE}`
+          `${proxyBaseUrl}/${process.env.REACT_APP_GET_FUTURE_BOOKINGS_PATH}?code=${process.env.REACT_APP_GET_FUTURE_BOOKINGS_CODE}`
         );
         if (!response.ok) {
           throw new Error(`Error fetching space bookings: ${response.status}`);
@@ -1715,7 +1718,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       }
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_GET_TRANSACTIONS_CODE}`
+          `${proxyBaseUrl}/${process.env.REACT_APP_GET_TRANSACTIONS_PATH}?code=${process.env.REACT_APP_GET_TRANSACTIONS_CODE}`
         );
         if (!response.ok) {
           throw new Error(`Failed to fetch transactions: ${response.status}`);
@@ -1760,7 +1763,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     async function fetchOutstandingBalances() {
       const code = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_CODE;
       const path = process.env.REACT_APP_GET_OUTSTANDING_CLIENT_BALANCES_PATH;
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      const baseUrl = proxyBaseUrl;
       if (!code || !path || !baseUrl) {
         console.error("Missing env variables for outstanding client balances");
         return null;
@@ -2464,7 +2467,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
 
   const approveSnippet = async (id: number, approve: boolean) => {
     try {
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+      const baseUrl = proxyBaseUrl;
       if (approve) {
         const approveUrl = `${baseUrl}/${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_PATH}?code=${process.env.REACT_APP_APPROVE_SNIPPET_EDIT_CODE}`;
         await fetch(approveUrl, {

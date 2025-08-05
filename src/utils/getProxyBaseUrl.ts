@@ -1,20 +1,19 @@
-const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
+const DEFAULT_PROXY_BASE_URL =
+    "https://helix-keys-proxy.azurewebsites.net/api";
 
 export function getProxyBaseUrl(): string {
     const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
-    const isLocal =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" ||
-            window.location.hostname === "127.0.0.1");
+    const nodeEnv = process.env.NODE_ENV;
 
-    // Always prioritize the environment variable if it's valid
-    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
-        return envUrl;
+    // In development allow explicit overrides, otherwise fall back to the
+    // remote API to avoid failed calls when the local server isn't running.
+    if (nodeEnv === "development") {
+        return envUrl || DEFAULT_PROXY_BASE_URL;
     }
 
-    // Use localhost only in local development
-    if (isLocal) {
-        return "http://localhost:8080";
+    // In production only honor env values that aren't pointing at localhost.
+    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
+        return envUrl;
     }
 
     // Fallback to the default production URL
