@@ -692,10 +692,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           bg = blueBg;
         } else if (Object.values(editedSnippets[blockTitle] || {}).some(Boolean)) {
           bg = blueBg;
-        } else if (autoInsertedBlocks[blockTitle]) {
-          bg = colours.highlightNeutral;
         } else {
-          bg = colours.highlightYellow;
+          bg = colours.highlightNeutral;
         }
       }
       headerElement.style.backgroundColor = bg;
@@ -720,9 +718,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       span.querySelectorAll('[data-snippet]').forEach((snip) => {
         if (!(snip instanceof HTMLElement)) return;
         const label = snip.getAttribute('data-snippet') || '';
-        let bg = autoInsertedBlocks[blockTitle]
-          ? colours.highlightNeutral
-          : colours.highlightYellow;
+        let bg = colours.highlightNeutral;
         if (lockedBlocks[blockTitle]) {
           bg = lockedBg;
         } else if (editedSnippets[blockTitle]?.[label]) {
@@ -734,9 +730,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       // now lockedBg is in scope here
       span.style.backgroundColor = lockedBlocks[blockTitle]
         ? lockedBg
-        : autoInsertedBlocks[blockTitle]
-          ? colours.highlightNeutral
-          : colours.highlightYellow;
+        : colours.highlightNeutral;
     });
 
     const block = templateBlocks.find((b) => b.title === blockTitle);
@@ -1826,7 +1820,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         }
 
         // Update snippet background - different colors for different states
-        let snippetBg = colours.highlightYellow; // Default inserted
+        let snippetBg = colours.highlightNeutral; // Default unedited block
         if (lockedBlocks[title]) {
           snippetBg = lockedBg;
         } else if (changed) {
@@ -1853,9 +1847,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         } else if (blockHasEdits) {
           bg = editedBlockBg; // New edited state color
         } else if (insertedBlocks[title]) {
-          bg = autoInsertedBlocks[title]
-            ? colours.highlightNeutral
-            : colours.highlightYellow;
+          bg = colours.highlightNeutral;
         }
         headerElement.style.backgroundColor = bg;
       }
@@ -1865,9 +1857,18 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         ? lockedBg
         : blockHasEdits
           ? editedBlockBg
-          : autoInsertedBlocks[title]
-            ? colours.highlightNeutral
-            : colours.highlightYellow;
+          : colours.highlightNeutral;
+
+      const optionDiv = span.querySelector('div.option-choices') as HTMLElement | null;
+      if (optionDiv) {
+        if (blockHasEdits) {
+          optionDiv.style.pointerEvents = 'none';
+          optionDiv.style.opacity = '0.5';
+        } else {
+          optionDiv.style.pointerEvents = '';
+          optionDiv.style.opacity = '';
+        }
+      }
 
       if (!updatedBlocks[title]) updatedBlocks[title] = false;
     });
@@ -2041,7 +2042,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       selectedLabel = selectedOption;
     }
     const containerTag = 'span';
-    const style = `background-color: ${colours.highlightYellow}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
+    const style = `background-color: ${colours.highlightNeutral}; padding: 7px; position: relative; border-radius: 0px; font-weight: normal;`;
     const innerHTML = cleanTemplateString(replacementText);
     const styledInnerHTML = innerHTML.replace(
       /<p>/g,
@@ -3301,7 +3302,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : '#eafaea'
                 : isEdited
                   ? colours.highlightBlue
-                  : colours.highlightYellow
+                  : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
@@ -3360,7 +3361,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : '#eafaea'
                 : isEdited
                   ? colours.highlightBlue
-                  : colours.highlightYellow
+                  : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
             padding: '6px 8px',
@@ -3601,7 +3602,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         ? lockedBg
         : Object.values(editedSnippets[blockTitle] || {}).some(Boolean)
           ? colours.highlightBlue
-          : colours.highlightYellow;
+          : colours.highlightNeutral;
       headerElement.style.transition = 'background-color 0.5s';
       headerElement.style.backgroundColor = startColor;
       setTimeout(() => {
@@ -3959,6 +3960,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           toolbarStyle={toolbarStyle}
           bubblesContainerStyle={bubblesContainerStyle}
           saveCustomSnippet={saveCustomSnippet}
+          markBlockAsEdited={(blockTitle, edited) =>
+            setEditedBlocks((prev) => ({ ...prev, [blockTitle]: edited }))
+          }
           // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
           // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
           // highlightBlock prop removed; not needed by EditorAndTemplateBlocks

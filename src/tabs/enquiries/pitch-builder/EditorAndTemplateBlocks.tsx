@@ -28,6 +28,7 @@ interface EditorAndTemplateBlocksProps {
   toolbarStyle?: any;
   bubblesContainerStyle?: any;
   saveCustomSnippet?: (blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) => Promise<void>;
+  markBlockAsEdited?: (blockTitle: string, edited: boolean) => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -52,6 +53,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   toolbarStyle,
   bubblesContainerStyle,
   saveCustomSnippet,
+  markBlockAsEdited,
 }) => {
   const [snippetEditState, setSnippetEditState] = useState<{
     blockTitle: string;
@@ -222,6 +224,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   }, []);
 
   const handleTabChange = (block: TemplateBlock, optionKey: string) => {
+    if (editedBlocks[block.title]) return;
     handleSingleSelectChange(block.title, optionKey);
     // Content will be updated by the useEffect below
   };
@@ -309,6 +312,10 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         [optionLabel]: content
       }
     }));
+
+    if (markBlockAsEdited) {
+      markBlockAsEdited(blockTitle, true);
+    }
 
     // Debounced sync to main body for preview (300ms delay to avoid excessive updates)
     if (syncTimeoutRef.current) {
@@ -546,7 +553,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     </Text>
                     
                     {block.options.length > 1 && (
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flex: 1 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '4px',
+                          alignItems: 'center',
+                          flex: 1,
+                          opacity: editedBlocks[block.title] ? 0.5 : 1,
+                          pointerEvents: editedBlocks[block.title] ? 'none' : 'auto',
+                        }}
+                      >
                         {block.options.map((option) => {
                           const isSelected = option.label === selectedOption;
                           return (
@@ -674,7 +690,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           whiteSpace: 'pre-wrap',
                           cursor: 'text',
                           outline: 'none',
-                          backgroundColor: '#ffffff',
+                          backgroundColor: editedBlocks[block.title] ? '#ffffff' : colours.highlightNeutral,
                           minHeight: '40px'
                         }}
                         onClick={(e) => handleEditorClick(block.title, selectedOpt.label, e)}

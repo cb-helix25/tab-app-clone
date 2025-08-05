@@ -114,20 +114,36 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
     // Display all available fields from the user object.
     // Deduplicate keys that differ only by spacing or underscores.
-    const detailsMap = new Map<string, { label: string; value: string }>();
+    const detailsMap = new Map<string, { label: string; value: string; isAsana: boolean; isSecret: boolean }>();
     Object.entries(user as Record<string, unknown>)
         .filter(([, value]) => value !== undefined && value !== null && value !== '')
         .forEach(([key, value]) => {
             const canonical = key.replace(/[\s_]/g, '').toLowerCase();
             if (canonical === 'aow') return; // handled separately
+            
+            // Hide refresh token completely
+            if (canonical.includes('refreshtoken') || canonical.includes('refresh_token')) return;
+            
+            const isAsana = canonical.includes('asana');
+            const isSecret = canonical.includes('secret') || canonical.includes('token');
+            
             if (!detailsMap.has(canonical)) {
                 detailsMap.set(canonical, {
                     label: key.replace(/_/g, ' '),
                     value: String(value),
+                    isAsana,
+                    isSecret,
                 });
             }
         });
     const userDetails = Array.from(detailsMap.values());
+    
+    // Separate regular details from Asana details
+    const regularDetails = userDetails.filter(d => !d.isAsana);
+    const asanaDetails = userDetails.filter(d => d.isAsana);
+    
+    // State for showing Asana details
+    const [showAsanaDetails, setShowAsanaDetails] = useState(false);
 
     // Extract and format areas of work
     let areasOfWork: string[] = [];
@@ -283,7 +299,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                     Profile Details
                                 </h4>
                                 <div style={{ display: 'grid', gap: '4px' }}>
-                                    {userDetails.map((d) => (
+                                    {regularDetails.map((d) => (
                                         <div key={d.label} style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -308,7 +324,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                                 marginLeft: '6px',
                                                 wordBreak: 'break-word'
                                             }}>
-                                                {d.value}
+                                                {d.isSecret ? '***HIDDEN***' : d.value}
                                             </span>
                                             <button
                                                 onClick={() => copy(d.value)}
@@ -331,6 +347,104 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                         </div>
                                     ))}
                                 </div>
+                                
+                                {/* Asana Details Toggle */}
+                                {asanaDetails.length > 0 && (
+                                    <div style={{ marginTop: '8px' }}>
+                                        <button
+                                            onClick={() => setShowAsanaDetails(!showAsanaDetails)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '6px 8px',
+                                                background: '#f8fafc',
+                                                color: '#6b7280',
+                                                border: '1px solid #f1f3f4',
+                                                borderRadius: '4px',
+                                                fontSize: '10px',
+                                                fontWeight: '500',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = '#f1f5f9';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = '#f8fafc';
+                                                e.currentTarget.style.color = '#6b7280';
+                                            }}
+                                        >
+                                            <span>Asana Integration Details</span>
+                                            <span style={{ fontSize: '8px' }}>{showAsanaDetails ? '▼' : '▶'}</span>
+                                        </button>
+                                        
+                                        {showAsanaDetails && (
+                                            <div style={{ 
+                                                marginTop: '4px',
+                                                display: 'grid', 
+                                                gap: '4px',
+                                                background: '#fafbfc',
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                border: '1px solid #f1f3f4'
+                                            }}>
+                                                {asanaDetails.map((d) => (
+                                                    <div key={d.label} style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '4px 6px',
+                                                        background: '#ffffff',
+                                                        borderRadius: '3px',
+                                                        border: '1px solid #f1f3f4'
+                                                    }}>
+                                                        <span style={{
+                                                            fontSize: '9px',
+                                                            fontWeight: '500',
+                                                            color: '#6b7280',
+                                                            minWidth: '60px',
+                                                            textTransform: 'capitalize'
+                                                        }}>
+                                                            {d.label}:
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '9px',
+                                                            color: '#374151',
+                                                            flex: 1,
+                                                            marginLeft: '6px',
+                                                            wordBreak: 'break-word',
+                                                            fontFamily: 'monospace'
+                                                        }}>
+                                                            {d.isSecret ? '***HIDDEN***' : d.value}
+                                                        </span>
+                                                        {!d.isSecret && (
+                                                            <button
+                                                                onClick={() => copy(d.value)}
+                                                                style={{
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    color: '#6b7280',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '8px',
+                                                                    padding: '1px 3px',
+                                                                    borderRadius: '2px',
+                                                                    marginLeft: '4px',
+                                                                    transition: 'color 0.15s ease'
+                                                                }}
+                                                                onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
+                                                                onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                                                            >
+                                                                Copy
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Areas of Work */}
