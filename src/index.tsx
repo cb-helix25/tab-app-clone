@@ -176,16 +176,20 @@ async function fetchEnquiries(
         const userInitialsUpper = userInitials.toUpperCase();
         
         const filteredNewEnquiries = rawNewEnquiries.filter(enq => {
-          // Check if this enquiry should be shown to this user
           const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
           const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
-          
-          // Match by initials (new space) or email (old space compatibility)
+
           const matchesInitials = pocInitials === userInitialsUpper;
           const matchesEmail = pocEmail === userEmail;
-          const isUnclaimed = pocEmail === 'team@helix-law.com' || pocInitials === 'TEAM';
-          
-          // Show if it matches user's initials/email OR if it's unclaimed
+          const unclaimedEmails = [
+            'team@helix-law.com',
+            'commercial@helix-law.com',
+            'construction@helix-law.com',
+            'employment@helix-law.com',
+            'property@helix-law.com',
+          ];
+          const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
+
           return matchesInitials || matchesEmail || isUnclaimed;
         });
         
@@ -275,9 +279,15 @@ async function fetchEnquiries(
 
       const filteredLegacyEnquiries = rawLegacyEnquiries.filter(enq => {
         const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
-        const isUnclaimed = pocEmail === 'team@helix-law.com';
+        const unclaimedEmails = [
+          'team@helix-law.com',
+          'commercial@helix-law.com',
+          'construction@helix-law.com',
+          'employment@helix-law.com',
+          'property@helix-law.com',
+        ];
+        const isUnclaimed = unclaimedEmails.includes(pocEmail);
 
-        // Legacy system uses email matching
         return pocEmail === userEmail || isUnclaimed;
       });
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Stack,
   Text,
@@ -27,8 +27,7 @@ import {
   YAxis,
 } from 'recharts';
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
-import { Enquiry, UserData, POID } from '../../app/functionality/types';
-import CustomPagination from '../../app/styles/CustomPagination';
+import { Enquiry, POID, UserData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
 import GroupedEnquiryCard from './GroupedEnquiryCard';
 import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
@@ -41,8 +40,6 @@ import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
 import { Context as TeamsContextType } from '@microsoft/teams-js';
 import AreaCountCard from './AreaCountCard';
-import NewEnquiryList from './NewEnquiryList';
-import { NewEnquiry } from '../../app/functionality/newEnquiryTypes';
 import 'rc-slider/assets/index.css';
 import Slider from 'rc-slider';
 
@@ -156,6 +153,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Use only real enquiries data
   const [displayEnquiries, setDisplayEnquiries] = useState<Enquiry[]>(enquiries || []);
 
+  // Debug logging
+  console.log('Enquiries component - enquiries prop:', enquiries);
+  console.log('Enquiries component - displayEnquiries state:', displayEnquiries);
+  console.log('Enquiries component - userData:', userData);
+
   // Navigation state variables  
   // (declaration moved below, only declare once)
 
@@ -165,27 +167,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
-  const [selectedNewEnquiry, setSelectedNewEnquiry] = useState<NewEnquiry | null>(null);
-
-  // Convert NewEnquiry to Enquiry for compatibility with PitchBuilder
-  const convertNewEnquiryToEnquiry = (newEnquiry: NewEnquiry): Enquiry => {
-    return {
-      ID: newEnquiry.id.toString(),
-      Date_Created: newEnquiry.datetime,
-      Touchpoint_Date: newEnquiry.datetime,
-      Email: newEnquiry.email,
-      Area_of_Work: newEnquiry.aow,
-      Type_of_Work: newEnquiry.tow,
-      Method_of_Contact: newEnquiry.moc,
-      Point_of_Contact: newEnquiry.poc,
-      First_Name: newEnquiry.first,
-      Last_Name: newEnquiry.last,
-      Phone_Number: newEnquiry.phone,
-      Value: newEnquiry.value,
-      // Add other required fields with sensible defaults
-      Gift_Rank: parseInt(newEnquiry.rank) || 0,
-    } as Enquiry;
-  };
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -196,8 +177,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
   const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
-  const [convertedEnquiriesList, setConvertedEnquiriesList] = useState<any[]>([]);
-  const [convertedPoidDataList, setConvertedPoidDataList] = useState<any[]>([]);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
@@ -281,12 +260,27 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
   }, [displayEnquiries]);
 
+  const unclaimedEmails = useMemo(
+    () =>
+      [
+        'team@helix-law.com',
+        'commercial@helix-law.com',
+        'construction@helix-law.com',
+        'employment@helix-law.com',
+        'property@helix-law.com',
+      ].map((e) => e.toLowerCase()),
+    []
+  );
+
   const unclaimedEnquiries = useMemo(
     () =>
       displayEnquiries.filter(
-        (e) => e.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
+        (e) =>
+          unclaimedEmails.includes(
+            (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
+          )
       ),
-    [displayEnquiries]
+    [displayEnquiries, unclaimedEmails]
   );
 
   const sortedValidEnquiries = useMemo(() => {
@@ -351,20 +345,6 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     );
     return sortedMonths.map((m) => counts[m]);
   }, [enquiriesInSliderRange]);
-
-  useEffect(() => {
-    if (poidData && displayEnquiries.length > 0) {
-      const converted = displayEnquiries.filter((enq) =>
-        poidData.some((poid) => String(poid.acid) === enq.ID)
-      );
-      setConvertedEnquiriesList(converted);
-  
-      const convertedPoid = poidData.filter((poid) =>
-        displayEnquiries.some((enq) => enq.ID === String(poid.acid))
-      );
-      setConvertedPoidDataList(convertedPoid);
-    }
-  }, [poidData, displayEnquiries]);
 
   const handleSubTabChange = useCallback((item?: PivotItem) => {
     if (item) {
@@ -445,38 +425,33 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     }
   }, [ratingEnquiryId, currentRating, handleEditRating, closeRateModal]);
 
-  const triagedPointOfContactEmails = useMemo(
-    () =>
-      [
-        'automations@helix-law.com',
-        'commercial@helix-law.com',
-        'construction@helix-law.com',
-        'employment@helix-law.com',
-        'property@helix-law.com',
-      ].map((e) => e.toLowerCase()),
-    []
-  );
-
   const filteredEnquiries = useMemo(() => {
     let filtered = enquiriesInSliderRange;
 
+    console.log('Filtering - enquiriesInSliderRange:', enquiriesInSliderRange);
+    console.log('Filtering - activeState:', activeState);
+    console.log('Filtering - userData:', userData);
+
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
-      // Show only enquiries where Point_of_Contact matches user's email
-      const userEmail = userData && userData.length > 0 ? userData[0].Email?.toLowerCase() : '';
-      filtered = filtered.filter(enquiry =>
-        enquiry.Point_of_Contact &&
-        enquiry.Point_of_Contact.toLowerCase() === userEmail
-      );
-    } else if (activeState === 'Claimable') { // Maps to "Unclaimed" display
-      filtered = filtered.filter(enquiry =>
-        enquiry.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
-      );
+      filtered = filtered.filter(enquiry => {
+        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+        return poc && !unclaimedEmails.includes(poc);
+      });
+    } else if (activeState === 'Claimable') {
+      filtered = filtered.filter(enquiry => {
+        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+        return unclaimedEmails.includes(poc);
+      });
     }
+    
+    console.log('Filtering - after state filter:', filtered);
     
     // Filter by user's areas of work (this maintains the area-based access control)
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
+      console.log('Filtering - userAOW:', userAOW);
+      
       const hasFullAccess = userAOW.some(
         area => area.includes('operations') || area.includes('tech')
       );
@@ -510,6 +485,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       }
     }
     
+    console.log('Filtering - after area filter:', filtered);
+    
     // Apply search term filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -522,6 +499,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         enquiry.ID?.toLowerCase().includes(term)
       );
     }
+    
+    console.log('Filtering - final filtered:', filtered);
     
     return filtered;
   }, [
@@ -633,8 +612,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
   }
 
-  useLayoutEffect(() => {
-    if (!selectedEnquiry && !selectedNewEnquiry) {
+  useEffect(() => {
+    if (!selectedEnquiry) {
       // Enhanced navigation with all filter options + area-of-work integration
       // Use actual userData (which gets updated by area selection in localhost)
       let userAOW = userData && userData.length > 0 && userData[0].AOW 
@@ -650,7 +629,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         userAOW = ['Commercial', 'Construction', 'Property', 'Employment', 'Misc/Other', 'Operations', 'Tech'];
       }
       
-      const filterOptions = ['Claimed', 'Unclaimed', 'New'];
+      const filterOptions = ['Claimed', 'Unclaimed'];
       setContent(
         <div style={{
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -763,10 +742,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         </div>
       );
     }
+    return () => setContent(null);
   }, [
     setContent,
     selectedEnquiry,
-    selectedNewEnquiry,
+    selectedArea,
     userData,
     isDarkMode,
     activeSubTab,
@@ -774,119 +754,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     handleBackToList,
     activeState,
     activeAreaFilter,
+    searchTerm,
+    showGroupedView,
     filteredEnquiries,
+    unclaimedEmails,
   ]);
-
-  // Navigator content for new enquiry system
-  useEffect(() => {
-    if (selectedNewEnquiry) {
-      setContent(
-        <div className={detailNavStyle(isDarkMode)}>
-          <div 
-            className="nav-back-button"
-            onClick={() => setSelectedNewEnquiry(null)}
-            style={{
-              width: '32px',
-              height: '32px',
-              background: isDarkMode ? colours.dark.sectionBackground : "#f3f3f3",
-              border: '1px solid #e1dfdd',
-              borderRadius: '0px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-              position: 'relative',
-              overflow: 'hidden',
-              marginRight: 8,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#e7f1ff';
-              e.currentTarget.style.border = '1px solid #3690CE';
-              e.currentTarget.style.width = '120px';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(54,144,206,0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = isDarkMode ? colours.dark.sectionBackground : "#f3f3f3";
-              e.currentTarget.style.border = '1px solid #e1dfdd';
-              e.currentTarget.style.width = '32px';
-              e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
-            }}
-            title="Back to Enquiries"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setSelectedNewEnquiry(null);
-              }
-            }}
-          >
-            {/* ChevronLeft Icon */}
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
-              fill="none"
-              style={{
-                transition: 'color 0.3s, opacity 0.3s',
-                color: isDarkMode ? '#ffffff' : '#666666',
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <path 
-                d="M10 12L6 8L10 4" 
-                stroke="currentColor" 
-                strokeWidth="1.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-            </svg>
-            
-            {/* Expandable Text */}
-            <span 
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#3690CE',
-                opacity: 0,
-                transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                whiteSpace: 'nowrap',
-              }}
-              className="back-text"
-            >
-              Back to Enquiries
-            </span>
-          </div>
-          
-          <span style={{ 
-            fontSize: '14px', 
-            fontWeight: 600, 
-            color: isDarkMode ? colours.dark.text : colours.light.text,
-            marginLeft: '8px'
-          }}>
-            Enquiry: {selectedNewEnquiry.id}
-          </span>
-          
-          <style>{`
-            .nav-back-button:hover .back-text {
-              opacity: 1 !important;
-            }
-            .nav-back-button:hover svg {
-              opacity: 0 !important;
-            }
-          `}</style>
-        </div>
-      );
-    }
-  }, [selectedNewEnquiry, setContent, isDarkMode]);
 
   const ratingOptions = [
     {
@@ -1174,157 +1046,104 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           renderDetailView(selectedEnquiry)
         ) : (
           <>
-            {/* Show only NewEnquiryList if 'New' filter is active */}
-            {activeState === 'New' ? (
-              <NewEnquiryList
-                onSelectEnquiry={(enquiry: NewEnquiry) => {
-                  setSelectedNewEnquiry(enquiry);
-                }}
-                onRateEnquiry={(enquiryId: number) => {
-                  console.log('Rate enquiry:', enquiryId);
-                  // Could integrate with existing rating system
-                }}
-                onPitch={(enquiry: NewEnquiry) => {
-                  setSelectedNewEnquiry(enquiry);
-                  // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
-                  const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
-                  setSelectedEnquiry(convertedEnquiry);
-                  setActiveSubTab('Pitch'); // Go directly to Pitch Builder
-                }}
-                userData={userData || undefined}
-                activeMainTab={activeState}
-                selectedArea={
-                  activeAreaFilter !== 'All' ? activeAreaFilter : null
-                }
-              />
-            ) : (
-              <>
-                {(window.location.hostname === 'localhost' ||
-                  window.location.hostname === '127.0.0.1' ||
-                  userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
-                  <NewEnquiryList
-                    onSelectEnquiry={(enquiry: NewEnquiry) => {
-                      setSelectedNewEnquiry(enquiry);
-                    }}
-                    onRateEnquiry={(enquiryId: number) => {
-                      console.log('Rate enquiry:', enquiryId);
-                      // Could integrate with existing rating system
-                    }}
-                    onPitch={(enquiry: NewEnquiry) => {
-                      setSelectedNewEnquiry(enquiry);
-                      // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
-                      const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
-                      setSelectedEnquiry(convertedEnquiry);
-                      setActiveSubTab('Pitch'); // Go directly to Pitch Builder
-                    }}
-                    userData={userData || undefined}
-                    activeMainTab={activeState}
-                    selectedArea={
-                      activeAreaFilter !== 'All' ? activeAreaFilter : null
-                    }
-                  />
-                )}
-
-                {/* V1 Enquiries - only show if no v2 enquiry is selected */}
-                {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
-                  <div
-                    className={mergeStyles({
-                      backgroundColor: 'transparent',
-                      borderRadius: '12px',
-                      padding: '60px 40px',
-                      textAlign: 'center',
-                      boxShadow: 'none',
-                    })}
-                  >
-                    <Icon
-                      iconName="Search"
-                      styles={{
-                        root: {
-                          fontSize: '48px',
-                          color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                          marginBottom: '20px',
-                        },
-                      }}
-                    />
-                    <Text
-                      variant="xLarge"
-                      styles={{
-                        root: {
-                          color: isDarkMode ? colours.dark.text : colours.light.text,
-                          fontFamily: 'Raleway, sans-serif',
-                          fontWeight: '600',
-                          marginBottom: '8px',
-                        },
-                      }}
-                    >
-                      No enquiries found
-                    </Text>
-                    <Text
-                      variant="medium"
-                      styles={{
-                        root: {
-                          color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                          fontFamily: 'Raleway, sans-serif',
-                        },
-                      }}
-                    >
-                      Try adjusting your search criteria or filters
-                    </Text>
-                  </div>
-                ) : !selectedNewEnquiry ? (
-                  <>
-                    {/* Connected List Items */}
+                  {filteredEnquiries.length === 0 ? (
                     <div
                       className={mergeStyles({
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap:  "12px",
-                        padding: 0,
-                        margin: 0,
                         backgroundColor: 'transparent',
+                        borderRadius: '12px',
+                        padding: '60px 40px',
+                        textAlign: 'center',
+                        boxShadow: 'none',
                       })}
                     >
-                      {displayedItems.map((item, idx) => {
-                        const isLast = idx === displayedItems.length - 1;
-                        
-                        // Extract user's areas of work (AOW) for filtering
-                        let userAOW: string[] = [];
-                        if (userData && userData.length > 0 && userData[0].AOW) {
-                          userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
-                        }
-                        
-                        if (isGroupedEnquiry(item)) {
-                          // Render grouped enquiry card
-                          return (
-                            <GroupedEnquiryCard
-                              key={item.clientKey}
-                              groupedEnquiry={item}
-                              onSelect={handleSelectEnquiry}
-                              onRate={handleRate}
-                              teamData={teamData}
-                              isLast={isLast}
-                              userAOW={userAOW}
-                            />
-                          );
-                        } else {
-                          // Render single enquiry
-                          return (
-                            <EnquiryLineItem
-                              key={item.ID}
-                              enquiry={item}
-                              onSelect={handleSelectEnquiry}
-                              onRate={handleRate}
-                              teamData={teamData}
-                              isLast={isLast}
-                              userAOW={userAOW}
-                            />
-                          );
-                        }
-                      })}
+                      <Icon
+                        iconName="Search"
+                        styles={{
+                          root: {
+                            fontSize: '48px',
+                            color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                            marginBottom: '20px',
+                          },
+                        }}
+                      />
+                      <Text
+                        variant="xLarge"
+                        styles={{
+                          root: {
+                            color: isDarkMode ? colours.dark.text : colours.light.text,
+                            fontFamily: 'Raleway, sans-serif',
+                            fontWeight: '600',
+                            marginBottom: '8px',
+                          },
+                        }}
+                      >
+                        No enquiries found
+                      </Text>
+                      <Text
+                        variant="medium"
+                        styles={{
+                          root: {
+                            color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                            fontFamily: 'Raleway, sans-serif',
+                          },
+                        }}
+                      >
+                        Try adjusting your search criteria or filters
+                      </Text>
                     </div>
-                    <div ref={loader} />
-                  </>
-                ) : null}
+
+            ) : (
+              <>
+                        {/* Connected List Items */}
+                        <div
+                          className={mergeStyles({
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: "12px",
+                            padding: 0,
+                            margin: 0,
+                            backgroundColor: 'transparent',
+                          })}
+                        >
+                          {displayedItems.map((item, idx) => {
+                            const isLast = idx === displayedItems.length - 1;
+
+                            // Extract user's areas of work (AOW) for filtering
+                            let userAOW: string[] = [];
+                            if (userData && userData.length > 0 && userData[0].AOW) {
+                              userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
+                    }
+
+                            if (isGroupedEnquiry(item)) {
+                              // Render grouped enquiry card
+                              return (
+                                <GroupedEnquiryCard
+                                  key={item.clientKey}
+                                  groupedEnquiry={item}
+                                  onSelect={handleSelectEnquiry}
+                                  onRate={handleRate}
+                                  teamData={teamData}
+                                  isLast={isLast}
+                                  userAOW={userAOW}
+                                />
+                              );
+                            } else {
+                              // Render single enquiry
+                              return (
+                                <EnquiryLineItem
+                                  key={item.ID}
+                                  enquiry={item}
+                                  onSelect={handleSelectEnquiry}
+                                  onRate={handleRate}
+                                  teamData={teamData}
+                                  isLast={isLast}
+                                  userAOW={userAOW}
+                                />
+                              );
+                            }
+                          })}
+                        </div>
+                        <div ref={loader} />
               </>
             )}
           </>

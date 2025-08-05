@@ -349,9 +349,9 @@ const App: React.FC<AppProps> = ({
             context={teamsContext}
             userData={userData}
             enquiries={enquiries}
+            teamData={teamData}
             poidData={poidData}
             setPoidData={setPoidData}
-            teamData={teamData}
           />
         );
       case 'instructions':
@@ -360,14 +360,13 @@ const App: React.FC<AppProps> = ({
             userInitials={userInitials}
             instructionData={instructionData}
             setInstructionData={setInstructionData}
-            poidData={poidData}
-            setPoidData={setPoidData}
             teamData={teamData}
             userData={userData}
             matters={allMattersFromHome || []}
             hasActiveMatter={hasActiveMatter}
-            setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow}
-          />
+            setIsInMatterOpeningWorkflow={setIsInMatterOpeningWorkflow} poidData={[]} setPoidData={function (value: React.SetStateAction<POID[]>): void {
+              throw new Error('Function not implemented.');
+            } }          />
           );
       case 'matters':
         return (
