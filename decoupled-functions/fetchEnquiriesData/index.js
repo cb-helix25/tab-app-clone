@@ -27,6 +27,20 @@ async function ensureDbPassword() {
 module.exports = async function (context, req) {
   context.log('fetchEnquiriesData function triggered');
 
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    context.res = {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
+      body: ''
+    };
+    return;
+  }
+
   if (req.method !== 'GET') {
     context.res = { status: 405, body: 'Method not allowed' };
     return;
@@ -83,7 +97,10 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: {
         enquiries,

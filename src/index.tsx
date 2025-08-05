@@ -146,11 +146,12 @@ async function fetchEnquiries(
       console.log('📍 Local dev:', isLocalDev, '| LZ user:', isLZUser);
       
       // Call the decoupled function via Express route (local) or directly (production)
+      // NEW decoupled function expects simple GET with no params to return ALL data
       const newDataUrl = isLocalDev 
-        ? `/api/enquiries?userEmail=${encodeURIComponent(email)}&userInitials=${encodeURIComponent(userInitials)}` // Express route for local dev with user info
-        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData?userEmail=${encodeURIComponent(email)}&userInitials=${encodeURIComponent(userInitials)}`; // Direct call for LZ in production
+        ? `/api/enquiries` // Express route for local dev - simple GET, no params
+        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Direct call for production - simple GET, no params
       
-      console.log('🌐 Calling NEW enquiries URL:', isLocalDev ? newDataUrl : newDataUrl.replace(/\?.*/, '?[PARAMS_REDACTED]'));
+      console.log('🌐 Calling NEW enquiries URL:', newDataUrl);
       
       const newResponse = await fetch(newDataUrl, {
         method: 'GET',
@@ -225,36 +226,24 @@ async function fetchEnquiries(
 
   // Always attempt to fetch LEGACY enquiries so existing data continues to load
   try {
-    console.log('🔵 Attempting to fetch LEGACY enquiries data...');
+    console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
 
-    console.log('🔧 LEGACY Debug - Environment variables:');
-    console.log('   All REACT_APP env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP')));
-    console.log('   process.env:', {
-      REACT_APP_GET_ENQUIRIES_PATH: process.env.REACT_APP_GET_ENQUIRIES_PATH,
-      REACT_APP_GET_ENQUIRIES_CODE: process.env.REACT_APP_GET_ENQUIRIES_CODE,
-      NODE_ENV: process.env.NODE_ENV
-    });
 
-    // Hardcode the values temporarily to test if the API call works
-    const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH || 'getEnquiries';
-    const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE || 'Nm5b_roocFL4d3_sc9E5QI2OrG_5zljGlx9asutElHtzAzFuB7OoLA%3D%3D';
+    // Hard-code the legacy base URL, but get path and code strictly from env
+    const legacyBaseUrl = 'https://helix-keys-proxy.azurewebsites.net/api';
+    const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
+    const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
+    const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
 
-    // Call Azure Function directly with POST method and required parameters
-    const legacyDataUrl = `https://helix-functions.azurewebsites.net/api/${legacyPath}?code=${legacyCode}`;
+    // Add debug log to confirm the call is being attempted
+    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
 
-    console.log('🌐 Calling LEGACY enquiries URL:', legacyDataUrl.replace(/code=[^&]+/, 'code=[REDACTED]'));
-    console.log('📤 POST body:', { email, dateFrom, dateTo });
-
-    // TEMPORARY: Test with 'anyone' to bypass email filtering and see all LEGACY records
-    const testEmail = 'anyone'; // Change this back to 'email' after testing
-    console.log('🧪 TESTING: Using email="anyone" to bypass filtering');
-
-    // The Azure Function expects POST with JSON body containing email, dateFrom, dateTo
+    // The proxy expects POST with JSON body containing email, dateFrom, dateTo
     const legacyResponse = await fetch(legacyDataUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: testEmail, // Using 'anyone' for testing
+        email: email, // Use actual email for proper filtering
         dateFrom: dateFrom,
         dateTo: dateTo
       })
@@ -284,10 +273,6 @@ async function fetchEnquiries(
       console.log('   User email for filtering:', userEmail);
       console.log('   Sample LEGACY record Point_of_Contact:', rawLegacyEnquiries[0]?.Point_of_Contact);
 
-      // Temporarily show all LEGACY records to debug filtering
-      const filteredLegacyEnquiries = rawLegacyEnquiries; // Remove filtering temporarily
-
-      /* Original filtering code - commented out for debugging
       const filteredLegacyEnquiries = rawLegacyEnquiries.filter(enq => {
         const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
         const isUnclaimed = pocEmail === 'team@helix-law.com';
@@ -295,7 +280,6 @@ async function fetchEnquiries(
         // Legacy system uses email matching
         return pocEmail === userEmail || isUnclaimed;
       });
-      */
 
       // Convert legacy data to Enquiry format and append to existing enquiries
       const legacyEnquiries = filteredLegacyEnquiries.map(enq => ({

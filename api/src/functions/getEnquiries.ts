@@ -21,12 +21,27 @@ interface EnquiryData {
 // Define the handler function
 export async function getEnquiriesHandler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
     context.log("Invocation started for getEnquiries Azure Function.");
+    console.log("[getEnquiries] Function called. Method:", req.method);
+
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+        return {
+            status: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
+            body: ''
+        };
+    }
 
     let body: RequestBody;
 
     try {
         body = await req.json() as RequestBody;
         context.log("Request body:", { email: body.email, dateFrom: body.dateFrom, dateTo: body.dateTo });
+        console.log("[getEnquiries] Request body:", { email: body.email, dateFrom: body.dateFrom, dateTo: body.dateTo });
     } catch (error) {
         context.error("Error parsing JSON body:", error);
         return {
@@ -52,6 +67,12 @@ export async function getEnquiriesHandler(req: HttpRequest, context: InvocationC
 
         return {
             status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
             body: JSON.stringify(enquiries)
         };
     } catch (error) {
@@ -67,7 +88,7 @@ export async function getEnquiriesHandler(req: HttpRequest, context: InvocationC
 
 // Register the function
 app.http("getEnquiries", {
-    methods: ["POST"],
+    methods: ["POST", "OPTIONS"],
     authLevel: "function",
     handler: getEnquiriesHandler
 });
