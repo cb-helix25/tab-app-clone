@@ -189,7 +189,27 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   // Update display enquiries when real enquiries data changes
   useEffect(() => {
-    setDisplayEnquiries(enquiries || []);
+    if (enquiries) {
+      const normalised = enquiries.map((enq: any) => ({
+        ...enq,
+        ID: enq.ID || enq.id?.toString(),
+        Touchpoint_Date: enq.Touchpoint_Date || enq.datetime,
+        Point_of_Contact: enq.Point_of_Contact || enq.poc,
+        Area_of_Work: enq.Area_of_Work || enq.aow,
+        Type_of_Work: enq.Type_of_Work || enq.tow,
+        Method_of_Contact: enq.Method_of_Contact || enq.moc,
+        First_Name: enq.First_Name || enq.first,
+        Last_Name: enq.Last_Name || enq.last,
+        Email: enq.Email || enq.email,
+        Phone_Number: enq.Phone_Number || enq.phone,
+        Value: enq.Value || enq.value,
+        Initial_first_call_notes: enq.Initial_first_call_notes || enq.notes,
+        Call_Taker: enq.Call_Taker || enq.rep,
+      }));
+      setDisplayEnquiries(normalised);
+    } else {
+      setDisplayEnquiries([]);
+    }
   }, [enquiries]);
 
   // Reset area filter if current filter is no longer available
@@ -261,24 +281,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   }, [displayEnquiries]);
 
   const unclaimedEmails = useMemo(
-    () =>
-      [
-        'team@helix-law.com',
-        'commercial@helix-law.com',
-        'construction@helix-law.com',
-        'employment@helix-law.com',
-        'property@helix-law.com',
-      ].map((e) => e.toLowerCase()),
+    () => ['team@helix-law.com'].map((e) => e.toLowerCase()),
     []
   );
 
   const unclaimedEnquiries = useMemo(
     () =>
-      displayEnquiries.filter(
-        (e) =>
-          unclaimedEmails.includes(
-            (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
-          )
+      displayEnquiries.filter((e) =>
+        unclaimedEmails.includes((e.Point_of_Contact || '').toLowerCase())
       ),
     [displayEnquiries, unclaimedEmails]
   );
@@ -432,59 +442,62 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     console.log('Filtering - activeState:', activeState);
     console.log('Filtering - userData:', userData);
 
+    const userEmail = userData && userData[0] && userData[0].Email
+      ? userData[0].Email.toLowerCase()
+      : '';
+
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
       filtered = filtered.filter(enquiry => {
-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
-        return poc && !unclaimedEmails.includes(poc);
+        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
+        return userEmail ? poc === userEmail : false;
       });
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
         return unclaimedEmails.includes(poc);
       });
     }
-    
+
     console.log('Filtering - after state filter:', filtered);
-    
-    // Filter by user's areas of work (this maintains the area-based access control)
-    if (userData && userData.length > 0 && userData[0].AOW) {
+
+    // Area-based access control - only applies for unclaimed enquiries
+    if (activeState === 'Claimable' && userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
       console.log('Filtering - userAOW:', userAOW);
-      
+
       const hasFullAccess = userAOW.some(
         area => area.includes('operations') || area.includes('tech')
       );
 
       if (!hasFullAccess) {
         filtered = filtered.filter(enquiry => {
-          if (!enquiry.Area_of_Work) return false;
-          const enquiryArea = enquiry.Area_of_Work.toLowerCase();
+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
+          if (!enquiryArea) return false;
 
-          // First check if enquiry is in user's allowed areas (allow partial matches)
           const inAllowed = userAOW.some(
             a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
           );
           if (!inAllowed) return false;
 
-          // Then apply active area filter if not 'All'
           if (activeAreaFilter !== 'All') {
             return enquiryArea === activeAreaFilter.toLowerCase();
           }
-
           return true;
         });
-      } else {
-        // Operations/Tech users: only apply area filter if not 'All'
-        if (activeAreaFilter !== 'All') {
-          filtered = filtered.filter(enquiry => {
-            if (!enquiry.Area_of_Work) return false;
-            return enquiry.Area_of_Work.toLowerCase() === activeAreaFilter.toLowerCase();
-          });
-        }
+      } else if (activeAreaFilter !== 'All') {
+        filtered = filtered.filter(enquiry => {
+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
+          return enquiryArea === activeAreaFilter.toLowerCase();
+        });
       }
+    } else if (activeAreaFilter !== 'All') {
+      filtered = filtered.filter(enquiry => {
+        const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
+        return enquiryArea === activeAreaFilter.toLowerCase();
+      });
     }
-    
+
     console.log('Filtering - after area filter:', filtered);
     
     // Apply search term filter

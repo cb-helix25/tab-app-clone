@@ -1,319 +1,286 @@
-diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-index b23e67e0ed8948c62222ecdda445b2e484d6d442..6316ba5a632ecdda7bf32cfe7fda312309657759 100644
---- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-@@ -6,74 +6,76 @@ import SnippetEditPopover from './SnippetEditPopover';
- import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
- import { wrapInsertPlaceholders } from './emailUtils';
+diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
+index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
+--- a/src/tabs/enquiries/Enquiries.tsx
++++ b/src/tabs/enquiries/Enquiries.tsx
+@@ -167,51 +167,71 @@ const Enquiries: React.FC<EnquiriesProps> = ({
+   const { isDarkMode } = useTheme();
+   const { setContent } = useNavigator();
+   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
+   // Removed pagination states
+   // const [currentPage, setCurrentPage] = useState<number>(1);
+   // const enquiriesPerPage = 12;
  
- interface EditorAndTemplateBlocksProps {
-   isDarkMode: boolean;
-   body: string;
-   setBody: (body: string) => void;
-   templateBlocks: TemplateBlock[];
-   selectedTemplateOptions: { [key: string]: string | string[] };
-   insertedBlocks: { [key: string]: boolean };
-   lockedBlocks: { [key: string]: boolean };
-   editedBlocks: { [key: string]: boolean };
-   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
-   handleSingleSelectChange: (blockTitle: string, optionKey: string) => void;
-   insertTemplateBlock: (block: TemplateBlock, optionLabel: string | string[], focus?: boolean) => void;
-   renderPreview: (block: TemplateBlock) => React.ReactNode;
-   applyFormat: (...args: any[]) => void;
-   saveSelection: () => void;
-   handleInput: (e: React.FormEvent<HTMLDivElement>) => void;
-   handleBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
-   handleClearBlock: (block: TemplateBlock) => void;
-   bodyEditorRef: React.RefObject<HTMLDivElement>;
-   toolbarStyle?: any;
-   bubblesContainerStyle?: any;
-   saveCustomSnippet?: (blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) => Promise<void>;
-+  markBlockAsEdited?: (blockTitle: string, edited: boolean) => void;
- }
+   const [isRateModalOpen, setIsRateModalOpen] = useState<boolean>(false);
+   const [currentRating, setCurrentRating] = useState<string>('');
+   const [ratingEnquiryId, setRatingEnquiryId] = useState<string | null>(null);
+   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
+   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
+   const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
+   const [selectedArea, setSelectedArea] = useState<string | null>(null);
+   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
+   const [isSearchActive, setSearchActive] = useState<boolean>(false);
+   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
+   
+   // Navigation state variables  
+   const [activeState, setActiveState] = useState<string>('Claimed');
+   const [searchTerm, setSearchTerm] = useState<string>('');
+   const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
  
- const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-   isDarkMode,
-   body,
-   setBody,
-   templateBlocks,
-   selectedTemplateOptions,
-   insertedBlocks,
-   lockedBlocks,
-   editedBlocks,
-   handleMultiSelectChange,
-   handleSingleSelectChange,
-   insertTemplateBlock,
-   renderPreview,
-   applyFormat,
-   saveSelection,
-   handleInput,
-   handleBlur,
-   handleClearBlock,
-   bodyEditorRef,
-   toolbarStyle,
-   bubblesContainerStyle,
-   saveCustomSnippet,
-+  markBlockAsEdited,
- }) => {
-   const [snippetEditState, setSnippetEditState] = useState<{
-     blockTitle: string;
-     optionLabel: string;
-     target: HTMLElement;
-   } | null>(null);
-   const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
-   const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
-   const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
-   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
-   const [removedBlocks, setRemovedBlocks] = useState<Record<string, boolean>>({});
-   const editorRefs = useRef<Record<string, HTMLDivElement>>({});
-   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+   // Update display enquiries when real enquiries data changes
+   useEffect(() => {
+-    setDisplayEnquiries(enquiries || []);
++    if (enquiries) {
++      const normalised = enquiries.map((enq: any) => ({
++        ...enq,
++        ID: enq.ID || enq.id?.toString(),
++        Touchpoint_Date: enq.Touchpoint_Date || enq.datetime,
++        Point_of_Contact: enq.Point_of_Contact || enq.poc,
++        Area_of_Work: enq.Area_of_Work || enq.aow,
++        Type_of_Work: enq.Type_of_Work || enq.tow,
++        Method_of_Contact: enq.Method_of_Contact || enq.moc,
++        First_Name: enq.First_Name || enq.first,
++        Last_Name: enq.Last_Name || enq.last,
++        Email: enq.Email || enq.email,
++        Phone_Number: enq.Phone_Number || enq.phone,
++        Value: enq.Value || enq.value,
++        Initial_first_call_notes: enq.Initial_first_call_notes || enq.notes,
++        Call_Taker: enq.Call_Taker || enq.rep,
++      }));
++      setDisplayEnquiries(normalised);
++    } else {
++      setDisplayEnquiries([]);
++    }
+   }, [enquiries]);
  
-   // Add missing handler functions
-   const handleAddPlaceholder = (event: React.MouseEvent, blockTitle: string, optionLabel: string) => {
-     event.stopPropagation();
-     const editorKey = `${blockTitle}-${optionLabel}`;
-     const editorEl = editorRefs.current[editorKey];
-     
-     if (editorEl) {
-       // Get current selection/cursor position
-       const selection = window.getSelection();
-       if (selection && selection.rangeCount > 0) {
-         const range = selection.getRangeAt(0);
-diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-index b23e67e0ed8948c62222ecdda445b2e484d6d442..6316ba5a632ecdda7bf32cfe7fda312309657759 100644
---- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-@@ -200,50 +202,51 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-           target.contentEditable = 'false';
-           target.style.border = 'none';
-           target.removeEventListener('blur', handleBlur);
-           target.removeEventListener('keydown', handleEnter);
-         };
-         
-         const handleEnter = (e: KeyboardEvent) => {
-           if (e.key === 'Enter') {
-             e.preventDefault();
-             target.blur();
-           }
-         };
-         
-         target.addEventListener('blur', handleBlur);
-         target.addEventListener('keydown', handleEnter);
+   // Reset area filter if current filter is no longer available
+   useEffect(() => {
+     if (userData && userData.length > 0 && userData[0].AOW) {
+       const userAOW = userData[0].AOW.split(',').map(a => a.trim());
+       if (activeAreaFilter !== 'All' && !userAOW.includes(activeAreaFilter)) {
+         setActiveAreaFilter('All');
        }
-     };
+     }
+   }, [userData, activeAreaFilter]);
  
-     document.addEventListener('click', handlePlaceholderClick);
-     return () => {
-       document.removeEventListener('click', handlePlaceholderClick);
-     };
+   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
+   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
+ 
+   // Added for infinite scroll
+   const [itemsToShow, setItemsToShow] = useState<number>(20);
+   const loader = useRef<HTMLDivElement | null>(null);
+   const previousMainTab = useRef<string>('Claimed');
+ 
+   const toggleDashboard = useCallback(() => {
+     if (activeState === '') {
+       setActiveState(previousMainTab.current || 'Claimed');
+     } else {
+       previousMainTab.current = activeState;
+diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
+index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
+--- a/src/tabs/enquiries/Enquiries.tsx
++++ b/src/tabs/enquiries/Enquiries.tsx
+@@ -239,68 +259,58 @@ const Enquiries: React.FC<EnquiriesProps> = ({
+         .map((d) => parseISO(d));
+       if (validDates.length > 0) {
+         const oldestDate = new Date(Math.min(...validDates.map((date) => date.getTime())));
+         const newestDate = new Date(Math.max(...validDates.map((date) => date.getTime())));
+         setDateRange({
+           oldest: format(oldestDate, 'dd MMM yyyy'),
+           newest: format(newestDate, 'dd MMM yyyy'),
+         });
+         setCurrentSliderStart(0);
+         setCurrentSliderEnd(validDates.length - 1);
+       }
+     } else {
+       setDateRange(null);
+     }
+   }, [displayEnquiries]);
+ 
+   const sortedEnquiries = useMemo(() => {
+     return [...displayEnquiries].sort((a, b) => {
+       const dateA = parseISO(a.Touchpoint_Date || '');
+       const dateB = parseISO(b.Touchpoint_Date || '');
+       return dateA.getTime() - dateB.getTime();
+     });
+   }, [displayEnquiries]);
+ 
+   const unclaimedEmails = useMemo(
+-    () =>
+-      [
+-        'team@helix-law.com',
+-        'commercial@helix-law.com',
+-        'construction@helix-law.com',
+-        'employment@helix-law.com',
+-        'property@helix-law.com',
+-      ].map((e) => e.toLowerCase()),
++    () => ['team@helix-law.com'].map((e) => e.toLowerCase()),
+     []
+   );
+ 
+   const unclaimedEnquiries = useMemo(
+     () =>
+-      displayEnquiries.filter(
+-        (e) =>
+-          unclaimedEmails.includes(
+-            (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
+-          )
++      displayEnquiries.filter((e) =>
++        unclaimedEmails.includes((e.Point_of_Contact || '').toLowerCase())
+       ),
+     [displayEnquiries, unclaimedEmails]
+   );
+ 
+   const sortedValidEnquiries = useMemo(() => {
+     return sortedEnquiries.filter(
+       (enq) => enq.Touchpoint_Date && isValid(parseISO(enq.Touchpoint_Date))
+     );
+   }, [sortedEnquiries]);
+ 
+   useEffect(() => {
+     if (sortedValidEnquiries.length > 0) {
+       setCurrentSliderEnd(sortedValidEnquiries.length - 1);
+     }
+   }, [sortedValidEnquiries.length]);
+ 
+   const enquiriesInSliderRange = useMemo(() => {
+     return sortedValidEnquiries.slice(currentSliderStart, currentSliderEnd + 1);
+   }, [sortedValidEnquiries, currentSliderStart, currentSliderEnd]);
+ 
+   const monthlyEnquiryCounts = useMemo(() => {
+     const counts: { [month: string]: MonthlyCount } = {};
+     enquiriesInSliderRange.forEach((enq) => {
+       if (enq.Touchpoint_Date && enq.Area_of_Work) {
+         const date = parseISO(enq.Touchpoint_Date);
+diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
+index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
+--- a/src/tabs/enquiries/Enquiries.tsx
++++ b/src/tabs/enquiries/Enquiries.tsx
+@@ -410,103 +420,106 @@ const Enquiries: React.FC<EnquiriesProps> = ({
+         setIsSuccessVisible(true);
+       } else {
+         const errorText = await response.text();
+         console.error('Failed to update rating:', errorText);
+       }
+     } catch (error) {
+       console.error('Error updating rating:', error);
+     }
    }, []);
  
-   const handleTabChange = (block: TemplateBlock, optionKey: string) => {
-+    if (editedBlocks[block.title]) return;
-     handleSingleSelectChange(block.title, optionKey);
-     // Content will be updated by the useEffect below
-   };
- 
-   // Update content when selected option changes (but not when editing content)
-   useEffect(() => {
-     templateBlocks
-       .filter(block => !removedBlocks[block.title]) // Only process non-removed blocks
-       .forEach(block => {
-       const selectedOption = getSelectedOption(block);
-       const editorKey = `${block.title}-${selectedOption}`;
-       const editorEl = editorRefs.current[editorKey];
-       
-       if (editorEl) {
-         const selectedOpt = block.options.find(opt => opt.label === selectedOption);
-         if (selectedOpt) {
-           // Only update content if the editor is not currently focused (to avoid cursor jumping)
-           if (document.activeElement !== editorEl) {
-             const editedText = editedContent[block.title]?.[selectedOption];
-             const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
-             
-             // Only update if content is different to avoid cursor jumping
-             if (editorEl.innerHTML !== contentToShow) {
-               // Use a timeout to avoid React conflicts
-               setTimeout(() => {
-diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-index b23e67e0ed8948c62222ecdda445b2e484d6d442..6316ba5a632ecdda7bf32cfe7fda312309657759 100644
---- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-@@ -288,50 +291,54 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-     const editedText = editedContent[blockTitle]?.[optionLabel];
-     if (editedText !== undefined) {
-       return editedText;
+   const submitRating = useCallback(async () => {
+     if (ratingEnquiryId && currentRating) {
+       await handleEditRating(ratingEnquiryId, currentRating);
+       setIsSuccessVisible(true);
+       closeRateModal();
      }
-     return wrapInsertPlaceholders(originalContent);
-   };
+   }, [ratingEnquiryId, currentRating, handleEditRating, closeRateModal]);
  
-   // Wrap [INSERT] placeholders with contentEditable styling
-   const wrapInsertPlaceholders = (text: string): string => {
-     return text.replace(
-       /\[INSERT[^\]]*\]/gi,
-       (match) => `<span style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500;">${match}</span>`
-     );
-   };
+   const filteredEnquiries = useMemo(() => {
+     let filtered = enquiriesInSliderRange;
  
-   // Handle content editing
-   const handleContentEdit = (blockTitle: string, optionLabel: string, content: string) => {
-     setEditedContent(prev => ({
-       ...prev,
-       [blockTitle]: {
-         ...prev[blockTitle],
-         [optionLabel]: content
-       }
-     }));
+     console.log('Filtering - enquiriesInSliderRange:', enquiriesInSliderRange);
+     console.log('Filtering - activeState:', activeState);
+     console.log('Filtering - userData:', userData);
  
-+    if (markBlockAsEdited) {
-+      markBlockAsEdited(blockTitle, true);
-+    }
++    const userEmail = userData && userData[0] && userData[0].Email
++      ? userData[0].Email.toLowerCase()
++      : '';
 +
-     // Debounced sync to main body for preview (300ms delay to avoid excessive updates)
-     if (syncTimeoutRef.current) {
-       clearTimeout(syncTimeoutRef.current);
+     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
+     if (activeState === 'Claimed') {
+       filtered = filtered.filter(enquiry => {
+-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+-        return poc && !unclaimedEmails.includes(poc);
++        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
++        return userEmail ? poc === userEmail : false;
+       });
+     } else if (activeState === 'Claimable') {
+       filtered = filtered.filter(enquiry => {
+-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
++        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
+         return unclaimedEmails.includes(poc);
+       });
+     }
+-    
++
+     console.log('Filtering - after state filter:', filtered);
+-    
+-    // Filter by user's areas of work (this maintains the area-based access control)
+-    if (userData && userData.length > 0 && userData[0].AOW) {
++
++    // Area-based access control - only applies for unclaimed enquiries
++    if (activeState === 'Claimable' && userData && userData.length > 0 && userData[0].AOW) {
+       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
+       console.log('Filtering - userAOW:', userAOW);
+-      
++
+       const hasFullAccess = userAOW.some(
+         area => area.includes('operations') || area.includes('tech')
+       );
+ 
+       if (!hasFullAccess) {
+         filtered = filtered.filter(enquiry => {
+-          if (!enquiry.Area_of_Work) return false;
+-          const enquiryArea = enquiry.Area_of_Work.toLowerCase();
++          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
++          if (!enquiryArea) return false;
+ 
+-          // First check if enquiry is in user's allowed areas (allow partial matches)
+           const inAllowed = userAOW.some(
+             a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
+           );
+           if (!inAllowed) return false;
+ 
+-          // Then apply active area filter if not 'All'
+           if (activeAreaFilter !== 'All') {
+             return enquiryArea === activeAreaFilter.toLowerCase();
+           }
+-
+           return true;
+         });
+-      } else {
+-        // Operations/Tech users: only apply area filter if not 'All'
+-        if (activeAreaFilter !== 'All') {
+-          filtered = filtered.filter(enquiry => {
+-            if (!enquiry.Area_of_Work) return false;
+-            return enquiry.Area_of_Work.toLowerCase() === activeAreaFilter.toLowerCase();
+-          });
+-        }
++      } else if (activeAreaFilter !== 'All') {
++        filtered = filtered.filter(enquiry => {
++          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
++          return enquiryArea === activeAreaFilter.toLowerCase();
++        });
+       }
++    } else if (activeAreaFilter !== 'All') {
++      filtered = filtered.filter(enquiry => {
++        const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
++        return enquiryArea === activeAreaFilter.toLowerCase();
++      });
+     }
+-    
++
+     console.log('Filtering - after area filter:', filtered);
+     
+     // Apply search term filter
+     if (searchTerm.trim()) {
+       const term = searchTerm.toLowerCase();
+       filtered = filtered.filter(enquiry => 
+         enquiry.First_Name?.toLowerCase().includes(term) ||
+         enquiry.Last_Name?.toLowerCase().includes(term) ||
+         enquiry.Email?.toLowerCase().includes(term) ||
+         enquiry.Company?.toLowerCase().includes(term) ||
+         enquiry.Type_of_Work?.toLowerCase().includes(term) ||
+         enquiry.ID?.toLowerCase().includes(term)
+       );
      }
      
-     syncTimeoutRef.current = setTimeout(() => {
-       const block = templateBlocks.find(b => b.title === blockTitle);
-       if (block && insertedBlocks[blockTitle]) {
-         const modifiedBlock = {
-           ...block,
-           options: block.options.map(opt => 
-             opt.label === optionLabel 
-               ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
-               : opt
-           )
-         };
-         insertTemplateBlock(modifiedBlock, optionLabel, false);
-       }
-     }, 300);
-   };
- 
-   // Handle auto-insert when user finishes editing (on blur)
-   const handleContentBlur = (blockTitle: string, optionLabel: string) => {
-     // Clear any pending sync timeout since we're syncing immediately on blur
-     if (syncTimeoutRef.current) {
-diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-index b23e67e0ed8948c62222ecdda445b2e484d6d442..6316ba5a632ecdda7bf32cfe7fda312309657759 100644
---- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-@@ -524,51 +531,60 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-               <div key={`${block.title}-${selectedOpt.label}-${blockIndex}`} style={{ 
-                 borderBottom: blockIndex < templateBlocks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                 padding: '12px',
-                 position: 'relative'
-               }}>
-                 {/* Block Title and Tabs */}
-                 {!collapsedBlocks[`${block.title}-${selectedOpt.label}`] && (
-                   <div style={{ 
-                     display: 'flex',
-                     alignItems: 'center',
-                     marginBottom: '12px',
-                     gap: '8px'
-                   }}>
-                     <Text styles={{
-                       root: { 
-                         fontSize: 11, 
-                         fontWeight: 500, 
-                         letterSpacing: '0.05px',
-                         whiteSpace: 'nowrap'
-                       } 
-                     }}>
-                       {block.title}:
-                     </Text>
-                     
-                     {block.options.length > 1 && (
--                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flex: 1 }}>
-+                      <div
-+                        style={{
-+                          display: 'flex',
-+                          gap: '4px',
-+                          alignItems: 'center',
-+                          flex: 1,
-+                          opacity: editedBlocks[block.title] ? 0.5 : 1,
-+                          pointerEvents: editedBlocks[block.title] ? 'none' : 'auto',
-+                        }}
-+                      >
-                         {block.options.map((option) => {
-                           const isSelected = option.label === selectedOption;
-                           return (
-                             <div
-                               key={option.label}
-                               style={{
-                                 padding: '4px 8px',
-                                 cursor: 'pointer',
-                                 fontSize: '12px',
-                                 fontWeight: isSelected ? 600 : 400,
-                                 color: isSelected ? colours.highlight : 'rgba(30,30,30,0.45)',
-                                 borderBottom: isSelected ? `2px solid ${colours.highlight}` : '2px solid transparent',
-                                 position: 'relative'
-                               }}
-                               onClick={() => handleTabChange(block, option.label)}
-                             >
-                               {option.label}
-                             </div>
-                           );
-                         })}
-                       </div>
-                     )}
- 
-                     {/* Remove block button - thin cross */}
-                     <div
-diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-index b23e67e0ed8948c62222ecdda445b2e484d6d442..6316ba5a632ecdda7bf32cfe7fda312309657759 100644
---- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-+++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
-@@ -652,51 +668,51 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
-                       transition: 'all 0.3s ease'
-                     }}>
-                       <div
-                         ref={(el) => {
-                           if (el) {
-                             editorRefs.current[`${block.title}-${selectedOpt.label}`] = el;
-                             // Set initial content immediately if empty
-                             if (!el.innerHTML || el.innerHTML.trim() === '') {
-                               const editedText = editedContent[block.title]?.[selectedOpt.label];
-                               const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
-                               el.innerHTML = contentToShow;
-                             }
-                           }
-                         }}
-                         contentEditable={true}
-                         suppressContentEditableWarning={true}
-                         style={{
-                           padding: '8px',
-                           border: '1px solid #e8e8e8',
-                           borderRadius: '4px',
-                           fontSize: '13px',
-                           lineHeight: '1.4',
-                           whiteSpace: 'pre-wrap',
-                           cursor: 'text',
-                           outline: 'none',
--                          backgroundColor: '#ffffff',
-+                          backgroundColor: editedBlocks[block.title] ? '#ffffff' : colours.highlightNeutral,
-                           minHeight: '40px'
-                         }}
-                         onClick={(e) => handleEditorClick(block.title, selectedOpt.label, e)}
-                         onInput={(e) => {
-                           const content = (e.target as HTMLElement).innerHTML;
-                           handleContentEdit(block.title, selectedOpt.label, content);
-                         }}
-                         onBlur={() => handleContentBlur(block.title, selectedOpt.label)}
-                       />
-                     </div>
- 
-                     {/* Original reference - slides in from right when shown */}
-                     {showOriginal[`${block.title}-${selectedOpt.label}`] && (
-                       <div style={{ 
-                         flex: 1,
-                         animation: 'slideInFromRight 0.3s ease-out'
-                       }}>
-                         <div
-                           style={{
-                             padding: '8px',
-                             border: '1px solid #e8e8e8',
-                             borderRadius: '4px',
-                             fontSize: '13px',
-                             lineHeight: '1.4',
-                             whiteSpace: 'pre-wrap',
+     console.log('Filtering - final filtered:', filtered);
+     
+     return filtered;
+   }, [
+     enquiriesInSliderRange,
+     userData,
+     activeState,
+     activeAreaFilter,
+     searchTerm,
+   ]);

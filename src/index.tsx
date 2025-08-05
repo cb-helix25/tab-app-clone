@@ -131,8 +131,6 @@ async function fetchEnquiries(
   userAow: string = '',
   userInitials: string = '',
 ): Promise<Enquiry[]> {
-  console.log('🚀 FETCH ENQUIRIES CALLED:', { email, dateFrom, dateTo, userAow, userInitials });
-  
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
@@ -150,7 +148,7 @@ async function fetchEnquiries(
       // Call the decoupled function via Express route (local) or directly (production)
       // NEW decoupled function expects simple GET with no params to return ALL data
       const newDataUrl = isLocalDev 
-        ? `http://localhost:8080/api/enquiries` // Direct call to Express server for local dev
+        ? `/api/enquiries` // Express route for local dev - simple GET, no params
         : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData`; // Direct call for production - simple GET, no params
       
       console.log('🌐 Calling NEW enquiries URL:', newDataUrl);
@@ -354,7 +352,6 @@ async function fetchEnquiries(
   console.log('   User AOW:', userAow);
 
   setCachedData(cacheKey, filteredEnquiries);
-  console.log('🏁 FETCH ENQUIRIES RETURNING:', filteredEnquiries.length, 'enquiries');
   return filteredEnquiries;
 }
 
