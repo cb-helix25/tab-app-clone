@@ -126,69 +126,218 @@ async function fetchEnquiries(
   dateFrom: string,
   dateTo: string,
   userAow: string = '',
+  userInitials: string = '',
 ): Promise<Enquiry[]> {
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
   if (cached) return cached;
 
-  // Always fetch the legacy enquiries data
-  const legacyResponse = await fetch(
-    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, dateFrom, dateTo }),
-    },
-  );
-  if (!legacyResponse.ok)
-    throw new Error(`Failed to fetch enquiries: ${legacyResponse.status}`);
-  const legacyData = await legacyResponse.json();
-  let legacyEnquiries: Enquiry[] = [];
-  if (Array.isArray(legacyData)) {
-    legacyEnquiries = legacyData as Enquiry[];
-  } else if (Array.isArray(legacyData.enquiries)) {
-    legacyEnquiries = legacyData.enquiries as Enquiry[];
-  }
-
-  const normalizedEmail = email.toLowerCase();
-  const isLzUser = [
-    "lz@helix-law.com",
-    "lukasz@helix-law.com",
-    "luke@helix-law.com",
-  ].includes(normalizedEmail);
-
-  let combined = legacyEnquiries;
-
-  if (isLzUser) {
+  // FOR TESTING: Only fetch from the NEW decoupled function to simulate production behavior
+  let enquiries: Enquiry[] = [];
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isLZUser = userInitials.toUpperCase() === 'LZ';
+  
+  if (isLocalDev || isLZUser) {
     try {
-      const params = new URLSearchParams();
-      if (dateFrom) params.append("dateFrom", dateFrom);
-      if (dateTo) params.append("dateTo", dateTo);
-
-      const newResponse = await fetch(`/api/enquiries?${params.toString()}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
+      console.log('🔵 Attempting to fetch NEW enquiries data...');
+      console.log('📍 Local dev:', isLocalDev, '| LZ user:', isLZUser);
+      
+      // Call the decoupled function via Express route (local) or directly (production)
+      const newDataUrl = isLocalDev 
+        ? `/api/enquiries?userEmail=${encodeURIComponent(email)}&userInitials=${encodeURIComponent(userInitials)}` // Express route for local dev with user info
+        : `https://instructions-vnet-functions.azurewebsites.net/api/fetchEnquiriesData?userEmail=${encodeURIComponent(email)}&userInitials=${encodeURIComponent(userInitials)}`; // Direct call for LZ in production
+      
+      console.log('🌐 Calling NEW enquiries URL:', isLocalDev ? newDataUrl : newDataUrl.replace(/\?.*/, '?[PARAMS_REDACTED]'));
+      
+      const newResponse = await fetch(newDataUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
-
+      
       if (newResponse.ok) {
+        console.log('✅ NEW enquiries response OK, processing data...');
         const newData = await newResponse.json();
-        const newEnquiries: Enquiry[] = newData.enquiries || [];
-
-        // Merge and deduplicate by ID if present
-        const seen = new Set<string>();
-        combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
-          const id = String(e.ID ?? e.id ?? "");
-          if (seen.has(id)) return false;
-          seen.add(id);
-          return true;
+        console.log('📦 Raw NEW data count:', Array.isArray(newData) ? newData.length : newData.enquiries?.length || 0);
+        
+        let rawNewEnquiries: any[] = [];
+        if (Array.isArray(newData)) {
+          rawNewEnquiries = newData;
+        } else if (Array.isArray(newData.enquiries)) {
+          rawNewEnquiries = newData.enquiries;
+        }
+        
+        // Filter new enquiries to match user's criteria
+        // New space uses Initials matching, old space uses email matching
+        const userEmail = email.toLowerCase();
+        const userInitialsUpper = userInitials.toUpperCase();
+        
+        const filteredNewEnquiries = rawNewEnquiries.filter(enq => {
+          // Check if this enquiry should be shown to this user
+          const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
+          const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+          
+          // Match by initials (new space) or email (old space compatibility)
+          const matchesInitials = pocInitials === userInitialsUpper;
+          const matchesEmail = pocEmail === userEmail;
+          const isUnclaimed = pocEmail === 'team@helix-law.com' || pocInitials === 'TEAM';
+          
+          // Show if it matches user's initials/email OR if it's unclaimed
+          return matchesInitials || matchesEmail || isUnclaimed;
         });
+        
+        // Convert to Enquiry format if needed
+        const newEnquiries = filteredNewEnquiries.map(enq => ({
+          ID: enq.ID || enq.id || String(Math.random()),
+          Date_Created: enq.Date_Created || enq.date_created || enq.datetime,
+          Touchpoint_Date: enq.Touchpoint_Date || enq.touchpoint_date || enq.datetime,
+          Email: enq.Email || enq.email,
+          Area_of_Work: enq.Area_of_Work || enq.area_of_work || enq.aow,
+          Type_of_Work: enq.Type_of_Work || enq.type_of_work || enq.tow,
+          Method_of_Contact: enq.Method_of_Contact || enq.method_of_contact || enq.moc,
+          Point_of_Contact: enq.Point_of_Contact || enq.poc,
+          First_Name: enq.First_Name || enq.first_name || enq.first,
+          Last_Name: enq.Last_Name || enq.last_name || enq.last,
+          Phone_Number: enq.Phone_Number || enq.phone_number || enq.phone,
+          Company: enq.Company || enq.company,
+          Value: enq.Value || enq.value,
+          Rating: enq.Rating || enq.rating,
+          // Add any other fields as needed
+          ...enq
+        })) as Enquiry[];
+        
+        console.log('✅ Successfully fetched and filtered NEW enquiries data:', newEnquiries.length);
+        
+        // Add the NEW enquiries to the beginning of the array
+        enquiries = [...newEnquiries, ...enquiries];
+        
+      } else {
+        console.warn('❌ NEW enquiries data not available:', newResponse.status, newResponse.statusText);
+        const errorText = await newResponse.text().catch(() => 'Could not read error response');
+        console.warn('Error details:', errorText);
       }
-    } catch (err) {
-      console.warn("Failed to fetch new enquiries", err);
+    } catch (error) {
+      console.warn('❌ Error fetching NEW enquiries data (non-blocking):', error);
     }
   }
 
+  console.log('🐛 DEBUG LEGACY conditions - isLocalDev:', isLocalDev, 'isLZUser:', isLZUser, 'Should fetch LEGACY?', (isLocalDev || isLZUser));
+
+  // Now fetch LEGACY enquiries (always fetch in local dev, for LZ users in all environments)
+  if (isLocalDev || isLZUser) {
+    try {
+      console.log('🔵 Attempting to fetch LEGACY enquiries data...');
+      
+      console.log('🔧 LEGACY Debug - Environment variables:');
+      console.log('   All REACT_APP env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP')));
+      console.log('   process.env:', { 
+        REACT_APP_GET_ENQUIRIES_PATH: process.env.REACT_APP_GET_ENQUIRIES_PATH,
+        REACT_APP_GET_ENQUIRIES_CODE: process.env.REACT_APP_GET_ENQUIRIES_CODE,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      
+      // Hardcode the values temporarily to test if the API call works
+      const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH || 'getEnquiries';
+      const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE || 'Nm5b_roocFL4d3_sc9E5QI2OrG_5zljGlx9asutElHtzAzFuB7OoLA%3D%3D';
+      
+      // Call Azure Function directly with POST method and required parameters
+      const legacyDataUrl = `https://helix-functions.azurewebsites.net/api/${legacyPath}?code=${legacyCode}`;
+      
+      console.log('🌐 Calling LEGACY enquiries URL:', legacyDataUrl.replace(/code=[^&]+/, 'code=[REDACTED]'));
+      console.log('📤 POST body:', { email, dateFrom, dateTo });
+      
+      // TEMPORARY: Test with 'anyone' to bypass email filtering and see all LEGACY records
+      const testEmail = 'anyone'; // Change this back to 'email' after testing
+      console.log('🧪 TESTING: Using email="anyone" to bypass filtering');
+      
+      // The Azure Function expects POST with JSON body containing email, dateFrom, dateTo
+      const legacyResponse = await fetch(legacyDataUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: testEmail, // Using 'anyone' for testing
+          dateFrom: dateFrom,
+          dateTo: dateTo
+        })
+      });
+      
+      console.log('📋 LEGACY response status:', legacyResponse.status, legacyResponse.statusText);
+      
+      if (legacyResponse.ok) {
+        console.log('✅ LEGACY enquiries response OK, processing data...');
+        const legacyData = await legacyResponse.json();
+        console.log('📦 Raw LEGACY data:', legacyData);
+        console.log('📦 Raw LEGACY data count:', Array.isArray(legacyData) ? legacyData.length : legacyData.enquiries?.length || 0);
+        
+        let rawLegacyEnquiries: any[] = [];
+        if (Array.isArray(legacyData)) {
+          rawLegacyEnquiries = legacyData;
+        } else if (Array.isArray(legacyData.enquiries)) {
+          rawLegacyEnquiries = legacyData.enquiries;
+        }
+        
+        console.log('📊 Raw LEGACY enquiries before filtering:', rawLegacyEnquiries.length);
+        
+        // Filter legacy enquiries based on email matching (legacy system)
+        const userEmail = email.toLowerCase();
+        
+        console.log('🔍 LEGACY filtering debug:');
+        console.log('   User email for filtering:', userEmail);
+        console.log('   Sample LEGACY record Point_of_Contact:', rawLegacyEnquiries[0]?.Point_of_Contact);
+        
+        // Temporarily show all LEGACY records to debug filtering
+        const filteredLegacyEnquiries = rawLegacyEnquiries; // Remove filtering temporarily
+        
+        /* Original filtering code - commented out for debugging
+        const filteredLegacyEnquiries = rawLegacyEnquiries.filter(enq => {
+          const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+          const isUnclaimed = pocEmail === 'team@helix-law.com';
+          
+          // Legacy system uses email matching
+          return pocEmail === userEmail || isUnclaimed;
+        });
+        */
+        
+        // Convert legacy data to Enquiry format and append to existing enquiries
+        const legacyEnquiries = filteredLegacyEnquiries.map(enq => ({
+          ID: enq.ID || enq.id || String(Math.random()),
+          Date_Created: enq.Date_Created || enq.date_created || enq.datetime,
+          Touchpoint_Date: enq.Touchpoint_Date || enq.touchpoint_date || enq.datetime,
+          Email: enq.Email || enq.email,
+          Area_of_Work: enq.Area_of_Work || enq.area_of_work || enq.aow,
+          Type_of_Work: enq.Type_of_Work || enq.type_of_work || enq.tow,
+          Method_of_Contact: enq.Method_of_Contact || enq.method_of_contact || enq.moc,
+          Point_of_Contact: enq.Point_of_Contact || enq.poc,
+          First_Name: enq.First_Name || enq.first_name || enq.first,
+          Last_Name: enq.Last_Name || enq.last_name || enq.last,
+          Phone_Number: enq.Phone_Number || enq.phone_number || enq.phone,
+          Company: enq.Company || enq.company,
+          Value: enq.Value || enq.value,
+          Rating: enq.Rating || enq.rating,
+          // Add any other fields as needed
+          ...enq
+        })) as Enquiry[];
+        
+        console.log('✅ Successfully fetched and filtered LEGACY enquiries data:', legacyEnquiries.length);
+        
+        // Append LEGACY enquiries to the end (after NEW enquiries)
+        enquiries = [...enquiries, ...legacyEnquiries];
+        
+      } else {
+        console.warn('❌ LEGACY enquiries data not available:', legacyResponse.status, legacyResponse.statusText);
+        const errorText = await legacyResponse.text().catch(() => 'Could not read error response');
+        console.warn('Error details:', errorText);
+        console.warn('Response headers:', Array.from(legacyResponse.headers.entries()));
+      }
+    } catch (error) {
+      console.warn('❌ Error fetching LEGACY enquiries data (non-blocking):', error);
+    }
+  } else {
+    // For non-LZ users in production, return empty for now (since we're testing new route only)
+    console.log('ℹ️ Non-LZ user in production - no enquiries data for testing');
+  }
+
   // Apply area-of-work filtering based on user's AOW
+  let filteredEnquiries = enquiries;
   if (userAow) {
     const userAreas = userAow
       .split(',')
@@ -198,8 +347,8 @@ async function fetchEnquiries(
       (a) => a.includes('operations') || a.includes('tech'),
     );
     if (!hasFullAccess) {
-      combined = combined.filter((enq) => {
-        const area = (enq.Area_of_Work || '').toLowerCase();
+      filteredEnquiries = enquiries.filter((enq) => {
+        const area = (enq.Area_of_Work || (enq as any).aow || '').toLowerCase();
         return userAreas.some(
           (a) => a === area || a.includes(area) || area.includes(a),
         );
@@ -207,8 +356,13 @@ async function fetchEnquiries(
     }
   }
 
-  setCachedData(cacheKey, combined);
-  return combined;
+  console.log('🎯 FINAL ENQUIRIES SUMMARY:');
+  console.log('   Total before AOW filtering:', enquiries.length);
+  console.log('   Total after AOW filtering:', filteredEnquiries.length);
+  console.log('   User AOW:', userAow);
+
+  setCachedData(cacheKey, filteredEnquiries);
+  return filteredEnquiries;
 }
 
 async function fetchMatters(fullName: string): Promise<Matter[]> {
@@ -370,6 +524,7 @@ const AppWithContext: React.FC = () => {
                 dateFrom,
                 dateTo,
                 userDataRes[0]?.AOW || "",
+                userDataRes[0]?.Initials || "",
               ),
               fetchMatters(fullName),
               fetchTeamData(),
@@ -388,7 +543,7 @@ const AppWithContext: React.FC = () => {
           setLoading(false);
         }
       } else {
-        console.warn("Using local sample data for development.");
+        console.log("Using local sample data for development.");
         setTeamsContext({
           userObjectId: "local",
           userPrincipalName: "lz@helix-law.com",
@@ -401,9 +556,32 @@ const AppWithContext: React.FC = () => {
           AOW: localSelectedAreas.join(', ')
         }];
         setUserData(initialUserData as UserData[]);
-        // Use getLiveLocalEnquiries to set Point_of_Contact for all records to the local user's email
-        setEnquiries(getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[]);
-        setMatters(localMatters as unknown as Matter[]);
+        
+        // For local development, also test the dual enquiries fetching
+        const { dateFrom, dateTo } = getDateRange();
+        const fullName = `${initialUserData[0].First} ${initialUserData[0].Last}`.trim();
+        
+        try {
+          const [enquiriesRes, mattersRes] = await Promise.all([
+            fetchEnquiries(
+              initialUserData[0].Email || "",
+              dateFrom,
+              dateTo,
+              initialUserData[0].AOW || "",
+              initialUserData[0].Initials || "",
+            ),
+            fetchMatters(fullName),
+          ]);
+          
+          setEnquiries(enquiriesRes);
+          setMatters(mattersRes);
+        } catch (err) {
+          console.error('Error fetching live data in local dev:', err);
+          // Fallback to local sample data
+          setEnquiries(getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[]);
+          setMatters(localMatters as unknown as Matter[]);
+        }
+        
         setTeamData(localTeamData as TeamData[]);
         setLoading(false);
       }

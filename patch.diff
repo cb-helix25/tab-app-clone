@@ -1,82 +1,128 @@
-diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
-index d06589eb3ddf95d51a76e5798f33b2b73ba3a716..5e26cdf11b921e2fcb306d8d53831f80b117d1ac 100644
---- a/src/tabs/enquiries/Enquiries.tsx
-+++ b/src/tabs/enquiries/Enquiries.tsx
-@@ -1196,71 +1196,73 @@ const Enquiries: React.FC<EnquiriesProps> = ({
-         >
+diff --git a/src/index.tsx b/src/index.tsx
+index f14d0d488b8d5c6448558d311dec5ba9e444274d..7e94c21c20a3ae95caefb31d01f49905633a2380 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -121,116 +121,78 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
+   return data;
+ }
  
-       {showUnclaimedBoard ? (
-         <UnclaimedEnquiries
-           enquiries={unclaimedEnquiries}
-           onSelect={handleSelectEnquiry}
-         />
-       ) : null}
+ async function fetchEnquiries(
+   email: string,
+   dateFrom: string,
+   dateTo: string,
+   userAow: string = '',
+ ): Promise<Enquiry[]> {
+   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
+   const cached = getCachedData<Enquiry[]>(cacheKey);
+   if (cached) return cached;
  
-       <div
-         key={activeState}
-         className={mergeStyles({
-           flex: 1,
-           display: 'flex',
-           flexDirection: 'column',
-           gap: '0px', // Remove extra gap between sections
-           paddingBottom: 0, // Remove extra space at the bottom
-           backgroundColor: 'transparent',
-           transition: 'background-color 0.3s',
-         })}
-       >
-         {selectedEnquiry ? (
-           renderDetailView(selectedEnquiry)
-         ) : (
-           <>
--            {/* New Enquiry List - temporarily disabled in production */}
--            {/* TODO: Re-enable when new enquiry system is ready */}
--            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-+            {(window.location.hostname === 'localhost' ||
-+              window.location.hostname === '127.0.0.1' ||
-+              userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
-               <NewEnquiryList
-                 onSelectEnquiry={(enquiry: NewEnquiry) => {
-                   setSelectedNewEnquiry(enquiry);
-                 }}
-                 onRateEnquiry={(enquiryId: number) => {
-                   console.log('Rate enquiry:', enquiryId);
-                   // Could integrate with existing rating system
-                 }}
-                 onPitch={(enquiry: NewEnquiry) => {
-                   setSelectedNewEnquiry(enquiry);
-                   // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
-                   const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
-                   setSelectedEnquiry(convertedEnquiry);
-                   setActiveSubTab('Pitch'); // Go directly to Pitch Builder
-                 }}
-                 userData={userData || undefined}
-                 activeMainTab={activeState}
--                selectedArea={userData && userData.length > 0 ? userData[0].AOW : undefined}
-+                selectedArea={
-+                  activeAreaFilter !== 'All' ? activeAreaFilter : null
-+                }
-               />
-             )}
+   // Always fetch the legacy enquiries data
+   const legacyResponse = await fetch(
+     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_ENQUIRIES_PATH}?code=${process.env.REACT_APP_GET_ENQUIRIES_CODE}`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ email, dateFrom, dateTo }),
+     },
+   );
+   if (!legacyResponse.ok)
+     throw new Error(`Failed to fetch enquiries: ${legacyResponse.status}`);
+   const legacyData = await legacyResponse.json();
+-  let legacyEnquiries: Enquiry[] = [];
++  let enquiries: Enquiry[] = [];
+   if (Array.isArray(legacyData)) {
+-    legacyEnquiries = legacyData as Enquiry[];
++    enquiries = legacyData as Enquiry[];
+   } else if (Array.isArray(legacyData.enquiries)) {
+-    legacyEnquiries = legacyData.enquiries as Enquiry[];
+-  }
+-
+-  const normalizedEmail = email.toLowerCase();
+-  const isLzUser = [
+-    "lz@helix-law.com",
+-    "lukasz@helix-law.com",
+-    "luke@helix-law.com",
+-  ].includes(normalizedEmail);
+-
+-  let combined = legacyEnquiries;
+-
+-  if (isLzUser) {
+-    try {
+-      const params = new URLSearchParams();
+-      if (dateFrom) params.append("dateFrom", dateFrom);
+-      if (dateTo) params.append("dateTo", dateTo);
+-
+-      const newResponse = await fetch(`/api/enquiries?${params.toString()}`, {
+-        method: "GET",
+-        headers: { "Content-Type": "application/json" },
+-      });
+-
+-      if (newResponse.ok) {
+-        const newData = await newResponse.json();
+-        const newEnquiries: Enquiry[] = newData.enquiries || [];
+-
+-        // Merge and deduplicate by ID if present
+-        const seen = new Set<string>();
+-        combined = [...legacyEnquiries, ...newEnquiries].filter((e: any) => {
+-          const id = String(e.ID ?? e.id ?? "");
+-          if (seen.has(id)) return false;
+-          seen.add(id);
+-          return true;
+-        });
+-      }
+-    } catch (err) {
+-      console.warn("Failed to fetch new enquiries", err);
+-    }
++    enquiries = legacyData.enquiries as Enquiry[];
+   }
  
-             {/* V1 Enquiries - only show if no v2 enquiry is selected */}
-             {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
-               <div
-                 className={mergeStyles({
-                   backgroundColor: 'transparent',
-                   borderRadius: '12px',
-                   padding: '60px 40px',
-                   textAlign: 'center',
-                   boxShadow: 'none',
-                 })}
-               >
-                 <Icon
-                   iconName="Search"
-                   styles={{
-                     root: {
-                       fontSize: '48px',
-                       color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                       marginBottom: '20px',
-                     },
-                   }}
-                 />
-                 <Text
+   // Apply area-of-work filtering based on user's AOW
+   if (userAow) {
+     const userAreas = userAow
+       .split(',')
+       .map((a) => a.trim().toLowerCase())
+       .filter(Boolean);
+     const hasFullAccess = userAreas.some(
+       (a) => a.includes('operations') || a.includes('tech'),
+     );
+     if (!hasFullAccess) {
+-      combined = combined.filter((enq) => {
+-        const area = (enq.Area_of_Work || '').toLowerCase();
++      enquiries = enquiries.filter((enq) => {
++        const area = (enq.Area_of_Work || (enq as any).aow || '').toLowerCase();
+         return userAreas.some(
+           (a) => a === area || a.includes(area) || area.includes(a),
+         );
+       });
+     }
+   }
+ 
+-  setCachedData(cacheKey, combined);
+-  return combined;
++  setCachedData(cacheKey, enquiries);
++  return enquiries;
+ }
+ 
+ async function fetchMatters(fullName: string): Promise<Matter[]> {
+   const cacheKey = `matters-${fullName}`;
+   const cached = getCachedData<Matter[]>(cacheKey);
+   if (cached) return cached;
+ 
+   const response = await fetch(
+     `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
+     {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ fullName }),
+     },
+   );
+   if (!response.ok)
+     throw new Error(`Failed to fetch matters: ${response.status}`);
+   const data = await response.json();
+ 
+   const mapData = (items: any[]): Matter[] => {
+     return items.map((item) => ({
+       MatterID: item["MatterID"] || item["Matter ID"] || "",
+       InstructionRef: item["InstructionRef"] || item["Instruction Ref"] || "",
+       DisplayNumber: item["Display Number"] || "",
+       OpenDate: item["Open Date"] || "",

@@ -245,6 +245,7 @@ const NewEnquiryList: React.FC<NewEnquiryListProps> = ({
   // Calculate stats using filtered enquiries
   const totalEnquiries = filteredEnquiries.length;
   const highValueEnquiries = filteredEnquiries.filter(e => {
+    if (!e.value) return false; // Skip if value is null or undefined
     const value = parseFloat(e.value.replace(/[£,]/g, ''));
     return value >= 3000;
   }).length;

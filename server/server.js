@@ -23,10 +23,22 @@ const riskAssessmentsRouter = require('./routes/riskAssessments');
 const bundleRouter = require('./routes/bundle');
 
 const enquiriesRouter = require('./routes/enquiries');
-const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
+// const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// Enable CORS for local development
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Set up Key Vault client for retrieving secrets
 const credential = new DefaultAzureCredential();
@@ -49,8 +61,8 @@ app.use('/api/risk-assessments', riskAssessmentsRouter);
 app.use('/api/bundle', bundleRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
-app.use('/api/ccl', cclRouter);
-app.use('/ccls', express.static(CCL_DIR));
+// app.use('/api/ccl', cclRouter);
+// app.use('/ccls', express.static(CCL_DIR));
 
 app.use('/api/enquiries', enquiriesRouter);
 
