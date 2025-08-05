@@ -9,6 +9,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { TeamsContext } from './TeamsContext'; // Ensure this path is correct
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
 // Define the structure of an Enquiry
 export interface Enquiry {
@@ -141,7 +142,7 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   const [fetchUserDataError, setFetchUserDataError] = useState<string | null>(null); // Added error state for fetchUserData
 
   // Environment Variables
-  const proxyBaseUrl = process.env.REACT_APP_PROXY_BASE_URL;
+  const proxyBaseUrl = getProxyBaseUrl();
   const getUserDataCode = process.env.REACT_APP_GET_USER_DATA_CODE;
   const getUserDataPath = process.env.REACT_APP_GET_USER_DATA_PATH;
   const getEnquiriesCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;

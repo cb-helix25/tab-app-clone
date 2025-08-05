@@ -16,6 +16,7 @@ import { getLiveLocalEnquiries } from "./tabs/home/Home";
 
 import "./utils/callLogger";
 import Data from "./tabs/Data";
+import { getProxyBaseUrl } from "./utils/getProxyBaseUrl";
 
 import { initializeIcons } from "@fluentui/react";
 initializeIcons();
@@ -39,6 +40,8 @@ const customTheme = createTheme({
     xLarge: { fontFamily: "Raleway, sans-serif" },
   },
 });
+
+const proxyBaseUrl = getProxyBaseUrl();
 
 // Flag to decide whether to use local sample data instead of remote API
 const inTeams = isInTeams();
@@ -107,7 +110,7 @@ async function fetchUserData(objectId: string): Promise<UserData[]> {
   if (cached) return cached;
 
   const response = await fetch(
-    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
+    `${proxyBaseUrl}/${process.env.REACT_APP_GET_USER_DATA_PATH}?code=${process.env.REACT_APP_GET_USER_DATA_CODE}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -364,7 +367,7 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   if (cached) return cached;
 
   const response = await fetch(
-    `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
+    `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -426,7 +429,7 @@ async function fetchTeamData(): Promise<TeamData[] | null> {
   if (cached) return cached;
   try {
     const response = await fetch(
-      `${process.env.REACT_APP_PROXY_BASE_URL}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
+      `${proxyBaseUrl}/getTeamData?code=${process.env.REACT_APP_GET_TEAM_DATA_CODE}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
