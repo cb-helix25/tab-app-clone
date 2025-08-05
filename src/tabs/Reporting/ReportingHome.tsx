@@ -20,8 +20,9 @@ import ManagementDashboard from './ManagementDashboard';
 import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
 import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
+import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
-const API_BASE_URL = process.env.REACT_APP_PROXY_BASE_URL;
+const API_BASE_URL = getProxyBaseUrl();
 
 const DATASETS = [
   { key: 'userData', name: 'User Data', type: 'UserData[]', duration: 1000 },

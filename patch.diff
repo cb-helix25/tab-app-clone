@@ -1,39 +1,121 @@
-diff --git a/src/utils/getProxyBaseUrl.ts b/src/utils/getProxyBaseUrl.ts
-index 3b99e7837cbc0195e8e9ac981c9aba1f853dba6e..6bc671823155f3aec0290171d4982e87087f7c19 100644
---- a/src/utils/getProxyBaseUrl.ts
-+++ b/src/utils/getProxyBaseUrl.ts
-@@ -1,24 +1,23 @@
--const DEFAULT_PROXY_BASE_URL = "https://helix-keys-proxy.azurewebsites.net/api";
-+const DEFAULT_PROXY_BASE_URL =
-+    "https://helix-keys-proxy.azurewebsites.net/api";
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 3cbe6ecfb31ca79526134437261fe1fa8f6b33e2..d6d1a8acaea8516ca56816ab79faf1cd8287f9f0 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -1190,52 +1190,57 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
+       }
+       if (event.key === 'resourcesFavorites' && event.newValue) {
+         setResourcesFavorites(JSON.parse(event.newValue));
+       }
+     };
+     window.addEventListener('storage', handleStorageChange);
+     return () => {
+       window.removeEventListener('storage', handleStorageChange);
+     };
+   }, []);
  
- export function getProxyBaseUrl(): string {
-     const envUrl = process.env.REACT_APP_PROXY_BASE_URL;
--    const isLocal =
--        typeof window !== "undefined" &&
--        (window.location.hostname === "localhost" ||
--            window.location.hostname === "127.0.0.1");
-+    const nodeEnv = process.env.NODE_ENV;
+   useEffect(() => {
+     if (enquiries && currentUserEmail) {
+       const today = new Date();
+       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+       const startOfWeek = new Date(today);
+       startOfWeek.setDate(today.getDate() - today.getDay());
+       const prevToday = new Date(today);
+       prevToday.setDate(prevToday.getDate() - 7);
+       const prevWeekStart = new Date(startOfWeek);
+       prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+       const prevWeekEnd = new Date(prevToday);
+       const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+       const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
  
--    // Always prioritize the environment variable if it's valid
--    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
--        return envUrl;
-+    // In development allow explicit overrides, otherwise fall back to the
-+    // remote API to avoid failed calls when the local server isn't running.
-+    if (nodeEnv === "development") {
-+        return envUrl || DEFAULT_PROXY_BASE_URL;
+-      const matchesUser = (email: string | undefined | null) =>
+-        (email || '').toLowerCase().trim() === currentUserEmail;
++      const matchesUser = (value: string | undefined | null) => {
++        const normalised = (value || '').toLowerCase().trim();
++        return (
++          normalised === currentUserEmail ||
++          normalised === userInitials.toLowerCase().trim()
++        );
++      };
+ 
+       const todayCount = enquiries.filter((enquiry: any) => {
+         if (!enquiry.Touchpoint_Date) return false;
+         const enquiryDate = new Date(enquiry.Touchpoint_Date);
+         return (
+           enquiryDate.toDateString() === today.toDateString() &&
+           matchesUser(enquiry.Point_of_Contact)
+         );
+       }).length;
+ 
+       const weekToDateCount = enquiries.filter((enquiry: any) => {
+         if (!enquiry.Touchpoint_Date) return false;
+         const enquiryDate = new Date(enquiry.Touchpoint_Date);
+         return (
+           enquiryDate >= startOfWeek &&
+           enquiryDate <= today &&
+           matchesUser(enquiry.Point_of_Contact)
+         );
+       }).length;
+ 
+       const monthToDateCount = enquiries.filter((enquiry: any) => {
+         if (!enquiry.Touchpoint_Date) return false;
+         const enquiryDate = new Date(enquiry.Touchpoint_Date);
+         return (
+           enquiryDate >= startOfMonth &&
+diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
+index 3cbe6ecfb31ca79526134437261fe1fa8f6b33e2..d6d1a8acaea8516ca56816ab79faf1cd8287f9f0 100644
+--- a/src/tabs/home/Home.tsx
++++ b/src/tabs/home/Home.tsx
+@@ -1258,51 +1263,51 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
+         const enquiryDate = new Date(enquiry.Touchpoint_Date);
+         return (
+           enquiryDate >= prevWeekStart &&
+           enquiryDate <= prevWeekEnd &&
+           matchesUser(enquiry.Point_of_Contact)
+         );
+       }).length;
+ 
+       const prevMonthCount = enquiries.filter((enquiry: any) => {
+         if (!enquiry.Touchpoint_Date) return false;
+         const enquiryDate = new Date(enquiry.Touchpoint_Date);
+         return (
+           enquiryDate >= prevMonthStart &&
+           enquiryDate <= prevMonthEnd &&
+           matchesUser(enquiry.Point_of_Contact)
+         );
+       }).length;
+ 
+       setEnquiriesToday(todayCount);
+       setEnquiriesWeekToDate(weekToDateCount);
+       setEnquiriesMonthToDate(monthToDateCount);
+       setPrevEnquiriesToday(prevTodayCount);
+       setPrevEnquiriesWeekToDate(prevWeekCount);
+       setPrevEnquiriesMonthToDate(prevMonthCount);
      }
+-  }, [enquiries, currentUserEmail]);
++  }, [enquiries, currentUserEmail, userInitials]);
  
--    // Use localhost only in local development
--    if (isLocal) {
--        return "http://localhost:8080";
-+    // In production only honor env values that aren't pointing at localhost.
-+    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) {
-+        return envUrl;
+   useEffect(() => {
+     // Always restore from cache on mount if available
+     if (cachedAttendance) {
+       setAttendanceRecords(cachedAttendance.attendance); // Use .attendance here
+       setAttendanceTeam(cachedAttendance.team || []);    // Safe now with proper type
      }
- 
-     // Fallback to the default production URL
-     return DEFAULT_PROXY_BASE_URL;
- }
- 
- export default getProxyBaseUrl;
+     if (cachedAttendanceError) {
+       setAttendanceError(cachedAttendanceError);
+     }
+     if (cachedAnnualLeave) {
+       setAnnualLeaveRecords(cachedAnnualLeave);
+     }
+     if (cachedFutureLeaveRecords) {
+       setFutureLeaveRecords(cachedFutureLeaveRecords);
+     }
+     if (cachedAnnualLeaveError) {
+       setAnnualLeaveError(cachedAnnualLeaveError);
+     }
+     // Set loading states to false if we have cached data
+     if (cachedAttendance || cachedAttendanceError) {
+       setIsLoadingAttendance(false);
+     }
+     if (cachedAnnualLeave || cachedAnnualLeaveError) {
+       setIsLoadingAnnualLeave(false);

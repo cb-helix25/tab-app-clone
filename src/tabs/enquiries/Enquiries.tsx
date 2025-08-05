@@ -151,67 +151,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   setPoidData,
   teamData,
 }) => {
-  const [localEnquiries, setLocalEnquiries] = useState<Enquiry[]>(enquiries || []);
 
-  // Add sample test data for demonstration
-  const sampleTestEnquiries: Enquiry[] = [
-    {
-      ID: 'test-001',
-      Date_Created: '2024-07-25T10:30:00Z',
-      Touchpoint_Date: '2024-07-25T10:30:00Z',
-      Email: 'luke.phillips@example.com',
-      Area_of_Work: 'Commercial',
-      Type_of_Work: 'Contract Review',
-      Method_of_Contact: 'Email',
-      Point_of_Contact: 'team@helix-law.com',
-      Company: 'Phillips Consulting Ltd',
-      First_Name: 'Luke',
-      Last_Name: 'Phillips',
-      Phone_Number: '+44 7123 456789',
-      Value: '£5,000',
-      Rating: 'Good',
-    },
-    {
-      ID: 'test-002',
-      Date_Created: '2024-07-20T14:15:00Z',
-      Touchpoint_Date: '2024-07-20T14:15:00Z',
-      Email: 'luke.phillips@example.com',
-      Area_of_Work: 'Property',
-      Type_of_Work: 'Lease Agreement',
-      Method_of_Contact: 'Phone',
-      Point_of_Contact: 'team@helix-law.com',
-      Company: 'Phillips Consulting Ltd',
-      First_Name: 'Luke',
-      Last_Name: 'Phillips',
-      Phone_Number: '+44 7123 456789',
-      Value: '£3,500',
-      Rating: 'Neutral',
-    },
-    {
-      ID: 'test-003',
-      Date_Created: '2024-07-28T09:00:00Z',
-      Touchpoint_Date: '2024-07-28T09:00:00Z',
-      Email: 'sarah.jones@testcompany.co.uk',
-      Area_of_Work: 'Employment',
-      Type_of_Work: 'Workplace Dispute',
-      Method_of_Contact: 'Web Form',
-      Point_of_Contact: 'team@helix-law.com',
-      Company: 'Test Company Ltd',
-      First_Name: 'Sarah',
-      Last_Name: 'Jones',
-      Phone_Number: '+44 7987 654321',
-      Value: '£2,000',
-    },
-  ];
 
-  // Combine actual enquiries with test data for demonstration
-  const [enrichedEnquiries, setEnrichedEnquiries] = useState<Enquiry[]>(() => {
-    const combined = [...(enquiries || []), ...sampleTestEnquiries];
-    return combined;
-  });
+  // Use only real enquiries data
+  const [displayEnquiries, setDisplayEnquiries] = useState<Enquiry[]>(enquiries || []);
 
-  // Use enrichedEnquiries instead of localEnquiries for demonstration
-  const [displayEnquiries, setDisplayEnquiries] = useState<Enquiry[]>(enrichedEnquiries);
+  // Navigation state variables  
+  // (declaration moved below, only declare once)
+
+  // ...existing code...
+
+
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
@@ -257,6 +207,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [activeState, setActiveState] = useState<string>('Claimed');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
+
+  // Update display enquiries when real enquiries data changes
+  useEffect(() => {
+    setDisplayEnquiries(enquiries || []);
+  }, [enquiries]);
 
   // Reset area filter if current filter is no longer available
   useEffect(() => {
@@ -471,11 +426,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         }
       );
       if (response.ok) {
-        setLocalEnquiries((prev) =>
-          prev.map((enq) =>
-            enq.ID === id ? { ...enq, Rating: newRating as Enquiry['Rating'] } : enq
-          )
-        );
+        // No longer update localEnquiries; only update via API and refresh if needed
         setIsSuccessVisible(true);
       } else {
         const errorText = await response.text();
@@ -508,22 +459,22 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const filteredEnquiries = useMemo(() => {
     let filtered = enquiriesInSliderRange;
-    
-    // Filter by activeState first (supports All, Claimed, Unclaimed, etc.)
+
+    // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
-      filtered = filtered.filter(enquiry => 
-        enquiry.Point_of_Contact && 
-        enquiry.Point_of_Contact.toLowerCase() !== 'team@helix-law.com'
+      // Show only enquiries where Point_of_Contact matches user's email
+      const userEmail = userData && userData.length > 0 ? userData[0].Email?.toLowerCase() : '';
+      filtered = filtered.filter(enquiry =>
+        enquiry.Point_of_Contact &&
+        enquiry.Point_of_Contact.toLowerCase() === userEmail
       );
     } else if (activeState === 'Claimable') { // Maps to "Unclaimed" display
-      filtered = filtered.filter(enquiry => 
+      filtered = filtered.filter(enquiry =>
         enquiry.Point_of_Contact?.toLowerCase() === 'team@helix-law.com'
       );
     }
-    // If activeState === 'All', show all enquiries (no filtering)
     
     // Filter by user's areas of work (this maintains the area-based access control)
-    // In localhost, filter by locally selected areas; in production, filter by user's AOW
     if (userData && userData.length > 0 && userData[0].AOW) {
       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
       const hasFullAccess = userAOW.some(
@@ -699,6 +650,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         userAOW = ['Commercial', 'Construction', 'Property', 'Employment', 'Misc/Other', 'Operations', 'Tech'];
       }
       
+      const filterOptions = ['Claimed', 'Unclaimed', 'New'];
       setContent(
         <div style={{
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -713,10 +665,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         }}>
           {/* Status filter navigation buttons */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {['All', 'Claimed', 'Unclaimed'].map(filterOption => (
+            {filterOptions.map(filterOption => (
               <button
                 key={filterOption}
-                onClick={() => setActiveState(filterOption === 'Unclaimed' ? 'Claimable' : filterOption)}
+                onClick={() => {
+                  if (filterOption === 'Unclaimed') {
+                    setActiveState('Claimable');
+                  } else {
+                    setActiveState(filterOption);
+                  }
+                }}
                 style={{
                   background: activeState === (filterOption === 'Unclaimed' ? 'Claimable' : filterOption) ? colours.highlight : 'transparent',
                   color: activeState === (filterOption === 'Unclaimed' ? 'Claimable' : filterOption) ? 'white' : (isDarkMode ? colours.dark.text : colours.light.text),
@@ -805,12 +763,10 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         </div>
       );
     }
-    return () => setContent(null);
   }, [
     setContent,
     selectedEnquiry,
     selectedNewEnquiry,
-    selectedArea,
     userData,
     isDarkMode,
     activeSubTab,
@@ -818,7 +774,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     handleBackToList,
     activeState,
     activeAreaFilter,
-    filteredEnquiries, // Add this to trigger updates when enquiries change
+    filteredEnquiries,
   ]);
 
   // Navigator content for new enquiry system
@@ -1218,9 +1174,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           renderDetailView(selectedEnquiry)
         ) : (
           <>
-            {(window.location.hostname === 'localhost' ||
-              window.location.hostname === '127.0.0.1' ||
-              userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
+            {/* Show only NewEnquiryList if 'New' filter is active */}
+            {activeState === 'New' ? (
               <NewEnquiryList
                 onSelectEnquiry={(enquiry: NewEnquiry) => {
                   setSelectedNewEnquiry(enquiry);
@@ -1242,110 +1197,136 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   activeAreaFilter !== 'All' ? activeAreaFilter : null
                 }
               />
-            )}
-
-            {/* V1 Enquiries - only show if no v2 enquiry is selected */}
-            {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
-              <div
-                className={mergeStyles({
-                  backgroundColor: 'transparent',
-                  borderRadius: '12px',
-                  padding: '60px 40px',
-                  textAlign: 'center',
-                  boxShadow: 'none',
-                })}
-              >
-                <Icon
-                  iconName="Search"
-                  styles={{
-                    root: {
-                      fontSize: '48px',
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      marginBottom: '20px',
-                    },
-                  }}
-                />
-                <Text
-                  variant="xLarge"
-                  styles={{
-                    root: {
-                      color: isDarkMode ? colours.dark.text : colours.light.text,
-                      fontFamily: 'Raleway, sans-serif',
-                      fontWeight: '600',
-                      marginBottom: '8px',
-                    },
-                  }}
-                >
-                  No enquiries found
-                </Text>
-                <Text
-                  variant="medium"
-                  styles={{
-                    root: {
-                      color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                      fontFamily: 'Raleway, sans-serif',
-                    },
-                  }}
-                >
-                  Try adjusting your search criteria or filters
-                </Text>
-              </div>
-            ) : !selectedNewEnquiry ? (
+            ) : (
               <>
-                {/* Connected List Items */}
-                <div
-                  className={mergeStyles({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap:  "12px",
-                    padding: 0,
-                    margin: 0,
-                    backgroundColor: 'transparent',
-                  })}
-                >
-                  {displayedItems.map((item, idx) => {
-                    const isLast = idx === displayedItems.length - 1;
-                    
-                    // Extract user's areas of work (AOW) for filtering
-                    // Skip area filtering in local development (localhost)
-                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    let userAOW: string[] = [];
-                    if (!isLocalhost && userData && userData.length > 0 && userData[0].AOW) {
-                      userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
+                {(window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1' ||
+                  userData?.[0]?.Initials?.toUpperCase() === 'LZ') && (
+                  <NewEnquiryList
+                    onSelectEnquiry={(enquiry: NewEnquiry) => {
+                      setSelectedNewEnquiry(enquiry);
+                    }}
+                    onRateEnquiry={(enquiryId: number) => {
+                      console.log('Rate enquiry:', enquiryId);
+                      // Could integrate with existing rating system
+                    }}
+                    onPitch={(enquiry: NewEnquiry) => {
+                      setSelectedNewEnquiry(enquiry);
+                      // Convert NewEnquiry to Enquiry and set it for the PitchBuilder
+                      const convertedEnquiry = convertNewEnquiryToEnquiry(enquiry);
+                      setSelectedEnquiry(convertedEnquiry);
+                      setActiveSubTab('Pitch'); // Go directly to Pitch Builder
+                    }}
+                    userData={userData || undefined}
+                    activeMainTab={activeState}
+                    selectedArea={
+                      activeAreaFilter !== 'All' ? activeAreaFilter : null
                     }
-                    
-                    if (isGroupedEnquiry(item)) {
-                      // Render grouped enquiry card
-                      return (
-                        <GroupedEnquiryCard
-                          key={item.clientKey}
-                          groupedEnquiry={item}
-                          onSelect={handleSelectEnquiry}
-                          onRate={handleRate}
-                          teamData={teamData}
-                          isLast={isLast}
-                          userAOW={userAOW}
-                        />
-                      );
-                    } else {
-                      // Render single enquiry
-                      return (
-                        <EnquiryLineItem
-                          key={item.ID}
-                          enquiry={item}
-                          onSelect={handleSelectEnquiry}
-                          onRate={handleRate}
-                          teamData={teamData}
-                          isLast={isLast}
-                          userAOW={userAOW}
-                        />
-                      );
-                    }
-                  })}
-                </div>
-                <div ref={loader} />
+                  />
+                )}
+
+                {/* V1 Enquiries - only show if no v2 enquiry is selected */}
+                {!selectedNewEnquiry && filteredEnquiries.length === 0 ? (
+                  <div
+                    className={mergeStyles({
+                      backgroundColor: 'transparent',
+                      borderRadius: '12px',
+                      padding: '60px 40px',
+                      textAlign: 'center',
+                      boxShadow: 'none',
+                    })}
+                  >
+                    <Icon
+                      iconName="Search"
+                      styles={{
+                        root: {
+                          fontSize: '48px',
+                          color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                          marginBottom: '20px',
+                        },
+                      }}
+                    />
+                    <Text
+                      variant="xLarge"
+                      styles={{
+                        root: {
+                          color: isDarkMode ? colours.dark.text : colours.light.text,
+                          fontFamily: 'Raleway, sans-serif',
+                          fontWeight: '600',
+                          marginBottom: '8px',
+                        },
+                      }}
+                    >
+                      No enquiries found
+                    </Text>
+                    <Text
+                      variant="medium"
+                      styles={{
+                        root: {
+                          color: isDarkMode ? colours.dark.subText : colours.light.subText,
+                          fontFamily: 'Raleway, sans-serif',
+                        },
+                      }}
+                    >
+                      Try adjusting your search criteria or filters
+                    </Text>
+                  </div>
+                ) : !selectedNewEnquiry ? (
+                  <>
+                    {/* Connected List Items */}
+                    <div
+                      className={mergeStyles({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap:  "12px",
+                        padding: 0,
+                        margin: 0,
+                        backgroundColor: 'transparent',
+                      })}
+                    >
+                      {displayedItems.map((item, idx) => {
+                        const isLast = idx === displayedItems.length - 1;
+                        
+                        // Extract user's areas of work (AOW) for filtering
+                        let userAOW: string[] = [];
+                        if (userData && userData.length > 0 && userData[0].AOW) {
+                          userAOW = userData[0].AOW.split(',').map((a) => a.trim().toLowerCase());
+                        }
+                        
+                        if (isGroupedEnquiry(item)) {
+                          // Render grouped enquiry card
+                          return (
+                            <GroupedEnquiryCard
+                              key={item.clientKey}
+                              groupedEnquiry={item}
+                              onSelect={handleSelectEnquiry}
+                              onRate={handleRate}
+                              teamData={teamData}
+                              isLast={isLast}
+                              userAOW={userAOW}
+                            />
+                          );
+                        } else {
+                          // Render single enquiry
+                          return (
+                            <EnquiryLineItem
+                              key={item.ID}
+                              enquiry={item}
+                              onSelect={handleSelectEnquiry}
+                              onRate={handleRate}
+                              teamData={teamData}
+                              isLast={isLast}
+                              userAOW={userAOW}
+                            />
+                          );
+                        }
+                      })}
+                    </div>
+                    <div ref={loader} />
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </>
         )}
       </div>

@@ -125,7 +125,6 @@ const EnquiriesMenu: React.FC<EnquiriesMenuProps> = ({
     ];
 
     const stateTabs = [
-        { key: 'All', text: 'All' },
         { key: 'Claimed', text: 'Claimed' },
         { key: 'Converted', text: 'Enquiry ID' },
         { key: 'Claimable', text: 'Unclaimed' },

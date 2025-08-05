@@ -1212,8 +1212,13 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
-      const matchesUser = (email: string | undefined | null) =>
-        (email || '').toLowerCase().trim() === currentUserEmail;
+      const matchesUser = (value: string | undefined | null) => {
+        const normalised = (value || '').toLowerCase().trim();
+        return (
+          normalised === currentUserEmail ||
+          normalised === userInitials.toLowerCase().trim()
+        );
+      };
 
       const todayCount = enquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
@@ -1280,7 +1285,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       setPrevEnquiriesWeekToDate(prevWeekCount);
       setPrevEnquiriesMonthToDate(prevMonthCount);
     }
-  }, [enquiries, currentUserEmail]);
+  }, [enquiries, currentUserEmail, userInitials]);
 
   useEffect(() => {
     // Always restore from cache on mount if available
