@@ -1,286 +1,77 @@
-diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
-index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
---- a/src/tabs/enquiries/Enquiries.tsx
-+++ b/src/tabs/enquiries/Enquiries.tsx
-@@ -167,51 +167,71 @@ const Enquiries: React.FC<EnquiriesProps> = ({
-   const { isDarkMode } = useTheme();
-   const { setContent } = useNavigator();
-   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
-   // Removed pagination states
-   // const [currentPage, setCurrentPage] = useState<number>(1);
-   // const enquiriesPerPage = 12;
- 
-   const [isRateModalOpen, setIsRateModalOpen] = useState<boolean>(false);
-   const [currentRating, setCurrentRating] = useState<string>('');
-   const [ratingEnquiryId, setRatingEnquiryId] = useState<string | null>(null);
-   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
-   const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
-   const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
-   const [selectedArea, setSelectedArea] = useState<string | null>(null);
-   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
-   const [isSearchActive, setSearchActive] = useState<boolean>(false);
-   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
-   
-   // Navigation state variables  
-   const [activeState, setActiveState] = useState<string>('Claimed');
-   const [searchTerm, setSearchTerm] = useState<string>('');
-   const [activeAreaFilter, setActiveAreaFilter] = useState<string>('All');
- 
-   // Update display enquiries when real enquiries data changes
-   useEffect(() => {
--    setDisplayEnquiries(enquiries || []);
-+    if (enquiries) {
-+      const normalised = enquiries.map((enq: any) => ({
-+        ...enq,
-+        ID: enq.ID || enq.id?.toString(),
-+        Touchpoint_Date: enq.Touchpoint_Date || enq.datetime,
-+        Point_of_Contact: enq.Point_of_Contact || enq.poc,
-+        Area_of_Work: enq.Area_of_Work || enq.aow,
-+        Type_of_Work: enq.Type_of_Work || enq.tow,
-+        Method_of_Contact: enq.Method_of_Contact || enq.moc,
-+        First_Name: enq.First_Name || enq.first,
-+        Last_Name: enq.Last_Name || enq.last,
-+        Email: enq.Email || enq.email,
-+        Phone_Number: enq.Phone_Number || enq.phone,
-+        Value: enq.Value || enq.value,
-+        Initial_first_call_notes: enq.Initial_first_call_notes || enq.notes,
-+        Call_Taker: enq.Call_Taker || enq.rep,
-+      }));
-+      setDisplayEnquiries(normalised);
-+    } else {
-+      setDisplayEnquiries([]);
-+    }
-   }, [enquiries]);
- 
-   // Reset area filter if current filter is no longer available
-   useEffect(() => {
-     if (userData && userData.length > 0 && userData[0].AOW) {
-       const userAOW = userData[0].AOW.split(',').map(a => a.trim());
-       if (activeAreaFilter !== 'All' && !userAOW.includes(activeAreaFilter)) {
-         setActiveAreaFilter('All');
-       }
-     }
-   }, [userData, activeAreaFilter]);
- 
-   const [currentSliderStart, setCurrentSliderStart] = useState<number>(0);
-   const [currentSliderEnd, setCurrentSliderEnd] = useState<number>(0);
- 
-   // Added for infinite scroll
-   const [itemsToShow, setItemsToShow] = useState<number>(20);
-   const loader = useRef<HTMLDivElement | null>(null);
-   const previousMainTab = useRef<string>('Claimed');
- 
-   const toggleDashboard = useCallback(() => {
-     if (activeState === '') {
-       setActiveState(previousMainTab.current || 'Claimed');
-     } else {
-       previousMainTab.current = activeState;
-diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
-index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
---- a/src/tabs/enquiries/Enquiries.tsx
-+++ b/src/tabs/enquiries/Enquiries.tsx
-@@ -239,68 +259,58 @@ const Enquiries: React.FC<EnquiriesProps> = ({
-         .map((d) => parseISO(d));
-       if (validDates.length > 0) {
-         const oldestDate = new Date(Math.min(...validDates.map((date) => date.getTime())));
-         const newestDate = new Date(Math.max(...validDates.map((date) => date.getTime())));
-         setDateRange({
-           oldest: format(oldestDate, 'dd MMM yyyy'),
-           newest: format(newestDate, 'dd MMM yyyy'),
-         });
-         setCurrentSliderStart(0);
-         setCurrentSliderEnd(validDates.length - 1);
-       }
-     } else {
-       setDateRange(null);
-     }
-   }, [displayEnquiries]);
- 
-   const sortedEnquiries = useMemo(() => {
-     return [...displayEnquiries].sort((a, b) => {
-       const dateA = parseISO(a.Touchpoint_Date || '');
-       const dateB = parseISO(b.Touchpoint_Date || '');
-       return dateA.getTime() - dateB.getTime();
-     });
-   }, [displayEnquiries]);
- 
-   const unclaimedEmails = useMemo(
--    () =>
--      [
--        'team@helix-law.com',
--        'commercial@helix-law.com',
--        'construction@helix-law.com',
--        'employment@helix-law.com',
--        'property@helix-law.com',
--      ].map((e) => e.toLowerCase()),
-+    () => ['team@helix-law.com'].map((e) => e.toLowerCase()),
-     []
-   );
- 
-   const unclaimedEnquiries = useMemo(
-     () =>
--      displayEnquiries.filter(
--        (e) =>
--          unclaimedEmails.includes(
--            (e.Point_of_Contact || (e as any).poc || '').toLowerCase()
--          )
-+      displayEnquiries.filter((e) =>
-+        unclaimedEmails.includes((e.Point_of_Contact || '').toLowerCase())
-       ),
-     [displayEnquiries, unclaimedEmails]
-   );
- 
-   const sortedValidEnquiries = useMemo(() => {
-     return sortedEnquiries.filter(
-       (enq) => enq.Touchpoint_Date && isValid(parseISO(enq.Touchpoint_Date))
-     );
-   }, [sortedEnquiries]);
- 
-   useEffect(() => {
-     if (sortedValidEnquiries.length > 0) {
-       setCurrentSliderEnd(sortedValidEnquiries.length - 1);
-     }
-   }, [sortedValidEnquiries.length]);
- 
-   const enquiriesInSliderRange = useMemo(() => {
-     return sortedValidEnquiries.slice(currentSliderStart, currentSliderEnd + 1);
-   }, [sortedValidEnquiries, currentSliderStart, currentSliderEnd]);
- 
-   const monthlyEnquiryCounts = useMemo(() => {
-     const counts: { [month: string]: MonthlyCount } = {};
-     enquiriesInSliderRange.forEach((enq) => {
-       if (enq.Touchpoint_Date && enq.Area_of_Work) {
-         const date = parseISO(enq.Touchpoint_Date);
-diff --git a/src/tabs/enquiries/Enquiries.tsx b/src/tabs/enquiries/Enquiries.tsx
-index f5acde7bb8fa5ecbbad0924b211234678e45d960..59dcab1fbe44666608a835c4b5076f03d2533603 100644
---- a/src/tabs/enquiries/Enquiries.tsx
-+++ b/src/tabs/enquiries/Enquiries.tsx
-@@ -410,103 +420,106 @@ const Enquiries: React.FC<EnquiriesProps> = ({
-         setIsSuccessVisible(true);
+diff --git a/src/index.tsx b/src/index.tsx
+index 2661f80b20687d2baabf741339c02d2d4eaa2166..4a31e14cb11c1a73d09f5989b2359647eea58df8 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -211,65 +211,68 @@ async function fetchEnquiries(
+           Rating: enq.Rating || enq.rating,
+           // Add any other fields as needed
+           ...enq
+         })) as Enquiry[];
+         
+         console.log('✅ Successfully fetched and filtered NEW enquiries data:', newEnquiries.length);
+         
+         // Add the NEW enquiries to the beginning of the array
+         enquiries = [...newEnquiries, ...enquiries];
+         
        } else {
-         const errorText = await response.text();
-         console.error('Failed to update rating:', errorText);
+         console.warn('❌ NEW enquiries data not available:', newResponse.status, newResponse.statusText);
+         const errorText = await newResponse.text().catch(() => 'Could not read error response');
+         console.warn('Error details:', errorText);
        }
      } catch (error) {
-       console.error('Error updating rating:', error);
+       console.warn('❌ Error fetching NEW enquiries data (non-blocking):', error);
      }
-   }, []);
+   }
  
-   const submitRating = useCallback(async () => {
-     if (ratingEnquiryId && currentRating) {
-       await handleEditRating(ratingEnquiryId, currentRating);
-       setIsSuccessVisible(true);
-       closeRateModal();
-     }
-   }, [ratingEnquiryId, currentRating, handleEditRating, closeRateModal]);
+   // Always attempt to fetch LEGACY enquiries so existing data continues to load
+   try {
+     console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
  
-   const filteredEnquiries = useMemo(() => {
-     let filtered = enquiriesInSliderRange;
  
-     console.log('Filtering - enquiriesInSliderRange:', enquiriesInSliderRange);
-     console.log('Filtering - activeState:', activeState);
-     console.log('Filtering - userData:', userData);
+-    // Hard-code the legacy base URL, but get path and code strictly from env
+-    const legacyBaseUrl = 'https://helix-keys-proxy.azurewebsites.net/api';
++    // Use the proxyBaseUrl so this call works locally or in production
++    const legacyBaseUrl = proxyBaseUrl;
+     const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
+     const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
+     const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
  
-+    const userEmail = userData && userData[0] && userData[0].Email
-+      ? userData[0].Email.toLowerCase()
-+      : '';
++    // Always request all enquiries by using 'anyone'
++    const legacyRequestEmail = 'anyone';
 +
-     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
-     if (activeState === 'Claimed') {
-       filtered = filtered.filter(enquiry => {
--        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
--        return poc && !unclaimedEmails.includes(poc);
-+        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
-+        return userEmail ? poc === userEmail : false;
-       });
-     } else if (activeState === 'Claimable') {
-       filtered = filtered.filter(enquiry => {
--        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
-+        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
-         return unclaimedEmails.includes(poc);
-       });
-     }
--    
-+
-     console.log('Filtering - after state filter:', filtered);
--    
--    // Filter by user's areas of work (this maintains the area-based access control)
--    if (userData && userData.length > 0 && userData[0].AOW) {
-+
-+    // Area-based access control - only applies for unclaimed enquiries
-+    if (activeState === 'Claimable' && userData && userData.length > 0 && userData[0].AOW) {
-       const userAOW = userData[0].AOW.split(',').map(a => a.trim().toLowerCase());
-       console.log('Filtering - userAOW:', userAOW);
--      
-+
-       const hasFullAccess = userAOW.some(
-         area => area.includes('operations') || area.includes('tech')
-       );
+     // Add debug log to confirm the call is being attempted
+-    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
++    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email: legacyRequestEmail, dateFrom, dateTo });
  
-       if (!hasFullAccess) {
-         filtered = filtered.filter(enquiry => {
--          if (!enquiry.Area_of_Work) return false;
--          const enquiryArea = enquiry.Area_of_Work.toLowerCase();
-+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-+          if (!enquiryArea) return false;
+     // The proxy expects POST with JSON body containing email, dateFrom, dateTo
+     const legacyResponse = await fetch(legacyDataUrl, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+-        email: email, // Use actual email for proper filtering
++        email: legacyRequestEmail, // Request all enquiries; filter client-side
+         dateFrom: dateFrom,
+         dateTo: dateTo
+       })
+     });
  
--          // First check if enquiry is in user's allowed areas (allow partial matches)
-           const inAllowed = userAOW.some(
-             a => a === enquiryArea || a.includes(enquiryArea) || enquiryArea.includes(a)
-           );
-           if (!inAllowed) return false;
+     console.log('📋 LEGACY response status:', legacyResponse.status, legacyResponse.statusText);
  
--          // Then apply active area filter if not 'All'
-           if (activeAreaFilter !== 'All') {
-             return enquiryArea === activeAreaFilter.toLowerCase();
-           }
--
-           return true;
-         });
--      } else {
--        // Operations/Tech users: only apply area filter if not 'All'
--        if (activeAreaFilter !== 'All') {
--          filtered = filtered.filter(enquiry => {
--            if (!enquiry.Area_of_Work) return false;
--            return enquiry.Area_of_Work.toLowerCase() === activeAreaFilter.toLowerCase();
--          });
--        }
-+      } else if (activeAreaFilter !== 'All') {
-+        filtered = filtered.filter(enquiry => {
-+          const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-+          return enquiryArea === activeAreaFilter.toLowerCase();
-+        });
+     if (legacyResponse.ok) {
+       console.log('✅ LEGACY enquiries response OK, processing data...');
+       const legacyData = await legacyResponse.json();
+       console.log('📦 Raw LEGACY data:', legacyData);
+       console.log('📦 Raw LEGACY data count:', Array.isArray(legacyData) ? legacyData.length : legacyData.enquiries?.length || 0);
+ 
+       let rawLegacyEnquiries: any[] = [];
+       if (Array.isArray(legacyData)) {
+         rawLegacyEnquiries = legacyData;
+       } else if (Array.isArray(legacyData.enquiries)) {
+         rawLegacyEnquiries = legacyData.enquiries;
        }
-+    } else if (activeAreaFilter !== 'All') {
-+      filtered = filtered.filter(enquiry => {
-+        const enquiryArea = (enquiry.Area_of_Work || '').toLowerCase();
-+        return enquiryArea === activeAreaFilter.toLowerCase();
-+      });
-     }
--    
-+
-     console.log('Filtering - after area filter:', filtered);
-     
-     // Apply search term filter
-     if (searchTerm.trim()) {
-       const term = searchTerm.toLowerCase();
-       filtered = filtered.filter(enquiry => 
-         enquiry.First_Name?.toLowerCase().includes(term) ||
-         enquiry.Last_Name?.toLowerCase().includes(term) ||
-         enquiry.Email?.toLowerCase().includes(term) ||
-         enquiry.Company?.toLowerCase().includes(term) ||
-         enquiry.Type_of_Work?.toLowerCase().includes(term) ||
-         enquiry.ID?.toLowerCase().includes(term)
-       );
-     }
-     
-     console.log('Filtering - final filtered:', filtered);
-     
-     return filtered;
-   }, [
-     enquiriesInSliderRange,
-     userData,
-     activeState,
-     activeAreaFilter,
-     searchTerm,
-   ]);
+ 
+       console.log('📊 Raw LEGACY enquiries before filtering:', rawLegacyEnquiries.length);
+ 
+       // Filter legacy enquiries based on email matching (legacy system)
+       const userEmail = email.toLowerCase();
+ 

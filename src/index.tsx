@@ -181,13 +181,8 @@ async function fetchEnquiries(
 
           const matchesInitials = pocInitials === userInitialsUpper;
           const matchesEmail = pocEmail === userEmail;
-          const unclaimedEmails = [
-            'team@helix-law.com',
-            'commercial@helix-law.com',
-            'construction@helix-law.com',
-            'employment@helix-law.com',
-            'property@helix-law.com',
-          ];
+          // Only treat enquiries sent to the team inbox as unclaimed
+          const unclaimedEmails = ['team@helix-law.com'];
           const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
 
           return matchesInitials || matchesEmail || isUnclaimed;
@@ -233,21 +228,24 @@ async function fetchEnquiries(
     console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
 
 
-    // Hard-code the legacy base URL, but get path and code strictly from env
-    const legacyBaseUrl = 'https://helix-keys-proxy.azurewebsites.net/api';
+    // Use the proxyBaseUrl so this call works locally or in production
+    const legacyBaseUrl = proxyBaseUrl;
     const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
     const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
     const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
 
+    // Always request all enquiries by using 'anyone'
+    const legacyRequestEmail = 'anyone';
+
     // Add debug log to confirm the call is being attempted
-    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
+    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email: legacyRequestEmail, dateFrom, dateTo });
 
     // The proxy expects POST with JSON body containing email, dateFrom, dateTo
     const legacyResponse = await fetch(legacyDataUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: email, // Use actual email for proper filtering
+        email: legacyRequestEmail, // Request all enquiries; filter client-side
         dateFrom: dateFrom,
         dateTo: dateTo
       })
@@ -279,13 +277,8 @@ async function fetchEnquiries(
 
       const filteredLegacyEnquiries = rawLegacyEnquiries.filter(enq => {
         const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
-        const unclaimedEmails = [
-          'team@helix-law.com',
-          'commercial@helix-law.com',
-          'construction@helix-law.com',
-          'employment@helix-law.com',
-          'property@helix-law.com',
-        ];
+        // Only keep legacy enquiries assigned to the current user or the team inbox
+        const unclaimedEmails = ['team@helix-law.com'];
         const isUnclaimed = unclaimedEmails.includes(pocEmail);
 
         return pocEmail === userEmail || isUnclaimed;
@@ -326,7 +319,7 @@ async function fetchEnquiries(
     console.warn('❌ Error fetching LEGACY enquiries data (non-blocking):', error);
   }
 
-  // Apply area-of-work filtering based on user's AOW
+  // Apply area-of-work filtering based on user's AOW (only for unclaimed enquiries)
   let filteredEnquiries = enquiries;
   if (userAow) {
     const userAreas = userAow
@@ -337,7 +330,13 @@ async function fetchEnquiries(
       (a) => a.includes('operations') || a.includes('tech'),
     );
     if (!hasFullAccess) {
+      const unclaimedEmails = ['team@helix-law.com'];
       filteredEnquiries = enquiries.filter((enq) => {
+        const pocEmail = (enq.Point_of_Contact || (enq as any).poc || '').toLowerCase();
+        const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocEmail === 'team';
+        if (!isUnclaimed) {
+          return true; // keep claimed enquiries regardless of area
+        }
         const area = (enq.Area_of_Work || (enq as any).aow || '').toLowerCase();
         return userAreas.some(
           (a) => a === area || a.includes(area) || area.includes(a),

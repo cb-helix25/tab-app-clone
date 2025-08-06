@@ -12,6 +12,9 @@ import { Matter, UserData, Enquiry, Tab, TeamData, POID, Transaction, BoardroomB
 import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
 import localInstructionData from '../localData/localInstructionData.json';
+import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
+
+const proxyBaseUrl = getProxyBaseUrl();
 
 const Home = lazy(() => import('../tabs/home/Home'));
 const Forms = lazy(() => import('../tabs/forms/Forms'));
@@ -252,17 +255,16 @@ const App: React.FC<AppProps> = ({
         return;
       }
 
-      const baseUrl = process.env.REACT_APP_PROXY_BASE_URL;
       const path = process.env.REACT_APP_GET_INSTRUCTION_DATA_PATH;
       const code = process.env.REACT_APP_GET_INSTRUCTION_DATA_CODE;
-      if (!baseUrl || !path || !code) {
+      if (!path || !code) {
         console.error("Missing env variables for instruction data");
         return;
       }
 
       try {
         // Request all instruction data; we'll filter client-side
-        const url = `${baseUrl}/${path}?code=${code}`;
+        const url = `${proxyBaseUrl}/${path}?code=${code}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
