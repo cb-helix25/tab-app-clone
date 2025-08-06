@@ -390,14 +390,17 @@ async function fetchMatters(fullName: string): Promise<Matter[]> {
   const cached = getCachedData<Matter[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(
-    `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName }),
-    },
-  );
+  const isLocalDev = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const mattersUrl = isLocalDev
+    ? '/api/getMatters'
+    : `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`;
+
+  const response = await fetch(mattersUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName }),
+  });
   if (!response.ok)
     throw new Error(`Failed to fetch matters: ${response.status}`);
   const data = await response.json();

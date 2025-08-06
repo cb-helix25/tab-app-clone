@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Stack, Text, Spinner, SpinnerSize, MessageBar, MessageBarType, IconButton } from '@fluentui/react';
 import { Matter, UserData } from '../../app/functionality/types';
-import MatterLineItem from './MatterLineItem';
+import MatterCard from './MatterCard';
 import MatterOverview from './MatterOverview';
 
 interface MattersProps {
@@ -55,11 +55,11 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   return (
     <Stack>
       {filtered.map((m, idx) => (
-        <MatterLineItem
+        <MatterCard
           key={m.UniqueID}
           matter={m}
           onSelect={setSelected}
-          isLast={idx === filtered.length - 1}
+          animationDelay={idx * 0.05}
         />
       ))}
     </Stack>

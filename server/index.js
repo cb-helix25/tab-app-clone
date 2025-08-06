@@ -19,11 +19,14 @@ const opponentsRouter = require('./routes/opponents');
 const clioContactsRouter = require('./routes/clioContacts');
 const clioMattersRouter = require('./routes/clioMatters');
 const mattersRouter = require('./routes/matters');
+const getMattersRouter = require('./routes/getMatters');
+const getAllMattersRouter = require('./routes/getAllMatters');
 const riskAssessmentsRouter = require('./routes/riskAssessments');
 const bundleRouter = require('./routes/bundle');
 const { router: cclRouter, CCL_DIR } = require('./routes/ccl');
 const enquiriesRouter = require('./routes/enquiries');
 const enquiryEmailsRouter = require('./routes/enquiryEmails');
+const pitchesRouter = require('./routes/pitches');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -48,9 +51,12 @@ app.use('/api/bundle', bundleRouter);
 app.use('/api/clio-contacts', clioContactsRouter);
 app.use('/api/clio-matters', clioMattersRouter);
 app.use('/api/matters', mattersRouter);
+app.use('/api/getMatters', getMattersRouter);
+app.use('/api/getAllMatters', getAllMattersRouter);
 app.use('/api/ccl', cclRouter);
 app.use('/api/enquiries', enquiriesRouter);
 app.use('/api/enquiry-emails', enquiryEmailsRouter);
+app.use('/api/pitches', pitchesRouter);
 app.use('/ccls', express.static(CCL_DIR));
 
 const buildPath = path.join(__dirname, 'static');

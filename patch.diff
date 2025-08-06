@@ -1,105 +1,73 @@
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index fdaaf8fee124c590baf8923f7ea36d508e2a93b3..dab76bbb8913e7c237a53e91a0993079fd1b39f5 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2661,92 +2661,98 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-     setBespokePanelContent(content);
-     setBespokePanelTitle(titleText);
-     setIsBespokePanelOpen(true);
+diff --git a/src/tabs/enquiries/PitchBuilder.tsx b/src/tabs/enquiries/PitchBuilder.tsx
+index 6787e82875dec7e8d1cda75ef8324554a5fe3644..eaf2feb3604e5698074ab271d62fb860771411dd 100644
+--- a/src/tabs/enquiries/PitchBuilder.tsx
++++ b/src/tabs/enquiries/PitchBuilder.tsx
+@@ -3624,50 +3624,68 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+       serviceDescription,
+       selectedOption,
+       amount,
+       subject,
+       to,
+       cc,
+       bcc,
+       body,
+       attachments,
+       followUp,
+       activeTab,
+       selectedTemplateOptions,
+       insertedBlocks,
+       autoInsertedBlocks,
+       lockedBlocks,
+       pinnedBlocks,
+       editedBlocks,
+       editedSnippets,
+       originalBlockContent,
+       originalSnippetContent,
+       hiddenBlocks,
+       blocks,
+       savedSnippets,
+       enquiryId: enquiry.ID,
+     };
++    const sections = Object.keys(insertedBlocks)
++      .filter((title) => insertedBlocks[title])
++      .map((title) => ({
++        block: title,
++        option: selectedTemplateOptions[title] || '',
++        content: savedSnippets[title] || '',
++      }));
++    if (sections.length > 0) {
++      fetch('/api/pitches', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
++          enquiryId: enquiry.ID,
++          sections,
++          user: userInitials,
++        }),
++      }).catch((err) => console.error('Failed to save pitch sections', err));
++    }
+     localStorage.setItem('pitchBuilderState', JSON.stringify(state));
+   };
    }, [
-     attendanceRef,
-     instructionData,
-     futureLeaveRecords,
-     transformedTeamData,
-     userData,
-     annualLeaveTotals,
-     bankHolidays,
-     annualLeaveAllData,
-     futureBookings,
-     unclaimedEnquiries,
-   ]);
- 
-   const immediateActionsList: Action[] = useMemo(() => {
-     const actions: Action[] = [];
-     if (!isLoadingAttendance && !currentUserConfirmed) {
-       actions.push({
-         title: 'Confirm Attendance',
-         icon: 'Calendar',
-         onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
-       });
-     }
--    if (hasActiveMatter) {
-+    if (hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) {
-       actions.push({
-         title: 'Finalise Matter',
-         icon: 'OpenFolderHorizontal',
-         onClick: () => handleActionClick({ title: 'Finalise Matter', icon: 'OpenFolderHorizontal' }),
-       });
-     }
-     if (hasActivePitch) {
-       actions.push({
-         title: 'Resume Pitch',
-         icon: 'Mail',
-         onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Mail' }),
-       });
-     }
--    if (actionableSummaries.length > 0 && !instructionsActionDone) {
-+    if (
-+      actionableSummaries.length > 0 &&
-+      !instructionsActionDone &&
-+      (userInitials === 'LZ' || isLocalhost)
-+    ) {
-       const title = actionableSummaries.length === 1 ? 'Review Instruction' : 'Review Instructions';
-       actions.push({
-         title,
-         icon: 'OpenFile',
-         onClick: () => handleActionClick({ title: 'Review Instructions', icon: 'OpenFile' }),
-       });
-     }
-     actions.push(
-       ...immediateALActions.map(a => ({
-         ...a,
-         icon: a.icon || '',
-       }))
-     );
-     actions.sort(
-       (a, b) => (quickActionOrder[a.title] || 99) - (quickActionOrder[b.title] || 99)
-     );
-     return actions;
-   }, [
-     isLoadingAttendance,
-     currentUserConfirmed,
-     hasActiveMatter,
-     actionableSummaries,
-     instructionsActionDone,
-     instructionData,
-     immediateALActions,
-     handleActionClick,
-     hasActivePitch,
-+    userInitials,
-+    isLocalhost,
-   ]);
- 
-   // Helper function to reset quick actions selection when panels close
-   const resetQuickActionsSelection = useCallback(() => {
-     if (resetQuickActionsSelectionRef.current) {
-       resetQuickActionsSelectionRef.current();
-     }
-   }, []);
- 
-   // Show overlay when immediate actions become available
-   // Check if overlay has been shown/dismissed in this browser session
-   const [hasShownOverlayThisSession, setHasShownOverlayThisSession] = useState<boolean>(() => {
-     return sessionStorage.getItem('immediateActionsOverlayShown') === 'true';
-   });
- 
-   useEffect(() => {
-     // Show overlay if there are actions and user hasn't dismissed it in this browser session
-     if (
-       immediateActionsReady &&
-       immediateActionsList &&
-       immediateActionsList.length > 0 &&
-       !showFocusOverlay &&
-       !hasShownOverlayThisSession
-     ) {
-       setShowFocusOverlay(true);
+     templateSet,
+     serviceDescription,
+     selectedOption,
+     amount,
+     subject,
+     to,
+     cc,
+     bcc,
+     body,
+     attachments,
+     followUp,
+     activeTab,
+     selectedTemplateOptions,
+     insertedBlocks,
+     autoInsertedBlocks,
+     lockedBlocks,
+     pinnedBlocks,
+     editedBlocks,
+     editedSnippets,
+     originalBlockContent,
+     originalSnippetContent,
+     hiddenBlocks,

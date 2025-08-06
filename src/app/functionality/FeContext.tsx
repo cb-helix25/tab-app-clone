@@ -153,7 +153,11 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
   // Construct URLs
   const getUserDataUrl = `${proxyBaseUrl}/${getUserDataPath}?code=${getUserDataCode}`;
   const getEnquiriesUrl = `${proxyBaseUrl}/${getEnquiriesPath}?code=${getEnquiriesCode}`;
-  const getMattersUrl = `${proxyBaseUrl}/${getMattersPath}?code=${getMattersCode}`;
+  const isLocalDev = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const getMattersUrl = isLocalDev
+    ? '/api/getMatters'
+    : `${proxyBaseUrl}/${getMattersPath}?code=${getMattersCode}`;
 
   // Fetch User Data on Context Change
   const fetchUserData = useCallback(async (objectId: string): Promise<any> => {

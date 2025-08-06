@@ -3646,6 +3646,24 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       savedSnippets,
       enquiryId: enquiry.ID,
     };
+    const sections = Object.keys(insertedBlocks)
+      .filter((title) => insertedBlocks[title])
+      .map((title) => ({
+        block: title,
+        option: selectedTemplateOptions[title] || '',
+        content: savedSnippets[title] || '',
+      }));
+    if (sections.length > 0) {
+      fetch('/api/pitches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enquiryId: enquiry.ID,
+          sections,
+          user: userInitials,
+        }),
+      }).catch((err) => console.error('Failed to save pitch sections', err));
+    }
     localStorage.setItem('pitchBuilderState', JSON.stringify(state));
   };
   }, [

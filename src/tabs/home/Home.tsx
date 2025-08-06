@@ -1567,10 +1567,12 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
       const fetchAllMattersData = async () => {
         try {
           setIsLoadingAllMatters(true);
-          const response = await fetch(
-            `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${process.env.REACT_APP_GET_ALL_MATTERS_CODE}`,
-            { method: 'GET' }
-          );
+          const isLocalDev = typeof window !== 'undefined' &&
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+          const allMattersUrl = isLocalDev
+            ? '/api/getAllMatters'
+            : `${proxyBaseUrl}/${process.env.REACT_APP_GET_ALL_MATTERS_PATH}?code=${process.env.REACT_APP_GET_ALL_MATTERS_CODE}`;
+          const response = await fetch(allMattersUrl, { method: 'GET' });
           if (!response.ok) {
             throw new Error(`Failed to fetch all matters: ${response.status}`);
           }
