@@ -654,7 +654,6 @@ const AppWithContext: React.FC = () => {
         userData={userData}
         enquiries={enquiries}
         matters={matters}
-        fetchMatters={fetchMatters}
         isLoading={loading}
         error={error}
         teamData={teamData}

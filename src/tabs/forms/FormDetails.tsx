@@ -20,6 +20,7 @@ import {
 // invisible change
 } from '../../app/styles/ButtonStyles';
 import BespokePanel from '../../app/functionality/BespokePanel';
+import { getProxyBaseUrl } from "../../utils/getProxyBaseUrl";
 
 interface FormDetailsProps {
   link: FormItem;
@@ -168,7 +169,7 @@ const FormDetails: React.FC<FormDetailsProps> = ({
         data: values,
         initials: userData?.[0]?.Initials || 'N/A',
       };
-      const endpointUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
+      const endpointUrl = `${getProxyBaseUrl()}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
 
       try {
         const response = await fetch(endpointUrl, {

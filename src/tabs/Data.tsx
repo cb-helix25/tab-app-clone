@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { getCallLogs, clearCallLogs, CallLogEntry } from '../utils/callLogger';
-
-const allowedUsers = ['lukasz', 'lz', 'luke'];
+import { ADMIN_USERS } from '../app/admin';
 
 const Data: React.FC = () => {
     const currentUser = (localStorage.getItem('__currentUserInitials') || '').toLowerCase();
     const [logs, setLogs] = useState<CallLogEntry[]>(getCallLogs());
+    const allowedUsers = ADMIN_USERS.map(u => u.toLowerCase());
 
     useEffect(() => {
         const interval = setInterval(() => {

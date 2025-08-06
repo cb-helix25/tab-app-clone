@@ -2683,7 +2683,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Confirm Attendance', icon: 'Calendar' }),
       });
     }
-    if (hasActiveMatter) {
+    if (hasActiveMatter && (userInitials === 'LZ' || isLocalhost)) {
       actions.push({
         title: 'Finalise Matter',
         icon: 'OpenFolderHorizontal',
@@ -2697,7 +2697,11 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         onClick: () => handleActionClick({ title: 'Resume Pitch', icon: 'Mail' }),
       });
     }
-    if (actionableSummaries.length > 0 && !instructionsActionDone) {
+    if (
+      actionableSummaries.length > 0 &&
+      !instructionsActionDone &&
+      (userInitials === 'LZ' || isLocalhost)
+    ) {
       const title = actionableSummaries.length === 1 ? 'Review Instruction' : 'Review Instructions';
       actions.push({
         title,
@@ -2725,6 +2729,8 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     immediateALActions,
     handleActionClick,
     hasActivePitch,
+    userInitials,
+    isLocalhost,
   ]);
 
   // Helper function to reset quick actions selection when panels close

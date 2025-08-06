@@ -17,6 +17,7 @@ import { sharedDecisionButtonStyles, sharedDefaultButtonStyles } from '../../app
 import ReportCard from './ReportCard';
 import HomePreview from './HomePreview';
 import ManagementDashboard from './ManagementDashboard';
+import MattersReport from './MattersReport';
 import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
 import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
@@ -422,7 +423,7 @@ const ReportingHome: React.FC<ReportingHomeProps> = ({ userData: propUserData, t
     { title: 'Management Dashboard', description: 'Key metrics and team performance', path: '/management-dashboard', icon: 'Search', isReady: true },
     { title: 'Annual Leave', description: 'Annual leave statistics and history', path: '/annual-leave', icon: 'Airplane', isReady: true },
     { title: 'Enquiries', description: 'Enquiry trends and details', path: '/enquiries', icon: 'People', isReady: false },
-    { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'Folder', isReady: false },
+    { title: 'Matters', description: 'Matter status and analysis', path: '/matters', icon: 'Folder', isReady: true },
     { title: 'Tasks', description: 'Task completion and workload', path: '/tasks', icon: 'CheckList', isReady: false },
   ];
 
@@ -473,6 +474,27 @@ const availableData = [
           <span>← Back</span>
         </div>
         <AnnualLeaveReport data={annualLeave || []} teamData={fetchedTeamData || []} />
+      </div>
+    );
+  }
+
+  if (selectedReport === 'Matters') {
+    return (
+      <div style={{ width: '100%', backgroundColor: colours.light.background, minHeight: '100vh' }}>
+        <div className="back-arrow" onClick={() => setSelectedReport(null)}>
+          <span>← Back</span>
+        </div>
+        <MattersReport
+          matters={allMatters || []}
+          isLoading={!allMatters}
+          error={null}
+          userData={fetchedUserData}
+          teamData={fetchedTeamData}
+          outstandingBalances={outstandingBalances}
+          poidData={poidData || []}
+          setPoidData={setPoidData}
+          transactions={transactions || []}
+        />
       </div>
     );
   }

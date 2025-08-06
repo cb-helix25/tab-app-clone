@@ -4,6 +4,7 @@ import { MessageBar, MessageBarType } from '@fluentui/react';
 import { FormItem, UserData, Matter, TeamData } from '../app/functionality/types';
 import BespokeForm from '../CustomForms/BespokeForms';
 import loaderIcon from '../assets/grey helix mark.png';
+import { getProxyBaseUrl } from "../utils/getProxyBaseUrl";
 
 interface FormEmbedProps {
     link: FormItem;
@@ -72,7 +73,7 @@ const FormEmbed: React.FC<FormEmbedProps> = ({ link, userData, teamData, matters
                 data: values,
                 initials: userData?.[0]?.Initials || 'N/A',
             };
-            const endpointUrl = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
+            const endpointUrl = `${getProxyBaseUrl()}/${process.env.REACT_APP_POST_FINANCIAL_TASK_PATH}?code=${process.env.REACT_APP_POST_FINANCIAL_TASK_CODE}`;
             try {
                 const response = await fetch(endpointUrl, {
                     method: 'POST',

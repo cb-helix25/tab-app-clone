@@ -32,8 +32,9 @@ import EnquiryLineItem from './EnquiryLineItem';
 import EnquiryApiDebugger from '../../components/EnquiryApiDebugger';
 import GroupedEnquiryCard from './GroupedEnquiryCard';
 import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
-import EnquiryOverview from './EnquiryOverview';
 import PitchBuilder from './PitchBuilder';
+import EnquiryCalls from './EnquiryCalls';
+import EnquiryEmails from './EnquiryEmails';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { useNavigator } from '../../app/functionality/NavigatorContext';
@@ -176,7 +177,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [currentRating, setCurrentRating] = useState<string>('');
   const [ratingEnquiryId, setRatingEnquiryId] = useState<string | null>(null);
   const [isSuccessVisible, setIsSuccessVisible] = useState<boolean>(false);
-  const [activeSubTab, setActiveSubTab] = useState<string>('Overview');
+  const [activeSubTab, setActiveSubTab] = useState<string>('Pitch');
   const [showUnclaimedBoard, setShowUnclaimedBoard] = useState<boolean>(false);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
@@ -378,7 +379,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const handleSelectEnquiry = useCallback((enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
-    setActiveSubTab('Pitch'); // Go directly to Pitch Builder instead of Overview
+    setActiveSubTab('Pitch'); // Go directly to Pitch Builder
   }, []);
 
   const handleBackToList = useCallback(() => {
@@ -620,7 +621,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         previousMainTab.current = key;
       }
       setActiveState(key);
-      setActiveSubTab('Overview');
+      setActiveSubTab('Pitch');
       setItemsToShow(20);
       setTimeout(() => {
         setItemsToShow((prev) =>
@@ -807,8 +808,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
             selectedKey={activeSubTab}
             onLinkClick={handleSubTabChange}
           >
-            <PivotItem headerText="Overview" itemKey="Overview" />
             <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+            <PivotItem headerText="Calls" itemKey="Calls" />
+            <PivotItem headerText="Emails" itemKey="Emails" />
           </Pivot>
         </div>
       );
@@ -916,21 +918,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           },
         }}
       >
-        {activeSubTab === 'Overview' && (
-          <EnquiryOverview 
-            enquiry={enquiry} 
-            onEditRating={handleRate} 
-            onEditNotes={() => { }} 
-            allEnquiries={displayEnquiries}
-            onSelectEnquiry={handleSelectEnquiry}
-          />
-        )}
         {activeSubTab === 'Pitch' && (
           <PitchBuilder enquiry={enquiry} userData={userData} />
         )}
+        {activeSubTab === 'Calls' && (
+          <EnquiryCalls enquiry={enquiry} />
+        )}
+        {activeSubTab === 'Emails' && (
+          <EnquiryEmails enquiry={enquiry} />
+        )}
       </Stack>
     ),
-    [handleRate, isDarkMode, activeSubTab, userData]
+    [isDarkMode, activeSubTab, userData]
   );
 
   const enquiriesCountPerMember = useMemo(() => {

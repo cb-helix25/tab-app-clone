@@ -4,6 +4,7 @@ import DataInspector from './DataInspector';
 import { UserData } from '../app/functionality/types';
 import '../app/styles/UserBubble.css';
 import '../app/styles/personas.css';
+import { isAdminUser, isPowerUser } from '../app/admin';
 
 interface UserBubbleProps {
     user: UserData;
@@ -20,8 +21,6 @@ const AVAILABLE_AREAS = [
     'Employment',
     'Misc/Other'
 ];
-
-const ALLOWED_SWITCHERS = ['lukasz', 'lz', 'luke', 'alex', 'ac'];
 
 const UserBubble: React.FC<UserBubbleProps> = ({
     user,
@@ -157,14 +156,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
     // Normalize potential fields to lower case and trim whitespace so
     // production data with trailing spaces or nickname variations still match.
-    const isPowerUser = ALLOWED_SWITCHERS.some((a) => {
-        const first = user.First?.toLowerCase().trim();
-        const initials = user.Initials?.toLowerCase().trim();
-        const nickname = user.Nickname?.toLowerCase().trim();
-        return first === a || initials === a || nickname === a;
-    });
-
-    const canSwitchUser = isPowerUser;
+    const canSwitchUser = isAdminUser(user);
 
     return (
         <div className="user-bubble-container">
@@ -570,7 +562,7 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                             )}
 
                             {/* Data Inspector */}
-                            {isPowerUser && (
+                            {isPowerUser(user) && (
                                 <div>
                                     <button
                                         onClick={() => setShowDataInspector(true)}

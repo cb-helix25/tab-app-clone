@@ -13,6 +13,7 @@ import { hasActiveMatterOpening } from './functionality/matterOpeningUtils';
 import localIdVerifications from '../localData/localIdVerifications.json';
 import localInstructionData from '../localData/localInstructionData.json';
 import { getProxyBaseUrl } from '../utils/getProxyBaseUrl';
+import { ADMIN_USERS } from './admin';
 
 const proxyBaseUrl = getProxyBaseUrl();
 
@@ -29,7 +30,6 @@ interface AppProps {
   userData: UserData[] | null;
   enquiries: Enquiry[] | null;
   matters: Matter[] | null;
-  fetchMatters: (fullName: string) => Promise<Matter[]>;
   isLoading: boolean;
   error: string | null;
   teamData?: TeamData[] | null;
@@ -43,7 +43,6 @@ const App: React.FC<AppProps> = ({
   userData,
   enquiries,
   matters,
-  fetchMatters,
   isLoading,
   error,
   teamData,
@@ -304,9 +303,9 @@ const App: React.FC<AppProps> = ({
   }, [userInitials]);
 
   // Tabs visible to all users start with the Enquiries tab.
-  // Only show the Instructions tab to Alex (AC), Jonathan (JW), Luke (LZ), Kelly (KW), Ben (BL), RC, and JWH. Keep it visible when developing locally
-  // (hostname === 'localhost').
-  const instructionsUsers = ['LZ', 'KW', 'BL', 'AC', 'JW', 'RC', 'JWH'];
+  // Only show the Instructions tab to Alex (AC), Jonathan (JW), Luke (LZ), Kelly (KW), Ben (BL), RC, JWH, and Cass (CB).
+  // Keep it visible when developing locally (hostname === 'localhost').
+  const instructionsUsers = [...ADMIN_USERS, 'KW', 'BL', 'JW', 'RC', 'JWH'];
   const isLocalhost = window.location.hostname === 'localhost';
   const showInstructionsTab =
     instructionsUsers.includes(userInitials) || isLocalhost;
@@ -374,15 +373,9 @@ const App: React.FC<AppProps> = ({
         return (
           <Matters
             matters={allMattersFromHome || []}
-            transactions={transactions}
-            fetchMatters={fetchMatters}
             isLoading={isLoading}
             error={error}
             userData={userData}
-            teamData={teamData}
-            outstandingBalances={outstandingBalances}
-            poidData={poidData || []}
-            setPoidData={setPoidData}
           />
         );
       case 'reporting':
