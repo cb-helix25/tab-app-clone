@@ -267,14 +267,14 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
   });
 
   const valueStyle = mergeStyles({
-    fontSize: '13px',
-    color: colours.highlight,
-    fontWeight: '600',
+    fontSize: '12px',
+    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+    fontWeight: '500',
   });
 
   const dateStyle = mergeStyles({
-    fontSize: '11px',
-    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+    fontSize: '12px',
+    color: isDarkMode ? colours.dark.text : colours.light.text,
     fontWeight: '500',
   });
 
@@ -337,12 +337,17 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
     height: '24px',
     minWidth: '45px',
     selectors: {
-      ':hover': {
+      ':hover:not(:disabled)': {
         backgroundColor: colours.blue,
         transform: 'translateY(-0.5px)',
       },
-      ':active': {
+      ':active:not(:disabled)': {
         transform: 'translateY(0)',
+      },
+      ':disabled': {
+        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+        cursor: 'not-allowed',
       },
     },
   });
@@ -454,9 +459,15 @@ const EnquiryLineItem: React.FC<EnquiryLineItemProps> = ({
             className={pitchButtonStyle}
             onClick={(e) => {
               e.stopPropagation();
-              if (onPitch) {
+              if (isClaimed && onPitch) {
                 onPitch(enquiry);
               }
+            }}
+            disabled={!isClaimed}
+            title={isClaimed ? 'Pitch this enquiry' : 'Pitch is only available for claimed enquiries'}
+            style={{
+              opacity: isClaimed ? 1 : 0.5,
+              cursor: isClaimed ? 'pointer' : 'not-allowed',
             }}
           >
             Pitch
