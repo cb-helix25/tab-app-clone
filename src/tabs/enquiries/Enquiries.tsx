@@ -29,6 +29,7 @@ import {
 import { parseISO, startOfMonth, format, isValid } from 'date-fns';
 import { Enquiry, POID, UserData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
+import EnquiryApiDebugger from '../../components/EnquiryApiDebugger';
 import GroupedEnquiryCard from './GroupedEnquiryCard';
 import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
 import EnquiryOverview from './EnquiryOverview';
@@ -181,6 +182,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [dateRange, setDateRange] = useState<{ oldest: string; newest: string } | null>(null);
   const [isSearchActive, setSearchActive] = useState<boolean>(false);
   const [showGroupedView, setShowGroupedView] = useState<boolean>(true);
+  const [showDataInspector, setShowDataInspector] = useState<boolean>(false);
   
   // Navigation state variables  
   const [activeState, setActiveState] = useState<string>('Claimed');
@@ -190,6 +192,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   // Update display enquiries when real enquiries data changes
   useEffect(() => {
     if (enquiries) {
+      console.log('🔄 Normalizing enquiries data, count:', enquiries.length);
+      console.log('📊 Sample enquiry fields (first item):', enquiries[0] ? Object.keys(enquiries[0]) : 'No data');
+      
       const normalised = enquiries.map((enq: any) => ({
         ...enq,
         ID: enq.ID || enq.id?.toString(),
@@ -206,6 +211,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
         Initial_first_call_notes: enq.Initial_first_call_notes || enq.notes,
         Call_Taker: enq.Call_Taker || enq.rep,
       }));
+      
+      console.log('✅ Normalized enquiries count:', normalised.length);
+      console.log('🎯 Sample POC values:', normalised.slice(0, 3).map(e => ({ 
+        original_poc: (e as any).poc, 
+        normalized_poc: e.Point_of_Contact 
+      })));
+      
       setDisplayEnquiries(normalised);
     } else {
       setDisplayEnquiries([]);
@@ -287,9 +299,11 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const unclaimedEnquiries = useMemo(
     () =>
-      displayEnquiries.filter((e) =>
-        unclaimedEmails.includes((e.Point_of_Contact || '').toLowerCase())
-      ),
+      displayEnquiries.filter((e) => {
+        // Handle both old and new schema
+        const poc = (e.Point_of_Contact || (e as any).poc || '').toLowerCase();
+        return unclaimedEmails.includes(poc);
+      }),
     [displayEnquiries, unclaimedEmails]
   );
 
@@ -438,23 +452,46 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const filteredEnquiries = useMemo(() => {
     let filtered = enquiriesInSliderRange;
 
-    console.log('Filtering - enquiriesInSliderRange:', enquiriesInSliderRange);
-    console.log('Filtering - activeState:', activeState);
-    console.log('Filtering - userData:', userData);
+    console.log('🔍 FILTERING DEBUG - START');
+    console.log('📊 enquiriesInSliderRange count:', enquiriesInSliderRange.length);
+    console.log('🎯 activeState:', activeState);
+    console.log('👤 userData:', userData);
 
     const userEmail = userData && userData[0] && userData[0].Email
       ? userData[0].Email.toLowerCase()
       : '';
 
+    console.log('📧 User email for filtering:', userEmail);
+
+    // DETAILED POC VALUE ANALYSIS
+    console.log('🔬 DETAILED POC ANALYSIS:');
+    enquiriesInSliderRange.forEach((enq, index) => {
+      const pocOld = enq.Point_of_Contact || '';
+      const pocNew = (enq as any).poc || '';
+      console.log(`  Enquiry ${index + 1}:`, {
+        id: enq.ID,
+        Point_of_Contact: pocOld,
+        poc: pocNew,
+        finalPoc: pocOld || pocNew,
+        userEmail: userEmail,
+        matches: (pocOld || pocNew).toLowerCase() === userEmail
+      });
+    });
+
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
+      console.log('🎯 Filtering for CLAIMED (user email match)');
       filtered = filtered.filter(enquiry => {
-        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
-        return userEmail ? poc === userEmail : false;
+        // Handle both old and new schema
+        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+        const matches = userEmail ? poc === userEmail : false;
+        console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs userEmail="${userEmail}" → ${matches}`);
+        return matches;
       });
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
-        const poc = (enquiry.Point_of_Contact || '').toLowerCase();
+        // Handle both old and new schema
+        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
         return unclaimedEmails.includes(poc);
       });
     }
@@ -732,6 +769,27 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               </div>
             </>
           )}
+          
+          {/* Development Inspector Button - Only show in localhost */}
+          {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+            <>
+              <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker' }}
+                title="Debug API calls and filtering (Local Dev)"
+                onClick={() => setShowDataInspector(true)}
+                styles={{
+                  root: {
+                    backgroundColor: colours.cta,
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                  }
+                }}
+              />
+            </>
+          )}
         </div>
       );
     } else {
@@ -879,7 +937,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     if (!enquiriesInSliderRange || !teamData) return [];
     const grouped: { [email: string]: number } = {};
     enquiriesInSliderRange.forEach((enq) => {
-      const pocEmail = enq.Point_of_Contact?.toLowerCase();
+      // Handle both old and new schema
+      const pocEmail = (enq.Point_of_Contact || (enq as any).poc || '').toLowerCase();
       if (pocEmail) {
         grouped[pocEmail] = (grouped[pocEmail] || 0) + 1;
       }
@@ -1244,6 +1303,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       </Modal>
         </Stack>
       </section>
+
+      {/* Enquiry API Debugger - Only in development */}
+      {showDataInspector && (
+        <EnquiryApiDebugger
+          currentEnquiries={displayEnquiries}
+          onClose={() => setShowDataInspector(false)}
+        />
+      )}
     </div>
   );
 

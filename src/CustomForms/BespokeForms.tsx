@@ -374,7 +374,8 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
           {fields.map((field, index) => {
             if (
               field.label === 'Matter Reference' ||
-              field.label === 'Matter Reference (if applicable)'
+              field.label === 'Matter Reference (if applicable)' ||
+              field.label === 'File/ Matter Reference'
             ) {
               return (
                 <MatterReferenceDropdown
@@ -498,7 +499,7 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                       disabled={isSubmitting}
                       styles={{ root: toggleStyle }}
                     />
-                    {field.name === 'Is the amount you are sending over £50k' &&
+                    {field.name === 'Is the amount you are sending over £50,000?' &&
                       formValues[field.name] === true && (
                         <div className={infoBoxStyle}>
                           Please note we will need to perform an extra verification check. Accounts will send a small random amount and a small random reference to the payee. You will need to ask them to confirm the amount and reference used before accounts can make the remaining balancing payment.

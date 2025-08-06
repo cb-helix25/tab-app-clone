@@ -1,77 +1,99 @@
-diff --git a/src/index.tsx b/src/index.tsx
-index 2661f80b20687d2baabf741339c02d2d4eaa2166..4a31e14cb11c1a73d09f5989b2359647eea58df8 100644
---- a/src/index.tsx
-+++ b/src/index.tsx
-@@ -211,65 +211,68 @@ async function fetchEnquiries(
-           Rating: enq.Rating || enq.rating,
-           // Add any other fields as needed
-           ...enq
-         })) as Enquiry[];
-         
-         console.log('✅ Successfully fetched and filtered NEW enquiries data:', newEnquiries.length);
-         
-         // Add the NEW enquiries to the beginning of the array
-         enquiries = [...newEnquiries, ...enquiries];
-         
-       } else {
-         console.warn('❌ NEW enquiries data not available:', newResponse.status, newResponse.statusText);
-         const errorText = await newResponse.text().catch(() => 'Could not read error response');
-         console.warn('Error details:', errorText);
+diff --git a/src/app/functionality/FeContext.tsx b/src/app/functionality/FeContext.tsx
+index a4aa7d83c1ce38e96b8e4fbb1b1aa9ab3689de59..a529d4e7bda3d554994a0b8dd17271958f88c795 100644
+--- a/src/app/functionality/FeContext.tsx
++++ b/src/app/functionality/FeContext.tsx
+@@ -164,72 +164,88 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ userObjectId: objectId }),
+       });
+ 
+       if (!response.ok) {
+         throw new Error(`Failed to fetch user data: ${response.status}`);
        }
+ 
+       const data = await response.json();
+       console.log('User Data:', data);
+       setSqlData(data); // Assuming user data is set here
+       return data;
      } catch (error) {
-       console.warn('❌ Error fetching NEW enquiries data (non-blocking):', error);
+       console.error('Error fetching user data:', error);
+       setFetchUserDataError('Failed to fetch user data.');
+       return {};
      }
-   }
+   }, [getUserDataUrl]);
  
-   // Always attempt to fetch LEGACY enquiries so existing data continues to load
-   try {
-     console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
+   // Function to fetch Enquiries
+   const fetchEnquiries = useCallback(
+     async (email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> => {
+       try {
+         console.log('Fetching enquiries with dateFrom:', dateFrom, 'dateTo:', dateTo);
  
- 
--    // Hard-code the legacy base URL, but get path and code strictly from env
--    const legacyBaseUrl = 'https://helix-keys-proxy.azurewebsites.net/api';
-+    // Use the proxyBaseUrl so this call works locally or in production
-+    const legacyBaseUrl = proxyBaseUrl;
-     const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
-     const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
-     const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
- 
-+    // Always request all enquiries by using 'anyone'
-+    const legacyRequestEmail = 'anyone';
++        // Always request all enquiries by using the special 'anyone' keyword
++        const legacyRequestEmail = 'anyone';
 +
-     // Add debug log to confirm the call is being attempted
--    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
-+    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email: legacyRequestEmail, dateFrom, dateTo });
+         const legacyResponse = await fetch(getEnquiriesUrl, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+-          body: JSON.stringify({ email, dateFrom, dateTo }),
++          body: JSON.stringify({
++            email: legacyRequestEmail,
++            dateFrom,
++            dateTo,
++          }),
+         });
  
-     // The proxy expects POST with JSON body containing email, dateFrom, dateTo
-     const legacyResponse = await fetch(legacyDataUrl, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
--        email: email, // Use actual email for proper filtering
-+        email: legacyRequestEmail, // Request all enquiries; filter client-side
-         dateFrom: dateFrom,
-         dateTo: dateTo
-       })
-     });
+         if (!legacyResponse.ok) {
+           throw new Error(`HTTP error! status: ${legacyResponse.status}`);
+         }
  
-     console.log('📋 LEGACY response status:', legacyResponse.status, legacyResponse.statusText);
+         const legacyData = await legacyResponse.json();
+-        let legacyEnquiries: Enquiry[] = [];
++        let rawLegacyEnquiries: Enquiry[] = [];
+         if (Array.isArray(legacyData.enquiries)) {
+-          legacyEnquiries = legacyData.enquiries as Enquiry[];
++          rawLegacyEnquiries = legacyData.enquiries as Enquiry[];
+         } else if (Array.isArray(legacyData)) {
+-          legacyEnquiries = legacyData as Enquiry[];
++          rawLegacyEnquiries = legacyData as Enquiry[];
+         } else {
+           console.warn('Unexpected legacy data format:', legacyData);
+         }
  
-     if (legacyResponse.ok) {
-       console.log('✅ LEGACY enquiries response OK, processing data...');
-       const legacyData = await legacyResponse.json();
-       console.log('📦 Raw LEGACY data:', legacyData);
-       console.log('📦 Raw LEGACY data count:', Array.isArray(legacyData) ? legacyData.length : legacyData.enquiries?.length || 0);
- 
-       let rawLegacyEnquiries: any[] = [];
-       if (Array.isArray(legacyData)) {
-         rawLegacyEnquiries = legacyData;
-       } else if (Array.isArray(legacyData.enquiries)) {
-         rawLegacyEnquiries = legacyData.enquiries;
+-        setEnquiries(legacyEnquiries);
+-        return legacyEnquiries;
++        // Filter to the current user or unclaimed enquiries
++        const userEmail = email.toLowerCase();
++        const filteredLegacyEnquiries = rawLegacyEnquiries.filter((enq: any) => {
++          const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
++          const unclaimedEmails = ['team@helix-law.com'];
++          const isUnclaimed = unclaimedEmails.includes(pocEmail);
++          return pocEmail === userEmail || isUnclaimed;
++        });
++
++        setEnquiries(filteredLegacyEnquiries);
++        return filteredLegacyEnquiries;
+       } catch (error) {
+         console.error('Error fetching enquiries:', error);
+         setFetchEnquiriesError('Failed to fetch enquiries.');
+         return [];
        }
+     },
+     [getEnquiriesUrl]
+   );
  
-       console.log('📊 Raw LEGACY enquiries before filtering:', rawLegacyEnquiries.length);
+   // Function to fetch Matters
+   const fetchMatters = useCallback(
+     async (fullName: string): Promise<Matter[]> => {
+       try {
+         const response = await fetch(getMattersUrl, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ fullName }),
+         });
  
-       // Filter legacy enquiries based on email matching (legacy system)
-       const userEmail = email.toLowerCase();
+         if (!response.ok) {
+           throw new Error(`HTTP error! status: ${response.status}`);
+         }
  
+         const data = await response.json();
+         let fetchedMatters: Matter[] = [];

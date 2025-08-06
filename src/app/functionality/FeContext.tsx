@@ -182,14 +182,17 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
 
   // Function to fetch Enquiries
   const fetchEnquiries = useCallback(
-    async (email: string, dateFrom: string, dateTo: string): Promise<Enquiry[]> => {
-      try {
-        console.log('Fetching enquiries with dateFrom:', dateFrom, 'dateTo:', dateTo);
+        // Always request all enquiries by using the special 'anyone' keyword
+        const legacyRequestEmail = 'anyone';
 
         const legacyResponse = await fetch(getEnquiriesUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, dateFrom, dateTo }),
+          body: JSON.stringify({
+            email: legacyRequestEmail,
+            dateFrom,
+            dateTo,
+          }),
         });
 
         if (!legacyResponse.ok) {
@@ -197,17 +200,26 @@ export const FeProvider: React.FC<FeProviderProps> = ({ children }) => {
         }
 
         const legacyData = await legacyResponse.json();
-        let legacyEnquiries: Enquiry[] = [];
+        let rawLegacyEnquiries: Enquiry[] = [];
         if (Array.isArray(legacyData.enquiries)) {
-          legacyEnquiries = legacyData.enquiries as Enquiry[];
+          rawLegacyEnquiries = legacyData.enquiries as Enquiry[];
         } else if (Array.isArray(legacyData)) {
-          legacyEnquiries = legacyData as Enquiry[];
+          rawLegacyEnquiries = legacyData as Enquiry[];
         } else {
           console.warn('Unexpected legacy data format:', legacyData);
         }
 
-        setEnquiries(legacyEnquiries);
-        return legacyEnquiries;
+        // Filter to the current user or unclaimed enquiries
+        const userEmail = email.toLowerCase();
+        const filteredLegacyEnquiries = rawLegacyEnquiries.filter((enq: any) => {
+          const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
+          const unclaimedEmails = ['team@helix-law.com'];
+          const isUnclaimed = unclaimedEmails.includes(pocEmail);
+          return pocEmail === userEmail || isUnclaimed;
+        });
+
+        setEnquiries(filteredLegacyEnquiries);
+        return filteredLegacyEnquiries;
       } catch (error) {
         console.error('Error fetching enquiries:', error);
         setFetchEnquiriesError('Failed to fetch enquiries.');

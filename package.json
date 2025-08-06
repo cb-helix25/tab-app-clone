@@ -20,6 +20,7 @@
         "@reduxjs/toolkit": "^2.3.0",
         "axios": "^0.21.4",
         "chart.js": "^4.4.7",
+        "cors": "^2.8.5",
         "date-fns": "^2.30.0",
         "docx": "^9.5.1",
         "docx-templates": "^4.14.1",

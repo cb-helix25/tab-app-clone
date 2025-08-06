@@ -51,7 +51,7 @@ export const financialForms: FormItem[] = [
     tags: ['Financial'],
     fields: [
       {
-        label: 'Matter Reference',
+        label: 'File/ Matter Reference',
         type: 'dropdown',
         required: true,
       },
@@ -68,10 +68,11 @@ export const financialForms: FormItem[] = [
         required: true,
       },
       {
-        label: 'Is the amount you are sending over £50k',
+        label: 'Is the amount you are sending over £50,000?',
         type: 'toggle',
         defaultValue: false,
         required: true,
+        showIf: { field: 'Debit Account', equals: 'Client' },
       },
       // <-- removed informational 'message' field here
       {
@@ -109,6 +110,14 @@ export const financialForms: FormItem[] = [
         defaultValue: false,
       },
       {
+        label: 'Please provide method of verification',
+        type: 'text',
+        required: true,
+        helpText:
+          'Please also include record on Clio/ NetDocuments matter (i.e Telephone note)',
+        showIf: { field: 'Have bank details been verified?', equals: true },
+      },
+      {
         label: 'Why not?',
         type: 'textarea',
         required: true,
@@ -128,6 +137,25 @@ export const financialForms: FormItem[] = [
         defaultValue: false,
         helpText:
           'Disbursements will automatically be raised at time of posting onto the matter.',
+      },
+      {
+        label: 'Please list body of email below',
+        type: 'textarea',
+        required: true,
+        showIf: {
+          field: 'Should Accounts send invoice raised to the client?',
+          equals: true,
+        },
+      },
+      {
+        label:
+          'Accounts will send to the default email address on the matter. If this is different please enter below.',
+        type: 'text',
+        required: false,
+        showIf: {
+          field: 'Should Accounts send invoice raised to the client?',
+          equals: true,
+        },
       },
       {
         label: 'Should accounts make the client to office transfer as well?',

@@ -10,6 +10,7 @@ if (typeof fetch === 'undefined') {
 
 require('dotenv').config({ path: path.join(__dirname, '../.env.local'), override: false });
 const express = require('express');
+const cors = require('cors');
 const morgan = require('morgan');
 const keysRouter = require('./routes/keys');
 const refreshRouter = require('./routes/refresh');
@@ -25,6 +26,14 @@ const enquiriesRouter = require('./routes/enquiries');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// Enable CORS for all routes to allow frontend on port 3000 to access API on port 8080
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(morgan('dev'));
 app.use(express.json());

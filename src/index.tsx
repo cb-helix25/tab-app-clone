@@ -131,14 +131,29 @@ async function fetchEnquiries(
   userAow: string = '',
   userInitials: string = '',
 ): Promise<Enquiry[]> {
+  console.log('🚀 FETCHENQUIRIES CALLED WITH:');
+  console.log('   📧 email:', email);
+  console.log('   📅 dateFrom:', dateFrom);
+  console.log('   📅 dateTo:', dateTo);
+  console.log('   🏢 userAow:', userAow);
+  console.log('   👤 userInitials:', userInitials);
+
   const cacheKey = `enquiries-${email}-${dateFrom}-${dateTo}-${userAow}`;
   const cached = getCachedData<Enquiry[]>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('📦 Returning cached data:', cached.length);
+    return cached;
+  }
 
   // FOR TESTING: Only fetch from the NEW decoupled function to simulate production behavior
   let enquiries: Enquiry[] = [];
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const isLZUser = userInitials.toUpperCase() === 'LZ';
+  
+  console.log('🔍 ENVIRONMENT CHECK:');
+  console.log('   🖥️  isLocalDev:', isLocalDev);
+  console.log('   👤 isLZUser:', isLZUser);
+  console.log('   🌐 window.location.hostname:', window.location.hostname);
   
   if (isLocalDev || isLZUser) {
     try {
@@ -175,6 +190,11 @@ async function fetchEnquiries(
         const userEmail = email.toLowerCase();
         const userInitialsUpper = userInitials.toUpperCase();
         
+        console.log('🎯 FILTERING CRITERIA:');
+        console.log('   📧 userEmail:', userEmail);
+        console.log('   👤 userInitialsUpper:', userInitialsUpper);
+        console.log('   📦 rawNewEnquiries count:', rawNewEnquiries.length);
+        
         const filteredNewEnquiries = rawNewEnquiries.filter(enq => {
           const pocInitials = (enq.Point_of_Contact || enq.poc || '').toUpperCase();
           const pocEmail = (enq.Point_of_Contact || enq.poc || '').toLowerCase();
@@ -184,6 +204,15 @@ async function fetchEnquiries(
           // Only treat enquiries sent to the team inbox as unclaimed
           const unclaimedEmails = ['team@helix-law.com'];
           const isUnclaimed = unclaimedEmails.includes(pocEmail) || pocInitials === 'TEAM';
+
+          console.log(`   📋 Enquiry ${enq.ID}:`, {
+            pocInitials,
+            pocEmail,
+            matchesInitials,
+            matchesEmail,
+            isUnclaimed,
+            willKeep: matchesInitials || matchesEmail || isUnclaimed
+          });
 
           return matchesInitials || matchesEmail || isUnclaimed;
         });
@@ -209,6 +238,7 @@ async function fetchEnquiries(
         })) as Enquiry[];
         
         console.log('✅ Successfully fetched and filtered NEW enquiries data:', newEnquiries.length);
+        console.log('📊 NEW ENQUIRIES SAMPLE:', newEnquiries.slice(0, 2));
         
         // Add the NEW enquiries to the beginning of the array
         enquiries = [...newEnquiries, ...enquiries];
@@ -228,27 +258,27 @@ async function fetchEnquiries(
     console.log('🔵 Attempting to fetch LEGACY enquiries data (via proxy)...');
 
 
-    // Use the proxyBaseUrl so this call works locally or in production
-    const legacyBaseUrl = proxyBaseUrl;
+    // Use local Azure Function when developing, otherwise call production proxy
+    const legacyBaseUrl = isLocalDev
+      ? 'http://localhost:7071/api'
+      : 'https://helix-keys-proxy.azurewebsites.net/api';
     const legacyPath = process.env.REACT_APP_GET_ENQUIRIES_PATH;
     const legacyCode = process.env.REACT_APP_GET_ENQUIRIES_CODE;
     const legacyDataUrl = `${legacyBaseUrl}/${legacyPath}?code=${legacyCode}`;
 
-    // Always request all enquiries by using 'anyone'
-    const legacyRequestEmail = 'anyone';
-
     // Add debug log to confirm the call is being attempted
-    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email: legacyRequestEmail, dateFrom, dateTo });
+    console.log('[fetchEnquiries] Attempting legacy getEnquiries call:', legacyDataUrl, { email, dateFrom, dateTo });
 
     // The proxy expects POST with JSON body containing email, dateFrom, dateTo
+    // Use 'anyone' to retrieve all enquiries and filter client-side
     const legacyResponse = await fetch(legacyDataUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: legacyRequestEmail, // Request all enquiries; filter client-side
-        dateFrom: dateFrom,
-        dateTo: dateTo
-      })
+        email: 'anyone',
+        dateFrom,
+        dateTo,
+      }),
     });
 
     console.log('📋 LEGACY response status:', legacyResponse.status, legacyResponse.statusText);
@@ -349,6 +379,7 @@ async function fetchEnquiries(
   console.log('   Total before AOW filtering:', enquiries.length);
   console.log('   Total after AOW filtering:', filteredEnquiries.length);
   console.log('   User AOW:', userAow);
+  console.log('   📊 FINAL ENQUIRIES SAMPLE:', filteredEnquiries.slice(0, 2));
 
   setCachedData(cacheKey, filteredEnquiries);
   return filteredEnquiries;
@@ -533,6 +564,11 @@ const AppWithContext: React.FC = () => {
         }
       } else {
         console.log("Using local sample data for development.");
+        console.log('🔧 LOCAL DEV MODE DETECTED');
+        console.log('   🏠 useLocalData:', useLocalData);
+        console.log('   📱 inTeams:', inTeams);
+        console.log('   🌐 hostname:', window.location.hostname);
+        
         setTeamsContext({
           userObjectId: "local",
           userPrincipalName: "lz@helix-law.com",
@@ -544,30 +580,62 @@ const AppWithContext: React.FC = () => {
           ...localUserData[0],
           AOW: localSelectedAreas.join(', ')
         }];
+        
+        console.log('👤 LOCAL USER DATA SET:', initialUserData[0]);
+        
         setUserData(initialUserData as UserData[]);
         
         // For local development, also test the dual enquiries fetching
         const { dateFrom, dateTo } = getDateRange();
         const fullName = `${initialUserData[0].First} ${initialUserData[0].Last}`.trim();
         
+        console.log('🔍 ATTEMPTING LOCAL DEV API CALLS...');
+        console.log('   📅 dateFrom:', dateFrom);
+        console.log('   📅 dateTo:', dateTo);
+        console.log('   👤 fullName:', fullName);
+        
         try {
-          const [enquiriesRes, mattersRes] = await Promise.all([
-            fetchEnquiries(
+          console.log('🚀 MAKING LOCAL DEV API CALLS...');
+          
+          // Try to fetch enquiries independently first
+          let enquiriesRes: Enquiry[] = [];
+          try {
+            enquiriesRes = await fetchEnquiries(
               initialUserData[0].Email || "",
               dateFrom,
               dateTo,
               initialUserData[0].AOW || "",
               initialUserData[0].Initials || "",
-            ),
-            fetchMatters(fullName),
-          ]);
+            );
+            console.log('✅ Enquiries API call successful:', enquiriesRes?.length || 0);
+          } catch (enquiriesError) {
+            console.warn('⚠️ Enquiries API failed, using fallback:', enquiriesError);
+            enquiriesRes = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
+          }
+          
+          // Try to fetch matters separately (don't block enquiries)
+          let mattersRes: Matter[] = [];
+          try {
+            mattersRes = await fetchMatters(fullName);
+            console.log('✅ Matters API call successful:', mattersRes?.length || 0);
+          } catch (mattersError) {
+            console.warn('⚠️ Matters API failed, using fallback:', mattersError);
+            mattersRes = localMatters as unknown as Matter[];
+          }
+          
+          console.log('✅ LOCAL DEV API CALLS COMPLETED:');
+          console.log('   📊 enquiriesRes count:', enquiriesRes?.length || 0);
+          console.log('   🏢 mattersRes count:', mattersRes?.length || 0);
           
           setEnquiries(enquiriesRes);
           setMatters(mattersRes);
         } catch (err) {
-          console.error('Error fetching live data in local dev:', err);
+          console.error('❌ Unexpected error in local dev:', err);
+          console.log('🔄 FALLING BACK TO LOCAL SAMPLE DATA...');
           // Fallback to local sample data
-          setEnquiries(getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[]);
+          const fallbackEnquiries = getLiveLocalEnquiries(initialUserData[0].Email) as Enquiry[];
+          console.log('📦 Fallback enquiries count:', fallbackEnquiries?.length || 0);
+          setEnquiries(fallbackEnquiries);
           setMatters(localMatters as unknown as Matter[]);
         }
         

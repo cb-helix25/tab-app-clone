@@ -2808,7 +2808,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     );
     return () => setContent(null);
   }, [
-    setContent,
+    // setContent, // REMOVED: This was causing infinite update loop and blocking scroll
     isDarkMode,
     immediateActionsReady,
     immediateActionsList,
