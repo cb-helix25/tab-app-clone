@@ -1,12 +1,6 @@
 const express = require('express');
-const { DefaultAzureCredential } = require('@azure/identity');
-const { SecretClient } = require('@azure/keyvault-secrets');
+const { getSecret } = require('../utils/getSecret');
 const router = express.Router();
-
-// Set up Key Vault client
-const credential = new DefaultAzureCredential();
-const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
-const client = new SecretClient(vaultUrl, credential);
 
 // Route: GET /api/enquiries
 // Calls the external fetchEnquiriesData function (decoupled function in private vnet)
@@ -15,21 +9,17 @@ router.get('/', async (req, res) => {
     console.log('🔵 NEW ENQUIRIES ROUTE CALLED for decoupled function');
     console.log('🔍 Query parameters:', req.query);
 
-    // Try to get the function code from Key Vault
+    // Try to get the function code
     let functionCode;
     try {
-      const secret = await client.getSecret('fetchEnquiriesData-code');
-      functionCode = secret.value;
-      console.log('✅ Successfully retrieved function code from Key Vault');
+      functionCode = await getSecret('fetchEnquiriesData-code');
+      console.log('✅ Successfully retrieved function code');
     } catch (kvError) {
-      console.error('❌ Failed to get function code from Key Vault:', kvError.message);
-      // For local development, you might want to use a hardcoded value or env var
-      // Uncomment the line below if you have the code in your local env:
-      // functionCode = process.env.FETCH_ENQUIRIES_DATA_CODE;
-      return res.status(500).json({ 
-        enquiries: [], 
-        count: 0, 
-        error: 'Failed to authenticate with external function' 
+      console.error('❌ Failed to get function code:', kvError.message);
+      return res.status(500).json({
+        enquiries: [],
+        count: 0,
+        error: 'Failed to authenticate with external function'
       });
     }
 
@@ -64,3 +54,4 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router;
+

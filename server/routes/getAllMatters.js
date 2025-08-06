@@ -1,13 +1,7 @@
 const express = require('express');
-const { DefaultAzureCredential } = require('@azure/identity');
-const { SecretClient } = require('@azure/keyvault-secrets');
+const { getSecret } = require('../utils/getSecret');
 
 const router = express.Router();
-
-// Set up Key Vault client
-const credential = new DefaultAzureCredential();
-const vaultUrl = process.env.KEY_VAULT_URL || 'https://helix-keys.vault.azure.net/';
-const client = new SecretClient(vaultUrl, credential);
 
 // Route: GET /api/getAllMatters
 // Proxies to the getAllMatters Azure Function so local dev can use real data
@@ -15,10 +9,9 @@ router.get('/', async (_req, res) => {
     try {
         let functionCode;
         try {
-            const secret = await client.getSecret('getAllMatters-code');
-            functionCode = secret.value;
+            functionCode = await getSecret('getAllMatters-code');
         } catch (kvError) {
-            console.error('Failed to retrieve getAllMatters-code from Key Vault', kvError.message);
+            console.error('Failed to retrieve getAllMatters-code', kvError.message);
             return res.status(500).json({ error: 'Failed to authenticate with getAllMatters function' });
         }
 
@@ -42,3 +35,4 @@ router.get('/', async (_req, res) => {
 });
 
 module.exports = router;
+
