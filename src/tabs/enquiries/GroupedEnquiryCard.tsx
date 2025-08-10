@@ -144,27 +144,20 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
   const groupCardStyle = mergeStyles({
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: isDarkMode 
-      ? colours.dark.cardBackground 
-      : colours.light.cardBackground,
-    border: `2px solid ${colours.highlight}`,
-    borderLeft: `6px solid ${colours.highlight}`,
-    borderRadius: '8px',
-    marginBottom: isLast ? 0 : '12px',
+    backgroundColor: isDarkMode ? '#1f242b' : '#ffffff',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+    borderLeft: `4px solid ${colours.highlight}`,
+    borderRadius: 6,
+    marginBottom: isLast ? 0 : 10,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'background-color 0.15s ease, transform 0.15s ease',
     fontFamily: 'Raleway, sans-serif',
     position: 'relative',
     overflow: 'hidden',
     selectors: {
       ':hover': {
-        backgroundColor: isDarkMode 
-          ? colours.dark.cardHover 
-          : colours.light.cardHover,
-        transform: 'translateX(4px)',
-        boxShadow: isDarkMode
-          ? '0 6px 25px rgba(0, 0, 0, 0.5)'
-          : '0 6px 25px rgba(0, 0, 0, 0.2)',
+        backgroundColor: isDarkMode ? '#242b33' : '#f9fbfc',
+        transform: 'translateX(2px)',
       },
     },
   });
@@ -172,65 +165,64 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
   const headerStyle = mergeStyles({
     display: 'flex',
     alignItems: 'center',
-    padding: '20px 24px',
-    gap: '24px',
-    borderBottom: isExpanded 
-      ? `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}` 
-      : 'none',
+    padding: '14px 18px',
+    gap: 20,
+    borderBottom: isExpanded ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : 'none',
   });
 
   const mainContentStyle = mergeStyles({
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: '2.5fr 1.2fr 1.2fr 1fr 120px',
+    gridTemplateColumns: '2fr 1.3fr 1fr 0.9fr 110px',
     alignItems: 'center',
-    gap: '24px',
+    gap: 20,
     width: '100%',
   });
 
   const nameStyle = mergeStyles({
-    fontWeight: '600',
-    fontSize: '16px',
+    fontWeight: 600,
+    fontSize: 15,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    marginBottom: '4px',
+    marginBottom: 2,
   });
 
   const emailStyle = mergeStyles({
-    fontSize: '13px',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
-    opacity: 0.8,
+    fontSize: 12,
+    color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+    fontWeight: 500,
   });
 
   const countBadgeStyle = mergeStyles({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colours.highlight,
-    color: '#ffffff',
-    borderRadius: '12px',
-    padding: '4px 8px',
-    fontSize: '12px',
-    fontWeight: '600',
-    marginLeft: '8px',
-    minWidth: '24px',
-    height: '24px',
+    backgroundColor: 'rgba(102,170,232,0.15)',
+    color: colours.highlight,
+    borderRadius: 14,
+    padding: '2px 8px',
+    fontSize: 11,
+    fontWeight: 600,
+    marginLeft: 6,
+    minWidth: 24,
+    height: 22,
   });
 
   const metaStyle = mergeStyles({
-    fontSize: '14px',
+    fontSize: 13,
     color: isDarkMode ? colours.dark.text : colours.light.text,
-    fontWeight: '500',
+    fontWeight: 600,
   });
 
   const valueStyle = mergeStyles({
-    fontSize: '14px',
+    fontSize: 13,
     color: colours.highlight,
-    fontWeight: '600',
+    fontWeight: 700,
   });
 
   const dateStyle = mergeStyles({
-    fontSize: '13px',
+    fontSize: 12,
     color: isDarkMode ? colours.dark.subText : colours.light.subText,
+    fontWeight: 500,
   });
 
   const actionsStyle = mergeStyles({
@@ -241,29 +233,28 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
   });
 
   const expandedContentStyle = mergeStyles({
-    padding: '0 24px 16px 24px',
-    backgroundColor: isDarkMode 
-      ? colours.dark.sectionBackground 
-      : colours.light.sectionBackground,
+    padding: '0 16px 10px 16px',
+    backgroundColor: isDarkMode ? '#1b2026' : '#f6f8f9',
   });
 
   const areaTagsStyle = mergeStyles({
     display: 'flex',
-    gap: '4px',
+    gap: 4,
     flexWrap: 'wrap',
-    marginTop: '4px',
+    marginTop: 4,
   });
 
   const areaTagStyle = (area: string) => mergeStyles({
     display: 'inline-block',
-    backgroundColor: getAreaColor(area),
-    color: '#ffffff',
-    fontSize: '10px',
-    fontWeight: '500',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    backgroundColor: `${getAreaColor(area)}15`,
+    color: getAreaColor(area),
+    fontSize: 9,
+    fontWeight: 600,
+    padding: '3px 6px',
+    borderRadius: 10,
+    textTransform: 'none',
+    letterSpacing: '0.3px',
+    border: `1px solid ${getAreaColor(area)}30`
   });
 
   const toggleExpanded = (e: React.MouseEvent<any>) => {

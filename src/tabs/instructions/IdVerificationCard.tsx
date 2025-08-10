@@ -70,7 +70,7 @@ const IdVerificationCard: React.FC<IdVerificationCardProps> = ({
         boxShadow: compact 
             ? '0 1px 3px rgba(0,0,0,0.08)' 
             : '0 2px 8px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)',
-        fontFamily: 'Segoe UI, sans-serif',
+    fontFamily: 'Raleway, sans-serif',
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         overflow: 'hidden',
         cursor: compact ? 'pointer' : 'default',

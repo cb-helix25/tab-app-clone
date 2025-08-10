@@ -1194,12 +1194,15 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
     if (enquiries && currentUserEmail) {
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay());
+  // FIX: Use Monday as the start of week (previous logic used Sunday via getDay())
+  // to stay consistent with getMondayOfCurrentWeek() used elsewhere (attendance, time metrics).
+  const startOfWeek = getMondayOfCurrentWeek();
+  startOfWeek.setHours(0, 0, 0, 0);
       const prevToday = new Date(today);
       prevToday.setDate(prevToday.getDate() - 7);
-      const prevWeekStart = new Date(startOfWeek);
-      prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const prevWeekStart = new Date(startOfWeek);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7); // Monday of previous week
+  prevWeekStart.setHours(0, 0, 0, 0);
       const prevWeekEnd = new Date(prevToday);
       const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
@@ -1222,16 +1225,18 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         Call_Taker: enq.Call_Taker || enq.rep,
       }));
 
-      // Debug logging
-      console.log('[Enquiry Metrics Debug] Raw enquiries count:', enquiries.length);
-      console.log('[Enquiry Metrics Debug] Normalized enquiries count:', normalizedEnquiries.length);
-      console.log('[Enquiry Metrics Debug] currentUserEmail:', currentUserEmail);
-      console.log('[Enquiry Metrics Debug] userInitials:', userInitials);
-      console.log('[Enquiry Metrics Debug] Sample raw data:', enquiries.slice(0, 3).map(e => ({ 
-        original_poc: e.poc, 
-        Point_of_Contact: e.Point_of_Contact 
-      })));
-      console.log('[Enquiry Metrics Debug] Sample normalized POC:', normalizedEnquiries.slice(0, 3).map(e => e.Point_of_Contact));
+      const DEBUG_ENQUIRY_METRICS = false;
+      if (DEBUG_ENQUIRY_METRICS) {
+        console.log('[Enquiry Metrics Debug] Raw enquiries count:', enquiries.length);
+        console.log('[Enquiry Metrics Debug] Normalized enquiries count:', normalizedEnquiries.length);
+        console.log('[Enquiry Metrics Debug] currentUserEmail:', currentUserEmail);
+        console.log('[Enquiry Metrics Debug] userInitials:', userInitials);
+        console.log('[Enquiry Metrics Debug] Sample raw data:', enquiries.slice(0, 3).map(e => ({
+          original_poc: e.poc,
+          Point_of_Contact: e.Point_of_Contact
+        })));
+        console.log('[Enquiry Metrics Debug] Sample normalized POC:', normalizedEnquiries.slice(0, 3).map(e => e.Point_of_Contact));
+      }
 
       // Choose conversion subject: Sam Packwood in local, or when prod user is LZ; otherwise current user
       const isLocalhost = window.location.hostname === 'localhost';
@@ -1259,11 +1264,12 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         );
       }).length;
 
-      // Additional debug logging
-  console.log('[Enquiry Metrics Debug] Conversion subject is SP:', isConversionUseSP);
-      console.log('[Enquiry Metrics Debug] Today count:', todayCount);
+      if (DEBUG_ENQUIRY_METRICS) {
+        console.log('[Enquiry Metrics Debug] Conversion subject is SP:', isConversionUseSP);
+        console.log('[Enquiry Metrics Debug] Today count:', todayCount);
+      }
 
-      const weekToDateCount = normalizedEnquiries.filter((enquiry: any) => {
+  const weekToDateCount = normalizedEnquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (
@@ -1292,7 +1298,7 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
         );
       }).length;
 
-      const prevWeekCount = normalizedEnquiries.filter((enquiry: any) => {
+  const prevWeekCount = normalizedEnquiries.filter((enquiry: any) => {
         if (!enquiry.Touchpoint_Date) return false;
         const enquiryDate = new Date(enquiry.Touchpoint_Date);
         return (

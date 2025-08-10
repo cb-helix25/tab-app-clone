@@ -35,9 +35,8 @@ interface ClientInfo {
 interface DealCaptureFormProps {
   enquiry: Enquiry;
   onSubmit: (data: {
-    serviceDescription: string;
+    initialScopeDescription: string;
     amount: number;
-    dealExpiry: string;
     isMultiClient: boolean;
     clients: ClientInfo[];
   }) => void;
@@ -47,8 +46,8 @@ interface DealCaptureFormProps {
   clientIds?: (string | number)[];
   onAmountChange?: (val: string) => void;
   onAmountBlur?: (val: string) => void;
-  serviceDescription: string;
-  setServiceDescription: (val: string) => void;
+  initialScopeDescription: string;
+  setInitialScopeDescription: (val: string) => void;
   selectedOption: IDropdownOption | undefined;
   setSelectedOption: (opt: IDropdownOption | undefined) => void;
   onDescriptionHeightChange?: (height: number) => void;
@@ -58,16 +57,65 @@ interface DealCaptureFormProps {
   onSavedChange?: (saved: boolean) => void;
 }
 
-// Service options, 'Other' triggers bespoke input
+// Service options with detailed descriptions and qualifying questions
 const SERVICE_OPTIONS: IDropdownOption[] = [
-  { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
-  { key: 'Debt Recovery (Pre-Litigation)', text: 'Debt Recovery (Pre-Litigation)' },
-  { key: 'Debt Recovery (Enforcement)', text: 'Debt Recovery (Enforcement)' },
-  { key: 'Commercial Contract Drafting', text: 'Commercial Contract Drafting' },
-  { key: 'Contract Negotiation Support', text: 'Contract Negotiation Support' },
-  { key: 'Regulatory Compliance Advisory', text: 'Regulatory Compliance Advisory' },
-  { key: 'Data Protection & GDPR Consultancy', text: 'Data Protection & GDPR Consultancy' },
-  { key: 'Other', text: 'Other (bespoke)' },
+  { 
+    key: 'Shareholder Dispute', 
+    text: 'Shareholder Dispute - Initial assessment and strategy memo',
+    data: { 
+      questions: ['How many shareholders are involved?', 'What is the nature of the dispute?', 'Are there existing shareholder agreements?'],
+      scope: 'Review documents, assess legal position, provide strategy memo with next steps'
+    }
+  },
+  { 
+    key: 'Debt Recovery (Pre-Litigation)', 
+    text: 'Debt Recovery (Pre-Litigation) - Letter before action and negotiation',
+    data: { 
+      questions: ['What is the debt amount?', 'What evidence of debt exists?', 'Have any demands been made?'],
+      scope: 'Draft letter before action, negotiate settlement, advise on prospects'
+    }
+  },
+  { 
+    key: 'Debt Recovery (Enforcement)', 
+    text: 'Debt Recovery (Enforcement) - Court proceedings preparation',
+    data: { 
+      questions: ['Has a letter before action been sent?', 'What is the debtor\'s response?', 'Are there any defences?'],
+      scope: 'Prepare court documents, file proceedings, manage initial case steps'
+    }
+  },
+  { 
+    key: 'Commercial Contract Drafting', 
+    text: 'Commercial Contract Drafting - First draft preparation',
+    data: { 
+      questions: ['What type of contract is needed?', 'Who are the parties?', 'What are the key commercial terms?'],
+      scope: 'Draft initial contract, incorporate standard terms, provide explanatory notes'
+    }
+  },
+  { 
+    key: 'Contract Negotiation Support', 
+    text: 'Contract Negotiation Support - Review and advice',
+    data: { 
+      questions: ['Is this a new contract or revision?', 'What are your key concerns?', 'What\'s your negotiation position?'],
+      scope: 'Review contract terms, identify risks, provide negotiation strategy and support'
+    }
+  },
+  { 
+    key: 'Regulatory Compliance Advisory', 
+    text: 'Regulatory Compliance Advisory - Initial compliance review',
+    data: { 
+      questions: ['Which regulations apply to your business?', 'Are there current compliance concerns?', 'What\'s your risk tolerance?'],
+      scope: 'Review current compliance, identify gaps, provide action plan with priorities'
+    }
+  },
+  { 
+    key: 'Data Protection & GDPR Consultancy', 
+    text: 'Data Protection & GDPR - Privacy audit and action plan',
+    data: { 
+      questions: ['What personal data do you process?', 'Do you have a privacy policy?', 'Any previous data issues?'],
+      scope: 'Conduct privacy audit, review policies, provide GDPR compliance action plan'
+    }
+  },
+  { key: 'Other', text: 'Other (custom scope required)' },
 ];
 
 function formatCurrency(val: string | number) {
@@ -86,8 +134,8 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   clientIds,
   onAmountChange,
   onAmountBlur,
-  serviceDescription,
-  setServiceDescription,
+  initialScopeDescription,
+  setInitialScopeDescription,
   selectedOption,
   setSelectedOption,
   onDescriptionHeightChange,
@@ -97,9 +145,7 @@ const DealCaptureForm: React.FC<DealCaptureFormProps> = ({
   const [useBespoke, setUseBespoke] = useState(false);
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | undefined>();
-  const [dealExpiry, setDealExpiry] = useState(
-    addDays(new Date(), 14).toISOString().slice(0, 10)
-  );
+  // dealExpiry removed; validity fixed at 7 days per new brief
   const [isMultiClient, setIsMultiClient] = useState(false);
   const [clients, setClients] = useState<ClientInfo[]>([{ firstName: '', lastName: '', email: '' }]);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +166,7 @@ const addingClientRef = useRef(false);
     if (descRef.current) {
       onDescriptionHeightChange?.(descRef.current.getBoundingClientRect().height);
     }
-  }, [onDescriptionHeightChange, useBespoke, serviceDescription, selectedOption]);
+  }, [onDescriptionHeightChange, useBespoke, initialScopeDescription, selectedOption]);
 
   // Reset client blur state when toggling multi-client mode
   useLayoutEffect(() => {
@@ -212,8 +258,8 @@ const addingClientRef = useRef(false);
 
   const handleSave = () => {
     const num = parseFloat(amount.replace(/,/g, ''));
-    if (!serviceDescription || !amount) {
-      setError('Service description and amount are required');
+    if (!initialScopeDescription || !amount) {
+      setError('Initial scope and amount are required');
       return;
     }
     if (isNaN(num) || num <= 0) {
@@ -230,9 +276,8 @@ const addingClientRef = useRef(false);
     }
     setError(null);
     onSubmit({
-      serviceDescription,
+      initialScopeDescription,
       amount: num,
-      dealExpiry,
       isMultiClient,
       clients,
     });
@@ -244,11 +289,13 @@ const addingClientRef = useRef(false);
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    padding: 8,
-    gap: 4,
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd'}`,
+    padding: 16,
+    gap: 8,
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : '#e1e5e9'}`,
     borderRadius: 8,
     backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    transition: 'all 0.2s ease'
   };
 
   const labelStyle = mergeStyles({
@@ -260,9 +307,9 @@ const addingClientRef = useRef(false);
   const intakeContainer = mergeStyles(sectionStyle);
 
   const intakeHeader = mergeStyles({
-    color: isDarkMode ? '#fff' : colours.darkBlue,
+    color: isDarkMode ? '#fff' : colours.blue,
     fontWeight: 600,
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 8,
     padding: '0 4px',
     display: 'flex',
@@ -278,14 +325,17 @@ const addingClientRef = useRef(false);
     borderRadius: 0,
   });
 
-  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#ddd';
+  const separatorColour = isDarkMode ? 'rgba(255,255,255,0.1)' : '#e1e5e9';
 
   const dealFieldsContainer = mergeStyles(sectionStyle, {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 0,
     padding: 0,
-    borderRadius: 0,
+    borderRadius: 8,
+    border: `1px solid ${separatorColour}`,
+    background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     selectors: {
       '> div:last-child': { borderRight: 'none' },
     },
@@ -295,21 +345,33 @@ const addingClientRef = useRef(false);
     flexBasis: '40%',
     flexGrow: 1,
     minWidth: 250,
-    padding: 8,
+    padding: 20,
     display: 'flex',
     flexDirection: 'column',
     borderRight: `1px solid ${separatorColour}`,
+    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(54,144,206,0.02)',
+    transition: 'all 0.2s ease',
+    selectors: {
+      ':hover': {
+        background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(54,144,206,0.04)',
+      },
+    },
   });
 
   const amountFieldStyle = mergeStyles({
     flexBasis: '30%',
     flexGrow: 1,
     minWidth: 180,
-    padding: 8,
+    padding: 20,
     display: 'flex',
     flexDirection: 'column',
     borderRight: `1px solid ${separatorColour}`,
+    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(54,144,206,0.02)',
+    transition: 'all 0.2s ease',
     selectors: {
+      ':hover': {
+        background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(54,144,206,0.04)',
+      },
       '@media (max-width: 610px)': {
         borderRight: 'none',
       },
@@ -320,10 +382,15 @@ const addingClientRef = useRef(false);
     flexBasis: '30%',
     flexGrow: 1,
     minWidth: 180,
-    padding: 8,
+    padding: 20,
     display: 'flex',
     flexDirection: 'column',
+    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(54,144,206,0.02)',
+    transition: 'all 0.2s ease',
     selectors: {
+      ':hover': {
+        background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(54,144,206,0.04)',
+      },
       '@media (max-width: 610px)': {
         borderTop: `1px solid ${separatorColour}`,
       },
@@ -333,16 +400,17 @@ const addingClientRef = useRef(false);
 
   const toggleContainer = mergeStyles({
     display: 'flex',
-    border: `1px solid ${colours.darkBlue}`,
-    borderRadius: 0,
-  overflow: 'hidden',
-  cursor: 'pointer',
-  width: '100%',
-  marginTop: 8,
-  marginBottom: 8,
-  height: '100%', // allow stretching in parent flex row
-  alignItems: 'stretch', // children stretch vertically
-});
+    border: `1px solid ${colours.blue}`,
+    borderRadius: 6,
+    overflow: 'hidden',
+    cursor: 'pointer',
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+    height: '100%', // allow stretching in parent flex row
+    alignItems: 'stretch', // children stretch vertically
+    transition: 'all 0.2s ease'
+  });
 
 const toggleHalf = (selected: boolean) =>
   mergeStyles({
@@ -350,7 +418,7 @@ const toggleHalf = (selected: boolean) =>
     flex: 1,
     height: '100%',
     backgroundColor: selected
-      ? colours.darkBlue
+      ? colours.blue
       : isDarkMode
       ? colours.dark.inputBackground
       : colours.light.inputBackground,
@@ -361,18 +429,36 @@ const toggleHalf = (selected: boolean) =>
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'background-color 0.2s, color 0.2s',
-    boxShadow: selected ? `inset 0 0 0 2px ${colours.darkBlue}` : 'none',
+    transition: 'all 0.2s ease',
+    boxShadow: selected ? `inset 0 0 0 2px ${colours.blue}` : 'none',
+    selectors: {
+      ':hover': {
+        backgroundColor: selected 
+          ? colours.darkBlue 
+          : isDarkMode 
+          ? colours.dark.cardHover 
+          : '#f8f9fa'
+      }
+    }
   });
 
   const addClientStyle = mergeStyles({
-    color: colours.highlight,
+    color: colours.blue,
     cursor: 'pointer',
     fontSize: 13,
-    marginTop: 6,
+    marginTop: 8,
     userSelect: 'none',
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    transition: 'all 0.2s ease',
     selectors: {
-      ':hover': { textDecoration: 'underline' },
+      ':hover': { 
+        textDecoration: 'underline',
+        color: colours.darkBlue,
+        transform: 'translateY(-1px)'
+      },
     },
   });
 
@@ -413,8 +499,7 @@ useLayoutEffect(() => {
   const ready =
     amountBlurred &&
     (!isMultiClient || clientsBlurred) &&
-    serviceDescription.trim() &&
-    dealExpiry &&
+  initialScopeDescription.trim() &&
     validAmount &&
     (!isMultiClient || allClientFieldsFilled);
 
@@ -426,8 +511,7 @@ useLayoutEffect(() => {
 }, [
   amountBlurred,
   clientsBlurred,
-  serviceDescription,
-  dealExpiry,
+  initialScopeDescription,
   amount,
   isMultiClient,
   clients,
@@ -437,15 +521,8 @@ useLayoutEffect(() => {
 
   const rootStackStyle = mergeStyles(sectionStyle, {
     height: '100%',
-    transition: 'box-shadow 0.2s ease',
-    borderRadius: 0,
-    selectors: {
-      ':hover': {
-        boxShadow: isDarkMode
-          ? '0 2px 4px rgba(0,0,0,0.3)'
-          : '0 2px 4px rgba(0,0,0,0.1)',
-      },
-    },
+    transition: 'all 0.2s ease',
+    borderRadius: 8,
   });
 
   return (
@@ -458,7 +535,18 @@ useLayoutEffect(() => {
           {!useBespoke ? (
             <Stack tokens={{ childrenGap: 6 }}>
                 <div>
-                  <div className={intakeHeader}>Service Description</div>
+                  <div className={intakeHeader}>Initial Scope</div>
+                  <Text 
+                    variant="small" 
+                    styles={{ root: { 
+                      color: colours.greyText, 
+                      marginBottom: 8, 
+                      fontSize: 11,
+                      lineHeight: 1.4 
+                    }}}
+                  >
+                    What we will be doing and our fee for this initial work
+                  </Text>
                   <Dropdown
                     options={SERVICE_OPTIONS}
                     styles={{
@@ -471,37 +559,72 @@ useLayoutEffect(() => {
                     onChange={(_, option) => {
                       if (option?.key === 'Other') {
                         setUseBespoke(true);
-                        setServiceDescription('');
+                        setInitialScopeDescription('');
                         setSelectedOption(undefined);
                       } else {
                         setSelectedOption(option);
-                        setServiceDescription(option?.text || '');
+                        setInitialScopeDescription(option?.text || '');
                       }
                     }}
                     required
                   />
+                  {selectedOption && selectedOption.key !== 'Other' && selectedOption.data && (
+                    <div style={{ 
+                      marginTop: 12, 
+                      padding: 8, 
+                      background: isDarkMode ? 'rgba(54,144,206,0.1)' : 'rgba(54,144,206,0.05)',
+                      borderRadius: 4,
+                      borderLeft: `3px solid ${colours.blue}`
+                    }}>
+                      <Text variant="small" styles={{ root: { fontWeight: 600, color: colours.blue, marginBottom: 4 }}}>
+                        Qualifying Questions:
+                      </Text>
+                      {selectedOption.data.questions?.map((question: string, idx: number) => (
+                        <Text key={idx} variant="small" styles={{ root: { color: colours.greyText, marginBottom: 2, fontSize: 11 }}}>
+                          • {question}
+                        </Text>
+                      ))}
+                      <Text variant="small" styles={{ root: { fontWeight: 600, color: colours.blue, marginTop: 8, marginBottom: 4 }}}>
+                        Initial Scope:
+                      </Text>
+                      <Text variant="small" styles={{ root: { color: colours.greyText, fontSize: 11, lineHeight: 1.4 }}}>
+                        {selectedOption.data.scope}
+                      </Text>
+                    </div>
+                  )}
                 </div>
                 <span
                   className={toggleFreehandStyle}
                   onClick={() => {
                     setUseBespoke(true);
-                    setServiceDescription('');
+                    setInitialScopeDescription('');
                     setSelectedOption(undefined);
                   }}
                 >
-                  Use freehand description
+                  Use custom description
                 </span>
               </Stack>
             ) : (
               <Stack>
                 <div>
-                  <div className={intakeHeader}>Freehand Description</div>
+                  <div className={intakeHeader}>Initial Scope - Custom</div>
+                  <Text 
+                    variant="small" 
+                    styles={{ root: { 
+                      color: colours.greyText, 
+                      marginBottom: 8, 
+                      fontSize: 11,
+                      lineHeight: 1.4 
+                    }}}
+                  >
+                    Describe what we will be doing and our fee for this initial work
+                  </Text>
                   <TextField
                     multiline
                     required
                     autoAdjustHeight
-                    value={serviceDescription}
-                    onChange={(_, v) => setServiceDescription((v || '').slice(0, 200))}
+                    value={initialScopeDescription}
+                    onChange={(_, v) => setInitialScopeDescription((v || '').slice(0, 200))}
                     styles={{
                       fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0, height: 'auto' }],
                       prefix: { paddingBottom: 0, paddingLeft: 4, display: 'flex', alignItems: 'center' },
@@ -513,7 +636,7 @@ useLayoutEffect(() => {
                 variant="small"
                 styles={{ root: { color: colours.greyText, marginTop: 2, marginLeft: 2 } }}
               >
-                {serviceDescription.length}/200 characters
+                {initialScopeDescription.length}/200 characters
               </Text>
               <span
                 onClick={() => setUseBespoke(false)}
@@ -531,6 +654,17 @@ useLayoutEffect(() => {
           </div>
         <div className={amountFieldStyle}>
           <div className={intakeHeader}>Amount (ex. VAT)</div>
+          <Text 
+            variant="small" 
+            styles={{ root: { 
+              color: colours.greyText, 
+              marginBottom: 8, 
+              fontSize: 11,
+              lineHeight: 1.4 
+            }}}
+          >
+            Quote valid for 7 days from delivery
+          </Text>
           <div className={amountContainerStyle}>
             <span
               className={mergeStyles(prefixStyle, {
@@ -555,15 +689,7 @@ useLayoutEffect(() => {
             </div>
           </div>
 
-        <div className={expiryFieldStyle}>
-          <div className={intakeHeader}>Deal Expiry</div>
-          <TextField
-            type="date"
-            value={dealExpiry}
-            onChange={(_, v) => setDealExpiry(v || '')}
-            styles={{ fieldGroup: [inputFieldStyle, { border: 'none', borderRadius: 0 }] }}
-          />
-        </div>
+  {/* Expiry removed: validity fixed at 7 days */}
       </div>
 
 
@@ -572,7 +698,7 @@ useLayoutEffect(() => {
         <div className={paymentInfoClass(true, true)}>{amountError}</div>
       )}
 
-      <PaymentPreview serviceDescription={serviceDescription} amount={amount} />
+  <PaymentPreview initialScopeDescription={initialScopeDescription} amount={amount} />
 
       <Stack>
         <div className={toggleContainer} aria-label="Select ID type">

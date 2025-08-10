@@ -5,6 +5,7 @@ import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import { parseISO, isToday, isYesterday, isThisWeek, format } from 'date-fns';
+import EnquiryBadge from './EnquiryBadge';
 
 interface Props {
   enquiry: Enquiry & { __sourceType?: 'new' | 'legacy' };
@@ -283,9 +284,20 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId]);
 
+  const areaIconName = (() => {
+    const a = enquiry.Area_of_Work?.toLowerCase();
+    switch (a) {
+      case 'commercial': return 'Shop';
+      case 'construction': return 'Build';
+      case 'property': return 'Home';
+      case 'employment': return 'People';
+      default: return 'Tag';
+    }
+  })();
+
   const container = mergeStyles({
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 5,
     padding: '14px 18px 14px 22px',
     background: isDark ? '#1f2732' : '#ffffff',
     border: `1px solid ${selected ? colours.blue : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
@@ -299,7 +311,9 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
     cursor: 'pointer',
     transition: 'border-color .2s, transform .15s',
     marginBottom: isLast ? 0 : 4,
-    // No left border
+    overflow: 'hidden',
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
     selectors: {
       ':hover': { transform: 'translateY(-2px)', borderColor: selected ? colours.blue : colours.highlight },
       ':active': { transform: 'translateY(-1px)' },
@@ -402,45 +416,35 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
       aria-pressed={selected}
       style={{ position: 'relative' }}
     >
-      {/* Top right badge: area, dot, and time since enquiry */}
-      {enquiry.Area_of_Work && (
-        <span
-          style={{
-            position: 'absolute',
-            top: 18,
-            right: 14,
-            display: 'flex',
-            alignItems: 'flex-end',
-            zIndex: 2,
-          }}
-        >
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              fontSize: 10,
-              padding: '2px 10px 2px 8px',
-              borderRadius: 12,
-              background: 'rgba(102,170,232,0.15)',
-              color: areaColor,
-              fontWeight: 600,
-              letterSpacing: .3,
-              textTransform: 'uppercase',
-              boxShadow: '0 1px 4px 0 rgba(33,56,82,0.07)',
-              position: 'relative',
-            }}
-          >
-            {enquiry.Area_of_Work}
-            <span className={pulse} aria-hidden="true" />
-            <LiveEnquiryAgeBadge enquiry={enquiry} />
-          </span>
-        </span>
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, gridColumn: '1 / span 2', marginTop: 8 }}>
-        <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDark ? '#fff' : '#0d2538', lineHeight: 1.2, marginRight: 16 } }}>
+      {/* Top right badge component */}
+      <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
+      <EnquiryBadge 
+        enquiry={enquiry} 
+        isClaimed={false}
+        showPulse={true}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, gridColumn: '1 / span 2', marginTop: 8 }}>
+        <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDark ? '#fff' : '#0d2538', lineHeight: 1.2 } }}>
           {(enquiry.First_Name || '') + ' ' + (enquiry.Last_Name || '')}
         </Text>
+        {enquiry.ID && (
+          <span style={{
+            fontSize: 11,
+            color: isDark ? 'rgba(255,255,255,0.45)' : '#b0b8c9',
+            fontWeight: 500,
+            letterSpacing: 0.5,
+            userSelect: 'all',
+            fontFamily: 'Consolas, Monaco, monospace',
+            background: 'none',
+            borderRadius: 4,
+            padding: '1px 6px',
+            display: 'inline-block',
+            verticalAlign: 'middle',
+            marginLeft: 2
+          }}>
+            ID {enquiry.ID}
+          </span>
+        )}
       </div>
       <div className={meta}>
         {enquiry.Value && (
@@ -456,36 +460,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
       )}
   {/* ID is now integrated into the area of work badge above */}
 // Clamp notes to 2 lines with expand/collapse
-      {/* ID badge bottom right */}
-      {enquiry.ID && (
-        <span
-          style={{
-            position: 'absolute',
-            right: 16,
-            bottom: 12,
-            zIndex: 2,
-            fontSize: 11,
-            color: '#b0b8c9',
-            fontWeight: 600,
-            letterSpacing: 1.2,
-            userSelect: 'all',
-            fontFamily: 'Consolas, Monaco, monospace',
-            background: 'rgba(180,200,255,0.10)',
-            borderRadius: 6,
-            padding: '2px 10px',
-            display: 'inline-block',
-            maxWidth: 110,
-            overflowWrap: 'break-word',
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis',
-            overflow: 'hidden',
-            verticalAlign: 'middle',
-            boxShadow: '0 1px 4px 0 rgba(33,56,82,0.07)',
-          }}
-        >
-          {enquiry.ID}
-        </span>
-      )}
+  {/* (ID badge bottom-right removed; now inline after name) */}
       <div
         style={{
           display: 'flex',

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stack, Text, Icon, Pivot, PivotItem } from '@fluentui/react';
+import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
 import SnippetEditPopover from './SnippetEditPopover';
@@ -29,6 +29,14 @@ interface EditorAndTemplateBlocksProps {
   bubblesContainerStyle?: any;
   saveCustomSnippet?: (blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) => Promise<void>;
   markBlockAsEdited?: (blockTitle: string, edited: boolean) => void;
+  initialNotes?: string;
+  subject: string;
+  setSubject: (subject: string) => void;
+  // Deal capture props
+  initialScopeDescription?: string;
+  onScopeDescriptionChange?: (value: string) => void;
+  amount?: string;
+  onAmountChange?: (value: string) => void;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -54,78 +62,71 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   bubblesContainerStyle,
   saveCustomSnippet,
   markBlockAsEdited,
+  initialNotes,
+  subject,
+  setSubject,
+  // Deal capture props
+  initialScopeDescription,
+  onScopeDescriptionChange,
+  amount,
+  onAmountChange
 }) => {
-  const [snippetEditState, setSnippetEditState] = useState<{
-    blockTitle: string;
-    optionLabel: string;
-    target: HTMLElement;
-  } | null>(null);
-  const [showOriginal, setShowOriginal] = useState<Record<string, boolean>>({});
-  const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
-  const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
-  const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
-  const [removedBlocks, setRemovedBlocks] = useState<Record<string, boolean>>({});
-  const editorRefs = useRef<Record<string, HTMLDivElement>>({});
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // State for removed blocks
+  const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
 
-  // Add missing handler functions
-  const handleAddPlaceholder = (event: React.MouseEvent, blockTitle: string, optionLabel: string) => {
-    event.stopPropagation();
-    const editorKey = `${blockTitle}-${optionLabel}`;
-    const editorEl = editorRefs.current[editorKey];
-    
-    if (editorEl) {
-      // Get current selection/cursor position
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        
-        // Create placeholder span
-        const placeholderSpan = document.createElement('span');
-        placeholderSpan.className = 'insert-placeholder';
-        placeholderSpan.setAttribute('data-insert', '');
-        placeholderSpan.setAttribute('tabindex', '0');
-        placeholderSpan.setAttribute('role', 'button');
-        placeholderSpan.style.cssText = 'background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500; cursor: pointer;';
-        placeholderSpan.textContent = '[INSERT details]';
-        
-        // Insert the placeholder at cursor position
-        range.deleteContents();
-        range.insertNode(placeholderSpan);
-        
-        // Move cursor after the placeholder
-        range.setStartAfter(placeholderSpan);
-        range.setEndAfter(placeholderSpan);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        
-        // Update the edited content
-        handleContentEdit(blockTitle, optionLabel, editorEl.innerHTML);
-      }
+  // Deal capture state
+  const [scopeDescription, setScopeDescription] = useState(initialScopeDescription || '');
+  const [amountValue, setAmountValue] = useState(amount || '');
+  const [amountError, setAmountError] = useState<string | null>(null);
+  // Removed PIC placeholder insertion feature per user request
+  const [scopeTextareaRows, setScopeTextareaRows] = useState(3);
+  const [isNotesPinned, setIsNotesPinned] = useState(false);
+  const [showSubjectHint, setShowSubjectHint] = useState(false);
+
+  // Calculate textarea rows based on content
+  const calculateRows = (text: string) => {
+    if (!text) return 3;
+    const lines = text.split('\n').length;
+    const approximateWrappedLines = Math.ceil(text.length / 65); // Slightly more conservative estimate
+    const calculatedRows = Math.max(lines, approximateWrappedLines);
+    return Math.max(3, Math.min(12, calculatedRows)); // Min 3, max 12 rows for better UX
+  };
+
+  // PIC feature removed
+
+  // Initialize textarea rows and ensure [AMOUNT] placeholder line present
+  useEffect(() => {
+    // Only set initial rows, do not auto-insert 'Estimated fee: [AMOUNT]'
+    setScopeTextareaRows(calculateRows(scopeDescription || ''));
+  }, []);
+
+  // Replace placeholders with actual values when amount changes
+  useEffect(() => {
+    if (amountValue && scopeDescription && scopeDescription.includes('[AMOUNT]')) {
+      const formattedAmount = `£${parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const updatedScope = scopeDescription.replace(/\[AMOUNT\]/g, formattedAmount);
+      setScopeDescription(updatedScope);
+      onScopeDescriptionChange?.(updatedScope);
     }
-    
-    // Close the popup
-    closeActionPopup(editorKey);
-  };
+  }, [amountValue]);
 
-  const handleLockToggle = (blockTitle: string, optionLabel: string) => {
-    const key = `${blockTitle}-${optionLabel}`;
-    setCollapsedBlocks(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
+  // Handle removing a block
   const handleRemoveBlock = (block: TemplateBlock) => {
-    // Mark block as removed so it's hidden from the UI
-    setRemovedBlocks(prev => ({ ...prev, [block.title]: true }));
+    // Mark the block as removed
+    setRemovedBlocks(prev => ({
+      ...prev,
+      [block.title]: true
+    }));
     
-    // Also call the parent's clear handler to remove from main editor
-    if (handleClearBlock) {
-      handleClearBlock(block);
+    // Clear the selection for this block
+    if (block.isMultiSelect) {
+      handleMultiSelectChange(block.title, []);
+    } else {
+      handleSingleSelectChange(block.title, '');
     }
   };
 
+  // Handle re-inserting a removed block
   const handleReinsertBlock = (block: TemplateBlock) => {
     // Remove from removed blocks to show it again
     setRemovedBlocks(prev => {
@@ -133,335 +134,522 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       delete newState[block.title];
       return newState;
     });
+  };
+
+  // Deal capture event handlers
+  const handleScopeDescriptionChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+    const value = newValue || '';
+    setScopeDescription(value);
     
-    const selectedOption = getSelectedOption(block);
-    insertTemplateBlock(block, selectedOption, false);
-  };
-
-  // Helper: get selected option for a block
-  const getSelectedOption = (block: TemplateBlock): string => {
-    const sel = selectedTemplateOptions[block.title];
-    if (typeof sel === 'string') return sel;
-    if (Array.isArray(sel) && sel.length > 0) return sel[0];
-    return block.options[0]?.label || '';
-  };
-
-  // Auto-insert default content once the body placeholders are ready
-  useEffect(() => {
-    templateBlocks
-      .filter(block => !removedBlocks[block.title]) // Only process non-removed blocks
-      .forEach(block => {
-        const selectedOption = getSelectedOption(block);
-        if (
-          !insertedBlocks[block.title] &&
-          !insertedBlocks[`${block.title}-${selectedOption}`]
-        ) {
-          const placeholder = bodyEditorRef.current?.querySelector(
-            `span[data-placeholder="${block.placeholder}"]`
-          );
-          if (placeholder) {
-            setTimeout(() => {
-              insertTemplateBlock(block, selectedOption, false);
-            }, 0);
-          }
-        }
-      });
-  }, [
-    templateBlocks,
-    selectedTemplateOptions,
-    insertedBlocks,
-    body,
-    insertTemplateBlock,
-    removedBlocks,
-  ]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Add event listener for placeholder interaction
-  useEffect(() => {
-    const handlePlaceholderClick = (e: Event) => {
-      const target = e.target as HTMLElement;
-      if (target.classList.contains('insert-placeholder')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Simple placeholder editing - make it editable temporarily
-        target.style.backgroundColor = '#fff3cd';
-        target.style.border = '1px dashed #856404';
-        target.contentEditable = 'true';
-        target.focus();
-        
-        const handleBlur = () => {
-          target.contentEditable = 'false';
-          target.style.border = 'none';
-          target.removeEventListener('blur', handleBlur);
-          target.removeEventListener('keydown', handleEnter);
-        };
-        
-        const handleEnter = (e: KeyboardEvent) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            target.blur();
-          }
-        };
-        
-        target.addEventListener('blur', handleBlur);
-        target.addEventListener('keydown', handleEnter);
-      }
-    };
-
-    document.addEventListener('click', handlePlaceholderClick);
-    return () => {
-      document.removeEventListener('click', handlePlaceholderClick);
-    };
-  }, []);
-
-  const handleTabChange = (block: TemplateBlock, optionKey: string) => {
-    if (editedBlocks[block.title]) return;
-    handleSingleSelectChange(block.title, optionKey);
-    // Content will be updated by the useEffect below
-  };
-
-  // Update content when selected option changes (but not when editing content)
-  useEffect(() => {
-    templateBlocks
-      .filter(block => !removedBlocks[block.title]) // Only process non-removed blocks
-      .forEach(block => {
-      const selectedOption = getSelectedOption(block);
-      const editorKey = `${block.title}-${selectedOption}`;
-      const editorEl = editorRefs.current[editorKey];
-      
-      if (editorEl) {
-        const selectedOpt = block.options.find(opt => opt.label === selectedOption);
-        if (selectedOpt) {
-          // Only update content if the editor is not currently focused (to avoid cursor jumping)
-          if (document.activeElement !== editorEl) {
-            const editedText = editedContent[block.title]?.[selectedOption];
-            const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
-            
-            // Only update if content is different to avoid cursor jumping
-            if (editorEl.innerHTML !== contentToShow) {
-              // Use a timeout to avoid React conflicts
-              setTimeout(() => {
-                if (editorEl && document.activeElement !== editorEl) {
-                  editorEl.innerHTML = contentToShow;
-                }
-              }, 0);
-            }
-          }
-        }
-      }
-    });
-  }, [selectedTemplateOptions, removedBlocks]); // Added removedBlocks as dependency
-
-  // Set initial content when editors are first created
-  useEffect(() => {
-    templateBlocks
-      .filter(block => !removedBlocks[block.title]) // Only process non-removed blocks
-      .forEach(block => {
-      const selectedOption = getSelectedOption(block);
-      const editorKey = `${block.title}-${selectedOption}`;
-      const editorEl = editorRefs.current[editorKey];
-      
-      if (editorEl && (!editorEl.innerHTML || editorEl.innerHTML.trim() === '')) {
-        const selectedOpt = block.options.find(opt => opt.label === selectedOption);
-        if (selectedOpt) {
-          const editedText = editedContent[block.title]?.[selectedOption];
-          const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
-          // Use a timeout to avoid React conflicts
-          setTimeout(() => {
-            if (editorEl && (!editorEl.innerHTML || editorEl.innerHTML.trim() === '')) {
-              editorEl.innerHTML = contentToShow;
-            }
-          }, 0);
-        }
-      }
-    });
-  }, [templateBlocks, removedBlocks]);
-
-  // Get content with edited changes or original
-  const getProcessedContent = (blockTitle: string, optionLabel: string, originalContent: string): string => {
-    const editedText = editedContent[blockTitle]?.[optionLabel];
-    if (editedText !== undefined) {
-      return editedText;
-    }
-    return wrapInsertPlaceholders(originalContent);
-  };
-
-  // Wrap [INSERT] placeholders with contentEditable styling
-  const wrapInsertPlaceholders = (text: string): string => {
-    return text.replace(
-      /\[INSERT[^\]]*\]/gi,
-      (match) => `<span style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500;">${match}</span>`
-    );
-  };
-
-  // Handle content editing
-  const handleContentEdit = (blockTitle: string, optionLabel: string, content: string) => {
-    setEditedContent(prev => ({
-      ...prev,
-      [blockTitle]: {
-        ...prev[blockTitle],
-        [optionLabel]: content
-      }
-    }));
-
-    if (markBlockAsEdited) {
-      markBlockAsEdited(blockTitle, true);
-    }
-
-    // Debounced sync to main body for preview (300ms delay to avoid excessive updates)
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
+    // Auto-adjust textarea height
+    const newRows = calculateRows(value);
+    setScopeTextareaRows(newRows);
+    
+    // Process the value to replace placeholders with actual values
+    let processedValue = value;
+    
+    // Replace [AMOUNT] placeholder with actual amount if available
+    if (amountValue && processedValue.includes('[AMOUNT]')) {
+      const formattedAmount = `£${parseFloat(amountValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      processedValue = processedValue.replace(/\[AMOUNT\]/g, formattedAmount);
     }
     
-    syncTimeoutRef.current = setTimeout(() => {
-      const block = templateBlocks.find(b => b.title === blockTitle);
-      if (block && insertedBlocks[blockTitle]) {
-        const modifiedBlock = {
-          ...block,
-          options: block.options.map(opt => 
-            opt.label === optionLabel 
-              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
-              : opt
-          )
-        };
-        insertTemplateBlock(modifiedBlock, optionLabel, false);
-      }
-    }, 300);
+    onScopeDescriptionChange?.(processedValue);
   };
 
-  // Handle auto-insert when user finishes editing (on blur)
-  const handleContentBlur = (blockTitle: string, optionLabel: string) => {
-    // Clear any pending sync timeout since we're syncing immediately on blur
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = null;
-    }
-
-    const content = editedContent[blockTitle]?.[optionLabel];
-    if (content) {
-      const block = templateBlocks.find(b => b.title === blockTitle);
-      if (block) {
-        const modifiedBlock = {
-          ...block,
-          options: block.options.map(opt => 
-            opt.label === optionLabel 
-              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
-              : opt
-          )
-        };
-        insertTemplateBlock(modifiedBlock, optionLabel, false);
-      }
-    }
-  };
-
-  const toggleOriginalView = (blockTitle: string, optionLabel: string) => {
-    const key = `${blockTitle}-${optionLabel}`;
+  const handleAmountChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+    const value = newValue || '';
+    setAmountValue(value);
     
-    // Update the showOriginal state first
-    setShowOriginal(prev => {
-      const newState = {
-        ...prev,
-        [key]: !prev[key]
-      };
+    // Validate amount
+    if (value && isNaN(Number(value))) {
+      setAmountError('Please enter a valid number');
+    } else {
+      setAmountError(null);
+    }
+    
+    // Auto-update scope description by replacing [AMOUNT] placeholders
+    if (scopeDescription) {
+      let updatedScope = scopeDescription;
       
-      // Handle content update after state change
-      setTimeout(() => {
-        const editorEl = editorRefs.current[key];
-        if (editorEl) {
-          const block = templateBlocks.find(b => b.title === blockTitle);
-          const option = block?.options.find(opt => opt.label === optionLabel);
-          
-          if (block && option) {
-            const isShowingOriginal = newState[key];
-            
-            if (isShowingOriginal) {
-              // Store current content before showing original
-              const currentContent = editorEl.innerHTML;
-              setEditedContent(prev => ({
-                ...prev,
-                [blockTitle]: {
-                  ...prev[blockTitle],
-                  [optionLabel]: currentContent
-                }
-              }));
-            } else {
-              // When hiding original, restore edited content if it exists
-              const editedText = editedContent[blockTitle]?.[optionLabel];
-              if (editedText && editorEl) {
-                editorEl.innerHTML = editedText;
-              }
-            }
-          }
+      if (value && !isNaN(Number(value))) {
+        // Format the amount with currency and proper formatting
+        const numericValue = parseFloat(value);
+        const formattedAmount = `£${numericValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        // Replace existing [AMOUNT] placeholders with the actual formatted amount
+        if (updatedScope.includes('[AMOUNT]')) {
+          updatedScope = updatedScope.replace(/\[AMOUNT\]/g, formattedAmount);
+        } else if (!updatedScope.includes('Estimated fee:') && !updatedScope.includes('£')) {
+          // Add the amount if it doesn't exist yet
+          updatedScope = updatedScope + '\n\nEstimated fee: ' + formattedAmount;
+        } else if (updatedScope.includes('Estimated fee:')) {
+          // Replace existing amount in "Estimated fee:" line
+          updatedScope = updatedScope.replace(/(Estimated fee:\s*)£[\d,]+\.[\d]{2}/g, `$1${formattedAmount}`);
         }
-      }, 0);
-      
-      return newState;
-    });
-  };
-
-  const handleSaveSnippet = (e: React.MouseEvent, blockTitle: string, optionLabel: string) => {
-    e.stopPropagation();
-    setSnippetEditState({
-      blockTitle,
-      optionLabel,
-      target: e.currentTarget as HTMLElement,
-    });
-  };
-
-  const handleSnippetSave = async (data: { label: string; sortOrder: number; isNew: boolean; }) => {
-    if (snippetEditState && saveCustomSnippet) {
-      try {
-        await saveCustomSnippet(snippetEditState.blockTitle, data.label, data.sortOrder, data.isNew);
-        setSnippetEditState(null);
-      } catch (error) {
-        console.error('Failed to save snippet:', error);
+      } else if (value === '') {
+        // If amount is cleared, revert back to placeholder
+        updatedScope = updatedScope.replace(/£[\d,]+\.[\d]{2}/g, '[AMOUNT]');
       }
+      
+      setScopeDescription(updatedScope);
+      setScopeTextareaRows(calculateRows(updatedScope));
+      onScopeDescriptionChange?.(updatedScope);
     }
-  };
-
-  const handleEditorClick = (blockTitle: string, optionLabel: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    const key = `${blockTitle}-${optionLabel}`;
     
-    setShowActionPopup(prev => ({
-      ...prev,
-      [key]: true
-    }));
-  };
-
-  const closeActionPopup = (key: string) => {
-    setShowActionPopup(prev => ({
-      ...prev,
-      [key]: false
-    }));
+    onAmountChange?.(value);
   };
 
   return (
     <>
-      <style>
-        {`
-          @keyframes slideInFromRight {
-            from {
-              opacity: 0;
-              transform: translateX(100%);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
-        `}
-      </style>
       <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+        {/* Email Setup Section - Notes + Subject */}
+        <div style={{
+          border: '1px solid #e1e5e9',
+          borderRadius: '8px',
+            backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+          // Allow sticky children to work
+          overflow: 'visible',
+          marginBottom: 16
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '12px 16px',
+            backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+            borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <Icon iconName="Mail" styles={{ root: { fontSize: 14, color: colours.blue } }} />
+            <span style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: isDarkMode ? colours.dark.text : colours.darkBlue
+            }}>
+              Email and Pitch Composition
+            </span>
+          </div>
+
+          <div style={{ padding: 16 }}>
+            {/* Subject Line - Primary Focus */}
+            <div style={{ marginBottom: initialNotes ? 16 : 0 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <Icon iconName="Edit" styles={{ root: { fontSize: 12 } }} />
+                Subject Line
+              </div>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Craft your email subject based on the context below..."
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  border: `2px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  borderRadius: 8,
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+                  color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = colours.blue;
+                  e.target.style.boxShadow = `0 0 0 3px ${colours.blue}20`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+                  e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                }}
+              />
+            </div>
+
+            {/* Context Notes - Supporting Information */}
+            {initialNotes && (
+              <div style={{
+                position: isNotesPinned ? 'sticky' : 'static',
+                top: isNotesPinned ? '10px' : 'auto',
+                zIndex: isNotesPinned ? 100 : 1,
+                backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                padding: isNotesPinned ? '12px' : '0',
+                borderRadius: isNotesPinned ? '8px' : '0',
+                border: isNotesPinned ? `2px solid ${colours.blue}` : 'none',
+                boxShadow: isNotesPinned ? '0 4px 12px rgba(0,120,212,0.15)' : 'none',
+                marginBottom: isNotesPinned ? '16px' : '0',
+                transition: 'all 0.3s ease-in-out'
+              }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: isDarkMode ? colours.blue : colours.darkBlue,
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  position: 'relative'
+                }}>
+                  <span
+                    onMouseEnter={() => setShowSubjectHint(true)}
+                    onMouseLeave={() => setShowSubjectHint(false)}
+                    style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                  >
+                    <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
+                  </span>
+                  Enquiry Notes
+                  {isNotesPinned && (
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: colours.blue,
+                      backgroundColor: '#e3f2fd',
+                      padding: '1px 4px',
+                      borderRadius: '2px',
+                      marginLeft: 4
+                    }}>
+                      PINNED
+                    </span>
+                  )}
+                  {showSubjectHint && (
+                    <span style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '100%',
+                      marginTop: 2,
+                      background: isDarkMode ? colours.dark.inputBackground : '#fff',
+                      color: isDarkMode ? colours.blue : colours.darkBlue,
+                      fontSize: 10,
+                      fontWeight: 400,
+                      fontStyle: 'italic',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                      borderRadius: 4,
+                      padding: '4px 8px',
+                      zIndex: 10,
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                    }}>
+                      (use this to inform your subject line)
+                    </span>
+                  )}
+                  <div style={{ marginLeft: 'auto' }}>
+                    <button
+                      onClick={() => setIsNotesPinned(!isNotesPinned)}
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 10,
+                        backgroundColor: isNotesPinned ? '#0078d4' : '#f3f9ff',
+                        color: isNotesPinned ? 'white' : colours.blue,
+                        border: `1px solid ${colours.blue}`,
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        transition: 'all 0.2s ease',
+                        boxShadow: isNotesPinned ? '0 2px 4px rgba(0,120,212,0.3)' : 'none'
+                      }}
+                      title={isNotesPinned ? "Unpin notes from top" : "Pin notes to top while scrolling"}
+                      onMouseEnter={(e) => {
+                        if (!isNotesPinned) {
+                          e.currentTarget.style.backgroundColor = '#e3f2fd';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isNotesPinned) {
+                          e.currentTarget.style.backgroundColor = '#f3f9ff';
+                        }
+                      }}
+                    >
+                      📌 {isNotesPinned ? 'PINNED' : 'PIN'}
+                    </button>
+                  </div>
+                </div>
+                <div style={{
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: isDarkMode ? colours.dark.text : '#666',
+                  whiteSpace: 'pre-wrap',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  padding: 12,
+                  borderRadius: 6,
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  position: 'relative'
+                }}>
+                  {initialNotes}
+                  {/* Visual connector arrow pointing up to subject */}
+                  <div style={{
+                    position: 'absolute',
+                    top: -8,
+                    right: 20,
+                    width: 0,
+                    height: 0,
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderBottom: `8px solid ${isDarkMode ? colours.dark.inputBackground : '#f8f9fa'}`,
+                    zIndex: 2
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    top: -9,
+                    right: 20,
+                    width: 0,
+                    height: 0,
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderBottom: `8px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                    zIndex: 1
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* Deal Capture Section */}
+            <div style={{ marginTop: initialNotes ? 16 : 0 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <Icon iconName="BusinessHoursClock" styles={{ root: { fontSize: 12 } }} />
+                Scope & Quote Description
+              </div>
+              <Stack tokens={{ childrenGap: 12 }}>
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    marginBottom: 8,
+                    gap: 6,
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => {
+                          const template = `Advice and representation in relation to a commercial, shareholder or partnership dispute.\n\nOur service includes:\n- Initial review of relevant agreements and correspondence\n- Assessment of legal position and available remedies\n- Strategic advice on next steps and resolution options\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
+                          setScopeDescription(template);
+                          setScopeTextareaRows(calculateRows(template));
+                          onScopeDescriptionChange?.(template);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 400,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
+                          e.currentTarget.style.borderColor = colours.blue;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
+                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                        }}
+                        title="Insert commercial/shareholder dispute template"
+                      >Commercial/Shareholder Dispute</button>
+                      <button
+                        onClick={() => {
+                          const template = `Advice and representation for construction disputes, including adjudication.\n\nOur service includes:\n- Review of contract documents and payment history\n- Assessment of breach, termination or payment issues\n- Guidance on adjudication or court process\n- Practical advice to protect your position\n\nEstimated fee: [AMOUNT]`;
+                          setScopeDescription(template);
+                          setScopeTextareaRows(calculateRows(template));
+                          onScopeDescriptionChange?.(template);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 400,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
+                          e.currentTarget.style.borderColor = colours.blue;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
+                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                        }}
+                        title="Insert construction dispute template"
+                      >Construction Dispute</button>
+                      <button
+                        onClick={() => {
+                          const template = `Advice and representation in relation to property disputes or evictions.\n\nOur service includes:\n- Review of lease, tenancy or title documents\n- Assessment of grounds for possession or dispute\n- Guidance on process and timescales\n- Practical steps to protect your interests\n\nEstimated fee: [AMOUNT]`;
+                          setScopeDescription(template);
+                          setScopeTextareaRows(calculateRows(template));
+                          onScopeDescriptionChange?.(template);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 400,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
+                          e.currentTarget.style.borderColor = colours.blue;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
+                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                        }}
+                        title="Insert property dispute template"
+                      >Property Dispute</button>
+                      <button
+                        onClick={() => {
+                          const template = `Advice and action in relation to debt recovery or statutory demands.\n\nOur service includes:\n- Review of debt and supporting documents\n- Assessment of recovery options and risks\n- Preparation and service of statutory demand or claim\n- Guidance on defended claims and court process\n\nEstimated fee: [AMOUNT]`;
+                          setScopeDescription(template);
+                          setScopeTextareaRows(calculateRows(template));
+                          onScopeDescriptionChange?.(template);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 400,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
+                          e.currentTarget.style.borderColor = colours.blue;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
+                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                        }}
+                        title="Insert debt recovery template"
+                      >Debt Recovery</button>
+                      <button
+                        onClick={() => {
+                          const template = `Advice and representation in relation to other commercial disputes.\n\nOur service includes:\n- Initial review and assessment of your issue\n- Guidance on process, options and likely outcomes\n- Clear cost estimate and timescales\n\nEstimated fee: [AMOUNT]`;
+                          setScopeDescription(template);
+                          setScopeTextareaRows(calculateRows(template));
+                          onScopeDescriptionChange?.(template);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                          color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d1d1d1'}`,
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 400,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.border : '#e8f4fd';
+                          e.currentTarget.style.borderColor = colours.blue;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = isDarkMode ? colours.dark.inputBackground : '#f8f9fa';
+                          e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#d1d1d1';
+                        }}
+                        title="Insert other dispute template"
+                      >Other</button>
+                    </div>
+                  </div>
+                  <TextField
+                    multiline
+                    rows={scopeTextareaRows}
+                    value={scopeDescription}
+                    onChange={handleScopeDescriptionChange}
+                    placeholder="Describe what we will be doing and charging..."
+                    styles={{
+                      field: { 
+                        fontSize: 13,
+                        backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+                        color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                        resize: 'vertical' // Allow manual resize too
+                      },
+                      fieldGroup: { 
+                        border: `1px solid ${isDarkMode ? colours.dark.border : '#d2d0ce'}`,
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                </div>
+                
+                {/* Amount input - now integrated with scope */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  borderRadius: '4px'
+                }}>
+                  <Icon iconName="Calculator" styles={{ root: { fontSize: 14, color: colours.blue } }} />
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                    minWidth: '80px'
+                  }}>
+                    Amount (£):
+                  </span>
+                  <TextField
+                    value={amountValue}
+                    onChange={handleAmountChange}
+                    placeholder="5000"
+                    errorMessage={amountError || undefined}
+                    styles={{
+                      root: { flex: 1, maxWidth: '150px' },
+                      field: { 
+                        fontSize: 13,
+                        backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                        color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                        fontWeight: 600
+                      },
+                      fieldGroup: { 
+                        border: `1px solid ${isDarkMode ? colours.dark.border : '#d2d0ce'}`,
+                        borderRadius: '4px'
+                      }
+                    }}
+                  />
+                  <span style={{
+                    fontSize: 11,
+                    color: isDarkMode ? colours.dark.text : '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    Updates scope description automatically
+                  </span>
+                </div>
+              </Stack>
+            </div>
+          </div>
+        </div>
+
         {/* Show removed blocks section if there are any */}
         {Object.keys(removedBlocks).length > 0 && (
           <div style={{
@@ -512,372 +700,367 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           </div>
         )}
 
-        {/* Consolidated Email Editor */}
+        {/* Progressive reveal template blocks */}
         <div style={{
           border: '1px solid #e1e5e9',
           borderRadius: '6px',
           backgroundColor: '#fff',
           position: 'relative'
         }}>
-          {templateBlocks
-            .filter(block => !removedBlocks[block.title]) // Filter out removed blocks
-            .map((block, blockIndex) => {
-            const selectedOption = getSelectedOption(block);
-            const selectedOpt = block.options.find(opt => opt.label === selectedOption);
-            
-            if (!selectedOpt) return null;
-            
-            return (
-              <div key={`${block.title}-${selectedOpt.label}-${blockIndex}`} style={{ 
-                borderBottom: blockIndex < templateBlocks.length - 1 ? '1px solid #f0f0f0' : 'none',
-                padding: '12px',
-                position: 'relative'
-              }}>
-                {/* Block Title and Tabs */}
-                {!collapsedBlocks[`${block.title}-${selectedOpt.label}`] && (
-                  <div style={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    marginBottom: '12px',
-                    gap: '8px'
-                  }}>
-                    <Text styles={{
-                      root: { 
-                        fontSize: 11, 
-                        fontWeight: 500, 
-                        letterSpacing: '0.05px',
-                        whiteSpace: 'nowrap'
-                      } 
-                    }}>
-                      {block.title}:
-                    </Text>
-                    
-                    {block.options.length > 1 && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '4px',
-                          alignItems: 'center',
-                          flex: 1,
-                          opacity: editedBlocks[block.title] ? 0.5 : 1,
-                          pointerEvents: editedBlocks[block.title] ? 'none' : 'auto',
-                        }}
-                      >
-                        {block.options.map((option) => {
-                          const isSelected = option.label === selectedOption;
-                          return (
-                            <div
-                              key={option.label}
-                              style={{
-                                padding: '4px 8px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isSelected ? 600 : 400,
-                                color: isSelected ? colours.highlight : 'rgba(30,30,30,0.45)',
-                                borderBottom: isSelected ? `2px solid ${colours.highlight}` : '2px solid transparent',
-                                position: 'relative'
-                              }}
-                              onClick={() => handleTabChange(block, option.label)}
-                            >
-                              {option.label}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 16 }}>
+            {templateBlocks
+              .filter(block => !removedBlocks[block.title])
+              .map((block, blockIndex) => {
+                // Progressive reveal logic: show Introduction always, others only after Introduction has selections
+                const isIntroduction = blockIndex === 0;
+                const introBlock = templateBlocks[0];
+                const introSelectedOptions = selectedTemplateOptions[introBlock?.title];
+                const introHasSelections = introBlock?.isMultiSelect
+                  ? Array.isArray(introSelectedOptions) && introSelectedOptions.length > 0
+                  : introSelectedOptions && introSelectedOptions !== '';
 
-                    {/* Remove block button - thin cross */}
-                    <div
-                      style={{
-                        marginLeft: 'auto',
-                        cursor: 'pointer',
-                        color: '#999',
-                        fontSize: '16px',
-                        fontWeight: 300,
-                        lineHeight: 1,
-                        padding: '2px',
-                        borderRadius: '2px',
-                        transition: 'color 0.2s ease'
-                      }}
-                      onClick={() => handleRemoveBlock(block)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#d32f2f';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#999';
-                      }}
-                      title="Remove this block"
-                    >
-                      ×
-                    </div>
-                  </div>
-                )}
+                // Show Introduction always, show others only after Introduction has selections
+                if (!isIntroduction && !introHasSelections) {
+                  return null;
+                }
 
-                {/* Committed content display */}
-                {collapsedBlocks[`${block.title}-${selectedOpt.label}`] && (
-                  <div 
+                const selectedOptions = selectedTemplateOptions[block.title];
+                const isMultiSelect = block.isMultiSelect;
+                const hasSelections = isMultiSelect 
+                  ? Array.isArray(selectedOptions) && selectedOptions.length > 0
+                  : selectedOptions && selectedOptions !== '';
+                
+                return (
+                  <div
+                    key={`block-${block.title}-${blockIndex}`}
+                    className="block-editor"
                     style={{
-                      padding: '8px',
-                      border: `2px solid ${colours.green}`,
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      lineHeight: '1.4',
-                      whiteSpace: 'pre-wrap',
-                      backgroundColor: 'rgba(32, 178, 108, 0.05)',
-                      minHeight: '40px',
-                      position: 'relative',
-                      opacity: 0.9,
-                      cursor: 'pointer'
+                      border: hasSelections ? '1px solid #28a745' : '1px solid #e1e5e9',
+                      background: hasSelections ? '#f8fff9' : '#ffffff',
+                      borderRadius: '6px',
+                      overflow: 'hidden'
                     }}
-                    onClick={() => handleLockToggle(block.title, selectedOpt.label)}
-                    title="Click to unlock"
                   >
-                    {/* Committed content */}
-                    <div dangerouslySetInnerHTML={{
-                      __html: editedContent[block.title]?.[selectedOpt.label] || wrapInsertPlaceholders(selectedOpt.previewText)
-                    }} />
-                    
-                    {/* Locked badge */}
+                    {/* Block Header */}
                     <div style={{
-                      position: 'absolute',
-                      top: '4px',
-                      right: '4px',
-                      backgroundColor: colours.green,
-                      color: 'white',
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      fontSize: '9px',
-                      fontWeight: 600,
-                      pointerEvents: 'none',
+                      padding: '12px 16px',
+                      background: hasSelections ? '#f0f8f0' : '#f8f9fa',
+                      borderBottom: '1px solid #e1e5e9',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px'
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      <Icon iconName="Lock" styles={{ root: { fontSize: '8px' } }} />
-                      LOCKED
-                    </div>
-                  </div>
-                )}
-
-                {/* Content Editor - 50/50 side by side when showing original */}
-                {!collapsedBlocks[`${block.title}-${selectedOpt.label}`] && (
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {/* Main editor - takes 50% when original is shown, full width when not */}
-                    <div style={{ 
-                      flex: showOriginal[`${block.title}-${selectedOpt.label}`] ? 1 : '1 1 100%',
-                      transition: 'all 0.3s ease'
-                    }}>
-                      <div
-                        ref={(el) => {
-                          if (el) {
-                            editorRefs.current[`${block.title}-${selectedOpt.label}`] = el;
-                            // Set initial content immediately if empty
-                            if (!el.innerHTML || el.innerHTML.trim() === '') {
-                              const editedText = editedContent[block.title]?.[selectedOpt.label];
-                              const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
-                              el.innerHTML = contentToShow;
-                            }
-                          }
-                        }}
-                        contentEditable={true}
-                        suppressContentEditableWarning={true}
-                        style={{
-                          padding: '8px',
-                          border: '1px solid #e8e8e8',
-                          borderRadius: '4px',
-                          fontSize: '13px',
-                          lineHeight: '1.4',
-                          whiteSpace: 'pre-wrap',
-                          cursor: 'text',
-                          outline: 'none',
-                          backgroundColor: editedBlocks[block.title] ? '#ffffff' : colours.highlightNeutral,
-                          minHeight: '40px'
-                        }}
-                        onClick={(e) => handleEditorClick(block.title, selectedOpt.label, e)}
-                        onInput={(e) => {
-                          const content = (e.target as HTMLElement).innerHTML;
-                          handleContentEdit(block.title, selectedOpt.label, content);
-                        }}
-                        onBlur={() => handleContentBlur(block.title, selectedOpt.label)}
-                      />
-                    </div>
-
-                    {/* Original reference - slides in from right when shown */}
-                    {showOriginal[`${block.title}-${selectedOpt.label}`] && (
-                      <div style={{ 
-                        flex: 1,
-                        animation: 'slideInFromRight 0.3s ease-out'
-                      }}>
-                        <div
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <h3 style={{
+                          margin: 0,
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: '#0d3955'
+                        }}>
+                          {block.title}
+                        </h3>
+                        <span 
                           style={{
-                            padding: '8px',
-                            border: '1px solid #e8e8e8',
-                            borderRadius: '4px',
-                            fontSize: '13px',
-                            lineHeight: '1.4',
-                            whiteSpace: 'pre-wrap',
-                            backgroundColor: '#f8f9fa',
-                            minHeight: '40px',
-                            color: '#666',
-                            overflow: 'hidden'
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            backgroundColor: hasSelections ? '#d4edda' : '#e9ecef',
+                            color: hasSelections ? '#155724' : '#6c757d'
                           }}
                         >
-                          {wrapInsertPlaceholders(selectedOpt.previewText).replace(/<[^>]*>/g, '')}
-                        </div>
+                          {hasSelections ? 'included' : 'not included'}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Action Popup */}
-                {showActionPopup[`${block.title}-${selectedOpt.label}`] && !collapsedBlocks[`${block.title}-${selectedOpt.label}`] && (
-                  <>
-                    {/* Backdrop to close popup */}
-                    <div 
-                      style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 998
-                      }}
-                      onClick={() => closeActionPopup(`${block.title}-${selectedOpt.label}`)}
-                    />
-                    
-                    {/* Popup Actions */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '-50px',
-                        right: '8px',
-                        zIndex: 999,
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e1dfdd',
-                        borderRadius: '6px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        padding: '8px',
-                        display: 'flex',
-                        gap: '6px',
-                        alignItems: 'center'
-                      }}
-                    >
-                      {/* Add Placeholder */}
-                      <div
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e1dfdd',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '11px',
-                          color: colours.highlight,
-                        }}
-                        onClick={(e) => handleAddPlaceholder(e, block.title, selectedOpt.label)}
-                      >
-                        <Icon iconName="Add" styles={{ root: { fontSize: '10px' } }} />
-                        <span>Add Placeholder</span>
-                      </div>
-
-                      {/* Save Snippet */}
-                      {saveCustomSnippet && (
-                        <div
-                          style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#ffffff',
-                            border: '1px solid #e1dfdd',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '11px',
-                            color: '#d83b01',
-                          }}
-                          onClick={(e) => handleSaveSnippet(e, block.title, selectedOpt.label)}
-                        >
-                          <Icon iconName="Save" styles={{ root: { fontSize: '10px' } }} />
-                          <span>Save Snippet</span>
-                        </div>
-                      )}
-
-                      {/* Show Original */}
-                      <div 
-                        style={{
-                          fontSize: '11px',
-                          color: showOriginal[`${block.title}-${selectedOpt.label}`] ? colours.highlight : '#666',
-                          padding: '4px 8px',
-                          backgroundColor: showOriginal[`${block.title}-${selectedOpt.label}`] ? '#d6e8ff' : '#ffffff',
-                          border: `1px solid ${showOriginal[`${block.title}-${selectedOpt.label}`] ? colours.highlight : '#e1dfdd'}`,
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => toggleOriginalView(block.title, selectedOpt.label)}
-                      >
-                        <Icon iconName={showOriginal[`${block.title}-${selectedOpt.label}`] ? "Hide" : "Preview"} styles={{ root: { fontSize: '10px' } }} />
-                        <span>{showOriginal[`${block.title}-${selectedOpt.label}`] ? "Hide" : "Original"}</span>
-                      </div>
-
-                      {/* Lock/Unlock Toggle */}
-                      {(() => {
-                        const editorKey = `${block.title}-${selectedOpt.label}`;
-                        const isLocked = collapsedBlocks[editorKey];
-                        return (
-                          <div
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {hasSelections && (
+                          <button
+                            onClick={() => handleRemoveBlock(block)}
                             style={{
-                              padding: '4px 8px',
-                              backgroundColor: isLocked ? 'rgba(32, 178, 108, 0.1)' : '#ffffff',
-                              border: `1px solid ${isLocked ? colours.green : '#e1dfdd'}`,
-                              borderRadius: '4px',
+                              padding: '6px 12px',
+                              backgroundColor: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '11px',
-                              color: isLocked ? colours.green : '#666',
-                              cursor: 'pointer',
+                              gap: 4
                             }}
-                            onClick={() => handleLockToggle(block.title, selectedOpt.label)}
+                            title="Remove this section"
                           >
-                            <Icon iconName={isLocked ? "Lock" : "Unlock"} styles={{ root: { fontSize: '10px' } }} />
-                            <span>{isLocked ? "Locked" : "Lock"}</span>
-                          </div>
-                        );
-                      })()}
+                            <Icon iconName="Delete" />
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+                    
+                    {/* Special handling for Introduction block */}
+                    {isIntroduction ? (
+                      <div style={{ padding: 16 }}>
+                        {!hasSelections ? (
+                          <>
+                            <div style={{
+                              fontSize: 13,
+                              color: '#666',
+                              marginBottom: 12,
+                              fontWeight: 500
+                            }}>
+                              Select an introduction style:
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {block.options.map(option => {
+                                return (
+                                  <div
+                                    key={option.label}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: 8,
+                                      padding: '8px 12px',
+                                      borderRadius: 6,
+                                      border: '2px solid transparent',
+                                      background: '#fafbfc',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    onClick={() => {
+                                      // For Introduction, use single select behavior
+                                      handleMultiSelectChange(block.title, [option.label]);
+                                    }}
+                                  >
+                                    <div style={{
+                                      width: 20,
+                                      height: 20,
+                                      border: '2px solid #ccc',
+                                      borderRadius: '50%',
+                                      background: '#fff',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
+                                      marginTop: 2
+                                    }}>
+                                    </div>
+                                    
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: '#333',
+                                        marginBottom: 4
+                                      }}>
+                                        {option.label}
+                                      </div>
+                                      <div style={{
+                                        fontSize: 12,
+                                        color: '#666',
+                                        lineHeight: 1.4,
+                                        maxHeight: 60,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}>
+                                        {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
+                                        {option.previewText.length > 150 ? '...' : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Show content box and change selection button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                              <div style={{
+                                fontSize: 13,
+                                color: '#666',
+                                fontWeight: 500
+                              }}>
+                                Selected: {Array.isArray(selectedOptions) && selectedOptions.length > 0 ? selectedOptions[0] : ''}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  handleMultiSelectChange(block.title, []);
+                                }}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#6c757d',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Change Selection
+                              </button>
+                            </div>
+                            
+                            {/* Content preview box */}
+                            <div style={{
+                              border: '1px solid #e1e5e9',
+                              borderRadius: 6,
+                              padding: 12,
+                              backgroundColor: '#f8f9fa',
+                              fontSize: 13,
+                              lineHeight: 1.5,
+                              minHeight: 80
+                            }}>
+                              {Array.isArray(selectedOptions) && selectedOptions.length > 0 && 
+                                block.options.find(opt => opt.label === selectedOptions[0])?.previewText
+                              }
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      /* Regular template blocks */
+                      <div style={{ padding: 16 }}>
+                        <div style={{
+                          fontSize: 13,
+                          color: '#666',
+                          marginBottom: 12,
+                          fontWeight: 500
+                        }}>
+                          Select options to include in this section:
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {block.options.map(option => {
+                            const isSelected = isMultiSelect
+                              ? Array.isArray(selectedOptions) && selectedOptions.includes(option.label)
+                              : selectedOptions === option.label;
+                            
+                            return (
+                              <div
+                                key={option.label}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 8,
+                                  padding: '8px 12px',
+                                  borderRadius: 6,
+                                  border: isSelected ? `2px solid ${colours.blue}` : '2px solid transparent',
+                                  background: isSelected ? '#f0f6ff' : '#fafbfc',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => {
+                                  if (isMultiSelect) {
+                                    const currentSelections = Array.isArray(selectedOptions) ? selectedOptions : [];
+                                    if (isSelected) {
+                                      const updated = currentSelections.filter(s => s !== option.label);
+                                      handleMultiSelectChange(block.title, updated);
+                                    } else {
+                                      const updated = [...currentSelections, option.label];
+                                      handleMultiSelectChange(block.title, updated);
+                                    }
+                                  } else {
+                                    if (isSelected) {
+                                      handleSingleSelectChange(block.title, '');
+                                    } else {
+                                      handleSingleSelectChange(block.title, option.label);
+                                    }
+                                  }
+                                }}
+                              >
+                                <div style={{
+                                  width: 20,
+                                  height: 20,
+                                  border: isSelected ? `2px solid ${colours.blue}` : '2px solid #ccc',
+                                  borderRadius: isMultiSelect ? 4 : '50%',
+                                  background: isSelected ? colours.blue : '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  marginTop: 2
+                                }}>
+                                  {isSelected && (
+                                    <Icon 
+                                      iconName="CheckMark" 
+                                      styles={{ 
+                                        root: { 
+                                          fontSize: 12, 
+                                          color: '#fff',
+                                          fontWeight: 'bold'
+                                        } 
+                                      }} 
+                                    />
+                                  )}
+                                </div>
+                                
+                                <div style={{ flex: 1 }}>
+                                  <div style={{
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    color: isSelected ? colours.blue : '#333',
+                                    marginBottom: 4
+                                  }}>
+                                    {option.label}
+                                  </div>
+                                  <div style={{
+                                    fontSize: 12,
+                                    color: '#666',
+                                    lineHeight: 1.4,
+                                    maxHeight: 60,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
+                                    {option.previewText.length > 150 ? '...' : ''}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Insert Button */}
+                        {hasSelections && (
+                          <div style={{ marginTop: 16, textAlign: 'center' }}>
+                            <button
+                              onClick={() => {
+                                const optionsToInsert = isMultiSelect 
+                                  ? selectedOptions as string[]
+                                  : [selectedOptions as string];
+                                insertTemplateBlock(block, optionsToInsert, true);
+                              }}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: colours.blue,
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                margin: '0 auto'
+                              }}
+                            >
+                              <Icon iconName="Add" />
+                              Insert Selected Options
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       </Stack>
-
-      {snippetEditState && (
-        <SnippetEditPopover
-          target={snippetEditState.target}
-          originalText={(() => {
-            const block = templateBlocks.find(b => b.title === snippetEditState.blockTitle);
-            const opt = block?.options.find(o => o.label === snippetEditState.optionLabel);
-            const text = opt?.previewText || '';
-            return text.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
-          })()}
-          editedText={(() => {
-            const block = templateBlocks.find(b => b.title === snippetEditState.blockTitle);
-            const opt = block?.options.find(o => o.label === snippetEditState.optionLabel);
-            const original = opt?.previewText ? opt.previewText.replace(/\n/g, '<br />') : '';
-            const processed = getProcessedContent(snippetEditState.blockTitle, snippetEditState.optionLabel, original);
-            return processed.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '');
-          })()}
-          onSave={handleSnippetSave}
-          onDismiss={() => setSnippetEditState(null)}
-        />
-      )}
     </>
   );
 };

@@ -103,16 +103,16 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   };
 
   return (
-    <Stack tokens={{ childrenGap: 16 }} verticalAlign="stretch">
-      {/* Enquiry Notes - Repositioned to top for prominence */}
-      {initialNotes && (
-        <Stack
-          style={{ width: '100%' }}
-          className={mergeStyles(formContainerStyle, cardStyle)}
-          tokens={{ childrenGap: 8 }}
-        >
-          <div style={notesContainerStyle}>
-            <Label className={notesLabelStyle}>Initial Call Notes</Label>
+    <Stack tokens={{ childrenGap: 20 }} verticalAlign="stretch">
+      {/* Enquiry Notes or Message */}
+      <Stack
+        style={{ width: '100%', height: '100%' }}
+        className={mergeStyles(formContainerStyle, cardStyle)}
+        tokens={{ childrenGap: 6 }}
+      >
+        <div style={notesContainerStyle}>
+          <Label className={notesLabelStyle}>Enquiry Notes</Label>
+          {initialNotes && (
             <div ref={notesContentRef}>
               <Text
                 variant={useLargerText ? 'medium' : 'small'}
@@ -120,17 +120,15 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   root: {
                     color: colours.darkBlue,
                     whiteSpace: 'pre-wrap',
-                    lineHeight: 1.5,
-                    fontSize: useLargerText ? 14 : 13
                   },
                 }}
               >
                 {initialNotes}
               </Text>
             </div>
-          </div>
-        </Stack>
-      )}
+          )}
+        </div>
+      </Stack>
 
       {/* Recipient and Subject Fields */}
       <div ref={fieldsStackRef} style={{ width: '100%' }}>

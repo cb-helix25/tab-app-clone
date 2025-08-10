@@ -70,7 +70,7 @@ interface EmailPreviewProps {
   followUp?: string;
   fullName: string;
   userData: any;
-  serviceDescription?: string;
+  initialScopeDescription?: string; // renamed from serviceDescription
   clients?: { firstName: string; lastName: string; email: string }[];
   to: string;
   cc?: string;
@@ -96,7 +96,7 @@ const EmailPreview: React.FC<EmailPreviewProps> = ({
   followUp,
   fullName,
   userData,
-  serviceDescription,
+  initialScopeDescription,
   to,
   cc,
   bcc,
@@ -233,7 +233,7 @@ function formatCurrency(val?: string): string {
     >
       {/* Compact Header */}
       <div style={{
-        background: '#1a365d',
+        background: colours.blue,
         padding: '16px',
         color: 'white',
         position: 'relative',
@@ -301,7 +301,7 @@ function formatCurrency(val?: string): string {
                 padding: '4px 8px',
                 borderRadius: '3px'
               }}>
-                Requesting: {formatCurrency(amount)} for {serviceDescription || 'N/A'}
+                Requesting: {formatCurrency(amount)} for {initialScopeDescription || 'N/A'}
               </div>
               <div style={{
                 fontSize: '11px',
@@ -389,11 +389,11 @@ function formatCurrency(val?: string): string {
             <div style={{
               marginLeft: 'auto',
               padding: '2px 8px',
-              backgroundColor: '#d6e8ff',
+              backgroundColor: colours.highlightBlue,
               borderRadius: '6px',
               fontSize: '10px',
               fontWeight: 500,
-              color: colours.highlight
+              color: colours.blue
             }}>
               Preview
             </div>
@@ -462,13 +462,17 @@ function formatCurrency(val?: string): string {
             root: {
               backgroundColor: 'white',
               padding: '12px 16px',
-              borderRadius: '4px',
+              borderRadius: '6px',
               border: '1px solid #e8eaed',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              transition: 'all 0.2s ease'
             },
             label: {
               fontWeight: 500,
               color: '#3c4043'
+            },
+            checkbox: {
+              borderColor: colours.blue
             }
           }}
         />
@@ -487,14 +491,24 @@ function formatCurrency(val?: string): string {
               onClick={sendEmail}
               styles={{
                 root: {
-                  background: 'linear-gradient(135deg, #1a73e8 0%, #4285f4 100%)',
+                  background: colours.blue,
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   padding: '0 20px',
                   height: '40px',
                   fontWeight: 600,
-                  boxShadow: '0 2px 8px rgba(26,115,232,0.3)',
-                  opacity: 0.5
+                  boxShadow: `0 2px 8px rgba(54, 144, 206, 0.3)`,
+                  transition: 'all 0.2s ease'
+                },
+                rootHovered: {
+                  background: colours.darkBlue,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px 12px rgba(54, 144, 206, 0.4)`
+                },
+                rootPressed: {
+                  background: colours.darkBlue,
+                  transform: 'translateY(0)',
+                  boxShadow: `0 2px 6px rgba(54, 144, 206, 0.3)`
                 },
                 rootDisabled: {
                   background: '#e8eaed',
@@ -510,17 +524,20 @@ function formatCurrency(val?: string): string {
               styles={{
                 root: {
                   backgroundColor: isDraftConfirmed ? '#e8f5e8' : 'white',
-                  border: `1px solid ${isDraftConfirmed ? '#20b26c' : '#e8eaed'}`,
-                  color: isDraftConfirmed ? '#20b26c' : '#3c4043',
-                  borderRadius: '4px',
+                  border: `1px solid ${isDraftConfirmed ? colours.green : '#e8eaed'}`,
+                  color: isDraftConfirmed ? colours.green : '#3c4043',
+                  borderRadius: '6px',
                   padding: '0 20px',
                   height: '40px',
                   fontWeight: 600,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  transition: 'all 0.2s ease'
                 },
                 rootHovered: {
                   backgroundColor: isDraftConfirmed ? '#d1edd1' : '#f8f9fa',
-                  borderColor: isDraftConfirmed ? '#107c10' : '#dadce0'
+                  borderColor: isDraftConfirmed ? '#107c10' : '#dadce0',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                 },
                 rootDisabled: {
                   backgroundColor: '#f8f9fa',
@@ -540,15 +557,18 @@ function formatCurrency(val?: string): string {
                   root: {
                     backgroundColor: 'white',
                     border: '1px solid #e8eaed',
-                    borderRadius: '4px',
+                    borderRadius: '6px',
                     padding: '0 16px',
                     height: '36px',
                     fontWeight: 500,
-                    color: '#5f6368'
+                    color: '#5f6368',
+                    transition: 'all 0.2s ease'
                   },
                   rootHovered: {
                     backgroundColor: '#f8f9fa',
-                    borderColor: '#dadce0'
+                    borderColor: '#dadce0',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
                   }
                 }}
                 onClick={() => setIsAiOpen(true)}
@@ -561,15 +581,18 @@ function formatCurrency(val?: string): string {
                 root: {
                   backgroundColor: 'white',
                   border: '1px solid #e8eaed',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   padding: '0 16px',
                   height: '36px',
                   fontWeight: 500,
-                  color: '#5f6368'
+                  color: '#5f6368',
+                  transition: 'all 0.2s ease'
                 },
                 rootHovered: {
                   backgroundColor: '#f8f9fa',
-                  borderColor: '#dadce0'
+                  borderColor: '#dadce0',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
                 }
               }}
               onClick={() => {
