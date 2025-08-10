@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Text,
-  IconButton,
-  TooltipHost,
-  IButtonStyles,
-  Stack,
-} from '@fluentui/react';
+import { Text, Icon, IconButton, TooltipHost, IButtonStyles, Stack } from '@fluentui/react';
 import { mergeStyles } from '@fluentui/react/lib/Styling';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
@@ -99,20 +93,12 @@ const iconButtonStyles = (iconColor: string): IButtonStyles => ({
   },
 });
 
-const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
-  groupedEnquiry,
-  onSelect,
-  onRate,
-  teamData,
-  isLast,
-  userAOW,
-}) => {
+const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({ groupedEnquiry, onSelect, onRate, teamData, isLast, userAOW }) => {
   const { isDarkMode } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  const { clientName, clientEmail, enquiries, latestDate, totalValue, areas } = groupedEnquiry;
+  const { clientName, clientEmail, enquiries, latestDate, areas } = groupedEnquiry;
   const enquiryCount = enquiries.length;
-  const latestEnquiry = enquiries[0]; // Assuming enquiries are sorted by date
+  const latestEnquiry = enquiries[0];
 
   const formatDate = (dateStr: string): string => {
     try {
@@ -141,43 +127,47 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
     return `£${total.toLocaleString()}`;
   };
 
-  const groupCardStyle = mergeStyles({
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: isDarkMode ? '#1f242b' : '#ffffff',
-    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-    borderLeft: `4px solid ${colours.highlight}`,
-    borderRadius: 6,
-    marginBottom: isLast ? 0 : 10,
-    cursor: 'pointer',
-    transition: 'background-color 0.15s ease, transform 0.15s ease',
-    fontFamily: 'Raleway, sans-serif',
+  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
+  const cardStyle = mergeStyles({
     position: 'relative',
+    borderRadius: 6,
+    background: isDarkMode ? '#1f2732' : '#ffffff',
+    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+    boxShadow: isDarkMode ? '0 4px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)' : '0 4px 14px rgba(33,56,82,0.10)',
+    padding: '14px 18px 14px 22px',
+    marginBottom: isLast ? 0 : 8,
+    cursor: 'pointer',
+    fontFamily: 'Raleway, sans-serif',
     overflow: 'hidden',
+    transition: 'border-color .2s, transform .15s',
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: 10,
+      bottom: 10,
+  right: 12,
+  width: 168, // bumped width (maintain ratio via contain)
+  background: isDarkMode ? 'rgba(255,255,255,0.075)' : 'rgba(6,23,51,0.12)',
+      maskImage: `url("data:image/svg+xml,${svgMark}")`,
+      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      pointerEvents: 'none',
+      mixBlendMode: isDarkMode ? 'screen' : 'multiply',
+      filter: 'blur(.2px)',
+      zIndex: 0,
+    },
     selectors: {
-      ':hover': {
-        backgroundColor: isDarkMode ? '#242b33' : '#f9fbfc',
-        transform: 'translateX(2px)',
-      },
+      ':hover': { transform: 'translateY(-2px)', borderColor: colours.highlight },
+      ':active': { transform: 'translateY(-1px)' },
     },
   });
 
-  const headerStyle = mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    padding: '14px 18px',
-    gap: 20,
-    borderBottom: isExpanded ? `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` : 'none',
-  });
-
-  const mainContentStyle = mergeStyles({
-    flex: 1,
-    display: 'grid',
-    gridTemplateColumns: '2fr 1.3fr 1fr 0.9fr 110px',
-    alignItems: 'center',
-    gap: 20,
-    width: '100%',
-  });
+  const topRow = mergeStyles({ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', position: 'relative' });
 
   const nameStyle = mergeStyles({
     fontWeight: 600,
@@ -225,12 +215,7 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
     fontWeight: 500,
   });
 
-  const actionsStyle = mergeStyles({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexShrink: 0,
-  });
+  const actionsStyle = mergeStyles({ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' });
 
   const expandedContentStyle = mergeStyles({
     padding: '0 16px 10px 16px',
@@ -271,147 +256,55 @@ const GroupedEnquiryCard: React.FC<GroupedEnquiryCardProps> = ({
   };
 
   return (
-    <div className={groupCardStyle}>
-      {/* Header with summary */}
-      <div className={headerStyle} onClick={handleMainClick}>
-        <div className={mainContentStyle}>
-          {/* Client Info */}
-          <div>
-            <div className={nameStyle}>
-              {clientName}
-              <span className={countBadgeStyle}>{enquiryCount}</span>
-            </div>
-            <div className={emailStyle}>{clientEmail}</div>
-            <div className={areaTagsStyle}>
-              {areas.map((area, idx) => (
-                <span key={idx} className={areaTagStyle(area)}>
-                  {area}
-                </span>
-              ))}
-            </div>
+    <div className={cardStyle} onClick={handleMainClick}>
+      {/* Left accent bar */}
+      <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: colours.highlight, opacity: .95 }} />
+      <div className={topRow}>
+        <div style={{ minWidth: 160 }}>
+          <div className={nameStyle}>
+            {clientName}
+            <span className={countBadgeStyle}>{enquiryCount}</span>
           </div>
-
-          {/* Latest Type */}
-          <div>
-            <div className={metaStyle}>{latestEnquiry.Area_of_Work}</div>
-            {latestEnquiry.Type_of_Work && (
-              <Text variant="small" styles={{
-                root: {
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  fontSize: '13px',
-                  opacity: 0.7,
-                }
-              }}>
-                {latestEnquiry.Type_of_Work}
-              </Text>
-            )}
-          </div>
-
-          {/* Total Value */}
-          <div>
-            <div className={valueStyle}>
-              {calculateTotalValue()}
-            </div>
-            <Text variant="small" styles={{
-              root: {
-                color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                fontSize: '12px',
-              }
-            }}>
-              Combined value
-            </Text>
-          </div>
-
-          {/* Latest Date */}
-          <div>
-            <div className={dateStyle}>
-              {formatDate(latestDate)}
-            </div>
-            <Text variant="small" styles={{
-              root: {
-                color: isDarkMode ? colours.dark.subText : colours.light.subText,
-                fontSize: '12px',
-              }
-            }}>
-              Latest enquiry
-            </Text>
-          </div>
-
-          {/* Actions */}
-          <div className={actionsStyle}>
-            <TooltipHost content="Call">
-              <IconButton
-                iconProps={{ iconName: 'Phone' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (latestEnquiry.Phone_Number) {
-                    window.location.href = `tel:${latestEnquiry.Phone_Number}`;
-                  }
-                }}
-                styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)}
-              />
-            </TooltipHost>
-
-            <TooltipHost content="Email">
-              <IconButton
-                iconProps={{ iconName: 'Mail' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (clientEmail) {
-                    window.location.href = `mailto:${clientEmail}?subject=Your%20Enquiry&bcc=1day@followupthen.com`;
-                  }
-                }}
-                styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)}
-              />
-            </TooltipHost>
-
-            <TooltipHost content={enquiryCount > 1 ? (isExpanded ? "Collapse" : "Expand") : "View Details"}>
-              <IconButton
-                iconProps={{ 
-                  iconName: enquiryCount > 1 
-                    ? (isExpanded ? 'ChevronUp' : 'ChevronDown')
-                    : 'View'
-                }}
-                onClick={toggleExpanded}
-                styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)}
-              />
-            </TooltipHost>
+          <div className={emailStyle}>{clientEmail}</div>
+          <div className={areaTagsStyle}>
+            {areas.map((area, idx) => (
+              <span key={idx} className={areaTagStyle(area)}>{area}</span>
+            ))}
           </div>
         </div>
+        <div>
+          <div className={metaStyle}>{latestEnquiry.Area_of_Work}</div>
+          {latestEnquiry.Type_of_Work && (
+            <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.text : colours.light.text, fontSize: 13, opacity: .7 } }}>{latestEnquiry.Type_of_Work}</Text>
+          )}
+        </div>
+        <div>
+          <div className={valueStyle}>{calculateTotalValue()}</div>
+          <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.subText : colours.light.subText, fontSize: 12 } }}>Combined value</Text>
+        </div>
+        <div>
+          <div className={dateStyle}>{formatDate(latestDate)}</div>
+          <Text variant="small" styles={{ root: { color: isDarkMode ? colours.dark.subText : colours.light.subText, fontSize: 12 } }}>Latest enquiry</Text>
+        </div>
+        <div className={actionsStyle} onClick={e => e.stopPropagation()}>
+          <TooltipHost content="Call">
+            <IconButton iconProps={{ iconName: 'Phone' }} onClick={() => latestEnquiry.Phone_Number && (window.location.href = `tel:${latestEnquiry.Phone_Number}`)} styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)} />
+          </TooltipHost>
+          <TooltipHost content="Email">
+            <IconButton iconProps={{ iconName: 'Mail' }} onClick={() => clientEmail && (window.location.href = `mailto:${clientEmail}?subject=Your%20Enquiry&bcc=1day@followupthen.com`)} styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)} />
+          </TooltipHost>
+          <TooltipHost content={enquiryCount > 1 ? (isExpanded ? 'Collapse' : 'Expand') : 'View Details'}>
+            <IconButton iconProps={{ iconName: enquiryCount > 1 ? (isExpanded ? 'ChevronUp' : 'ChevronDown') : 'View' }} onClick={toggleExpanded} styles={iconButtonStyles(isDarkMode ? colours.dark.text : colours.light.text)} />
+          </TooltipHost>
+        </div>
       </div>
-
-      {/* Expanded content with individual enquiries */}
       {isExpanded && enquiryCount > 1 && (
-        <div className={expandedContentStyle}>
+        <div className={expandedContentStyle} style={{ marginTop: 12 }}>
           <Stack tokens={{ childrenGap: 8 }}>
-            <Text variant="medium" styles={{
-              root: {
-                fontWeight: '600',
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                marginBottom: '8px',
-              }
-            }}>
-              All Enquiries ({enquiryCount})
-            </Text>
+            <Text variant="medium" styles={{ root: { fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.light.text, marginBottom: 8 } }}>All Enquiries ({enquiryCount})</Text>
             {enquiries.map((enquiry, idx) => (
-              <div
-                key={enquiry.ID}
-                style={{
-                  backgroundColor: isDarkMode 
-                    ? colours.dark.cardBackground 
-                    : colours.light.cardBackground,
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                }}
-              >
-                <EnquiryLineItem
-                  enquiry={enquiry}
-                  onSelect={onSelect}
-                  onRate={onRate}
-                  teamData={teamData}
-                  isLast={idx === enquiries.length - 1}
-                  userAOW={userAOW}
-                />
+              <div key={enquiry.ID} style={{ backgroundColor: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground, borderRadius: 4, overflow: 'hidden' }}>
+                <EnquiryLineItem enquiry={enquiry} onSelect={onSelect} onRate={onRate} teamData={teamData} isLast={idx === enquiries.length - 1} userAOW={userAOW} />
               </div>
             ))}
           </Stack>

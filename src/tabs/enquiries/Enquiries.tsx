@@ -178,6 +178,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
+  // Scope toggle (Mine vs All) for claimed enquiries
+  const [showMineOnly, setShowMineOnly] = useState<boolean>(true);
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -555,14 +557,23 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
     // Filter by activeState first (supports Claimed, Unclaimed, etc.)
     if (activeState === 'Claimed') {
-      console.log('🎯 Filtering for CLAIMED (user email match)');
-      filtered = filtered.filter(enquiry => {
-        // Handle both old and new schema
-        const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
-        const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
-        console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs effectiveUserEmail="${effectiveUserEmail}" → ${matches}`);
-        return matches;
-      });
+      if (showMineOnly) {
+        console.log('🎯 Filtering for CLAIMED (Mine only)');
+        filtered = filtered.filter(enquiry => {
+          const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+          const matches = effectiveUserEmail ? poc === effectiveUserEmail : false;
+          console.log(`  Enquiry ${enquiry.ID}: poc="${poc}" vs effectiveUserEmail="${effectiveUserEmail}" → ${matches}`);
+          return matches;
+        });
+      } else {
+        console.log('🎯 Filtering for CLAIMED (All claimed)');
+        filtered = filtered.filter(enquiry => {
+          const poc = (enquiry.Point_of_Contact || (enquiry as any).poc || '').toLowerCase();
+          // Exclude unclaimed placeholder emails
+          const isUnclaimed = unclaimedEmails.includes(poc);
+          return poc && !isUnclaimed; // any real claimed enquiry
+        });
+      }
     } else if (activeState === 'Claimable') {
       filtered = filtered.filter(enquiry => {
         // Handle both old and new schema
@@ -634,6 +645,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     activeState,
     activeAreaFilter,
     searchTerm,
+    showMineOnly,
+    unclaimedEmails,
   ]);
 
   // Removed pagination logic
@@ -1078,6 +1091,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   ariaLabel="Toggle dataset between legacy and new"
                 />
                 <ToggleSwitch
+                  id="enquiries-scope-toggle"
+                  checked={showMineOnly}
+                  onChange={setShowMineOnly}
+                  size="sm"
+                  onText="Mine"
+                  offText="All"
+                  ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries"
+                />
+                <ToggleSwitch
                   id="enquiries-two-column-toggle"
                   checked={twoColumn}
                   onChange={setTwoColumn}
@@ -1184,15 +1206,33 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               <>
                         {/* Connected List Items */}
                         <div
-                          className={mergeStyles({
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: "12px",
-                            padding: 0,
-                            margin: 0,
-                            backgroundColor: 'transparent',
-                          })}
+                          className={
+                            (() => {
+                              const base = mergeStyles({
+                                display: twoColumn ? 'grid' : 'flex',
+                                flexDirection: twoColumn ? undefined : 'column',
+                                gap: '12px',
+                                padding: 0,
+                                margin: 0,
+                                backgroundColor: 'transparent',
+                                gridTemplateColumns: twoColumn ? 'repeat(2, minmax(0, 1fr))' : undefined,
+                                width: '100%', // allow full width usage
+                                transition: 'grid-template-columns .25s ease',
+                              });
+                              return twoColumn ? `${base} two-col-grid` : base;
+                            })()
+                          }
+                          style={twoColumn ? { position: 'relative' } : undefined}
                         >
+                          {twoColumn && (() => {
+                            if (typeof document !== 'undefined' && !document.getElementById('enquiriesTwoColStyles')) {
+                              const el = document.createElement('style');
+                              el.id = 'enquiriesTwoColStyles';
+                              el.textContent = '@media (max-width: 860px){.two-col-grid{display:flex!important;flex-direction:column!important;}}';
+                              document.head.appendChild(el);
+                            }
+                            return null;
+                          })()}
                           {displayedItems.map((item, idx) => {
                             const isLast = idx === displayedItems.length - 1;
 
@@ -1217,8 +1257,8 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                               );
                             } else {
                               const pocLower = (item.Point_of_Contact || (item as any).poc || '').toLowerCase();
-                              const isUnclaimedNew = pocLower === 'team@helix-law.com' && (item as any).__sourceType === 'new';
-                              if (isUnclaimedNew) {
+                              const isUnclaimed = pocLower === 'team@helix-law.com';
+                              if (isUnclaimed) {
                                 return (
                                   <NewUnclaimedEnquiryCard
                                     key={item.ID}

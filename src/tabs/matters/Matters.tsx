@@ -37,23 +37,12 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   // Scope & dataset selection
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [useNewData, setUseNewData] = useState<boolean>(false); // Admin-only toggle to view VNet (new) data
-
-  // Local debug state
-  type DebugResult = {
-    status: number;
-    durationMs: number;
-    payload: unknown;
-    expanded: boolean;
-  };
-  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const [debugLoading, setDebugLoading] = useState<boolean>(false);
-  const [debugError, setDebugError] = useState<string | null>(null);
-  const [allMattersResult, setAllMattersResult] = useState<DebugResult | null>(null);
-  const [userMattersResult, setUserMattersResult] = useState<DebugResult | null>(null);
+  const [twoColumn, setTwoColumn] = useState<boolean>(false);
 
   const userFullName = userData?.[0]?.FullName?.toLowerCase();
   const userRole = userData?.[0]?.Role?.toLowerCase();
   const isAdmin = hasAdminAccess(userRole || '', userFullName || '');
+  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   // Debug the incoming matters
   console.log('🔍 Matters received:', matters.length);
@@ -170,14 +159,17 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
       setContent(
         <div style={{
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          padding: '12px 24px',
-          boxShadow: isDarkMode ? '0 2px 4px rgba(0,0,0,0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
+          padding: '10px 24px 12px 24px',
+          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+            gap: '16px',
           fontSize: '14px',
           fontFamily: 'Raleway, sans-serif',
           flexWrap: 'wrap',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
         }}>
           {/* Status filter navigation buttons */}
           <SegmentedControl
@@ -198,28 +190,15 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
             options={['All','Responsible','Originating'].map(o => ({ key: o, label: o }))}
           />
 
-          {/* Scope: Mine | All (All only for admins) */}
-          <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <SegmentedControl
-              id="matters-scope-seg"
-              ariaLabel="Scope mine or all"
-              value={scope}
-              onChange={(k) => setScope(k as 'mine' | 'all')}
-              options={[{ key: 'mine', label: 'Mine' }, ...(isAdmin ? [{ key: 'all', label: 'All' }] : [])]}
-            />
-            <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.subText : colours.light.subText }}>Showing {filtered.length} of {datasetCount}</span>
-          </div>
-
-          {/* Admin-only: compact yellow debug box */}
-          {isAdmin && (
+          {/* Admin controls (debug + data toggle) for admin or localhost */}
+          {(isAdmin || isLocalhost) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 10,
                   padding: '2px 10px 2px 6px',
                   height: 40,
                   borderRadius: 12,
@@ -232,10 +211,21 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 }}
                 title="Admin / debug controls"
               >
+                {/* Scope toggle moved into debug pill */}
+                <SegmentedControl
+                  id="matters-scope-seg"
+                  ariaLabel="Scope mine or all"
+                  value={scope}
+                  onChange={(k) => setScope(k as 'mine' | 'all')}
+                  options={[{ key: 'mine', label: 'Mine' }, ...(isAdmin ? [{ key: 'all', label: 'All' }] : [])]}
+                />
+                <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>Showing {filtered.length}/{datasetCount}</span>
+                <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
                 <IconButton
                   iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Debug API calls and filtering (Local Dev)"
-                  onClick={() => setShowDataInspector(true)}
+                  title="Debug API calls"
+                  ariaLabel="Open data inspector"
+                  onClick={() => setShowDataInspector(v => !v)}
                   styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
                 />
                 <ToggleSwitch
@@ -246,6 +236,15 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                   onText="New"
                   offText="Legacy"
                   ariaLabel="Toggle dataset between legacy and new"
+                />
+                <ToggleSwitch
+                  id="matters-two-column-toggle"
+                  checked={twoColumn}
+                  onChange={setTwoColumn}
+                  size="sm"
+                  onText="2-col"
+                  offText="1-col"
+                  ariaLabel="Toggle two column layout"
                 />
               </div>
             </div>
@@ -380,140 +379,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
     filtered.length,
   ]);
 
-  // ----- Local debug: fetch API payloads when inspector opens -----
-  const safeParse = async (resp: Response): Promise<unknown> => {
-    const text = await resp.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  };
-
-  const fetchDebugData = async (): Promise<void> => {
-    if (!isLocalhost) return;
-    setDebugError(null);
-    setDebugLoading(true);
-    try {
-      // getAllMatters
-      const t0 = performance.now();
-      const respAll = await fetch('/api/getAllMatters');
-      const payloadAll = await safeParse(respAll);
-      setAllMattersResult({
-        status: respAll.status,
-        durationMs: Math.round(performance.now() - t0),
-        payload: payloadAll,
-        expanded: false,
-      });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to fetch /api/getAllMatters';
-      setDebugError(msg);
-    }
-
-    try {
-      // getMatters for current user
-      const name = encodeURIComponent(userFullName || '');
-      const t1 = performance.now();
-      const respUser = await fetch(`/api/getMatters?fullName=${name}`);
-      const payloadUser = await safeParse(respUser);
-      setUserMattersResult({
-        status: respUser.status,
-        durationMs: Math.round(performance.now() - t1),
-        payload: payloadUser,
-        expanded: false,
-      });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to fetch /api/getMatters';
-      setDebugError(prev => prev ?? msg);
-    } finally {
-      setDebugLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (showDataInspector && isLocalhost) {
-      void fetchDebugData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showDataInspector, userFullName]);
-
-  const DebugPanel: React.FC = () => {
-    const summarize = (payload: unknown): { count: number | null; preview: unknown } => {
-      if (Array.isArray(payload)) {
-        return { count: payload.length, preview: payload.slice(0, 3) };
-      }
-      if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown[] }).data)) {
-        const arr = (payload as { data: unknown[] }).data;
-        return { count: arr.length, preview: arr.slice(0, 3) };
-      }
-      return { count: null, preview: payload };
-    };
-
-    const renderSection = (title: string, result: DebugResult | null, onToggle: () => void) => {
-      return (
-        <div style={{ background: '#fff', padding: 12, borderRadius: 8, border: '1px solid #ddd', marginBottom: 12 }}>
-          <h5 style={{ margin: '0 0 8px 0' }}>{title}</h5>
-          {!result ? (
-            <Text>Not loaded</Text>
-          ) : (
-            <>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <Text>Status: {result.status}</Text>
-                <Text>Time: {result.durationMs} ms</Text>
-                <Text>
-                  Count: {summarize(result.payload).count ?? 'n/a'}
-                </Text>
-              </div>
-              <pre style={{ background: '#f7f7f7', padding: 8, borderRadius: 6, maxHeight: 240, overflow: 'auto', marginTop: 8 }}>
-                {JSON.stringify(summarize(result.payload).preview, null, 2)}
-              </pre>
-              <button onClick={onToggle} style={{ marginTop: 6 }}>
-                {result.expanded ? 'Hide full JSON' : 'Show full JSON'}
-              </button>
-              {result.expanded && (
-                <pre style={{ background: '#eef6ff', padding: 8, borderRadius: 6, maxHeight: 360, overflow: 'auto', marginTop: 8 }}>
-                  {JSON.stringify(result.payload, null, 2)}
-                </pre>
-              )}
-            </>
-          )}
-        </div>
-      );
-    };
-
-    return (
-      <div style={{ padding: 16, background: '#f0f4f8', border: '1px solid #cfe0f5', borderRadius: 8, margin: '10px 0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h4 style={{ margin: 0 }}>Debug API (Local Only)</h4>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => void fetchDebugData()} disabled={debugLoading}>Refresh</button>
-            <button onClick={() => setShowDataInspector(false)}>Close</button>
-          </div>
-        </div>
-        <div style={{ marginTop: 8, marginBottom: 8, color: '#555' }}>
-          <Text>
-            You are {isAdmin ? '' : 'not '}an admin. Showing results for user: {userFullName || 'unknown'}
-          </Text>
-        </div>
-        {debugError && (
-          <MessageBar messageBarType={MessageBarType.error}>{debugError}</MessageBar>
-        )}
-        {debugLoading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Spinner size={SpinnerSize.small} />
-            <Text>Loading debug data…</Text>
-          </div>
-        )}
-        {renderSection('GET /api/getAllMatters', allMattersResult, () => {
-          setAllMattersResult(prev => (prev ? { ...prev, expanded: !prev.expanded } : prev));
-        })}
-        {renderSection(`GET /api/getMatters?fullName=${userFullName || ''}`, userMattersResult, () => {
-          setUserMattersResult(prev => (prev ? { ...prev, expanded: !prev.expanded } : prev));
-        })}
-      </div>
-    );
-  };
-
   if (selected) {
     return (
       <div style={{ padding: 20 }}>
@@ -592,9 +457,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
             Try adjusting your search criteria or filters
           </Text>
         </div>
-        {showDataInspector && isLocalhost && (
-          <DebugPanel />
-        )}
       </div>
     );
   }
@@ -619,15 +481,31 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
             },
           }}
         >
-          {/* Connected List Items */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: "0px",
-            padding: 0,
-            margin: 0,
-            backgroundColor: 'transparent',
-          }}>
+          {/* Connected List Items (supports 1-col / 2-col) */}
+          <div
+            className={twoColumn ? 'two-col-grid' : undefined}
+            style={{
+              display: twoColumn ? 'grid' : 'flex',
+              flexDirection: twoColumn ? undefined : 'column',
+              gap: twoColumn ? '12px' : '0px',
+              padding: 0,
+              margin: 0,
+              backgroundColor: 'transparent',
+              gridTemplateColumns: twoColumn ? 'repeat(2, minmax(0, 1fr))' : undefined,
+              width: '100%',
+              transition: 'grid-template-columns .25s ease',
+            }}
+          >
+            {/* Inject responsive fallback style once */}
+            {twoColumn && typeof document !== 'undefined' && !document.getElementById('mattersTwoColStyles') && (
+              (() => {
+                const styleEl = document.createElement('style');
+                styleEl.id = 'mattersTwoColStyles';
+                styleEl.textContent = '@media (max-width: 860px){.two-col-grid{display:flex!important;flex-direction:column!important;}}';
+                document.head.appendChild(styleEl);
+                return null;
+              })()
+            )}
             {filtered.map((m, idx) => (
               <MatterLineItem
                 key={m.matterId || idx}
@@ -641,7 +519,12 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
       </section>
 
       {/* Matter API Debugger - Only in development */}
-  {showDataInspector && isLocalhost && <DebugPanel />}
+      {showDataInspector && (
+        <MatterApiDebugger
+          currentMatters={filtered}
+          onClose={() => setShowDataInspector(false)}
+        />
+      )}
     </div>
   );
 

@@ -20,6 +20,7 @@ import ManagementDashboard from './ManagementDashboard';
 import MattersReport from './MattersReport';
 import { Icon } from '@fluentui/react';
 import './ReportingHome.css';
+import ReportingSectionCard from './components/ReportingSectionCard';
 import AnnualLeaveReport, { AnnualLeaveRecord } from './AnnualLeaveReport';
 import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 
@@ -500,10 +501,9 @@ const availableData = [
   }
 
   return (
-    <div className="reporting-home-container" style={{ backgroundColor: colours.light.background }}>
-      <div className="disclaimer animate-disclaimer">
-        <p>Note: This module is visible only to Luke, Jonathan, and Alex.</p>
-      </div>
+    <div className="reporting-home-container" style={{ backgroundColor: colours.light.background, padding: '24px 32px', maxWidth: 1600, margin: '0 auto' }}>
+      {/* Minimal inline notice (removed heavy disclaimer chrome) */}
+      <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 8 }}>Restricted: Luke • Jonathan • Alex</div>
 
       {previewDataset && (
         <div className="data-preview-popup" style={{
@@ -645,124 +645,80 @@ const availableData = [
         </div>
       )}
 
-      <main className="page-content animate-page">
-        <header className="reporting-header" style={{ marginBottom: '20px' }}>
-          <h1 className="reporting-title">Reporting Home</h1>
-          <div className="datetime-container">
-            <p className="date-text">{formattedDate}</p>
-            <p className="time-text">{formattedTime}</p>
-          </div>
-        </header>
+      <main className="page-content animate-page" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+        <ReportingSectionCard
+          title="Reporting Overview"
+          subtitle={`${formattedDate} • ${formattedTime}`}
+          animationDelay={0}
+        >
+          <HomePreview
+            enquiries={enquiries}
+            allMatters={allMatters}
+            wip={wip}
+            recoveredFees={recoveredFees}
+          />
+        </ReportingSectionCard>
 
-        <HomePreview
-          enquiries={enquiries}
-          allMatters={allMatters}
-          wip={wip}
-          recoveredFees={recoveredFees}
-        />
-
-        <section className="report-section" style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '20px', color: '#333', margin: '0 0 20px' }}>Reports</h2>
-          <div className="report-cards-container" style={{
+        <ReportingSectionCard
+          title="Reports"
+          animationDelay={0.1}
+        >
+          <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '20px',
-            width: '100%',
+            gap: 20,
+            width: '100%'
           }}>
             {reportSections.map((report, index) => (
               <ReportCard
                 key={report.title}
                 report={report}
                 onGoTo={report.isReady ? handleGoTo : () => {}}
-                animationDelay={index * 0.15}
+                animationDelay={index * 0.12}
               />
             ))}
           </div>
-        </section>
+        </ReportingSectionCard>
 
-        <section className="data-section" style={{
-          marginBottom: '40px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-          borderRadius: '0',
-          overflow: 'hidden',
-        }}>
-          <div
-            className="collapsible-header"
-            onClick={() => setIsDataSectionOpen(!isDataSectionOpen)}
-            style={{
-              background: `linear-gradient(to right, ${colours.grey}, white)`,
-              color: '#333333',
-              padding: '16px 12px',
-              minHeight: '48px',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: '16px',
-            }}
-          >
-            <span style={{ fontWeight: 600 }}>Available Data</span>
-            <Icon
-              iconName="ChevronDown"
-              styles={{
-                root: {
-                  fontSize: '16px',
-                  transform: isDataSectionOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.3s ease',
-                },
-              }}
-            />
-          </div>
-          {isDataSectionOpen && (
-            <div
-              style={{
-                padding: '10px 15px',
-                backgroundColor: colours.light.sectionBackground,
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <div className="data-access-header">
-                <button
-                  className="refresh-button"
-                  onClick={() => setShowSelectionModal(true)}
-                  disabled={Object.values(fetchStatus).some(status => status === 'fetching')}
-                >
-                  Refresh Data
-                </button>
-              </div>
-              <ul className="data-access-grid">
-                {availableData.map((data, index) => (
-                  <li key={data.name} className="data-access-item animate-data-item" style={{ animationDelay: `${index * 0.1}s` }}>
-                    <span
-                      className={`indicator ${data.available ? 'available' : 'unavailable'}`}
-                    />
-                    <div className="data-access-content">
-                      <h3>{data.name}</h3>
-                      <div className="data-access-body">
-                        <p>{data.details}</p>
-                        {isDatasetReady(DATASETS.find(d => d.name === data.name)!.key) && (
-                          <div className="data-access-actions">
-                            <button
-                              className="launch-report-link"
-                              onClick={() => togglePreview(data.name)}
-                            >
-                              Preview Sample
-                            </button>
-                          </div>
-                        )}
+        <ReportingSectionCard
+          title="Available Data"
+          actions={
+            <button
+              className="refresh-button"
+              onClick={() => setShowSelectionModal(true)}
+              disabled={Object.values(fetchStatus).some(status => status === 'fetching')}
+              style={{ height: 36 }}
+            >Refresh</button>
+          }
+          animationDelay={0.2}
+        >
+          <ul className="data-access-grid" style={{ margin: 0 }}>
+            {availableData.map((data, index) => (
+              <li key={data.name} className="data-access-item animate-data-item" style={{ animationDelay: `${index * 0.05}s` }}>
+                <span className={`indicator ${data.available ? 'available' : 'unavailable'}`} />
+                <div className="data-access-content">
+                  <h3>{data.name}</h3>
+                  <div className="data-access-body">
+                    <p>{data.details}</p>
+                    {isDatasetReady(DATASETS.find(d => d.name === data.name)!.key) && (
+                      <div className="data-access-actions">
+                        <button
+                          className="launch-report-link"
+                          onClick={() => togglePreview(data.name)}
+                        >
+                          Preview Sample
+                        </button>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </ReportingSectionCard>
       </main>
 
-      <footer className="reporting-footer animate-footer" style={{ marginTop: '40px' }}>
-        <p>Helix Hub Reporting Module | Version 1.0</p>
-      </footer>
+      <div style={{ fontSize: 11, opacity: 0.5, marginTop: 40, textAlign: 'center' }}>Reporting Module • v1.0</div>
 
       <style>{`
         @keyframes fadeIn {

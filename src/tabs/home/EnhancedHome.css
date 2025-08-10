@@ -1,0 +1,168 @@
+/* Enhanced Home page styles */
+.enhanced-dashboard {
+  background: none;
+  min-height: 100vh;
+  padding: 0;
+  position: relative;
+}
+
+.enhanced-dashboard::before {
+  display: none;
+}
+
+.dashboard-container {
+  position: relative;
+  z-index: 1;
+  /* Removed fixed max-width to allow full viewport usage */
+  width: 100%;
+  margin: 0; /* eliminate auto-centering margins */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.dashboard-header {
+  display: none;
+}
+
+.dashboard-title {
+  display: none;
+}
+
+.dashboard-subtitle {
+  display: none;
+}
+
+.metrics-grid-enhanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.metrics-grid-two-enhanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.section-spacing {
+  margin-bottom: 24px;
+}
+
+.floating-action-hint {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #3690CE, #061733);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 32px rgba(54, 144, 206, 0.3);
+  z-index: 1000;
+  animation: floatPulse 3s ease-in-out infinite;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.floating-action-hint:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(54, 144, 206, 0.4);
+}
+
+@keyframes floatPulse {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Dark mode enhancements */
+.enhanced-dashboard.dark-mode {
+  background: none;
+}
+
+.enhanced-dashboard.dark-mode::before {
+  display: none;
+}
+
+.enhanced-dashboard.dark-mode .dashboard-title {
+  background: linear-gradient(135deg, #ffffff, #3690CE);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.enhanced-dashboard.dark-mode .dashboard-subtitle {
+  color: #a0a0a0;
+}
+
+/* Responsive enhancements */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px;
+    gap: 24px;
+  }
+  
+  .dashboard-title {
+    font-size: 32px;
+  }
+  
+  .metrics-grid-enhanced {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .metrics-grid-two-enhanced {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* Loading states */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.1), 
+    transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Focus and accessibility improvements */
+.enhanced-focus:focus {
+  outline: 3px solid #3690CE;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.enhanced-focus:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Print styles */
+@media print {
+  .enhanced-dashboard {
+    background: none !important;
+  }
+  
+  .floating-action-hint {
+    display: none !important;
+  }
+}

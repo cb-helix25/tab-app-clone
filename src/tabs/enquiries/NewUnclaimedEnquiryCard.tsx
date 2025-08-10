@@ -267,6 +267,7 @@ function notifyHover(id: string | null) {
 const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, isLast }) => {
   const { isDarkMode } = useTheme();
   const isDark = isDarkMode;
+  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const [selected, setSelected] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [hasAnimatedActions, setHasAnimatedActions] = useState(false);
@@ -295,6 +296,7 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
     }
   })();
 
+  const svgMark = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.56 100" preserveAspectRatio="xMidYMid meet"><g fill="currentColor" opacity="0.22"><path d="M57.56,13.1c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1C6.4,39.77,0,41.23,0,48.5v-13.1C0,28.13,6.4,26.68,11.19,24.74c4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,38.84c0,7.27-7.6,10.19-11.59,11.64s-29.98,11.16-34.78,13.1c-4.8,1.94-11.19,3.4-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.46,11.59-4.37,11.59-11.64v13.09h0Z"/><path d="M57.56,64.59c0,7.27-7.6,10.19-11.59,11.64-4,1.46-29.98,11.15-34.78,13.1-4.8,1.94-11.19,3.39-11.19,10.67v-13.1c0-7.27,6.4-8.73,11.19-10.67,4.8-1.94,30.78-11.64,34.78-13.1,4-1.45,11.59-4.37,11.59-11.64v13.1h0Z"/></g></svg>');
   const container = mergeStyles({
     position: 'relative',
     borderRadius: 5,
@@ -314,6 +316,27 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
     overflow: 'hidden',
     borderLeftWidth: 2,
     borderLeftStyle: 'solid',
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: 10,
+      bottom: 10,
+  right: 14,
+  width: 150, // bumped width (maintains aspect ratio via contain)
+  background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(6,23,51,0.13)',
+      maskImage: `url("data:image/svg+xml,${svgMark}")`,
+      WebkitMaskImage: `url("data:image/svg+xml,${svgMark}")`,
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+      pointerEvents: 'none',
+      mixBlendMode: isDark ? 'screen' : 'multiply',
+      filter: 'blur(.2px)',
+  zIndex: 0,
+    },
     selectors: {
       ':hover': { transform: 'translateY(-2px)', borderColor: selected ? colours.blue : colours.highlight },
       ':active': { transform: 'translateY(-1px)' },
@@ -476,11 +499,11 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {(() => {
             const buttons = [
-              { key: 'claim', label: 'Claim', colourType: 'primary', onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSelected(true); onSelect(enquiry); } },
-              { key: 'delegate', label: 'Delegate', colourType: 'blue', onClick: (e: React.MouseEvent) => { e.stopPropagation(); alert('Delegate action coming soon!'); } },
-              { key: 'triage', label: 'Triage', colourType: 'blue', onClick: (e: React.MouseEvent) => { e.stopPropagation(); alert('Triage action coming soon!'); } },
-              { key: 'redirect', label: 'Redirect', colourType: 'yellow', onClick: (e: React.MouseEvent) => { e.stopPropagation(); alert('Redirect action coming soon!'); } },
-              { key: 'cant', label: "Can't Assist", colourType: 'red', onClick: (e: React.MouseEvent) => { e.stopPropagation(); alert("Can't Assist action coming soon!"); } },
+              { key: 'claim', label: 'Claim', colourType: 'primary', onClick: (e: React.MouseEvent) => { e.stopPropagation(); setSelected(true); onSelect(enquiry); }, disabled: false },
+              { key: 'delegate', label: 'Delegate', colourType: 'blue', onClick: (e: React.MouseEvent) => { e.stopPropagation(); !isLocalhost && e.preventDefault(); if (isLocalhost) alert('Delegate action coming soon!'); }, disabled: !isLocalhost },
+              { key: 'triage', label: 'Triage', colourType: 'blue', onClick: (e: React.MouseEvent) => { e.stopPropagation(); !isLocalhost && e.preventDefault(); if (isLocalhost) alert('Triage action coming soon!'); }, disabled: !isLocalhost },
+              { key: 'redirect', label: 'Redirect', colourType: 'yellow', onClick: (e: React.MouseEvent) => { e.stopPropagation(); !isLocalhost && e.preventDefault(); if (isLocalhost) alert('Redirect action coming soon!'); }, disabled: !isLocalhost },
+              { key: 'cant', label: "Can't Assist", colourType: 'red', onClick: (e: React.MouseEvent) => { e.stopPropagation(); !isLocalhost && e.preventDefault(); if (isLocalhost) alert("Can't Assist action coming soon!"); }, disabled: !isLocalhost },
             ];
             // Only show when this card is actively set to show (hover) OR selected.
             const visible = showActions || selected;
@@ -500,23 +523,24 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect, onRate, i
               return (
                 <button
                   key={btn.key}
-                  onClick={btn.onClick}
+                  onClick={btn.disabled ? undefined : btn.onClick}
+                  disabled={btn.disabled}
                   className={mergeStyles({
                     background: isClaim && selected ? baseColour : 'transparent',
-                    color: isClaim ? (selected ? '#fff' : baseColour) : colours.greyText,
+                    color: btn.disabled ? '#9aa4b1' : (isClaim ? (selected ? '#fff' : baseColour) : colours.greyText),
                     border: `1.5px solid ${isClaim ? baseColour : 'transparent'}`,
                     padding: '6px 14px',
                     borderRadius: 20,
                     fontSize: 11,
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    cursor: btn.disabled ? 'not-allowed' : 'pointer',
                     boxShadow: 'none',
-                    opacity: visible ? 1 : 0,
+                    opacity: visible ? (btn.disabled ? 0.55 : 1) : 0,
                     transform: visible ? 'translateY(0) scale(1)' : 'translateY(6px) scale(.96)',
                     transition: 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1), background .25s, color .25s, border .25s, border-radius .35s cubic-bezier(.4,0,.2,1)',
                     transitionDelay: delay,
                     backgroundColor: isClaim && !selected ? 'transparent' : undefined,
-                    selectors: {
+                    selectors: btn.disabled ? {} : {
                       ':hover': isClaim ? { background: selected ? baseColour : '#e3f1fb', color: selected ? '#fff' : baseColour, borderRadius: 6 } : { background: '#f4f6f8', color: baseColour, borderRadius: 6 },
                       ':active': isClaim
                         ? { background: baseColour, color: '#fff', borderRadius: 6, transform: 'scale(0.95)' }
