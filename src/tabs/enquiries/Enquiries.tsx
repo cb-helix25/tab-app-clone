@@ -30,6 +30,7 @@ import { parseISO, startOfMonth, format, isValid } from 'date-fns';
 import { Enquiry, POID, UserData } from '../../app/functionality/types';
 import EnquiryLineItem from './EnquiryLineItem';
 import NewUnclaimedEnquiryCard from './NewUnclaimedEnquiryCard';
+import ClaimedEnquiryCard from './ClaimedEnquiryCard';
 import EnquiryApiDebugger from '../../components/EnquiryApiDebugger';
 import GroupedEnquiryCard from './GroupedEnquiryCard';
 import { GroupedEnquiry, getMixedEnquiryDisplay, isGroupedEnquiry } from './enquiryGrouping';
@@ -176,6 +177,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const { isDarkMode } = useTheme();
   const { setContent } = useNavigator();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
+  const [twoColumn, setTwoColumn] = useState<boolean>(false);
   // Removed pagination states
   // const [currentPage, setCurrentPage] = useState<number>(1);
   // const enquiriesPerPage = 12;
@@ -257,6 +259,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     console.log(`📊 Source type distribution -> new: ${newCount}, legacy: ${legacyCount}`);
     setAllEnquiries(normalised);
   }, [enquiries]);
+
+  // Map for claimer quick lookup
+  const claimerMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    teamData?.forEach(td => { if (td.Email) map[td.Email.toLowerCase()] = td; });
+    return map;
+  }, [teamData]);
+
+  // Single select handler (pitch builder path)
 
   // Apply dataset toggle to derive display list without losing the other dataset
   useEffect(() => {
@@ -1066,6 +1077,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   offText="Legacy"
                   ariaLabel="Toggle dataset between legacy and new"
                 />
+                <ToggleSwitch
+                  id="enquiries-two-column-toggle"
+                  checked={twoColumn}
+                  onChange={setTwoColumn}
+                  size="sm"
+                  onText="2-col"
+                  offText="1-col"
+                  ariaLabel="Toggle two column layout"
+                />
               </div>
             )}
           </>
@@ -1209,21 +1229,21 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                                   />
                                 );
                               }
+                              const claimer = claimerMap[pocLower];
                               return (
-                                <EnquiryLineItem
+                                <ClaimedEnquiryCard
                                   key={item.ID}
                                   enquiry={item}
+                                  claimer={claimer}
                                   onSelect={handleSelectEnquiry}
                                   onRate={handleRate}
-                                  teamData={teamData}
                                   isLast={isLast}
-                                  userAOW={userAOW}
-                                  isNewSource={(item as any).__sourceType === 'new'}
                                 />
                               );
                             }
                           })}
                         </div>
+                        
                         <div ref={loader} />
               </>
             )}

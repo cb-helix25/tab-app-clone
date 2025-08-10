@@ -12,7 +12,7 @@ import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 
 interface PaymentPreviewProps {
-    serviceDescription: string;
+    initialScopeDescription: string; // renamed from serviceDescription
     amount: string;
 }
 
@@ -22,7 +22,7 @@ function formatCurrency(val: number): string {
     return val.toLocaleString('en-GB', { style: 'currency', currency: 'GBP' });
 }
 
-const PaymentPreview: React.FC<PaymentPreviewProps> = ({ serviceDescription, amount }) => {
+const PaymentPreview: React.FC<PaymentPreviewProps> = ({ initialScopeDescription, amount }) => {
     const { isDarkMode } = useTheme();
 
     const containerClass = mergeStyles({
@@ -52,7 +52,7 @@ const PaymentPreview: React.FC<PaymentPreviewProps> = ({ serviceDescription, amo
     const num = parseFloat(amount.replace(/,/g, ''));
     const incVat = !isNaN(num) ? num * 1.2 : NaN;
     const formattedAmount = isNaN(incVat) ? '' : formatCurrency(incVat);
-    const desc = serviceDescription || '[Service description]';
+    const desc = initialScopeDescription || '[Initial scope description]';
 
     return (
         <Stack tokens={{ childrenGap: 6 }} className={containerClass}>

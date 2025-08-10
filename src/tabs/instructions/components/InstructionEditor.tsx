@@ -137,11 +137,11 @@ if (typeof window !== 'undefined' && !document.getElementById('instruction-edito
       flex-direction: column;
     }
     
-    .editor-area {
+        .editor-area {
       flex: 1;
       padding: 16px;
       outline: none;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Raleway', sans-serif;
       font-size: 14px;
       line-height: 1.6;
       color: #323130;

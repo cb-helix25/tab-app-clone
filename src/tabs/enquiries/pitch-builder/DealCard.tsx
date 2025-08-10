@@ -3,9 +3,8 @@ import { Stack, Text, mergeStyles } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
 
 interface DealCardProps {
-  serviceDescription: string;
+  initialScopeDescription: string; // renamed from serviceDescription
   amount: number | string;
-  dealExpiry: string;
   isDarkMode: boolean;
 }
 
@@ -16,15 +15,14 @@ function formatCurrency(val: string | number) {
 }
 
 const DealCard: React.FC<DealCardProps> = ({
-  serviceDescription,
+  initialScopeDescription,
   amount,
-  dealExpiry,
   isDarkMode,
 }) => {
   const cardStyle = mergeStyles({
     background: isDarkMode
-      ? `linear-gradient(135deg, ${colours.dark.cardBackground}, ${colours.dark.sectionBackground})`
-      : `linear-gradient(135deg, ${colours.light.cardBackground}, ${colours.light.sectionBackground})`,
+      ? colours.dark.cardBackground
+      : colours.light.cardBackground,
     borderRadius: 8,
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.08)'
@@ -56,16 +54,16 @@ const DealCard: React.FC<DealCardProps> = ({
   return (
     <Stack className={cardStyle} tokens={{ childrenGap: 10 }}>
       <div>
-        <div className={labelStyle}>Service</div>
-        <div className={valueStyle}>{serviceDescription || <span style={{ color: colours.greyText }}>Not specified</span>}</div>
+        <div className={labelStyle}>Initial Scope & Charging</div>
+        <div className={valueStyle}>{initialScopeDescription || <span style={{ color: colours.greyText }}>Not specified</span>}</div>
       </div>
       <div>
         <div className={labelStyle}>Amount (inc. VAT)</div>
         <div className={valueStyle}>{formatCurrency(typeof amount === 'string' ? Number(amount.replace(/,/g, '')) * 1.2 : Number(amount) * 1.2)}</div>
       </div>
       <div>
-        <div className={labelStyle}>Deal Expiry</div>
-        <div className={valueStyle}>{dealExpiry ? new Date(dealExpiry).toLocaleDateString('en-GB') : <span style={{ color: colours.greyText }}>Not set</span>}</div>
+        <div className={labelStyle}>Validity</div>
+        <div className={valueStyle}>7 days</div>
       </div>
     </Stack>
   );

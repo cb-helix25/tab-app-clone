@@ -18,7 +18,6 @@ interface EmailHeaderFieldsProps {
   labelStyle: string;
 }
 
-// invisible change
 const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
   to,
   cc,
@@ -51,33 +50,23 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     }
   }, [initialNotes]);
 
-  // Card style with gradient background and hover effect
+  // Card style with clean background
   const cardStyle = mergeStyles({
     background: isDarkMode
-      ? `linear-gradient(135deg, ${colours.dark.cardBackground}, ${colours.dark.sectionBackground})`
-      : `linear-gradient(135deg, ${colours.light.cardBackground}, ${colours.light.sectionBackground})`,
-    borderRadius: 0,
-    boxShadow: isDarkMode
-      ? '0 4px 12px rgba(255, 255, 255, 0.1)'
-      : '0 4px 12px rgba(0, 0, 0, 0.1)',
-    padding: '20px',
-    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-    ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: isDarkMode
-        ? '0 6px 16px rgba(255, 255, 255, 0.15)'
-        : '0 6px 16px rgba(0, 0, 0, 0.15)',
-    },
+      ? colours.dark.cardBackground
+      : colours.light.cardBackground,
+    borderRadius: 8,
+    border: `1px solid ${isDarkMode ? '#3a3a3a' : '#e1e5e9'}`,
+    padding: '16px',
+    transition: 'border-color 0.2s ease',
   });
 
-  // Updated label style with a modern touch
+  // Updated label style with clean design
   const modernLabelStyle = mergeStyles(labelStyle, {
-    fontSize: '14px',
-    fontWeight: '700',
-    color: isDarkMode ? colours.dark.text : colours.light.text,
+    fontSize: '12px',
+    fontWeight: '600',
+    color: isDarkMode ? colours.dark.text : '#555',
     marginBottom: '4px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
   });
 
   // Specific style override for the notes label
@@ -85,53 +74,45 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
     color: colours.grey,
   });
 
-  // Style for the input fields with a subtle border and hover effect
+  // Style for the input fields with clean border
   const inputFieldStyle = {
-    borderRadius: 0,
-    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
-    transition: 'border-color 0.2s ease-in-out',
-    ':hover': {
-      borderColor: colours.highlight,
+    borderRadius: 6,
+    border: `1px solid ${isDarkMode ? colours.dark.borderColor : '#e1e5e9'}`,
+    transition: 'border-color 0.2s ease',
+    ':focus': {
+      borderColor: colours.blue,
     },
   };
 
-  // Container style for fields where the label sits inside
+  // Container style for fields with clean background
   const labeledFieldContainerStyle = {
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f8f9fa',
     padding: '8px',
-    borderRadius: 0,
-    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
-    transition: 'border-color 0.2s ease-in-out',
-    ':hover': {
-      borderColor: colours.highlight,
-    },
+    borderRadius: 6,
+    border: `1px solid ${isDarkMode ? '#3a3a3a' : '#e1e5e9'}`,
   };
 
-  // Notes container style with a subtle border
+  // Notes container style with clean border
   const notesContainerStyle = {
-    backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+    backgroundColor: isDarkMode ? colours.dark.sectionBackground : '#f8f9fa',
     padding: '12px',
-    borderRadius: 0,
-    border: `1px solid ${isDarkMode ? colours.dark.borderColor : colours.light.borderColor}`,
+    borderRadius: 6,
+    border: `1px solid ${isDarkMode ? '#3a3a3a' : '#e1e5e9'}`,
     overflowY: 'auto' as const,
     height: '100%',
-    transition: 'border-color 0.2s ease-in-out',
-    ':hover': {
-      borderColor: colours.highlight,
-    },
   };
 
   return (
-    <Stack tokens={{ childrenGap: 20 }} verticalAlign="stretch">
-      {/* Enquiry Notes or Message */}
-      <Stack
-        style={{ width: '100%', height: '100%' }}
-        className={mergeStyles(formContainerStyle, cardStyle)}
-        tokens={{ childrenGap: 6 }}
-      >
-        <div style={notesContainerStyle}>
-          <Label className={notesLabelStyle}>Enquiry Notes or Message</Label>
-          {initialNotes && (
+    <Stack tokens={{ childrenGap: 16 }} verticalAlign="stretch">
+      {/* Enquiry Notes - Repositioned to top for prominence */}
+      {initialNotes && (
+        <Stack
+          style={{ width: '100%' }}
+          className={mergeStyles(formContainerStyle, cardStyle)}
+          tokens={{ childrenGap: 8 }}
+        >
+          <div style={notesContainerStyle}>
+            <Label className={notesLabelStyle}>Initial Call Notes</Label>
             <div ref={notesContentRef}>
               <Text
                 variant={useLargerText ? 'medium' : 'small'}
@@ -139,15 +120,17 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                   root: {
                     color: colours.darkBlue,
                     whiteSpace: 'pre-wrap',
+                    lineHeight: 1.5,
+                    fontSize: useLargerText ? 14 : 13
                   },
                 }}
               >
                 {initialNotes}
               </Text>
             </div>
-          )}
-        </div>
-      </Stack>
+          </div>
+        </Stack>
+      )}
 
       {/* Recipient and Subject Fields */}
       <div ref={fieldsStackRef} style={{ width: '100%' }}>
@@ -170,49 +153,24 @@ const EmailHeaderFields: React.FC<EmailHeaderFieldsProps> = ({
                 />
               </div>
             </Stack>
-            <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <div style={labeledFieldContainerStyle}>
-                <Label className={modernLabelStyle}>CC</Label>
-                <BubbleTextField
-                  value={cc}
-                  onChange={(_, newValue) => setCc(newValue || '')}
-                  placeholder="Enter CC addresses, separated by commas"
-                  ariaLabel="CC Addresses"
-                  isDarkMode={isDarkMode}
-                  style={inputFieldStyle}
-                />
-              </div>
-            </Stack>
-            <Stack tokens={{ childrenGap: 6 }} style={{ flex: 1 }}>
-              <div style={labeledFieldContainerStyle}>
-                <Label className={modernLabelStyle}>BCC</Label>
-                <BubbleTextField
-                  value={bcc}
-                  onChange={(_, newValue) => setBcc(newValue || '')}
-                  placeholder="Enter BCC addresses, separated by commas"
-                  ariaLabel="BCC Addresses"
-                  isDarkMode={isDarkMode}
-                  style={inputFieldStyle}
-                />
-              </div>
-            </Stack>
           </Stack>
 
           {/* Second Row: Subject Line */}
           <Stack tokens={{ childrenGap: 6 }}>
-            <Label className={modernLabelStyle}>Subject Line</Label>
-            <BubbleTextField
-              value={subject}
-              onChange={(_, newValue) => setSubject(newValue || '')}
-              placeholder="Enter email subject"
-              ariaLabel="Email Subject"
-              isDarkMode={isDarkMode}
-              style={inputFieldStyle}
-            />
+            <div style={labeledFieldContainerStyle}>
+              <Label className={modernLabelStyle}>Subject</Label>
+              <BubbleTextField
+                value={subject}
+                onChange={(_, newValue) => setSubject(newValue || '')}
+                placeholder="Enter email subject"
+                ariaLabel="Email Subject"
+                isDarkMode={isDarkMode}
+                style={inputFieldStyle}
+              />
+            </div>
           </Stack>
         </Stack>
       </div>
-
     </Stack>
   );
 };

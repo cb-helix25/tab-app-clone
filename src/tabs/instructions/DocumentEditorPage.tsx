@@ -392,7 +392,7 @@ const DocumentEditorPage: React.FC<DocumentEditorPageProps> = ({
                                             padding: 16, 
                                             backgroundColor: '#f9f9f9',
                                             whiteSpace: 'pre-wrap',
-                                            fontFamily: 'segoe ui, sans-serif',
+                                            fontFamily: 'Raleway, sans-serif',
                                             minHeight: 100,
                                             maxHeight: 300,
                                             overflow: 'auto'

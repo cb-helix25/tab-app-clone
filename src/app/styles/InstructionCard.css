@@ -305,7 +305,7 @@ div[style*="cursor: pointer"][style*="transition: all 0.2s ease"] {
     transition: color 0.2s;
     user-select: none;
     line-height: 1;
-    font-family: 'Segoe UI', 'Arial', sans-serif;
+  font-family: 'Raleway', sans-serif;
 }
 .instruction-header:hover .plusminus-icon {
     color: #3690CE;

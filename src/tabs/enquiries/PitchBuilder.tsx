@@ -26,6 +26,8 @@ import {
 import ModernMultiSelect from '../instructions/MatterOpening/ModernMultiSelect';
 import { Enquiry } from '../../app/functionality/types';
 import { colours } from '../../app/styles/colours';
+import ToggleSwitch from '../../components/ToggleSwitch';
+import { hasAdminAccess } from '../../utils/matterNormalization';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
@@ -49,6 +51,7 @@ import {
   sharedOptionsDropdownStyles,
 } from '../../app/styles/FilterStyles';
 import ReactDOMServer from 'react-dom/server';
+import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
 import EmailPreview from './pitch-builder/EmailPreview';
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
@@ -118,6 +121,17 @@ interface PitchBuilderProps {
   userData: any;
 }
 
+interface ApiCallLog {
+  id: string;
+  ts: Date;
+  url: string;
+  method: string;
+  status?: number;
+  durationMs: number;
+  snippet?: string;
+  error?: string;
+}
+
 interface ClientInfo {
   firstName: string;
   lastName: string;
@@ -125,20 +139,7 @@ interface ClientInfo {
 }
 
 
-const boldIcon: IIconProps = { iconName: 'Bold' };
-const italicIcon: IIconProps = { iconName: 'Italic' };
-const underlineIcon: IIconProps = { iconName: 'Underline' };
-const unorderedListIcon: IIconProps = { iconName: 'BulletedList' };
-const orderedListIcon: IIconProps = { iconName: 'NumberedList' };
-const linkIcon: IIconProps = { iconName: 'Link' };
-const clearIcon: IIconProps = { iconName: 'Cancel' };
-const letteredListIcon: IIconProps = { iconName: 'SortLines' };
-
-// Simple 2D padlock icons used in template block bubbles
-const lockedSvg =
-  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
-const unlockedSvg =
-  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+// Removed unused legacy icon & padlock constants.
 
 // Escape attribute values for use within querySelector
 function escapeForSelector(value: string): string {
@@ -549,6 +550,13 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
 }
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+  // Admin/debug controls state
+  const [useNewData, setUseNewData] = useState<boolean>(false);
+  const [showDataInspector, setShowDataInspector] = useState(false);
+  const userRole = userData?.[0]?.Role || '';
+  const userFullName = userData?.[0]?.FullName || '';
+  const isAdmin = hasAdminAccess(userRole, userFullName);
+  const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   // Initial Notes state
   const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
@@ -556,6 +564,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const userEmailAddress = userData?.[0]?.Initials
     ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
     : '';
+
+  // Local fetch logging
+  const { apiCalls, clear: clearApiCalls } = useLocalFetchLogger(isLocalhost);
+
+  // (Fetch interception now handled by useLocalFetchLogger hook)
 
   const [templateSet, setTemplateSet] = useState<TemplateSet>('Database');
   const templateBlocks = useDynamicTemplateBlocks(templateSet);
@@ -628,7 +641,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     });
   }
 
-  // Service options
+  // Initial Scope options (formerly Service)
   const SERVICE_OPTIONS: IDropdownOption[] = [
     { key: 'Shareholder Dispute', text: 'Shareholder Dispute' },
     { key: 'Debt Recovery', text: 'Debt Recovery' },
@@ -637,7 +650,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   ];
 
   const initialOption = SERVICE_OPTIONS.find(opt => opt.text === enquiry.Type_of_Work);
-  const [serviceDescription, setServiceDescription] = useState<string>(initialOption?.text || '');
+  // Renamed: serviceDescription -> initialScopeDescription for clarity with new brief
+  const [initialScopeDescription, setInitialScopeDescription] = useState<string>(initialOption?.text || '');
   const [selectedOption, setSelectedOption] = useState<IDropdownOption | undefined>(initialOption);
   const [amount, setAmount] = useState<string>('');
   function handleAmountChange(val?: string) {
@@ -1119,7 +1133,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           setTemplateSet(state.templateSet);
           initialSet = state.templateSet;
         }
-        if (state.serviceDescription) setServiceDescription(state.serviceDescription);
+        // Backward compatibility: migrate stored serviceDescription -> initialScopeDescription
+        if (state.serviceDescription && !state.initialScopeDescription) {
+          setInitialScopeDescription(state.serviceDescription);
+        }
+        if (state.initialScopeDescription) setInitialScopeDescription(state.initialScopeDescription);
         if (state.selectedOption) setSelectedOption(state.selectedOption);
         if (state.amount) setAmount(state.amount);
         if (state.subject) setSubject(state.subject);
@@ -1163,8 +1181,23 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [cc, setCc] = useState<string>('');
   const [bcc, setBcc] = useState<string>('1day@followupthen.com');
 
+  // Extracted blocks (handled as qualifying sections above editor). They won't appear as placeholders inside the editor.
+  const EXTRACTED_BLOCKS: string[] = [
+    'Current Situation and Problem',
+    'Potential Causes of Action and Remedies',
+    'Scope of Work',
+    'Risk Assessment',
+    'Costs and Budget',
+    'Required Documents',
+    'Next Steps to Instruct Helix Law',
+    'Meeting Link',
+    'Closing Notes',
+    'Google Review'
+  ];
+
   function generateBaseTemplate(blocks: TemplateBlock[]): string {
     return `Dear [Enquiry.First_Name],\n\n${blocks
+      .filter(b => !EXTRACTED_BLOCKS.includes(b.title))
       .map((b) => b.placeholder)
       .join('\n\n')}\n\nKind Regards,<br>\n\n[First Name]<br>\n\n[Full Name]<br>\n[Position]`;
   }
@@ -1204,6 +1237,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     return `<span data-placeholder="${block.placeholder}" class="block-option-list"><span class="block-label" data-label-title="${block.title}">${block.title}${removeBtn}</span>${options}${savedHtml}</span>`;
   }
 
+  // State for extracted block selections and editable content
+  const [sectionSelections, setSectionSelections] = useState<Record<string, string[]>>({});
+  const [sectionContent, setSectionContent] = useState<Record<string, string>>({});
   const [body, setBodyState] = useState<string>(() =>
     generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
   );
@@ -2713,7 +2749,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       const numericAmount = parseFloat(amount.replace(/,/g, '')) || 0;
       const url = `${process.env.REACT_APP_PROXY_BASE_URL}/${process.env.REACT_APP_INSERT_DEAL_PATH}?code=${process.env.REACT_APP_INSERT_DEAL_CODE}`;
       const payload = {
-        serviceDescription,
+  initialScopeDescription,
         amount: numericAmount,
         areaOfWork: enquiry.Area_of_Work,
         prospectId: enquiry.ID,
@@ -2898,13 +2934,12 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   }
 
   function handleDealFormSubmit(data: {
-    serviceDescription: string;
+    initialScopeDescription: string;
     amount: number;
-    dealExpiry: string;
     isMultiClient: boolean;
     clients: { firstName: string; lastName: string; email: string }[];
   }) {
-    setServiceDescription(data.serviceDescription);
+    setInitialScopeDescription(data.initialScopeDescription);
     setAmount(data.amount.toString());
     setDealClients(data.clients);
     setIsMultiClientFlag(data.isMultiClient);
@@ -3399,6 +3434,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     if (currentSet !== 'Production') return;
 
     blocksToUse.forEach((block) => {
+  if (EXTRACTED_BLOCKS.includes(block.title)) return; // handled separately now
       if (
         DEFAULT_SINGLE_OPTION_BLOCKS.includes(block.title) &&
         block.options.length === 1
@@ -3421,7 +3457,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           enquiry.Area_of_Work.toLowerCase() === 'property')
       ) {
         const autoMap: Record<string, string> = {
-          Introduction: 'Standard Acknowledgment',
           'Current Situation and Problem': 'The Dispute',
           'Issue Summary': 'The Dispute',
           'Scope of Work': 'Initial Review and Costs',
@@ -3460,7 +3495,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     boxShadow: isDarkMode
       ? '0 4px 12px rgba(255, 255, 255, 0.1)'
       : '0 4px 12px rgba(0, 0, 0, 0.1)',
-    maxWidth: 900,
+  maxWidth: 1350,
     width: '100%',
     margin: '0 auto',
     fontFamily: 'Raleway, sans-serif',
@@ -3627,7 +3662,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     }
     const state = {
       templateSet,
-      serviceDescription,
+  initialScopeDescription,
       selectedOption,
       amount,
       subject,
@@ -3697,7 +3732,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   };
   }, [
     templateSet,
-    serviceDescription,
+  initialScopeDescription,
     selectedOption,
     amount,
     subject,
@@ -3722,263 +3757,311 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     savedSnippets,
   ]);
 
+  // Build combined HTML for a block's selected options
+  function buildSectionHtml(block: TemplateBlock, labels: string[]): string {
+    const parts: string[] = [];
+    labels.forEach(label => {
+      const opt = block.options.find(o => o.label === label);
+      if (!opt) return;
+      let raw = opt.previewText.trim();
+      raw = applyDynamicSubstitutions(
+        raw,
+        userData,
+        enquiry,
+        amount,
+        dealPasscode,
+        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+      );
+      raw = cleanTemplateString(raw);
+      const formatted = formatSectionContent(raw);
+      parts.push(`<div class=\"section-snippet\" data-label=\"${label.replace(/"/g,'&quot;')}\">${formatted}</div>`);
+    });
+    return parts.join('<br /><br />');
+  }
+
+  // Produce high-quality HTML paragraphs, preserve lists, highlight unresolved placeholders.
+  function formatSectionContent(raw: string): string {
+    // Normalise line endings
+    let text = raw.replace(/\r\n?/g, '\n').trim();
+    // Split into paragraphs on double newline
+    const paragraphs = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+    const html = paragraphs.map(p => {
+      // Preserve basic markdown-like bullets -> convert to <ul>
+      if (/^(?:[-*] |\d+\. )/m.test(p)) {
+        const lines = p.split(/\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.every(l => /^[-*] /.test(l))) {
+          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^[-*] /,''))}</li>`).join('');
+          return `<ul style=\"margin:0 0 12px 20px; padding:0;\">${items}</ul>`;
+        }
+        if (lines.every(l => /^\d+\. /.test(l))) {
+          const items = lines.map(l => `<li>${escapeHtml(l.replace(/^\d+\. /,''))}</li>`).join('');
+          return `<ol style=\"margin:0 0 12px 20px; padding:0;\">${items}</ol>`;
+        }
+      }
+      // Inline line breaks
+      const withBreaks = p.split(/\n/).map(l => escapeHtml(l)).join('<br />');
+      return `<p style=\"margin:0 0 12px; line-height:1.5;\">${withBreaks}</p>`;
+    }).join('');
+    const wrapped = wrapInsertPlaceholders(html);
+    return highlightUnresolvedPlaceholders(wrapped);
+  }
+
+  function escapeHtml(str: string): string {
+    return str
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  // Highlight placeholders that remain (not substituted) with a subtle background
+  function highlightUnresolvedPlaceholders(html: string): string {
+    return html.replace(/\[(?:[A-Za-z0-9_. ]+)\]/g, match => `<span style=\"background:#fff3cd;border:1px dotted #e0c46c;padding:0 2px;\" data-unresolved-placeholder>${match}</span>`);
+  }
+
+  // Rebuild body injecting extracted block sections (with markers) after greeting
+  function rebuildBodyWithSections(base: string, sections: Record<string,string>): string {
+    // Strip existing markers first
+    let cleaned = base.replace(/<!--BLOCK_START:[^>]+-->([\s\S]*?)<!--BLOCK_END:[^>]+-->/g, '').trim();
+    const splitIndex = cleaned.indexOf('\n\n');
+    let greeting = cleaned;
+    let rest = '';
+    if (splitIndex !== -1) {
+      greeting = cleaned.substring(0, splitIndex);
+      rest = cleaned.substring(splitIndex + 2);
+    }
+    const ordered = EXTRACTED_BLOCKS.filter(t => sections[t]);
+    const sectionHtml = ordered.map(title => `<!--BLOCK_START:${title}--><div data-extracted-block="${title}">${sections[title]}</div><!--BLOCK_END:${title}-->`).join('\n\n');
+    return `${greeting}\n\n${sectionHtml ? sectionHtml + '\n\n' : ''}${rest}`.trim();
+  }
+
+  function handleToggleOption(block: TemplateBlock, optionLabel: string) {
+    setSectionSelections(prev => {
+      const current = prev[block.title] || [];
+      let next: string[];
+      if (block.isMultiSelect) {
+        next = current.includes(optionLabel)
+          ? current.filter(l => l !== optionLabel)
+          : [...current, optionLabel];
+      } else {
+        next = [optionLabel];
+      }
+      // Build HTML & update content/state + body
+      const html = buildSectionHtml(block, next);
+      setSectionContent(sc => {
+        const updated = { ...sc };
+        if (next.length === 0) delete updated[block.title]; else updated[block.title] = html;
+        // After updating content, rebuild body
+        setBodyInternal(prevBody => rebuildBodyWithSections(prevBody, updated));
+        return updated;
+      });
+      return { ...prev, [block.title]: next };
+    });
+  }
+
+  function handleSectionContentEdit(blockTitle: string, html: string) {
+    setSectionContent(prev => {
+      // Clean editing artifacts (e.g., <div><br></div>) & re-format
+      const cleaned = html
+        .replace(/<div><br\s*\/?><\/div>/g,'')
+        .replace(/<div>([\s\S]*?)<\/div>/g,(m,inner)=> inner.includes('<p')||inner.includes('<ul')? m : inner + '<br />');
+      const formatted = highlightUnresolvedPlaceholders(wrapInsertPlaceholders(cleaned));
+      const updated = { ...prev, [blockTitle]: formatted };
+      setBodyInternal(prevBody => rebuildBodyWithSections(prevBody, updated));
+      return updated;
+    });
+  }
+
   return (
     <Stack className={containerStyle}>
-      <header className={headerWrapperStyle}>
-        <div style={{ padding: '20px 20px 0 20px' }}>
-          {/* Unified summary fields, now without card container */}
-          {/* Client Info */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, gap: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f', display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Changed icon to single-color SVG person icon */}
-              <span style={{ display: 'flex', alignItems: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="8" r="4" />
-                  <rect x="4" y="15" width="16" height="6" rx="3" />
-                </svg>
-              </span>
-              {enquiry.First_Name} {enquiry.Last_Name}
-            </div>
-            {enquiry.Email && (
-              <span style={{ color: '#3690CE', fontSize: 13, marginLeft: 12 }}>{enquiry.Email}</span>
-            )}
-            {enquiry.Phone_Number && (
-              <span style={{ color: '#666', fontSize: 13, marginLeft: 12 }}>{enquiry.Phone_Number}</span>
-            )}
+      {/* Client Info Header - Simplified, now with admin/debug controls inline */}
+      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ display: 'flex', alignItems: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="4" />
+              <rect x="4" y="15" width="16" height="6" rx="3" />
+            </svg>
+          </span>
+          <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f' }}>
+            {enquiry.First_Name} {enquiry.Last_Name}
           </div>
-
-          {/* Separator between header and fields */}
-          <div style={{ borderBottom: '1px solid #e1e4e8', margin: '0 0 12px 0', width: '100%' }} />
-
-          {/* New streamlined layout */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 6 }}>
-            {/* Left column - essential email fields */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* To and Subject in compact style - same size */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    left: '8px',
-                    backgroundColor: '#fff',
-                    padding: '0 4px',
-                    fontSize: '0.75rem',
-                    color: '#8b949e',
-                    fontWeight: 500,
-                    zIndex: 1
-                  }}>
-                    To
-                  </div>
-                  <input
-                    type="email"
-                    value={to}
-                    onChange={e => setTo(e.target.value)}
-                    placeholder="Recipient email"
-                    style={{ 
-                      width: '100%', 
-                      height: 36, 
-                      padding: '0 12px', 
-                      border: '1px solid #e1e4e8', 
-                      borderRadius: 0, 
-                      outline: 'none', 
-                      background: '#fff', 
-                      fontSize: '0.875rem',
-                      transition: 'border-color 0.2s ease'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3690CE'}
-                    onBlur={(e) => e.target.style.borderColor = '#e1e4e8'}
+          {enquiry.Email && (
+            <span style={{ color: '#3690CE', fontSize: 13 }}>{enquiry.Email}</span>
+          )}
+          {enquiry.Phone_Number && (
+            <span style={{ color: '#666', fontSize: 13 }}>{enquiry.Phone_Number}</span>
+          )}
+          {enquiry.Area_of_Work && (
+            <span style={{ 
+              color: '#fff', 
+              backgroundColor: colours.darkBlue, 
+              padding: '2px 8px', 
+              borderRadius: 12, 
+              fontSize: 11, 
+              fontWeight: 600 
+            }}>
+              {enquiry.Area_of_Work}
+            </span>
+          )}
+          {isAdmin && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '2px 10px 2px 6px',
+                height: 40,
+                borderRadius: 12,
+                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: isDarkMode ? '#ffe9a3' : '#5d4700',
+                margin: '0 0 0 8px',
+                width: 'fit-content',
+                zIndex: 2,
+                position: 'relative'
+              }}
+              title="Admin / debug controls"
+            >
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
+                title="Debug API calls"
+                ariaLabel="Open data inspector"
+                onClick={() => setShowDataInspector(v => !v)}
+                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30, backgroundColor: showDataInspector ? '#ffe066' : undefined } }}
+              />
+              <button
+                style={{
+                  border: 'none',
+                  background: showDataInspector ? '#ffe066' : '#444',
+                  color: showDataInspector ? '#5d4700' : '#fff',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  outline: showDataInspector ? '2px solid #e2c56a' : 'none',
+                  transition: 'background 0.2s, color 0.2s, outline 0.2s',
+                }}
+                onClick={() => setShowDataInspector(v => !v)}
+              >
+                Calls {apiCalls.length > 0 && (
+                  <span style={{ marginLeft: 4, color: '#b8860b', fontWeight: 700 }}>
+                    {apiCalls.length}
+                  </span>
+                )}
+              </button>
+              {/* Emails button removed as requested */}
+              <ToggleSwitch
+                id="pitchbuilder-new-data-toggle"
+                checked={useNewData}
+                onChange={setUseNewData}
+                size="sm"
+                onText="New"
+                offText="Legacy"
+                ariaLabel="Toggle dataset between legacy and new"
+              />
+              {showDataInspector && (
+                <div style={{ position: 'absolute', top: 44, left: 0, zIndex: 10 }}>
+                  <PitchDebugPanel
+                    calls={apiCalls}
+                    onClear={clearApiCalls}
+                    collapsed={false}
+                    onToggle={() => setShowDataInspector(false)}
                   />
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    left: '8px',
-                    backgroundColor: '#fff',
-                    padding: '0 4px',
-                    fontSize: '0.75rem',
-                    color: '#8b949e',
-                    fontWeight: 500,
-                    zIndex: 1
-                  }}>
-                    Subject
-                  </div>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={e => setSubject(e.target.value)}
-                    placeholder="Email subject"
-                    style={{ 
-                      width: '100%', 
-                      height: 36, 
-                      padding: '0 12px', 
-                      border: '1px solid #e1e4e8', 
-                      borderRadius: 0, 
-                      outline: 'none', 
-                      background: '#fff', 
-                      fontSize: '0.875rem',
-                      transition: 'border-color 0.2s ease'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#3690CE'}
-                    onBlur={(e) => e.target.style.borderColor = '#e1e4e8'}
-                  />
-                </div>
-              </div>
-              
-              {/* Contact info chips - horizontal layout */}
-              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 12, height: 24, overflow: 'hidden', flex: 1, minWidth: 0 }}>
-                  <div style={{ paddingLeft: 8, paddingRight: 4 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" fill="none" stroke="#666" strokeWidth="1.5"/><polyline points="4,6 12,13 20,6" fill="none" stroke="#666" strokeWidth="1.5"/></svg>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#555', paddingRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{enquiry.Email || 'Email'}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 12, height: 24, overflow: 'hidden', flex: 1, minWidth: 0 }}>
-                  <div style={{ paddingLeft: 8, paddingRight: 4 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z" fill="#666"/></svg>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#555', paddingRight: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{enquiry.Phone_Number || 'Phone'}</div>
-                </div>
-              </div>
-
-              {/* Notes moved below email and phone */}
-              <div style={{ marginTop: 4, position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  left: '8px',
-                  backgroundColor: '#fff',
-                  padding: '0 4px',
-                  fontSize: '0.75rem',
-                  color: '#8b949e',
-                  fontWeight: 500,
-                  zIndex: 1
-                }}>
-                  Enquiry Notes
-                </div>
-                <div style={{ width: '100%', height: '30px', padding: '6px 8px', border: '1px solid #e1e4e8', borderRadius: 0, fontSize: '0.8rem', background: '#f9fafb', color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
-                  {enquiry.Initial_first_call_notes || 'No notes available'}
-                </div>
-              </div>
+              )}
             </div>
-            {/* Right column - streamlined deal card */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ background: '#f8f9fa', border: '1px solid #e1e4e8', borderRadius: 0, padding: 16, position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  left: '8px',
-                  backgroundColor: '#fff',
-                  padding: '0 4px',
-                  fontSize: '0.75rem',
-                  color: '#8b949e',
-                  fontWeight: 500,
-                  zIndex: 1
-                }}>
-                  Deal Details
-                </div>
-                
-                {/* Service row */}
-                <div style={{ marginBottom: 12, position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    left: '8px',
-                    backgroundColor: '#f8f9fa',
-                    padding: '0 4px',
-                    fontSize: '0.75rem',
-                    color: '#8b949e',
-                    fontWeight: 500,
-                    zIndex: 1
-                  }}>
-                    Service
-                  </div>
-                  <textarea
-                    value={serviceDescription}
-                    onChange={e => setServiceDescription(e.target.value)}
-                    placeholder="Describe the service"
-                    style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 0, fontSize: '0.8rem', background: '#fff', resize: 'none', minHeight: '40px', wordWrap: 'break-word', overflowWrap: 'break-word' }}
-                    rows={2}
-                  />
-                </div>
-
-                {/* Amount and Expiry side by side */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-8px',
-                      left: '8px',
-                      backgroundColor: '#f8f9fa',
-                      padding: '0 4px',
-                      fontSize: '0.75rem',
-                      color: '#8b949e',
-                      fontWeight: 500,
-                      zIndex: 1
-                    }}>
-                      Amount
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #d1d5db', borderRadius: 0, height: 30, overflow: 'hidden' }}>
-                      <div style={{ background: '#f1f5f9', borderRight: '1px solid #d1d5db', height: '100%', width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#3690CE', fontSize: '11px' }}>£</div>
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={e => handleAmountChange(e.target.value)}
-                        onBlur={handleAmountBlur}
-                        placeholder="0.00"
-                        style={{ width: '100%', height: '100%', padding: '0 6px', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, color: '#3690CE', fontSize: '0.8rem' }}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '-8px',
-                      left: '8px',
-                      backgroundColor: '#f8f9fa',
-                      padding: '0 4px',
-                      fontSize: '0.75rem',
-                      color: '#8b949e',
-                      fontWeight: 500,
-                      zIndex: 1
-                    }}>
-                      Expiry
-                    </div>
-                    <input
-                      type="date"
-                      value={addDays(new Date(), 14).toISOString().slice(0, 10)}
-                      onChange={() => {}}
-                      style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 0, fontSize: '0.8rem', background: '#f9fafb', color: '#6b7280', height: 30 }}
-                      disabled
-                    />
-                  </div>
-                </div>
-
-                {/* Payment preview with white background and blue border - thinner */}
-                <div style={{ background: '#fff', border: '1px solid #3690CE', color: '#3690CE', padding: '4px 8px', borderRadius: 0, marginBottom: 8, fontSize: '11px', fontWeight: 600, wordWrap: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
-                  <div style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                    {serviceDescription
-                      ? `Fee including VAT for ${serviceDescription.trim() || '[Service]'}` 
-                      : 'Fee including VAT for [Service]'}
-                    {amount && parseFloat(amount) > 0 && (
-                      <span style={{ fontWeight: 700, marginLeft: 6 }}>
-                        £{parseFloat(amount).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-        {/* ...existing code... */}
-        {/* ...existing code... */}
-      </header>
+      </div>
 
       <main className={bodyWrapperStyle}>
+        {/* Content Sections - Streamlined */}
+        {EXTRACTED_BLOCKS.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            {EXTRACTED_BLOCKS.map(title => {
+              const block = blocks.find(b => b.title === title);
+              if (!block) return null;
+              const selections = sectionSelections[title] || [];
+              const content = sectionContent[title];
+              return (
+                <div key={title} style={{ 
+                  marginBottom: 16, 
+                  background: isDarkMode ? colours.dark.cardBackground : '#ffffff', 
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`, 
+                  borderRadius: 8,
+                  padding: 16,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                }}>
+                  {/* Section header removed as requested */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {block.options.map(opt => {
+                      const selected = selections.includes(opt.label);
+                      return (
+                        <button
+                          key={opt.label}
+                          onClick={() => handleToggleOption(block, opt.label)}
+                          style={{
+                            border: selected ? `2px solid ${colours.blue}` : `1px solid ${isDarkMode ? colours.dark.border : '#d0d7de'}`,
+                            background: selected ? colours.highlightBlue : (isDarkMode ? colours.dark.inputBackground : '#f8f9fa'),
+                            color: selected ? colours.darkBlue : (isDarkMode ? colours.dark.text : colours.light.text),
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: selected ? 600 : 400,
+                            maxWidth: 240,
+                            textAlign: 'left',
+                            position: 'relative',
+                            transition: 'all 0.2s ease'
+                          }}
+                          title={opt.previewText.split('\n').slice(0,3).join(' ')}
+                        >
+                          {opt.label}
+                          {selected && <span style={{ position: 'absolute', top: 2, right: 4, fontSize: 10, color: colours.blue }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selections.length === 0 && (
+                    <div style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#888' }}>
+                      Select option{block.isMultiSelect ? 's' : ''} to include this section.
+                    </div>
+                  )}
+                  {selections.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, margin: '8px 0 4px 0', color: colours.darkBlue }}>
+                        Preview:
+                      </div>
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={e => handleSectionContentEdit(title, (e.target as HTMLElement).innerHTML)}
+                        style={{
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#d0d7de'}`,
+                          padding: '10px 12px',
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          background: isDarkMode ? colours.dark.inputBackground : '#fafbfc',
+                          minHeight: 60,
+                          cursor: 'text',
+                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)',
+                          borderRadius: 6
+                        }}
+                        dangerouslySetInnerHTML={{ __html: content || buildSectionHtml(block, selections) }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {/* Summary/Overview Section: Instruction, Deal, and Risk/Compliance Cards */}
         {/* Old InstructionCard removed: now using unified summary card above */}
 
@@ -3987,7 +4070,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           isDarkMode={isDarkMode}
           body={body}
           setBody={setBodyForComponents}
-          templateBlocks={blocks}
+          templateBlocks={blocks.filter(b => !EXTRACTED_BLOCKS.includes(b.title))}
           // templateSet prop removed; not needed by EditorAndTemplateBlocks
           // onTemplateSetChange prop removed; not needed by EditorAndTemplateBlocks
           selectedTemplateOptions={selectedTemplateOptions}
@@ -4010,6 +4093,14 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           markBlockAsEdited={(blockTitle, edited) =>
             setEditedBlocks((prev) => ({ ...prev, [blockTitle]: edited }))
           }
+          initialNotes={enquiry.Initial_first_call_notes}
+          subject={subject}
+          setSubject={setSubject}
+          // Deal capture props
+          initialScopeDescription={initialScopeDescription}
+          onScopeDescriptionChange={setInitialScopeDescription}
+          amount={amount}
+          onAmountChange={handleAmountChange}
           // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
           // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
           // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
@@ -4181,17 +4272,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             } } originalText={''} editedText={''}          />
         )}
 
-        {/* Row: Preview and Reset Buttons (single instance) */}
-        <Stack horizontal tokens={{ childrenGap: 15 }} styles={{ root: { marginTop: '20px' } }}>
+        {/* Action Buttons - Simplified */}
+        <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { marginTop: '24px', padding: '0 8px' } }}>
           <PrimaryButton
-            text="Preview Email"
+            text="Preview & Send"
             onClick={togglePreview}
             styles={sharedPrimaryButtonStyles}
             ariaLabel="Preview Email"
             iconProps={{ iconName: 'Preview' }}
           />
           <DefaultButton
-            text="Reset"
+            text="Reset All"
             onClick={resetForm}
             styles={sharedDefaultButtonStyles}
             ariaLabel="Reset Form"
@@ -4211,7 +4302,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           followUp={followUp}
           fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
           userData={userData}
-          serviceDescription={serviceDescription}
+          initialScopeDescription={initialScopeDescription}
           clients={dealClients}
           to={to}
           cc={cc}

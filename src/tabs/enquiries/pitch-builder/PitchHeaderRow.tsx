@@ -25,8 +25,8 @@ interface PitchHeaderRowProps {
   setBcc: (v: string) => void;
   subject: string;
   setSubject: (v: string) => void;
-  serviceDescription: string;
-  setServiceDescription: (v: string) => void;
+  initialScopeDescription: string; // renamed from serviceDescription
+  setInitialScopeDescription: (v: string) => void;
   selectedOption: IDropdownOption | undefined;
   setSelectedOption: (o: IDropdownOption | undefined) => void;
   SERVICE_OPTIONS: IDropdownOption[];
@@ -34,9 +34,8 @@ interface PitchHeaderRowProps {
   handleAmountChange: (v?: string) => void;
   handleAmountBlur: () => void;
   handleDealFormSubmit: (data: {
-    serviceDescription: string;
+  initialScopeDescription: string;
     amount: number;
-    dealExpiry: string;
     isMultiClient: boolean;
     clients: { firstName: string; lastName: string; email: string }[];
   }) => void;
@@ -55,8 +54,8 @@ const PitchHeaderRow: React.FC<PitchHeaderRowProps> = ({
   setBcc,
   subject,
   setSubject,
-  serviceDescription,
-  setServiceDescription,
+  initialScopeDescription,
+  setInitialScopeDescription,
   selectedOption,
   setSelectedOption,
   SERVICE_OPTIONS,
