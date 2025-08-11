@@ -202,10 +202,15 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       // Determine inserted length = newLen - (oldLen - placeholderLength)
       const placeholderLength = rep.end - rep.start;
       const insertedLength = Math.max(0, newLen - (oldLen - placeholderLength));
+      // Safety: if insertedLength seems to consume trailing content (negative or too large), fallback to simple diff
+      if (insertedLength < 0 || rep.start + insertedLength > newLen) {
+        replacingPlaceholderRef.current = null;
+      } else {
       const newRange = { start: rep.start, end: rep.start + insertedLength };
       activeReplacementRangeRef.current = newRange;
       setHighlightRanges([newRange]);
       replacingPlaceholderRef.current = null; // consumed
+      }
     } else if (activeReplacementRangeRef.current && delta !== 0) {
       const range = activeReplacementRangeRef.current;
       // If typing at the end of the active range, extend it
@@ -240,8 +245,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       const start = match.index;
       const end = start + match[0].length;
       
-      // If cursor is anywhere inside placeholder (including brackets)
-      if (pos >= start && pos <= end) {
+  // If cursor is inside placeholder but NOT sitting exactly at the end boundary
+  // Using strict < end avoids accidental selection when clicking just after token
+  if (pos >= start && pos < end) {
         // Select the entire placeholder
         ta.setSelectionRange(start, end);
         replacingPlaceholderRef.current = { start, end };
