@@ -7,6 +7,503 @@ import SnippetEditPopover from './SnippetEditPopover';
 import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
 import { wrapInsertPlaceholders } from './emailUtils';
 
+
+
+
+// Utility to render text with [PLACEHOLDER]s styled
+function renderWithPlaceholders(text: string) {
+  const regex = /\[([^\]]+)\]/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <span
+        key={key++}
+        style={{
+          color: '#888',
+          background: '#f4f4f4',
+          fontStyle: 'italic',
+          borderRadius: 3,
+          padding: '0 4px',
+          border: '1px dashed #bbb',
+          margin: '0 2px',
+          opacity: 0.85
+        }}
+      >
+        [{match[1]}]
+      </span>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
+
+// Escape HTML for safe injection
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Build HTML string with placeholder spans
+function buildPlaceholderHTML(text: string) {
+  const regex = /\[([^\]]+)\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let html = '';
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      html += escapeHtml(text.slice(lastIndex, match.index));
+    }
+    const inner = escapeHtml(match[1]);
+    html += `<span style="color:#666;background:#f4f4f4;font-style:italic;border:1px dashed #bbb;border-radius:3px;padding:0 4px;margin:0 2px;opacity:.9;">[${inner}]</span>`;
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    html += escapeHtml(text.slice(lastIndex));
+  }
+  return html || '';
+}
+
+interface InlineEditableAreaProps {
+  value: string;
+  onChange: (v: string) => void;
+  edited: boolean;
+  minHeight?: number;
+}
+
+interface UndoRedoState {
+  history: string[];
+  currentIndex: number;
+}
+
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48 }) => {
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
+  const [undoRedoState, setUndoRedoState] = useState<UndoRedoState>({
+    history: [value],
+    currentIndex: 0
+  });
+  // Flag to distinguish internal programmatic updates from external prop changes
+  const internalUpdateRef = useRef(false);
+  const previousValueRef = useRef(value);
+  const [highlightRanges, setHighlightRanges] = useState<{ start: number; end: number }[]>([]); // green edited ranges (currently at most 1 active)
+  const replacingPlaceholderRef = useRef<{ start: number; end: number } | null>(null); // original placeholder bounds
+  const activeReplacementRangeRef = useRef<{ start: number; end: number } | null>(null); // growing inserted content
+
+  // Sync external value changes (e.g. selecting a different template) without destroying internal history mid-edit
+  useEffect(() => {
+    const last = undoRedoState.history[undoRedoState.currentIndex];
+    if (value !== last && !internalUpdateRef.current) {
+      // External change -> reset history seed
+      setUndoRedoState({ history: [value], currentIndex: 0 });
+    }
+    // Clear flag after render cycle
+    internalUpdateRef.current = false;
+  }, [value]);
+
+  // Auto resize
+  useEffect(() => {
+    const ta = taRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  // Add to undo history (debounced)
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  const addToHistory = (newValue: string) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setUndoRedoState(prev => {
+        const currentValue = prev.history[prev.currentIndex];
+        if (currentValue === newValue) return prev;
+
+        const newHistory = prev.history.slice(0, prev.currentIndex + 1);
+        newHistory.push(newValue);
+        
+        // Limit history size
+        if (newHistory.length > 50) {
+          newHistory.shift();
+          return {
+            history: newHistory,
+            currentIndex: newHistory.length - 1
+          };
+        }
+        
+        return {
+          history: newHistory,
+          currentIndex: newHistory.length - 1
+        };
+      });
+    }, 300); // Reduced debounce for more responsive undo
+  };
+
+  // Undo function
+  const handleUndo = () => {
+    setUndoRedoState(prev => {
+      if (prev.currentIndex > 0) {
+        const newIndex = prev.currentIndex - 1;
+        const newValue = prev.history[newIndex];
+  internalUpdateRef.current = true;
+        onChange(newValue);
+        return {
+          ...prev,
+          currentIndex: newIndex
+        };
+      }
+      return prev;
+    });
+  };
+
+  // Redo function
+  const handleRedo = () => {
+    setUndoRedoState(prev => {
+      if (prev.currentIndex < prev.history.length - 1) {
+        const newIndex = prev.currentIndex + 1;
+        const newValue = prev.history[newIndex];
+  internalUpdateRef.current = true;
+        onChange(newValue);
+        return {
+          ...prev,
+          currentIndex: newIndex
+        };
+      }
+      return prev;
+    });
+  };
+
+  // Handle content changes with history tracking
+  const handleContentChange = (newValue: string) => {
+  internalUpdateRef.current = true;
+    const oldValue = previousValueRef.current;
+    const oldLen = oldValue.length;
+    const newLen = newValue.length;
+    const delta = newLen - oldLen;
+    const ta = taRef.current;
+    const caretPos = ta ? ta.selectionStart : newLen; // after change
+
+    // If we're actively replacing a placeholder (selection existed), establish/expand active replacement range
+    if (replacingPlaceholderRef.current) {
+      const rep = replacingPlaceholderRef.current;
+      // Determine inserted length = newLen - (oldLen - placeholderLength)
+      const placeholderLength = rep.end - rep.start;
+      const insertedLength = Math.max(0, newLen - (oldLen - placeholderLength));
+      const newRange = { start: rep.start, end: rep.start + insertedLength };
+      activeReplacementRangeRef.current = newRange;
+      setHighlightRanges([newRange]);
+      replacingPlaceholderRef.current = null; // consumed
+    } else if (activeReplacementRangeRef.current && delta !== 0) {
+      const range = activeReplacementRangeRef.current;
+      // If typing at the end of the active range, extend it
+      if (caretPos >= range.end && caretPos <= range.end + 1 && delta > 0) {
+        range.end += delta;
+        setHighlightRanges([ { ...range } ]);
+      } else if (caretPos < range.start || caretPos > range.end + 1) {
+        // Cursor moved away: finalize (do nothing further, but keep highlight)
+        activeReplacementRangeRef.current = null;
+      }
+    }
+
+    // NOTE: We do not shift ranges manually; we rebuild only for active range operations above.
+
+    onChange(newValue);
+    addToHistory(newValue);
+    previousValueRef.current = newValue;
+  };
+
+  // Select placeholder token at cursor to prep for replacement
+  const selectPlaceholderAtCursor = () => {
+    const ta = taRef.current;
+    if (!ta) return;
+    if (ta.selectionStart !== ta.selectionEnd) return; // already has selection
+    
+    const pos = ta.selectionStart;
+    const regex = /\[[^\]]+\]/g;
+    let match: RegExpExecArray | null;
+    
+    // Find placeholder that contains cursor position
+    while ((match = regex.exec(value)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      
+      // If cursor is anywhere inside placeholder (including brackets)
+      if (pos >= start && pos <= end) {
+        // Select the entire placeholder
+        ta.setSelectionRange(start, end);
+        replacingPlaceholderRef.current = { start, end };
+        activeReplacementRangeRef.current = null;
+        break;
+      }
+    }
+  };
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+Z: Undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      handleUndo();
+      return;
+    }
+
+    // Ctrl+Y or Ctrl+Shift+Z: Redo
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      handleRedo();
+      return;
+    }
+
+    // Ctrl+Backspace: Clear all content
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Backspace') {
+      e.preventDefault();
+      const newValue = '';
+  internalUpdateRef.current = true;
+  onChange(newValue);
+      addToHistory(newValue);
+      return;
+    }
+    
+    // Alt+Backspace: Delete word backwards
+    if (e.altKey && e.key === 'Backspace') {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      if (start !== end) {
+        // If there's a selection, just delete it
+        const newValue = value.slice(0, start) + value.slice(end);
+        handleContentChange(newValue);
+        setTimeout(() => {
+          if (textarea) {
+            textarea.setSelectionRange(start, start);
+          }
+        }, 0);
+        return;
+      }
+      
+      // Find word boundary backwards
+      let wordStart = start;
+      while (wordStart > 0 && /\w/.test(value[wordStart - 1])) {
+        wordStart--;
+      }
+      
+      // If we didn't find a word character, delete whitespace backwards
+      if (wordStart === start) {
+        while (wordStart > 0 && /\s/.test(value[wordStart - 1])) {
+          wordStart--;
+        }
+      }
+      
+      const newValue = value.slice(0, wordStart) + value.slice(start);
+      handleContentChange(newValue);
+      
+      setTimeout(() => {
+        if (textarea) {
+          textarea.setSelectionRange(wordStart, wordStart);
+        }
+      }, 0);
+      return;
+    }
+  };
+
+  return (
+    <div
+      ref={wrapperRef}
+      style={{
+        position: 'relative',
+        fontSize: 13,
+        lineHeight: 1.4,
+        border: 'none',
+        background: 'transparent',
+        borderRadius: 0,
+        padding: 0,
+        minHeight,
+        overflow: 'hidden'
+      }}
+      onMouseEnter={() => setShowToolbar(true)}
+      onMouseLeave={() => setShowToolbar(false)}
+    >
+      {/* Floating toolbar */}
+      {showToolbar && (
+        <div style={{
+          position: 'absolute',
+          top: -2,
+          right: 4,
+          zIndex: 10,
+          display: 'flex',
+          gap: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid #e1e5e9',
+          borderRadius: 4,
+          padding: '2px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          opacity: 1,
+          transition: 'opacity 0.2s ease'
+        }}>
+          <button
+            onClick={handleUndo}
+            disabled={undoRedoState.currentIndex <= 0}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: undoRedoState.currentIndex <= 0 ? '#ccc' : '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: undoRedoState.currentIndex <= 0 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Undo (Ctrl+Z)"
+          >
+            <Icon iconName="Undo" styles={{ root: { fontSize: 12 } }} />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={undoRedoState.currentIndex >= undoRedoState.history.length - 1}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: undoRedoState.currentIndex >= undoRedoState.history.length - 1 ? '#ccc' : '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: undoRedoState.currentIndex >= undoRedoState.history.length - 1 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Redo (Ctrl+Y)"
+          >
+            <Icon iconName="Redo" styles={{ root: { fontSize: 12 } }} />
+          </button>
+          <div style={{
+            width: 1,
+            height: 16,
+            backgroundColor: '#e1e5e9',
+            margin: '0 2px'
+          }} />
+          <button
+            onClick={() => {
+              const newValue = '';
+              internalUpdateRef.current = true;
+              onChange(newValue);
+              addToHistory(newValue);
+            }}
+            style={{
+              padding: '4px 6px',
+              fontSize: 11,
+              backgroundColor: 'transparent',
+              color: '#666',
+              border: 'none',
+              borderRadius: 2,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+            title="Clear all (Ctrl+Backspace)"
+          >
+            <Icon iconName="Clear" styles={{ root: { fontSize: 12 } }} />
+          </button>
+        </div>
+      )}
+      
+      <pre
+        aria-hidden="true"
+        style={{
+          margin: 0,
+          padding: '4px 6px',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          fontFamily: 'inherit',
+          color: '#222',
+          pointerEvents: 'none',
+          visibility: 'visible'
+        }}
+        dangerouslySetInnerHTML={{ __html: (() => {
+          // Simple placeholder highlighting - only show complete [TOKEN] as blue
+          const placeholders: { start: number; end: number }[] = [];
+          const regex = /\[[^\]]+\]/g;
+          let match: RegExpExecArray | null;
+          while ((match = regex.exec(value)) !== null) {
+            placeholders.push({ start: match.index, end: match.index + match[0].length });
+          }
+          
+          const markers: { start: number; end: number; type: 'placeholder' | 'edited' }[] = [];
+          placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
+          highlightRanges.forEach(r => markers.push({ ...r, type: 'edited' }));
+          markers.sort((a,b) => a.start - b.start);
+          
+          let cursor = 0;
+          let html = '';
+          const pushPlain = (to: number) => { 
+            if (to > cursor) html += escapeHtml(value.slice(cursor, to)); 
+            cursor = to; 
+          };
+          
+          markers.forEach(mark => {
+            if (mark.start < cursor) return; // skip overlaps
+            pushPlain(mark.start);
+            const segment = value.slice(mark.start, mark.end);
+            if (mark.type === 'placeholder') {
+              html += `<span style="color:#0a4d8c;background:#e0f0ff;font-style:italic;border:1px dashed #8bbbe8;border-radius:3px;padding:0 4px;margin:0 2px;">${escapeHtml(segment)}</span>`;
+            } else {
+              html += `<span style="background:#d4edda;color:#155724;border:1px solid #9ad1ac;border-radius:3px;padding:0 3px;margin:0 1px;">${escapeHtml(segment)}</span>`;
+            }
+            cursor = mark.end;
+          });
+          pushPlain(value.length);
+          return html || '';
+        })() }}
+      />
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={e => handleContentChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={() => setTimeout(selectPlaceholderAtCursor, 0)}
+        onClick={() => setTimeout(selectPlaceholderAtCursor, 0)}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          resize: 'none',
+          background: 'transparent',
+          color: 'transparent', // hide raw text, rely on highlighted layer
+          caretColor: '#222',
+          font: 'inherit',
+          lineHeight: 1.4,
+          border: 'none',
+          padding: '4px 6px',
+          outline: 'none',
+          whiteSpace: 'pre-wrap',
+          overflow: 'hidden'
+        }}
+        spellCheck={true}
+        title="Shortcuts: Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+Backspace (clear all), Alt+Backspace (delete word)"
+      />
+    </div>
+  );
+};
+
 interface EditorAndTemplateBlocksProps {
   isDarkMode: boolean;
   body: string;
@@ -74,6 +571,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 }) => {
   // State for removed blocks
   const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
+  // Local editable contents per block
+  const [blockContents, setBlockContents] = useState<{ [key: string]: string }>({});
 
   // Deal capture state
   const [scopeDescription, setScopeDescription] = useState(initialScopeDescription || '');
@@ -280,10 +779,45 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     onAmountChange?.(value);
   };
 
+  // Initialise blockContents when selections appear (do not overwrite if user already edited)
+  useEffect(() => {
+    const updates: { [k: string]: string } = {};
+    templateBlocks.forEach(block => {
+      const selectedOptions = selectedTemplateOptions[block.title];
+      const isMultiSelect = block.isMultiSelect;
+      const hasSelections = isMultiSelect
+        ? Array.isArray(selectedOptions) && selectedOptions.length > 0
+        : !!selectedOptions && selectedOptions !== '';
+      if (hasSelections && blockContents[block.title] === undefined) {
+        const base = block.editableContent || (isMultiSelect
+          ? block.options.filter(opt => Array.isArray(selectedOptions) && selectedOptions.includes(opt.label)).map(o => o.previewText).join('\n\n')
+          : block.options.find(opt => opt.label === selectedOptions)?.previewText || '');
+        updates[block.title] = base;
+      }
+    });
+    if (Object.keys(updates).length) {
+      setBlockContents(prev => ({ ...prev, ...updates }));
+    }
+  }, [templateBlocks, selectedTemplateOptions]);
+
+  const handleBlockContentChange = (block: TemplateBlock, newValue?: string) => {
+    const value = newValue ?? '';
+    setBlockContents(prev => ({ ...prev, [block.title]: value }));
+    if (!editedBlocks[block.title]) {
+      markBlockAsEdited?.(block.title, true);
+    }
+  };
+
   return (
     <>
       {/* Global sticky notes portal */}
       <GlobalStickyNotes />
+      {/* Hover-reveal button styles (scoped by class names) */}
+      <style>{`
+        .inline-reveal-btn {display:inline-flex;align-items:center;gap:0;overflow:hidden;position:relative;}
+        .inline-reveal-btn .label{max-width:0;opacity:0;transform:translateX(-4px);margin-left:0;white-space:nowrap;transition:max-width .45s ease,opacity .45s ease,transform .45s ease,margin-left .45s ease;}
+        .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
+      `}</style>
 
       <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
         {/* Combined Email and Pitch Composition Section */}
@@ -805,8 +1339,17 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     key={`block-${block.title}-${blockIndex}`}
                     className="block-editor"
                     style={{
-                      border: hasSelections ? '1px solid #28a745' : '1px solid #e1e5e9',
-                      background: hasSelections ? '#f8fff9' : '#ffffff',
+                      // Visual states:
+                      // 1. Edited (green)
+                      // 2. Selected but not edited (blue)
+                      // 3. Not selected (neutral)
+                      border: editedBlocks[block.title]
+                        ? '1px solid #28a745'
+                        : hasSelections
+                          ? `1px solid ${colours.blue}`
+                          : '1px solid #e1e5e9',
+                      // Keep background neutral (white) regardless of state to avoid distraction
+                      background: '#ffffff',
                       borderRadius: '6px',
                       overflow: 'hidden'
                     }}
@@ -814,7 +1357,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     {/* Block Header */}
                     <div style={{
                       padding: '12px 16px',
-                      background: hasSelections ? '#f0f8f0' : '#f8f9fa',
+                      background: editedBlocks[block.title]
+                        ? '#f0f8f0'
+                        : hasSelections
+                          ? '#eef6ff'
+                          : '#f8f9fa',
                       borderBottom: '1px solid #e1e5e9',
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -835,11 +1382,19 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             fontWeight: 600,
                             padding: '2px 8px',
                             borderRadius: 12,
-                            backgroundColor: hasSelections ? '#d4edda' : '#e9ecef',
-                            color: hasSelections ? '#155724' : '#6c757d'
+                            backgroundColor: editedBlocks[block.title]
+                              ? '#d4edda'
+                              : hasSelections
+                                ? '#e0f0ff'
+                                : '#e9ecef',
+                            color: editedBlocks[block.title]
+                              ? '#155724'
+                              : hasSelections
+                                ? colours.blue
+                                : '#6c757d'
                           }}
                         >
-                          {hasSelections ? 'included' : 'not included'}
+                          {hasSelections ? (editedBlocks[block.title] ? 'edited' : 'included') : 'not included'}
                         </span>
                         {hasSelections && (
                           <span style={{
@@ -859,63 +1414,65 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         {hasSelections && (
-                          <button
-                            onClick={() => {
-                              if (isIntroduction) {
-                                handleMultiSelectChange(block.title, []);
-                              } else if (isMultiSelect) {
-                                handleMultiSelectChange(block.title, []);
-                              } else {
-                                handleSingleSelectChange(block.title, '');
-                              }
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: colours.greyText,
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 4,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                            title="Change selection"
-                          >
-                            <Icon iconName="Edit" />
-                            Change
-                          </button>
-                        )}
-                        {hasSelections && (
-                          <button
-                            onClick={() => handleRemoveBlock(block)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: colours.cta,
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 4,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4
-                            }}
-                            title="Remove this section"
-                          >
-                            <Icon iconName="Delete" />
-                            Remove
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                if (isIntroduction) {
+                                  handleMultiSelectChange(block.title, []);
+                                } else if (isMultiSelect) {
+                                  handleMultiSelectChange(block.title, []);
+                                } else {
+                                  handleSingleSelectChange(block.title, '');
+                                }
+                              }}
+                              className="inline-reveal-btn"
+                              aria-label="Change selection"
+                              style={{
+                                padding: '6px 10px',
+                                backgroundColor: editedBlocks[block.title] ? '#f4f4f4' : '#f4faff',
+                                color: colours.blue,
+                                border: `1px solid ${colours.blue}`,
+                                borderRadius: 4,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                boxShadow: 'none',
+                                transition: 'background-color .2s ease,border-color .2s ease'
+                              }}
+                              title="Change selection"
+                            >
+                              <Icon iconName="Edit" />
+                              <span className="label">Change</span>
+                            </button>
+                            <button
+                              onClick={() => handleRemoveBlock(block)}
+                              className="inline-reveal-btn"
+                              aria-label="Remove section"
+                              style={{
+                                padding: '6px 10px',
+                                backgroundColor: colours.cta,
+                                color: 'white',
+                                border: '1px solid ' + colours.cta,
+                                borderRadius: 4,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                boxShadow: 'none',
+                                transition: 'background-color .2s ease'
+                              }}
+                              title="Remove this section"
+                            >
+                              <Icon iconName="Delete" />
+                              <span className="label">Remove</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
                     
                     {/* Special handling for Introduction block */}
                     {isIntroduction ? (
-                      <div style={{ padding: 16 }}>
+                      <div style={{ padding: hasSelections ? 8 : 16 }}>
                         {!hasSelections ? (
                           <>
                             <div style={{
@@ -990,39 +1547,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                           </>
                         ) : (
                           <>
-                            {/* Editable content box after selection */}
-                            <TextField
-                              multiline
-                              autoAdjustHeight
-                              rows={3}
-                              autoFocus
-                              value={block.editableContent || block.options.find(opt => opt.label === selectedOptions[0])?.previewText || ''}
-                              onChange={(_e, newValue) => {
-                                if (block.editableContent !== undefined) {
-                                  block.editableContent = newValue || '';
-                                }
-                                // Optionally, call a prop or state update here if you want to persist edits
-                              }}
-                              placeholder="Edit your introduction..."
-                              styles={{
-                                field: {
-                                  fontSize: 13,
-                                  backgroundColor: '#fff',
-                                  color: '#222'
-                                },
-                                fieldGroup: {
-                                  border: '1px solid #e1e5e9',
-                                  borderRadius: '6px'
-                                }
-                              }}
+                            <InlineEditableArea
+                              value={blockContents[block.title] ?? ''}
+                              onChange={(v) => handleBlockContentChange(block, v)}
+                              edited={!!editedBlocks[block.title]}
                             />
                           </>
                         )}
                       </div>
                     ) : (
                       /* Regular template blocks */
-                      <div style={{ padding: 16 }}>
-                        {!hasSelections ? (
+                      <div style={{ padding: hasSelections ? 8 : 16 }}>
+                        {!hasSelections && (
                           <>
                             <div style={{
                               fontSize: 13,
@@ -1032,13 +1568,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             }}>
                               Select options to include in this section:
                             </div>
-                            
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {block.options.map(option => {
                                 const isSelected = isMultiSelect
                                   ? Array.isArray(selectedOptions) && selectedOptions.includes(option.label)
                                   : selectedOptions === option.label;
-                                
                                 return (
                                   <div
                                     key={option.label}
@@ -1085,19 +1619,12 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                                       marginTop: 2
                                     }}>
                                       {isSelected && (
-                                        <Icon 
-                                          iconName="CheckMark" 
-                                          styles={{ 
-                                            root: { 
-                                              fontSize: 12, 
-                                              color: '#fff',
-                                              fontWeight: 'bold'
-                                            } 
-                                          }} 
+                                        <Icon
+                                          iconName="CheckMark"
+                                          styles={{ root: { fontSize: 12, color: '#fff', fontWeight: 'bold' } }}
                                         />
                                       )}
                                     </div>
-                                    
                                     <div style={{ flex: 1 }}>
                                       <div style={{
                                         fontSize: 13,
@@ -1124,45 +1651,13 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                               })}
                             </div>
                           </>
-                        ) : (
-                          <></>
                         )}
-                        
-                        {/* Editable content box after selection for regular blocks */}
                         {hasSelections && (
-                          <>
-                            <TextField
-                              multiline
-                              autoAdjustHeight
-                              rows={3}
-                              autoFocus
-                              value={block.editableContent || block.options
-                                .filter(opt => isMultiSelect
-                                  ? Array.isArray(selectedOptions) && selectedOptions.includes(opt.label)
-                                  : selectedOptions === opt.label)
-                                .map(opt => opt.previewText)
-                                .join('\n\n')}
-                              onChange={(_e, newValue) => {
-                                if (block.editableContent !== undefined) {
-                                  block.editableContent = newValue || '';
-                                }
-                                // Optionally, call a prop or state update here if you want to persist edits
-                              }}
-                              placeholder="Edit this section..."
-                              styles={{
-                                field: {
-                                  fontSize: 13,
-                                  backgroundColor: '#fff',
-                                  color: '#222'
-                                },
-                                fieldGroup: {
-                                  border: '1px solid #e1e5e9',
-                                  borderRadius: '6px',
-                                  marginTop: 16
-                                }
-                              }}
-                            />
-                          </>
+                          <InlineEditableArea
+                            value={blockContents[block.title] ?? ''}
+                            onChange={(v) => handleBlockContentChange(block, v)}
+                            edited={!!editedBlocks[block.title]}
+                          />
                         )}
                       </div>
                     )}
