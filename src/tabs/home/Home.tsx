@@ -51,7 +51,7 @@ import { getProxyBaseUrl } from '../../utils/getProxyBaseUrl';
 import FormCard from '../forms/FormCard';
 import ResourceCard from '../resources/ResourceCard';
 
-import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData, Enquiry } from '../../app/functionality/types';
+import { FormItem, Matter, Transaction, TeamData, OutstandingClientBalance, BoardroomBooking, SoundproofPodBooking, SpaceBooking, FutureBookingsResponse, InstructionData, Enquiry, NormalizedMatter } from '../../app/functionality/types';
 
 import { Resource } from '../resources/Resources';
 
@@ -68,6 +68,7 @@ import { sharedDefaultButtonStyles } from '../../app/styles/ButtonStyles';
 import { isInTeams } from '../../app/functionality/isInTeams';
 import { hasActiveMatterOpening } from '../../app/functionality/matterOpeningUtils';
 import { hasActivePitchBuilder } from '../../app/functionality/pitchBuilderUtils';
+import { normalizeMatterData } from '../../utils/matterNormalization';
 import localAttendance from '../../localData/localAttendance.json';
 import localAnnualLeave from '../../localData/localAnnualLeave.json';
 import localMatters from '../../localData/localMatters.json';
@@ -1115,6 +1116,15 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
     () => actionableSummaries.map(s => s.id).sort().join(','),
     [actionableSummaries]
   );
+
+  // Convert legacy matters to normalized format for FormDetails
+  const normalizedMatters = useMemo<NormalizedMatter[]>(() => {
+    if (!allMatters) return [];
+    const userFullName = userData?.[0]?.FullName || '';
+    return allMatters.map(matter => 
+      normalizeMatterData(matter, userFullName, 'legacy_all')
+    );
+  }, [allMatters, userData]);
 
   const [reviewedInstructionIds, setReviewedInstructionIds] = useState<string>(() =>
     sessionStorage.getItem('reviewedInstructionIds') || ''
@@ -3510,7 +3520,7 @@ const conversionRate = enquiriesMonthToDate
           link={selectedForm}
           isDarkMode={isDarkMode}
           userData={userData}
-          matters={allMatters || []}
+          matters={normalizedMatters}
           offsetTop={96}
         />
       )}

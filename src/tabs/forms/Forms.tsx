@@ -24,7 +24,7 @@ import '../../app/styles/FormCard.css';
 // Import Financial Forms
 import { formSections } from './formsData';
 // Import types – note that FormItem is imported from your types file now
-import { Matter, FormItem, UserData } from '../../app/functionality/types';
+import { NormalizedMatter, FormItem, UserData } from '../../app/functionality/types';
 
 // Initialize Fluent UI icons
 initializeIcons();
@@ -37,7 +37,7 @@ export type SectionName = 'Favorites' | 'Financial' | 'General_Processes' | 'Ope
 // Update the Forms component's prop types so it can receive these matters.
 interface FormsProps {
   userData: UserData[] | null;
-  matters: Matter[];
+  matters: NormalizedMatter[];
 }
 
 // Styles

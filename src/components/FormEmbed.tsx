@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 // invisible change 2
 import { MessageBar, MessageBarType } from '@fluentui/react';
-import { FormItem, UserData, Matter, TeamData } from '../app/functionality/types';
+import { FormItem, UserData, NormalizedMatter, TeamData } from '../app/functionality/types';
 import BespokeForm from '../CustomForms/BespokeForms';
 import loaderIcon from '../assets/grey helix mark.png';
 import { getProxyBaseUrl } from "../utils/getProxyBaseUrl";
@@ -10,7 +10,7 @@ interface FormEmbedProps {
     link: FormItem;
     userData: UserData[] | null;
     teamData?: TeamData[] | null;
-    matters: Matter[];
+    matters: NormalizedMatter[];
 }
 
 const loaderStyle = {

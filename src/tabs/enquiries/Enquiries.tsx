@@ -1072,14 +1072,18 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                   fontWeight: 600,
                   color: isDarkMode ? '#ffe9a3' : '#5d4700'
                 }}
-                title="Admin / debug controls"
+                title="Admin Debugger (alex, luke, cass only)"
               >
+                <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
+                  Admin Only
+                </span>
                 <IconButton
                   iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Debug API calls"
-                  ariaLabel="Open data inspector"
+                  title="Admin Debugger (alex, luke, cass only)"
+                  ariaLabel="Admin Debugger (alex, luke, cass only)"
                   onClick={() => setShowDataInspector(v => !v)}
                   styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                  data-tooltip="alex, luke, cass"
                 />
                 <ToggleSwitch
                   id="enquiries-new-data-toggle"

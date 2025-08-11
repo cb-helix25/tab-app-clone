@@ -154,8 +154,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
   // Set up navigation content with filter bar
   useEffect(() => {
     if (!selected) {
-  const filterOptions = isAdmin ? ['All', 'Active', 'Closed', 'Matter Requests'] : ['All', 'Active', 'Closed'];
-      
+      const filterOptions = isAdmin ? ['All', 'Active', 'Closed', 'Matter Requests'] : ['All', 'Active', 'Closed'];
       setContent(
         <div style={{
           backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
@@ -163,7 +162,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
           boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
           display: 'flex',
           alignItems: 'center',
-            gap: '16px',
+          gap: '12px',
           fontSize: '14px',
           fontFamily: 'Raleway, sans-serif',
           flexWrap: 'wrap',
@@ -179,9 +178,7 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
             onChange={setActiveFilter}
             options={filterOptions.map(o => ({ key: o, label: o }))}
           />
-
           {/* Role filter buttons */}
-          <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
           <SegmentedControl
             id="matters-role-seg"
             ariaLabel="Filter matters by role"
@@ -189,11 +186,68 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
             onChange={setActiveRoleFilter}
             options={['All','Responsible','Originating'].map(o => ({ key: o, label: o }))}
           />
-
+          {/* Area dropdown - scalable for many areas */}
+          {availableAreas.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Area:</span>
+              <select
+                value={activeAreaFilter}
+                onChange={(e) => setActiveAreaFilter(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '12px',
+                  border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                  background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  fontSize: '12px',
+                  fontFamily: 'Raleway, sans-serif',
+                  minWidth: '120px'
+                }}
+              >
+                <option value="All">All Areas</option>
+                {availableAreas.map((area) => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {/* Search input */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input
+              type="text"
+              placeholder="Search matters..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '16px',
+                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
+                background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
+                color: isDarkMode ? colours.dark.text : colours.light.text,
+                fontSize: '12px',
+                fontFamily: 'Raleway, sans-serif',
+                outline: 'none',
+                width: '160px',
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: isDarkMode ? colours.dark.text : colours.light.text,
+                  cursor: 'pointer',
+                  padding: '4px',
+                }}
+              >
+                <Icon iconName="Clear" style={{ fontSize: '12px' }} />
+              </button>
+            )}
+          </div>
           {/* Admin controls (debug + data toggle) for admin or localhost */}
           {(isAdmin || isLocalhost) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
               <div
                 style={{
                   display: 'flex',
@@ -209,8 +263,11 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                   fontWeight: 600,
                   color: isDarkMode ? '#ffe9a3' : '#5d4700'
                 }}
-                title="Admin / debug controls"
+                title="Admin Debugger (alex, luke, cass only)"
               >
+                <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
+                  Admin Only
+                </span>
                 {/* Scope toggle moved into debug pill */}
                 <SegmentedControl
                   id="matters-scope-seg"
@@ -223,10 +280,11 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
                 <div style={{ width: 1, height: 20, background: 'rgba(0,0,0,0.15)' }} />
                 <IconButton
                   iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Debug API calls"
-                  ariaLabel="Open data inspector"
+                  title="Admin Debugger (alex, luke, cass only)"
+                  ariaLabel="Admin Debugger (alex, luke, cass only)"
                   onClick={() => setShowDataInspector(v => !v)}
                   styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                  data-tooltip="alex, luke, cass"
                 />
                 <ToggleSwitch
                   id="matters-new-data-toggle"
@@ -249,72 +307,6 @@ const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }
               </div>
             </div>
           )}
-          
-          {/* Area dropdown - scalable for many areas */}
-          {availableAreas.length > 1 && (
-            <>
-              <div style={{ width: '1px', height: '20px', background: isDarkMode ? colours.dark.border : colours.light.border }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: isDarkMode ? colours.dark.text : colours.light.text }}>Area:</span>
-                <select
-                  value={activeAreaFilter}
-                  onChange={(e) => setActiveAreaFilter(e.target.value)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '12px',
-                    border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                    background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-                    color: isDarkMode ? colours.dark.text : colours.light.text,
-                    fontSize: '12px',
-                    fontFamily: 'Raleway, sans-serif',
-                    minWidth: '200px'
-                  }}
-                >
-                  <option value="All">All Areas</option>
-                  {availableAreas.map((area) => (
-                    <option key={area} value={area}>{area}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-          
-          {/* Search input */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              type="text"
-              placeholder="Search matters..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '16px',
-                border: `1px solid ${isDarkMode ? colours.dark.border : colours.light.border}`,
-                background: isDarkMode ? colours.dark.cardBackground : colours.light.cardBackground,
-                color: isDarkMode ? colours.dark.text : colours.light.text,
-                fontSize: '12px',
-                fontFamily: 'Raleway, sans-serif',
-                outline: 'none',
-                width: '200px',
-              }}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: isDarkMode ? colours.dark.text : colours.light.text,
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
-              >
-                <Icon iconName="Clear" style={{ fontSize: '12px' }} />
-              </button>
-            )}
-          </div>
-          
-          {/* Development Inspector Button - Only show in localhost (now handled above for admins) */}
         </div>
       );
     } else {

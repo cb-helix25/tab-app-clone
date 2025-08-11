@@ -280,6 +280,24 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     onAmountChange?.(value);
   };
 
+  // Utility: highlight placeholders in a string as JSX
+  function highlightPlaceholders(text: string) {
+    const parts = text.split(/(\[AMOUNT\])/g);
+    return parts.map((part, i) =>
+      part === '[AMOUNT]'
+        ? <span key={i} style={{
+            background: '#fffbe6',
+            border: '1px dashed #e6b800',
+            borderRadius: 3,
+            padding: '0 3px',
+            color: '#b8860b',
+            fontWeight: 600,
+            fontFamily: 'monospace',
+          }}>{part}</span>
+        : part
+    );
+  }
+
   return (
     <>
       {/* Global sticky notes portal */}
@@ -1008,7 +1026,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                                 field: {
                                   fontSize: 13,
                                   backgroundColor: '#fff',
-                                  color: '#222'
+                                  color: '#222',
+                                  fontFamily: 'inherit',
                                 },
                                 fieldGroup: {
                                   border: '1px solid #e1e5e9',
@@ -1112,68 +1131,4 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                                         color: '#666',
                                         lineHeight: 1.4,
                                         maxHeight: 60,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}>
-                                        {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
-                                        {option.previewText.length > 150 ? '...' : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        ) : (
-                          <></>
-                        )}
-                        
-                        {/* Editable content box after selection for regular blocks */}
-                        {hasSelections && (
-                          <>
-                            <TextField
-                              multiline
-                              autoAdjustHeight
-                              rows={3}
-                              autoFocus
-                              value={block.editableContent || block.options
-                                .filter(opt => isMultiSelect
-                                  ? Array.isArray(selectedOptions) && selectedOptions.includes(opt.label)
-                                  : selectedOptions === opt.label)
-                                .map(opt => opt.previewText)
-                                .join('\n\n')}
-                              onChange={(_e, newValue) => {
-                                if (block.editableContent !== undefined) {
-                                  block.editableContent = newValue || '';
-                                }
-                                // Optionally, call a prop or state update here if you want to persist edits
-                              }}
-                              placeholder="Edit this section..."
-                              styles={{
-                                field: {
-                                  fontSize: 13,
-                                  backgroundColor: '#fff',
-                                  color: '#222'
-                                },
-                                fieldGroup: {
-                                  border: '1px solid #e1e5e9',
-                                  borderRadius: '6px',
-                                  marginTop: 16
-                                }
-                              }}
-                            />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      </Stack>
-    </>
-  );
-};
-
-export default EditorAndTemplateBlocks;
+       

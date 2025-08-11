@@ -437,7 +437,7 @@ const App: React.FC<AppProps> = ({
           <FormsSidebar
             userData={userData}
             teamData={teamData}
-            matters={allMattersFromHome || []}
+            matters={matters || []}
             activeTab={activeTab}
             hovered={formsTabHovered}
             pinned={formsSidebarPinned}

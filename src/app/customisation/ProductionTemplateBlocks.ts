@@ -12,6 +12,8 @@ export interface TemplateBlock {
   blockId?: number;
   options: TemplateOption[];
   dropdownStyles?: IStyleFunctionOrObject<IDropdownStyleProps, IDropdownStyles>;
+  /** Editable content for this block (used in pitch builder editing) */
+  editableContent?: string;
 }
 
 export interface TemplateOption {

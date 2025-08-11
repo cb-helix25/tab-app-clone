@@ -227,7 +227,7 @@ const ClaimedEnquiryCard: React.FC<Props> = ({
               )}
             </div>
           )}
-          {(isOverflowing || expandedNotes) && (
+          {(isOverflowing || (expandedNotes && isOverflowing)) && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpandedNotes(v => !v); }}
