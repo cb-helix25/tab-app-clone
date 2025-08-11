@@ -25,14 +25,14 @@ function renderWithPlaceholders(text: string) {
       <span
         key={key++}
         style={{
-          color: '#888',
-          background: '#f4f4f4',
-          fontStyle: 'italic',
-          borderRadius: 3,
-          padding: '0 4px',
-          border: '1px dashed #bbb',
-          margin: '0 2px',
-          opacity: 0.85
+          display: 'inline',
+          background: '#e0f0ff',
+          boxShadow: 'inset 0 0 0 1px #8bbbe8',
+          padding: 0,
+          margin: 0,
+          border: 'none',
+          fontStyle: 'inherit',
+          color: '#0a4d8c'
         }}
       >
         [{match[1]}]
@@ -65,7 +65,7 @@ function buildPlaceholderHTML(text: string) {
       html += escapeHtml(text.slice(lastIndex, match.index));
     }
     const inner = escapeHtml(match[1]);
-    html += `<span style="color:#666;background:#f4f4f4;font-style:italic;border:1px dashed #bbb;border-radius:3px;padding:0 4px;margin:0 2px;opacity:.9;">[${inner}]</span>`;
+    html += `<span style="display:inline;background:#e0f0ff;box-shadow:inset 0 0 0 1px #8bbbe8;padding:0;margin:0;border:none;font-style:inherit;color:#0a4d8c">[${inner}]</span>`;
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < text.length) {
@@ -439,6 +439,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
           fontFamily: 'inherit',
+          fontKerning: 'none',
+          fontVariantLigatures: 'none',
+          letterSpacing: 'normal',
           color: '#222',
           pointerEvents: 'none',
           visibility: 'visible'
@@ -469,9 +472,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             pushPlain(mark.start);
             const segment = value.slice(mark.start, mark.end);
             if (mark.type === 'placeholder') {
-              html += `<span style="color:#0a4d8c;background:#e0f0ff;font-style:italic;border:1px dashed #8bbbe8;border-radius:3px;padding:0 4px;margin:0 2px;">${escapeHtml(segment)}</span>`;
+              html += `<span style="display:inline;background:#e0f0ff;box-shadow:inset 0 0 0 1px #8bbbe8;padding:0;margin:0;border:none;font-style:inherit;color:#0a4d8c">${escapeHtml(segment)}</span>`;
             } else {
-              html += `<span style="background:#d4edda;color:#155724;border:1px solid #9ad1ac;border-radius:3px;padding:0 3px;margin:0 1px;">${escapeHtml(segment)}</span>`;
+              html += `<span style="display:inline;background:#d4edda;box-shadow:inset 0 0 0 1px #9ad1ac;padding:0;margin:0;border:none;font-style:inherit;color:#155724">${escapeHtml(segment)}</span>`;
             }
             cursor = mark.end;
           });
@@ -484,8 +487,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
         value={value}
         onChange={e => handleContentChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => setTimeout(selectPlaceholderAtCursor, 0)}
-        onClick={() => setTimeout(selectPlaceholderAtCursor, 0)}
+        onFocus={selectPlaceholderAtCursor}
+        onClick={selectPlaceholderAtCursor}
+        onMouseDown={selectPlaceholderAtCursor}
         style={{
           position: 'absolute',
           inset: 0,
@@ -497,6 +501,9 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           caretColor: '#222',
           font: 'inherit',
           lineHeight: 1.4,
+          fontKerning: 'none',
+          fontVariantLigatures: 'none',
+          letterSpacing: 'normal',
           border: 'none',
           padding: '4px 6px',
           outline: 'none',
