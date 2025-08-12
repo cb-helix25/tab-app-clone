@@ -1,73 +1,226 @@
-diff --git a/src/utils/matterNormalization.ts b/src/utils/matterNormalization.ts
-index 3c362818ebede014261fbecf393c60927eac7904..db31a60147dba75fd480f5bdf52a467b763886b4 100644
---- a/src/utils/matterNormalization.ts
-+++ b/src/utils/matterNormalization.ts
-@@ -17,51 +17,67 @@ function namesMatch(name1: string, name2: string): boolean {
-     'lukasz': ['luke', 'lucas'],
-     'luke': ['lukasz', 'lucas'],
-     'lucas': ['luke', 'lukasz'],
-     'samuel': ['sam'],
-     'sam': ['samuel'],
-     'alexander': ['alex'],
-     'alex': ['alexander'],
-     'william': ['will', 'bill'],
-     'will': ['william'],
-     'bill': ['william'],
-     'robert': ['rob', 'bob'],
-     'rob': ['robert'],
-     'bob': ['robert'],
-     'michael': ['mike'],
-     'mike': ['michael'],
-     'christopher': ['chris'],
-     'chris': ['christopher'],
-     'elizabeth': ['liz', 'beth'],
-     'liz': ['elizabeth'],
-     'beth': ['elizabeth']
-   };
-   
-   // Split names into parts (first name, last name)
-   const n1Parts = n1.split(' ');
-   const n2Parts = n2.split(' ');
--  
-+
-+  // If either name lacks a last name, fall back to first-name comparison with variations
-+  if (n1Parts.length < 2 || n2Parts.length < 2) {
-+    const firstName1 = n1Parts[0];
-+    const firstName2 = n2Parts[0];
-+
-+    if (firstName1 === firstName2) return true;
-+
-+    const variations1 = nameVariations[firstName1] || [];
-+    const variations2 = nameVariations[firstName2] || [];
-+    if (variations1.includes(firstName2) || variations2.includes(firstName1)) {
-+      return true;
-+    }
-+
-+    return false;
-+  }
-+
-   // Check if first names match (with variations) and last names match
-   if (n1Parts.length >= 2 && n2Parts.length >= 2) {
-     const firstName1 = n1Parts[0];
-     const lastName1 = n1Parts[n1Parts.length - 1];
-     const firstName2 = n2Parts[0];
-     const lastName2 = n2Parts[n2Parts.length - 1];
+diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+index 6316ba5a632ecdda7bf32cfe7fda312309657759..dde60ea87577a40fdddb68f03bf1dc1e954434fb 100644
+--- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
++++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+@@ -1,32 +1,31 @@
+ import React, { useState, useRef, useEffect } from 'react';
+ import { Stack, Text, Icon, Pivot, PivotItem } from '@fluentui/react';
+ import { colours } from '../../../app/styles/colours';
+ import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBlocks';
+ import SnippetEditPopover from './SnippetEditPopover';
+ import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
+-import { wrapInsertPlaceholders } from './emailUtils';
+ 
+ interface EditorAndTemplateBlocksProps {
+   isDarkMode: boolean;
+   body: string;
+   setBody: (body: string) => void;
+   templateBlocks: TemplateBlock[];
+   selectedTemplateOptions: { [key: string]: string | string[] };
+   insertedBlocks: { [key: string]: boolean };
+   lockedBlocks: { [key: string]: boolean };
+   editedBlocks: { [key: string]: boolean };
+   handleMultiSelectChange: (blockTitle: string, selectedOptions: string[]) => void;
+   handleSingleSelectChange: (blockTitle: string, optionKey: string) => void;
+   insertTemplateBlock: (block: TemplateBlock, optionLabel: string | string[], focus?: boolean) => void;
+   renderPreview: (block: TemplateBlock) => React.ReactNode;
+   applyFormat: (...args: any[]) => void;
+   saveSelection: () => void;
+   handleInput: (e: React.FormEvent<HTMLDivElement>) => void;
+   handleBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
+   handleClearBlock: (block: TemplateBlock) => void;
+   bodyEditorRef: React.RefObject<HTMLDivElement>;
+   toolbarStyle?: any;
+   bubblesContainerStyle?: any;
+   saveCustomSnippet?: (blockTitle: string, label?: string, sortOrder?: number, isNew?: boolean) => Promise<void>;
+   markBlockAsEdited?: (blockTitle: string, edited: boolean) => void;
+ }
+diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+index 6316ba5a632ecdda7bf32cfe7fda312309657759..dde60ea87577a40fdddb68f03bf1dc1e954434fb 100644
+--- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
++++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+@@ -64,50 +63,51 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
+   const [showActionPopup, setShowActionPopup] = useState<{[key: string]: boolean}>({});
+   const [editedContent, setEditedContent] = useState<Record<string, Record<string, string>>>({});
+   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
+   const [removedBlocks, setRemovedBlocks] = useState<Record<string, boolean>>({});
+   const editorRefs = useRef<Record<string, HTMLDivElement>>({});
+   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+ 
+   // Add missing handler functions
+   const handleAddPlaceholder = (event: React.MouseEvent, blockTitle: string, optionLabel: string) => {
+     event.stopPropagation();
+     const editorKey = `${blockTitle}-${optionLabel}`;
+     const editorEl = editorRefs.current[editorKey];
      
-     // Last names must match exactly
-     if (lastName1 === lastName2) {
-       // Check if first names match or are variations
-       if (firstName1 === firstName2) return true;
-       
-       // Check variations
-       const variations1 = nameVariations[firstName1] || [];
-       const variations2 = nameVariations[firstName2] || [];
-       
-       if (variations1.includes(firstName2) || variations2.includes(firstName1)) {
-         return true;
+     if (editorEl) {
+       // Get current selection/cursor position
+       const selection = window.getSelection();
+       if (selection && selection.rangeCount > 0) {
+         const range = selection.getRangeAt(0);
+         
+         // Create placeholder span
+         const placeholderSpan = document.createElement('span');
+         placeholderSpan.className = 'insert-placeholder';
+         placeholderSpan.setAttribute('data-insert', '');
+         placeholderSpan.setAttribute('tabindex', '0');
+         placeholderSpan.setAttribute('role', 'button');
++        placeholderSpan.setAttribute('contenteditable', 'false');
+         placeholderSpan.style.cssText = 'background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500; cursor: pointer;';
+         placeholderSpan.textContent = '[INSERT details]';
+         
+         // Insert the placeholder at cursor position
+         range.deleteContents();
+         range.insertNode(placeholderSpan);
+         
+         // Move cursor after the placeholder
+         range.setStartAfter(placeholderSpan);
+         range.setEndAfter(placeholderSpan);
+         selection.removeAllRanges();
+         selection.addRange(range);
+         
+         // Update the edited content
+         handleContentEdit(blockTitle, optionLabel, editorEl.innerHTML);
        }
      }
-   }
-   
-   return false;
- }
+     
+     // Close the popup
+     closeActionPopup(editorKey);
+   };
  
+   const handleLockToggle = (blockTitle: string, optionLabel: string) => {
+     const key = `${blockTitle}-${optionLabel}`;
+     setCollapsedBlocks(prev => ({
+diff --git a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+index 6316ba5a632ecdda7bf32cfe7fda312309657759..dde60ea87577a40fdddb68f03bf1dc1e954434fb 100644
+--- a/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
++++ b/src/tabs/enquiries/pitch-builder/EditorAndTemplateBlocks.tsx
+@@ -273,110 +273,119 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
+       if (editorEl && (!editorEl.innerHTML || editorEl.innerHTML.trim() === '')) {
+         const selectedOpt = block.options.find(opt => opt.label === selectedOption);
+         if (selectedOpt) {
+           const editedText = editedContent[block.title]?.[selectedOption];
+           const contentToShow = editedText || wrapInsertPlaceholders(selectedOpt.previewText);
+           // Use a timeout to avoid React conflicts
+           setTimeout(() => {
+             if (editorEl && (!editorEl.innerHTML || editorEl.innerHTML.trim() === '')) {
+               editorEl.innerHTML = contentToShow;
+             }
+           }, 0);
+         }
+       }
+     });
+   }, [templateBlocks, removedBlocks]);
+ 
+   // Get content with edited changes or original
+   const getProcessedContent = (blockTitle: string, optionLabel: string, originalContent: string): string => {
+     const editedText = editedContent[blockTitle]?.[optionLabel];
+     if (editedText !== undefined) {
+       return editedText;
+     }
+     return wrapInsertPlaceholders(originalContent);
+   };
+ 
+-  // Wrap [INSERT] placeholders with contentEditable styling
++  // Remove existing placeholder wrappers so we don't nest spans
++  const stripPlaceholderSpans = (html: string): string =>
++    html.replace(/<span[^>]*class="insert-placeholder"[^>]*>(.*?)<\/span>/gi, '$1');
++
++  // Wrap [INSERT] placeholders with consistent styling and metadata
+   const wrapInsertPlaceholders = (text: string): string => {
+     return text.replace(
+       /\[INSERT[^\]]*\]/gi,
+-      (match) => `<span style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500;">${match}</span>`
++      (match) =>
++        `<span class="insert-placeholder" data-insert tabindex="0" role="button" contenteditable="false" style="background-color: #fff3cd; color: #856404; padding: 2px 4px; border-radius: 3px; font-weight: 500;">${match}</span>`
+     );
+   };
+ 
+   // Handle content editing
+   const handleContentEdit = (blockTitle: string, optionLabel: string, content: string) => {
++    const stripped = stripPlaceholderSpans(content);
++    const highlighted = wrapInsertPlaceholders(stripped);
++
+     setEditedContent(prev => ({
+       ...prev,
+       [blockTitle]: {
+         ...prev[blockTitle],
+-        [optionLabel]: content
++        [optionLabel]: highlighted
+       }
+     }));
+ 
+     if (markBlockAsEdited) {
+       markBlockAsEdited(blockTitle, true);
+     }
+ 
+     // Debounced sync to main body for preview (300ms delay to avoid excessive updates)
+     if (syncTimeoutRef.current) {
+       clearTimeout(syncTimeoutRef.current);
+     }
+     
+     syncTimeoutRef.current = setTimeout(() => {
+       const block = templateBlocks.find(b => b.title === blockTitle);
+       if (block && insertedBlocks[blockTitle]) {
+         const modifiedBlock = {
+           ...block,
+-          options: block.options.map(opt => 
+-            opt.label === optionLabel 
+-              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
++          options: block.options.map(opt =>
++            opt.label === optionLabel
++              ? { ...opt, previewText: stripped.replace(/<br\s*\/?>/gi, '\n') }
+               : opt
+           )
+         };
+         insertTemplateBlock(modifiedBlock, optionLabel, false);
+       }
+     }, 300);
+   };
+ 
+   // Handle auto-insert when user finishes editing (on blur)
+   const handleContentBlur = (blockTitle: string, optionLabel: string) => {
+     // Clear any pending sync timeout since we're syncing immediately on blur
+     if (syncTimeoutRef.current) {
+       clearTimeout(syncTimeoutRef.current);
+       syncTimeoutRef.current = null;
+     }
+ 
+     const content = editedContent[blockTitle]?.[optionLabel];
+     if (content) {
++      const stripped = stripPlaceholderSpans(content);
+       const block = templateBlocks.find(b => b.title === blockTitle);
+       if (block) {
+         const modifiedBlock = {
+           ...block,
+-          options: block.options.map(opt => 
+-            opt.label === optionLabel 
+-              ? { ...opt, previewText: content.replace(/<br\s*\/?>/gi, '\n') }
++          options: block.options.map(opt =>
++            opt.label === optionLabel
++              ? { ...opt, previewText: stripped.replace(/<br\s*\/?>/gi, '\n') }
+               : opt
+           )
+         };
+         insertTemplateBlock(modifiedBlock, optionLabel, false);
+       }
+     }
+   };
+ 
+   const toggleOriginalView = (blockTitle: string, optionLabel: string) => {
+     const key = `${blockTitle}-${optionLabel}`;
+     
+     // Update the showOriginal state first
+     setShowOriginal(prev => {
+       const newState = {
+         ...prev,
+         [key]: !prev[key]
+       };
+       
+       // Handle content update after state change
+       setTimeout(() => {
+         const editorEl = editorRefs.current[key];
+         if (editorEl) {
+           const block = templateBlocks.find(b => b.title === blockTitle);
+           const option = block?.options.find(opt => opt.label === optionLabel);
+           

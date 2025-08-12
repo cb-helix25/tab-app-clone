@@ -81,6 +81,13 @@ function htmlToPlainText(input: string): string {
   return s.trim();
 }
 
+// Remove visual divider lines like "— — —" or "- - -" (three or more dashes with spaces)
+function stripDashDividers(input: string): string {
+  if (!input) return input;
+  // Matches sequences of three or more em dashes or hyphens, with optional spaces between
+  return input.replace(/(?:\s*[—-]\s*){3,}/g, '');
+}
+
 // --- Auto-insert Rate and Role into [RATE] and [ROLE] placeholders in the body ---
 function useAutoInsertRateRole(
   body: string,
@@ -89,16 +96,22 @@ function useAutoInsertRateRole(
   setExternalHighlights?: (ranges: { start: number; end: number }[]) => void
 ) {
   const lastAppliedKeyRef = useRef<string | null>(null);
+  const lastProcessedBodyRef = useRef<string>('');
+  
   useEffect(() => {
-  if (!body || !userData) return;
+    if (!body || !userData) return;
 
-  // Only run if tokens are present to avoid unnecessary resets
-  const tokenRegex = /\[(RATE|ROLE)\]/i;
-  if (!tokenRegex.test(body)) return;
+    // Only run if tokens are present to avoid unnecessary resets
+    const tokenRegex = /\[(RATE|ROLE)\]/i;
+    if (!tokenRegex.test(body)) {
+      // If no tokens, update the last processed body to prevent future re-runs
+      lastProcessedBodyRef.current = body;
+      return;
+    }
 
-  // Support userData being either a user object or an array of users (use first).
-  const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
-  if (!u) return;
+    // Support userData being either a user object or an array of users (use first).
+    const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
+    if (!u) return;
 
     const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
     const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
@@ -118,7 +131,15 @@ function useAutoInsertRateRole(
     const rateNumber = parseRate(rateRaw);
     const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  if (!roleStr && rateNumber == null) return;
+    if (!roleStr && rateNumber == null) return;
+
+    // Build a stable key to prevent reapplying for the same inputs
+    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
+    
+    // Skip if we've already processed this exact combination
+    if (lastAppliedKeyRef.current === key && lastProcessedBodyRef.current === body) {
+      return;
+    }
 
     // Global replacement of [RATE] and [ROLE] wherever they appear.
     // Compute new body and collect highlight ranges for inserted values.
@@ -127,12 +148,12 @@ function useAutoInsertRateRole(
     const ranges: { start: number; end: number }[] = [];
 
     // We replace in a single left-to-right pass to keep indices stable while we compute highlights.
-  const regex = /\[(RATE|ROLE)\]/gi;
+    const regex = /\[(RATE|ROLE)\]/gi;
     let m: RegExpExecArray | null;
     let shift = 0; // net length delta after prior replacements
 
     while ((m = regex.exec(body)) !== null) {
-  const token = (m[1] as string).toUpperCase() as 'RATE' | 'ROLE';
+      const token = (m[1] as string).toUpperCase() as 'RATE' | 'ROLE';
       const originalStart = m.index;
       const start = originalStart + shift;
       const end = start + TOKEN_LEN(token);
@@ -153,21 +174,20 @@ function useAutoInsertRateRole(
       }
     }
 
-    // Build a stable key to prevent reapplying for the same inputs
-    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
     if (newBody !== body) {
       lastAppliedKeyRef.current = key;
+      lastProcessedBodyRef.current = newBody;
       setBody(newBody);
       // Only emit highlights when we actually inserted something
       if (ranges.length) setExternalHighlights?.(ranges);
-      return;
-    }
-    // If nothing changed and we've already applied for this key, do nothing
-    if (lastAppliedKeyRef.current === key) return;
-    // If nothing changed but we haven't emitted highlights for this content (rare), only emit if non-empty
-    if (ranges.length) {
+    } else {
+      // Even if content didn't change, update tracking refs to prevent re-runs
       lastAppliedKeyRef.current = key;
-      setExternalHighlights?.(ranges);
+      lastProcessedBodyRef.current = body;
+      // Emit highlights if we haven't for this content
+      if (ranges.length) {
+        setExternalHighlights?.(ranges);
+      }
     }
   }, [body, userData, setBody, setExternalHighlights]);
 }
@@ -206,22 +226,29 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
 
   // Keep local copies in sync with props when they change from outside (e.g., auto-inserts)
   useEffect(() => {
+    // Sync by reference change only to keep dependency array stable across renders
     setSyncedExternalRanges((externalHighlights || []).slice());
-  }, [externalHighlights?.length, ...(externalHighlights || []).flatMap(r => [r.start, r.end])]);
+  }, [externalHighlights]);
   useEffect(() => {
+    // Sync by reference change only to keep dependency array stable across renders
     setSyncedPersistentRanges((allReplacedRanges || []).slice());
-  }, [allReplacedRanges?.length, ...(allReplacedRanges || []).flatMap(r => [r.start, r.end])]);
+  }, [allReplacedRanges]);
 
-  // Sync external value changes (e.g. selecting a different template) without destroying internal history mid-edit
+  // Sync external value changes (e.g. selecting a different template or auto-inserted placeholders)
   useEffect(() => {
-    const last = undoRedoState.history[undoRedoState.currentIndex];
-    if (value !== last && !internalUpdateRef.current) {
-      // External change -> reset history seed
+    // Only reset undo/redo state and highlights if this is NOT an internal update (i.e., not from user typing or undo/redo)
+    if (!internalUpdateRef.current) {
       setUndoRedoState({ history: [value], currentIndex: 0 });
+      setHighlightRanges([]);
+      activeReplacementRangeRef.current = null;
+      replacingPlaceholderRef.current = null;
+      previousValueRef.current = value;
     }
-    // Clear flag after render cycle
+    // Always clear the internal update flag after effect
     internalUpdateRef.current = false;
   }, [value]);
+
+  // Note: Do not globally reset internalUpdateRef here to avoid race conditions with the [value] sync effect.
 
   // Auto resize
   useEffect(() => {
@@ -262,6 +289,15 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       });
     }, 300); // Reduced debounce for more responsive undo
   };
+
+  // Cleanup pending debounce on unmount to avoid late updates overriding current input
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   // Undo function
   const handleUndo = () => {
@@ -1037,26 +1073,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   };
 
   // Auto-insert Rate/Role highlight state and effect
-  const [bodyAutoHighlights, setBodyAutoHighlights] = useState<{ start: number; end: number }[]>([]);
   const [allBodyReplacedRanges, setAllBodyReplacedRanges] = useState<{ start: number; end: number }[]>([]);
   
-  // Track all placeholder replacements (both auto and manual) for consistent green highlighting
-  const trackReplacedRange = useCallback((range: { start: number; end: number }) => {
-    setAllBodyReplacedRanges(prev => {
-      // Remove overlapping ranges and add the new one
-      const filtered = prev.filter(r => !(r.start < range.end && r.end > range.start));
-      return [...filtered, range];
-    });
+  // Auto-insert handler: replace the persistent green highlights with the new set from auto-insert
+  // This prevents accumulation/ghosting across scenario/template switches and ensures first-click visibility.
+  const handleAutoInsertHighlights = useCallback((ranges: { start: number; end: number }[]) => {
+    setAllBodyReplacedRanges(ranges.slice());
   }, []);
   
-  // Enhanced auto-insert that also tracks replaced ranges
-  const enhancedSetBodyAutoHighlights = useCallback((ranges: { start: number; end: number }[]) => {
-    setBodyAutoHighlights(ranges);
-    // Add these ranges to the persistent replaced ranges
-    ranges.forEach(trackReplacedRange);
-  }, [trackReplacedRange]);
-  
-  useAutoInsertRateRole(body, setBody, userData, enhancedSetBodyAutoHighlights);
+  useAutoInsertRateRole(body, setBody, userData, handleAutoInsertHighlights);
   // Also apply to subject so switching templates gets replacements too
   useAutoInsertRateRole(subject, setSubject, userData);
 
@@ -1123,11 +1148,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     onClick={() => {
                       setSelectedScenarioId(s.id);
           // Prefill only the body; subject is kept independent
-                      setBody(s.body);
+                      setBody(stripDashDividers(s.body));
                       // Optionally seed first block editable content to keep edit UX consistent
                       const firstBlock = templateBlocks[0];
                       if (firstBlock) {
-                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: s.body }));
+                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: stripDashDividers(s.body) }));
                       }
                     }}
                     style={{
@@ -1304,7 +1329,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     onChange={(v) => setBody(v)}
                     edited={false}
                     minHeight={140}
-                    externalHighlights={bodyAutoHighlights}
+                    externalHighlights={undefined}
                     allReplacedRanges={allBodyReplacedRanges}
                   />
                 </div>
@@ -1335,7 +1360,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 <div ref={previewRef} style={{ padding: 12 }}>
                   {(() => {
                     // Build preview HTML with substitutions and signature
-                    const withoutAutoBlocks = body || '';
+                    const withoutAutoBlocks = stripDashDividers(body || '');
                     const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
                     const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
                     const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
@@ -1392,7 +1417,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
                       // Subject is independent; treat it directly
                       const unresolvedSubject = findPlaceholders(subject || '');
-                      const sanitized = (body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+                      const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
                       const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
                       const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, passcode, checkoutPreviewUrl);
                       const unresolvedBody = findPlaceholders(substitutedBody);
@@ -1555,7 +1580,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 alignItems: 'center',
                 gap: 4
               }}>
-                <Icon iconName="BusinessHoursClock" styles={{ root: { fontSize: 12 } }} />
+                <Icon iconName="Clock" styles={{ root: { fontSize: 12 } }} />
                 Scope & Quote Description
               </div>
               <Stack tokens={{ childrenGap: 12 }}>
