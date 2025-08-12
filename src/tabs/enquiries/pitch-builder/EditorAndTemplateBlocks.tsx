@@ -88,8 +88,13 @@ function useAutoInsertRateRole(
   userData: any,
   setExternalHighlights?: (ranges: { start: number; end: number }[]) => void
 ) {
+  const lastAppliedKeyRef = useRef<string | null>(null);
   useEffect(() => {
   if (!body || !userData) return;
+
+  // Only run if tokens are present to avoid unnecessary resets
+  const tokenRegex = /\[(RATE|ROLE)\]/i;
+  if (!tokenRegex.test(body)) return;
 
   // Support userData being either a user object or an array of users (use first).
   const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
@@ -148,11 +153,22 @@ function useAutoInsertRateRole(
       }
     }
 
+    // Build a stable key to prevent reapplying for the same inputs
+    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
     if (newBody !== body) {
+      lastAppliedKeyRef.current = key;
       setBody(newBody);
+      // Only emit highlights when we actually inserted something
+      if (ranges.length) setExternalHighlights?.(ranges);
+      return;
     }
-    // Even if nothing changed, clear highlights to avoid stale ranges
-    setExternalHighlights?.(ranges);
+    // If nothing changed and we've already applied for this key, do nothing
+    if (lastAppliedKeyRef.current === key) return;
+    // If nothing changed but we haven't emitted highlights for this content (rare), only emit if non-empty
+    if (ranges.length) {
+      lastAppliedKeyRef.current = key;
+      setExternalHighlights?.(ranges);
+    }
   }, [body, userData, setBody, setExternalHighlights]);
 }
 
@@ -184,6 +200,17 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
   const [highlightRanges, setHighlightRanges] = useState<{ start: number; end: number }[]>([]); // green edited ranges (currently at most 1 active)
   const replacingPlaceholderRef = useRef<{ start: number; end: number } | null>(null); // original placeholder bounds
   const activeReplacementRangeRef = useRef<{ start: number; end: number } | null>(null); // growing inserted content
+  // Local synced copies of external highlights so we can shift them as user types
+  const [syncedExternalRanges, setSyncedExternalRanges] = useState<{ start: number; end: number }[]>([]);
+  const [syncedPersistentRanges, setSyncedPersistentRanges] = useState<{ start: number; end: number }[]>([]);
+
+  // Keep local copies in sync with props when they change from outside (e.g., auto-inserts)
+  useEffect(() => {
+    setSyncedExternalRanges((externalHighlights || []).slice());
+  }, [externalHighlights?.length, ...(externalHighlights || []).flatMap(r => [r.start, r.end])]);
+  useEffect(() => {
+    setSyncedPersistentRanges((allReplacedRanges || []).slice());
+  }, [allReplacedRanges?.length, ...(allReplacedRanges || []).flatMap(r => [r.start, r.end])]);
 
   // Sync external value changes (e.g. selecting a different template) without destroying internal history mid-edit
   useEffect(() => {
@@ -270,44 +297,120 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
     });
   };
 
-  // Handle content changes with history tracking
+  // Utilities for robust range tracking
+  const mergeRanges = (ranges: { start: number; end: number }[]) => {
+    const sorted = ranges
+      .filter(r => r.end > r.start)
+      .sort((a, b) => a.start - b.start);
+    const out: { start: number; end: number }[] = [];
+    for (const r of sorted) {
+      const last = out[out.length - 1];
+      if (!last) { out.push({ ...r }); continue; }
+      if (r.start <= last.end) {
+        last.end = Math.max(last.end, r.end);
+      } else {
+        out.push({ ...r });
+      }
+    }
+    return out;
+  };
+
   const handleContentChange = (newValue: string) => {
-  internalUpdateRef.current = true;
+    internalUpdateRef.current = true;
     const oldValue = previousValueRef.current;
     const oldLen = oldValue.length;
     const newLen = newValue.length;
-    const delta = newLen - oldLen;
-    const ta = taRef.current;
-    const caretPos = ta ? ta.selectionStart : newLen; // after change
 
-    // If we're actively replacing a placeholder (selection existed), establish/expand active replacement range
+    // Compute minimal diff window to locate edit region
+    let p = 0;
+    while (p < oldLen && p < newLen && oldValue[p] === newValue[p]) p++;
+    let s = 0;
+    while (
+      s < (oldLen - p) &&
+      s < (newLen - p) &&
+      oldValue[oldLen - 1 - s] === newValue[newLen - 1 - s]
+    ) s++;
+    const changeStart = p;
+    const oldChangeEnd = oldLen - s;
+    const newChangeEnd = newLen - s;
+    const removedLen = Math.max(0, oldChangeEnd - changeStart);
+    const insertedLen = Math.max(0, newChangeEnd - changeStart);
+    const delta = insertedLen - removedLen;
+    const ta = taRef.current;
+    const caretPos = ta ? ta.selectionStart : newChangeEnd; // caret after change
+
+    // Map a position from old text to new text
+    const mapPos = (pos: number) => {
+      if (pos <= changeStart) return pos;
+      if (pos >= oldChangeEnd) return pos + delta;
+      // Inside the changed window: clamp into the inserted segment
+      const offset = pos - changeStart;
+      return changeStart + Math.min(insertedLen, Math.max(0, offset));
+    };
+
+    // Shift existing highlights to follow their content
+    let updatedRanges = highlightRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+    let updatedExternal = syncedExternalRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+    let updatedPersistent = syncedPersistentRanges.map(r => ({ start: mapPos(r.start), end: mapPos(r.end) }));
+
+    // If we are replacing a placeholder selection, add a new sticky highlight for the inserted content
     if (replacingPlaceholderRef.current) {
       const rep = replacingPlaceholderRef.current;
-      // Determine inserted length = newLen - (oldLen - placeholderLength)
-      const placeholderLength = rep.end - rep.start;
-      const insertedLength = Math.max(0, newLen - (oldLen - placeholderLength));
-      // Safety: if insertedLength seems to consume trailing content (negative or too large), fallback to simple diff
-      if (insertedLength < 0 || rep.start + insertedLength > newLen) {
-        replacingPlaceholderRef.current = null;
-      } else {
-      const newRange = { start: rep.start, end: rep.start + insertedLength };
-      activeReplacementRangeRef.current = newRange;
-      setHighlightRanges([newRange]);
-      replacingPlaceholderRef.current = null; // consumed
+      // Only create if the edit intersects the placeholder bounds
+      if (!(oldChangeEnd <= rep.start || changeStart >= rep.end)) {
+        const newRange = { start: rep.start, end: rep.start + insertedLen };
+        activeReplacementRangeRef.current = { ...newRange };
+        updatedRanges.push(newRange);
       }
+      replacingPlaceholderRef.current = null; // consumed
     } else if (activeReplacementRangeRef.current && delta !== 0) {
-      const range = activeReplacementRangeRef.current;
-      // If typing at the end of the active range, extend it
-      if (caretPos >= range.end && caretPos <= range.end + 1 && delta > 0) {
-        range.end += delta;
-        setHighlightRanges([ { ...range } ]);
-      } else if (caretPos < range.start || caretPos > range.end + 1) {
-        // Cursor moved away: finalize (do nothing further, but keep highlight)
-        activeReplacementRangeRef.current = null;
+      // Keep growing active range when typing at or right after its end
+      const r = activeReplacementRangeRef.current;
+      const mapped = { start: mapPos(r.start), end: mapPos(r.end) };
+      let grow = false;
+      if (delta > 0 && removedLen === 0) {
+        // Pure insertion: extend if insertion starts at end of the active range
+        if (changeStart === mapped.end || caretPos === mapped.end + insertedLen) {
+          mapped.end += insertedLen;
+          grow = true;
+        }
+      }
+      activeReplacementRangeRef.current = { ...mapped };
+      updatedRanges = updatedRanges.map(x => (x.start === r.start && x.end === r.end) ? mapped : x);
+      if (!grow && delta !== 0) {
+        // If edit moved away, stop actively growing it
+        if (caretPos < mapped.start || caretPos > mapped.end) {
+          activeReplacementRangeRef.current = null;
+        }
+      }
+    } else if (delta > 0 && removedLen === 0) {
+      // No active range, but user inserted text: if insertion happens exactly at the end of any existing range, extend that range
+      const tryExtend = (arr: { start: number; end: number }[]) => {
+        for (let i = 0; i < arr.length; i++) {
+          const r = arr[i];
+          if (changeStart === r.end) {
+            arr[i] = { start: r.start, end: r.end + insertedLen };
+            // Make it active so further typing continues to grow this highlight
+            activeReplacementRangeRef.current = { ...arr[i] };
+            return true;
+          }
+        }
+        return false;
+      };
+      // Prefer extending internal ranges, then external, then persistent
+      if (!tryExtend(updatedRanges)) {
+        if (!tryExtend(updatedExternal)) {
+          tryExtend(updatedPersistent);
+        }
       }
     }
 
-    // NOTE: We do not shift ranges manually; we rebuild only for active range operations above.
+    updatedRanges = mergeRanges(updatedRanges);
+    updatedExternal = mergeRanges(updatedExternal);
+    updatedPersistent = mergeRanges(updatedPersistent);
+    setHighlightRanges(updatedRanges);
+    setSyncedExternalRanges(updatedExternal);
+    setSyncedPersistentRanges(updatedPersistent);
 
     onChange(newValue);
     addToHistory(newValue);
@@ -540,11 +643,11 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           
           const markers: { start: number; end: number; type: 'placeholder' | 'edited' }[] = [];
           placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
-          // Merge internal highlights (active editing), external highlights (auto-inserted), and all replaced ranges
+          // Merge internal highlights (active editing), synced external highlights (auto-inserted), and synced persistent ranges
           const allEdited = [
             ...highlightRanges,
-            ...((externalHighlights || []).filter((r: { start: number; end: number }) => r && r.end > r.start)),
-            ...((allReplacedRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start))
+            ...((syncedExternalRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start)),
+            ...((syncedPersistentRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start))
           ];
           allEdited.forEach(r => markers.push({ ...r, type: 'edited' }));
 
