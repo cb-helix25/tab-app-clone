@@ -113,30 +113,33 @@ const UserBubble: React.FC<UserBubbleProps> = ({
 
     // Display all available fields from the user object.
     // Deduplicate keys that differ only by spacing or underscores.
-    const detailsMap = new Map<string, { label: string; value: string; isAsana: boolean; isSecret: boolean }>();
+    const detailsMap = new Map<string, { label: string; value: string; isAsana: boolean; isSecret: boolean; isRate?: boolean; isRole?: boolean }>();
+    let foundRate = false, foundRole = false;
     Object.entries(user as Record<string, unknown>)
         .filter(([, value]) => value !== undefined && value !== null && value !== '')
         .forEach(([key, value]) => {
             const canonical = key.replace(/[\s_]/g, '').toLowerCase();
             if (canonical === 'aow') return; // handled separately
-            
             // Hide refresh token completely
             if (canonical.includes('refreshtoken') || canonical.includes('refresh_token')) return;
-            
             const isAsana = canonical.includes('asana');
             const isSecret = canonical.includes('secret') || canonical.includes('token');
-            
+            const isRate = canonical === 'rate';
+            const isRole = canonical === 'role';
+            if (isRate) foundRate = true;
+            if (isRole) foundRole = true;
             if (!detailsMap.has(canonical)) {
                 detailsMap.set(canonical, {
                     label: key.replace(/_/g, ' '),
                     value: String(value),
                     isAsana,
                     isSecret,
+                    isRate,
+                    isRole
                 });
             }
         });
     const userDetails = Array.from(detailsMap.values());
-    
     // Separate regular details from Asana details
     const regularDetails = userDetails.filter(d => !d.isAsana);
     const asanaDetails = userDetails.filter(d => d.isAsana);
@@ -158,6 +161,13 @@ const UserBubble: React.FC<UserBubbleProps> = ({
     // production data with trailing spaces or nickname variations still match.
     const canSwitchUser = isAdminUser(user);
 
+    // Local dev: check for Rate/Role presence
+    const showLocalDevBanner = isLocalDev;
+    const missingFields = [];
+    if (showLocalDevBanner) {
+        if (!foundRate) missingFields.push('Rate');
+        if (!foundRole) missingFields.push('Role');
+    }
     return (
         <div className="user-bubble-container">
             <button
@@ -290,20 +300,54 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                 }}>
                                     Profile Details
                                 </h4>
+                                {/* Local dev banner for Rate/Role presence */}
+                                {showLocalDevBanner && (
+                                    <div style={{
+                                        marginBottom: '10px',
+                                        padding: '7px 10px',
+                                        borderRadius: '5px',
+                                        background: missingFields.length
+                                            ? '#fff4e5'
+                                            : '#e7fbe7',
+                                        color: missingFields.length
+                                            ? '#b26a00'
+                                            : '#217a2b',
+                                        border: missingFields.length
+                                            ? '1px solid #ffd591'
+                                            : '1px solid #b7eb8f',
+                                        fontSize: '11px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '7px',
+                                        fontWeight: 500
+                                    }}>
+                                        {missingFields.length ? (
+                                            <>
+                                                <span style={{fontSize:'15px',fontWeight:700,verticalAlign:'middle'}}>⚠️</span>
+                                                Missing: {missingFields.join(' & ')} — set these in your user data for local testing.
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span style={{fontSize:'15px',fontWeight:700,verticalAlign:'middle'}}>✔</span>
+                                                Rate & Role present for local user.
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                                 <div style={{ display: 'grid', gap: '4px' }}>
                                     {regularDetails.map((d) => (
                                         <div key={d.label} style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             padding: '6px 8px',
-                                            background: '#fafbfc',
+                                            background: d.isRate || d.isRole ? '#f0fdf4' : '#fafbfc',
                                             borderRadius: '4px',
-                                            border: '1px solid #f1f3f4'
+                                            border: d.isRate || d.isRole ? '1px solid #b7eb8f' : '1px solid #f1f3f4'
                                         }}>
                                             <span style={{
                                                 fontSize: '10px',
                                                 fontWeight: '500',
-                                                color: '#6b7280',
+                                                color: d.isRate || d.isRole ? '#217a2b' : '#6b7280',
                                                 minWidth: '70px',
                                                 textTransform: 'capitalize'
                                             }}>
@@ -311,10 +355,11 @@ const UserBubble: React.FC<UserBubbleProps> = ({
                                             </span>
                                             <span style={{
                                                 fontSize: '10px',
-                                                color: '#374151',
+                                                color: d.isRate || d.isRole ? '#217a2b' : '#374151',
                                                 flex: 1,
                                                 marginLeft: '6px',
-                                                wordBreak: 'break-word'
+                                                wordBreak: 'break-word',
+                                                fontWeight: d.isRate || d.isRole ? 600 : 400
                                             }}>
                                                 {d.isSecret ? '***HIDDEN***' : d.value}
                                             </span>

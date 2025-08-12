@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
@@ -6,6 +6,10 @@ import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBloc
 import SnippetEditPopover from './SnippetEditPopover';
 import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
 import { wrapInsertPlaceholders } from './emailUtils';
+import { SCENARIOS } from './scenarios';
+import EmailSignature from '../EmailSignature';
+import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
+import markUrl from '../../../assets/dark blue mark.svg';
 
 
 
@@ -39,11 +43,126 @@ function buildPlaceholderHTML(text: string) {
   return html || '';
 }
 
+// Find placeholder tokens like [TOKEN] in a string (HTML or plain text)
+function findPlaceholders(input: string): string[] {
+  const matches = input.match(/\[([^\]]+)\]/g) || [];
+  // Return unique token names without brackets
+  const names = matches.map(m => m.slice(1, -1));
+  return Array.from(new Set(names));
+}
+
+// Highlight placeholders inside an HTML string (assumes HTML not escaped)
+function highlightPlaceholdersHtml(html: string): string {
+  return html.replace(/\[([^\]]+)\]/g, (_m, p1) => {
+    const inner = escapeHtml(p1);
+    return `<span style="display:inline;background:#ffe9e9;box-shadow:inset 0 0 0 1px #f1a4a4;padding:0;margin:0;border:none;font-style:inherit;color:#a80000">[${inner}]</span>`;
+  });
+}
+
+// Convert lightweight HTML (including preview scaffolding) to plain text safe for Outlook
+function htmlToPlainText(input: string): string {
+  let s = input || '';
+  // Normalize line breaks for common tags
+  s = s.replace(/\r\n/g, '\n');
+  s = s.replace(/<br\s*\/?\s*>/gi, '\n');
+  s = s.replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n');
+  s = s.replace(/<li\b[^>]*>/gi, '• ');
+  // Remove all remaining tags
+  s = s.replace(/<[^>]+>/g, '');
+  // Decode common entities
+  s = s.replace(/&nbsp;/g, ' ')
+       .replace(/&amp;/g, '&')
+       .replace(/&lt;/g, '<')
+       .replace(/&gt;/g, '>')
+       .replace(/&quot;/g, '"')
+       .replace(/&#39;/g, "'");
+  // Collapse excessive blank lines
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
+// --- Auto-insert Rate and Role into [RATE] and [ROLE] placeholders in the body ---
+function useAutoInsertRateRole(
+  body: string,
+  setBody: (v: string) => void,
+  userData: any,
+  setExternalHighlights?: (ranges: { start: number; end: number }[]) => void
+) {
+  useEffect(() => {
+  if (!body || !userData) return;
+
+  // Support userData being either a user object or an array of users (use first).
+  const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
+  if (!u) return;
+
+    const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
+    const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
+
+    const roleStr = roleRaw == null ? '' : String(roleRaw).trim();
+    // Parse numeric/money rate robustly (supports number or string with £ and commas). 0 is valid.
+    const parseRate = (val: unknown): number | null => {
+      if (val == null) return null;
+      if (typeof val === 'number') {
+        return isFinite(val) ? val : null;
+      }
+      const cleaned = String(val).replace(/[^0-9.\-]/g, '').trim();
+      if (!cleaned) return null;
+      const n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    };
+    const rateNumber = parseRate(rateRaw);
+    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  if (!roleStr && rateNumber == null) return;
+
+    // Global replacement of [RATE] and [ROLE] wherever they appear.
+    // Compute new body and collect highlight ranges for inserted values.
+    const TOKEN_LEN = (t: 'RATE' | 'ROLE') => `[${t}]`.length;
+    let newBody = body;
+    const ranges: { start: number; end: number }[] = [];
+
+    // We replace in a single left-to-right pass to keep indices stable while we compute highlights.
+  const regex = /\[(RATE|ROLE)\]/gi;
+    let m: RegExpExecArray | null;
+    let shift = 0; // net length delta after prior replacements
+
+    while ((m = regex.exec(body)) !== null) {
+  const token = (m[1] as string).toUpperCase() as 'RATE' | 'ROLE';
+      const originalStart = m.index;
+      const start = originalStart + shift;
+      const end = start + TOKEN_LEN(token);
+
+      let replacement: string | null = null;
+      if (token === 'RATE' && rateNumber != null) {
+        replacement = formatRateGBP(rateNumber);
+      } else if (token === 'ROLE' && roleStr) {
+        replacement = roleStr;
+      }
+
+      if (replacement != null) {
+        newBody = newBody.slice(0, start) + replacement + newBody.slice(end);
+        // Record highlight for the inserted value
+        ranges.push({ start, end: start + replacement.length });
+        // Update shift for subsequent matches based on length delta
+        shift += replacement.length - TOKEN_LEN(token);
+      }
+    }
+
+    if (newBody !== body) {
+      setBody(newBody);
+    }
+    // Even if nothing changed, clear highlights to avoid stale ranges
+    setExternalHighlights?.(ranges);
+  }, [body, userData, setBody, setExternalHighlights]);
+}
+
 interface InlineEditableAreaProps {
   value: string;
   onChange: (v: string) => void;
   edited: boolean;
   minHeight?: number;
+  externalHighlights?: { start: number; end: number }[];
+  allReplacedRanges?: { start: number; end: number }[];
 }
 
 interface UndoRedoState {
@@ -51,7 +170,7 @@ interface UndoRedoState {
   currentIndex: number;
 }
 
-const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48 }) => {
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges }) => {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [showToolbar, setShowToolbar] = useState(false);
@@ -421,7 +540,15 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           
           const markers: { start: number; end: number; type: 'placeholder' | 'edited' }[] = [];
           placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
-          highlightRanges.forEach(r => markers.push({ ...r, type: 'edited' }));
+          // Merge internal highlights (active editing), external highlights (auto-inserted), and all replaced ranges
+          const allEdited = [
+            ...highlightRanges,
+            ...((externalHighlights || []).filter((r: { start: number; end: number }) => r && r.end > r.start)),
+            ...((allReplacedRanges || []).filter((r: { start: number; end: number }) => r && r.end > r.start))
+          ];
+          allEdited.forEach(r => markers.push({ ...r, type: 'edited' }));
+
+
           markers.sort((a,b) => a.start - b.start);
           
           let cursor = 0;
@@ -438,7 +565,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             if (mark.type === 'placeholder') {
               html += `<span style="display:inline;background:#e0f0ff;box-shadow:inset 0 0 0 1px #8bbbe8;padding:0;margin:0;border:none;font-style:inherit;color:#0a4d8c">${escapeHtml(segment)}</span>`;
             } else {
-              html += `<span style="display:inline;background:#d4edda;box-shadow:inset 0 0 0 1px #9ad1ac;padding:0;margin:0;border:none;font-style:inherit;color:#155724">${escapeHtml(segment)}</span>`;
+              // Updated edited highlight: softer green background, brand green border, accessible text color
+              html += `<span style="display:inline;background:#e9f9f1;box-shadow:inset 0 0 0 1px #20b26c;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
             }
             cursor = mark.end;
           });
@@ -514,6 +642,13 @@ interface EditorAndTemplateBlocksProps {
   onScopeDescriptionChange?: (value: string) => void;
   amount?: string;
   onAmountChange?: (value: string) => void;
+  // Inline preview dependencies
+  userData?: any;
+  enquiry?: any;
+  passcode?: string;
+  handleDraftEmail?: () => void;
+  sendEmail?: () => void;
+  isDraftConfirmed?: boolean;
 }
 
 const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
@@ -546,7 +681,14 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   initialScopeDescription,
   onScopeDescriptionChange,
   amount,
-  onAmountChange
+  onAmountChange,
+  // Inline preview dependencies
+  userData,
+  enquiry,
+  passcode,
+  handleDraftEmail,
+  sendEmail,
+  isDraftConfirmed
 }) => {
   // State for removed blocks
   const [removedBlocks, setRemovedBlocks] = useState<{ [key: string]: boolean }>({});
@@ -560,6 +702,18 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   // Removed PIC placeholder insertion feature per user request
   const [isNotesPinned, setIsNotesPinned] = useState(false);
   const [showSubjectHint, setShowSubjectHint] = useState(false);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
+  const [showInlinePreview, setShowInlinePreview] = useState(false);
+  const [confirmReady, setConfirmReady] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  // Ensure a default subject without tying it to scenario templates
+  const didSetDefaultSubject = useRef(false);
+  useEffect(() => {
+    if (!didSetDefaultSubject.current && (!subject || subject.trim() === '')) {
+      didSetDefaultSubject.current = true;
+      setSubject('Your Enquiry - Helix Law');
+    }
+  }, [subject, setSubject]);
 
   // --- Create floating pin button with portal to render outside component tree ---
   // Global sticky notes with portal when pinned
@@ -758,8 +912,11 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         : !!selectedOptions && selectedOptions !== '';
       if (hasSelections && blockContents[block.title] === undefined) {
         const base = block.editableContent || (isMultiSelect
-          ? block.options.filter(opt => Array.isArray(selectedOptions) && selectedOptions.includes(opt.label)).map(o => o.previewText).join('\n\n')
-          : block.options.find(opt => opt.label === selectedOptions)?.previewText || '');
+          ? block.options
+              .filter(opt => Array.isArray(selectedOptions) && selectedOptions.includes(opt.label))
+              .map(o => htmlToPlainText(o.previewText))
+              .join('\n\n')
+          : htmlToPlainText(block.options.find(opt => opt.label === selectedOptions)?.previewText || ''));
         updates[block.title] = base;
       }
     });
@@ -776,6 +933,30 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     }
   };
 
+  // Auto-insert Rate/Role highlight state and effect
+  const [bodyAutoHighlights, setBodyAutoHighlights] = useState<{ start: number; end: number }[]>([]);
+  const [allBodyReplacedRanges, setAllBodyReplacedRanges] = useState<{ start: number; end: number }[]>([]);
+  
+  // Track all placeholder replacements (both auto and manual) for consistent green highlighting
+  const trackReplacedRange = useCallback((range: { start: number; end: number }) => {
+    setAllBodyReplacedRanges(prev => {
+      // Remove overlapping ranges and add the new one
+      const filtered = prev.filter(r => !(r.start < range.end && r.end > range.start));
+      return [...filtered, range];
+    });
+  }, []);
+  
+  // Enhanced auto-insert that also tracks replaced ranges
+  const enhancedSetBodyAutoHighlights = useCallback((ranges: { start: number; end: number }[]) => {
+    setBodyAutoHighlights(ranges);
+    // Add these ranges to the persistent replaced ranges
+    ranges.forEach(trackReplacedRange);
+  }, [trackReplacedRange]);
+  
+  useAutoInsertRateRole(body, setBody, userData, enhancedSetBodyAutoHighlights);
+  // Also apply to subject so switching templates gets replacements too
+  useAutoInsertRateRole(subject, setSubject, userData);
+
   return (
     <>
       {/* Global sticky notes portal */}
@@ -785,6 +966,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         .inline-reveal-btn {display:inline-flex;align-items:center;gap:0;overflow:hidden;position:relative;}
         .inline-reveal-btn .label{max-width:0;opacity:0;transform:translateX(-4px);margin-left:0;white-space:nowrap;transition:max-width .45s ease,opacity .45s ease,transform .45s ease,margin-left .45s ease;}
         .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
+      @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+      .smooth-appear{animation:fadeSlideIn .18s ease}
       `}</style>
 
   <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
@@ -816,6 +999,50 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           </div>
 
           <div style={{ padding: 16 }}>
+            {/* Scenario Picker (minimal, non-breaking) */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <Icon iconName="LightningBolt" styles={{ root: { fontSize: 12 } }} />
+                Quick scenarios
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {SCENARIOS.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSelectedScenarioId(s.id);
+          // Prefill only the body; subject is kept independent
+                      setBody(s.body);
+                      // Optionally seed first block editable content to keep edit UX consistent
+                      const firstBlock = templateBlocks[0];
+                      if (firstBlock) {
+                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: s.body }));
+                      }
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      fontSize: 12,
+                      borderRadius: 6,
+                      border: `1px solid ${selectedScenarioId === s.id ? colours.blue : '#e1e5e9'}`,
+                      background: selectedScenarioId === s.id ? '#eef6ff' : '#fff',
+                      color: selectedScenarioId === s.id ? colours.blue : '#333',
+                      cursor: 'pointer'
+                    }}
+                    title={s.name}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* Subject Line - Primary Focus */}
             <div style={{ marginBottom: initialNotes ? 16 : 0 }}>
               <div style={{
@@ -857,6 +1084,261 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
                 }}
               />
+            </div>
+
+            {/* Default subject is set via a top-level effect to respect Hooks rules */}
+
+            {/* Email body / Preview (swap in place) */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: colours.blue,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Icon iconName="TextDocument" styles={{ root: { fontSize: 12 } }} />
+                  {showInlinePreview ? 'Preview' : 'Email body'}
+                </span>
+                <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <button
+                    onClick={() => {
+                      const plain = htmlToPlainText(body);
+                      if (plain !== body) {
+                        setBody(plain);
+                      }
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: '1px solid #e1e5e9',
+                      color: '#333',
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title="Convert current content to plain text"
+                  >
+                    <Icon iconName="ClearFormatting" styles={{ root: { fontSize: 12 } }} /> Plain text
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (showInlinePreview) {
+                        if (!previewRef.current) return;
+                        const text = previewRef.current.innerText || '';
+                        try {
+                          void navigator.clipboard.writeText(text);
+                        } catch {
+                          const ta = document.createElement('textarea');
+                          ta.value = text;
+                          document.body.appendChild(ta);
+                          ta.select();
+                          try { document.execCommand('copy'); } catch {}
+                          document.body.removeChild(ta);
+                        }
+                        return;
+                      }
+                      const plain = htmlToPlainText(body);
+                      try {
+                        void navigator.clipboard.writeText(plain);
+                      } catch {
+                        // Fallback
+                        const ta = document.createElement('textarea');
+                        ta.value = plain;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch {}
+                        document.body.removeChild(ta);
+                      }
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: `1px solid ${colours.blue}`,
+                      color: colours.blue,
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title={showInlinePreview ? 'Copy preview text' : 'Copy plain text'}
+                  >
+                    <Icon iconName="Copy" styles={{ root: { fontSize: 12 } }} /> Copy
+                  </button>
+                  <button
+                    onClick={() => setShowInlinePreview(v => !v)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      borderRadius: 4,
+                      border: `1px solid ${showInlinePreview ? colours.blue : '#e1e5e9'}`,
+                      color: showInlinePreview ? colours.blue : '#333',
+                      background: '#fff',
+                      cursor: 'pointer'
+                    }}
+                    title="Toggle inline preview"
+                  >
+                    <Icon iconName="Preview" styles={{ root: { fontSize: 12 } }} /> {showInlinePreview ? 'Back to editor' : 'Preview here'}
+                  </button>
+                </div>
+              </div>
+              {!showInlinePreview && (
+                <div className="smooth-appear" style={{
+                  border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  borderRadius: 6,
+                  background: isDarkMode ? colours.dark.cardBackground : '#fff',
+                  padding: 4,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  {/* Watermark */}
+                  <div aria-hidden="true" style={{ position: 'absolute', top: 8, right: 8, width: 150, height: 150, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
+                  <InlineEditableArea
+                    value={body}
+                    onChange={(v) => setBody(v)}
+                    edited={false}
+                    minHeight={140}
+                    externalHighlights={bodyAutoHighlights}
+                    allReplacedRanges={allBodyReplacedRanges}
+                  />
+                </div>
+              )}
+
+              {showInlinePreview && (
+                <div className="smooth-appear" style={{
+                marginTop: 12,
+                border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                borderRadius: 8,
+                background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                {/* Watermark */}
+                <div aria-hidden="true" style={{ position: 'absolute', top: 10, right: 10, width: 160, height: 160, opacity: isDarkMode ? 0.08 : 0.08, backgroundImage: `url(${markUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'top right', backgroundSize: 'contain', pointerEvents: 'none' }} />
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : '#5f6368', letterSpacing: 0.4, textTransform: 'uppercase' }}>Inline Preview</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>{subject || 'Your Enquiry - Helix Law'}</span>
+                </div>
+                <div ref={previewRef} style={{ padding: 12 }}>
+                  {(() => {
+                    // Build preview HTML with substitutions and signature
+                    const withoutAutoBlocks = body || '';
+                    const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
+                    const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
+                    const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+                    const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
+                    const substituted = applyDynamicSubstitutions(
+                      sanitized,
+                      userDataLocal,
+                      enquiryLocal,
+                      amount,
+                      passcode,
+                      checkoutPreviewUrl
+                    );
+                    const unresolvedBody = findPlaceholders(substituted);
+                    const finalBody = convertDoubleBreaksToParagraphs(substituted);
+                    const finalHighlighted = highlightPlaceholdersHtml(finalBody);
+                    return (
+                      <>
+                        {unresolvedBody.length > 0 && (
+                          <div style={{
+                            background: '#fff1f0',
+                            border: '1px solid #ffa39e',
+                            color: '#a8071a',
+                            fontSize: 12,
+                            padding: '8px 10px',
+                            borderRadius: 6,
+                            marginBottom: 10
+                          }}>
+                            <Icon iconName="Warning" styles={{ root: { fontSize: 12, color: '#a8071a', marginRight: 6 } }} />
+                            {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
+                          </div>
+                        )}
+                        <EmailSignature bodyHtml={finalHighlighted} userData={userDataLocal} />
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f8f9fa',
+                  borderTop: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: isDarkMode ? colours.dark.text : '#3c4043' }}>
+                    <input type="checkbox" checked={confirmReady} onChange={e => setConfirmReady(e.currentTarget.checked)} />
+                    Everything looks good, ready to proceed
+                  </label>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {(() => {
+                      // Determine unresolved placeholders across subject and body after substitution
+                      const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
+                      const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
+                      // Subject is independent; treat it directly
+                      const unresolvedSubject = findPlaceholders(subject || '');
+                      const sanitized = (body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
+                      const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
+                      const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, passcode, checkoutPreviewUrl);
+                      const unresolvedBody = findPlaceholders(substitutedBody);
+                      const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
+                      const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
+                      const disableSend = true; // still disabled in testing mode
+                      return (
+                        <>
+                          <button
+                            onClick={() => sendEmail?.()}
+                            disabled={disableSend}
+                            title={unresolvedAny ? 'Resolve placeholders before sending' : 'Sending is disabled in testing mode. Use Draft Email.'}
+                            style={{
+                              padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'not-allowed',
+                              background: colours.blue, color: '#fff', fontWeight: 600, opacity: 0.6
+                            }}
+                          >
+                            <Icon iconName="Send" /> Send
+                          </button>
+                          <button
+                            onClick={() => handleDraftEmail?.()}
+                            disabled={disableDraft}
+                            style={{
+                              padding: '6px 12px', borderRadius: 6, border: `1px solid ${isDraftConfirmed ? colours.green : '#e1e5e9'}`,
+                              background: isDraftConfirmed ? '#e8f5e8' : '#fff', color: isDraftConfirmed ? colours.green : '#3c4043', fontWeight: 600
+                            }}
+                            title={isDraftConfirmed ? 'Drafted' : (unresolvedAny ? 'Resolve placeholders before drafting' : 'Draft Email')}
+                          >
+                            <Icon iconName={isDraftConfirmed ? 'CheckMark' : 'Mail'} /> {isDraftConfirmed ? 'Drafted' : 'Draft Email'}
+                          </button>
+                        </>
+                      );
+                    })()}
+                    <button
+                      onClick={() => {
+                        if (!previewRef.current) return;
+                        const text = previewRef.current.innerText || '';
+                        navigator.clipboard.writeText(text);
+                      }}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e1e5e9', background: '#fff', color: '#3c4043', fontWeight: 500 }}
+                    >
+                      <Icon iconName="Copy" /> Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Close Email body / Preview container */}
             </div>
 
             {/* Context Notes - Supporting Information */}
@@ -1216,412 +1698,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
             </div>
           </div>
 
-        {/* Show removed blocks section if there are any */}
-        {Object.keys(removedBlocks).length > 0 && (
-          <div style={{
-            border: '1px solid #f0f0f0',
-            borderRadius: '6px',
-            backgroundColor: '#f8f9fa',
-            padding: '12px',
-            margin: '16px 16px 0 16px'
-          }}>
-            <Text styles={{ root: { fontSize: 11, fontWeight: 500, color: '#666', marginBottom: '8px' } }}>
-              Removed Blocks (click to add back):
-            </Text>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {templateBlocks
-                .filter(block => removedBlocks[block.title])
-                .map(block => (
-                  <div
-                    key={`removed-${block.title}`}
-                    style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e1dfdd',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '11px',
-                      color: colours.highlight,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => handleReinsertBlock(block)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f0f8ff';
-                      e.currentTarget.style.borderColor = colours.highlight;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
-                      e.currentTarget.style.borderColor = '#e1dfdd';
-                    }}
-                    title={`Add back "${block.title}" block`}
-                  >
-                    <Icon iconName="Add" styles={{ root: { fontSize: '10px' } }} />
-                    <span>{block.title}</span>
-                  </div>
-                ))
-              }
-            </div>
-          </div>
-        )}
-
-        {/* Progressive reveal template blocks */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 16 }}>
-            {templateBlocks
-              .filter(block => !removedBlocks[block.title])
-              .map((block, blockIndex) => {
-                // Progressive reveal logic: show Introduction always, others only after Introduction has selections
-                const isIntroduction = blockIndex === 0;
-                const introBlock = templateBlocks[0];
-                const introSelectedOptions = selectedTemplateOptions[introBlock?.title];
-                const introHasSelections = introBlock?.isMultiSelect
-                  ? Array.isArray(introSelectedOptions) && introSelectedOptions.length > 0
-                  : introSelectedOptions && introSelectedOptions !== '';
-
-                // Show Introduction always, show others only after Introduction has selections
-                if (!isIntroduction && !introHasSelections) {
-                  return null;
-                }
-
-                const selectedOptions = selectedTemplateOptions[block.title];
-                const isMultiSelect = block.isMultiSelect;
-                const hasSelections = isMultiSelect 
-                  ? Array.isArray(selectedOptions) && selectedOptions.length > 0
-                  : selectedOptions && selectedOptions !== '';
-                
-                return (
-                  <div
-                    key={`block-${block.title}-${blockIndex}`}
-                    className="block-editor"
-                    style={{
-                      // Visual states:
-                      // 1. Edited (green)
-                      // 2. Selected but not edited (blue)
-                      // 3. Not selected (neutral)
-                      border: editedBlocks[block.title]
-                        ? '1px solid #28a745'
-                        : hasSelections
-                          ? `1px solid ${colours.blue}`
-                          : '1px solid #e1e5e9',
-                      // Keep background neutral (white) regardless of state to avoid distraction
-                      background: '#ffffff',
-                      borderRadius: '6px',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* Block Header */}
-                    <div style={{
-                      padding: '12px 16px',
-                      background: editedBlocks[block.title]
-                        ? '#f0f8f0'
-                        : hasSelections
-                          ? '#eef6ff'
-                          : '#f8f9fa',
-                      borderBottom: '1px solid #e1e5e9',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <h3 style={{
-                          margin: 0,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: '#0d3955'
-                        }}>
-                          {block.title}
-                        </h3>
-                        <span 
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            backgroundColor: editedBlocks[block.title]
-                              ? '#d4edda'
-                              : hasSelections
-                                ? '#e0f0ff'
-                                : '#e9ecef',
-                            color: editedBlocks[block.title]
-                              ? '#155724'
-                              : hasSelections
-                                ? colours.blue
-                                : '#6c757d'
-                          }}
-                        >
-                          {hasSelections ? (editedBlocks[block.title] ? 'edited' : 'included') : 'not included'}
-                        </span>
-                        {hasSelections && (
-                          <span style={{
-                            fontSize: 12,
-                            color: '#666',
-                            fontWeight: 500
-                          }}>
-                            {isIntroduction 
-                              ? (Array.isArray(selectedOptions) && selectedOptions.length > 0 ? selectedOptions[0] : '')
-                              : isMultiSelect 
-                                ? Array.isArray(selectedOptions) 
-                                  ? selectedOptions.join(', ') 
-                                  : selectedOptions
-                                : selectedOptions}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        {hasSelections && (
-                          <>
-                            <button
-                              onClick={() => {
-                                if (isIntroduction) {
-                                  handleMultiSelectChange(block.title, []);
-                                } else if (isMultiSelect) {
-                                  handleMultiSelectChange(block.title, []);
-                                } else {
-                                  handleSingleSelectChange(block.title, '');
-                                }
-                              }}
-                              className="inline-reveal-btn"
-                              aria-label="Change selection"
-                              style={{
-                                padding: '6px 10px',
-                                backgroundColor: editedBlocks[block.title] ? '#f4f4f4' : '#f4faff',
-                                color: colours.blue,
-                                border: `1px solid ${colours.blue}`,
-                                borderRadius: 4,
-                                fontSize: 12,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                boxShadow: 'none',
-                                transition: 'background-color .2s ease,border-color .2s ease'
-                              }}
-                              title="Change selection"
-                            >
-                              <Icon iconName="Edit" />
-                              <span className="label">Change</span>
-                            </button>
-                            <button
-                              onClick={() => handleRemoveBlock(block)}
-                              className="inline-reveal-btn"
-                              aria-label="Remove section"
-                              style={{
-                                padding: '6px 10px',
-                                backgroundColor: colours.cta,
-                                color: 'white',
-                                border: '1px solid ' + colours.cta,
-                                borderRadius: 4,
-                                fontSize: 12,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                boxShadow: 'none',
-                                transition: 'background-color .2s ease'
-                              }}
-                              title="Remove this section"
-                            >
-                              <Icon iconName="Delete" />
-                              <span className="label">Remove</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Special handling for Introduction block */}
-                    {isIntroduction ? (
-                      <div style={{ padding: hasSelections ? 8 : 16 }}>
-                        {!hasSelections ? (
-                          <>
-                            <div style={{
-                              fontSize: 13,
-                              color: '#666',
-                              marginBottom: 12,
-                              fontWeight: 500
-                            }}>
-                              Select an introduction style:
-                            </div>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {block.options.map(option => {
-                                return (
-                                  <div
-                                    key={option.label}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      gap: 8,
-                                      padding: '8px 12px',
-                                      borderRadius: 6,
-                                      border: '2px solid transparent',
-                                      background: '#fafbfc',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => {
-                                      // For Introduction, use single select behavior
-                                      handleMultiSelectChange(block.title, [option.label]);
-                                    }}
-                                  >
-                                    <div style={{
-                                      width: 20,
-                                      height: 20,
-                                      border: '2px solid #ccc',
-                                      borderRadius: '50%',
-                                      background: '#fff',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0,
-                                      marginTop: 2
-                                    }}>
-                                    </div>
-                                    
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        color: '#333',
-                                        marginBottom: 4
-                                      }}>
-                                        {option.label}
-                                      </div>
-                                      <div style={{
-                                        fontSize: 12,
-                                        color: '#666',
-                                        lineHeight: 1.4,
-                                        maxHeight: 60,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}>
-                                        {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
-                                        {option.previewText.length > 150 ? '...' : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <InlineEditableArea
-                              value={blockContents[block.title] ?? ''}
-                              onChange={(v) => handleBlockContentChange(block, v)}
-                              edited={!!editedBlocks[block.title]}
-                            />
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      /* Regular template blocks */
-                      <div style={{ padding: hasSelections ? 8 : 16 }}>
-                        {!hasSelections && (
-                          <>
-                            <div style={{
-                              fontSize: 13,
-                              color: '#666',
-                              marginBottom: 12,
-                              fontWeight: 500
-                            }}>
-                              Select options to include in this section:
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {block.options.map(option => {
-                                const isSelected = isMultiSelect
-                                  ? Array.isArray(selectedOptions) && selectedOptions.includes(option.label)
-                                  : selectedOptions === option.label;
-                                return (
-                                  <div
-                                    key={option.label}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      gap: 8,
-                                      padding: '8px 12px',
-                                      borderRadius: 6,
-                                      border: isSelected ? `2px solid ${colours.blue}` : '2px solid transparent',
-                                      background: isSelected ? '#f0f6ff' : '#fafbfc',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => {
-                                      if (isMultiSelect) {
-                                        const currentSelections = Array.isArray(selectedOptions) ? selectedOptions : [];
-                                        if (isSelected) {
-                                          const updated = currentSelections.filter(s => s !== option.label);
-                                          handleMultiSelectChange(block.title, updated);
-                                        } else {
-                                          const updated = [...currentSelections, option.label];
-                                          handleMultiSelectChange(block.title, updated);
-                                        }
-                                      } else {
-                                        if (isSelected) {
-                                          handleSingleSelectChange(block.title, '');
-                                        } else {
-                                          handleSingleSelectChange(block.title, option.label);
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    <div style={{
-                                      width: 20,
-                                      height: 20,
-                                      border: isSelected ? `2px solid ${colours.blue}` : '2px solid #ccc',
-                                      borderRadius: isMultiSelect ? 4 : '50%',
-                                      background: isSelected ? colours.blue : '#fff',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      flexShrink: 0,
-                                      marginTop: 2
-                                    }}>
-                                      {isSelected && (
-                                        <Icon
-                                          iconName="CheckMark"
-                                          styles={{ root: { fontSize: 12, color: '#fff', fontWeight: 'bold' } }}
-                                        />
-                                      )}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        color: isSelected ? colours.blue : '#333',
-                                        marginBottom: 4
-                                      }}>
-                                        {option.label}
-                                      </div>
-                                      <div style={{
-                                        fontSize: 12,
-                                        color: '#666',
-                                        lineHeight: 1.4,
-                                        maxHeight: 60,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}>
-                                        {option.previewText.replace(/<[^>]+>/g, '').substring(0, 150)}
-                                        {option.previewText.length > 150 ? '...' : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
-                        {hasSelections && (
-                          <InlineEditableArea
-                            value={blockContents[block.title] ?? ''}
-                            onChange={(v) => handleBlockContentChange(block, v)}
-                            edited={!!editedBlocks[block.title]}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
+          {/* Template blocks removed in simplified flow */}
         </div>
       </Stack>
     </>

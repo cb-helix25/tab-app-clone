@@ -55,7 +55,7 @@ import {
 import ReactDOMServer from 'react-dom/server';
 import { PitchDebugPanel, useLocalFetchLogger } from './pitch-builder';
 import EmailSignature from './EmailSignature';
-import EmailPreview from './pitch-builder/EmailPreview';
+// EmailPreview panel deprecated in favour of inline preview
 import EditorAndTemplateBlocks from './pitch-builder/EditorAndTemplateBlocks';
 
 import OperationStatusToast from './pitch-builder/OperationStatusToast';
@@ -88,14 +88,14 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
   const [blocks, setBlocks] = useState<TemplateBlock[]>(() => getTemplateBlocks(templateSet));
   useEffect(() => {
     let cancelled = false;
-    async function loadBlocks() {
-      const mod = await import('../../app/customisation/ProductionTemplateBlocks');
-      if (!cancelled) {
-        // If you export named blocks, adjust as needed
-        setBlocks(getTemplateBlocks(templateSet));
+      async function loadBlocks() {
+        const mod = await import('../../app/customisation/ProductionTemplateBlocks');
+        if (!cancelled) {
+          // If you export named blocks, adjust as needed
+          setBlocks(getTemplateBlocks(templateSet));
+        }
       }
-    }
-    loadBlocks();
+      loadBlocks();
     // HMR support
     // @ts-expect-error: HMR property only exists in dev
     if (import.meta && import.meta.hot) {
@@ -703,17 +703,20 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     setPinnedBlocks({});
     setEditedBlocks({});
     setOriginalBlockContent({});
-    loadBlocks().then((newBlocks) => {
-      const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
-        b => !hiddenBlocks[b.title]
-      );
-      setBody(generateInitialBody(blocksToUse));
-      if (bodyEditorRef.current) {
-        bodyEditorRef.current.innerHTML = generateInitialBody(blocksToUse);
-      }
-      // v1 templates should no longer auto select any blocks
-      // autoInsertDefaultBlocks(blocksToUse, newSet);
-    });
+      loadBlocks().then((newBlocks) => {
+        const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
+          b => !hiddenBlocks[b.title]
+        );
+        // Simplified composer: don’t auto-seed body from old templates.
+        if (!body || body.trim() === '') {
+          setBody('');
+          if (bodyEditorRef.current) {
+            bodyEditorRef.current.innerHTML = '';
+          }
+        }
+        // v1 templates should no longer auto select any blocks
+        // autoInsertDefaultBlocks(blocksToUse, newSet);
+      });
   }
 
   // Initial Scope options (formerly Service)
@@ -1196,6 +1199,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   useEffect(() => {
     const saved = localStorage.getItem('pitchBuilderState');
+  const shouldResume = localStorage.getItem('resumePitchBuilder') === 'true';
     let initialSet: TemplateSet = 'Database';
     if (saved) {
       try {
@@ -1234,7 +1238,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         if (state.hiddenBlocks) setHiddenBlocks(state.hiddenBlocks);
         if (state.blocks) setBlocks(state.blocks);
         if (state.savedSnippets) setSavedSnippets(state.savedSnippets);
-        if (state.body) setBody(state.body);
+  if (shouldResume && state.body) setBody(state.body);
       } catch (e) {
         console.error('Failed to parse saved pitch builder state', e);
         initialSet = 'Database';
@@ -1315,9 +1319,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // State for extracted block selections and editable content
   const [sectionSelections, setSectionSelections] = useState<Record<string, string[]>>({});
   const [sectionContent, setSectionContent] = useState<Record<string, string>>({});
-  const [body, setBodyState] = useState<string>(() =>
-    generateInitialBody(blocks.filter(b => !hiddenBlocks[b.title]))
-  );
+  const [body, setBodyState] = useState<string>('');
   
   function setBody(newBody: string | ((prevBody: string) => string)) {
     const resolvedBody = typeof newBody === 'function' ? newBody(body) : newBody;
@@ -4061,7 +4063,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         {/* Old InstructionCard removed: now using unified summary card above */}
 
         {/* Row: Combined Email Editor and Template Blocks */}
-        <EditorAndTemplateBlocks
+  <EditorAndTemplateBlocks
           isDarkMode={isDarkMode}
           body={body}
           setBody={setBodyForComponents}
@@ -4096,6 +4098,13 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           onScopeDescriptionChange={setInitialScopeDescription}
           amount={amount}
           onAmountChange={handleAmountChange}
+          // Inline preview props
+          userData={userData}
+          enquiry={enquiry}
+          passcode={dealPasscode}
+          handleDraftEmail={handleDraftEmail}
+          sendEmail={sendEmail}
+          isDraftConfirmed={isDraftConfirmed}
           // bubbleStyle prop removed; not needed by EditorAndTemplateBlocks
           // filteredAttachments prop removed; not needed by EditorAndTemplateBlocks
           // highlightBlock prop removed; not needed by EditorAndTemplateBlocks
@@ -4267,15 +4276,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             } } originalText={''} editedText={''}          />
         )}
 
-        {/* Action Buttons - Simplified */}
+        {/* Reset button preserved */}
         <Stack horizontal tokens={{ childrenGap: 16 }} styles={{ root: { marginTop: '24px', padding: '0 8px' } }}>
-          <PrimaryButton
-            text="Preview & Send"
-            onClick={togglePreview}
-            styles={sharedPrimaryButtonStyles}
-            ariaLabel="Preview Email"
-            iconProps={{ iconName: 'Preview' }}
-          />
           <DefaultButton
             text="Reset All"
             onClick={resetForm}
@@ -4284,35 +4286,6 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
             iconProps={{ iconName: 'Refresh' }}
           />
         </Stack>
-
-        {/* Preview Panel */}
-        <EmailPreview
-          isPreviewOpen={isPreviewOpen}
-          onDismiss={togglePreview}
-          enquiry={enquiry}
-          subject={subject}
-          body={body}
-          templateBlocks={templateBlocks}
-          attachments={attachments}
-          followUp={followUp}
-          fullName={`${enquiry.First_Name || ''} ${enquiry.Last_Name || ''}`.trim()}
-          userData={userData}
-          initialScopeDescription={initialScopeDescription}
-          clients={dealClients}
-          to={to}
-          cc={cc}
-          bcc={bcc}
-          autoInsertedBlocks={autoInsertedBlocks}
-          editedBlocks={editedBlocks}
-          amount={amount}
-          sendEmail={sendEmail}
-          handleDraftEmail={handleDraftEmail}
-          isSuccessVisible={isSuccessVisible}
-          isDraftConfirmed={isDraftConfirmed}
-          passcode={dealPasscode}
-        />
-
-        {/* Removed duplicate Preview and Reset buttons */}
 
         <OperationStatusToast
           visible={toast !== null}
