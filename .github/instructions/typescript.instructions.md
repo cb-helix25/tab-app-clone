@@ -51,10 +51,21 @@ These rules layer on top of repository root guidance. Keep diffs minimal and foc
 * Custom hooks: prefix with `use`, keep them pure (except allowed React side effects), and return stable shapes (objects with consistent keys or tuples with documented order).
 * Memoization: Use `useMemo` / `useCallback` sparingly—only for expensive computations or to maintain referential stability for dependencies.
 
+### UI Micro‑patterns (Enquiries/Pitch Builder)
+* Sticky header bottom border for separation:
+	* Dark: `1px solid rgba(255,255,255,0.08)`; Light: `1px solid rgba(0,0,0,0.06)`.
+* Notes pin UX: small floating `Pinned` icon inside the notes box (top-right); `Unpin` in the global portal.
+	* No pointer triangles; raise `z-index` so controls don’t get occluded.
+* Source confirmation copy under notes (tooltip or caption):
+	* “Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.”
+* VAT panel appears only when amount is valid; show VAT 20% and Total inc VAT, formatted `£#,###.##`.
+* Overlay editor pattern: textarea overlay + pre highlight; snap selection to `[TOKEN]`; Ctrl+Z/Y history (~300ms debounce). 
+
 ## Data Schema (Matters & Enquiries)
 * Always prefer the NEW schema (snake_case and/or UPPERCASE forms). Do NOT introduce new dependencies on legacy spaced-key fields.
 * Normalize incoming data via `src/utils/matterNormalization.ts` (add tests if you extend it).
 * When adding schema-related code, include at least one test demonstrating round‑trip normalization.
+* Avoid adding new code that relies on legacy spaced keys like "Display Number" or "Unique ID"; route via normalization helpers.
 
 ## Testing Guidelines
 * Minimum: happy path + one edge case for each exported function of moderate complexity.
@@ -104,6 +115,7 @@ export function normalizeMatters(source: unknown): Result<Matter[]> { /* ... */ 
 6. Performance considerations noted (if relevant).
 
 ## Recent Learning Points (Chronological – newest first)
+* 2025-08-12: Pin icon must be inside notes, use valid Fluent UI glyphs; neutral, wrapped source confirmation tooltip; VAT panel only when amount is valid; keep sticky bar border subtle. (AC)
 * 2025-08-09: Expanded baseline TS standards & collaborative learning section (init).
 
 ## Contribution Chain – Add Your Learning Point

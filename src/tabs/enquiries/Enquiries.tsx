@@ -743,9 +743,9 @@ const Enquiries: React.FC<EnquiriesProps> = ({
       flexDirection: 'row',
       gap: '8px',
       alignItems: 'center',
-      height: ACTION_BAR_HEIGHT,
+      height: '48px',
       position: 'sticky',
-      top: ACTION_BAR_HEIGHT,
+      top: '48px',
       zIndex: 999,
     });
   }
@@ -821,34 +821,15 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const renderDetailView = useCallback(
     (enquiry: Enquiry) => (
-      <Stack
-        tokens={{ childrenGap: 24 }}
-        styles={{
-          root: {
-            backgroundColor: isDarkMode
-              ? colours.dark.sectionBackground
-              : colours.light.sectionBackground,
-            boxShadow: isDarkMode
-              ? '0 8px 32px rgba(0, 0, 0, 0.3)'
-              : '0 8px 32px rgba(0, 0, 0, 0.1)',
-            padding: '32px',
-            borderRadius: '12px',
-            fontFamily: 'Raleway, sans-serif',
-          },
-        }}
-      >
+      <>
         {activeSubTab === 'Pitch' && (
           <PitchBuilder enquiry={enquiry} userData={userData} />
         )}
-        {activeSubTab === 'Calls' && (
-          <EnquiryCalls enquiry={enquiry} />
-        )}
-        {activeSubTab === 'Emails' && (
-          <EnquiryEmails enquiry={enquiry} />
-        )}
-      </Stack>
+        {activeSubTab === 'Calls' && <EnquiryCalls enquiry={enquiry} />}
+        {activeSubTab === 'Emails' && <EnquiryEmails enquiry={enquiry} />}
+      </>
     ),
-    [isDarkMode, activeSubTab, userData]
+    [activeSubTab, userData]
   );
 
   const enquiriesCountPerMember = useMemo(() => {
@@ -999,124 +980,129 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     });
   }
 
-  return (
-    <div className={containerStyle(isDarkMode)}>
-      {/* Action / Navigation Bar */}
-      <div
-        className={mergeStyles({
+  // Global Navigator: list vs detail
+  useEffect(() => {
+    // List mode: filter/search bar in Navigator (like Matters list state)
+    if (!selectedEnquiry) {
+      setContent(
+        <div style={{
+          backgroundColor: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
+          padding: '10px 24px 12px 24px',
+          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          fontSize: 14,
+          fontFamily: 'Raleway, sans-serif',
+          flexWrap: 'wrap',
           position: 'sticky',
           top: 0,
           zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 16,
-          padding: '10px 24px 12px 24px',
-          background: isDarkMode ? colours.dark.sectionBackground : colours.light.sectionBackground,
-          boxShadow: isDarkMode ? '0 2px 6px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.12)',
           borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)'
-        })}
-      >
-        {/* Left side: either back + pivot (detail view) OR filters (list view) */}
-        {selectedEnquiry ? (
-          <div className={detailNavStyle(isDarkMode)} style={{ position: 'static', padding: 0, boxShadow: 'none', top: undefined, height: 'auto' }}>
-            <IconButton
-              iconProps={{ iconName: 'ChevronLeft' }}
-              onClick={handleBackToList}
-              className={backButtonStyle}
-              title="Back"
-              ariaLabel="Back"
-            />
-            <Pivot selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
-              <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-              <PivotItem headerText="Calls" itemKey="Calls" />
-              <PivotItem headerText="Emails" itemKey="Emails" />
-            </Pivot>
-          </div>
-        ) : (
-          <>
-            {/* Status filter (labels removed for cleaner look) */}
+        }}>
+          <SegmentedControl
+            id="enquiries-status-seg"
+            ariaLabel="Filter enquiries by status"
+            value={activeState === 'Claimable' ? 'Unclaimed' : activeState}
+            onChange={(k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k)}
+            options={['Claimed','Unclaimed'].map(k => ({ key: k, label: k }))}
+          />
+          {userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 && (
             <SegmentedControl
-              id="enquiries-status-seg"
-              ariaLabel="Filter enquiries by status"
-              value={activeState === 'Claimable' ? 'Unclaimed' : activeState}
-              onChange={(k) => handleSetActiveState(k === 'Unclaimed' ? 'Claimable' : k)}
-              options={[ 'Claimed', 'Unclaimed' ].map(k => ({ key: k, label: k }))}
+              id="enquiries-area-seg"
+              ariaLabel="Filter enquiries by area of work"
+              value={activeAreaFilter}
+              onChange={setActiveAreaFilter}
+              options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
             />
-            {/* Area filter (only if user has >1 area) */}
-            {userData && userData[0]?.AOW && userData[0].AOW.split(',').length > 1 && (
-              <SegmentedControl
-                id="enquiries-area-seg"
-                ariaLabel="Filter enquiries by area of work"
-                value={activeAreaFilter}
-                onChange={setActiveAreaFilter}
-                options={[{ key: 'All', label: 'All' }, ...userData[0].AOW.split(',').map(a => a.trim()).map(a => ({ key: a, label: a }))]}
-              />
-            )}
-            {/* Spacer */}
-            <div style={{ flex: 1 }} />
-            {/* Admin controls (debug + data toggle) for admin or localhost */}
-            {(isAdmin || isLocalhost) && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '2px 10px 2px 6px',
-                  height: 40,
-                  borderRadius: 12,
-                  background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                  border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: isDarkMode ? '#ffe9a3' : '#5d4700'
-                }}
+          )}
+          <div style={{ flex: 1 }} />
+          {(isAdmin || isLocalhost) && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+              }}
+              title="Admin Debugger (alex, luke, cass only)"
+            >
+              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>Admin Only</span>
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
                 title="Admin Debugger (alex, luke, cass only)"
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700', marginRight: 4 }}>
-                  Admin Only
-                </span>
-                <IconButton
-                  iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                  title="Admin Debugger (alex, luke, cass only)"
-                  ariaLabel="Admin Debugger (alex, luke, cass only)"
-                  onClick={() => setShowDataInspector(v => !v)}
-                  styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
-                  data-tooltip="alex, luke, cass"
-                />
-                <ToggleSwitch
-                  id="enquiries-new-data-toggle"
-                  checked={useNewData}
-                  onChange={setUseNewData}
-                  size="sm"
-                  onText="New"
-                  offText="Legacy"
-                  ariaLabel="Toggle dataset between legacy and new"
-                />
-                <ToggleSwitch
-                  id="enquiries-scope-toggle"
-                  checked={showMineOnly}
-                  onChange={setShowMineOnly}
-                  size="sm"
-                  onText="Mine"
-                  offText="All"
-                  ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries"
-                />
-                <ToggleSwitch
-                  id="enquiries-two-column-toggle"
-                  checked={twoColumn}
-                  onChange={setTwoColumn}
-                  size="sm"
-                  onText="2-col"
-                  offText="1-col"
-                  ariaLabel="Toggle two column layout"
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                ariaLabel="Admin Debugger (alex, luke, cass only)"
+                onClick={() => setShowDataInspector(v => !v)}
+                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+                data-tooltip="alex, luke, cass"
+              />
+              <ToggleSwitch id="enquiries-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
+              <ToggleSwitch id="enquiries-scope-toggle" checked={showMineOnly} onChange={setShowMineOnly} size="sm" onText="Mine" offText="All" ariaLabel="Toggle between showing only my claimed enquiries and all claimed enquiries" />
+              <ToggleSwitch id="enquiries-two-column-toggle" checked={twoColumn} onChange={setTwoColumn} size="sm" onText="2-col" offText="1-col" ariaLabel="Toggle two column layout" />
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      // Detail mode: 48px navigator with Back + tabs (and optional small admin pill at right)
+      setContent(
+        <div className={detailNavStyle(isDarkMode)}>
+          <IconButton
+            iconProps={{ iconName: 'ChevronLeft' }}
+            onClick={handleBackToList}
+            className={backButtonStyle}
+            title="Back"
+            ariaLabel="Back"
+          />
+          <Pivot className="navigatorPivot" selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
+            <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
+            <PivotItem headerText="Calls" itemKey="Calls" />
+            <PivotItem headerText="Emails" itemKey="Emails" />
+          </Pivot>
+          <div style={{ flex: 1 }} />
+          {(isAdmin || isLocalhost) && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '2px 10px 2px 6px', height: 40, borderRadius: 12,
+                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
+                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)', fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700'
+              }}
+              title="Admin / debug controls"
+            >
+              <IconButton
+                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
+                title="Debug"
+                ariaLabel="Open data inspector"
+                onClick={() => setShowDataInspector(v => !v)}
+                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
+              />
+              <ToggleSwitch id="pitchbuilder-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
+            </div>
+          )}
+        </div>
+      );
+    }
+    return () => setContent(null);
+  }, [
+    setContent,
+    isDarkMode,
+    selectedEnquiry,
+    activeState,
+    activeAreaFilter,
+    userData,
+    isAdmin,
+    isLocalhost,
+    useNewData,
+    showMineOnly,
+    twoColumn,
+    activeSubTab,
+    handleSubTabChange,
+    handleBackToList,
+  ]);
+
+  return (
+    <div className={containerStyle(isDarkMode)}>
 
   <section className="page-section">
         <Stack
@@ -1126,11 +1112,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
               backgroundColor: isDarkMode 
                 ? colours.dark.sectionBackground 
                 : colours.light.sectionBackground,
-              padding: '16px',
+              // Remove extra chrome when viewing a single enquiry; PitchBuilder renders its own card
+              padding: selectedEnquiry ? '0' : '16px',
               borderRadius: 0,
-              boxShadow: isDarkMode
-                ? `0 4px 12px ${colours.dark.border}`
-                : `0 4px 12px ${colours.light.border}`,
+              boxShadow: selectedEnquiry
+                ? 'none'
+                : (isDarkMode
+                    ? `0 4px 12px ${colours.dark.border}`
+                    : `0 4px 12px ${colours.light.border}`),
               width: '100%',
               fontFamily: 'Raleway, sans-serif',
             },

@@ -2167,7 +2167,9 @@ const officeAttendanceButtonText = currentUserConfirmed
     userData?.[0]?.["Clio ID"]
   );
 
-  const userResponsibleName = metricsName;
+  // IMPORTANT: For outstanding balances, use the actual current user's name
+  // (metricsName is an alias used for time/fees metrics demos and can skew ownership).
+  const userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
   
   const userMatterIDs = useMemo(() => {
     if (!allMatters || allMatters.length === 0) return [];
@@ -2232,22 +2234,23 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
   }));
   if (showOnlyMine && userMatterIDs.length > 0) {
     return allBalances.filter((balance) =>
-      balance.associated_matter_ids.some((id: number) => userMatterIDs.includes(id))
+  balance.associated_matter_ids.some((id: number | string) => userMatterIDs.includes(Number(id)))
     );
   }
   return allBalances;
 }, [outstandingBalancesData, showOnlyMine, userMatterIDs]);
 
     const outstandingTotal = useMemo(() => {
-      if (!outstandingBalancesData || !outstandingBalancesData.data || userMatterIDs.length === 0) {
-        return null; // Indicates data is not ready
+      if (!outstandingBalancesData || !outstandingBalancesData.data) {
+        return null; // Data not ready yet
       }
-      const matchingBalances = outstandingBalancesData.data.filter((balanceRecord: any) =>
-        balanceRecord.associated_matter_ids.some((id: any) => userMatterIDs.includes(Number(id)))
+      // Strictly sum only balances for the current user's matters
+      if (userMatterIDs.length === 0) return 0;
+      return myOutstandingBalances.reduce(
+        (sum: number, record: any) => sum + (Number(record.total_outstanding_balance) || 0),
+        0
       );
-      
-      return matchingBalances.reduce((sum: number, record: any) => sum + (record.total_outstanding_balance || 0), 0);      
-    }, [outstandingBalancesData, userMatterIDs]);
+    }, [outstandingBalancesData, userMatterIDs, myOutstandingBalances]);
 
     useEffect(() => {
       if (userMatterIDs.length && outstandingBalancesData) {
@@ -2309,13 +2312,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
         }).length
       : 0;  
 
-      if (!wipClioData) {
+    if (!wipClioData) {
         return [
           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-          { title: 'Outstanding Office Balances', isMoneyOnly: true, money: null },
+      // Use computed outstandingTotal even when WIP data hasn't loaded
+      { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
@@ -2455,7 +2459,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       {
         title: 'Outstanding Office Balances',
         isMoneyOnly: true,
-        money: outstandingTotal,
+        money: outstandingTotal ?? 0,
       },
       {
         title: 'Enquiries Today',
@@ -2968,6 +2972,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     return actions;
   }, [currentUserConfirmed, userInitials]);
 
+
   // Use useLayoutEffect to avoid infinite loops and set content once per dependency change
   React.useLayoutEffect(() => {
     const content = (
@@ -3004,7 +3009,7 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
     isDarkMode,
     normalQuickActions,
     currentUserConfirmed,
-    showFocusOverlay,
+  showFocusOverlay,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)

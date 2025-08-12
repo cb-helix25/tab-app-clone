@@ -10,42 +10,7 @@ import { wrapInsertPlaceholders } from './emailUtils';
 
 
 
-// Utility to render text with [PLACEHOLDER]s styled
-function renderWithPlaceholders(text: string) {
-  const regex = /\[([^\]]+)\]/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match;
-  let key = 0;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    parts.push(
-      <span
-        key={key++}
-        style={{
-          display: 'inline',
-          background: '#e0f0ff',
-          boxShadow: 'inset 0 0 0 1px #8bbbe8',
-          padding: 0,
-          margin: 0,
-          border: 'none',
-          fontStyle: 'inherit',
-          color: '#0a4d8c'
-        }}
-      >
-        [{match[1]}]
-      </span>
-    );
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-  return parts;
-}
-
+// NOTE: renderWithPlaceholders was removed due to corruption and is not used in this component.
 // Escape HTML for safe injection
 function escapeHtml(str: string) {
   return str
@@ -234,21 +199,18 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
   const selectPlaceholderAtCursor = () => {
     const ta = taRef.current;
     if (!ta) return;
-    if (ta.selectionStart !== ta.selectionEnd) return; // already has selection
-    
+    // Only act when there's no selection already
+    if (ta.selectionStart !== ta.selectionEnd) return;
+
     const pos = ta.selectionStart;
+    const text = ta.value;
     const regex = /\[[^\]]+\]/g;
-    let match: RegExpExecArray | null;
-    
-    // Find placeholder that contains cursor position
-    while ((match = regex.exec(value)) !== null) {
-      const start = match.index;
-      const end = start + match[0].length;
-      
-  // If cursor is inside placeholder but NOT sitting exactly at the end boundary
-  // Using strict < end avoids accidental selection when clicking just after token
-  if (pos >= start && pos < end) {
-        // Select the entire placeholder
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      // Select only if strictly inside the token (avoid snapping when clicking exactly at boundaries)
+      if (pos > start && pos < end) {
         ta.setSelectionRange(start, end);
         replacingPlaceholderRef.current = { start, end };
         activeReplacementRangeRef.current = null;
@@ -438,10 +400,12 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           padding: '4px 6px',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
-          fontFamily: 'inherit',
+          font: 'inherit',
+          lineHeight: 1.4,
           fontKerning: 'none',
           fontVariantLigatures: 'none',
           letterSpacing: 'normal',
+            
           color: '#222',
           pointerEvents: 'none',
           visibility: 'visible'
@@ -489,7 +453,8 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
         onKeyDown={handleKeyDown}
         onFocus={selectPlaceholderAtCursor}
         onClick={selectPlaceholderAtCursor}
-        onMouseDown={selectPlaceholderAtCursor}
+  onMouseDown={selectPlaceholderAtCursor}
+  onMouseUp={selectPlaceholderAtCursor}
         style={{
           position: 'absolute',
           inset: 0,
@@ -508,6 +473,7 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           padding: '4px 6px',
           outline: 'none',
           whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
           overflow: 'hidden'
         }}
         spellCheck={true}
@@ -614,7 +580,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         borderRadius: '8px',
         border: `2px solid ${colours.blue}`,
         boxShadow: '0 4px 12px rgba(0,120,212,0.15)',
-        transition: 'all 0.3s ease-in-out'
+  transition: 'all 0.3s ease-in-out'
       }}>
         <div style={{
           fontSize: 12,
@@ -624,53 +590,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: 4,
-          justifyContent: 'space-between'
+          justifyContent: 'flex-start'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
             Enquiry Notes
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: 10,
-              fontWeight: 600,
-              color: isDarkMode ? colours.blue : colours.darkBlue,
-              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f4f4f4',
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-              borderRadius: 4,
-              padding: '2px 8px',
-              marginLeft: 6,
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
-              lineHeight: 1.2
-            }}>
-              <Icon iconName="Pinned" styles={{ root: { fontSize: 12, marginRight: 4, color: isDarkMode ? colours.blue : colours.darkBlue } }} />
-              PINNED
-            </span>
           </div>
-          <button
-            onClick={() => setIsNotesPinned(false)}
-            style={{
-              padding: '2px 8px',
-              fontSize: 10,
-              backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f4f4f4',
-              color: isDarkMode ? colours.blue : colours.darkBlue,
-              border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 600,
-              transition: 'all 0.2s ease',
-              boxShadow: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-            title="Unpin notes"
-          >
-            <Icon iconName="Unpin" styles={{ root: { fontSize: 12, color: isDarkMode ? colours.blue : colours.darkBlue } }} />
-            UNPIN
-          </button>
         </div>
+        {/* Floating unpin icon */}
+        <button
+          onClick={() => setIsNotesPinned(false)}
+          title="Unpin notes"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+            color: isDarkMode ? colours.dark.text : colours.darkBlue,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = colours.blue;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+          }}
+        >
+          <Icon iconName="Unpin" styles={{ root: { fontSize: 14, color: isDarkMode ? colours.dark.text : colours.darkBlue } }} />
+        </button>
         <div style={{
           fontSize: 13,
           lineHeight: 1.5,
@@ -832,7 +787,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
       `}</style>
 
-      <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+  <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
         {/* Combined Email and Pitch Composition Section */}
         <div style={{
           border: '1px solid #e1e5e9',
@@ -913,7 +868,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 border: 'none',
                 boxShadow: 'none',
                 marginBottom: '0',
-                transition: 'all 0.3s ease-in-out'
+                transition: 'all 0.3s ease-in-out',
+                position: 'relative'
               }}>
                 <div style={{
                   fontSize: 12,
@@ -933,26 +889,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     <Icon iconName="Info" styles={{ root: { fontSize: 12 } }} />
                   </span>
                   Enquiry Notes
-                  {isNotesPinned && (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: isDarkMode ? colours.blue : colours.darkBlue,
-                      backgroundColor: isDarkMode ? colours.dark.inputBackground : '#f4f4f4',
-                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                      borderRadius: 4,
-                      padding: '2px 8px',
-                      marginLeft: 6,
-                      letterSpacing: 0.5,
-                      textTransform: 'uppercase',
-                      lineHeight: 1.2
-                    }}>
-                      <Icon iconName="Pinned" styles={{ root: { fontSize: 12, marginRight: 4, color: isDarkMode ? colours.blue : colours.darkBlue } }} />
-                      PINNED
-                    </span>
-                  )}
                   {showSubjectHint && (
                     <span style={{
                       position: 'absolute',
@@ -966,38 +902,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       fontStyle: 'italic',
                       border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                       borderRadius: 4,
-                      padding: '4px 8px',
+                      padding: '6px 8px',
                       zIndex: 10,
-                      whiteSpace: 'nowrap',
+                      whiteSpace: 'normal',
+                      maxWidth: 420,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                     }}>
-                      (use this to inform your subject line)
+                      Source confirmation: these notes may be intake rep call notes, a web form message, or an auto‑parsed email.
                     </span>
                   )}
-                  <div style={{ marginLeft: 'auto' }}>
-                    <button
-                      onClick={() => setIsNotesPinned(!isNotesPinned)}
-                      style={{
-                        padding: '2px 10px',
-                        fontSize: 10,
-                        backgroundColor: isNotesPinned ? (isDarkMode ? colours.dark.inputBackground : '#f4f4f4') : '#fff',
-                        color: isNotesPinned ? (isDarkMode ? colours.blue : colours.darkBlue) : colours.blue,
-                        border: `1px solid ${isNotesPinned ? (isDarkMode ? colours.dark.border : '#e1e5e9') : colours.blue}`,
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        transition: 'all 0.2s ease',
-                        boxShadow: 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}
-                      title={isNotesPinned ? "Unpin notes from top" : "Pin notes to top while scrolling"}
-                    >
-                      <Icon iconName={isNotesPinned ? "Pinned" : "PinSolid"} styles={{ root: { fontSize: 12, marginRight: 4, color: isNotesPinned ? (isDarkMode ? colours.blue : colours.darkBlue) : colours.blue } }} />
-                      {isNotesPinned ? 'PINNED' : 'PIN'}
-                    </button>
-                  </div>
                 </div>
                 <div style={{
                   fontSize: 13,
@@ -1010,30 +923,38 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                   border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                   position: 'relative'
                 }}>
+                  {/* Floating pin inside notes box */}
+                  <button
+                    onClick={() => setIsNotesPinned(true)}
+                    title="Pin notes"
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                      border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                      color: isDarkMode ? colours.dark.text : colours.darkBlue,
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      cursor: 'pointer',
+                      zIndex: 2
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = colours.blue;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = isDarkMode ? colours.dark.border : '#e1e5e9';
+                    }}
+                  >
+                    {/* Use a known glyph and strong contrast to ensure visibility */}
+                    <Icon iconName="Pinned" styles={{ root: { fontSize: 16, color: colours.blue } }} />
+                  </button>
                   {initialNotes}
-                  {/* Visual connector arrow pointing up to subject */}
-                  <div style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: 20,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderBottom: `8px solid ${isDarkMode ? colours.dark.inputBackground : '#f8f9fa'}`,
-                    zIndex: 2
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: -9,
-                    right: 20,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '8px solid transparent',
-                    borderRight: '8px solid transparent',
-                    borderBottom: `8px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
-                    zIndex: 1
-                  }} />
                 </div>
               </div>
             )}
@@ -1260,13 +1181,36 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       }
                     }}
                   />
-                  <span style={{
-                    fontSize: 11,
-                    color: isDarkMode ? colours.dark.text : '#666',
-                    fontStyle: 'italic'
-                  }}>
-                    Updates scope description automatically
-                  </span>
+                  {(() => {
+                    const amt = parseFloat(amountValue);
+                    if (!amountValue || isNaN(amt)) return null;
+                    const vatRate = 0.2;
+                    const vat = +(amt * vatRate).toFixed(2);
+                    const total = +(amt + vat).toFixed(2);
+                    const fmt = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    return (
+                      <div
+                        title={`Ex VAT: ${fmt(amt)}  •  VAT (20%): ${fmt(vat)}  •  Total inc VAT: ${fmt(total)}`}
+                        style={{
+                          marginLeft: 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          background: isDarkMode ? colours.dark.cardBackground : '#ffffff',
+                          border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
+                          borderRadius: 4,
+                          padding: '4px 8px'
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>VAT 20%:</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: isDarkMode ? colours.dark.text : colours.darkBlue }}>{fmt(vat)}</span>
+                        <span style={{ opacity: 0.4 }}>·</span>
+                        <span style={{ fontSize: 11, color: isDarkMode ? colours.dark.text : '#666' }}>Total inc VAT:</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: colours.blue }}>{fmt(total)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Stack>
             </div>

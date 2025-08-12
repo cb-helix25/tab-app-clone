@@ -22,6 +22,7 @@ import {
   IChoiceGroupOption,
   IPoint,
   Text,
+  TooltipHost,
 } from '@fluentui/react';
 import ModernMultiSelect from '../instructions/MatterOpening/ModernMultiSelect';
 import { Enquiry } from '../../app/functionality/types';
@@ -30,6 +31,7 @@ import ToggleSwitch from '../../components/ToggleSwitch';
 import { hasAdminAccess } from '../../utils/matterNormalization';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
+import { useNavigator } from '../../app/functionality/NavigatorContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
 import { TemplateBlock, TemplateOption } from '../../app/customisation/ProductionTemplateBlocks';
 import {
@@ -550,6 +552,77 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
 }
 
 const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+  // Local helper: reveals value + copy on hover; shows only icon by default
+  const RevealCopyField: React.FC<{ iconName: string; value: string; color: string; label: string }> = ({ iconName, value, color, label }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+      navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    };
+    // Subtle tinted background for the icon square
+    const iconTint = color === '#3690CE' ? 'rgba(54,144,206,0.15)' : 'rgba(102,102,102,0.15)';
+    return (
+      <span aria-label={label} title={label} style={{ display: 'inline-flex', alignItems: 'center', marginRight: 8 }}>
+        {/* Icon square (left) */}
+        <span
+          style={{
+            width: 28,
+            height: 28,
+            minWidth: 28,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: isDarkMode ? 'rgba(255,255,255,0.06)' : iconTint,
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
+            borderRight: 'none', // join with tray
+            borderRadius: '6px 0 0 6px',
+          }}
+        >
+          <Icon iconName={iconName} styles={{ root: { color, fontSize: 14 } }} />
+        </span>
+        {/* Value tray (right) */}
+    <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: isDarkMode ? colours.dark.text : '#24292f',
+            background: isDarkMode ? colours.dark.inputBackground : '#f6f8fa',
+            border: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}`,
+            borderLeft: 'none', // join with icon square
+            borderRadius: '0 6px 6px 0',
+      height: 28,
+      padding: '0 8px',
+            fontSize: 13,
+      lineHeight: 1,
+            boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+            userSelect: 'text',
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>{value}</span>
+          <IconButton
+            iconProps={{ iconName: copied ? 'CheckMark' : 'Copy' }}
+            title={copied ? 'Copied!' : 'Copy'}
+            ariaLabel={copied ? 'Copied!' : 'Copy'}
+            onClick={handleCopy}
+            styles={{
+              root: {
+                borderRadius: 6,
+                height: 22,
+                width: 22,
+                minWidth: 22,
+                padding: 0,
+                background: 'transparent',
+              },
+              rootHovered: { background: isDarkMode ? 'rgba(255,255,255,0.06)' : '#e6f0fa' },
+              icon: { fontSize: 12, color: isDarkMode ? colours.dark.text : '#57606a' },
+            }}
+          />
+        </span>
+      </span>
+    );
+  };
   // Admin/debug controls state
   const [useNewData, setUseNewData] = useState<boolean>(false);
   const [showDataInspector, setShowDataInspector] = useState(false);
@@ -560,6 +633,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // Initial Notes state
   const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
+  const { setContent } = useNavigator();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const userEmailAddress = userData?.[0]?.Initials
     ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
@@ -567,6 +641,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   // Local fetch logging
   const { apiCalls, clear: clearApiCalls } = useLocalFetchLogger(isLocalhost);
+  const [debugCollapsed, setDebugCollapsed] = useState<boolean>(true);
 
   // (Fetch interception now handled by useLocalFetchLogger hook)
 
@@ -1354,10 +1429,11 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   const [isUndoRedoOperation, setIsUndoRedoOperation] = useState<boolean>(false);
   const [undoInitialized, setUndoInitialized] = useState<boolean>(false);
 
+  // Navigator is now owned by Enquiries detail view; remove PitchBuilder-specific Navigator bar to avoid duplication.
+
   // Initialize undo stack with initial body content (only once)
   useEffect(() => {
     if (!undoInitialized && body && body.trim()) {
-      // Ensure we have the current DOM content for initialization
       const currentContent = bodyEditorRef.current?.innerHTML || body;
       setUndoStack([currentContent]);
       setUndoInitialized(true);
@@ -3875,8 +3951,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
 
   return (
     <Stack className={containerStyle}>
-      {/* Client Info Header - Simplified, now with admin/debug controls inline */}
-      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
+  {/* Client Info Header - Simplified (admin controls moved to Navigator) */}
+  <div style={{ padding: '12px 20px', borderBottom: `1px solid ${isDarkMode ? colours.dark.border : '#e1e4e8'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ display: 'flex', alignItems: 'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#3690CE" xmlns="http://www.w3.org/2000/svg">
@@ -3887,103 +3963,22 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#24292f' }}>
             {enquiry.First_Name} {enquiry.Last_Name}
           </div>
-          {enquiry.Email && (
-            <span style={{ color: '#3690CE', fontSize: 13 }}>{enquiry.Email}</span>
-          )}
-          {enquiry.Phone_Number && (
-            <span style={{ color: '#666', fontSize: 13 }}>{enquiry.Phone_Number}</span>
-          )}
-          {enquiry.Area_of_Work && (
-            <span style={{ 
-              color: '#fff', 
-              backgroundColor: colours.darkBlue, 
-              padding: '2px 8px', 
-              borderRadius: 12, 
-              fontSize: 11, 
-              fontWeight: 600 
-            }}>
-              {enquiry.Area_of_Work}
-            </span>
-          )}
-          {isAdmin && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '2px 10px 2px 6px',
-                height: 40,
-                borderRadius: 12,
-                background: isDarkMode ? '#5a4a12' : colours.highlightYellow,
-                border: isDarkMode ? '1px solid #806c1d' : '1px solid #e2c56a',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: isDarkMode ? '#ffe9a3' : '#5d4700',
-                margin: '0 0 0 8px',
-                width: 'fit-content',
-                zIndex: 2,
-                position: 'relative'
-              }}
-              title="Admin / debug controls"
-            >
-              <IconButton
-                iconProps={{ iconName: 'TestBeaker', style: { fontSize: 16 } }}
-                title="Debug API calls"
-                ariaLabel="Open data inspector"
-                onClick={() => setShowDataInspector(v => !v)}
-                styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30, backgroundColor: showDataInspector ? '#ffe066' : undefined } }}
-              />
-              <button
-                style={{
-                  border: 'none',
-                  background: showDataInspector ? '#ffe066' : '#444',
-                  color: showDataInspector ? '#5d4700' : '#fff',
-                  borderRadius: 6,
-                  padding: '4px 10px',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  outline: showDataInspector ? '2px solid #e2c56a' : 'none',
-                  transition: 'background 0.2s, color 0.2s, outline 0.2s',
-                }}
-                onClick={() => setShowDataInspector(v => !v)}
-              >
-                Calls {apiCalls.length > 0 && (
-                  <span style={{ marginLeft: 4, color: '#b8860b', fontWeight: 700 }}>
-                    {apiCalls.length}
-                  </span>
-                )}
-              </button>
-              {/* Emails button removed as requested */}
-              <ToggleSwitch
-                id="pitchbuilder-new-data-toggle"
-                checked={useNewData}
-                onChange={setUseNewData}
-                size="sm"
-                onText="New"
-                offText="Legacy"
-                ariaLabel="Toggle dataset between legacy and new"
-              />
-              {showDataInspector && (
-                <div style={{ position: 'absolute', top: 44, left: 0, zIndex: 10 }}>
-                  <PitchDebugPanel
-                    calls={apiCalls}
-                    onClear={clearApiCalls}
-                    collapsed={false}
-                    onToggle={() => setShowDataInspector(false)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {enquiry.Email && (
+              <RevealCopyField iconName="Mail" value={enquiry.Email} color="#3690CE" label="Email" />
+            )}
+            {enquiry.Phone_Number && (
+              <RevealCopyField iconName="Phone" value={enquiry.Phone_Number} color="#666" label="Phone" />
+            )}
+          </div>
         </div>
       </div>
 
       <main className={bodyWrapperStyle}>
         {/* Content Sections - Streamlined */}
         {EXTRACTED_BLOCKS.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 8 }}>
             {EXTRACTED_BLOCKS.map(title => {
               const block = blocks.find(b => b.title === title);
               if (!block) return null;
@@ -4326,6 +4321,15 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           loading={toast?.loading}
         />
       </main>
+
+      {showDataInspector && (
+        <PitchDebugPanel
+          calls={apiCalls}
+          onClear={clearApiCalls}
+          collapsed={debugCollapsed}
+          onToggle={() => setDebugCollapsed((v) => !v)}
+        />
+      )}
     </Stack>
   );
 
