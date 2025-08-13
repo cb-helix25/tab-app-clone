@@ -661,6 +661,9 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const [dragSentence, setDragSentence] = useState<HTMLElement | null>(null);
   const [hiddenBlocks, setHiddenBlocks] = useState<{ [key: string]: boolean }>({});
 
+  // Only clear the body on the very first mount, not after scenario injection or async loads
+  const bodyHasBeenSeeded = useRef(false);
+
   function handleTemplateSetChange(newSet: TemplateSet) {
     setTemplateSet(newSet);
     const loadBlocks = async (): Promise<TemplateBlock[]> => {
@@ -712,13 +715,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
         const blocksToUse = (newBlocks || getTemplateBlocks(newSet)).filter(
           b => !hiddenBlocks[b.title]
         );
-        // Simplified composer: don’t auto-seed body from old templates.
-        if (!body || body.trim() === '') {
-          setBody('');
-          if (bodyEditorRef.current) {
-            bodyEditorRef.current.innerHTML = '';
-          }
-        }
+
         // v1 templates should no longer auto select any blocks
         // autoInsertDefaultBlocks(blocksToUse, newSet);
       });
@@ -1355,6 +1352,17 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDeal
   const setBodyForComponents = (newBody: string | ((prevBody: string) => string)) => {
     setBody(newBody);
   };
+
+  // Only clear the body on the very first mount, not after scenario injection or async loads
+  useEffect(() => {
+    if (!bodyHasBeenSeeded.current && (!body || body.trim() === '')) {
+      setBody('');
+      if (bodyEditorRef.current) {
+        bodyEditorRef.current.innerHTML = '';
+      }
+      bodyHasBeenSeeded.current = true;
+    }
+  }, [body, setBody]);
 
   // Disable automatic insertion of default blocks for v1
   /*

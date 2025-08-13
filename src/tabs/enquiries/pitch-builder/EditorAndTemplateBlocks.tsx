@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Stack, Text, Icon, Pivot, PivotItem, TextField } from '@fluentui/react';
 import { colours } from '../../../app/styles/colours';
@@ -41,6 +41,16 @@ function htmlToPlainText(html: string): string {
     .replace(/&gt;/g, '>')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+// Deterministic short passcode generator from an enquiry ID (used as fallback when real passcode is missing)
+function computeLocalPasscode(id: string) {
+  if (!id) return '';
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < id.length; i++) {
+    h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
+  }
+  return (h >>> 0).toString(36);
 }
 
 // Find placeholder tokens like [TOKEN]
@@ -134,6 +144,8 @@ interface InlineEditableAreaProps {
   minHeight?: number;
   externalHighlights?: { start: number; end: number }[];
   allReplacedRanges?: { start: number; end: number }[];
+  passcode?: string;
+  enquiry?: any;
 }
 
 interface UndoRedoState {
@@ -141,8 +153,9 @@ interface UndoRedoState {
   currentIndex: number;
 }
 
-const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges }) => {
+const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange, edited, minHeight = 48, externalHighlights, allReplacedRanges, passcode, enquiry }) => {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const preRef = useRef<HTMLPreElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [showToolbar, setShowToolbar] = useState(false);
   const [undoRedoState, setUndoRedoState] = useState<UndoRedoState>({
@@ -193,6 +206,81 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
       ta.style.height = ta.scrollHeight + 'px';
     }
   }, [value]);
+
+  // Sync computed textarea styles to the overlay <pre> so highlights align exactly
+  const syncPreStyles = useCallback(() => {
+    const ta = taRef.current;
+    const pre = preRef.current;
+    if (!ta || !pre) return;
+    try {
+      const s = window.getComputedStyle(ta);
+      const propsMap: { [k: string]: string } = {
+        fontFamily: 'font-family',
+        fontSize: 'font-size',
+        fontWeight: 'font-weight',
+        fontStyle: 'font-style',
+        lineHeight: 'line-height',
+        letterSpacing: 'letter-spacing',
+        paddingTop: 'padding-top',
+        paddingRight: 'padding-right',
+        paddingBottom: 'padding-bottom',
+        paddingLeft: 'padding-left',
+        boxSizing: 'box-sizing',
+        textRendering: 'text-rendering',
+        textTransform: 'text-transform'
+      };
+      Object.keys(propsMap).forEach((p) => {
+        const cssName = propsMap[p];
+        const val = s.getPropertyValue(cssName);
+        if (val) (pre.style as any)[p] = val;
+      });
+      // Ensure same white-space and wrapping behaviour
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.wordBreak = 'break-word';
+    } catch (err) {
+      // swallow errors silently
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    syncPreStyles();
+  }, [value, syncPreStyles]);
+
+  useEffect(() => {
+    let raf = 0 as number | null;
+    const onResize = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => syncPreStyles());
+    };
+    window.addEventListener('resize', onResize);
+
+    // Re-sync when web fonts finish loading
+    const fonts = (document as any).fonts;
+    const onFontsReady = () => syncPreStyles();
+    if (fonts && typeof fonts.ready !== 'undefined') {
+      // fonts.ready is a Promise
+      (fonts as any).ready.then(onFontsReady).catch(() => {});
+      try {
+        fonts.addEventListener && fonts.addEventListener('loadingdone', onFontsReady);
+      } catch {}
+    }
+
+    // ResizeObserver on wrapper to catch layout changes
+    let ro: ResizeObserver | null = null;
+    try {
+        if (wrapperRef.current && (window as any).ResizeObserver) {
+        ro = new (window as any).ResizeObserver(onResize);
+        if (ro && wrapperRef.current) ro.observe(wrapperRef.current);
+      }
+    } catch {}
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      try { fonts && fonts.removeEventListener && fonts.removeEventListener('loadingdone', onFontsReady); } catch {}
+      if (ro && wrapperRef.current) ro.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [syncPreStyles]);
 
   // Add to undo history (debounced)
   const timeoutRef = useRef<NodeJS.Timeout>();
@@ -586,34 +674,44 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
         </div>
       )}
       
-      <pre
+    <pre
+        ref={preRef}
         aria-hidden="true"
         style={{
           margin: 0,
           padding: '4px 6px',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
-          font: 'inherit',
-          lineHeight: 1.4,
-          fontKerning: 'none',
-          fontVariantLigatures: 'none',
-          letterSpacing: 'normal',
-            
-          color: '#222',
+      font: 'inherit',
+      lineHeight: 1.4,
+      color: '#222',
           pointerEvents: 'none',
           visibility: 'visible'
         }}
         dangerouslySetInnerHTML={{ __html: (() => {
-          // Simple placeholder highlighting - only show complete [TOKEN] as blue
+          // Detect special INSTRUCT_LINK markers ([[INSTRUCT_LINK::href]]) first so we can render the URL in-editor.
+          const linkRegex = /\[\[INSTRUCT_LINK::([^\]]+)\]\]/g;
+          const links: { start: number; end: number; href: string }[] = [];
+          let lm: RegExpExecArray | null;
+          while ((lm = linkRegex.exec(value)) !== null) {
+            links.push({ start: lm.index, end: lm.index + lm[0].length, href: lm[1] });
+          }
+
+          // Simple placeholder highlighting - only show complete [TOKEN] as blue (skip those inside INSTRUCT_LINK ranges)
           const placeholders: { start: number; end: number }[] = [];
           const regex = /\[[^\]]+\]/g;
           let match: RegExpExecArray | null;
           while ((match = regex.exec(value)) !== null) {
-            placeholders.push({ start: match.index, end: match.index + match[0].length });
+            const start = match.index;
+            const end = match.index + match[0].length;
+            // Skip if this match falls inside any INSTRUCT_LINK range
+            const insideLink = links.some(l => start >= l.start && end <= l.end);
+            if (!insideLink) placeholders.push({ start, end });
           }
           
-          const markers: { start: number; end: number; type: 'placeholder' | 'edited' }[] = [];
+          const markers: { start: number; end: number; type: 'placeholder' | 'edited' | 'instructLink'; href?: string }[] = [];
           placeholders.forEach(p => markers.push({ ...p, type: 'placeholder' }));
+          links.forEach(l => markers.push({ start: l.start, end: l.end, type: 'instructLink', href: l.href }));
           // Merge internal highlights (active editing), synced external highlights (auto-inserted), and synced persistent ranges
           const allEdited = [
             ...highlightRanges,
@@ -659,12 +757,16 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             if (mark.start < cursor) return; // skip overlaps
             pushPlain(mark.start);
             const segment = value.slice(mark.start, mark.end);
-            if (mark.type === 'placeholder') {
-              const inner = segment.length >= 2 && segment.startsWith('[') && segment.endsWith(']')
-                ? segment.slice(1, -1)
-                : segment;
-              // Keep blue pill style with dashed border; make text a touch lighter grey; no bold; brackets removed
-              html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(inner)}</span>`;
+              if (mark.type === 'placeholder') {
+              // Render the original token (including brackets) so the overlay text width exactly matches the textarea.
+              // Use outline (doesn't affect layout) for dashed box appearance and avoid padding which would change width.
+              html += `<span style="display:inline;background:#e0f0ff;outline:1px dashed #8bbbe8;padding:0;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(segment)}</span>`;
+            } else if (mark.type === 'instructLink') {
+              // Use the temporary, static proof-of-identity URL per request
+              const href = 'https://helix-law.co.uk/proof-of-identity/';
+              const safe = escapeHtml(href);
+              // Show the friendly label instead of the raw URL, keep link styling prominent and bold
+              html += `<a href="${safe}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
             } else {
               // Updated edited highlight: subtle green background only (no border/box), accessible text color
               html += `<span style="display:inline;background:#e9f9f1;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
@@ -672,10 +774,21 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             cursor = mark.end;
           });
           pushPlain(value.length);
-          return html || '';
+          // Render any [[INSTRUCT_LINK::href]] markers as visible link text in the overlay
+          try {
+            const replaced = html.replace(/\[\[INSTRUCT_LINK::([^\]]+)\]\]/g, (_m, _href) => {
+              // Use static temporary URL for instruct links
+              const safeHref = escapeHtml('https://helix-law.co.uk/proof-of-identity/');
+              // Render a friendly, bold blue anchor label for instruct links in the overlay
+              return `<a href="${safeHref}" style="color:#174ea6;font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
+            });
+            return replaced || '';
+          } catch (e) {
+            return html || '';
+          }
         })() }}
       />
-      <textarea
+    <textarea
         ref={taRef}
         value={value}
         onChange={e => handleContentChange(e.target.value)}
@@ -685,25 +798,26 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
   onMouseDown={selectPlaceholderAtCursor}
   onMouseUp={selectPlaceholderAtCursor}
         style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          resize: 'none',
-          background: 'transparent',
-          color: 'transparent', // hide raw text, rely on highlighted layer
-          caretColor: '#222',
-          font: 'inherit',
-          lineHeight: 1.4,
-          fontKerning: 'none',
-          fontVariantLigatures: 'none',
-          letterSpacing: 'normal',
-          border: 'none',
-          padding: '4px 6px',
-          outline: 'none',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          overflow: 'hidden'
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100%',
+      height: '100%',
+      resize: 'none',
+      background: 'transparent',
+      color: 'transparent', // hide raw text, rely on highlighted layer
+      caretColor: '#222',
+      font: 'inherit',
+      lineHeight: 1.4,
+      border: 'none',
+      padding: '4px 6px',
+      outline: 'none',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      overflow: 'hidden',
+      boxSizing: 'border-box'
         }}
         spellCheck={true}
         title="Shortcuts: Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+Backspace (clear all), Alt+Backspace (delete word)"
@@ -832,15 +946,16 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     if (rateNumber != null) out = out.replace(/\[RATE\]/gi, formatRateGBP(rateNumber));
     if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
     // Also apply dynamic substitutions so [InstructLink] renders in the editor
-    // For editor, render [InstructLink] as a React anchor, not raw HTML
+    // For editor, compute an effective passcode (use provided passcode or a deterministic local one derived from enquiry ID)
+    const effectivePass = passcode || ((enquiry as any)?.ID ? computeLocalPasscode(String((enquiry as any).ID)) : undefined);
     let substituted = applyDynamicSubstitutions(
       out,
       userData,
       enquiry,
       amount,
-      passcode,
-      passcode && (enquiry as any)?.ID
-        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${(enquiry as any).ID}-${passcode}`
+      effectivePass,
+      effectivePass && (enquiry as any)?.ID
+        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${(enquiry as any).ID}-${effectivePass}`
         : undefined
     );
     // Replace the HTML anchor with a React anchor for in-editor display
@@ -862,14 +977,15 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 
   // When passcode becomes available, re-process the editor content to update [InstructLink] tokens
   useEffect(() => {
-    if (passcode && passcode !== lastPasscodeRef.current && body) {
+    const effective = passcode || ((enquiry as any)?.ID ? computeLocalPasscode(String((enquiry as any).ID)) : undefined);
+    if (effective && effective !== lastPasscodeRef.current && body) {
       const processedBody = applyRateRolePlaceholders(body);
       if (processedBody !== body) {
         setBody(processedBody);
       }
-      lastPasscodeRef.current = passcode;
+      lastPasscodeRef.current = effective;
     }
-  }, [passcode, body, applyRateRolePlaceholders, setBody]);
+  }, [passcode, enquiry, body, applyRateRolePlaceholders, setBody]);
 
   // Auto-select the first quick scenario on mount if none is selected
   useEffect(() => {
@@ -877,25 +993,28 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
       const firstScenario = SCENARIOS[0];
       setSelectedScenarioId(firstScenario.id);
 
-      const raw = stripDashDividers(firstScenario.body);
-      const greetingName = (() => {
-        const e = enquiry as any;
-        const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
-        const name = String(first || '').trim();
-        return name.length > 0 ? name : 'there';
-      })();
-      const salutation = `Dear ${greetingName},\n\n`;
-      const composed = salutation + raw;
-      const projected = applyRateRolePlaceholders(composed);
-      lastScenarioBodyRef.current = projected;
-      setBody(projected);
+      // Only inject scenario content if editor is empty or whitespace
+      if (!body || body.trim() === '') {
+        const raw = stripDashDividers(firstScenario.body);
+        const greetingName = (() => {
+          const e = enquiry as any;
+          const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
+          const name = String(first || '').trim();
+          return name.length > 0 ? name : 'there';
+        })();
+        const salutation = `Dear ${greetingName},\n\n`;
+        const composed = salutation + raw;
+        const projected = applyRateRolePlaceholders(composed);
+        lastScenarioBodyRef.current = projected;
+        setBody(projected);
 
-      const firstBlock = templateBlocks[0];
-      if (firstBlock) {
-        setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
+        const firstBlock = templateBlocks[0];
+        if (firstBlock) {
+          setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
+        }
       }
     }
-  }, [selectedScenarioId, enquiry]); // Removed unstable dependencies that cause loops
+  }, [selectedScenarioId, enquiry, body, setBody, applyRateRolePlaceholders, templateBlocks]);
   // Accept hot updates to the scenarios module (CRA/Webpack HMR) and trigger a lightweight re-render
   useEffect(() => {
     const anyModule: any = module as any;
@@ -1444,6 +1563,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     minHeight={140}
                     externalHighlights={undefined}
                     allReplacedRanges={allBodyReplacedRanges}
+                    passcode={passcode}
+                    enquiry={enquiry}
                   />
                 </div>
               )}
@@ -1477,18 +1598,25 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     const userDataLocal = (typeof userData !== 'undefined') ? userData : undefined;
                     const enquiryLocal = (typeof enquiry !== 'undefined') ? enquiry : undefined;
                     const sanitized = withoutAutoBlocks.replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-                    const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
+                    // Use temporary static URL for proof-of-identity links in preview
+                    const checkoutPreviewUrl = 'https://helix-law.co.uk/proof-of-identity/';
                     const substituted = applyDynamicSubstitutions(
                       sanitized,
                       userDataLocal,
                       enquiryLocal,
                       amount,
-                      passcode,
+                      undefined,
                       checkoutPreviewUrl
                     );
                     const unresolvedBody = findPlaceholders(substituted);
                     const finalBody = convertDoubleBreaksToParagraphs(substituted);
                     const finalHighlighted = highlightPlaceholdersHtml(finalBody);
+                    // Ensure any Instruct Helix Law anchors are styled using the project's highlight colour and bold font
+                    // Normalize any Instruct Helix Law anchors to use the project's highlight colour and static URL
+                    const styledFinalHighlighted = finalHighlighted.replace(/<a\s+href="([^"]+)"[^>]*>\s*Instruct\s+Helix\s+Law\s*<\/a>/gi, (_m, _href) => {
+                      const safe = escapeHtml('https://helix-law.co.uk/proof-of-identity/');
+                      return `<a href="${safe}" style="color:${colours.highlight};font-weight:700;text-decoration:underline">Instruct Helix Law</a>`;
+                    });
                     return (
                       <>
                         {unresolvedBody.length > 0 && (
@@ -1505,7 +1633,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                             {unresolvedBody.length} placeholder{unresolvedBody.length === 1 ? '' : 's'} to resolve: {unresolvedBody.join(', ')}
                           </div>
                         )}
-                        <EmailSignature bodyHtml={finalHighlighted} userData={userDataLocal} />
+                        <EmailSignature bodyHtml={styledFinalHighlighted} userData={userDataLocal} />
                       </>
                     );
                   })()}
@@ -1531,8 +1659,9 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                       // Subject is independent; treat it directly
                       const unresolvedSubject = findPlaceholders(subject || '');
                       const sanitized = stripDashDividers(body || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br />');
-                      const checkoutPreviewUrl = passcode && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${passcode}` : '#';
-                      const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, passcode, checkoutPreviewUrl);
+                      const effective = passcode || (enquiryLocal?.ID ? computeLocalPasscode(String(enquiryLocal.ID)) : undefined);
+                      const checkoutPreviewUrl = effective && enquiryLocal?.ID ? `https://instruct.helix-law.com/pitch/${enquiryLocal.ID}-${effective}` : '#';
+                      const substitutedBody = applyDynamicSubstitutions(sanitized, userDataLocal, enquiryLocal, amount, effective, checkoutPreviewUrl);
                       const unresolvedBody = findPlaceholders(substitutedBody);
                       const unresolvedAny = unresolvedSubject.length > 0 || unresolvedBody.length > 0;
                       const disableDraft = !confirmReady || isDraftConfirmed || unresolvedAny;
