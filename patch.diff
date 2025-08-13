@@ -1,145 +1,206 @@
 diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 9e70170ae66236b3f7fd76a4255e221f06de7356..41be915928e120c08ffe7fd3ef732d29cc79718a 100644
+index 9e70170ae66236b3f7fd76a4255e221f06de7356..48bbcadbc0b09310de8c8b1f9fe80a3a13ac2c1b 100644
 --- a/src/tabs/home/Home.tsx
 +++ b/src/tabs/home/Home.tsx
-@@ -2152,54 +2152,60 @@ const officeAttendanceButtonText = currentUserConfirmed
-   const normalizeName = (name: string | null | undefined): string => {
-     if (!name) return '';
-     let normalized = name.trim().toLowerCase();
-     if (normalized === "bianca odonnell") {
-       normalized = "bianca o'donnell";
-     }
-     if (normalized === "samuel packwood") {
-       normalized = "sam packwood";
-     }
-     return normalized;
-   };
-   
-   const { name: metricsName, clioId: metricsClioId } = getMetricsAlias(
-     userData?.[0]?.["Full Name"],
-     userData?.[0]?.Initials,
-     userData?.[0]?.["Clio ID"]
-   );
+@@ -1674,124 +1674,149 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
+           };
+           
+           if (isLocalDev) {
+             // Use the local getMatters endpoint that works in the debugger
+             allMattersUrl = '/api/getMatters';
+             requestOptions.method = 'POST';
+             requestOptions.body = JSON.stringify({ 
+               fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
+             });
+           } else {
+             // Use the proxy endpoint 
+             allMattersUrl = `${proxyBaseUrl}/${process.env.REACT_APP_GET_MATTERS_PATH}?code=${process.env.REACT_APP_GET_MATTERS_CODE}`;
+             requestOptions.method = 'POST';
+             requestOptions.body = JSON.stringify({ 
+               fullName: userData?.[0]?.FullName || 'Lukasz Zemanek' 
+             });
+           }
+           
+           const response = await fetch(allMattersUrl, requestOptions);
+           if (!response.ok) {
+             throw new Error(`Failed to fetch all matters: ${response.status}`);
+           }
+           const rawData = await response.json();
+           const mapData = (items: any[]): Matter[] => {
+             return items.map((item) => ({
+-              DisplayNumber: item['Display Number'] || '',
+-              OpenDate: item['Open Date'] || '',
+-              MonthYear: item['MonthYear'] || '',
+-              YearMonthNumeric: item['YearMonthNumeric'] || 0,
+-              ClientID: item['Client ID'] || '',
+-              ClientName: item['Client Name'] || '',
+-              ClientPhone: item['Client Phone'] || '',
+-              ClientEmail: item['Client Email'] || '',
+-              Status: item['Status'] || '',
+-              UniqueID: item['Unique ID'] || '',
+-              Description: item['Description'] || '',
+-              PracticeArea: item['Practice Area'] || '',
+-              Source: item['Source'] || '',
+-              Referrer: item['Referrer'] || '',
+-              ResponsibleSolicitor: item['Responsible Solicitor'] || '',
+-              OriginatingSolicitor: item['Originating Solicitor'] || '',
+-              SupervisingPartner: item['Supervising Partner'] || '',
+-              Opponent: item['Opponent'] || '',
+-              OpponentSolicitor: item['Opponent Solicitor'] || '',
+-              CloseDate: item['Close Date'] || '',
+-              ApproxValue: item['Approx. Value'] || '',
+-              mod_stamp: item['mod_stamp'] || '',
+-              method_of_contact: item['method_of_contact'] || '',
+-              CCL_date: item['CCL_date'] || null,
+-              Rating: item['Rating'] as 'Good' | 'Neutral' | 'Poor' | undefined,
++              DisplayNumber:
++                item.display_number || item.DisplayNumber || item['Display Number'] || '',
++              OpenDate: item.open_date || item.OpenDate || item['Open Date'] || '',
++              MonthYear: item.month_year || item.MonthYear || item['MonthYear'] || '',
++              YearMonthNumeric:
++                item.year_month_numeric || item.YearMonthNumeric || item['YearMonthNumeric'] || 0,
++              ClientID: item.client_id || item.ClientID || item['Client ID'] || '',
++              ClientName: item.client_name || item.ClientName || item['Client Name'] || '',
++              ClientPhone: item.client_phone || item.ClientPhone || item['Client Phone'] || '',
++              ClientEmail: item.client_email || item.ClientEmail || item['Client Email'] || '',
++              Status: item.status || item.Status || '',
++              UniqueID:
++                item.matter_id || item.MatterID || item.id || item.UniqueID || item['Unique ID'] || '',
++              Description: item.description || item.Description || item['Description'] || '',
++              PracticeArea: item.practice_area || item.PracticeArea || item['Practice Area'] || '',
++              Source: item.source || item.Source || item['Source'] || '',
++              Referrer: item.referrer || item.Referrer || item['Referrer'] || '',
++              ResponsibleSolicitor:
++                item.responsible_solicitor ||
++                item.ResponsibleSolicitor ||
++                item['Responsible Solicitor'] ||
++                '',
++              OriginatingSolicitor:
++                item.originating_solicitor ||
++                item.OriginatingSolicitor ||
++                item['Originating Solicitor'] ||
++                '',
++              SupervisingPartner:
++                item.supervising_partner || item.SupervisingPartner || item['Supervising Partner'] || '',
++              Opponent: item.opponent || item.Opponent || item['Opponent'] || '',
++              OpponentSolicitor:
++                item.opponent_solicitor || item.OpponentSolicitor || item['Opponent Solicitor'] || '',
++              CloseDate: item.close_date || item.CloseDate || item['Close Date'] || '',
++              ApproxValue: item.approx_value || item.ApproxValue || item['Approx. Value'] || '',
++              mod_stamp: item.mod_stamp || item.modStamp || item['mod_stamp'] || '',
++              method_of_contact:
++                item.method_of_contact || item.methodOfContact || item['method_of_contact'] || '',
++              CCL_date: item.CCL_date || item.ccl_date || item['CCL_date'] || null,
++              Rating: (item.rating || item.Rating || item['Rating']) as
++                | 'Good'
++                | 'Neutral'
++                | 'Poor'
++                | undefined,
+             }));
+           };
  
-   // IMPORTANT: For outstanding balances, use the actual current user's name
-   // (metricsName is an alias used for time/fees metrics demos and can skew ownership).
-   const userResponsibleName = (userData?.[0]?.FullName || userData?.[0]?.["Full Name"] || '').trim() || metricsName;
-   
-   const userMatterIDs = useMemo(() => {
-     if (!allMatters || allMatters.length === 0) return [];
-     return allMatters
--      .filter((matter) => 
--        normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
-+      .filter(
-+        (matter) =>
-+          normalizeName(matter.ResponsibleSolicitor) ===
-+          normalizeName(userResponsibleName)
-       )
--      .map((matter) => Number(matter.UniqueID));
-+      .map((matter) => {
-+        const id = matter.MatterID ?? matter.UniqueID;
-+        return Number(id);
-+      })
-+      .filter((id) => !isNaN(id));
-   }, [allMatters, userResponsibleName]);
+           let mappedMatters: Matter[] = [];
+           if (Array.isArray(rawData)) {
+             // Direct array response from getMatters API
+             mappedMatters = mapData(rawData);
+           } else if (rawData.matters && Array.isArray(rawData.matters)) {
+             // Nested format from getAllMatters API
+             mappedMatters = mapData(rawData.matters);
+           } else {
+             console.warn('Unexpected data format for getMatters:', rawData);
+           }
  
-   const myOutstandingBalances = useMemo(() => {
-     if (!outstandingBalancesData?.data || userMatterIDs.length === 0) return [];
-     return outstandingBalancesData.data.filter((bal: any) =>
-       bal.associated_matter_ids.some((id: number) => userMatterIDs.includes(Number(id)))
-     );
-   }, [outstandingBalancesData, userMatterIDs]);
+           // Fetch additional matters from SQL-backed decoupled function
+           try {
+             const sqlFullName = userData?.[0]?.FullName || 'Lukasz Zemanek';
+             const sqlResp = await fetch(`/api/getMatters?fullName=${encodeURIComponent(sqlFullName)}`);
+             if (sqlResp.ok) {
+               const sqlData = await sqlResp.json();
+               if (Array.isArray(sqlData.matters)) {
+                 const sqlMapped: Matter[] = sqlData.matters.map((item: any) => ({
+-                  MatterID: item.MatterID,
+-                  InstructionRef: item.InstructionRef,
+-                  DisplayNumber: item.DisplayNumber || '',
+-                  OpenDate: item.OpenDate || '',
+-                  MonthYear: item.MonthYear || '',
+-                  YearMonthNumeric: item.YearMonthNumeric || 0,
+-                  ClientID: item.ClientID || '',
+-                  ClientName: item.ClientName || '',
+-                  ClientPhone: item.ClientPhone || '',
+-                  ClientEmail: item.ClientEmail || '',
+-                  Status: item.Status || '',
+-                  UniqueID: item.MatterID || '',
+-                  Description: item.Description || '',
+-                  PracticeArea: item.PracticeArea || '',
+-                  Source: item.Source || '',
+-                  Referrer: item.Referrer || '',
+-                  ResponsibleSolicitor: item.ResponsibleSolicitor || '',
+-                  OriginatingSolicitor: item.OriginatingSolicitor || '',
+-                  SupervisingPartner: item.SupervisingPartner || '',
+-                  Opponent: item.OpponentID || '',
+-                  OpponentSolicitor: item.OpponentSolicitorID || '',
+-                  CloseDate: item.CloseDate || '',
+-                  ApproxValue: item.ApproxValue || '',
+-                  mod_stamp: item.mod_stamp || '',
+-                  method_of_contact: item.method_of_contact || '',
+-                  CCL_date: item.CCL_date || null,
+-                  Rating: item.Rating,
++                  MatterID: item.matter_id || item.MatterID,
++                  InstructionRef: item.instruction_ref || item.InstructionRef,
++                  DisplayNumber:
++                    item.display_number || item.DisplayNumber || '',
++                  OpenDate: item.open_date || item.OpenDate || '',
++                  MonthYear: item.month_year || item.MonthYear || '',
++                  YearMonthNumeric:
++                    item.year_month_numeric || item.YearMonthNumeric || 0,
++                  ClientID: item.client_id || item.ClientID || '',
++                  ClientName: item.client_name || item.ClientName || '',
++                  ClientPhone: item.client_phone || item.ClientPhone || '',
++                  ClientEmail: item.client_email || item.ClientEmail || '',
++                  Status: item.status || item.Status || '',
++                  UniqueID: item.matter_id || item.MatterID || '',
++                  Description: item.description || item.Description || '',
++                  PracticeArea: item.practice_area || item.PracticeArea || '',
++                  Source: item.source || item.Source || '',
++                  Referrer: item.referrer || item.Referrer || '',
++                  ResponsibleSolicitor:
++                    item.responsible_solicitor || item.ResponsibleSolicitor || '',
++                  OriginatingSolicitor:
++                    item.originating_solicitor || item.OriginatingSolicitor || '',
++                  SupervisingPartner:
++                    item.supervising_partner || item.SupervisingPartner || '',
++                  Opponent: item.opponent || item.OpponentID || '',
++                  OpponentSolicitor:
++                    item.opponent_solicitor || item.OpponentSolicitorID || '',
++                  CloseDate: item.close_date || item.CloseDate || '',
++                  ApproxValue: item.approx_value || item.ApproxValue || '',
++                  mod_stamp: item.mod_stamp || item.modStamp || '',
++                  method_of_contact:
++                    item.method_of_contact || item.methodOfContact || '',
++                  CCL_date: item.CCL_date || item.ccl_date || null,
++                  Rating: item.rating || item.Rating,
+                 }));
+                 mappedMatters = mappedMatters.concat(sqlMapped);
+               }
+             } else {
+               console.warn('Failed to fetch SQL matters:', sqlResp.status);
+             }
+           } catch (sqlErr) {
+             console.warn('Error fetching SQL matters:', sqlErr);
+           }
  
-   const [isOutstandingPanelOpen, setIsOutstandingPanelOpen] = useState(false);
-   const [showOnlyMine, setShowOnlyMine] = useState(true); // Changed default to true
- 
-     // Create a derived variable mapping the raw outstanding balances data into MatterBalance[]
-     const outstandingBalancesList = useMemo<OutstandingClientBalance[]>(() => {
-       if (outstandingBalancesData && outstandingBalancesData.data) {
-         return outstandingBalancesData.data.map((record: any) => ({
-           id: record.id,
-           created_at: record.created_at,
-           updated_at: record.updated_at,
-           associated_matter_ids: record.associated_matter_ids,
-           contact: record.contact,
-           total_outstanding_balance: record.total_outstanding_balance,
-           last_payment_date: record.last_payment_date,
-           last_shared_date: record.last_shared_date,
-           newest_issued_bill_due_date: record.newest_issued_bill_due_date,
-diff --git a/src/tabs/home/Home.tsx b/src/tabs/home/Home.tsx
-index 9e70170ae66236b3f7fd76a4255e221f06de7356..41be915928e120c08ffe7fd3ef732d29cc79718a 100644
---- a/src/tabs/home/Home.tsx
-+++ b/src/tabs/home/Home.tsx
-@@ -2272,67 +2278,69 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
-     const userInitials = userData?.[0]?.Initials?.trim().toLowerCase() || '';
-   
-     // Helper function to normalize names
-     const normalizeName = (name: string | null | undefined): string => {
-       if (!name) return '';
-       let normalized = name.trim().toLowerCase();
-       if (normalized === "bianca odonnell") {
-         normalized = "bianca o'donnell";
-       }
-       if (normalized === "samuel packwood") {
-         normalized = "sam packwood";
-       }
-       return normalized;
-     };
-   
-     // Calculate matters opened count for conversion metrics
-     // Use Sam Packwood when in local dev or when prod user is LZ; otherwise use the current user
-     const isConversionUseSP = (process.env.REACT_APP_USE_LOCAL_DATA === 'true') || ((userInitials || '').toUpperCase() === 'LZ');
-     const targetFirst = isConversionUseSP ? 'sam' : userFirstName;
-     const targetLast = isConversionUseSP ? 'packwood' : userLastName;
-     const targetFull = isConversionUseSP ? 'sam packwood' : userFullName;
-     const targetInitials = isConversionUseSP ? 'sp' : userInitials;
- 
-     const mattersOpenedCount = allMatters
-       ? allMatters.filter((m) => {
--          const openDate = new Date(m.OpenDate);
--          let solicitorName = m.OriginatingSolicitor || '';
-+          const openDate = m.OpenDate ? new Date(m.OpenDate) : null;
-+          let solicitorName = m.OriginatingSolicitor || m.ResponsibleSolicitor || '';
-           solicitorName = normalizeName(solicitorName);
- 
-           return (
-+            openDate &&
-+            !isNaN(openDate.getTime()) &&
-             openDate.getMonth() === currentMonth &&
-             openDate.getFullYear() === currentYear &&
-             (
-               solicitorName === targetFull || // Exact full name match
-               solicitorName === `${targetFirst} ${targetLast}` || // First + Last match
-               solicitorName.includes(targetFirst) || // Contains first name
-               solicitorName.includes(targetLast) || // Contains last name
-               solicitorName === targetInitials // Match on initials
-             )
-           );
-         }).length
--      : 0;  
-+      : 0;
- 
-     if (!wipClioData) {
-         return [
-           { title: 'Time Today', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
-           { title: 'Av. Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 6 },
-           { title: 'Time This Week', isTimeMoney: true, money: 0, hours: 0, prevMoney: 0, prevHours: 0, showDial: true, dialTarget: 30 },
-           { title: 'Fees Recovered This Month', isMoneyOnly: true, money: 0, prevMoney: 0 },
-       // Use computed outstandingTotal even when WIP data hasn't loaded
-       { title: 'Outstanding Office Balances', isMoneyOnly: true, money: outstandingTotal ?? 0 },
-           { title: 'Enquiries Today', isTimeMoney: false, count: enquiriesToday, prevCount: prevEnquiriesToday },
-           { title: 'Enquiries This Week', isTimeMoney: false, count: enquiriesWeekToDate, prevCount: prevEnquiriesWeekToDate },
-           { title: 'Enquiries This Month', isTimeMoney: false, count: enquiriesMonthToDate, prevCount: prevEnquiriesMonthToDate },
-           { title: 'Matters Opened', isTimeMoney: false, count: mattersOpenedCount, prevCount: 0 },
-         ];
-       }
-       
-     const currentWeekData = wipClioData.current_week?.daily_data[formattedToday];
-     const lastWeekDate = new Date(today);
-     lastWeekDate.setDate(today.getDate() - 7);
-     const formattedLastWeekDate = formatDateLocal(lastWeekDate);
-     const lastWeekData = wipClioData.last_week?.daily_data[formattedLastWeekDate];
-     const startOfCurrentWeek = new Date(today);
-     startOfCurrentWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
-     startOfCurrentWeek.setHours(0, 0, 0, 0);
-     const startOfLastWeek = new Date(startOfCurrentWeek);
+           cachedAllMatters = mappedMatters;
+           setAllMatters(mappedMatters);
+           if (onAllMattersFetched) {
+             onAllMattersFetched(mappedMatters);
+           }
+         } catch (error: any) {
+           console.error('Error fetching all matters:', error);
+           cachedAllMattersError = error.message;
+           setAllMattersError(error.message);
+           setAllMatters([]);
+         } finally {
+           setIsLoadingAllMatters(false);
+         }
+       };
+       fetchAllMattersData();

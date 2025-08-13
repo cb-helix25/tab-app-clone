@@ -1,16 +1,16 @@
 # Instructions App Integration Tasks
 
-The pitch builder now generates a prospect link for document submission and ID verification. The link is constructed as:
+The pitch builder now generates a prospect link for document submission and ID verification using a path-based format. The link is constructed as:
 
 ```
-${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=<dealId>&token=<passcode>
+${process.env.REACT_APP_INSTRUCTIONS_URL}/pitch/<enquiryId>-<passcode>
 ```
 
 ### Required work in the instructions VNET
 
 1. **Validate access tokens**
-   - Implement an endpoint that accepts `deal` and `token` query parameters.
-   - Confirm that the passcode matches the deal record.
+   - Implement a route handler for `GET /pitch/:compound` where `:compound` is `<enquiryId>-<passcode>`.
+   - Parse and validate the compound token, confirm that the passcode matches the persisted deal/enquiry records.
 
 2. **Document & ID upload**
    - Provide a page that allows prospects to upload proof of ID and supporting documents.
@@ -20,7 +20,7 @@ ${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=<dealId>&token=<passcode>
    - Record completion status for proof-of-ID and each uploaded document so that the back office can check progress.
 
 4. **Payments**
-   - Payments are disabled. Ensure no payment prompts or validations are enforced even if the amount is `0`.
+   - Payments remain disabled. Ensure no payment prompts or validations are enforced even if the amount is `0`.
 
 5. **Error handling**
    - The endpoint should respond gracefully if the deal is missing or the token is invalid to avoid breaking the pitch builder flow.

@@ -11,167 +11,105 @@ import EmailSignature from '../EmailSignature';
 import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
 import markUrl from '../../../assets/dark blue mark.svg';
 
-
-
-
-// NOTE: renderWithPlaceholders was removed due to corruption and is not used in this component.
-// Escape HTML for safe injection
+// NOTE: renderWithPlaceholders was removed; we use a simple highlighter overlay instead.
+// Escape HTML for safe injection in the overlay layer
 function escapeHtml(str: string) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Build HTML string with placeholder spans
-function buildPlaceholderHTML(text: string) {
-  const regex = /\[([^\]]+)\]/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let html = '';
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      html += escapeHtml(text.slice(lastIndex, match.index));
-    }
-    const inner = escapeHtml(match[1]);
-  // Render placeholder without square brackets; blue pill, dashed border, subtle grey text, no bold
-  html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${inner}</span>`;
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    html += escapeHtml(text.slice(lastIndex));
-  }
-  return html || '';
+// Remove visual divider lines made of dashes from text (used to hide auto-block separators in previews)
+function stripDashDividers(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !/^\s*[-–—]{3,}\s*$/.test(line))
+    .join('\n');
 }
 
-// Find placeholder tokens like [TOKEN] in a string (HTML or plain text)
-function findPlaceholders(input: string): string[] {
-  const matches = input.match(/\[([^\]]+)\]/g) || [];
-  // Return unique token names without brackets
-  const names = matches.map(m => m.slice(1, -1));
-  return Array.from(new Set(names));
+// Convert very basic HTML to plain text for textarea defaults and copy actions
+function htmlToPlainText(html: string): string {
+  const withBreaks = html
+    .replace(/\r\n/g, '\n')
+    .replace(/<br\s*\/?>(\s*)/gi, '\n')
+    .replace(/<\/(p|div)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<\/(ul|ol)>/gi, '\n');
+  const withoutTags = withBreaks.replace(/<[^>]+>/g, '');
+  return withoutTags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
-// Highlight placeholders inside an HTML string (assumes HTML not escaped)
+// Find placeholder tokens like [TOKEN]
+function findPlaceholders(text: string): string[] {
+  const matches = text.match(/\[[^\]]+\]/g);
+  return matches ? matches : [];
+}
+
+// Wrap placeholders in red styling for preview HTML
 function highlightPlaceholdersHtml(html: string): string {
-  return html.replace(/\[([^\]]+)\]/g, (_m, p1) => {
-    const inner = escapeHtml(p1);
-    // Unresolved tokens in preview: keep a red pill and remove brackets for clarity
-    return `<span style=\"display:inline;background:#ffe9e9;box-shadow:inset 0 0 0 1px #f1a4a4;padding:0 4px;margin:0;border:none;border-radius:3px;font-style:inherit;color:#a80000;font-weight:600\">${inner}</span>`;
+  return html.replace(/\[[^\]]+\]/g, (m) => {
+    return `<span style="color:#D65541;font-weight:700;">${escapeHtml(m)}</span>`;
   });
 }
 
-// Convert lightweight HTML (including preview scaffolding) to plain text safe for Outlook
-function htmlToPlainText(input: string): string {
-  let s = input || '';
-  // Normalize line breaks for common tags
-  s = s.replace(/\r\n/g, '\n');
-  s = s.replace(/<br\s*\/?\s*>/gi, '\n');
-  s = s.replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n');
-  s = s.replace(/<li\b[^>]*>/gi, '• ');
-  // Remove all remaining tags
-  s = s.replace(/<[^>]+>/g, '');
-  // Decode common entities
-  s = s.replace(/&nbsp;/g, ' ')
-       .replace(/&amp;/g, '&')
-       .replace(/&lt;/g, '<')
-       .replace(/&gt;/g, '>')
-       .replace(/&quot;/g, '"')
-       .replace(/&#39;/g, "'");
-  // Collapse excessive blank lines
-  s = s.replace(/\n{3,}/g, '\n\n');
-  return s.trim();
-}
-
-// Remove visual divider lines like "— — —" or "- - -" (three or more dashes with spaces)
-function stripDashDividers(input: string): string {
-  if (!input) return input;
-  // Matches sequences of three or more em dashes or hyphens, with optional spaces between
-  return input.replace(/(?:\s*[—-]\s*){3,}/g, '');
-}
-
-// --- Auto-insert Rate and Role into [RATE] and [ROLE] placeholders in the body ---
+// Custom hook: auto-insert [RATE] and [ROLE] values and report inserted ranges
 function useAutoInsertRateRole(
   body: string,
   setBody: (v: string) => void,
-  userData: any,
+  userData?: any,
   setExternalHighlights?: (ranges: { start: number; end: number }[]) => void
 ) {
-  const lastAppliedKeyRef = useRef<string | null>(null);
+  const lastAppliedKeyRef = useRef<string>('');
   const lastProcessedBodyRef = useRef<string>('');
-  
+
   useEffect(() => {
-    if (!body || !userData) return;
-
-    // Only run if tokens are present to avoid unnecessary resets
-    const tokenRegex = /\[(RATE|ROLE)\]/i;
-    if (!tokenRegex.test(body)) {
-      // If no tokens, update the last processed body to prevent future re-runs
-      lastProcessedBodyRef.current = body;
-      return;
-    }
-
-    // Support userData being either a user object or an array of users (use first).
-    const u: any = Array.isArray(userData) ? (userData[0] ?? null) : userData;
-    if (!u) return;
-
-    const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
-    const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
+    const roleRaw = userData?.[0]?.['Role'];
+    const rateRaw = userData?.[0]?.['Rate'];
 
     const roleStr = roleRaw == null ? '' : String(roleRaw).trim();
-    // Parse numeric/money rate robustly (supports number or string with £ and commas). 0 is valid.
     const parseRate = (val: unknown): number | null => {
       if (val == null) return null;
-      if (typeof val === 'number') {
-        return isFinite(val) ? val : null;
-      }
+      if (typeof val === 'number') return isFinite(val) ? val : null;
       const cleaned = String(val).replace(/[^0-9.\-]/g, '').trim();
       if (!cleaned) return null;
       const n = Number(cleaned);
       return isFinite(n) ? n : null;
     };
     const rateNumber = parseRate(rateRaw);
-    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatRateGBP = (n: number) =>
+      `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    if (!roleStr && rateNumber == null) return;
-
-    // Build a stable key to prevent reapplying for the same inputs
-    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
-    
-    // Skip if we've already processed this exact combination
-    if (lastAppliedKeyRef.current === key && lastProcessedBodyRef.current === body) {
+    if (!body || (!roleStr && rateNumber == null)) {
+      // No changes; clear any prior transient highlights
+      setExternalHighlights?.([]);
       return;
     }
 
-    // Global replacement of [RATE] and [ROLE] wherever they appear.
-    // Compute new body and collect highlight ranges for inserted values.
+    const key = `${roleStr}|${rateNumber ?? ''}|${body}`;
+    if (lastAppliedKeyRef.current === key && lastProcessedBodyRef.current) return;
+
     const TOKEN_LEN = (t: 'RATE' | 'ROLE') => `[${t}]`.length;
     let newBody = body;
     const ranges: { start: number; end: number }[] = [];
-
-    // We replace in a single left-to-right pass to keep indices stable while we compute highlights.
     const regex = /\[(RATE|ROLE)\]/gi;
     let m: RegExpExecArray | null;
-    let shift = 0; // net length delta after prior replacements
+    let shift = 0;
 
     while ((m = regex.exec(body)) !== null) {
       const token = (m[1] as string).toUpperCase() as 'RATE' | 'ROLE';
       const originalStart = m.index;
       const start = originalStart + shift;
       const end = start + TOKEN_LEN(token);
-
       let replacement: string | null = null;
-      if (token === 'RATE' && rateNumber != null) {
-        replacement = formatRateGBP(rateNumber);
-      } else if (token === 'ROLE' && roleStr) {
-        replacement = roleStr;
-      }
-
+      if (token === 'RATE' && rateNumber != null) replacement = formatRateGBP(rateNumber);
+      else if (token === 'ROLE' && roleStr) replacement = roleStr;
       if (replacement != null) {
         newBody = newBody.slice(0, start) + replacement + newBody.slice(end);
-        // Record highlight for the inserted value
         ranges.push({ start, end: start + replacement.length });
-        // Update shift for subsequent matches based on length delta
         shift += replacement.length - TOKEN_LEN(token);
       }
     }
@@ -180,18 +118,13 @@ function useAutoInsertRateRole(
       lastAppliedKeyRef.current = key;
       lastProcessedBodyRef.current = newBody;
       setBody(newBody);
-      // Only emit highlights when we actually inserted something
       if (ranges.length) setExternalHighlights?.(ranges);
     } else {
-      // Even if content didn't change, update tracking refs to prevent re-runs
       lastAppliedKeyRef.current = key;
       lastProcessedBodyRef.current = body;
-      // Clear highlights if nothing was replaced to avoid ghost highlights
-      if (ranges.length === 0) {
-        setExternalHighlights?.([]);
-      }
+      if (ranges.length === 0) setExternalHighlights?.([]);
     }
-  }, [body, userData]); // Removed setBody and setExternalHighlights from deps to prevent loops
+  }, [body, userData, setBody, setExternalHighlights]);
 }
 
 interface InlineEditableAreaProps {
@@ -878,7 +811,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const previewRef = useRef<HTMLDivElement | null>(null);
   // HMR tick to force re-render when scenarios module hot-reloads
   const [hmrTick, setHmrTick] = useState(0);
-  // Helper: apply simple [RATE]/[ROLE] substitutions to keep injected text consistent with auto-insert effect
+  // Helper: apply simple [RATE]/[ROLE] substitutions and dynamic tokens ([InstructLink])
   const applyRateRolePlaceholders = useCallback((text: string) => {
     const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
     if (!u || !text) return text;
@@ -898,10 +831,45 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
     let out = text;
     if (rateNumber != null) out = out.replace(/\[RATE\]/gi, formatRateGBP(rateNumber));
     if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
-    return out;
-  }, [userData]);
+    // Also apply dynamic substitutions so [InstructLink] renders in the editor
+    // For editor, render [InstructLink] as a React anchor, not raw HTML
+    let substituted = applyDynamicSubstitutions(
+      out,
+      userData,
+      enquiry,
+      amount,
+      passcode,
+      passcode && (enquiry as any)?.ID
+        ? `${(process.env.REACT_APP_INSTRUCTIONS_URL || 'https://instruct.helix-law.com').replace(/\/$/, '')}/pitch/${(enquiry as any).ID}-${passcode}`
+        : undefined
+    );
+    // Replace the HTML anchor with a React anchor for in-editor display
+    substituted = substituted.replace(
+      /<a href="([^"]*)"[^>]*>Instruct Helix Law<\/a>/gi,
+      (_match, href) => {
+        // Use a unique marker for React rendering
+        return `[[INSTRUCT_LINK::${href}]]`;
+      }
+    );
+    return substituted;
+  return substituted;
+  }, [userData, enquiry, amount, passcode]);
   // Track the last body we injected from a scenario so we can safely refresh on scenario edits
   const lastScenarioBodyRef = useRef<string>('');
+  
+  // Track the last passcode so we can re-process the editor content when it becomes available
+  const lastPasscodeRef = useRef<string>('');
+
+  // When passcode becomes available, re-process the editor content to update [InstructLink] tokens
+  useEffect(() => {
+    if (passcode && passcode !== lastPasscodeRef.current && body) {
+      const processedBody = applyRateRolePlaceholders(body);
+      if (processedBody !== body) {
+        setBody(processedBody);
+      }
+      lastPasscodeRef.current = passcode;
+    }
+  }, [passcode, body, applyRateRolePlaceholders, setBody]);
 
   // Auto-select the first quick scenario on mount if none is selected
   useEffect(() => {

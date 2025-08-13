@@ -41,7 +41,6 @@ export function convertDoubleBreaksToParagraphs(html: string): string {
  * Looks for patterns like "1. " and "2. " and converts them to proper <ol><li> structure.
  */
 export function convertNumberedListsToHTML(text: string): string {
-  // Split into lines for processing
   const lines = text.split('\n');
   const result: string[] = [];
   let inList = false;
@@ -50,8 +49,6 @@ export function convertNumberedListsToHTML(text: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
-
-    // Match lines like: "1. Something" (number + dot + space)
     const listItemMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
 
     if (listItemMatch) {
@@ -64,7 +61,6 @@ export function convertNumberedListsToHTML(text: string): string {
       listItems.push({ n, content: itemContent });
     } else {
       if (inList) {
-        // Emit an HTML list that is robust in Outlook by inlining the numbers and disabling default markers
         const html =
           `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
           listItems
@@ -79,12 +75,10 @@ export function convertNumberedListsToHTML(text: string): string {
         inList = false;
         listItems = [];
       }
-      // Add the non-list line (preserve empty lines)
       result.push(trimmedLine ? line : '');
     }
   }
 
-  // Handle a list at EOF
   if (inList && listItems.length > 0) {
     const html =
       `<ol class="hlx-numlist" style="list-style:none;padding-left:0;margin:16px 0;">` +
@@ -397,17 +391,37 @@ export function applyDynamicSubstitutions(
         })()
       : '[Amount]';
 
-  const finalInstructionsLink = instructionsLink ||
-    (passcode
-      ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?passcode=${passcode}`
-      : process.env.REACT_APP_INSTRUCTIONS_URL || '#');
+  // Build canonical instructions link as path: <base>/pitch/<enquiryID>-<passcode>
+  // Prefer provided instructionsLink if set; otherwise compose from env base + enquiry/passcode
+  const liveBase = 'https://instruct.helix-law.com';
+  const envBase = (process.env.REACT_APP_INSTRUCTIONS_URL || liveBase).replace(/\/$/, '');
+  const isLocalHost = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || '');
+  const baseUrl = (isLocalHost || /localhost|127\.0\.0\.1/i.test(envBase)) ? liveBase : envBase;
+  const eid = enquiryID && String(enquiryID).trim().length > 0 ? String(enquiryID) : '';
+  const canCompose = Boolean(passcode && eid);
+  let finalInstructionsLink = '#';
+  if (instructionsLink && instructionsLink !== '#') {
+    finalInstructionsLink = /localhost|127\.0\.0\.1/i.test(instructionsLink)
+      ? (canCompose ? `${liveBase}/pitch/${eid}-${passcode}` : liveBase)
+      : instructionsLink;
+  } else if (canCompose) {
+    finalInstructionsLink = `${baseUrl}/pitch/${eid}-${passcode}`;
+  }
+
+  // Prebuilt anchor for the instructions link (HTML email friendly) — blue + bold
+  const instructAnchor = `<a href="${finalInstructionsLink}" target="_blank" rel="noopener noreferrer" style="color:#1a73e8;font-weight:700;text-decoration:underline;">Instruct Helix Law</a>`;
 
   return text
+  // Support explicit marker syntax used in editor content
+  .replace(/\[\[INSTRUCT_LINK::[^\]]*\]\]/gi, instructAnchor)
     .replace(/\[FE\]/g, userInitials)
     .replace(/\[ACID\]/g, enquiryID)
     .replace(/\[Position\]/g, userRole)
     .replace(/\[Rate\]/g, formattedRate)
     .replace(/\[Amount\]/g, formattedAmount)
     .replace(/\[Passcode\]/g, passcode || '[Passcode]')
-    .replace(/\[InstructLink\]/g, finalInstructionsLink);
+  // [InstructLink] renders as a clickable link labelled "Instruct Helix Law" (case-insensitive)
+  .replace(/\[InstructLink\]/gi, instructAnchor)
+  // Optional raw URL token if needed in plain contexts (case-insensitive)
+  .replace(/\[InstructLinkUrl\]/gi, finalInstructionsLink);
 }

@@ -1723,31 +1723,49 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
           const rawData = await response.json();
           const mapData = (items: any[]): Matter[] => {
             return items.map((item) => ({
-              DisplayNumber: item['Display Number'] || '',
-              OpenDate: item['Open Date'] || '',
-              MonthYear: item['MonthYear'] || '',
-              YearMonthNumeric: item['YearMonthNumeric'] || 0,
-              ClientID: item['Client ID'] || '',
-              ClientName: item['Client Name'] || '',
-              ClientPhone: item['Client Phone'] || '',
-              ClientEmail: item['Client Email'] || '',
-              Status: item['Status'] || '',
-              UniqueID: item['Unique ID'] || '',
-              Description: item['Description'] || '',
-              PracticeArea: item['Practice Area'] || '',
-              Source: item['Source'] || '',
-              Referrer: item['Referrer'] || '',
-              ResponsibleSolicitor: item['Responsible Solicitor'] || '',
-              OriginatingSolicitor: item['Originating Solicitor'] || '',
-              SupervisingPartner: item['Supervising Partner'] || '',
-              Opponent: item['Opponent'] || '',
-              OpponentSolicitor: item['Opponent Solicitor'] || '',
-              CloseDate: item['Close Date'] || '',
-              ApproxValue: item['Approx. Value'] || '',
-              mod_stamp: item['mod_stamp'] || '',
-              method_of_contact: item['method_of_contact'] || '',
-              CCL_date: item['CCL_date'] || null,
-              Rating: item['Rating'] as 'Good' | 'Neutral' | 'Poor' | undefined,
+              DisplayNumber:
+                item.display_number || item.DisplayNumber || item['Display Number'] || '',
+              OpenDate: item.open_date || item.OpenDate || item['Open Date'] || '',
+              MonthYear: item.month_year || item.MonthYear || item['MonthYear'] || '',
+              YearMonthNumeric:
+                item.year_month_numeric || item.YearMonthNumeric || item['YearMonthNumeric'] || 0,
+              ClientID: item.client_id || item.ClientID || item['Client ID'] || '',
+              ClientName: item.client_name || item.ClientName || item['Client Name'] || '',
+              ClientPhone: item.client_phone || item.ClientPhone || item['Client Phone'] || '',
+              ClientEmail: item.client_email || item.ClientEmail || item['Client Email'] || '',
+              Status: item.status || item.Status || '',
+              UniqueID:
+                item.matter_id || item.MatterID || item.id || item.UniqueID || item['Unique ID'] || '',
+              Description: item.description || item.Description || item['Description'] || '',
+              PracticeArea: item.practice_area || item.PracticeArea || item['Practice Area'] || '',
+              Source: item.source || item.Source || item['Source'] || '',
+              Referrer: item.referrer || item.Referrer || item['Referrer'] || '',
+              ResponsibleSolicitor:
+                item.responsible_solicitor ||
+                item.ResponsibleSolicitor ||
+                item['Responsible Solicitor'] ||
+                '',
+              OriginatingSolicitor:
+                item.originating_solicitor ||
+                item.OriginatingSolicitor ||
+                item['Originating Solicitor'] ||
+                '',
+              SupervisingPartner:
+                item.supervising_partner || item.SupervisingPartner || item['Supervising Partner'] || '',
+              Opponent: item.opponent || item.Opponent || item['Opponent'] || '',
+              OpponentSolicitor:
+                item.opponent_solicitor || item.OpponentSolicitor || item['Opponent Solicitor'] || '',
+              CloseDate: item.close_date || item.CloseDate || item['Close Date'] || '',
+              ApproxValue: item.approx_value || item.ApproxValue || item['Approx. Value'] || '',
+              mod_stamp: item.mod_stamp || item.modStamp || item['mod_stamp'] || '',
+              method_of_contact:
+                item.method_of_contact || item.methodOfContact || item['method_of_contact'] || '',
+              CCL_date: item.CCL_date || item.ccl_date || item['CCL_date'] || null,
+              Rating: (item.rating || item.Rating || item['Rating']) as
+                | 'Good'
+                | 'Neutral'
+                | 'Poor'
+                | undefined,
             }));
           };
 
@@ -1770,33 +1788,40 @@ const handleApprovalUpdate = (updatedRequestId: string, newStatus: string) => {
               const sqlData = await sqlResp.json();
               if (Array.isArray(sqlData.matters)) {
                 const sqlMapped: Matter[] = sqlData.matters.map((item: any) => ({
-                  MatterID: item.MatterID,
-                  InstructionRef: item.InstructionRef,
-                  DisplayNumber: item.DisplayNumber || '',
-                  OpenDate: item.OpenDate || '',
-                  MonthYear: item.MonthYear || '',
-                  YearMonthNumeric: item.YearMonthNumeric || 0,
-                  ClientID: item.ClientID || '',
-                  ClientName: item.ClientName || '',
-                  ClientPhone: item.ClientPhone || '',
-                  ClientEmail: item.ClientEmail || '',
-                  Status: item.Status || '',
-                  UniqueID: item.MatterID || '',
-                  Description: item.Description || '',
-                  PracticeArea: item.PracticeArea || '',
-                  Source: item.Source || '',
-                  Referrer: item.Referrer || '',
-                  ResponsibleSolicitor: item.ResponsibleSolicitor || '',
-                  OriginatingSolicitor: item.OriginatingSolicitor || '',
-                  SupervisingPartner: item.SupervisingPartner || '',
-                  Opponent: item.OpponentID || '',
-                  OpponentSolicitor: item.OpponentSolicitorID || '',
-                  CloseDate: item.CloseDate || '',
-                  ApproxValue: item.ApproxValue || '',
-                  mod_stamp: item.mod_stamp || '',
-                  method_of_contact: item.method_of_contact || '',
-                  CCL_date: item.CCL_date || null,
-                  Rating: item.Rating,
+                  MatterID: item.matter_id || item.MatterID,
+                  InstructionRef: item.instruction_ref || item.InstructionRef,
+                  DisplayNumber:
+                    item.display_number || item.DisplayNumber || '',
+                  OpenDate: item.open_date || item.OpenDate || '',
+                  MonthYear: item.month_year || item.MonthYear || '',
+                  YearMonthNumeric:
+                    item.year_month_numeric || item.YearMonthNumeric || 0,
+                  ClientID: item.client_id || item.ClientID || '',
+                  ClientName: item.client_name || item.ClientName || '',
+                  ClientPhone: item.client_phone || item.ClientPhone || '',
+                  ClientEmail: item.client_email || item.ClientEmail || '',
+                  Status: item.status || item.Status || '',
+                  UniqueID: item.matter_id || item.MatterID || '',
+                  Description: item.description || item.Description || '',
+                  PracticeArea: item.practice_area || item.PracticeArea || '',
+                  Source: item.source || item.Source || '',
+                  Referrer: item.referrer || item.Referrer || '',
+                  ResponsibleSolicitor:
+                    item.responsible_solicitor || item.ResponsibleSolicitor || '',
+                  OriginatingSolicitor:
+                    item.originating_solicitor || item.OriginatingSolicitor || '',
+                  SupervisingPartner:
+                    item.supervising_partner || item.SupervisingPartner || '',
+                  Opponent: item.opponent || item.OpponentID || '',
+                  OpponentSolicitor:
+                    item.opponent_solicitor || item.OpponentSolicitorID || '',
+                  CloseDate: item.close_date || item.CloseDate || '',
+                  ApproxValue: item.approx_value || item.ApproxValue || '',
+                  mod_stamp: item.mod_stamp || item.modStamp || '',
+                  method_of_contact:
+                    item.method_of_contact || item.methodOfContact || '',
+                  CCL_date: item.CCL_date || item.ccl_date || null,
+                  Rating: item.rating || item.Rating,
                 }));
                 mappedMatters = mappedMatters.concat(sqlMapped);
               }
