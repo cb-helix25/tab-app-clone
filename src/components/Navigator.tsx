@@ -1,13 +1,13 @@
 import React from 'react';
 // invisible change 2
-import { useNavigator } from '../app/functionality/NavigatorContext';
+import { useNavigatorContent } from '../app/functionality/NavigatorContext';
 import { useTheme } from '../app/functionality/ThemeContext';
 import { colours } from '../app/styles/colours';
 import '../app/styles/Navigator.css';
 import '../app/styles/NavigatorPivot.css';
 
 const Navigator: React.FC = () => {
-    const { content } = useNavigator();
+    const { content } = useNavigatorContent();
     const { isDarkMode } = useTheme();
 
     if (!content) {

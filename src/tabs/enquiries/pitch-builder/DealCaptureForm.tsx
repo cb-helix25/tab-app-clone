@@ -22,7 +22,6 @@ import {
 import { useTheme } from '../../../app/functionality/ThemeContext';
 import { colours } from '../../../app/styles/colours';
 import { Enquiry } from '../../../app/functionality/types';
-import PaymentPreview from './PaymentPreview';
 
 
 
@@ -697,8 +696,6 @@ useLayoutEffect(() => {
       {amountError && (
         <div className={paymentInfoClass(true, true)}>{amountError}</div>
       )}
-
-  <PaymentPreview initialScopeDescription={initialScopeDescription} amount={amount} />
 
       <Stack>
         <div className={toggleContainer} aria-label="Select ID type">

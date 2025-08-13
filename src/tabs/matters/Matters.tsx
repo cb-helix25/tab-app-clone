@@ -15,7 +15,7 @@ import MatterLineItem from './MatterLineItem';
 import MatterOverview from './MatterOverview';
 import { colours } from '../../app/styles/colours';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import MatterApiDebugger from '../../components/MatterApiDebugger';
 
 interface MattersProps {
@@ -27,7 +27,7 @@ interface MattersProps {
 
 const Matters: React.FC<MattersProps> = ({ matters, isLoading, error, userData }) => {
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const [selected, setSelected] = useState<NormalizedMatter | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('Active');

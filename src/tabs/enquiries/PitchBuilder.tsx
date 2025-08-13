@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Stack,
@@ -31,7 +30,7 @@ import ToggleSwitch from '../../components/ToggleSwitch';
 import { hasAdminAccess } from '../../utils/matterNormalization';
 import BubbleTextField from '../../app/styles/BubbleTextField';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import PracticeAreaPitch, { PracticeAreaPitchType } from '../../app/customisation/PracticeAreaPitch';
 import { TemplateBlock, TemplateOption } from '../../app/customisation/ProductionTemplateBlocks';
 import {
@@ -121,6 +120,7 @@ function useDynamicTemplateBlocks(templateSet: TemplateSet) {
 interface PitchBuilderProps {
   enquiry: Enquiry;
   userData: any;
+  showDealCapture?: boolean;
 }
 
 interface ApiCallLog {
@@ -551,7 +551,7 @@ if (typeof window !== 'undefined' && !document.getElementById('block-label-style
   document.head.appendChild(style);
 }
 
-const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
+const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData, showDealCapture = false }) => {
   // Local helper: reveals value + copy on hover; shows only icon by default
   const RevealCopyField: React.FC<{ iconName: string; value: string; color: string; label: string }> = ({ iconName, value, color, label }) => {
     const [copied, setCopied] = useState(false);
@@ -626,14 +626,19 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
   // Admin/debug controls state
   const [useNewData, setUseNewData] = useState<boolean>(false);
   const [showDataInspector, setShowDataInspector] = useState(false);
-  const userRole = userData?.[0]?.Role || '';
-  const userFullName = userData?.[0]?.FullName || '';
+  const userRec: any = (userData && userData[0]) ? userData[0] : {};
+  const userRole: string = (userRec.Role || userRec.role || '').toString();
+  const userFullName: string = (
+    userRec.FullName ||
+    userRec['Full Name'] ||
+    [userRec.First, userRec.Last].filter(Boolean).join(' ')
+  )?.toString() || '';
   const isAdmin = hasAdminAccess(userRole, userFullName);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   // Initial Notes state
   const [initialNotes, setInitialNotes] = useState<string>('');
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const userInitials = userData?.[0]?.Initials?.toUpperCase() || '';
   const userEmailAddress = userData?.[0]?.Initials
     ? `${userData[0].Initials.toLowerCase()}@helix-law.com`
@@ -2052,8 +2057,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     insertAtCursor(html);
@@ -2088,8 +2093,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode
-            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+          dealPasscode && dealId
+            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2130,8 +2135,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           enquiry,
           amount,
           dealPasscode,
-          dealPasscode
-            ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+          dealPasscode && dealId
+            ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
             : undefined
         );
         text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2329,8 +2334,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2449,8 +2454,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      dealPasscode
-        ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+      dealPasscode && dealId
+        ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
         : undefined
     );
     text = cleanTemplateString(text).replace(/<p>/g, `<p style="margin: 0;">`);
@@ -2949,8 +2954,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
     let rawHtml = removeHighlightSpans(body);
 
     // Apply dynamic substitutions such as amount just before sending
-    const checkoutLink = dealPasscode
-      ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+    const instructionsLink = dealPasscode && dealId
+      ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
       : undefined;
     rawHtml = applyDynamicSubstitutions(
       rawHtml,
@@ -2958,7 +2963,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
       enquiry,
       amount,
       dealPasscode,
-      checkoutLink
+      instructionsLink
     );
 
     // Remove leftover placeholders
@@ -3385,7 +3390,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
               className={mergeStyles({
                 marginTop: '6px',
                 border: `1px solid ${colours.highlightBlue}`,
-                padding: '4px 6px',
+                padding: '6px 10px',
                 borderRadius: 0,
                 fontSize: '12px',
                 display: 'flex',
@@ -3423,7 +3428,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '6px 8px',
+            padding: isEdited ? '8px 10px' : '6px 8px',
             borderRadius: 0,
             fontSize: '13px',
           })}
@@ -3438,8 +3443,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                 enquiry,
                 amount,
                 dealPasscode,
-                dealPasscode
-                  ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+                dealPasscode && dealId
+                  ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
                   : undefined
               );
               return (
@@ -3464,8 +3469,8 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode
-          ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}`
+        dealPasscode && dealId
+          ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}`
           : undefined
       );
       return (
@@ -3482,7 +3487,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                   : colours.highlightNeutral
               }`
               : `1px dashed ${colours.highlightBlue}`,
-            padding: '6px 8px',
+            padding: isEdited ? '8px 10px' : '6px 8px',
             borderRadius: 0,
             fontSize: '13px',
           })}
@@ -3848,7 +3853,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
         enquiry,
         amount,
         dealPasscode,
-        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
       );
       raw = cleanTemplateString(raw);
       const formatted = formatSectionContent(raw);
@@ -4094,6 +4099,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
           subject={subject}
           setSubject={setSubject}
           // Deal capture props
+          showDealCapture={showDealCapture}
           initialScopeDescription={initialScopeDescription}
           onScopeDescriptionChange={setInitialScopeDescription}
           amount={amount}
@@ -4163,7 +4169,7 @@ const PitchBuilder: React.FC<PitchBuilderProps> = ({ enquiry, userData }) => {
                         enquiry,
                         amount,
                         dealPasscode,
-                        dealPasscode ? `${process.env.REACT_APP_CHECKOUT_URL}?passcode=${dealPasscode}` : undefined
+                        dealPasscode && dealId ? `${process.env.REACT_APP_INSTRUCTIONS_URL}?deal=${dealId}&token=${dealPasscode}` : undefined
                       );
                       const isSelected = snippetOptionsLabel === option.key;
                       return (

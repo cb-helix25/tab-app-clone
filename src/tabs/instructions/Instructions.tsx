@@ -25,7 +25,7 @@ import { MdOutlineArticle, MdArticle, MdOutlineWarning, MdWarning, MdAssessment,
 import { FaShieldAlt } from 'react-icons/fa';
 import QuickActionsCard from "../home/QuickActionsCard"; // legacy, to be removed after full migration
 import { useTheme } from "../../app/functionality/ThemeContext";
-import { useNavigator } from "../../app/functionality/NavigatorContext";
+import { useNavigatorActions } from "../../app/functionality/NavigatorContext";
 import { colours } from "../../app/styles/colours";
 import { dashboardTokens } from "./componentTokens";
 import InstructionCard from "./InstructionCard";
@@ -75,7 +75,7 @@ const Instructions: React.FC<InstructionsProps> = ({
   setIsInMatterOpeningWorkflow,
 }) => {
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const [showNewMatterPage, setShowNewMatterPage] = useState<boolean>(false);
   const [showRiskPage, setShowRiskPage] = useState<boolean>(false);
   const [showEIDPage, setShowEIDPage] = useState<boolean>(false);

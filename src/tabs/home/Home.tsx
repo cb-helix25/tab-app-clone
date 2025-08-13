@@ -41,7 +41,7 @@ import WfhImg from '../../assets/wfh.png';
 import OutImg from '../../assets/outv2.png';
 import '../../app/styles/VerticalLabelPanel.css';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import '../../app/styles/MetricCard.css';
 import './EnhancedHome.css';
 import { dashboardTokens, cardTokens, cardStyles } from '../instructions/componentTokens';
@@ -746,8 +746,22 @@ const getMetricsAlias = (
   _initials: string | undefined,
   _clioId: string | number | undefined
 ) => {
-  // Always return Alex Cook for metrics, regardless of user
-  return { name: 'Alex Cook', clioId: 142961 };
+  const fullName = (_fullName || '').toLowerCase();
+  const initials = (_initials || '').toLowerCase();
+
+  // Map Lukasz/Luke (LZ) to Jonathan Waters
+  if (fullName.includes('lukasz') || fullName.includes('luke') || initials === 'lz') {
+    return { name: 'Jonathan Waters', clioId: 137557 };
+  }
+
+  // Normalize Samuel to Sam
+  if (fullName === 'samuel packwood') {
+    const clioIdNum = typeof _clioId === 'string' ? parseInt(_clioId, 10) : _clioId;
+    return { name: 'Sam Packwood', clioId: clioIdNum };
+  }
+
+  const clioIdNum = typeof _clioId === 'string' ? parseInt(_clioId, 10) : _clioId;
+  return { name: _fullName || '', clioId: clioIdNum };
 };
 
 //////////////////////
@@ -779,7 +793,7 @@ const CognitoForm: React.FC<{ dataKey: string; dataForm: string }> = ({ dataKey,
 
 const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersFetched, onOutstandingBalancesFetched, onPOID6YearsFetched, onTransactionsFetched, teamData, onBoardroomBookingsFetched, onSoundproofBookingsFetched, isInMatterOpeningWorkflow = false }) => {
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const inTeams = isInTeams();
   const useLocalData =
     process.env.REACT_APP_USE_LOCAL_DATA === 'true';
@@ -1105,6 +1119,19 @@ const Home: React.FC<HomeProps> = ({ context, userData, enquiries, onAllMattersF
       setCurrentUserEmail((userData[0].Email || '').toLowerCase().trim());
       setCurrentUserName(userData[0].FullName || '');
     }
+  }, [userData]);
+
+  // Clear cached time/fee metrics when switching users
+  useEffect(() => {
+    cachedWipClio = null;
+    cachedWipClioError = null;
+    cachedRecovered = null;
+    cachedRecoveredError = null;
+    cachedPrevRecovered = null;
+    cachedPrevRecoveredError = null;
+    setWipClioData(null);
+    setRecoveredData(null);
+    setPrevRecoveredData(null);
   }, [userData]);
 
   const actionableSummaries = useMemo(
@@ -2174,10 +2201,20 @@ const officeAttendanceButtonText = currentUserConfirmed
   const userMatterIDs = useMemo(() => {
     if (!allMatters || allMatters.length === 0) return [];
     return allMatters
-      .filter((matter) => 
+      .filter((matter) =>
         normalizeName(matter.ResponsibleSolicitor) === normalizeName(userResponsibleName)
       )
-      .map((matter) => Number(matter.UniqueID));
+      .map((matter) => {
+        // Support multiple ID field variants and ignore non-numeric values
+        const rawId =
+          (matter as any).UniqueID ||
+          (matter as any).MatterID ||
+          (matter as any).matterId ||
+          (matter as any).id;
+        const numericId = Number(rawId);
+        return isNaN(numericId) ? null : numericId;
+      })
+      .filter((id): id is number => id !== null);
   }, [allMatters, userResponsibleName]);
 
   const myOutstandingBalances = useMemo(() => {
@@ -3004,12 +3041,14 @@ const filteredBalancesForPanel = useMemo<OutstandingClientBalance[]>(() => {
       </>
     );
     setContent(content);
-    return () => setContent(null);
   }, [
     isDarkMode,
     normalQuickActions,
     currentUserConfirmed,
   showFocusOverlay,
+  immediateActionsDismissedThisSession,
+  immediateActionsReady,
+  immediateActionsList,
   ]);
 
   // Returns a narrow weekday (e.g. "M" for Monday, "T" for Tuesday)

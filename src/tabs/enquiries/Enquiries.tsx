@@ -41,7 +41,7 @@ import { colours } from '../../app/styles/colours';
 import ToggleSwitch from '../../components/ToggleSwitch';
 import { hasAdminAccess } from '../../utils/matterNormalization';
 import { useTheme } from '../../app/functionality/ThemeContext';
-import { useNavigator } from '../../app/functionality/NavigatorContext';
+import { useNavigatorActions } from '../../app/functionality/NavigatorContext';
 import UnclaimedEnquiries from './UnclaimedEnquiries';
 import { Pivot, PivotItem } from '@fluentui/react';
 import SegmentedControl from '../../components/filter/SegmentedControl';
@@ -175,7 +175,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
 
   const { isDarkMode } = useTheme();
-  const { setContent } = useNavigator();
+  const { setContent } = useNavigatorActions();
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [twoColumn, setTwoColumn] = useState<boolean>(false);
   // Scope toggle (Mine vs All) for claimed enquiries
@@ -197,10 +197,17 @@ const Enquiries: React.FC<EnquiriesProps> = ({
   const [showDataInspector, setShowDataInspector] = useState<boolean>(false);
   // Local dataset toggle (legacy vs new direct) analogous to Matters (only in localhost UI for now)
   const [useNewData, setUseNewData] = useState<boolean>(false);
+  // Admin-only: control visibility of Deal Capture (Scope & Quote Description + Amount)
+  const [showDealCapture, setShowDealCapture] = useState<boolean>(false);
   const isLocalhost = (typeof window !== 'undefined') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  // Admin check (match Matters logic)
-  const userRole = userData?.[0]?.Role || '';
-  const userFullName = userData?.[0]?.FullName || '';
+  // Admin check (match Matters logic) – be robust to spaced keys and fallbacks
+  const userRec: any = (userData && userData[0]) ? userData[0] : {};
+  const userRole: string = (userRec.Role || userRec.role || '').toString();
+  const userFullName: string = (
+    userRec.FullName ||
+    userRec['Full Name'] ||
+    [userRec.First, userRec.Last].filter(Boolean).join(' ')
+  )?.toString() || '';
   const isAdmin = hasAdminAccess(userRole, userFullName);
   // Debug storage for raw payloads when inspecting
   const [debugRaw, setDebugRaw] = useState<{ legacy?: unknown; direct?: unknown }>({});
@@ -438,9 +445,14 @@ const Enquiries: React.FC<EnquiriesProps> = ({
 
   const handleSubTabChange = useCallback((item?: PivotItem) => {
     if (item) {
-      setActiveSubTab(item.props.itemKey as string);
+      const key = item.props.itemKey as string;
+      // Prevent switching to Calls or Emails if Pitch Builder is open
+      if (activeSubTab === 'Pitch' && (key === 'Calls' || key === 'Emails')) {
+        return;
+      }
+      setActiveSubTab(key);
     }
-  }, []);
+  }, [activeSubTab]);
 
   const handleSelectEnquiry = useCallback((enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
@@ -823,13 +835,13 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     (enquiry: Enquiry) => (
       <>
         {activeSubTab === 'Pitch' && (
-          <PitchBuilder enquiry={enquiry} userData={userData} />
+          <PitchBuilder enquiry={enquiry} userData={userData} showDealCapture={showDealCapture} />
         )}
         {activeSubTab === 'Calls' && <EnquiryCalls enquiry={enquiry} />}
         {activeSubTab === 'Emails' && <EnquiryEmails enquiry={enquiry} />}
       </>
     ),
-    [activeSubTab, userData]
+    [activeSubTab, userData, showDealCapture]
   );
 
   const enquiriesCountPerMember = useMemo(() => {
@@ -1056,8 +1068,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
           />
           <Pivot className="navigatorPivot" selectedKey={activeSubTab} onLinkClick={handleSubTabChange}>
             <PivotItem headerText="Pitch Builder" itemKey="Pitch" />
-            <PivotItem headerText="Calls" itemKey="Calls" />
-            <PivotItem headerText="Emails" itemKey="Emails" />
+            <PivotItem
+              headerText="Calls"
+              itemKey="Calls"
+              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
+            />
+            <PivotItem
+              headerText="Emails"
+              itemKey="Emails"
+              headerButtonProps={activeSubTab === 'Pitch' ? { 'aria-disabled': true, style: { color: '#aaa', cursor: 'not-allowed' } } : {}}
+            />
           </Pivot>
           <div style={{ flex: 1 }} />
           {(isAdmin || isLocalhost) && (
@@ -1077,7 +1097,16 @@ const Enquiries: React.FC<EnquiriesProps> = ({
                 onClick={() => setShowDataInspector(v => !v)}
                 styles={{ root: { borderRadius: 8, background: 'rgba(0,0,0,0.08)', height: 30, width: 30 } }}
               />
-              <ToggleSwitch id="pitchbuilder-new-data-toggle" checked={useNewData} onChange={setUseNewData} size="sm" onText="New" offText="Legacy" ariaLabel="Toggle dataset between legacy and new" />
+              <span style={{ fontSize: 11, fontWeight: 600, color: isDarkMode ? '#ffe9a3' : '#5d4700' }}>Deal Capture</span>
+              <ToggleSwitch
+                id="deal-capture-toggle"
+                checked={showDealCapture}
+                onChange={setShowDealCapture}
+                size="sm"
+                onText="Show"
+                offText="Hide"
+                ariaLabel="Show or hide Deal Capture (Scope & Quote Description + Amount)"
+              />
             </div>
           )}
         </div>
@@ -1097,6 +1126,7 @@ const Enquiries: React.FC<EnquiriesProps> = ({
     showMineOnly,
     twoColumn,
     activeSubTab,
+  showDealCapture,
     handleSubTabChange,
     handleBackToList,
   ]);

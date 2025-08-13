@@ -549,6 +549,45 @@ const BespokeForm: React.FC<BespokeFormProps> = ({
                   </div>
                 );
 
+              case 'date':
+              case 'time':
+                return (
+                  <div key={index}>
+                    {questionBanner}
+                    <input
+                      type={field.type}
+                      required={field.required}
+                      value={formValues[field.name]?.toString() || ''}
+                      onChange={(e) => handleInputChange(field.name, e.target.value)}
+                      disabled={isSubmitting}
+                      step={field.step}
+                      min={field.min}
+                      max={field.max}
+                      placeholder={field.placeholder}
+                      style={{
+                        width: '100%',
+                        height: `${INPUT_HEIGHT}px`,
+                        border: `1px solid ${colours.highlight}`,
+                        borderRadius: 0,
+                        padding: '0 10px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    {field.helpText && (
+                      <span
+                        style={{
+                          color: colours.greyText,
+                          fontSize: '12px',
+                          marginTop: '4px',
+                          display: 'block',
+                        }}
+                      >
+                        {field.helpText}
+                      </span>
+                    )}
+                  </div>
+                );
+
               case 'number':
               case 'currency-picker':
               case 'text':

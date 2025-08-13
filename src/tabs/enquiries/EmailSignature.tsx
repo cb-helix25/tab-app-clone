@@ -7,6 +7,8 @@ interface EmailSignatureProps {
 
 const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) => {
   const userFullName = userData?.[0]?.['Full Name'] || '';
+  const userFirstName = userData?.[0]?.['First'] || '';
+  const userRole = userData?.[0]?.['Role'] || '';
   const userInitials = userFullName
     ? userFullName
         .split(' ')
@@ -27,7 +29,13 @@ const EmailSignature: React.FC<EmailSignatureProps> = ({ bodyHtml, userData }) =
     <tr>
       <td style="padding:10px; font-family:Raleway, sans-serif; font-size:10pt; color:#000;">
         ${bodyHtml}
+        <p style="font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4; color:#000; margin:16px 0 8px;">${userFirstName}</p>
         <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin:0; padding:0; width:auto; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4; color:#000;">
+          <tr>
+            <td style="padding-bottom: 8px; font-family: Raleway, sans-serif; font-size:10pt; line-height:1.4; color:#000;">
+              ${userFullName}<br />${userRole}
+            </td>
+          </tr>
           <tr>
             <td style="padding-bottom: 8px; font-family: Raleway, sans-serif; color:#000;">
               <img src="https://helix-law.co.uk/wp-content/uploads/2025/01/50px-logo.png" alt="Helix Law Logo" style="height:50px; display:block; margin:15px 0;" />

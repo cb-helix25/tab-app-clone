@@ -81,7 +81,7 @@
                                                                   },
                                                                   {
                                                                       "label":  "Instruct Helix Law - Pitch",
-                                                                      "previewText":  "Please confirm your instructions by clicking \u003ca href=\"[InstructLink]\" target=\"_blank\" class=\"insert-placeholder\" data-insert\u003eINSTRUCT HELIX LAW\u003c/a\u003e. This single link will verify your identity, request the key documents and take funds on account in a quick and transparent checkout process: [CheckoutLink]. Once complete we\u0027ll open a file immediately and send you our Client Care Letter setting out the terms of our retainer. If you have any queries I\u0027m very happy to discuss them without charge."
+                                                                      "previewText": "Please confirm your instructions by clicking \u003ca href=\"[InstructLink]\" target=\"_blank\" class=\"insert-placeholder\" data-insert\u003eINSTRUCT HELIX LAW\u003c/a\u003e. This single link will verify your identity and request the key documents in a quick and transparent process. Once complete we\u0027ll open a file immediately and send you our Client Care Letter setting out the terms of our retainer. If you have any queries I\u0027m very happy to discuss them without charge."
                                                                   },
                                                                   {
                                                                       "label":  "Meeting Link",

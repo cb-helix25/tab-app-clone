@@ -6,7 +6,7 @@ import { TemplateBlock } from '../../../app/customisation/ProductionTemplateBloc
 import SnippetEditPopover from './SnippetEditPopover';
 import { placeholderSuggestions } from '../../../app/customisation/InsertSuggestions';
 import { wrapInsertPlaceholders } from './emailUtils';
-import { SCENARIOS } from './scenarios';
+import { SCENARIOS, SCENARIOS_VERSION } from './scenarios';
 import EmailSignature from '../EmailSignature';
 import { applyDynamicSubstitutions, convertDoubleBreaksToParagraphs } from './emailUtils';
 import markUrl from '../../../assets/dark blue mark.svg';
@@ -34,7 +34,8 @@ function buildPlaceholderHTML(text: string) {
       html += escapeHtml(text.slice(lastIndex, match.index));
     }
     const inner = escapeHtml(match[1]);
-    html += `<span style="display:inline;background:#e0f0ff;box-shadow:inset 0 0 0 1px #8bbbe8;padding:0;margin:0;border:none;font-style:inherit;color:#0a4d8c">[${inner}]</span>`;
+  // Render placeholder without square brackets; blue pill, dashed border, subtle grey text, no bold
+  html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${inner}</span>`;
     lastIndex = regex.lastIndex;
   }
   if (lastIndex < text.length) {
@@ -55,7 +56,8 @@ function findPlaceholders(input: string): string[] {
 function highlightPlaceholdersHtml(html: string): string {
   return html.replace(/\[([^\]]+)\]/g, (_m, p1) => {
     const inner = escapeHtml(p1);
-    return `<span style="display:inline;background:#ffe9e9;box-shadow:inset 0 0 0 1px #f1a4a4;padding:0;margin:0;border:none;font-style:inherit;color:#a80000">[${inner}]</span>`;
+    // Unresolved tokens in preview: keep a red pill and remove brackets for clarity
+    return `<span style=\"display:inline;background:#ffe9e9;box-shadow:inset 0 0 0 1px #f1a4a4;padding:0 4px;margin:0;border:none;border-radius:3px;font-style:inherit;color:#a80000;font-weight:600\">${inner}</span>`;
   });
 }
 
@@ -184,12 +186,12 @@ function useAutoInsertRateRole(
       // Even if content didn't change, update tracking refs to prevent re-runs
       lastAppliedKeyRef.current = key;
       lastProcessedBodyRef.current = body;
-      // Emit highlights if we haven't for this content
-      if (ranges.length) {
-        setExternalHighlights?.(ranges);
+      // Clear highlights if nothing was replaced to avoid ghost highlights
+      if (ranges.length === 0) {
+        setExternalHighlights?.([]);
       }
     }
-  }, [body, userData, setBody, setExternalHighlights]);
+  }, [body, userData]); // Removed setBody and setExternalHighlights from deps to prevent loops
 }
 
 interface InlineEditableAreaProps {
@@ -692,9 +694,32 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
           
           let cursor = 0;
           let html = '';
-          const pushPlain = (to: number) => { 
-            if (to > cursor) html += escapeHtml(value.slice(cursor, to)); 
-            cursor = to; 
+          const pushPlain = (to: number) => {
+            if (to > cursor) {
+              const chunk = value.slice(cursor, to);
+              // Split on newlines to style leading numeric markers per line
+              let idx = 0;
+              while (idx <= chunk.length) {
+                const nl = chunk.indexOf('\n', idx);
+                const isLast = nl === -1;
+                const line = chunk.slice(idx, isLast ? chunk.length : nl);
+                // Match: start spaces + number + dot + at least one space
+                const m = line.match(/^(\s*)(\d+)\.(\s+)/);
+                if (m) {
+                  const pre = m[1] ?? '';
+                  const num = m[2] ?? '';
+                  const after = m[3] ?? '';
+                  const rest = line.slice(m[0].length);
+                  html += `${escapeHtml(pre)}<span style="color:#D65541;font-weight:700;">${escapeHtml(num + '.')}<\/span>${escapeHtml(after + rest)}`;
+                } else {
+                  html += escapeHtml(line);
+                }
+                if (!isLast) html += '\n';
+                if (isLast) break;
+                idx = nl + 1;
+              }
+            }
+            cursor = to;
           };
           
           markers.forEach(mark => {
@@ -702,10 +727,14 @@ const InlineEditableArea: React.FC<InlineEditableAreaProps> = ({ value, onChange
             pushPlain(mark.start);
             const segment = value.slice(mark.start, mark.end);
             if (mark.type === 'placeholder') {
-              html += `<span style="display:inline;background:#e0f0ff;box-shadow:inset 0 0 0 1px #8bbbe8;padding:0;margin:0;border:none;font-style:inherit;color:#0a4d8c">${escapeHtml(segment)}</span>`;
+              const inner = segment.length >= 2 && segment.startsWith('[') && segment.endsWith(']')
+                ? segment.slice(1, -1)
+                : segment;
+              // Keep blue pill style with dashed border; make text a touch lighter grey; no bold; brackets removed
+              html += `<span style="display:inline;background:#e0f0ff;border:1px dashed #8bbbe8;padding:2px 6px;margin:0;border-radius:3px;font-style:inherit;color:#6b7280;font-weight:400">${escapeHtml(inner)}</span>`;
             } else {
-              // Updated edited highlight: softer green background, brand green border, accessible text color
-              html += `<span style="display:inline;background:#e9f9f1;box-shadow:inset 0 0 0 1px #20b26c;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
+              // Updated edited highlight: subtle green background only (no border/box), accessible text color
+              html += `<span style="display:inline;background:#e9f9f1;padding:0;margin:0;border:none;font-style:inherit;color:#0b3d2c">${escapeHtml(segment)}</span>`;
             }
             cursor = mark.end;
           });
@@ -777,6 +806,7 @@ interface EditorAndTemplateBlocksProps {
   subject: string;
   setSubject: (subject: string) => void;
   // Deal capture props
+  showDealCapture?: boolean;
   initialScopeDescription?: string;
   onScopeDescriptionChange?: (value: string) => void;
   amount?: string;
@@ -817,6 +847,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   subject,
   setSubject,
   // Deal capture props
+  showDealCapture = false,
   initialScopeDescription,
   onScopeDescriptionChange,
   amount,
@@ -845,6 +876,72 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  // HMR tick to force re-render when scenarios module hot-reloads
+  const [hmrTick, setHmrTick] = useState(0);
+  // Helper: apply simple [RATE]/[ROLE] substitutions to keep injected text consistent with auto-insert effect
+  const applyRateRolePlaceholders = useCallback((text: string) => {
+    const u: any = Array.isArray(userData) ? (userData?.[0] ?? null) : userData;
+    if (!u || !text) return text;
+    const roleRaw = (u.Role ?? u.role ?? u.RoleName ?? u.roleName);
+    const rateRaw = (u.Rate ?? u.rate ?? u.HourlyRate ?? u.hourlyRate);
+    const roleStr = roleRaw == null ? '' : String(roleRaw).trim();
+    const parseRate = (val: unknown): number | null => {
+      if (val == null) return null;
+      if (typeof val === 'number') return isFinite(val) ? val : null;
+      const cleaned = String(val).replace(/[^0-9.\-]/g, '').trim();
+      if (!cleaned) return null;
+      const n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    };
+    const rateNumber = parseRate(rateRaw);
+    const formatRateGBP = (n: number) => `£${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    let out = text;
+    if (rateNumber != null) out = out.replace(/\[RATE\]/gi, formatRateGBP(rateNumber));
+    if (roleStr) out = out.replace(/\[ROLE\]/gi, roleStr);
+    return out;
+  }, [userData]);
+  // Track the last body we injected from a scenario so we can safely refresh on scenario edits
+  const lastScenarioBodyRef = useRef<string>('');
+
+  // Auto-select the first quick scenario on mount if none is selected
+  useEffect(() => {
+    if (!selectedScenarioId && SCENARIOS.length > 0) {
+      const firstScenario = SCENARIOS[0];
+      setSelectedScenarioId(firstScenario.id);
+
+      const raw = stripDashDividers(firstScenario.body);
+      const greetingName = (() => {
+        const e = enquiry as any;
+        const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
+        const name = String(first || '').trim();
+        return name.length > 0 ? name : 'there';
+      })();
+      const salutation = `Dear ${greetingName},\n\n`;
+      const composed = salutation + raw;
+      const projected = applyRateRolePlaceholders(composed);
+      lastScenarioBodyRef.current = projected;
+      setBody(projected);
+
+      const firstBlock = templateBlocks[0];
+      if (firstBlock) {
+        setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
+      }
+    }
+  }, [selectedScenarioId, enquiry]); // Removed unstable dependencies that cause loops
+  // Accept hot updates to the scenarios module (CRA/Webpack HMR) and trigger a lightweight re-render
+  useEffect(() => {
+    const anyModule: any = module as any;
+    if (anyModule && anyModule.hot) {
+      const handler = () => setHmrTick((t) => t + 1);
+      try {
+        anyModule.hot.accept('./scenarios', handler);
+      } catch {
+        // no-op if HMR not available
+      }
+    }
+  }, []);
+  // Refresh selected scenario body when scenario definitions hot-update
+  // Removed this effect as it was causing constant resets due to SCENARIOS_VERSION changing on every import
   // Ensure a default subject without tying it to scenario templates
   const didSetDefaultSubject = useRef(false);
   useEffect(() => {
@@ -1096,6 +1193,42 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
         .inline-reveal-btn:hover .label,.inline-reveal-btn:focus-visible .label{max-width:90px;opacity:1;transform:translateX(0);margin-left:6px;}
       @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
       .smooth-appear{animation:fadeSlideIn .18s ease}
+      
+  /* Numbered list styling with CTA red numbers */
+  /* Apply counters only to ordered lists that are NOT already number-inlined (.hlx-numlist) */
+  ol:not(.hlx-numlist) {
+        counter-reset: list-counter;
+        list-style: none;
+        padding-left: 0;
+        margin: 16px 0;
+      }
+  ol:not(.hlx-numlist) li {
+        counter-increment: list-counter;
+        position: relative;
+        padding-left: 2em;
+        margin-bottom: 12px;
+        line-height: 1.6;
+      }
+  ol:not(.hlx-numlist) li::before {
+        content: counter(list-counter) ".";
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: #D65541;
+        font-weight: 700;
+        font-size: 1em;
+        line-height: 1.6;
+      }
+      /* Ensure proper indentation for multi-line list items */
+  ol:not(.hlx-numlist) li p {
+        margin: 0;
+        padding: 0;
+      }
+  /* Lists generated with inline number spans */
+  ol.hlx-numlist { list-style: none; padding-left: 0; margin: 16px 0; }
+  ol.hlx-numlist li { margin: 0 0 12px 0; line-height: 1.6; position: relative; }
+  ol.hlx-numlist li::before { content: none !important; }
+  ol.hlx-numlist > li > span:first-child { color: #D65541; font-weight: 700; display: inline-block; min-width: 1.6em; }
       `}</style>
 
   <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 0 } }}>
@@ -1147,12 +1280,23 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                     key={s.id}
                     onClick={() => {
                       setSelectedScenarioId(s.id);
-          // Prefill only the body; subject is kept independent
-                      setBody(stripDashDividers(s.body));
+          // Prefill only the body; subject is kept independent. Prepend a dynamic salutation.
+                      const raw = stripDashDividers(s.body);
+                      const greetingName = (() => {
+                        const e = enquiry as any;
+                        const first = e?.First_Name ?? e?.first_name ?? e?.FirstName ?? e?.firstName ?? e?.Name?.split?.(' ')?.[0] ?? e?.ContactName?.split?.(' ')?.[0] ?? '';
+                        const name = String(first || '').trim();
+                        return name.length > 0 ? name : 'there';
+                      })();
+                      const salutation = `Dear ${greetingName},\n\n`;
+                      const composed = salutation + raw;
+                      const projected = applyRateRolePlaceholders(composed);
+                      lastScenarioBodyRef.current = projected;
+                      setBody(projected);
                       // Optionally seed first block editable content to keep edit UX consistent
                       const firstBlock = templateBlocks[0];
                       if (firstBlock) {
-                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: stripDashDividers(s.body) }));
+                        setBlockContents(prev => ({ ...prev, [firstBlock.title]: projected }));
                       }
                     }}
                     style={{
@@ -1171,6 +1315,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 ))}
               </div>
             </div>
+            {/* Scenario hot-update handled via top-level useEffect */}
             {/* Subject Line - Primary Focus */}
             <div style={{ marginBottom: initialNotes ? 16 : 0 }}>
               <div style={{
@@ -1193,8 +1338,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  fontSize: 14,
-                  fontWeight: 500,
+                  fontSize: 13, // match editor font size
+                  fontWeight: 400,
                   border: `2px solid ${isDarkMode ? colours.dark.border : '#e1e5e9'}`,
                   borderRadius: 8,
                   backgroundColor: isDarkMode ? colours.dark.inputBackground : '#ffffff',
@@ -1569,7 +1714,8 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
               </div>
             )}
 
-            {/* Deal Capture Section */}
+            {/* Deal Capture Section (admin-gated) */}
+            {showDealCapture && (
             <div style={{ marginTop: initialNotes ? 16 : 0 }}>
               <div style={{
                 fontSize: 12,
@@ -1824,6 +1970,7 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
                 </div>
               </Stack>
             </div>
+            )}
           </div>
 
           {/* Template blocks removed in simplified flow */}
@@ -1834,3 +1981,6 @@ const EditorAndTemplateBlocks: React.FC<EditorAndTemplateBlocksProps> = ({
 };
 
 export default EditorAndTemplateBlocks;
+
+// Allow TS to understand Webpack HMR in CRA
+declare const module: { hot?: { accept: (path?: string, cb?: () => void) => void } };

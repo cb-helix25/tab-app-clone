@@ -109,11 +109,16 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect }) => {
     background: isDarkMode ? 'rgba(255,255,255,0.06)' : '#fff',
     border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
     borderRadius: 12,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
     padding: 14,
     margin: '8px 0',
     cursor: 'pointer',
     transition: 'box-shadow .2s, transform .2s',
     boxShadow: isDarkMode ? '0 2px 10px rgba(0,0,0,0.25)' : '0 2px 10px rgba(0,0,0,0.08)',
+    overflow: 'hidden',
     selectors: {
       ':hover': { boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.35)' : '0 6px 20px rgba(0,0,0,0.12)', transform: 'translateY(-1px)' }
     }
@@ -146,7 +151,18 @@ const NewUnclaimedEnquiryCard: React.FC<Props> = ({ enquiry, onSelect }) => {
       aria-pressed={selected}
     >
       {/* Left accent */}
-      <span style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 2, background: areaColor, opacity: .95, pointerEvents: 'none' }} />
+      <span style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: 2,
+        background: areaColor,
+        opacity: .95,
+        pointerEvents: 'none',
+        borderTopLeftRadius: 12,
+        borderBottomLeftRadius: 12,
+      }} />
 
       {/* Badge */}
       <EnquiryBadge enquiry={enquiry} isClaimed={false} showPulse={true} />

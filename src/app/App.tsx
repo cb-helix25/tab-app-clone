@@ -2,6 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import CustomTabs from './styles/CustomTabs';
 import { ThemeProvider } from './functionality/ThemeContext';
 import Navigator from '../components/Navigator';
+import { useNavigatorActions } from './functionality/NavigatorContext';
 import FormsSidebar from '../components/FormsSidebar';
 import ResourcesSidebar from '../components/ResourcesSidebar';
 import { NavigatorProvider } from './functionality/NavigatorContext';
@@ -319,6 +320,14 @@ const App: React.FC<AppProps> = ({
   ];
 
   const isAuthorized = authorizedInitials.includes(userInitials);
+  const { setContent } = useNavigatorActions();
+
+  // Ensure Navigator content is cleared when navigating away from Home
+  React.useEffect(() => {
+    if (activeTab !== 'home') {
+      setContent(null);
+    }
+  }, [activeTab, setContent]);
 
   const renderContent = () => {
     switch (activeTab) {
